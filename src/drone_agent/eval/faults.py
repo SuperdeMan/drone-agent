@@ -21,7 +21,7 @@ def install_injection(guardian, path):
             return {}
         value = json.loads(path.read_text())
         if value.get("id") not in observed:
-            guardian.record("fault_injected", **value, boundary="runtime_input")
+            guardian.record("fault_injected", injection=value, boundary="runtime_input")
             observed.add(value.get("id"))
         return value
 

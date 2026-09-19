@@ -704,3 +704,32 @@ def test_native_post_landing_mode_reset_is_not_airborne_takeover(runtime):
     adapter.values["in_air"] = False
     adapter.received["position"] -= 1
     assert not adapter.landed_mode_transition("MISSION")
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "command_timeout",
+        "observation_stale",
+        "energy_low",
+        "energy_critical",
+        "geofence",
+        "localization_lost",
+        "fc_failsafe",
+        "lease_expired",
+        "uplink_lost",
+    ],
+)
+def test_injection_metadata_cannot_crash_observation_collection(runtime, kind):
+    import json
+
+    from drone_agent.eval.faults import install_injection
+
+    guardian, adapter, _, path = runtime
+    instruction = path / "fault.json"
+    instruction.write_text(json.dumps({"id": "test", "kind": kind, "step_id": "fly_route"}))
+    install_injection(guardian, instruction)
+    adapter.snapshot()
+    adapter.snapshot()
+    events = [row for row in guardian.journal.rows if row["kind"] == "fault_injected"]
+    assert len(events) == 1 and events[0]["data"]["injection"]["kind"] == kind
