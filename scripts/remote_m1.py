@@ -16,6 +16,16 @@ from pathlib import Path
 HELPERS = runpy.run_path(str(Path(__file__).with_name("remote_dev_stack.py")))
 
 
+def injection_due(scenario, state):
+    step = scenario.get("inject_at")
+    if step is None or state["active_step"] != step:
+        return False
+    if scenario.get("during_takeoff"):
+        obs = state["observation"]
+        return obs["in_air"] is True and obs.get("pose", {}).get("position", {}).get("z", 0) < 2
+    return True
+
+
 def run_m1(root: Path, deployment: Path, request: dict):
     manifest = json.loads((deployment / "manifest.json").read_text())
     sha = manifest["source_sha"]
@@ -122,7 +132,10 @@ def run_m1(root: Path, deployment: Path, request: dict):
                     ]
                 )
                 if scenario.get("pre_dispatch"):
-                    write_json(run / "input/fault.json", {"id": scenario["id"], "kind": scenario["kind"]})
+                    write_json(
+                        run / "input/fault.json",
+                        {"id": scenario["id"], "kind": scenario["kind"], "step_id": scenario["inject_at"]},
+                    )
                 compose("stop", "executive", "guardian", "collector", check=False)
                 compose("up", "-d", "--no-build", "--pull", "never", "--force-recreate", "sitl")
                 compose("up", "-d", "--no-build", "--pull", "never", "collector")
@@ -148,13 +161,7 @@ def run_m1(root: Path, deployment: Path, request: dict):
                         time.sleep(0.1)
                         continue
                     obs = state["observation"]
-                    should_inject = state["active_step"] == scenario.get("inject_at")
-                    if scenario.get("during_takeoff"):
-                        should_inject = (
-                            should_inject
-                            and obs["in_air"] is True
-                            and obs.get("pose", {}).get("position", {}).get("z", 0) < 2
-                        )
+                    should_inject = injection_due(scenario, state)
                     if should_inject and not injected:
                         time.sleep(injection_delay)
                         kind = scenario["kind"]

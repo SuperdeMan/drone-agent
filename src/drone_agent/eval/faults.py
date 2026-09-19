@@ -53,7 +53,8 @@ def install_injection(guardian, path):
 
     async def execute(node, permitted):
         await original_execute(node, permitted)
-        if instruction().get("kind") == "command_timeout":
+        fault = instruction()
+        if fault.get("kind") == "command_timeout" and node.task_id == fault.get("step_id", "fly_route"):
             await asyncio.sleep(7)
 
     guardian.adapter.snapshot = modified_snapshot

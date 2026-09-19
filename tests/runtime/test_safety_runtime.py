@@ -521,3 +521,10 @@ async def test_expired_authorization_stops_an_active_mission(runtime):
     await guardian.recovery_task
     assert guardian.reason == "mission_authorization_expired"
     assert adapter.writes == [RecoveryBehavior.RTL]
+
+
+def test_nominal_scenario_never_enters_fault_injection():
+    due = runpy.run_path(str(ROOT / "scripts/remote_m1.py"))["injection_due"]
+    assert not due({"id": "nominal"}, {"active_step": None})
+    assert not due({"id": "nominal"}, {"active_step": "takeoff"})
+    assert due({"inject_at": "fly_route"}, {"active_step": "fly_route"})
