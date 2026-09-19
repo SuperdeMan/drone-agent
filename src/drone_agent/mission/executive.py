@@ -171,7 +171,10 @@ class Executive:
         self.node = node
         self.transition(node, SkillInstanceState.PREPARING)
         await self.pump()
-        self.transition(node, SkillInstanceState.RUNNING)
+        cancelled_before_dispatch = self.states[node.task_id] == SkillInstanceState.CANCEL_REQUESTED
+        self.transition(
+            node, SkillInstanceState.RECOVERING if cancelled_before_dispatch else SkillInstanceState.RUNNING
+        )
         now = utcnow()
         envelope = ControlCommandEnvelope(
             key=IdempotencyKey(
@@ -189,8 +192,10 @@ class Executive:
             payload={"skill_id": node.skill_id, "params": node.params},
         )
         self.seq += 1
-        self.event("command_submitted", envelope=envelope.model_dump(mode="json"))
-        accepted = await self.send(envelope)
+        accepted = False
+        if not cancelled_before_dispatch:
+            self.event("command_submitted", envelope=envelope.model_dump(mode="json"))
+            accepted = await self.send(envelope)
         verdict, execution = EffectVerdict.UNKNOWN, ExecutionStatus.UNKNOWN
         verifier = EffectVerifier(self.registry, node)
         deadline = time.monotonic() + node.timeout_s
@@ -203,11 +208,13 @@ class Executive:
             if state == SkillInstanceState.PAUSE_REQUESTED and obs.flight_mode == "HOLD":
                 self.transition(node, SkillInstanceState.PAUSED)
             if safety != "proceed":
-                if self.status.get("reason") == "user_pause":
+                if self.status.get("reason") == "user_pause" and safety == "hold":
                     await asyncio.sleep(0.1)
                     continue
                 self.aborted = True
                 if state == SkillInstanceState.CANCEL_REQUESTED:
+                    self.transition(node, SkillInstanceState.RECOVERING)
+                elif state in {SkillInstanceState.PAUSED, SkillInstanceState.PAUSE_REQUESTED}:
                     self.transition(node, SkillInstanceState.RECOVERING)
                 break
             if verifier.action == "capture_image":
@@ -242,6 +249,21 @@ class Executive:
                 execution = ExecutionStatus.FAILED
                 break
             await asyncio.sleep(0.1)
+        if self.states[node.task_id] == SkillInstanceState.RECOVERING and any(
+            row["kind"] == "operator_request" and row["data"].get("action") == "cancel" for row in self.journal.rows
+        ):
+            safe_since = None
+            recovery_deadline = time.monotonic() + 180
+            while time.monotonic() < recovery_deadline:
+                obs = await self.pump()
+                if obs.timestamp <= utcnow() < obs.valid_until and obs.armed is False and obs.in_air is False:
+                    safe_since = time.monotonic() if safe_since is None else safe_since
+                    if time.monotonic() - safe_since >= 2:
+                        execution, verdict = ExecutionStatus.CANCELLED, EffectVerdict.UNKNOWN
+                        break
+                else:
+                    safe_since = None
+                await asyncio.sleep(0.1)
         if execution != ExecutionStatus.SUCCEEDED:
             self.aborted = True
             if self.status["safety_verdict"] == "proceed":
@@ -257,7 +279,11 @@ class Executive:
                     )
                 )
             target = (
-                SkillInstanceState.OUTCOME_UNKNOWN if verdict == EffectVerdict.UNKNOWN else SkillInstanceState.FAILED
+                SkillInstanceState.CANCELLED
+                if execution == ExecutionStatus.CANCELLED
+                else SkillInstanceState.OUTCOME_UNKNOWN
+                if verdict == EffectVerdict.UNKNOWN
+                else SkillInstanceState.FAILED
             )
         else:
             target = SkillInstanceState.COMPLETED

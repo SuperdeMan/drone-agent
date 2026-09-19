@@ -73,6 +73,7 @@ async def main_async(args):
                     "reason": guardian.reason,
                     "phase": guardian.phase,
                     "active_step": guardian.active_step.task_id if guardian.active_step else None,
+                    "command_pending": bool(guardian.dispatch_task and not guardian.dispatch_task.done()),
                     "monotonic": time.monotonic(),
                 }
                 temporary = args.artifacts / "status.pending.json"

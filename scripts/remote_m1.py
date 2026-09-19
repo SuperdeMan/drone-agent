@@ -20,6 +20,9 @@ def injection_due(scenario, state):
     step = scenario.get("inject_at")
     if step is None or state["active_step"] != step:
         return False
+    if scenario.get("kind") in {"pause", "pause_resume"}:
+        if state["observation"]["flight_mode"] != "MISSION" or state.get("command_pending", False):
+            return False
     if scenario.get("during_takeoff"):
         obs = state["observation"]
         return obs["in_air"] is True and obs.get("pose", {}).get("position", {}).get("z", 0) < 2
@@ -69,11 +72,14 @@ def run_m1(root: Path, deployment: Path, request: dict):
             ["docker", "run", "--network", "none", images["ground"], "python3", "-m", "drone_agent.eval.prepare"]
         )
     )
-    scenarios = (
-        suite["scenarios"]
-        if request["scenario"] == "all"
-        else [s for s in suite["scenarios"] if s["id"] == request["scenario"]]
-    )
+    scenarios = suite["scenarios"]
+    if request["scenario"] == "faults":
+        scenarios = [case for case in scenarios if case["expected"] == "safe_abort" or case["id"] == "pause_resume"]
+    elif request["scenario"] != "all":
+        requested = request["scenario"].split(",")
+        scenarios = [case for case in scenarios if case["id"] in requested]
+        if len(scenarios) != len(set(requested)):
+            raise ValueError("unknown M1 scenario in selection")
     if not scenarios or not request["seeds"]:
         raise ValueError("unknown or empty M1 scenario selection")
     results = []
@@ -248,6 +254,9 @@ def run_m1(root: Path, deployment: Path, request: dict):
                         "^python3 -m drone_agent.runtime.launch executive$",
                         check=False,
                     )
+                    settle_deadline = time.monotonic() + 5
+                    while not (run / "aircraft/result.json").exists() and time.monotonic() < settle_deadline:
+                        time.sleep(0.1)
                 compose("stop", "-t", "5", "executive", "guardian", "collector")
                 compose("stop", "-t", "10", "sitl")
                 compose("logs", "--no-color", "--tail", "160", timeout=30, check=False)

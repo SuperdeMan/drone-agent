@@ -733,3 +733,52 @@ def test_injection_metadata_cannot_crash_observation_collection(runtime, kind):
     adapter.snapshot()
     events = [row for row in guardian.journal.rows if row["kind"] == "fault_injected"]
     assert len(events) == 1 and events[0]["data"]["injection"]["kind"] == kind
+
+
+async def test_cancel_before_dispatch_waits_for_safe_ground_and_never_arms(runtime):
+    import json
+
+    from drone_agent.mission.executive import Executive
+
+    guardian, adapter, _, path = runtime
+
+    class Client:
+        async def install(self, lease):
+            return guardian.install_lease(lease).model_dump(mode="json")
+
+        async def heartbeat(self, value):
+            return guardian.heartbeat(value)
+
+        async def observation(self, robot_id):
+            return adapter.snapshot()
+
+        async def operate(self, operation):
+            return await guardian.operate(operation)
+
+        async def submit(self, command):
+            raise AssertionError("cancelled-before-arm mission dispatched a command")
+
+    journal, recorder = Journal(path / "cancel.jsonl"), Recorder(path / "cancel.mcap")
+    (path / "operator.json").write_text(json.dumps({"request_id": "cancel-before-arm", "action": "cancel"}))
+    try:
+        executive = Executive(
+            client=Client(),
+            registry=guardian.registry,
+            package=guardian.package,
+            journal=journal,
+            recorder=recorder,
+            artifacts=path,
+            executive_id="executive-test",
+            epoch=2,
+        )
+        started = time.monotonic()
+        result = await executive.run()
+        assert time.monotonic() - started >= 2
+        assert not result["completed"] and not adapter.writes
+        assert result["outcomes"]["takeoff"]["execution_status"] == "cancelled"
+        assert result["outcomes"]["takeoff"]["effect_verdict"] == "unknown"
+        states = [e["data"]["state"] for e in journal.rows if e["kind"] == "skill_state"]
+        assert states == ["preparing", "cancel_requested", "recovering", "cancelled"]
+    finally:
+        journal.close()
+        recorder.close()
