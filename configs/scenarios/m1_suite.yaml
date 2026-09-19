@@ -18,6 +18,7 @@ scenarios:
   - {id: geofence, expected: safe_abort, inject_at: fly_route, kind: geofence}
   - {id: cancel_takeoff, expected: safe_abort, inject_at: takeoff, kind: cancel, during_takeoff: true}
   - {id: cancel_cruise, expected: safe_abort, inject_at: fly_route, kind: cancel}
+  - {id: cancel_landing, expected: safe_abort, inject_at: land, kind: cancel}
   - {id: pause_resume, expected: completed, inject_at: fly_route, kind: pause_resume}
   - {id: pause_timeout, expected: safe_abort, inject_at: fly_route, kind: pause}
   - {id: uplink_lost, expected: safe_abort, inject_at: fly_route, kind: uplink_lost}

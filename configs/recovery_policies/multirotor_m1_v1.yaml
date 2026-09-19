@@ -67,6 +67,10 @@ edges:
     target: land_here
     fault_injection_scenario: fi.cancel.takeoff
   - trigger: user_cancel
+    guard: {flight_phase: landing}
+    target: land_here
+    fault_injection_scenario: fi.cancel.landing
+  - trigger: user_cancel
     guard: {}
     target: rtl
     fault_injection_scenario: fi.cancel.cruise

@@ -14,6 +14,7 @@ energy_critical: {reason: energy_low, behavior: land_here, edge: fi.energy.criti
 geofence: {reason: geofence_predicted_breach, behavior: hold, follow_up: rtl, edge: fi.geofence.approach}
 cancel_takeoff: {reason: user_cancel, behavior: land_here, edge: fi.cancel.takeoff}
 cancel_cruise: {reason: user_cancel, behavior: rtl, edge: fi.cancel.cruise}
+cancel_landing: {reason: user_cancel, behavior: land_here, edge: fi.cancel.landing}
 pause_resume: {reason: user_pause, behavior: hold, resumed: true}
 pause_timeout: {reason: user_pause, behavior: hold, follow_up: rtl, edge: fi.pause.timeout}
 uplink_lost: {reason: uplink_lost, behavior: hold, follow_up: rtl, edge: fi.uplink.lost}

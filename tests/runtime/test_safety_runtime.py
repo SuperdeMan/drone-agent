@@ -273,7 +273,7 @@ async def test_live_transport_with_frozen_business_progress_recovers(runtime):
     assert adapter.writes == [RecoveryBehavior.HOLD]
 
 
-@pytest.mark.parametrize("index", range(13))
+@pytest.mark.parametrize("index", range(14))
 async def test_every_m1_recovery_edge_dispatches_and_follows_delay(runtime, index):
     guardian, adapter, _, _ = runtime
     edge = guardian.policy.edges[index]
