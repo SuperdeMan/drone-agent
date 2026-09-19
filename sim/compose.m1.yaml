@@ -10,6 +10,8 @@ services:
     mem_limit: 2g
     memswap_limit: 2g
     pids_limit: 512
+    environment:
+      PX4_SIM_SPEED_FACTOR: ${DRONE_M1_SPEED:-1}
     volumes:
       - ${DRONE_M1_RUN:?}/ulog:/opt/PX4-Autopilot/build/px4_sitl_default/rootfs/log
     networks: [simulation]

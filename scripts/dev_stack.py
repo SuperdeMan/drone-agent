@@ -53,8 +53,20 @@ class Connection:
         return cls(host, user, identity.resolve(), prefix)
 
     def arguments(self) -> list[str]:
-        return ["-i", str(self.identity), "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
-                "-o", "ConnectTimeout=15", "-o", "ServerAliveInterval=20", "-o", "ServerAliveCountMax=3"]
+        return [
+            "-i",
+            str(self.identity),
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ConnectTimeout=15",
+            "-o",
+            "ServerAliveInterval=20",
+            "-o",
+            "ServerAliveCountMax=3",
+        ]
 
     @property
     def target(self) -> str:
@@ -67,14 +79,21 @@ def ssh(connection: Connection, request: dict, *, timeout: int = 1800) -> dict:
         "    print(json.dumps(result))\n"
         "except Exception as exc:\n    print(json.dumps({'status': 'error', 'reason': str(exc)}))\n    raise SystemExit(1)\n"
     )
-    result = subprocess.run(["ssh", *connection.arguments(), connection.target, "python3 -"],
-                            input=WORKER_CODE + suffix.encode(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
+    result = subprocess.run(
+        ["ssh", *connection.arguments(), connection.target, "python3 -"],
+        input=WORKER_CODE + suffix.encode(),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=timeout,
+    )
     # SSH banners can contain transient login URLs; never print raw stderr.
     # SSH banner 可能带临时登录链接；不打印原始 stderr。
     try:
         payload = json.loads(result.stdout)
     except (ValueError, UnicodeError) as error:
-        raise RuntimeError(f"cloud command returned no valid JSON (exit {result.returncode}); SSH stderr withheld") from error
+        raise RuntimeError(
+            f"cloud command returned no valid JSON (exit {result.returncode}); SSH stderr withheld"
+        ) from error
     if result.returncode:
         raise RuntimeError(payload.get("reason", "cloud command failed"))
     return payload
@@ -108,17 +127,38 @@ def prepare_packet(sha_ref: str, artifact_root: Path, images: dict) -> tuple[Pat
         REMOTE["validate_archive"](stream)
         stream.extractall(source, filter="data")
     env = dict(os.environ, UV_DEFAULT_INDEX="https://pypi.tuna.tsinghua.edu.cn/simple")
-    requirements = local(["uv", "export", "--frozen", "--group", "dev", "--group", "flight", "--no-emit-project", "--no-header",
-                          "--format", "requirements.txt"], cwd=source, env=env)
+    requirements = local(
+        [
+            "uv",
+            "export",
+            "--frozen",
+            "--group",
+            "dev",
+            "--group",
+            "flight",
+            "--no-emit-project",
+            "--no-header",
+            "--format",
+            "requirements.txt",
+        ],
+        cwd=source,
+        env=env,
+    )
     (packet / "requirements.txt").write_bytes(requirements)
     for name in ("compose.cloud.yaml", "checks.Dockerfile"):
         shutil.copyfile(ROOT / "sim" / name, packet / name)
     files = {name: REMOTE["digest"](packet / name) for name in ("source.tar", *REMOTE["CONTROL_FILES"])}
     control_inputs = {name: files[name] for name in REMOTE["CONTROL_FILES"]}
     control_inputs["remote_worker"] = hashlib.sha256(WORKER_CODE).hexdigest()
-    manifest = {"schema_version": "0.1.0", "source_sha": sha, "run_id": packet.name, "files": files,
-                "control_sha256": hashlib.sha256(json.dumps(control_inputs, sort_keys=True).encode()).hexdigest(),
-                "images": images, "target": "cloud"}
+    manifest = {
+        "schema_version": "0.1.0",
+        "source_sha": sha,
+        "run_id": packet.name,
+        "files": files,
+        "control_sha256": hashlib.sha256(json.dumps(control_inputs, sort_keys=True).encode()).hexdigest(),
+        "images": images,
+        "target": "cloud",
+    }
     (packet / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return packet, manifest
 
@@ -161,9 +201,13 @@ def upload_packet(connection: Connection, packet: Path, manifest: dict, destinat
         operation = "put -a" if resume and name == "images.tar.gz" else "put"
         commands.append(f"{operation} {sftp_literal(str(packet / name))} {sftp_literal(destination + '/' + name)}")
     print("Uploading packet via resumable SFTP...", file=sys.stderr, flush=True)
-    result = subprocess.run(["sftp", "-b", "-", *connection.arguments(), connection.target],
-                            input=("\n".join(commands) + "\n").encode(), stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, timeout=7200)
+    result = subprocess.run(
+        ["sftp", "-b", "-", *connection.arguments(), connection.target],
+        input=("\n".join(commands) + "\n").encode(),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=7200,
+    )
     if result.returncode:
         raise RuntimeError(f"SFTP upload failed; retry deploy --resume {packet} --apply; SSH stderr withheld")
 
@@ -193,18 +237,30 @@ def deploy_command(connection: Connection, args: argparse.Namespace) -> dict:
         if set(images) != set(IMAGE_REFS):
             raise ValueError("first deployment needs --bootstrap-images and the verified M0 images")
         packet, manifest = prepare_packet(args.sha, args.artifacts, images)
-    plan = {"status": "plan", "target": "cloud", "source_sha": manifest["source_sha"],
-            "control_sha256": manifest["control_sha256"], "artifact_directory": str(packet),
-            "workspace": state["workspace"], "capacity": state["capacity"],
-            "resources": {"sitl_cpus": 1.5, "sitl_memory_gib": 2, "checks_cpus": 1, "checks_memory_gib": 1},
-            "published_ports": [], "bootstrap_images": args.bootstrap_images}
+    plan = {
+        "status": "plan",
+        "target": "cloud",
+        "source_sha": manifest["source_sha"],
+        "control_sha256": manifest["control_sha256"],
+        "artifact_directory": str(packet),
+        "workspace": state["workspace"],
+        "capacity": state["capacity"],
+        "resources": {"sitl_cpus": 1.5, "sitl_memory_gib": 2, "checks_cpus": 1, "checks_memory_gib": 1},
+        "published_ports": [],
+        "bootstrap_images": args.bootstrap_images,
+    }
     if not args.apply:
         return plan
     if args.bootstrap_images and not args.resume:
         export_images(packet, manifest)
-    destination = (state["workspace"] + "/incoming/" + packet.name) if args.resume else ssh(
-        connection, {"action": "prepare", "run_id": packet.name},
-    )["incoming"]
+    destination = (
+        (state["workspace"] + "/incoming/" + packet.name)
+        if args.resume
+        else ssh(
+            connection,
+            {"action": "prepare", "run_id": packet.name},
+        )["incoming"]
+    )
     upload_packet(connection, packet, manifest, destination, resume=bool(args.resume))
     print("Verifying and starting cloud workspace...", file=sys.stderr, flush=True)
     receipt = ssh(connection, {"action": "deploy", "run_id": packet.name})
@@ -221,6 +277,7 @@ def main() -> None:
     m1_parser = commands.add_parser("m1")
     m1_parser.add_argument("--scenario", default="nominal")
     m1_parser.add_argument("--seeds", default="7,19,41")
+    m1_parser.add_argument("--speed-factor", type=int, choices=[1, 2], default=1)
     deploy_parser = commands.add_parser("deploy")
     source = deploy_parser.add_mutually_exclusive_group()
     source.add_argument("--sha", default="HEAD")
@@ -237,8 +294,17 @@ def main() -> None:
             if args.command == "deploy":
                 result = deploy_command(connection, args)
             elif args.command == "m1":
-                result = ssh(connection, {"action": "m1", "run_id": new_run_id(), "scenario": args.scenario,
-                                          "seeds": [int(seed) for seed in args.seeds.split(",")]}, timeout=14400)
+                result = ssh(
+                    connection,
+                    {
+                        "action": "m1",
+                        "run_id": new_run_id(),
+                        "scenario": args.scenario,
+                        "seeds": [int(seed) for seed in args.seeds.split(",")],
+                        "speed_factor": args.speed_factor,
+                    },
+                    timeout=14400,
+                )
             else:
                 result = ssh(connection, {"action": args.command, "run_id": new_run_id()})
         print(json.dumps(result, ensure_ascii=False, indent=2))

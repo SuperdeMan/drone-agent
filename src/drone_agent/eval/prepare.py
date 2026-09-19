@@ -19,6 +19,7 @@ parser.add_argument("--output", type=Path)
 parser.add_argument("--scenario", default="nominal")
 parser.add_argument("--seed", type=int, default=7)
 parser.add_argument("--sha", default="uncommitted")
+parser.add_argument("--speed-factor", type=int, choices=[1, 2], default=1)
 args = parser.parse_args()
 suite = yaml.safe_load((args.root / "configs/scenarios/m1_suite.yaml").read_text())
 if args.output:
@@ -33,6 +34,7 @@ if args.output:
                 "scenario": scenario,
                 "seed": args.seed,
                 "source_sha": args.sha,
+                "requested_speed_factor": args.speed_factor,
                 "registry_hash": registry.sha256,
                 "route_speed_mps": package.nodes[1].params["speed_mps"],
             }

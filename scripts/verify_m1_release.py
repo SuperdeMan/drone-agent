@@ -31,6 +31,7 @@ def verify(receipts, sha, suite, expectations):
                 raise ValueError("unexpected or duplicate scenario/seed result")
             if (
                 row.get("source_sha") != sha
+                or row.get("requested_speed_factor") != suite["speed_factor"]
                 or row.get("passed") is not True
                 or row.get("judge_exit_code") != 0
                 or row.get("replay_agrees") is not True

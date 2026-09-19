@@ -34,6 +34,7 @@ def receipt():
             "scenario": case["id"],
             "seed": seed,
             "source_sha": "a" * 40,
+            "requested_speed_factor": SUITE["speed_factor"],
             "passed": True,
             "classification": case["expected"],
             "judge_exit_code": 0,

@@ -92,6 +92,7 @@ def run_m1(root: Path, deployment: Path, request: dict):
                 os.environ,
                 DRONE_M1_RUN=str(run),
                 DRONE_SOURCE_SHA=sha,
+                DRONE_M1_SPEED=str(request.get("speed_factor", 1)),
                 DRONE_M1_SIM_IMAGE=images["sim"],
                 DRONE_M1_GROUND_IMAGE=images["ground"],
                 DRONE_M1_AIRCRAFT_IMAGE=images["aircraft"],
@@ -136,6 +137,8 @@ def run_m1(root: Path, deployment: Path, request: dict):
                         str(seed),
                         "--sha",
                         sha,
+                        "--speed-factor",
+                        str(request.get("speed_factor", 1)),
                     ]
                 )
                 if scenario.get("pre_dispatch"):

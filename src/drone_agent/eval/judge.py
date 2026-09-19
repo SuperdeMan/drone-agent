@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 import math
+from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -198,6 +199,7 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
         "scenario": metadata["scenario"]["id"],
         "seed": metadata["seed"],
         "source_sha": metadata["source_sha"],
+        "requested_speed_factor": metadata["requested_speed_factor"],
         "registry_hash": registry.sha256,
         "classification": classification,
         "expected": expected,
@@ -206,6 +208,17 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
         "problems": problems,
         "truth_samples": len(truth),
         "sim_duration_s": truth[-1]["sim_time"] - truth[0]["sim_time"] if truth else 0,
+        "measured_sim_speed": (
+            (truth[-1]["sim_time"] - truth[0]["sim_time"])
+            / max(
+                1e-9,
+                (
+                    datetime.fromisoformat(truth[-1]["timestamp"]) - datetime.fromisoformat(truth[0]["timestamp"])
+                ).total_seconds(),
+            )
+        )
+        if truth
+        else 0,
         "recovery_reasons": [entry["reason"] for entry in interventions],
         "validated_edge": expectation.get("edge") if not problems and classification == expected else None,
         "artifacts": {

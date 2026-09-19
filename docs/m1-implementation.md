@@ -17,6 +17,7 @@
 - IPC 使用 protobuf/gRPC，本机 Unix socket 目录权限为 0700，使用 gRPC local credentials。guardian 启动时绑定允许的 executive 身份及任务包；不监听公网 TCP。Windows 的纯 IPC 测试可使用受 local credentials 约束的回环地址。
 - 权威账本采用带序号和前项哈希的 JSONL，命令进入适配器前先 fsync 记录 intent 和代次水位；完成后再记录 receipt。断电留下的 inflight 结果为 unknown，不自动重发。重启后旧会话必须换代次，且不能自动恢复飞行。
 - UTC 用于审批/租约/wire；进程存活与接收新鲜度用单调时钟，Gazebo 仿真时间用于轨迹/证据对齐。加速因子不延长真实进程 watchdog；必须分别报告实际仿真速度与监督周期。
+- 共享云主机的验收配置采用 1× 请求速度；`--speed-factor 2` 保留加速入口，实际倍率由真值时钟与 UTC 时长计算。2× 请求在现有 1.5 CPU 仿真配额下曾出现大于 500 ms 的遥测间隙，作为负结果保留，不放宽新鲜度阈值。
 - M1 只启用 mission_upload；所有 offboard 意图均在适配器之前拒绝。业务 return_home 上传登记航线并停在 home 等待点；恢复 rtl 才调用飞控原生 RTL。
 - guardian 的恢复动作也经过持久化的控制出口。用户暂停必须等待 hold 的新鲜观测；取消请求与 recovered_to 分开。外部模式接管和飞控失效保护优先于任何软件恢复，不重夺控制。
 - M1 使用单独的 mission-upload 恢复策略，覆盖实际具备的定位/能源上下文；缺上下文不能猜测可达性。M0 中依赖视觉定位、Offboard 的分支保留为未来草案，单测覆盖不计为物理验证。
