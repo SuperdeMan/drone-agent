@@ -3,6 +3,12 @@
 `execution_status` describes the command and skill process, `effect_verdict` whether the
 physical effect was confirmed, `safety_verdict` whether the guardian allows the next phase.
 "Call succeeded" is never "task succeeded"; UNKNOWN is never success.
+
+ExecutionEvent / Evidence 与三元判定。
+
+`execution_status` 描述命令与技能过程，`effect_verdict` 描述物理效果是否被证实，
+`safety_verdict` 描述 guardian 是否允许进入下一阶段。「调用成功」永远不等于「任务成功」；
+UNKNOWN 永远不是成功。
 """
 
 from __future__ import annotations
@@ -17,6 +23,8 @@ from drone_agent.contracts.common import ContractModel, Pose, TimeWindow
 
 
 class ExecutionStatus(StrEnum):
+    """State of the command / skill process itself. / 命令与技能过程本身的状态。"""
+
     PENDING = "pending"
     ACCEPTED = "accepted"
     RUNNING = "running"
@@ -28,6 +36,8 @@ class ExecutionStatus(StrEnum):
 
 
 class EffectVerdict(StrEnum):
+    """Whether the intended physical effect was confirmed. / 预期物理效果是否被证实。"""
+
     VERIFIED = "verified"
     UNVERIFIED = "unverified"
     REFUTED = "refuted"
@@ -35,6 +45,8 @@ class EffectVerdict(StrEnum):
 
 
 class SafetyVerdict(StrEnum):
+    """What the guardian currently allows. / guardian 当前允许的动作。"""
+
     PROCEED = "proceed"
     HOLD = "hold"
     RECOVER = "recover"
@@ -42,6 +54,11 @@ class SafetyVerdict(StrEnum):
 
 
 class EventType(StrEnum):
+    """Minimal event vocabulary shared by executive, guardian, coordinator and ledger.
+
+    执行器、guardian、协调器与账本共用的最小事件词表。
+    """
+
     COMMAND_ACCEPTED = "command_accepted"
     COMMAND_REJECTED = "command_rejected"
     SKILL_STARTED = "skill_started"
@@ -66,6 +83,8 @@ class EventType(StrEnum):
 
 
 class StepOutcome(ContractModel):
+    """The three verdicts for one step. / 单个步骤的三元判定。"""
+
     mission_id: str
     mission_version: int
     step_id: str
@@ -76,7 +95,10 @@ class StepOutcome(ContractModel):
 
     @property
     def counts_as_completed(self) -> bool:
-        """The only combination a report may list under 'completed'."""
+        """The only combination a report may list under 'completed'.
+
+        报告中「已完成」一栏唯一可接受的组合。
+        """
         return self.execution_status is ExecutionStatus.SUCCEEDED and self.effect_verdict is EffectVerdict.VERIFIED
 
 
@@ -91,6 +113,11 @@ def may_run_successor(
     Successor runs iff predecessor succeeded AND its effect is verified (or merely unverified on an
     edge that admission explicitly allowed) AND the guardian currently says proceed. UNKNOWN and
     REFUTED never pass, whatever the edge says.
+
+    DAG 放行规则（docs/architecture/02-contracts.md §5）。
+
+    后继运行当且仅当：前驱已成功，且其效果已被证实（或在准入明确允许的边上仅为 unverified），
+    且 guardian 当前判定为 proceed。UNKNOWN 与 REFUTED 无论边如何标注都不放行。
     """
     if current_safety is not SafetyVerdict.PROCEED:
         return False
@@ -104,6 +131,8 @@ def may_run_successor(
 
 
 class ExecutionEvent(ContractModel):
+    """One append-only event in the mission event stream. / 任务事件流中的一条只追加事件。"""
+
     event_id: str
     event_type: EventType
     timestamp: datetime
@@ -122,8 +151,13 @@ class ExecutionEvent(ContractModel):
 
 
 class Evidence(ContractModel):
+    """A hashed, pose- and time-bound artifact tied to the skill instance that produced it.
+
+    带哈希、绑定位姿与时间、并关联到生产它的技能实例的证据。
+    """
+
     evidence_id: str
-    kind: str = Field(description="image | video | telemetry | pointcloud")
+    kind: str = Field(description="image | video | telemetry | pointcloud / 影像 | 视频 | 遥测 | 点云")
     media_ref: str
     sha256: str
     time_window: TimeWindow

@@ -1,4 +1,7 @@
-"""D007: predicted facts never satisfy preconditions; truth facts only inside the judge; positions need covariance."""
+"""D007: predicted facts never satisfy preconditions; truth facts only inside the judge; positions need covariance.
+
+D007：预测事实永远不能满足前置条件；真值事实只在裁判进程内可用；位置必须带协方差。
+"""
 
 from datetime import timedelta
 
@@ -10,6 +13,7 @@ from tests.contracts.factories import NOW
 
 
 def fact(kind: WorldKind, source: FactSource = FactSource.SENSOR, **kw) -> WorldFact:
+    """An anomaly-candidate fact valid for 30 s. / 有效期 30 秒的异常候选事实。"""
     base = dict(
         fact_id="f1",
         subject="asset_01",

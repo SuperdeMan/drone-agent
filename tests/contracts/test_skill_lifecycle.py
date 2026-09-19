@@ -1,4 +1,7 @@
-"""Skill instance lifecycle: cancel and safe-state are distinct events; terminal states are final."""
+"""Skill instance lifecycle: cancel and safe-state are distinct events; terminal states are final.
+
+技能实例生命周期：取消与安全状态是两个不同事件；终态不可再迁移。
+"""
 
 import pytest
 
@@ -22,6 +25,7 @@ def test_happy_path():
 
 def test_cancel_goes_through_recovering_not_straight_to_safe():
     # "user cancelled" (cancel_requested) and "aircraft is in a safe state" (recovered_to event) differ.
+    # 「用户取消了」（cancel_requested）与「飞行器已进入安全状态」（recovered_to 事件）是两回事。
     assert can_transition(S.RUNNING, S.CANCEL_REQUESTED)
     assert can_transition(S.CANCEL_REQUESTED, S.RECOVERING)
     assert can_transition(S.RECOVERING, S.CANCELLED)
@@ -41,4 +45,5 @@ def test_no_resurrection(state):
 
 def test_verifying_can_fall_back_to_running_for_retake():
     # e.g. image quality check failed -> re-capture inside the same skill instance
+    # 例如影像质量检查失败 -> 在同一技能实例内补拍
     assert can_transition(S.VERIFYING, S.RUNNING)

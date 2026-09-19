@@ -1,13 +1,17 @@
 # Platform lock for the M1 simulation target (docs/decisions.md D008). Version bumps go through
 # decisions.md first. `capability` is the CapabilityDescriptor the PX4 adapter publishes for this
 # platform; note the honest control_modes: M1 enables mission_upload only.
+#
+# M1 仿真目标的平台版本锁（docs/decisions.md D008）。版本变更先记 decisions.md。
+# `capability` 是 PX4 适配器为该平台发布的 CapabilityDescriptor；注意 control_modes 如实声明：
+# M1 只启用 mission_upload。
 schema_version: "0.1.0"
 platform_id: px4_sitl_multirotor
 versions:
   px4: "1.17.x"
-  mavsdk_python: "3.17.x" # v4 native binding not on PyPI as of 2026-09-17; migrate adapter when released
+  mavsdk_python: "3.17.x" # v4 native binding not on PyPI as of 2026-09-17; migrate adapter when released / 2026-09-17 时 v4 原生绑定尚未上 PyPI，发布后迁移适配器
   gazebo: harmonic
-  ros2: jazzy # M3; evaluate lyrical per D008
+  ros2: jazzy # M3; evaluate lyrical per D008 / M3 引入；按 D008 评估切换 lyrical
   ubuntu: "24.04"
   python: "3.12"
 capability:

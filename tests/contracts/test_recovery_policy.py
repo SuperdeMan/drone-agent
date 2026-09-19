@@ -1,4 +1,7 @@
-"""D009: recovery policies are validated configuration; edges select by context, not by 'always hover'."""
+"""D009: recovery policies are validated configuration; edges select by context, not by 'always hover'.
+
+D009：恢复策略是经校验的配置；边按上下文选择，而不是「一律悬停」。
+"""
 
 from pathlib import Path
 
@@ -34,6 +37,7 @@ def test_policy_loads_and_matches_platform_capability():
 
 
 def test_platform_capability_is_honest_about_m1_control_modes():
+    # M1 enables mission upload only; offboard must not be declared yet. / M1 只开航线上传，offboard 不得提前声明。
     platform = yaml.safe_load(PLATFORM.read_text(encoding="utf-8"))
     caps = CapabilityDescriptor.model_validate(platform["capability"])
     assert caps.control_modes == {ControlMode.MISSION_UPLOAD}
@@ -68,6 +72,7 @@ def test_fc_failsafe_always_hands_over():
 
 def test_draft_edges_are_visible():
     # The uplink_lost/authorized_to_continue edge is deliberately unverified until its M1 scenario exists.
+    # uplink_lost/authorized_to_continue 这条边在 M1 场景出现前刻意保持未验证。
     policy = load_policy()
     drafts = policy.unverified_edges()
     assert [e.trigger for e in drafts] == [RecoveryTrigger.UPLINK_LOST]

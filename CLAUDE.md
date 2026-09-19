@@ -27,8 +27,10 @@
 
 ## 语言与风格
 
-- 文档中文；代码、标识符、注释、commit message 英文；commit 用 Conventional Commits（`feat:`/`fix:`/`docs:`/`refactor:`/`test:`/`chore:`）。
-- **例外**：移植文件保留原有中文注释（承载事故复盘与设计动机）；移植文件中新增 / 改写的注释与全部新写代码一律英文。
+- 文档中文；README 中英双版：`README.md` 英文（GitHub 默认入口）、`README.zh-CN.md` 中文，顶部互链，内容同步更新。
+- 代码标识符与 commit message 英文；commit 用 Conventional Commits（`feat:`/`fix:`/`docs:`/`refactor:`/`test:`/`chore:`）。
+- **注释与 docstring 中英双语**（D019）：docstring 英文段在前、中文段在后，同一 docstring 内以空行分隔；行内注释写成 `# English / 中文`；Pydantic `Field(description=...)` 同样 `"English / 中文"`。两种语言表达同一含义，不允许只写一种；改注释时两种语言一起改。
+- **例外**：移植文件保留原有中文注释（承载事故复盘与设计动机），并补上英文；移植文件中新增 / 改写的注释同样双语。
 - 术语纪律（契约测试 `test_no_forbidden_terms` 扫描 `src/`）：机械臂语义 `qpos`/`qvel`/`gripper`/`ee_pose`/`joint_targets` 与座舱语义 `cockpit`/`cabin`/`座舱` 不得出现在本仓库代码中。`vehicle` 不禁（PX4 / MAVLink 用它指飞行器本身，如 `VehicleStatus`），但不用它表达座舱语义。本仓库的领域词：`aerial`/`ground`/`robot`/`platform`/`mission`/`skill`/`lease`/`evidence`/`guardian`/`executive`。
 
 ## 验证

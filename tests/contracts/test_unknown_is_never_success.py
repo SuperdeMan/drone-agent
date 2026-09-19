@@ -1,4 +1,7 @@
-"""Red line D006: UNKNOWN / UNVERIFIED never unlock a dependent step; reports only accept succeeded+verified."""
+"""Red line D006: UNKNOWN / UNVERIFIED never unlock a dependent step; reports only accept succeeded+verified.
+
+红线 D006：UNKNOWN / UNVERIFIED 永远不放行依赖步骤；报告只接受 succeeded + verified。
+"""
 
 import pytest
 
@@ -27,6 +30,7 @@ def test_non_succeeded_execution_never_unlocks_successor(status):
 
 def test_timeout_without_resend_is_unknown_not_success():
     # "takeoff command timed out but was not resent" must block the next leg (GPT-6 Pro review §1.2).
+    # 「起飞命令超时但未重发」必须阻断下一段航线（GPT-6 Pro 评估 §1.2）。
     pred = outcome(ExecutionStatus.TIMEOUT, EffectVerdict.UNKNOWN)
     assert not pred.counts_as_completed
     assert not may_run_successor(pred, current_safety=SafetyVerdict.PROCEED, edge_allows_unverified=True)
@@ -41,6 +45,7 @@ def test_unverified_passes_only_on_explicitly_allowed_edge():
 
 @pytest.mark.parametrize("safety", [SafetyVerdict.HOLD, SafetyVerdict.RECOVER, SafetyVerdict.ABORT])
 def test_guardian_verdict_overrides_verified_success(safety):
+    # The guardian's word beats a perfectly verified predecessor. / guardian 的判定压过已完全验证的前驱。
     pred = outcome(ExecutionStatus.SUCCEEDED, EffectVerdict.VERIFIED)
     assert not may_run_successor(pred, current_safety=safety)
 

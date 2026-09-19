@@ -1,4 +1,7 @@
-"""Every contract object is versioned and tolerant to additive fields (backward compatibility rule §0)."""
+"""Every contract object is versioned and tolerant to additive fields (backward compatibility rule §0).
+
+每个契约对象都带版本号并容忍新增字段（向后兼容规则 §0）。
+"""
 
 import inspect
 
@@ -8,6 +11,7 @@ import drone_agent.contracts as contracts
 from drone_agent.contracts import CONTRACT_VERSION, ContractModel, MissionSpec, RobotStatus
 from tests.contracts.factories import NOW, mission_spec
 
+# Every ContractModel subclass exported by the package. / 包导出的全部 ContractModel 子类。
 CONTRACT_MODELS = [
     obj
     for _, obj in inspect.getmembers(contracts, inspect.isclass)
@@ -31,6 +35,7 @@ def test_unknown_fields_are_ignored_not_fatal(model):
 
 
 def test_newer_mission_spec_with_extra_fields_parses_on_older_reader():
+    # A newer producer adds fields; an older consumer must still parse. / 新生产者加字段，旧消费者仍能解析。
     payload = mission_spec().model_dump(mode="json")
     payload["schema_version"] = "0.2.0"
     payload["brand_new_field"] = {"nested": True}

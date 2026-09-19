@@ -1,4 +1,7 @@
-"""Red line D005: the control egress rejects stale epochs, stale sequence numbers, duplicates and expired leases."""
+"""Red line D005: the control egress rejects stale epochs, stale sequence numbers, duplicates and expired leases.
+
+红线 D005：控制出口拒绝旧代次、旧序号、重复命令与过期租约。
+"""
 
 from datetime import timedelta
 
@@ -14,6 +17,8 @@ def test_no_lease_rejects_everything():
 
 
 def test_stale_epoch_rejected_after_regrant():
+    # After a re-grant, a command minted under the old epoch is replay, not authority.
+    # 重新授予后，旧代次下签发的命令是重放，不是控制权。
     gate = EgressGate(lease(epoch=1))
     assert gate.check(envelope(epoch=1, seq=0), now=NOW).accepted
     gate.grant(lease(epoch=2))
@@ -36,6 +41,7 @@ def test_sequence_must_be_monotonic():
 
 
 def test_duplicate_delivery_is_not_re_executed():
+    # Same idempotency key twice: reconcile, never execute twice. / 同一幂等键两次：对账，绝不执行两次。
     gate = EgressGate(lease(epoch=1))
     assert gate.check(envelope(seq=0, command_id="same"), now=NOW).accepted
     dup = gate.check(envelope(seq=1, command_id="same"), now=NOW)
@@ -49,7 +55,7 @@ def test_expired_lease_rejected():
 
 def test_expired_intent_rejected():
     gate = EgressGate(lease(epoch=1))
-    late = NOW + timedelta(seconds=2)  # envelope valid for 1 s
+    late = NOW + timedelta(seconds=2)  # envelope is valid for 1 s / 信封只有 1 秒有效期
     assert gate.check(envelope(), now=late).reason == "expired_intent"
 
 

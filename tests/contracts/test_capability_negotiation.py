@@ -1,4 +1,7 @@
-"""P5: a robot that only declares mission_upload cannot take work that needs offboard control; gaps are explicit."""
+"""P5: a robot that only declares mission_upload cannot take work that needs offboard control; gaps are explicit.
+
+P5：只声明 mission_upload 的机器人不能接需要 offboard 控制的任务；能力缺口必须显式列出。
+"""
 
 from drone_agent.contracts import ControlMode
 from tests.contracts.factories import capability
@@ -22,6 +25,7 @@ def test_full_match_has_no_gaps():
 
 def test_absent_control_mode_is_absent_not_none():
     # The descriptor has no 'supported=False' flag: unsupported modes are simply not declared.
+    # 描述里没有 supported=False 这种标志：不支持的模式就是不声明。
     caps = capability(control_modes=set())
     assert ControlMode.OFFBOARD_POSITION not in caps.control_modes
     assert caps.missing_for(control_modes=[ControlMode.OFFBOARD_POSITION])

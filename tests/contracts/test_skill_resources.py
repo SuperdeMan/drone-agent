@@ -1,4 +1,7 @@
-"""Concurrency is physical safety: two motion-exclusive skills never run together on one robot."""
+"""Concurrency is physical safety: two motion-exclusive skills never run together on one robot.
+
+并发属于物理安全：同一机器人上两个独占运动的技能永远不能同时运行。
+"""
 
 import pytest
 from pydantic import ValidationError
@@ -52,6 +55,7 @@ def test_skill_id_format_enforced():
 
 
 def test_learned_implementation_must_declare_stage():
+    # Shadow observes only; limited and full may act. / 影子阶段只观察；limited 与 full 可执行。
     with pytest.raises(ValidationError):
         Implementation(kind=ImplementationKind.LEARNED)
     shadow = Implementation(kind=ImplementationKind.LEARNED, learned_stage=LearnedStage.SHADOW, model_version="v0")

@@ -14,7 +14,7 @@
 ## 最低纪律（摘要，全文见 CLAUDE.md）
 
 - **验证**：任何代码改动后 `uv run ruff check .` + `uv run pytest -q` 必须绿；契约测试不许跳过或放宽。
-- **语言**：文档中文；代码、标识符、注释、commit message 英文（Conventional Commits）。
+- **语言**：文档中文，README 中英双版（`README.md` 英文、`README.zh-CN.md` 中文，同步更新）；标识符与 commit message 英文（Conventional Commits）；注释与 docstring 中英双语（英文在前，`# English / 中文`），改一处两种语言一起改。
 - **安全红线**：LLM/VLM 只产出 `MissionSpec` 草案与业务判断，永不触达控制出口；只有 `guardian` 持有飞控连接；`UNKNOWN` 不是成功；不禁用飞控失效保护；不提供 kill 接口。
 - **密钥**：API key 不进代码 / commit / 日志；严禁复制 car-agent 的 `.env`。
 - **网络**：uv 拉包用每次命令的环境变量走镜像：`UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple`，不写入全局配置。

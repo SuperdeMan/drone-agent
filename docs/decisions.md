@@ -163,3 +163,15 @@
 **决策**：`src/` 中禁止 `qpos`/`qvel`/`gripper`/`ee_pose`/`joint_targets`/`cockpit`/`cabin`/`座舱`（契约测试扫描）；`vehicle` 不禁，因 PX4 / MAVLink 用它指飞行器本身（`VehicleStatus`、`vehicle_command`），禁了会把飞控适配器逼成别扭的改名；移植文件头 `# Ported from <repo> <path> @ <commit>, changes: <summary>`；测试随行；严禁复制 car-agent `.env`；清单外模块想搬先在本文件记一条。
 
 **理由**：与 embodied-agent 的移植规矩一致；防止机械臂 / 座舱语义渗入飞行代码。
+
+## D019 · README 中英双版；代码注释与 docstring 中英双语
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：`README.md` 为英文（GitHub 默认入口），`README.zh-CN.md` 为中文，顶部互链、内容同步；`src/` 与 `tests/` 的 docstring 与注释中英双语：docstring 英文段在前、中文段在后（同一 docstring 内空行分隔），行内注释 `# English / 中文`，Pydantic `Field(description=...)` 同样双语。`docs/` 其余文档仍以中文为主。术语纪律的契约测试同样扫描中文注释。
+
+**理由**：用户明确要求；仓库公开在 GitHub，英文入口便于外部读者，中文保证与姊妹项目及团队沟通一致；契约语义对中英文读者都无歧义。
+
+**替代方案**：单一双语 README 文件（否：过长，两种语言互相打断）；只英文注释（否：用户要求）。
+
+**代价与约束**：注释体积约翻倍，必须两种语言一起维护；行宽以可读为准（ruff 未启用 E501）。

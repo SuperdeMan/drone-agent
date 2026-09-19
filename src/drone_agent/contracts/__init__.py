@@ -8,6 +8,17 @@
 6. TaskLease / IdempotencyKey / EgressGate  -> authority.py
    RecoveryPolicy                           -> recovery.py
    PlannerToolAllowlist                     -> planner_tools.py
+
+六类契约（docs/architecture/02-contracts.md）以及恢复策略与规划器工具白名单。
+
+1. 能力描述 / 机器人状态                    -> capability.py
+2. 任务规格 / 任务包 / 审批记录             -> mission.py
+3. 技能清单 v2 / 技能实例生命周期           -> skill.py
+4. 世界事实 / 观测 / 本体状态               -> world.py
+5. 执行事件 / 证据 / 三元判定               -> events.py
+6. 任务租约 / 幂等键 / 控制出口闸门          -> authority.py
+   恢复策略图                               -> recovery.py
+   规划器工具白名单                         -> planner_tools.py
 """
 
 from drone_agent.contracts.authority import (

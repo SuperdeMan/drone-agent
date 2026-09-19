@@ -2,20 +2,25 @@
 # Anything that writes control, mission packages, leases or platform state is forbidden here;
 # the loader (contracts/planner_tools.py) and tests/contracts/test_model_cannot_reach_egress.py
 # fail closed on violations. Community ROS 2 MCP servers that publish cmd_vel must never be listed.
+#
+# L1 规划器经 MCP 可触达的只读工具（docs/decisions.md D012）。
+# 任何会写控制、任务包、租约或平台状态的工具都不允许出现在这里；
+# 加载器（contracts/planner_tools.py）与 tests/contracts/test_model_cannot_reach_egress.py
+# 对违规 fail closed。社区里直接发布 cmd_vel 的 ROS 2 MCP 服务器绝不能列入。
 schema_version: "0.1.0"
 tools:
   - name: assets.lookup
     read_only: true
-    description: Look up asset records (id, type, nominal position, last inspection) by id or region.
+    description: Look up asset records (id, type, nominal position, last inspection) by id or region. / 按 id 或区域查询资产记录（id、类型、标称位置、上次巡检）。
   - name: map.query
     read_only: true
-    description: Query approved volumes, landing sites and static map features by id or bounding box.
+    description: Query approved volumes, landing sites and static map features by id or bounding box. / 按 id 或包围盒查询已批准体积、降落点与静态地图要素。
   - name: weather.current
     read_only: true
-    description: Current and short-horizon wind, precipitation and visibility for a site.
+    description: Current and short-horizon wind, precipitation and visibility for a site. / 站点当前与短时风、降水、能见度。
   - name: airspace.status
     read_only: true
-    description: Airspace class and UOM filing status for an approved volume.
+    description: Airspace class and UOM filing status for an approved volume. / 已批准体积的空域属性与 UOM 报备状态。
   - name: missions.history
     read_only: true
-    description: Past mission outcomes, evidence summaries and anomaly candidates for an asset.
+    description: Past mission outcomes, evidence summaries and anomaly candidates for an asset. / 某资产的历史任务结果、证据摘要与异常候选。

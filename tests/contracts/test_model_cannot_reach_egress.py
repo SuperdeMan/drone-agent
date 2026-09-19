@@ -1,4 +1,7 @@
-"""Red line D004/D012: nothing the planner produces can be a control command, and its tools are read-only."""
+"""Red line D004/D012: nothing the planner produces can be a control command, and its tools are read-only.
+
+红线 D004/D012：规划器产出的任何东西都不可能是控制命令，且它的工具全部只读。
+"""
 
 from pathlib import Path
 
@@ -17,10 +20,12 @@ from drone_agent.contracts import (
 from tests.contracts.factories import mission_spec
 
 REPO = Path(__file__).resolve().parents[2]
+# Substrings that mark a control-level field. / 标记控制级字段的子串。
 CONTROL_FIELD_TERMS = ("setpoint", "attitude", "thrust", "pwm", "actuator", "mavlink", "offboard", "lease_epoch", "command_seq")
 
 
 def _field_names(model: type[BaseModel], seen: set[type] | None = None) -> set[str]:
+    """All field names of a model and its nested models. / 模型及其嵌套模型的全部字段名。"""
     seen = seen or set()
     if model in seen:
         return set()
@@ -35,20 +40,8 @@ def _field_names(model: type[BaseModel], seen: set[type] | None = None) -> set[s
     return names
 
 
-@pytest.mark.parametrize("model", [MissionSpec, TaskNode, MissionPackage, PackageNode])
-def test_planner_facing_models_have_no_control_fields(model):
-    names = _field_names(model)
-    offending = sorted(n for n in names if any(term in n for term in CONTROL_FIELD_TERMS))
-    assert not offending, f"{model.__name__} exposes control-level fields: {offending}"
-
-
-def test_mission_models_cannot_nest_a_control_envelope():
-    assert ControlCommandEnvelope not in {
-        c for m in (MissionSpec, MissionPackage) for c in _nested_models(m)
-    }
-
-
 def _nested_models(model: type[BaseModel], seen: set[type] | None = None) -> set[type]:
+    """Every model type reachable from `model`. / 从 `model` 可达的全部模型类型。"""
     seen = seen or set()
     if model in seen:
         return set()
@@ -59,6 +52,17 @@ def _nested_models(model: type[BaseModel], seen: set[type] | None = None) -> set
             if isinstance(candidate, type) and issubclass(candidate, BaseModel):
                 _nested_models(candidate, seen)
     return seen
+
+
+@pytest.mark.parametrize("model", [MissionSpec, TaskNode, MissionPackage, PackageNode])
+def test_planner_facing_models_have_no_control_fields(model):
+    names = _field_names(model)
+    offending = sorted(n for n in names if any(term in n for term in CONTROL_FIELD_TERMS))
+    assert not offending, f"{model.__name__} exposes control-level fields: {offending}"
+
+
+def test_mission_models_cannot_nest_a_control_envelope():
+    assert ControlCommandEnvelope not in {c for m in (MissionSpec, MissionPackage) for c in _nested_models(m)}
 
 
 @pytest.mark.parametrize("key", ["setpoint", "Attitude", "thrust", "pwm", "actuator", "mavlink", "raw_command", "offboard"])
@@ -90,7 +94,7 @@ def test_non_read_only_tool_is_rejected():
 
 
 def test_recovery_policy_is_a_reference_not_planner_content():
-    # The planner names a policy; it never authors one (D009).
+    # The planner names a policy; it never authors one (D009). / 规划器只引用策略，不编写策略（D009）。
     spec = mission_spec()
     assert isinstance(spec.recovery_policy_ref, str)
     assert "edges" not in _field_names(MissionSpec)

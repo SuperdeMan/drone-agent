@@ -1,4 +1,7 @@
-"""Onboard acceptance: only an approved, hash-matching, in-scope, unexpired package may run."""
+"""Onboard acceptance: only an approved, hash-matching, in-scope, unexpired package may run.
+
+机载接受规则：只有已审批、哈希匹配、机器人在范围内且未过期的任务包才能运行。
+"""
 
 from datetime import timedelta
 
@@ -20,7 +23,7 @@ def test_hash_mismatch_is_rejected():
 
 def test_tampering_after_approval_breaks_the_hash():
     pkg = package()
-    pkg.nodes[0].params["altitude_m_agl"] = 120  # someone edits the uplinked package
+    pkg.nodes[0].params["altitude_m_agl"] = 120  # someone edits the uplinked package / 有人改了上行后的任务包
     assert not pkg.is_authorized(robot_id="uav_01", now=NOW)
 
 

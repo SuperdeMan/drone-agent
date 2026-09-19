@@ -1,4 +1,7 @@
-"""MissionSpec must reference an approved volume with a frame and map version; the planner cannot mint geometry."""
+"""MissionSpec must reference an approved volume with a frame and map version; the planner cannot mint geometry.
+
+MissionSpec 必须引用带坐标系与地图版本的已批准体积；规划器不能自造几何。
+"""
 
 import pytest
 from pydantic import ValidationError
@@ -20,6 +23,7 @@ def test_spatial_scope_requires_frame_and_map_version():
 
 
 def test_spatial_scope_has_no_free_geometry_fields():
+    # Only a reference and a frame: geometry is resolved by the compiler. / 只有引用与坐标系：几何由编译器解析。
     names = set(SpatialScope.model_fields)
     assert names == {"schema_version", "approved_volume_id", "frame"}
 

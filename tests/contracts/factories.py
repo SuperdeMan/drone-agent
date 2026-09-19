@@ -1,4 +1,7 @@
-"""Small builders shared by the contract tests. Not fixtures: plain functions keep intent visible."""
+"""Small builders shared by the contract tests. Not fixtures: plain functions keep intent visible.
+
+契约测试共用的小型构造器。不用 fixture，用普通函数让意图一目了然。
+"""
 
 from __future__ import annotations
 
@@ -32,6 +35,7 @@ from drone_agent.contracts import (
     TemporalWindow,
 )
 
+# A fixed clock keeps every expiry assertion deterministic. / 固定时钟让所有过期断言可复现。
 NOW = datetime(2026, 9, 19, 12, 0, 0, tzinfo=timezone.utc)
 
 
@@ -44,6 +48,10 @@ def provenance() -> Provenance:
 
 
 def mission_spec(**overrides) -> MissionSpec:
+    """A valid three-task inspection mission; overrides replace whole fields.
+
+    一个合法的三任务巡检任务；overrides 整体替换字段。
+    """
     base = dict(
         mission_id="m-001",
         mission_version=1,
@@ -73,6 +81,7 @@ def capability(
     embodiment: Embodiment = Embodiment.AERIAL_MULTIROTOR,
     can_hover: bool = True,
 ) -> CapabilityDescriptor:
+    """A multirotor that, by default, only supports mission upload. / 默认只支持航线上传的多旋翼。"""
     return CapabilityDescriptor(
         robot_id=robot_id,
         embodiment=embodiment,
@@ -103,6 +112,7 @@ def lease(*, epoch: int = 1, robot_id: str = "uav_01", ttl_s: float = 60.0) -> T
 
 
 def envelope(*, epoch: int = 1, seq: int = 0, command_id: str = "c-1", robot_id: str = "uav_01") -> ControlCommandEnvelope:
+    """A one-second-valid mode request. / 有效期一秒的模式请求。"""
     return ControlCommandEnvelope(
         key=IdempotencyKey(
             mission_id="m-001",
@@ -121,6 +131,7 @@ def envelope(*, epoch: int = 1, seq: int = 0, command_id: str = "c-1", robot_id:
 
 
 def motion_skill(skill_id: str = "skill.flight.fly_route") -> SkillManifest:
+    """A skill that exclusively claims the robot's motion resource. / 独占机器人运动资源的技能。"""
     return SkillManifest(
         skill_id=skill_id,
         version="0.1.0",
@@ -132,6 +143,10 @@ def motion_skill(skill_id: str = "skill.flight.fly_route") -> SkillManifest:
 
 
 def package(*, approved: bool = True, hash_override: str | None = None) -> MissionPackage:
+    """A one-node package, approved for uav_01 unless told otherwise.
+
+    单节点任务包，默认已为 uav_01 审批。
+    """
     pkg = MissionPackage(
         mission_id="m-001",
         mission_version=1,

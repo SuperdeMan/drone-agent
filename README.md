@@ -1,42 +1,60 @@
 # drone-agent
 
-面向空地异构机器人的安全约束任务运行时，以无人机为首要本体。
+**English** | [中文](README.zh-CN.md)
 
-它把自然语言目标编译为可验证的类型化任务（`MissionSpec`），在机载本地约束内持续执行，按真实证据确认结果，并支持任务在无人机与地面机器人之间交接。大模型只表达目标与判断证据；确定性运行时负责执行、恢复与安全；飞控原生失效保护与人工接管始终保留。
+A safety-constrained mission runtime for air-ground heterogeneous robots, drone-first.
 
-## 阅读入口
+It compiles natural-language goals into verifiable, typed missions (`MissionSpec`), executes them onboard within local constraints, confirms outcomes with real evidence, and hands tasks off between drones and ground robots. Large models only express goals and judge evidence; a deterministic runtime owns execution, recovery and safety; the flight controller's native failsafes and manual takeover are never bypassed.
 
-| 想了解 | 看 |
+## Where to start
+
+| Question | Read |
 |---|---|
-| 项目规则、阶段、红线 | [CLAUDE.md](CLAUDE.md)（AI 代理入口 [AGENTS.md](AGENTS.md)） |
-| 架构总览与文档地图 | [docs/architecture/00-overview.md](docs/architecture/00-overview.md) |
-| 六类契约与三元状态 | [docs/architecture/02-contracts.md](docs/architecture/02-contracts.md) |
-| 安全体系（RTA / 恢复策略图 / 停止语义） | [docs/architecture/03-safety.md](docs/architecture/03-safety.md) |
-| 空地协同 | [docs/architecture/04-air-ground.md](docs/architecture/04-air-ground.md) |
-| 路线图 M0–M6 | [docs/roadmap.md](docs/roadmap.md) |
-| 技术决策 | [docs/decisions.md](docs/decisions.md) |
-| 前沿调研与 GPT-6 Pro 评估 | [docs/research/](docs/research/) |
-| 从姊妹项目复用什么 | [docs/reuse-from-embodied-agent.md](docs/reuse-from-embodied-agent.md) |
+| Project rules, current phase, red lines | [CLAUDE.md](CLAUDE.md) (entry for AI coding agents: [AGENTS.md](AGENTS.md)) |
+| Architecture overview and document map | [docs/architecture/00-overview.md](docs/architecture/00-overview.md) |
+| The six contracts and the three-way verdict | [docs/architecture/02-contracts.md](docs/architecture/02-contracts.md) |
+| Safety (runtime assurance, recovery policy graph, stop semantics) | [docs/architecture/03-safety.md](docs/architecture/03-safety.md) |
+| Air-ground collaboration | [docs/architecture/04-air-ground.md](docs/architecture/04-air-ground.md) |
+| Roadmap M0–M6 | [docs/roadmap.md](docs/roadmap.md) |
+| Decision log | [docs/decisions.md](docs/decisions.md) |
+| Frontier survey and the GPT-6 Pro review | [docs/research/](docs/research/) |
+| What is reused from the sibling projects | [docs/reuse-from-embodied-agent.md](docs/reuse-from-embodied-agent.md) |
 
-## 当前状态
+Design documents are written in Chinese; code identifiers are English and code comments are bilingual (English first, then Chinese).
 
-M0（2026-09）：规范、架构文档、契约模型与契约测试。尚无可飞行的代码；M1 目标是无大模型的 PX4 SITL 单机安全闭环。
+## Architecture in one picture
 
-## 开发
+```text
+L0 operator entry (console, voice via cockpit-agent over A2A, API)
+L1 mission planning and coordination (LLM/VLM planner, read-only MCP tools, fleet coordinator)
+L2 deterministic compilation and admission (capability, space, time, energy, airspace, resources; approval bound to version)
+L3 onboard mission executive (task DAG, long-running skills, local authoritative state, evidence)
+L4 local autonomy (perception, localization, local map, deterministic planner; learned policies as shadow-first plugins)
+L5 safety supervisor and control egress (guardian process: lease and sequence, freshness, envelope, Simplex decision)
+L6 platform adapters (PX4 via MAVSDK / px4_ros2, DJI Cloud API, ArduPilot, Nav2) -> flight controller failsafes, RC takeover
+```
+
+Five principles: models express goals and the runtime executes them; a single control egress; evidence before success (`UNKNOWN` is never success); contracts before modules; capability negotiation instead of fake uniform interfaces.
+
+## Status
+
+M0 (September 2026): conventions, architecture documents, contract models and contract tests. There is no flyable code yet. M1 targets a single-drone PX4 SITL safety loop without any large model.
+
+## Development
 
 ```bash
-# 国内网络走镜像（每次命令加，不写全局配置）
+# Behind the Chinese firewall: use the mirror per command, never in global config
 UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple uv sync --group dev
 uv run ruff check .
 uv run pytest -q
 ```
 
-PX4 SITL / Gazebo / ROS 2 只在 Linux（WSL2 或 Docker）运行，仓库需放在 ASCII 路径下；契约与规划层代码在 Windows 可直接测试。
+PX4 SITL, Gazebo and ROS 2 run on Linux only (WSL2 or Docker) and the repository must live under an ASCII path there. The contract and planning layers are plain Python and test on Windows directly.
 
-## 姊妹项目
+## Sibling projects
 
-- `../embodied-agent`：桌面操作机械臂，本仓库的模板与主要复用来源。
-- `../car-agent`：智能座舱，语音 / 权限 / 账本参考；可经 A2A 作为授权任务入口。
+- `../embodied-agent`: tabletop manipulator; template for this repository and the main source of reused code.
+- `../car-agent`: intelligent cockpit; reference for voice, permissions and the task ledger; can act as an authorized mission entry point over A2A.
 
 ## License
 

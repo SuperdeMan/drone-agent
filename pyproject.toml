@@ -17,10 +17,15 @@ dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "ruff>=0.6"]
 # mavsdk 3.17.x (gRPC wrapper + bundled mavsdk_server); the v4 native binding is documented
 # upstream but not released. Adapter code stays isolated in guardian so the v4 migration
 # (System() -> Mavsdk, plugin classes) is contained.
+# M1（docs/decisions.md D008）：飞控传输层。2026-09-17 时 PyPI 提供的是 mavsdk 3.17.x
+#（gRPC 封装 + 自带 mavsdk_server）；v4 原生绑定上游已有文档但未发布。适配器代码隔离在
+# guardian 内，v4 迁移（System() -> Mavsdk、插件改为类）只影响适配器。
 flight = ["mavsdk>=3.17,<5"]
 # M1: local IPC between executive and guardian (proto-first, see proto/).
+# M1：executive 与 guardian 之间的本地 IPC（proto 先行，见 proto/）。
 rpc = ["grpcio>=1.66", "grpcio-tools>=1.66"]
 # M2: planner providers (ported from embodied-agent, D001).
+# M2：规划器 Provider（从 embodied-agent 移植，D001）。
 planner = ["anthropic>=0.39", "httpx>=0.27"]
 
 [build-system]
