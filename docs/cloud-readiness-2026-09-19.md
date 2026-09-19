@@ -1,5 +1,7 @@
 # 云端联调环境验收（2026-09-19）
 
+本页是首次 M0 部署的历史快照；当前运行时与操作方式见 [云端开发指南](cloud-development.md)，实际版本由 `scripts/dev_stack.py status` 查询。
+
 现有服务器上的 drone-agent 仿真与契约验证工作区已部署并通过验收。后续需要 Linux 构建、SITL 或服务联调时默认使用云端；操作见 [开发指南](cloud-development.md)。这不是 M1 飞行闭环或 M2 任务服务的完成声明。
 
 ## 当前部署

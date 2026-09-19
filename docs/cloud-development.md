@@ -2,11 +2,11 @@
 
 按 2026-09-19 的用户要求，后续 Linux 构建、PX4/Gazebo 仿真和服务联调默认使用现有云服务器。本机负责代码编辑和快速单测；`scripts/dev_stack.py` 只操作 cloud，连接失败不会启动本地 Docker。
 
-当前部署已通过 [2026-09-19 验收](cloud-readiness-2026-09-19.md)，应用源码为 `f1fdc3e`，SITL 保持运行，云端契约测试 258 项通过。
+初始 M0 部署见 [2026-09-19 历史验收](cloud-readiness-2026-09-19.md)。当前应用 SHA、部署 ID 和状态以 `status` 及本次部署回执为准；历史测试数字不能转借到新版本。
 
 ## 当前部署范围
 
-当前可运行的是 M0 契约验证与未解锁的 PX4/Gazebo 环境。Planner、mission-service、控制台及机载 executive/guardian 尚未实现；这些服务随 M1/M2 实现后接入本工作区。真机的 guardian、控制出口与飞控连接仍在设备侧，云端发送任务和边界。
+M0 未解锁冒烟继续作为部署前置；M1 另有 sim/aircraft/ground 三镜像、executive/guardian 双进程和独立裁判。Planner、mission-service 与控制台属于 M2。真机的 guardian、控制出口与飞控连接仍在设备侧，云端只验证模拟飞控。
 
 工作区使用 SSH 用户的 `~/drone-agent/`，不放入 car-agent 目录。Docker project 为 `drone-agent-cloud`；SITL 限 1.5 CPU / 2 GiB，契约测试限 1 CPU / 1 GiB。仿真网络为内部桥接，测试容器无网络，不发布宿主端口。SSH 是当前管理与验证入口。
 
@@ -42,6 +42,25 @@ uv run python scripts/dev_stack.py start
 `verify` 在云端容器内接收遥测并检查 Gazebo 时钟，不发控制命令。`test` 在云端对当前部署的应用 commit 执行完整 pytest；默认 importlib 模式保持不变，失败、错误或跳过都会使本轮验证不通过。测试容器退出后保留，便于审计，不自动删除。
 
 `status` 只读检查目标、容量、镜像与当前项目容器；它不创建工作区、不部署、不启动容器。`stop/start` 仅作用于本项目 SITL。
+
+## M1 飞行与故障验证
+
+先部署已提交版本，再显式运行：
+
+```powershell
+uv run python scripts/dev_stack.py m1 --scenario nominal --seeds 7
+uv run python scripts/dev_stack.py m1 --scenario all --seeds 7,19,41
+```
+
+这两个命令会在云端仿真中解锁/起飞。场景清单为 `configs/scenarios/m1_suite.yaml`；指定部署的不可变源码定义实际任务、种子随机化、注入与裁判。默认 `m1` 跑正常任务的三个种子。任一失败即停止本批扩展并保留产物，不能只按进程退出零判断通过，必须检查回执 `status` 与各项 `passed`。
+
+镜像从已校验的检查镜像构建并按 SHA 命名；`bc` 仅安装在仿真镜像内，供 PX4 标准加速时钟启动脚本使用。MAVSDK 固定 `3.17.4`，其电量单位为 0–100，在适配器边界转换为契约的 0–1。航线上传后等待 PX4 异步检查，再确认实际进入 MISSION；依据为 [PX4 官方 MAVSDK 集成测试](https://github.com/PX4/PX4-Autopilot/blob/v1.17.0/test/mavsdk_tests/autopilot_tester.cpp)。
+
+同一时刻仅运行一个场景。SITL 1.5 CPU/2 GiB，guardian 0.6 CPU/512 MiB，executive 0.4 CPU/512 MiB，采集器 0.3 CPU/256 MiB，离线裁判 0.5 CPU/512 MiB；无主机端口。只有 guardian 与模拟飞控共享网络；executive 无网络，只有私有 UDS。真值目录不挂载给机载进程。
+
+产物位于 `artifacts/<deployment_id>/m1-<run_id>/<scenario>-<seed>/`：`input/` 固定任务与注入、`aircraft/` JSONL/MCAP/实际影像/能力快照/进程身份、`truth/` Gazebo 真值、`ulog/` 飞控原始日志、`judge/` 裁判结果。`progress.json` 可查看长批次进度，`build-*.log` 实时写入构建输出。实验结束恢复本项目空闲 SITL；历史记录和旧镜像不自动删除。
+
+离线重判使用同一版本 ground 镜像执行 `python3 -m drone_agent.eval.judge <run目录> --root /workspace --output <结果文件>`。裁判复算影像、真值轨迹、前驱门控与 MCAP 事件一致性。新规则重判必须保留旧结果并标注新的软件 SHA。
 
 ## 部署流程
 

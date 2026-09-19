@@ -46,6 +46,9 @@ def encode(model: BaseModel | dict, message: Message) -> Message:
 
 
 def decode(message: Message) -> dict:
+    if "schema_version" in message.DESCRIPTOR.fields_by_name:
+        if not message.HasField("schema_version") or message.schema_version != "0.1.0":
+            raise ValueError("unsupported or missing runtime schema version")
     result = {}
     for field, value in message.ListFields():
 

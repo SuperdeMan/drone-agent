@@ -131,6 +131,7 @@ def runtime(tmp_path):
 def pulse(lease, seq=1):
     now = utcnow()
     return {
+        "schema_version": "0.1.0",
         "robot_id": lease.robot_id,
         "mission_id": lease.mission_id,
         "mission_version": lease.mission_version,
@@ -431,7 +432,7 @@ def test_wire_preserves_domain_types_and_safe_defaults(runtime, wire):
     obs = adapter.snapshot()
     assert FlightObservation.model_validate(decode(encode(obs, wire.FlightObservation()))) == obs
     with pytest.raises(ValueError):
-        decode(wire.StepOutcome(effect_verdict=0))
+        decode(wire.StepOutcome(schema_version="0.1.0", effect_verdict=0))
 
 
 async def test_real_authenticated_ipc_roundtrip(runtime, wire):
@@ -605,3 +606,38 @@ def test_blank_and_flat_color_images_cannot_meet_quality_profile():
     assert image_quality(bytes(160 * 120 * 3), 160, 120)["red_fraction"] == 0
     quality = image_quality(bytes([255, 0, 0]) * (160 * 120), 160, 120)
     assert quality["red_fraction"] == 1 and quality["edge_contrast"] == 0
+
+
+@pytest.mark.parametrize("version", [None, "", "1.0.0", "9.0.0"])
+def test_missing_or_unsupported_wire_schema_is_rejected(wire, version):
+    message = wire.ObservationRequest(robot_id="uav_01")
+    if version is not None:
+        message.schema_version = version
+    with pytest.raises(ValueError, match="schema version"):
+        decode(message)
+
+
+async def test_landing_projection_ends_only_at_the_reserved_site(runtime):
+    guardian, adapter, _, _ = runtime
+    guardian.active_step, guardian.phase = guardian.package.nodes[4], "landing"
+    adapter.airborne, adapter.altitude, adapter.mode = True, 0.8, "LAND"
+    original = adapter.snapshot
+
+    def landing_observation():
+        obs = original()
+        obs.velocity_enu_mps = [0, 0, -0.8]
+        return obs
+
+    adapter.snapshot = landing_observation
+    await guardian.tick()
+    assert guardian.recovery is None
+
+    def outside_landing_site():
+        obs = landing_observation()
+        obs.pose.position.x = 10
+        return obs
+
+    adapter.snapshot = outside_landing_site
+    await guardian.tick()
+    await guardian.recovery_task
+    assert guardian.reason == "geofence_predicted_breach"

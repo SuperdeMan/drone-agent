@@ -407,7 +407,7 @@ class Guardian:
         if self.phase == "takeoff" and coordinates(obs) and coordinates(obs)[2] >= 3:
             self.phase = "hover"
         checks = []
-        if utcnow() >= obs.valid_until:
+        if not obs.timestamp <= utcnow() < obs.valid_until:
             checks.append(RecoveryTrigger.OBSERVATION_STALE)
         elif not obs.localization_healthy:
             checks.append(RecoveryTrigger.LOCALIZATION_DEGRADED)
@@ -435,6 +435,13 @@ class Guardian:
                 p + v * self.registry.data["supervision"]["prediction_s"]
                 for p, v in zip(point, obs.velocity_enu_mps, strict=True)
             ]
+            if self.active_step.skill_id == "skill.flight.land" and obs.flight_mode == "LAND":
+                site = self.registry.data["landing_sites"].get(self.active_step.params["landing_site_id"])
+                if site and site["reserved_for"] == self.registry.capability.robot_id:
+                    from math import dist
+
+                    if dist(point[:2], site["position"][:2]) <= site["radius_m"]:
+                        predicted[2] = max(site["position"][2], predicted[2])
             if not self.registry.inside(point) or not self.registry.inside(predicted):
                 checks.insert(0, RecoveryTrigger.GEOFENCE_PREDICTED_BREACH)
         for trigger in checks:
