@@ -163,8 +163,11 @@ class Px4Adapter:
             key in self.values for key in ("armed", "in_air", "health", "mode")
         )
         energy = self.raw_battery_fraction if time.monotonic() - self.received.get("battery_status", 0) < 3 else None
-        if energy is None and battery and time.monotonic() - self.received.get("battery", 0) < 3:
-            energy = battery.remaining_percent / 100.0
+        if battery and time.monotonic() - self.received.get("battery", 0) < 3:
+            percent = battery.remaining_percent
+            if math.isfinite(percent) and 0 <= percent <= 100:
+                estimate = percent / 100.0
+                energy = estimate if energy is None else min(energy, estimate)
         if time.monotonic() - self.received.get("position", 0) >= 0.5:
             stamp = min(stamp, now - timedelta(seconds=1))
         return FlightObservation(

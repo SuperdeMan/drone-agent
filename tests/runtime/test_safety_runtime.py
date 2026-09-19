@@ -782,3 +782,26 @@ async def test_cancel_before_dispatch_waits_for_safe_ground_and_never_arms(runti
     finally:
         journal.close()
         recorder.close()
+
+
+@pytest.mark.parametrize(
+    "percent,raw,expected",
+    [(25, 0.9, 0.25), (float("nan"), None, None), (-1, None, None), (101, None, None), (float("nan"), 0.8, 0.8)],
+)
+def test_battery_fusion_is_conservative_and_unknown_values_do_not_crash(runtime, percent, raw, expected):
+    from types import SimpleNamespace as NS
+
+    from drone_agent.adapters.px4_mavsdk import Px4Adapter
+
+    guardian, _, _, path = runtime
+    adapter = Px4Adapter(guardian.registry, path, path / "sensor.json")
+    adapter.values = {
+        "battery": NS(remaining_percent=percent),
+        "armed": False,
+        "in_air": False,
+        "health": NS(is_local_position_ok=True, is_global_position_ok=True, is_home_position_ok=True),
+        "mode": NS(name="READY"),
+    }
+    adapter.raw_battery_fraction = raw
+    adapter.received = {key: time.monotonic() for key in ("link", "battery", "battery_status")}
+    assert adapter.snapshot().battery_fraction == expected
