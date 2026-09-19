@@ -53,6 +53,8 @@
 
 `ApprovalRecord`：审批人、审批时间、`mission_version`、`package_hash`、有效期、审批范围（允许的机器人集合）。
 
+M0 接收边界补充：任务包必须保留 `spatial_scope`、`temporal_window`、`energy_budget`，三项都进入审批哈希；旧草案可解析，但缺任一边界不得授权执行。任务包自身的 `package_hash`、审批中的哈希与重新计算值三者必须相同；审批尚未生效或当前不在任务时间窗也必须拒绝。时间窗与审批时间必须带时区。空机器人列表表示没有授权对象，不能当作通配符。编译后的 DAG 仍需检查重复节点、未知依赖、环和 `allow_unverified_from` 的直接依赖关系。任务参数中的控制级键按任意嵌套深度检查；字典或列表包装不能绕过边界。
+
 ## 3. SkillManifest v2（长时间物理技能契约）
 
 解决的问题：技能是持续数秒到数分钟的物理过程，不是一次函数调用。
@@ -128,15 +130,30 @@ accepted → preparing → running → verifying → completed
 | `holder` | 控制源 ID（executive 实例 / 人工接管 / 协调器） |
 | `issued_at`, `expires_at` | 租约必须续期；过期后 guardian 进入恢复策略，**但过期只是软件状态，不代表机器人已物理停止** |
 | `resources` | 租约覆盖的资源 |
-| `command_seq` | 单调递增序号（每 epoch 从 0 起） |
+| `command_seq`（命令信封字段） | 单调递增序号（每 epoch 从 0 起）；不复制进租约，guardian 按代次维护接收水位 |
 
 幂等键 = `(mission_id, mission_version, step_id, command_id, robot_id, lease_epoch)`。网络超时后的正确动作是**状态对账**（查询该幂等键的执行状态），不是自动重发。
 
 控制权仲裁优先级（高 → 低）：飞控原生失效保护 > RC / GCS 人工接管 > guardian 恢复策略 > 持有效租约的 executive > 其他。
 
+撤销租约后保留最高已见代次；重新授予必须使用更高代次。同代次只允许同一机器人、任务版本、holder 与资源集合续期，不能换所有者或重新开始去重窗口。闸门持有租约快照，外部修改对象不能静默改变权限。幂等键编码必须无歧义，身份字段中的冒号不能产生碰撞；意图有效期为 `[issued_at, valid_until)`。
+
 ## 7. RecoveryPolicy（平台专用恢复策略图）
 
 场景配置文件，按平台与本体定义；不由 LLM 生成。节点是已验证基线行为（`hold / loiter / rtl / land_here / land_at(site) / handover_to_fc_failsafe`），边由「触发条件 × 当前上下文（飞行阶段、定位健康、能源、通信、空间位置）」决定。详见 `03-safety.md`。
+
+`fault_injection_scenario` 仅表示计划中的场景引用。验证记录必须另外绑定场景、该边内容哈希、软件版本、验证时间和证据引用；没有记录或内容变化后的边均为未验证。M0 交付的是草案与注入矩阵，不宣称已通过 SITL 故障验证。
+
+## 9. M0 wire 草案与 M1 冻结边界
+
+- `proto/drone/contracts/v1/contracts.proto` 承载六类契约的共享消息；`proto/drone/control/v1/control.proto` 定义 guardian 本地控制、心跳及命令对账接口；`proto/drone/fleet/v1/fleet.proto` 仅定义任务包、事件、证据、事实、状态与交接消息，不提供控制接口。
+- `scripts/generate_contract_fields.py` 从 Pydantic 导出字段清单到 `proto/contract-fields.json`；字段号在 proto 中显式维护，不能因 Python 字段重新排序而重编号。`scripts/generate_proto.py` 编译到被忽略的 `gen/`，契约测试检查字段覆盖与 wire 的缺省语义。
+- proto3 标量显式 `optional`，枚举零值统一 `UNSPECIFIED`，不能默认成功、verified 或 proceed。缺省对象必须经过 Pydantic 与业务接收检查，不能把 protobuf 能解析当作授权。
+- 自由 JSON 字段以 UTF-8 JSON `bytes` 传输，保留整数精度；解码后重跑领域模型校验。时间为 `google.protobuf.Timestamp`，跨进程单调时钟与 UTC 的转换由 M1 运行时处理。
+- 审批哈希中的任务时间窗先规范化为 UTC，避免同一时刻的时区写法在 Timestamp 编解码后造成哈希漂移；显式 `tz` 元数据仍作为任务内容参与哈希。
+- 本批仍是 `schema_version=0.1.0` 的未发布草案；`drone.*.v1` 是目标 wire 命名空间，冻结在 M1 退出时进行，不表示已有可运行服务。
+
+设计依据：[protobuf 字段存在性](https://protobuf.dev/programming-guides/field_presence/)。
 
 ## 8. 契约测试（M0 交付）
 

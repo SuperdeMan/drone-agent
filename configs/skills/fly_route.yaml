@@ -1,0 +1,45 @@
+schema_version: "0.1.0"
+skill_id: skill.flight.fly_route
+version: "0.1.0"
+description: "Fly a registry-backed, prevalidated route. / 执行登记表中预验证的航线。"
+embodiments: [aerial_multirotor]
+required_control_modes: [mission_upload]
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: [route_id, frame_id, map_version, speed_mps]
+  properties:
+    route_id: {type: string, minLength: 1}
+    frame_id: {type: string, minLength: 1}
+    map_version: {type: string, minLength: 1}
+    speed_mps: {type: number, exclusiveMinimum: 0, maximum: 5, unit: m/s}
+preconditions: [package_authorized, airborne, localization_healthy, route_resolved_and_in_scope, energy_budget_feasible, motion_lease_valid]
+invariants: [inside_approved_volume, observation_fresh, lease_valid, executive_heartbeat_ok, energy_above_reserve, fc_failsafe_inactive]
+resources:
+  - {resource_id: uav_01.motion, mode: exclusive}
+progress_schema:
+  type: object
+  additionalProperties: false
+  required: [route_id, reached_waypoints, total_waypoints]
+  properties:
+    route_id: {type: string}
+    reached_waypoints: {type: integer, minimum: 0}
+    total_waypoints: {type: integer, minimum: 1}
+cancel:
+  cancel_safe_states: [before_upload, waypoint_hold]
+  cancel_procedure: "Stop route progression through guardian, enter policy recovery and await recovered_to. / 经 guardian 停止航线推进，进入策略恢复并等待 recovered_to。"
+pause:
+  pausable: true
+  safe_wait_condition: localization_healthy_and_energy_wait_feasible
+  max_wait_s: 120
+completion_evidence:
+  - evidence_type: telemetry
+    criteria: {predicate: all_route_waypoints_verified, threshold_ref: m1_campus_v1.route, route_version_match: true, fresh_pose_required: true}
+failure_modes:
+  - {code: route_upload_timeout, description: "Upload receipt unknown / 航线上传结果未知", recovery_hint: reconcile_before_any_resend}
+  - {code: route_deviation, description: "Route corridor violated / 偏离航线走廊", recovery_hint: guardian_policy}
+  - {code: mode_changed, description: "External mode change / 外部模式切换", recovery_hint: stop_progress_and_reconcile_authority}
+timeout_s: 600
+estimated_duration_s: 180
+implementation: {kind: deterministic}

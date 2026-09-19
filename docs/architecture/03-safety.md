@@ -51,6 +51,8 @@
 
 每条边用故障注入逐个验证（`tests/fault_injection/`），未验证的边不能进入生产配置。切回高性能路径（`hold → running`）也有准入条件：观测新鲜、租约有效、executive 心跳恢复、且当前技能实例处于 `cancel_safe_state` 或明确的 `resume` 状态——恢复是可逆的，但不是自动的。
 
+M0 的 `configs/recovery_policies/` 文件均为草案：写了 `fi.*` 名称不代表执行过该场景。`configs/scenarios/m0_fault_matrix.yaml` 记录前置上下文、注入点、期望行为、所需证据和适用阶段；只有绑定当前边内容的成功验证记录才能通过生产准入。矩阵静态覆盖、策略选择单测和 SITL 故障验证必须分别报告。Offboard 场景在 M0/M1 只检查拒绝未声明能力与策略分支，物理控制路径在启用后另验。
+
 ## 4. 活性、心跳与新鲜度是三件事
 
 已知陷阱：MAVSDK Offboard 插件以 20 Hz 自动重发最近一次设定值；PX4 Offboard 存活只要求 ≥ 2 Hz 的信号。因此业务控制卡住时，飞控看到的链路可能仍然「活着」。
@@ -72,6 +74,7 @@ guardian 独立检查四项，任一失效即按恢复策略处理：
 - 命令幂等键 = `(mission_id, mission_version, step_id, command_id, robot_id, lease_epoch)`；guardian 对重复键返回既有结果，不重复执行。
 - 网络超时后：先查询该幂等键的状态（对账），只有状态为「未收到」才重发；状态「未知」时进入 `outcome_unknown` 并阻断依赖链。
 - 旧 `lease_epoch` 的命令一律拒绝并记录 `command_rejected(reason=stale_epoch)`。
+- 撤销不能清除代次历史；同代次续期不改变控制身份与资源，且不清除已处理命令。闸门对象寿命之外的代次持久化、客户端身份认证及对账结果账本属于 M1，M0 纯逻辑闸门不构成完整运行时。
 
 ## 6. 三元状态与放行
 

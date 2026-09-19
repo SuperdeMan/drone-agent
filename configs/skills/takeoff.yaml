@@ -1,0 +1,37 @@
+schema_version: "0.1.0"
+skill_id: skill.flight.takeoff
+version: "0.1.0"
+description: "Take off within the approved volume and verify altitude. / 在批准体积内起飞并验证高度。"
+embodiments: [aerial_multirotor]
+required_control_modes: [mission_upload]
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: [altitude_m_agl]
+  properties:
+    altitude_m_agl: {type: number, minimum: 3, maximum: 30, unit: m_agl}
+preconditions: [package_authorized, on_ground, localization_healthy, home_verified, energy_budget_feasible, motion_lease_valid]
+invariants: [inside_approved_volume, observation_fresh, lease_valid, executive_heartbeat_ok, energy_above_reserve, fc_failsafe_inactive]
+resources:
+  - {resource_id: uav_01.motion, mode: exclusive}
+progress_schema:
+  type: object
+  additionalProperties: false
+  required: [phase, altitude_m_agl]
+  properties:
+    phase: {type: string, enum: [preparing, ascending, verifying]}
+    altitude_m_agl: {type: number, unit: m_agl}
+cancel:
+  cancel_safe_states: [before_arming, stable_hover]
+  cancel_procedure: "Before arming: release resources; otherwise request guardian recovery, await recovered_to. / 解锁前释放资源；之后请求 guardian 恢复，等待 recovered_to。"
+pause: {pausable: false}
+completion_evidence:
+  - evidence_type: telemetry
+    criteria: {predicate: takeoff_altitude_verified, threshold_ref: m1_campus_v1.takeoff, fresh_pose_required: true, hold_duration_s: 2}
+failure_modes:
+  - {code: takeoff_rejected, description: "FC rejected takeoff / 飞控拒绝起飞", recovery_hint: reconcile_then_policy}
+  - {code: takeoff_timeout, description: "Altitude not confirmed in time / 未及时确认高度", recovery_hint: outcome_unknown_then_policy}
+timeout_s: 60
+estimated_duration_s: 20
+implementation: {kind: deterministic}

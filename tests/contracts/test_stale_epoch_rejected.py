@@ -74,3 +74,70 @@ def test_revoke_closes_the_gate():
     gate = EgressGate(lease(epoch=1))
     gate.revoke()
     assert gate.check(envelope(), now=NOW).reason == "no_lease"
+
+
+@pytest.mark.parametrize("epoch", [1, 3])
+def test_revocation_does_not_erase_epoch_history(epoch):
+    gate = EgressGate(lease(epoch=3))
+    gate.revoke()
+    with pytest.raises(ValueError):
+        gate.grant(lease(epoch=epoch))
+    gate.grant(lease(epoch=4))
+    assert gate.check(envelope(epoch=3), now=NOW).reason == "stale_epoch"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("holder", "other"), ("mission_id", "m-002"), ("mission_version", 2), ("resources", ["uav_01.motion"])],
+)
+def test_same_epoch_cannot_transfer_authority(field, value):
+    gate = EgressGate(lease())
+    changed = lease()
+    setattr(changed, field, value)
+    with pytest.raises(ValueError):
+        gate.grant(changed)
+
+
+def test_renewal_preserves_dedup_and_sequence_window():
+    gate = EgressGate(lease())
+    assert gate.check(envelope(seq=4), now=NOW).accepted
+    gate.grant(lease(ttl_s=120))
+    assert gate.check(envelope(seq=5), now=NOW).reason == "duplicate_command"
+    assert gate.check(envelope(seq=3, command_id="new"), now=NOW).reason == "stale_seq"
+
+
+def test_external_mutation_does_not_change_installed_lease():
+    original = lease()
+    gate = EgressGate(original)
+    original.lease_epoch = 2
+    snapshot = gate.lease
+    snapshot.lease_epoch = 3
+    assert gate.check(envelope(epoch=1), now=NOW).accepted
+    assert gate.check(envelope(epoch=2), now=NOW).reason == "unknown_epoch"
+
+
+def test_gate_remains_bound_to_robot_after_revocation():
+    gate = EgressGate(lease())
+    gate.revoke()
+    with pytest.raises(ValueError):
+        gate.grant(lease(epoch=2, robot_id="uav_02"))
+
+
+def test_namespaced_idempotency_components_do_not_collide():
+    a, b = envelope(), envelope()
+    a.key.step_id, a.key.command_id = "step:part", "command"
+    b.key.step_id, b.key.command_id = "step", "part:command"
+    assert a.key.as_string() != b.key.as_string()
+    gate = EgressGate(lease())
+    b.command_seq = 1
+    assert gate.check(a, now=NOW).accepted
+    assert gate.check(b, now=NOW).accepted
+
+
+def test_future_intent_is_rejected_without_consuming_sequence():
+    gate = EgressGate(lease())
+    future = envelope()
+    future.valid_until = NOW + timedelta(seconds=3)
+    future.issued_at = NOW + timedelta(seconds=1)
+    assert gate.check(future, now=NOW).reason == "future_intent"
+    assert gate.check(envelope(), now=NOW).accepted

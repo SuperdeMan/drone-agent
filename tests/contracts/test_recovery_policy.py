@@ -16,8 +16,9 @@ from drone_agent.contracts import (
     RecoveryBehavior,
     RecoveryPolicy,
     RecoveryTrigger,
+    RecoveryValidation,
 )
-from tests.contracts.factories import capability
+from tests.contracts.factories import NOW, capability
 
 REPO = Path(__file__).resolve().parents[2]
 POLICY = REPO / "configs" / "recovery_policies" / "multirotor_campus_v1.yaml"
@@ -71,12 +72,32 @@ def test_fc_failsafe_always_hands_over():
 
 
 def test_draft_edges_are_visible():
-    # The uplink_lost/authorized_to_continue edge is deliberately unverified until its M1 scenario exists.
-    # uplink_lost/authorized_to_continue 这条边在 M1 场景出现前刻意保持未验证。
+    # Every M0 edge is a draft; scenario names alone are not passed evidence.
+    # 所有 M0 策略边都是草案；场景名本身不是通过证据。
     policy = load_policy()
     drafts = policy.unverified_edges()
-    assert [e.trigger for e in drafts] == [RecoveryTrigger.UPLINK_LOST]
-    assert drafts[0].guard.get("authorized_to_continue") is True
+    assert drafts == policy.edges
+    assert len(drafts) == 15
+    assert any(e.trigger is RecoveryTrigger.UPLINK_LOST and e.guard.get("authorized_to_continue") is True for e in drafts)
+    with pytest.raises(ValueError, match="unverified"):
+        policy.require_verified()
+
+
+def test_validation_must_bind_the_exact_edge_and_scenario():
+    edge = load_policy().edges[0]
+    edge.validation = RecoveryValidation(
+        scenario_id=edge.fault_injection_scenario,
+        edge_hash=edge.validation_hash(),
+        software_revision="test-only-revision",
+        tested_at=NOW,
+        evidence_ref="test-only://passed-injection",
+    )
+    assert edge.is_verified
+    edge.validation.scenario_id = "different-scenario"
+    assert not edge.is_verified
+    edge.validation.scenario_id = edge.fault_injection_scenario
+    edge.guard["flight_phase"] = ["cruise"]
+    assert not edge.is_verified
 
 
 def test_edges_must_target_declared_nodes():

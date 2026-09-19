@@ -76,6 +76,16 @@ def test_task_params_accept_skill_level_keys():
     assert spec.tasks[0].params == {"altitude_m_agl": 20}
 
 
+@pytest.mark.parametrize("params", [{"route": {"setpoint": 1}}, {"items": [{"Attitude": 1}]}, {"command_seq": 1}])
+@pytest.mark.parametrize("compiled", [False, True])
+def test_nested_control_keys_cannot_bypass_task_boundary(params, compiled):
+    data = {"task_id": "t", "skill_id": "skill.flight.fly_route", "params": params}
+    if compiled:
+        data.update(skill_version="0.1.0", robot_id="uav_01", timeout_s=30)
+    with pytest.raises(ValidationError):
+        (PackageNode if compiled else TaskNode).model_validate(data)
+
+
 def test_planner_tool_allowlist_is_read_only():
     allow = PlannerToolAllowlist.from_yaml(REPO / "configs" / "planner_tools.yaml")
     assert allow.tools, "allowlist must not be empty"

@@ -1,12 +1,12 @@
 # Recovery policy graph: multirotor, campus inspection (docs/architecture/03-safety.md §3).
 # Nodes are verified baseline behaviours; edges are trigger x context guards, most specific first.
-# `fault_injection_scenario` names the scenario that verified the edge. Edges without one are
-# DRAFT and cannot enter a production platform config (contract test flags them).
+# `fault_injection_scenario` names a planned scenario, never a passed run. Every M0 edge is
+# DRAFT until its separate validation record binds real evidence to the current edge hash.
 #
 # 恢复策略图：多旋翼、园区巡检（docs/architecture/03-safety.md §3）。
 # 节点是已验证的基线行为；边是触发条件 × 上下文守卫，最具体的排前面。
-# `fault_injection_scenario` 写明验证过这条边的场景。没有它的边是草稿，
-# 不能进入生产平台配置（契约测试会标出）。
+# `fault_injection_scenario` 是计划场景名，不是通过记录。每条 M0 边都是草稿，
+# 直到独立 validation 记录把真实证据绑定到当前策略边哈希。
 schema_version: "0.1.0"
 policy_id: multirotor_campus
 version: v1
@@ -74,6 +74,7 @@ edges:
   - trigger: uplink_lost
     guard: { authorized_to_continue: true, robot_healthy: true }
     target: hold
+    fault_injection_scenario: fi.uplink_lost.authorized
     # DRAFT: continuing the authorised package after a short hold is M1 work; until the
     # scenario exists this edge stays unverified and must not ship.
     # 草稿：短暂悬停后继续已授权任务包是 M1 的工作；场景出现前这条边保持未验证，不得上线。

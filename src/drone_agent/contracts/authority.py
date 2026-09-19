@@ -14,10 +14,11 @@ fc_failsafe > manual_takeover > guardian_recovery > leased_executive > other。
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import Any
 
-from pydantic import Field
+from pydantic import AwareDatetime, Field, model_validator
 
 from drone_agent.contracts.common import ContractModel
 
@@ -43,9 +44,15 @@ class TaskLease(ContractModel):
         ge=0, description="control-authority generation; bumps on every re-grant / 控制权代次，每次重新授予 +1"
     )
     holder: str
-    issued_at: datetime
-    expires_at: datetime
+    issued_at: AwareDatetime
+    expires_at: AwareDatetime
     resources: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _ordered_window(self) -> TaskLease:
+        if self.expires_at <= self.issued_at:
+            raise ValueError("lease expiry must follow issuance")
+        return self
 
     def is_valid_at(self, now: datetime) -> bool:
         """Valid within [issued_at, expires_at). / 在 [issued_at, expires_at) 内有效。"""
@@ -67,8 +74,10 @@ class IdempotencyKey(ContractModel):
 
     def as_string(self) -> str:
         """Stable string form used as the dedup key. / 用作去重键的稳定字符串形式。"""
-        return (
-            f"{self.mission_id}:{self.mission_version}:{self.step_id}:{self.command_id}:{self.robot_id}:{self.lease_epoch}"
+        return json.dumps(
+            [self.mission_id, self.mission_version, self.step_id, self.command_id, self.robot_id, self.lease_epoch],
+            ensure_ascii=False,
+            separators=(",", ":"),
         )
 
 
@@ -80,12 +89,18 @@ class ControlCommandEnvelope(ContractModel):
 
     key: IdempotencyKey
     command_seq: int = Field(ge=0, description="monotonic per lease epoch / 在同一租约代次内单调递增")
-    issued_at: datetime
-    valid_until: datetime
+    issued_at: AwareDatetime
+    valid_until: AwareDatetime
     intent_kind: str = Field(
         description="mode_request | route | local_goal | trajectory_segment / 模式请求 | 航线 | 局部目标 | 轨迹片段"
     )
     payload: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _ordered_window(self) -> ControlCommandEnvelope:
+        if self.valid_until <= self.issued_at:
+            raise ValueError("intent expiry must follow issuance")
+        return self
 
 
 class EgressDecision(ContractModel):
@@ -102,24 +117,42 @@ class EgressGate:
     """
 
     def __init__(self, lease: TaskLease | None = None) -> None:
-        self._lease = lease
+        self._lease: TaskLease | None = None
+        self._highest_epoch = -1
+        self._robot_id: str | None = None
         self._last_seq: int = -1
         self._seen: set[str] = set()
+        if lease is not None:
+            self.grant(lease)
 
     @property
     def lease(self) -> TaskLease | None:
-        return self._lease
+        return self._lease.model_copy(deep=True) if self._lease is not None else None
 
     def grant(self, lease: TaskLease) -> None:
         """Install a new lease; a higher epoch resets the sequence window and the dedup set.
 
         安装新租约；更高的代次会重置序号窗口与去重集合。
         """
-        if self._lease is not None and lease.lease_epoch < self._lease.lease_epoch:
+        lease = TaskLease.model_validate(lease.model_dump())
+        if self._robot_id is not None and lease.robot_id != self._robot_id:
+            raise ValueError("a per-robot gate cannot change robots")
+        if lease.lease_epoch < self._highest_epoch:
             raise ValueError("cannot grant a lease with a lower epoch than the current one")
-        if self._lease is None or lease.lease_epoch != self._lease.lease_epoch:
+        if lease.lease_epoch == self._highest_epoch:
+            current = self._lease
+            if current is None:
+                raise ValueError("a revoked lease requires a higher epoch")
+            identity = ("robot_id", "mission_id", "mission_version", "holder", "issued_at")
+            if any(getattr(current, key) != getattr(lease, key) for key in identity):
+                raise ValueError("same-epoch renewal cannot change lease identity")
+            if set(current.resources) != set(lease.resources):
+                raise ValueError("same-epoch renewal cannot change resources")
+        else:
             self._last_seq = -1
             self._seen.clear()
+        self._highest_epoch = lease.lease_epoch
+        self._robot_id = lease.robot_id
         self._lease = lease
 
     def revoke(self) -> None:
@@ -142,6 +175,8 @@ class EgressGate:
             return EgressDecision(accepted=False, reason="stale_epoch")
         if key.lease_epoch > lease.lease_epoch:
             return EgressDecision(accepted=False, reason="unknown_epoch")
+        if envelope.issued_at > now:
+            return EgressDecision(accepted=False, reason="future_intent")
         if envelope.valid_until <= now:
             return EgressDecision(accepted=False, reason="expired_intent")
         if key.as_string() in self._seen:

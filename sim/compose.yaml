@@ -1,0 +1,33 @@
+name: drone-agent-m0
+services:
+  sitl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: drone-agent-sitl:px4-1.17.0-m0
+    platform: linux/amd64
+    init: true
+    stdin_open: true
+    tty: true
+    environment:
+      HEADLESS: "1"
+      PX4_SIM_MODEL: gz_x500
+      PX4_GZ_WORLD: default
+    # The dedicated bridge has no host ports or real-device mappings.
+    # 独立桥接网络不发布主机端口，也不映射真实设备。
+    networks: [simulation]
+    volumes:
+      - type: bind
+        source: ./artifacts
+        target: /artifacts
+    healthcheck:
+      # Liveness only; the explicit smoke command checks telemetry and the world.
+      # 这里只检查活性；显式冒烟命令检查遥测与世界。
+      test: ["CMD", "pgrep", "-x", "px4"]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+      start_period: 90s
+    stop_grace_period: 15s
+networks:
+  simulation: {}

@@ -1,0 +1,48 @@
+syntax = "proto3";
+package drone.fleet.v1;
+
+import "drone/contracts/v1/contracts.proto";
+import "google/protobuf/timestamp.proto";
+
+// Task and evidence transport only; never continuous control.
+// 只传任务与证据；永不传连续控制。
+service FleetTransport {
+  rpc DeliverPackage(drone.contracts.v1.MissionPackage) returns (DeliveryReceipt);
+  rpc PublishEvent(drone.contracts.v1.ExecutionEvent) returns (DeliveryReceipt);
+  rpc PublishEvidence(drone.contracts.v1.Evidence) returns (DeliveryReceipt);
+  rpc PublishFact(drone.contracts.v1.WorldFact) returns (DeliveryReceipt);
+  rpc PublishStatus(drone.contracts.v1.RobotStatus) returns (DeliveryReceipt);
+  rpc PublishCapability(drone.contracts.v1.CapabilityDescriptor) returns (DeliveryReceipt);
+  rpc OfferHandoff(HandoffOffer) returns (HandoffReply);
+}
+
+message DeliveryReceipt {
+  optional string schema_version = 1;
+  optional string message_id = 2;
+  optional bool accepted = 3;
+  optional string reason = 4;
+  google.protobuf.Timestamp received_at = 5;
+}
+
+message HandoffOffer {
+  optional string schema_version = 1;
+  optional string handoff_id = 2;
+  optional string mission_id = 3;
+  optional int64 mission_version = 4;
+  optional string task_id = 5;
+  optional string from_robot_id = 6;
+  optional string to_robot_id = 7;
+  google.protobuf.Timestamp expires_at = 8;
+  repeated string evidence_refs = 9;
+  drone.contracts.v1.WorldFact target = 10;
+}
+
+message HandoffReply {
+  optional string schema_version = 1;
+  optional string handoff_id = 2;
+  optional bool accepted = 3;
+  optional string reason = 4;
+  google.protobuf.Timestamp timestamp = 5;
+  // An accepted offer is not ownership transfer; M4 requires source ack and a new lease.
+  // 接受提议不等于所有权转移；M4 仍需原所有者确认与新租约。
+}

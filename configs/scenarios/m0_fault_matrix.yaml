@@ -1,0 +1,158 @@
+schema_version: "0.1.0"
+matrix_id: m0_to_m1_campus_v1
+policy_ref: multirotor_campus@v1
+status: planned
+seeds: [7, 19, 41]
+required_evidence: [software_revision, platform_versions, policy_hash, seed, event_stream, telemetry, judge_result]
+scenarios:
+  - scenario_id: fi.heartbeat_lost.takeoff
+    stage: M1
+    trigger: executive_heartbeat_lost
+    context: {flight_phase: takeoff, altitude_m_agl: 2}
+    inject: {channel: executive_business_heartbeat, action: stop, duration_s: 3}
+    expected: {target: land_here, effect: unknown_until_landed_disarmed, classification: safe_abort}
+    assertions: [no_success_on_heartbeat_loss, cancel_and_recovered_are_distinct, native_failsafes_preserved]
+  - scenario_id: fi.heartbeat_lost.cruise
+    stage: M1
+    trigger: executive_heartbeat_lost
+    context: {flight_phase: cruise, localization_healthy: true}
+    inject: {channel: executive_business_heartbeat, action: stop, duration_s: 15}
+    expected: {target: hold, then: rtl, after_s: 10, classification: safe_abort}
+    assertions: [sdk_transport_may_remain_alive, no_stale_business_progress, hold_and_rtl_observed]
+  - scenario_id: fi.observation_stale.offboard
+    stage: M3
+    m1_check: unsupported_control_mode_rejected
+    trigger: observation_stale
+    context: {control_mode: offboard_position}
+    inject: {channel: valid_pose_observations, action: freeze_timestamp, duration_s: 0.6}
+    expected: {target: hold, classification: safe_abort}
+    assertions: [stop_stale_setpoint_resends, exit_offboard, fresh_fc_mode_evidence_required]
+  - scenario_id: fi.trajectory_stale.offboard
+    stage: M3
+    m1_check: unsupported_control_mode_rejected
+    trigger: trajectory_stale
+    context: {control_mode: offboard_trajectory}
+    inject: {channel: control_intents, action: expire_valid_until, duration_s: 0.3}
+    expected: {target: hold, classification: safe_abort}
+    assertions: [expired_intent_rejected, stop_stale_setpoint_resends, exit_offboard]
+  - scenario_id: fi.lease_expired
+    stage: M1
+    trigger: lease_expired
+    context: {flight_phase: cruise, localization_healthy: true}
+    inject: {channel: task_lease, action: stop_renewal, duration_s: 35}
+    expected: {target: hold, then: rtl, after_s: 30, classification: safe_abort}
+    assertions: [lease_expiry_not_physical_stop, reconcile_before_resume, old_epoch_rejected_after_regrant]
+  - scenario_id: fi.energy_low.rtl_reachable
+    stage: M1
+    trigger: energy_low
+    context: {rtl_reachable: true}
+    inject: {channel: energy_observation, action: below_return_reserve}
+    expected: {target: rtl, classification: safe_abort}
+    assertions: [native_low_battery_failsafe_preserved, return_path_evidence, no_success_for_aborted_nodes]
+  - scenario_id: fi.energy_low.rtl_unreachable
+    stage: M1
+    trigger: energy_low
+    context: {rtl_reachable: false, nearest_site_reachable: true, landing_site_id: site_b}
+    inject: {channel: energy_observation, action: below_home_reachability}
+    expected: {target: land_at, classification: safe_abort}
+    assertions: [site_is_approved_and_reachable, landing_evidence_required, no_blind_rtl]
+  - scenario_id: fi.geofence.predicted_breach
+    stage: M1
+    trigger: geofence_predicted_breach
+    context: {flight_phase: cruise, localization_healthy: true}
+    inject: {channel: route_intent, action: cross_approved_boundary, lookahead_s: 2}
+    expected: {target: hold, classification: safe_abort}
+    assertions: [intent_rejected_before_adapter_write, truth_pose_stays_inside, native_geofence_preserved]
+  - scenario_id: fi.localization.gnss_lost_visual_ok
+    stage: M3
+    m1_check: unavailable_visual_localization_not_claimed
+    trigger: localization_degraded
+    context: {visual_localization_ok: true}
+    inject: {channel: gnss_observation, action: invalidate_fix}
+    expected: {target: hold, classification: safe_abort}
+    assertions: [visual_freshness_and_covariance_verified, no_assumed_position_health, native_failsafes_preserved]
+  - scenario_id: fi.localization.all_lost
+    stage: M1
+    trigger: localization_degraded
+    context: {visual_localization_ok: false}
+    inject: {channel: localization_observations, action: invalidate_all_sources}
+    expected: {target: handover_to_fc_failsafe, classification: safe_abort}
+    assertions: [guardian_ceases_control_writes, no_hold_without_localization, fc_failsafe_transition_recorded]
+  - scenario_id: fi.uplink_lost.authorized
+    stage: M1
+    trigger: uplink_lost
+    context: {authorized_to_continue: true, robot_healthy: true}
+    inject: {channel: mission_service_uplink, action: disconnect, duration_s: 20}
+    expected: {target: hold, classification: safe_abort}
+    assertions: [current_draft_does_not_auto_resume, preserve_local_authoritative_state, resume_requires_explicit_conditions]
+    design_note: "当前边只声明 hold；继续执行的时限、重入与证据规则尚未定义，M1 实现后须新增验证记录。"
+  - scenario_id: fi.uplink_lost.not_authorized
+    stage: M1
+    trigger: uplink_lost
+    context: {authorized_to_continue: false}
+    inject: {channel: mission_service_uplink, action: disconnect, duration_s: 20}
+    expected: {target: hold, then: rtl, after_s: 15, classification: safe_abort}
+    assertions: [no_cloud_dependency_for_recovery, hold_and_rtl_observed, no_scope_expansion]
+  - scenario_id: fi.fc_failsafe.active
+    stage: M1
+    trigger: fc_failsafe_active
+    context: {flight_phase: cruise}
+    inject: {channel: simulator_fc_fault, action: trigger_native_failsafe}
+    expected: {target: handover_to_fc_failsafe, classification: safe_abort}
+    assertions: [guardian_does_not_override_fc, safety_intervention_recorded, no_failsafe_deferral]
+  - scenario_id: fi.user_pause.airborne
+    stage: M1
+    trigger: user_pause
+    context: {flight_phase: hover}
+    inject: {channel: operator_task_request, action: pause, duration_s: 125}
+    expected: {target: hold, then: rtl, after_s: 120, classification: safe_abort}
+    assertions: [pause_requested_precedes_paused, pause_requires_fresh_pose_and_energy, timeout_recovery_recorded]
+  - scenario_id: fi.user_cancel
+    stage: M1
+    trigger: user_cancel
+    context: {flight_phase: cruise, rtl_reachable: true}
+    inject: {channel: operator_task_request, action: cancel}
+    expected: {target: rtl, classification: safe_abort}
+    assertions: [cancel_requested_not_cancelled, recovered_to_requires_physical_evidence, no_motor_kill_interface]
+
+runtime_cases:
+  - scenario_id: fi.command.timeout
+    stage: M1
+    inject: drop_command_ack_after_fc_acceptance
+    expected: reconcile_idempotency_key_before_resend
+    assertions: [timeout_effect_unknown, no_successor, no_duplicate_physical_action]
+  - scenario_id: fi.command.duplicate
+    stage: M1
+    inject: deliver_identical_key_twice_with_new_sequence
+    expected: recorded_outcome_without_second_write
+    assertions: [adapter_write_count_equals_one, duplicate_event_recorded]
+  - scenario_id: fi.command.stale_epoch
+    stage: M1
+    inject: replay_old_command_after_revoke_and_higher_epoch_grant
+    expected: stale_epoch_rejection
+    assertions: [no_adapter_write, revoked_epoch_cannot_be_regranted]
+  - scenario_id: fi.mode.manual_takeover
+    stage: M1
+    inject: external_rc_or_gcs_mode_change
+    expected: revoke_executive_authority_and_reconcile
+    assertions: [no_mode_fight, takeover_event_recorded, rc_path_preserved]
+  - scenario_id: fi.observation_stale.mission_upload
+    stage: M1
+    inject: freeze_pose_timestamp_while_uploaded_mission_continues
+    expected: policy_must_resolve_without_relying_on_offboard_watchdog
+    assertions: [no_success_on_old_pose, no_false_stopped_claim, missing_branch_blocks_production]
+  - scenario_id: fi.context.missing
+    stage: M1
+    inject: omit_energy_reachability_or_localization_context
+    expected: no_unjustified_recovery_selection
+    assertions: [unknown_not_true, deterministic_fallback_required, missing_branch_blocks_production]
+  - scenario_id: fi.resume.conditions
+    stage: M1
+    inject: recover_heartbeat_while_lease_or_pose_remains_stale
+    expected: resume_rejected
+    assertions: [all_resume_conditions_required, cancellation_does_not_resurrect_skill]
+  - scenario_id: fi.capture.invalid_evidence
+    stage: M1
+    inject: return_blurred_or_wrong_asset_image_with_successful_camera_ack
+    expected: unverified_or_refuted
+    assertions: [no_successor, no_completed_report, bounded_retake_only]

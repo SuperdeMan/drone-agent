@@ -1,0 +1,37 @@
+schema_version: "0.1.0"
+skill_id: skill.flight.land
+version: "0.1.0"
+description: "Land at the current validated landing position and verify disarmed ground state. / 在当前已验证降落位置着陆并确认地面上锁状态。"
+embodiments: [aerial_multirotor]
+required_control_modes: [mission_upload]
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: [landing_site_id]
+  properties:
+    landing_site_id: {type: string, minLength: 1}
+preconditions: [package_authorized, landing_site_verified_and_reserved, above_landing_site, motion_lease_valid]
+invariants: [inside_approved_volume, observation_fresh, lease_valid, executive_heartbeat_ok, fc_failsafe_inactive]
+resources:
+  - {resource_id: uav_01.motion, mode: exclusive}
+progress_schema:
+  type: object
+  additionalProperties: false
+  required: [phase, altitude_m_agl]
+  properties:
+    phase: {type: string, enum: [descending, touchdown, verifying]}
+    altitude_m_agl: {type: number, unit: m_agl}
+cancel:
+  cancel_safe_states: [before_descent, landed_disarmed]
+  cancel_procedure: "During descent defer cancellation until guardian confirms safe recovery or landed_disarmed; never stop motors in air. / 下降中延后取消直到 guardian 确认安全恢复或 landed_disarmed；永不在空中停电机。"
+pause: {pausable: false}
+completion_evidence:
+  - evidence_type: telemetry
+    criteria: {predicate: landed_disarmed_verified, threshold_ref: m1_campus_v1.land, on_ground_required: true, disarmed_required: true, hold_duration_s: 2}
+failure_modes:
+  - {code: landing_timeout, description: "Touchdown not confirmed / 未确认着地", recovery_hint: outcome_unknown_then_policy}
+  - {code: landing_site_blocked, description: "Landing site unavailable / 降落点不可用", recovery_hint: guardian_select_reachable_landing_site}
+timeout_s: 90
+estimated_duration_s: 30
+implementation: {kind: deterministic}

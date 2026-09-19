@@ -151,6 +151,9 @@ def package(*, approved: bool = True, hash_override: str | None = None) -> Missi
         mission_id="m-001",
         mission_version=1,
         recovery_policy_ref="multirotor_campus@v1",
+        spatial_scope=SpatialScope(approved_volume_id="inspection_volume_A", frame=frame()),
+        temporal_window=TemporalWindow(not_before=NOW, not_after=NOW + timedelta(hours=1)),
+        energy_budget=EnergyBudget(max_consumption_fraction=0.6, reserve_fraction=0.25),
         nodes=[
             PackageNode(
                 task_id="t1",

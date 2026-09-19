@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**M0 进行中（2026-09-19 起）**：规范与架构文档、六类契约（Pydantic）与契约测试、复用清单。M0 退出标准见 `docs/roadmap.md`。下一步 M1：无大模型的 PX4 SITL 单机安全闭环（executive + guardian + PX4 适配器 + 故障注入 + 独立裁判）。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。
+**M0 已完成，M1 待开始（2026-09-19）**：契约、proto 骨架、五技能草案、注入矩阵、跨仓重估与未解锁 SITL 环境冒烟均已交付。退出标准见 `docs/roadmap.md`，证据见 `docs/m0-readiness.md`。下一步 M1：无大模型的 PX4 SITL 单机安全闭环（executive + guardian + PX4 适配器 + 故障注入 + 独立裁判）。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。
 
 ## 目录结构
 
@@ -12,11 +12,11 @@
 
 - `docs/` — `architecture/`（00–08 分主题，`00-overview.md` 是入口与文档地图）、`decisions.md`、`roadmap.md`、`reuse-from-embodied-agent.md`、`research/`（前沿调研、GPT-6 Pro 评估原文与摘要）。架构级变更**先改文档 + `decisions.md` 增条目，再动代码**。
 - `src/drone_agent/` — 单包多子模块。**模块随里程碑创建，不预建空模块。** M0 只有 `contracts/`。规划中的子模块与里程碑：`contracts`(M0) · `runtime`(M1：obs、ledger、ipc) · `guardian`(M1：安全监督、约束过滤、恢复策略、控制出口) · `adapters`(M1：`px4_mavsdk`、`sim`) · `mission`(M1：executive、skills) · `eval`(M1：裁判、场景、故障注入) · `providers`(M2，移植) · `planner`(M2) · `admission`(M2) · `fleet`(M4) · `autonomy`(M3，ROS 2 节点放 `ros2_ws/`，不进本包)。
-- `proto/` — 进程间契约（executive ↔ guardian；车队协议），proto 先行；M1 建立，包名 `drone.<service>.v1`。
-- `configs/` — `platforms/`（版本锁定与能力描述）、`recovery_policies/`（恢复策略图）、`scenarios/`（评测场景）、`planner_tools.yaml`（规划层工具白名单，只读）。
+- `proto/` — 进程间契约（executive ↔ guardian；车队协议）与共享消息；M0 骨架，M1 冻结，包名 `drone.<service>.v1`。字段清单与共享 proto 由 `scripts/generate_contract_fields.py` 导出；禁止旧字段重编号。
+- `configs/` — `platforms/`（版本锁定与目标能力描述）、`skills/`（技能草案）、`recovery_policies/`（恢复策略图）、`scenarios/`（注入矩阵与后续评测场景）、`planner_tools.yaml`（规划层工具白名单，只读）。草案中的场景名不代表已验证。
 - `tests/` — 镜像 `src/`；`tests/contracts/` 是契约测试，`tests/fault_injection/`（M1）是故障注入测试。
 - `eval/` — 版本化评测任务与 `BASELINES.md`（只增不改，负结果照记）。
-- `sim/` — docker compose、Gazebo 世界与机体（M1）。
+- `sim/` — M0 开发 compose 与只读冒烟；M1 扩展完整仿真。Windows 先用 `scripts/stage_sim.py` 暂存到 ASCII 目录，版本与 digest 固定，见 `sim/README.md`。
 - `scripts/` — 一次性可复用脚本；`experiments/` — 一次性实验，禁止被 `src/` 依赖，30 天未引用可清理（删除仍先按全局红线问）。
 - 新增顶层目录属于架构变更，走文档先行流程。
 
@@ -39,7 +39,7 @@
 - 契约测试（`tests/contracts/`）不许跳过、注释或放宽断言；它们是「模型不能触达控制出口」「UNKNOWN 不是成功」「旧代次命令被拒」等红线的可执行形式。
 - 故障注入（M1 起）：恢复策略图的每条边至少对应一个注入场景；未经验证的边不能进入 `configs/recovery_policies/` 的生产配置。
 - 评测驱动（M1 起）：任何执行 / 安全 / 策略变更以固定场景集 + 多随机种子的三分类结果说话；基线只能被数据推翻。
-- proto 变更后运行生成脚本确认编译通过；生成物在 `gen/`，不进 git。
+- proto 变更后运行 `uv run python scripts/generate_contract_fields.py --check` 与 `uv run python scripts/generate_proto.py` 确认一致性和编译；stub 在 `gen/`，不进 git。
 - 文档改动后自查相对链接有效、`roadmap.md` 阶段状态与实际一致。
 
 ## 已知环境约束

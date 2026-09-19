@@ -1,0 +1,38 @@
+schema_version: "0.1.0"
+skill_id: skill.flight.return_home
+version: "0.1.0"
+description: "Return along a validated route to the home holding point. / 沿已验证航线回到返航等待点。"
+embodiments: [aerial_multirotor]
+required_control_modes: [mission_upload]
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: [home_ref, return_route_id]
+  properties:
+    home_ref: {type: string, minLength: 1}
+    return_route_id: {type: string, minLength: 1}
+preconditions: [package_authorized, airborne, localization_healthy, home_verified, return_route_reachable, motion_lease_valid]
+invariants: [inside_approved_volume, observation_fresh, lease_valid, executive_heartbeat_ok, energy_above_reserve, fc_failsafe_inactive]
+resources:
+  - {resource_id: uav_01.motion, mode: exclusive}
+progress_schema:
+  type: object
+  additionalProperties: false
+  required: [phase, distance_to_home_m]
+  properties:
+    phase: {type: string, enum: [returning, home_hold, verifying]}
+    distance_to_home_m: {type: number, minimum: 0, unit: m}
+cancel:
+  cancel_safe_states: [home_hold]
+  cancel_procedure: "Keep recovery authority with guardian; never cancel an active safety return from the executive. / 恢复控制权保留给 guardian；executive 不得取消进行中的安全返航。"
+pause: {pausable: false}
+completion_evidence:
+  - evidence_type: telemetry
+    criteria: {predicate: home_hold_verified, threshold_ref: m1_campus_v1.return_home, home_version_match: true, fresh_pose_required: true}
+failure_modes:
+  - {code: home_unreachable, description: "Home route no longer reachable / 返航路径不可达", recovery_hint: guardian_select_reachable_landing_site}
+  - {code: return_timeout, description: "Home arrival not confirmed / 未确认到达返航点", recovery_hint: outcome_unknown_then_policy}
+timeout_s: 300
+estimated_duration_s: 120
+implementation: {kind: deterministic}

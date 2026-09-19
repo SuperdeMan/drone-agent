@@ -15,11 +15,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import AwareDatetime, Field, field_validator, model_validator
 
 from drone_agent.contracts.common import ContractModel, Embodiment, Frame, Pose
 from drone_agent.contracts.skill import ResourceClaim
@@ -29,7 +29,7 @@ from drone_agent.contracts.skill import ResourceClaim
 # 规划器不得夹带进任务参数的键：它们属于控制出口，而控制出口只接受带租约代次的
 # ControlCommandEnvelope（见 authority.py）。
 FORBIDDEN_PARAM_KEYS: frozenset[str] = frozenset(
-    {"setpoint", "attitude", "thrust", "pwm", "actuator", "mavlink", "raw_command", "offboard", "lease_epoch"}
+    {"setpoint", "attitude", "thrust", "pwm", "actuator", "mavlink", "raw_command", "offboard", "lease_epoch", "command_seq"}
 )
 
 
@@ -71,8 +71,8 @@ class SpatialScope(ContractModel):
 class TemporalWindow(ContractModel):
     """Earliest start and latest end. / 最早开始与最晚结束时间。"""
 
-    not_before: datetime
-    not_after: datetime
+    not_before: AwareDatetime
+    not_after: AwareDatetime
     tz: str = "UTC"
 
     @model_validator(mode="after")
@@ -114,10 +114,23 @@ class Provenance(ContractModel):
 
 
 def _check_params(params: dict[str, Any]) -> dict[str, Any]:
-    # Fail closed on control-level keys regardless of case. / 对控制级键不分大小写一律拒绝。
-    bad = sorted(k for k in params if k.lower() in FORBIDDEN_PARAM_KEYS)
-    if bad:
-        raise ValueError(f"task params may not carry control-level keys: {bad}")
+    # Inspect containers recursively; nesting must not bypass the boundary.
+    # 递归检查容器；嵌套包装不得绕过边界。
+    pending: list[Any] = [params]
+    seen: set[int] = set()
+    while pending:
+        value = pending.pop()
+        if isinstance(value, (dict, list, tuple)):
+            if id(value) in seen:
+                continue
+            seen.add(id(value))
+        if isinstance(value, dict):
+            bad = sorted(k for k in value if isinstance(k, str) and k.lower() in FORBIDDEN_PARAM_KEYS)
+            if bad:
+                raise ValueError(f"task params may not carry control-level keys: {bad}")
+            pending.extend(value.values())
+        elif isinstance(value, (list, tuple)):
+            pending.extend(value)
     return params
 
 
@@ -143,7 +156,7 @@ class TaskNode(ContractModel):
         return _check_params(value)
 
 
-def _validate_dag(nodes: list[TaskNode]) -> None:
+def _validate_dag(nodes: list[TaskNode] | list[PackageNode]) -> None:
     """Unique ids, known dependencies, allow_unverified only on direct edges, and no cycles.
 
     id 唯一、依赖存在、allow_unverified 只能指向直接前驱、且无环。
@@ -218,11 +231,11 @@ class ApprovalRecord(ContractModel):
     """
 
     approver: str
-    approved_at: datetime
+    approved_at: AwareDatetime
     mission_id: str
     mission_version: int
     package_hash: str
-    expires_at: datetime
+    expires_at: AwareDatetime
     allowed_robots: list[str] = Field(default_factory=list)
 
 
@@ -261,17 +274,38 @@ class MissionPackage(ContractModel):
     recovery_policy_ref: str
     approval: ApprovalRecord | None = None
     package_hash: str = ""
+    # Legacy drafts remain parseable, but cannot be authorized without all boundaries.
+    # 旧草案仍可解析，但缺少任一边界时不能获得授权。
+    spatial_scope: SpatialScope | None = None
+    temporal_window: TemporalWindow | None = None
+    energy_budget: EnergyBudget | None = None
+
+    @model_validator(mode="after")
+    def _dag(self) -> MissionPackage:
+        _validate_dag(self.nodes)
+        return self
 
     def compute_hash(self) -> str:
         """SHA-256 over the canonical JSON of the executable content (approval excluded).
 
         对可执行内容（不含审批记录）的规范化 JSON 计算 SHA-256。
         """
+        window = self.temporal_window
+        # Timestamp wire values normalize to UTC; hashes must survive that roundtrip.
+        # Timestamp 在线路上传输时规范化为 UTC；哈希必须在该往返中保持一致。
+        if window is not None:
+            window = window.model_copy(update={
+                "not_before": window.not_before.astimezone(timezone.utc),
+                "not_after": window.not_after.astimezone(timezone.utc),
+            })
         payload = {
             "mission_id": self.mission_id,
             "mission_version": self.mission_version,
             "recovery_policy_ref": self.recovery_policy_ref,
             "nodes": [n.model_dump(mode="json") for n in self.nodes],
+            "spatial_scope": self.spatial_scope.model_dump(mode="json") if self.spatial_scope else None,
+            "temporal_window": window.model_dump(mode="json") if window else None,
+            "energy_budget": self.energy_budget.model_dump(mode="json") if self.energy_budget else None,
         }
         canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -282,12 +316,14 @@ class MissionPackage(ContractModel):
         机载接受规则：审批有效、哈希与版本匹配、机器人在授权范围内。
         """
         a = self.approval
-        if a is None:
+        if a is None or self.spatial_scope is None or self.temporal_window is None or self.energy_budget is None:
+            return False
+        if not self.temporal_window.not_before <= now < self.temporal_window.not_after:
             return False
         if a.mission_id != self.mission_id or a.mission_version != self.mission_version:
             return False
-        if a.package_hash != self.compute_hash():
+        if a.package_hash != self.package_hash or self.package_hash != self.compute_hash():
             return False
-        if now >= a.expires_at:
+        if not a.approved_at <= now < a.expires_at:
             return False
-        return not a.allowed_robots or robot_id in a.allowed_robots
+        return robot_id in a.allowed_robots and all(n.robot_id in a.allowed_robots for n in self.nodes)

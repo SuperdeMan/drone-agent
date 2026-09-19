@@ -52,7 +52,15 @@ MuJoCo 继续承担 `embodied-agent` 的机械臂基线，不用于飞控集成�
 | Nav2 | Jazzy 对应版本 | 随 ROS 2 |
 | Anthropic SDK | 最新稳定；模型 `claude-opus-5` | 按模型迁移指南 |
 
-版本组合锁定在 `configs/platform/*.yaml` 与容器基础镜像标签中；任何变更走 ADR。
+版本组合锁定在 `configs/platforms/*.yaml` 与容器基础镜像标签中；任何变更走 ADR。
+
+### M0 开发冒烟交付
+
+M0 提前创建 `proto/`、`scripts/`、`sim/`；M1 运行时子模块仍按实际实现创建。`configs/skills/` 保存五个基础技能草案，`configs/scenarios/` 保存故障注入矩阵。
+
+`sim/compose.yaml` 先提供独立的 PX4 SITL + Gazebo 服务；不预建没有实现的 ground/aircraft 服务。2026-09-19 实查官方预编译仓库缺少 v1.17.0 标签，因此用固定 digest 的官方 Jazzy 开发镜像构建 v1.17.0 源码（D022）。启动使用 headless `gz_x500`；冒烟只验证容器平台、PX4 版本、Gazebo 世界/时钟与遥测，不解锁、不起飞、不改变飞控参数。后续 M1 扩展成上述三镜像拓扑。
+
+Windows 开发通过已安装的 Docker Desktop Linux 后端运行；构建、运行与挂载入口使用 ASCII 路径，挂载目录与源仓库分离，仅复制冒烟所需文件，不复制 `.env`、`.git` 或其他项目文件。复现方法与实际结果分别见 `sim/README.md` 与 `docs/m0-readiness.md`。主机安装 WSL 发行版、全局依赖或调整系统设置仍按用户红线先批准。
 
 ## 5. 数据记录
 

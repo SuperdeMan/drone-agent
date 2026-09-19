@@ -38,7 +38,7 @@ L6 平台适配器（PX4 经 MAVSDK / px4_ros2、DJI Cloud API、ArduPilot、Nav
 
 ## 当前状态
 
-M0（2026-09）：规范、架构文档、契约模型与契约测试。尚无可飞行的代码；M1 目标是无大模型的 PX4 SITL 单机安全闭环。
+M0 已于 2026-09-19 完成：契约、已编译 proto 草案、五技能清单、故障注入矩阵与跨仓复用重估已交付。lint、258 项测试及未解锁的 PX4 v1.17.0 / Gazebo Harmonic 8.15.0 环境冒烟通过；见 [验证证据](docs/m0-readiness.md)。M1 目标是无大模型的单机安全闭环，当前尚未实现飞行运行时。
 
 ## 开发
 
@@ -47,9 +47,13 @@ M0（2026-09）：规范、架构文档、契约模型与契约测试。尚无�
 UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple uv sync --group dev
 uv run ruff check .
 uv run pytest -q
+uv run python scripts/generate_contract_fields.py --check
+uv run python scripts/generate_proto.py
 ```
 
 PX4 SITL / Gazebo / ROS 2 只在 Linux（WSL2 或 Docker）运行，仓库需放在 ASCII 路径下；契约与规划层代码是纯 Python，在 Windows 可直接测试。
+
+[仿真指南](sim/README.md) 只把仿真输入暂存到 ASCII 目录，并执行不解锁的 PX4/Gazebo 冒烟。[proto 指南](proto/README.md) 说明 wire 边界；[技能清单](docs/m1-skill-catalog.md) 区分草案与真实已实现能力。恢复场景名称表示计划覆盖，不是已通过的注入运行。
 
 ## 姊妹项目
 

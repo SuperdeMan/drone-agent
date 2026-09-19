@@ -1,0 +1,4329 @@
+{
+  "schema_version": "0.1.0",
+  "models": {
+    "AerialState": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "header",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "ObservationHeader",
+        "schema": {
+          "$ref": "#/$defs/ObservationHeader"
+        }
+      },
+      {
+        "name": "pose",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "Pose",
+        "schema": {
+          "$ref": "#/$defs/Pose"
+        }
+      },
+      {
+        "name": "velocity_mps",
+        "number": 4,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "double",
+        "schema": {
+          "default": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Velocity Mps",
+          "type": "array"
+        }
+      },
+      {
+        "name": "flight_phase",
+        "number": 5,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "unknown",
+          "title": "Flight Phase",
+          "type": "string"
+        }
+      },
+      {
+        "name": "control_mode",
+        "number": 6,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "ControlMode",
+        "schema": {
+          "$ref": "#/$defs/ControlMode",
+          "default": "none"
+        }
+      },
+      {
+        "name": "armed",
+        "number": 7,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "default": false,
+          "title": "Armed",
+          "type": "boolean"
+        }
+      },
+      {
+        "name": "fc_failsafe_active",
+        "number": 8,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "default": false,
+          "title": "Fc Failsafe Active",
+          "type": "boolean"
+        }
+      },
+      {
+        "name": "localization",
+        "number": 9,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "LocalizationHealth",
+        "schema": {
+          "$ref": "#/$defs/LocalizationHealth"
+        }
+      },
+      {
+        "name": "energy",
+        "number": 10,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "EnergyState",
+        "schema": {
+          "$ref": "#/$defs/EnergyState"
+        }
+      }
+    ],
+    "ApprovalRecord": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "approver",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Approver",
+          "type": "string"
+        }
+      },
+      {
+        "name": "approved_at",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_id",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Mission Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_version",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "title": "Mission Version",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "package_hash",
+        "number": 6,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Package Hash",
+          "type": "string"
+        }
+      },
+      {
+        "name": "expires_at",
+        "number": 7,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        }
+      },
+      {
+        "name": "allowed_robots",
+        "number": 8,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Robots",
+          "type": "array"
+        }
+      }
+    ],
+    "CancelSpec": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "cancel_safe_states",
+        "number": 2,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Cancel Safe States",
+          "type": "array"
+        }
+      },
+      {
+        "name": "cancel_procedure",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "description": "what the skill does to wind down when cancelled / 取消时的收尾动作",
+          "minLength": 1,
+          "title": "Cancel Procedure",
+          "type": "string"
+        }
+      }
+    ],
+    "CapabilityDescriptor": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "robot_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Robot Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "embodiment",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "Embodiment",
+        "schema": {
+          "$ref": "#/$defs/Embodiment"
+        }
+      },
+      {
+        "name": "interface_version",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Interface Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "control_modes",
+        "number": 5,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "ControlMode",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/ControlMode"
+          },
+          "title": "Control Modes",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      {
+        "name": "skills",
+        "number": 6,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "SkillRef",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/SkillRef"
+          },
+          "title": "Skills",
+          "type": "array"
+        }
+      },
+      {
+        "name": "sensors",
+        "number": 7,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "SensorSpec",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/SensorSpec"
+          },
+          "title": "Sensors",
+          "type": "array"
+        }
+      },
+      {
+        "name": "payloads",
+        "number": 8,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "PayloadSpec",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/PayloadSpec"
+          },
+          "title": "Payloads",
+          "type": "array"
+        }
+      },
+      {
+        "name": "limits",
+        "number": 9,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "Limits",
+        "schema": {
+          "$ref": "#/$defs/Limits"
+        }
+      },
+      {
+        "name": "recovery_behaviors",
+        "number": 10,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "RecoveryBehavior",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/RecoveryBehavior"
+          },
+          "title": "Recovery Behaviors",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      {
+        "name": "vendor",
+        "number": 11,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "",
+          "title": "Vendor",
+          "type": "string"
+        }
+      },
+      {
+        "name": "model",
+        "number": 12,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "",
+          "title": "Model",
+          "type": "string"
+        }
+      },
+      {
+        "name": "vendor_constraints",
+        "number": 13,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Vendor Constraints",
+          "type": "array"
+        }
+      }
+    ],
+    "CollaborationRule": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "trigger",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "description": "e.g. anomaly_candidate_detected / 如 anomaly_candidate_detected",
+          "title": "Trigger",
+          "type": "string"
+        }
+      },
+      {
+        "name": "required_skill",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Required Skill",
+          "type": "string"
+        }
+      },
+      {
+        "name": "required_embodiments",
+        "number": 4,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "Embodiment",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/Embodiment"
+          },
+          "title": "Required Embodiments",
+          "type": "array"
+        }
+      },
+      {
+        "name": "handoff_timeout_s",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "exclusiveMinimum": 0,
+          "title": "Handoff Timeout S",
+          "type": "number"
+        }
+      }
+    ],
+    "CommsState": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "uplink_ok",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "title": "Uplink Ok",
+          "type": "boolean"
+        }
+      },
+      {
+        "name": "latency_ms",
+        "number": 3,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latency Ms"
+        }
+      },
+      {
+        "name": "last_seen",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Seen"
+        }
+      }
+    ],
+    "ControlCommandEnvelope": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "key",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "IdempotencyKey",
+        "schema": {
+          "$ref": "#/$defs/IdempotencyKey"
+        }
+      },
+      {
+        "name": "command_seq",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "description": "monotonic per lease epoch / 在同一租约代次内单调递增",
+          "minimum": 0,
+          "title": "Command Seq",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "issued_at",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Issued At",
+          "type": "string"
+        }
+      },
+      {
+        "name": "valid_until",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      {
+        "name": "intent_kind",
+        "number": 6,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "description": "mode_request | route | local_goal | trajectory_segment / 模式请求 | 航线 | 局部目标 | 轨迹片段",
+          "title": "Intent Kind",
+          "type": "string"
+        }
+      },
+      {
+        "name": "payload",
+        "number": 7,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bytes",
+        "schema": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        }
+      }
+    ],
+    "EgressDecision": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "accepted",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "title": "Accepted",
+          "type": "boolean"
+        }
+      },
+      {
+        "name": "reason",
+        "number": 3,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "",
+          "title": "Reason",
+          "type": "string"
+        }
+      }
+    ],
+    "EnergyBudget": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "max_consumption_fraction",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "Max Consumption Fraction",
+          "type": "number"
+        }
+      },
+      {
+        "name": "reserve_fraction",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "exclusiveMaximum": 1.0,
+          "minimum": 0.0,
+          "title": "Reserve Fraction",
+          "type": "number"
+        }
+      }
+    ],
+    "EnergyState": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "remaining_fraction",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Remaining Fraction",
+          "type": "number"
+        }
+      },
+      {
+        "name": "remaining_energy_wh",
+        "number": 3,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remaining Energy Wh"
+        }
+      },
+      {
+        "name": "reserve_required_fraction",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "default": 0.2,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Reserve Required Fraction",
+          "type": "number"
+        }
+      }
+    ],
+    "Evidence": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "evidence_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Evidence Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "kind",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "description": "image | video | telemetry | pointcloud / 影像 | 视频 | 遥测 | 点云",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      {
+        "name": "media_ref",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Media Ref",
+          "type": "string"
+        }
+      },
+      {
+        "name": "sha256",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      {
+        "name": "time_window",
+        "number": 6,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "TimeWindow",
+        "schema": {
+          "$ref": "#/$defs/TimeWindow"
+        }
+      },
+      {
+        "name": "captured_pose",
+        "number": 7,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "Pose",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Pose"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      {
+        "name": "subject_ids",
+        "number": 8,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Subject Ids",
+          "type": "array"
+        }
+      },
+      {
+        "name": "quality",
+        "number": 9,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bytes",
+        "schema": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Quality",
+          "type": "object"
+        }
+      },
+      {
+        "name": "produced_by_skill_instance",
+        "number": 10,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Produced By Skill Instance",
+          "type": "string"
+        }
+      }
+    ],
+    "EvidenceRequirement": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "evidence_type",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Evidence Type",
+          "type": "string"
+        }
+      },
+      {
+        "name": "criteria",
+        "number": 3,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bytes",
+        "schema": {
+          "additionalProperties": true,
+          "title": "Criteria",
+          "type": "object"
+        }
+      }
+    ],
+    "ExecutionEvent": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "event_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Event Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "event_type",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "EventType",
+        "schema": {
+          "$ref": "#/$defs/EventType"
+        }
+      },
+      {
+        "name": "timestamp",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_id",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Mission Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_version",
+        "number": 6,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "title": "Mission Version",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "robot_id",
+        "number": 7,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Robot Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "step_id",
+        "number": 8,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step Id"
+        }
+      },
+      {
+        "name": "command_id",
+        "number": 9,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Command Id"
+        }
+      },
+      {
+        "name": "lease_epoch",
+        "number": 10,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lease Epoch"
+        }
+      },
+      {
+        "name": "execution_status",
+        "number": 11,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "ExecutionStatus",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExecutionStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      {
+        "name": "effect_verdict",
+        "number": 12,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "EffectVerdict",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EffectVerdict"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      {
+        "name": "safety_verdict",
+        "number": 13,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "SafetyVerdict",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SafetyVerdict"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      {
+        "name": "reason",
+        "number": 14,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      {
+        "name": "evidence_refs",
+        "number": 15,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        }
+      },
+      {
+        "name": "data",
+        "number": 16,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bytes",
+        "schema": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      }
+    ],
+    "FailureMode": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "code",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Code",
+          "type": "string"
+        }
+      },
+      {
+        "name": "description",
+        "number": 3,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      {
+        "name": "recovery_hint",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "",
+          "title": "Recovery Hint",
+          "type": "string"
+        }
+      }
+    ],
+    "Frame": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "frame_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Frame Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "map_version",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Map Version",
+          "type": "string"
+        }
+      }
+    ],
+    "GroundMobileState": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "header",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "ObservationHeader",
+        "schema": {
+          "$ref": "#/$defs/ObservationHeader"
+        }
+      },
+      {
+        "name": "pose",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "Pose",
+        "schema": {
+          "$ref": "#/$defs/Pose"
+        }
+      },
+      {
+        "name": "velocity_mps",
+        "number": 4,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "double",
+        "schema": {
+          "default": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Velocity Mps",
+          "type": "array"
+        }
+      },
+      {
+        "name": "traversability_ok",
+        "number": 5,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "local judgement; never inferred from the air / 本地判断，不能由空中推断",
+          "title": "Traversability Ok"
+        }
+      },
+      {
+        "name": "localization",
+        "number": 6,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "LocalizationHealth",
+        "schema": {
+          "$ref": "#/$defs/LocalizationHealth"
+        }
+      },
+      {
+        "name": "energy",
+        "number": 7,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "EnergyState",
+        "schema": {
+          "$ref": "#/$defs/EnergyState"
+        }
+      }
+    ],
+    "IdempotencyKey": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Mission Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_version",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "title": "Mission Version",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "step_id",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Step Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "command_id",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Command Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "robot_id",
+        "number": 6,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Robot Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "lease_epoch",
+        "number": 7,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "title": "Lease Epoch",
+          "type": "integer"
+        }
+      }
+    ],
+    "Implementation": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "kind",
+        "number": 2,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "ImplementationKind",
+        "schema": {
+          "$ref": "#/$defs/ImplementationKind",
+          "default": "deterministic"
+        }
+      },
+      {
+        "name": "learned_stage",
+        "number": 3,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "LearnedStage",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LearnedStage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      {
+        "name": "model_version",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version"
+        }
+      }
+    ],
+    "Limits": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "max_speed_mps",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "title": "Max Speed Mps",
+          "type": "number"
+        }
+      },
+      {
+        "name": "max_altitude_m_agl",
+        "number": 3,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Altitude M Agl"
+        }
+      },
+      {
+        "name": "endurance_s",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "title": "Endurance S",
+          "type": "number"
+        }
+      },
+      {
+        "name": "max_wind_mps",
+        "number": 5,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Wind Mps"
+        }
+      },
+      {
+        "name": "max_payload_kg",
+        "number": 6,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Payload Kg"
+        }
+      },
+      {
+        "name": "min_turn_radius_m",
+        "number": 7,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Turn Radius M"
+        }
+      },
+      {
+        "name": "can_hover",
+        "number": 8,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "default": true,
+          "title": "Can Hover",
+          "type": "boolean"
+        }
+      }
+    ],
+    "LocalizationHealth": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "fix_type",
+        "number": 2,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "none",
+          "title": "Fix Type",
+          "type": "string"
+        }
+      },
+      {
+        "name": "position_std_m",
+        "number": 3,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Position Std M"
+        }
+      },
+      {
+        "name": "healthy",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "default": false,
+          "title": "Healthy",
+          "type": "boolean"
+        }
+      }
+    ],
+    "MissionPackage": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Mission Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_version",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "title": "Mission Version",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "nodes",
+        "number": 4,
+        "required": true,
+        "cardinality": "repeated",
+        "wire_type": "PackageNode",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/PackageNode"
+          },
+          "minItems": 1,
+          "title": "Nodes",
+          "type": "array"
+        }
+      },
+      {
+        "name": "recovery_policy_ref",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Recovery Policy Ref",
+          "type": "string"
+        }
+      },
+      {
+        "name": "approval",
+        "number": 6,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "ApprovalRecord",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ApprovalRecord"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      {
+        "name": "package_hash",
+        "number": 7,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "",
+          "title": "Package Hash",
+          "type": "string"
+        }
+      },
+      {
+        "name": "spatial_scope",
+        "number": 8,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "SpatialScope",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SpatialScope"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      {
+        "name": "temporal_window",
+        "number": 9,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "TemporalWindow",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TemporalWindow"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      {
+        "name": "energy_budget",
+        "number": 10,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "EnergyBudget",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EnergyBudget"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      }
+    ],
+    "MissionSpec": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Mission Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_version",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "minimum": 1,
+          "title": "Mission Version",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "goal",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Goal",
+          "type": "string"
+        }
+      },
+      {
+        "name": "goal_type",
+        "number": 5,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "GoalType",
+        "schema": {
+          "$ref": "#/$defs/GoalType",
+          "default": "other"
+        }
+      },
+      {
+        "name": "targets",
+        "number": 6,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "TargetRef",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/TargetRef"
+          },
+          "title": "Targets",
+          "type": "array"
+        }
+      },
+      {
+        "name": "spatial_scope",
+        "number": 7,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "SpatialScope",
+        "schema": {
+          "$ref": "#/$defs/SpatialScope"
+        }
+      },
+      {
+        "name": "temporal_window",
+        "number": 8,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "TemporalWindow",
+        "schema": {
+          "$ref": "#/$defs/TemporalWindow"
+        }
+      },
+      {
+        "name": "tasks",
+        "number": 9,
+        "required": true,
+        "cardinality": "repeated",
+        "wire_type": "TaskNode",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/TaskNode"
+          },
+          "minItems": 1,
+          "title": "Tasks",
+          "type": "array"
+        }
+      },
+      {
+        "name": "energy_budget",
+        "number": 10,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "EnergyBudget",
+        "schema": {
+          "$ref": "#/$defs/EnergyBudget"
+        }
+      },
+      {
+        "name": "recovery_policy_ref",
+        "number": 11,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "description": "scenario-configured; never generated by the LLM / 场景配置指定，不由 LLM 生成",
+          "minLength": 1,
+          "title": "Recovery Policy Ref",
+          "type": "string"
+        }
+      },
+      {
+        "name": "collaboration_rules",
+        "number": 12,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "CollaborationRule",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/CollaborationRule"
+          },
+          "title": "Collaboration Rules",
+          "type": "array"
+        }
+      },
+      {
+        "name": "provenance",
+        "number": 13,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "Provenance",
+        "schema": {
+          "$ref": "#/$defs/Provenance"
+        }
+      }
+    ],
+    "ObservationHeader": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "robot_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Robot Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "timestamp",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        }
+      },
+      {
+        "name": "valid_until",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        }
+      },
+      {
+        "name": "frame",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "Frame",
+        "schema": {
+          "$ref": "#/$defs/Frame"
+        }
+      },
+      {
+        "name": "source",
+        "number": 6,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "FactSource",
+        "schema": {
+          "$ref": "#/$defs/FactSource",
+          "default": "sensor"
+        }
+      },
+      {
+        "name": "source_version",
+        "number": 7,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Version"
+        }
+      }
+    ],
+    "PackageNode": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "task_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "skill_id",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Skill Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "skill_version",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Skill Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "robot_id",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Robot Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "params",
+        "number": 6,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bytes",
+        "schema": {
+          "additionalProperties": true,
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      {
+        "name": "depends_on",
+        "number": 7,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        }
+      },
+      {
+        "name": "resources",
+        "number": 8,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "ResourceClaim",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/ResourceClaim"
+          },
+          "title": "Resources",
+          "type": "array"
+        }
+      },
+      {
+        "name": "timeout_s",
+        "number": 9,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "exclusiveMinimum": 0,
+          "title": "Timeout S",
+          "type": "number"
+        }
+      },
+      {
+        "name": "completion_evidence",
+        "number": 10,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Completion Evidence",
+          "type": "array"
+        }
+      },
+      {
+        "name": "allow_unverified_from",
+        "number": 11,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allow Unverified From",
+          "type": "array"
+        }
+      }
+    ],
+    "PauseSpec": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "pausable",
+        "number": 2,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "default": false,
+          "title": "Pausable",
+          "type": "boolean"
+        }
+      },
+      {
+        "name": "safe_wait_condition",
+        "number": 3,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "",
+          "title": "Safe Wait Condition",
+          "type": "string"
+        }
+      },
+      {
+        "name": "max_wait_s",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Wait S"
+        }
+      }
+    ],
+    "PayloadSpec": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "payload_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Payload Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "kind",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      {
+        "name": "capabilities",
+        "number": 4,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Capabilities",
+          "type": "array"
+        }
+      }
+    ],
+    "PlannerTool": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "name",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      {
+        "name": "read_only",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "title": "Read Only",
+          "type": "boolean"
+        }
+      },
+      {
+        "name": "description",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      }
+    ],
+    "PlannerToolAllowlist": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "tools",
+        "number": 2,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "PlannerTool",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/PlannerTool"
+          },
+          "title": "Tools",
+          "type": "array"
+        }
+      }
+    ],
+    "Pose": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "frame",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "Frame",
+        "schema": {
+          "$ref": "#/$defs/Frame"
+        }
+      },
+      {
+        "name": "position",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "Position",
+        "schema": {
+          "$ref": "#/$defs/Position"
+        }
+      },
+      {
+        "name": "orientation",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "Quaternion",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Quaternion"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      }
+    ],
+    "Position": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "x",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "title": "X",
+          "type": "number"
+        }
+      },
+      {
+        "name": "y",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      {
+        "name": "z",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "title": "Z",
+          "type": "number"
+        }
+      },
+      {
+        "name": "covariance",
+        "number": 5,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "double",
+        "schema": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "row-major 3x3, 9 values / 行优先 3x3，共 9 个值",
+          "title": "Covariance"
+        }
+      }
+    ],
+    "Provenance": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "model_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Model Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "prompt_version",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Prompt Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "input_hash",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Input Hash",
+          "type": "string"
+        }
+      },
+      {
+        "name": "generated_at",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        }
+      }
+    ],
+    "Quaternion": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "x",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "title": "X",
+          "type": "number"
+        }
+      },
+      {
+        "name": "y",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      {
+        "name": "z",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "title": "Z",
+          "type": "number"
+        }
+      },
+      {
+        "name": "w",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "title": "W",
+          "type": "number"
+        }
+      }
+    ],
+    "RecoveryEdge": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "trigger",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "RecoveryTrigger",
+        "schema": {
+          "$ref": "#/$defs/RecoveryTrigger"
+        }
+      },
+      {
+        "name": "guard",
+        "number": 3,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bytes",
+        "schema": {
+          "additionalProperties": true,
+          "description": "context predicates: list value = membership, scalar = equality; missing key = no match / 上下文谓词：列表值表示属于，标量表示相等；上下文缺键即不匹配",
+          "title": "Guard",
+          "type": "object"
+        }
+      },
+      {
+        "name": "target",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "RecoveryBehavior",
+        "schema": {
+          "$ref": "#/$defs/RecoveryBehavior"
+        }
+      },
+      {
+        "name": "then",
+        "number": 5,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "RecoveryBehavior",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RecoveryBehavior"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "follow-up behaviour after `after_s` / 经过 `after_s` 后接续的行为"
+        }
+      },
+      {
+        "name": "after_s",
+        "number": 6,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "After S"
+        }
+      },
+      {
+        "name": "fault_injection_scenario",
+        "number": 7,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "planned injection scenario; not proof of validation / 计划中的注入场景，不是验证证据",
+          "title": "Fault Injection Scenario"
+        }
+      },
+      {
+        "name": "validation",
+        "number": 8,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "RecoveryValidation",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RecoveryValidation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      }
+    ],
+    "RecoveryPolicy": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "policy_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Policy Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "version",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "embodiment",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "Embodiment",
+        "schema": {
+          "$ref": "#/$defs/Embodiment"
+        }
+      },
+      {
+        "name": "nodes",
+        "number": 5,
+        "required": true,
+        "cardinality": "repeated",
+        "wire_type": "RecoveryBehavior",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/RecoveryBehavior"
+          },
+          "title": "Nodes",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      {
+        "name": "edges",
+        "number": 6,
+        "required": true,
+        "cardinality": "repeated",
+        "wire_type": "RecoveryEdge",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/RecoveryEdge"
+          },
+          "title": "Edges",
+          "type": "array"
+        }
+      },
+      {
+        "name": "resume_conditions",
+        "number": 7,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "description": "all must hold before control returns to the high-performance path / 全部成立后才允许把控制交还高性能路径",
+          "items": {
+            "type": "string"
+          },
+          "title": "Resume Conditions",
+          "type": "array"
+        }
+      }
+    ],
+    "RecoveryValidation": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "scenario_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Scenario Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "edge_hash",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Edge Hash",
+          "type": "string"
+        }
+      },
+      {
+        "name": "software_revision",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Software Revision",
+          "type": "string"
+        }
+      },
+      {
+        "name": "tested_at",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Tested At",
+          "type": "string"
+        }
+      },
+      {
+        "name": "evidence_ref",
+        "number": 6,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Evidence Ref",
+          "type": "string"
+        }
+      }
+    ],
+    "ResourceClaim": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "resource_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "description": "<robot_id>.<resource>, e.g. uav_01.motion / 如 uav_01.motion",
+          "minLength": 1,
+          "title": "Resource Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mode",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "ResourceMode",
+        "schema": {
+          "$ref": "#/$defs/ResourceMode"
+        }
+      },
+      {
+        "name": "shared_mode",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "e.g. camera 'still' vs 'video' / 如相机的 still 与 video",
+          "title": "Shared Mode"
+        }
+      }
+    ],
+    "RobotStatus": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "robot_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Robot Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "timestamp",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        }
+      },
+      {
+        "name": "flight_phase",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "unknown",
+          "title": "Flight Phase",
+          "type": "string"
+        }
+      },
+      {
+        "name": "control_mode",
+        "number": 5,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "ControlMode",
+        "schema": {
+          "$ref": "#/$defs/ControlMode",
+          "default": "none"
+        }
+      },
+      {
+        "name": "energy",
+        "number": 6,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "EnergyState",
+        "schema": {
+          "$ref": "#/$defs/EnergyState"
+        }
+      },
+      {
+        "name": "localization",
+        "number": 7,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "LocalizationHealth",
+        "schema": {
+          "$ref": "#/$defs/LocalizationHealth"
+        }
+      },
+      {
+        "name": "comms",
+        "number": 8,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "CommsState",
+        "schema": {
+          "$ref": "#/$defs/CommsState"
+        }
+      },
+      {
+        "name": "lease_epoch",
+        "number": 9,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lease Epoch"
+        }
+      },
+      {
+        "name": "active_skill_instance",
+        "number": 10,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Active Skill Instance"
+        }
+      },
+      {
+        "name": "held_resources",
+        "number": 11,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Held Resources",
+          "type": "array"
+        }
+      },
+      {
+        "name": "fc_failsafe_active",
+        "number": 12,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "default": false,
+          "title": "Fc Failsafe Active",
+          "type": "boolean"
+        }
+      }
+    ],
+    "SensorSpec": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "sensor_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Sensor Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "kind",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      {
+        "name": "frame_id",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Frame Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "nominal_accuracy",
+        "number": 5,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bytes",
+        "schema": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Nominal Accuracy",
+          "type": "object"
+        }
+      }
+    ],
+    "SkillManifest": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "skill_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Skill Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "version",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "description",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      {
+        "name": "embodiments",
+        "number": 5,
+        "required": true,
+        "cardinality": "repeated",
+        "wire_type": "Embodiment",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/Embodiment"
+          },
+          "title": "Embodiments",
+          "type": "array"
+        }
+      },
+      {
+        "name": "params_schema",
+        "number": 6,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bytes",
+        "schema": {
+          "additionalProperties": true,
+          "description": "JSON Schema with units / 带单位的 JSON Schema",
+          "title": "Params Schema",
+          "type": "object"
+        }
+      },
+      {
+        "name": "preconditions",
+        "number": 7,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        }
+      },
+      {
+        "name": "invariants",
+        "number": 8,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Invariants",
+          "type": "array"
+        }
+      },
+      {
+        "name": "resources",
+        "number": 9,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "ResourceClaim",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/ResourceClaim"
+          },
+          "title": "Resources",
+          "type": "array"
+        }
+      },
+      {
+        "name": "progress_schema",
+        "number": 10,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bytes",
+        "schema": {
+          "additionalProperties": true,
+          "title": "Progress Schema",
+          "type": "object"
+        }
+      },
+      {
+        "name": "cancel",
+        "number": 11,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "CancelSpec",
+        "schema": {
+          "$ref": "#/$defs/CancelSpec"
+        }
+      },
+      {
+        "name": "pause",
+        "number": 12,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "PauseSpec",
+        "schema": {
+          "$ref": "#/$defs/PauseSpec"
+        }
+      },
+      {
+        "name": "completion_evidence",
+        "number": 13,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "EvidenceRequirement",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRequirement"
+          },
+          "title": "Completion Evidence",
+          "type": "array"
+        }
+      },
+      {
+        "name": "failure_modes",
+        "number": 14,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "FailureMode",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/FailureMode"
+          },
+          "title": "Failure Modes",
+          "type": "array"
+        }
+      },
+      {
+        "name": "timeout_s",
+        "number": 15,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "exclusiveMinimum": 0,
+          "title": "Timeout S",
+          "type": "number"
+        }
+      },
+      {
+        "name": "estimated_duration_s",
+        "number": 16,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimated Duration S"
+        }
+      },
+      {
+        "name": "estimated_energy_fraction",
+        "number": 17,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimated Energy Fraction"
+        }
+      },
+      {
+        "name": "implementation",
+        "number": 18,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "Implementation",
+        "schema": {
+          "$ref": "#/$defs/Implementation"
+        }
+      },
+      {
+        "name": "required_control_modes",
+        "number": 19,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "ControlMode",
+        "schema": {
+          "items": {
+            "$ref": "#/$defs/ControlMode"
+          },
+          "title": "Required Control Modes",
+          "type": "array",
+          "uniqueItems": true
+        }
+      }
+    ],
+    "SkillRef": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "skill_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Skill Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "version",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Version",
+          "type": "string"
+        }
+      }
+    ],
+    "SpatialScope": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "approved_volume_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Approved Volume Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "frame",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "Frame",
+        "schema": {
+          "$ref": "#/$defs/Frame"
+        }
+      }
+    ],
+    "StepOutcome": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Mission Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_version",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "title": "Mission Version",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "step_id",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Step Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "robot_id",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Robot Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "execution_status",
+        "number": 6,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "ExecutionStatus",
+        "schema": {
+          "$ref": "#/$defs/ExecutionStatus"
+        }
+      },
+      {
+        "name": "effect_verdict",
+        "number": 7,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "EffectVerdict",
+        "schema": {
+          "$ref": "#/$defs/EffectVerdict",
+          "default": "unknown"
+        }
+      },
+      {
+        "name": "safety_verdict",
+        "number": 8,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "SafetyVerdict",
+        "schema": {
+          "$ref": "#/$defs/SafetyVerdict",
+          "default": "proceed"
+        }
+      }
+    ],
+    "TargetRef": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "asset_id",
+        "number": 2,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Id"
+        }
+      },
+      {
+        "name": "pose",
+        "number": 3,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "Pose",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Pose"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      {
+        "name": "description",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      }
+    ],
+    "TaskLease": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "robot_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Robot Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_id",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Mission Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_version",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "title": "Mission Version",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "lease_epoch",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "description": "control-authority generation; bumps on every re-grant / 控制权代次，每次重新授予 +1",
+          "minimum": 0,
+          "title": "Lease Epoch",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "holder",
+        "number": 6,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Holder",
+          "type": "string"
+        }
+      },
+      {
+        "name": "issued_at",
+        "number": 7,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Issued At",
+          "type": "string"
+        }
+      },
+      {
+        "name": "expires_at",
+        "number": 8,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        }
+      },
+      {
+        "name": "resources",
+        "number": 9,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Resources",
+          "type": "array"
+        }
+      }
+    ],
+    "TaskNode": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "task_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "skill_id",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Skill Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "params",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bytes",
+        "schema": {
+          "additionalProperties": true,
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      {
+        "name": "depends_on",
+        "number": 5,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        }
+      },
+      {
+        "name": "completion_evidence",
+        "number": 6,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Completion Evidence",
+          "type": "array"
+        }
+      },
+      {
+        "name": "allow_unverified_from",
+        "number": 7,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "description": "predecessor ids whose edge may pass with effect_verdict=unverified; admission must approve / 允许以 effect_verdict=unverified 放行的前驱 id；须经准入审批",
+          "items": {
+            "type": "string"
+          },
+          "title": "Allow Unverified From",
+          "type": "array"
+        }
+      }
+    ],
+    "TemporalWindow": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "not_before",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Not Before",
+          "type": "string"
+        }
+      },
+      {
+        "name": "not_after",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Not After",
+          "type": "string"
+        }
+      },
+      {
+        "name": "tz",
+        "number": 4,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "UTC",
+          "title": "Tz",
+          "type": "string"
+        }
+      }
+    ],
+    "TimeWindow": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "timestamp",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        }
+      },
+      {
+        "name": "valid_until",
+        "number": 3,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        }
+      }
+    ],
+    "WorldFact": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "fact_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Fact Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "subject",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      {
+        "name": "predicate",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Predicate",
+          "type": "string"
+        }
+      },
+      {
+        "name": "value",
+        "number": 5,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bytes",
+        "schema": {
+          "default": null,
+          "title": "Value"
+        }
+      },
+      {
+        "name": "frame",
+        "number": 6,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "Frame",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Frame"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      {
+        "name": "position",
+        "number": 7,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "Position",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Position"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      {
+        "name": "timestamp",
+        "number": 8,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        }
+      },
+      {
+        "name": "valid_until",
+        "number": 9,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        }
+      },
+      {
+        "name": "source",
+        "number": 10,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "FactSource",
+        "schema": {
+          "$ref": "#/$defs/FactSource"
+        }
+      },
+      {
+        "name": "source_version",
+        "number": 11,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Version"
+        }
+      },
+      {
+        "name": "confidence",
+        "number": 12,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "default": 1.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        }
+      },
+      {
+        "name": "world_kind",
+        "number": 13,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "WorldKind",
+        "schema": {
+          "$ref": "#/$defs/WorldKind",
+          "default": "belief"
+        }
+      },
+      {
+        "name": "evidence_refs",
+        "number": 14,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        }
+      }
+    ]
+  },
+  "enums": {
+    "ControlMode": {
+      "CONTROL_MODE_UNSPECIFIED": 0,
+      "CONTROL_MODE_MISSION_UPLOAD": 1,
+      "CONTROL_MODE_OFFBOARD_POSITION": 2,
+      "CONTROL_MODE_OFFBOARD_VELOCITY": 3,
+      "CONTROL_MODE_OFFBOARD_TRAJECTORY": 4,
+      "CONTROL_MODE_EXTERNAL_MODE": 5,
+      "CONTROL_MODE_NAV_TO_POSE": 6,
+      "CONTROL_MODE_NONE": 7
+    },
+    "EffectVerdict": {
+      "EFFECT_VERDICT_UNSPECIFIED": 0,
+      "EFFECT_VERDICT_VERIFIED": 1,
+      "EFFECT_VERDICT_UNVERIFIED": 2,
+      "EFFECT_VERDICT_REFUTED": 3,
+      "EFFECT_VERDICT_UNKNOWN": 4
+    },
+    "Embodiment": {
+      "EMBODIMENT_UNSPECIFIED": 0,
+      "EMBODIMENT_AERIAL_MULTIROTOR": 1,
+      "EMBODIMENT_AERIAL_VTOL": 2,
+      "EMBODIMENT_AERIAL_FIXED_WING": 3,
+      "EMBODIMENT_GROUND_WHEELED": 4,
+      "EMBODIMENT_GROUND_LEGGED": 5,
+      "EMBODIMENT_MANIPULATOR": 6
+    },
+    "EventType": {
+      "EVENT_TYPE_UNSPECIFIED": 0,
+      "EVENT_TYPE_COMMAND_ACCEPTED": 1,
+      "EVENT_TYPE_COMMAND_REJECTED": 2,
+      "EVENT_TYPE_SKILL_STARTED": 3,
+      "EVENT_TYPE_SKILL_PROGRESS": 4,
+      "EVENT_TYPE_SKILL_PAUSED": 5,
+      "EVENT_TYPE_SKILL_CANCEL_REQUESTED": 6,
+      "EVENT_TYPE_SKILL_COMPLETED": 7,
+      "EVENT_TYPE_SKILL_FAILED": 8,
+      "EVENT_TYPE_EFFECT_VERIFIED": 9,
+      "EVENT_TYPE_EFFECT_REFUTED": 10,
+      "EVENT_TYPE_EFFECT_UNKNOWN": 11,
+      "EVENT_TYPE_SAFETY_INTERVENTION": 12,
+      "EVENT_TYPE_LEASE_ISSUED": 13,
+      "EVENT_TYPE_LEASE_EXPIRED": 14,
+      "EVENT_TYPE_LEASE_REVOKED": 15,
+      "EVENT_TYPE_RECOVERED_TO": 16,
+      "EVENT_TYPE_HANDOFF_OFFERED": 17,
+      "EVENT_TYPE_HANDOFF_ACCEPTED": 18,
+      "EVENT_TYPE_HANDOFF_REJECTED": 19,
+      "EVENT_TYPE_HANDOFF_COMPLETED": 20,
+      "EVENT_TYPE_HANDOFF_TIMEOUT": 21
+    },
+    "ExecutionStatus": {
+      "EXECUTION_STATUS_UNSPECIFIED": 0,
+      "EXECUTION_STATUS_PENDING": 1,
+      "EXECUTION_STATUS_ACCEPTED": 2,
+      "EXECUTION_STATUS_RUNNING": 3,
+      "EXECUTION_STATUS_SUCCEEDED": 4,
+      "EXECUTION_STATUS_FAILED": 5,
+      "EXECUTION_STATUS_CANCELLED": 6,
+      "EXECUTION_STATUS_TIMEOUT": 7,
+      "EXECUTION_STATUS_UNKNOWN": 8
+    },
+    "FactSource": {
+      "FACT_SOURCE_UNSPECIFIED": 0,
+      "FACT_SOURCE_SENSOR": 1,
+      "FACT_SOURCE_MODEL": 2,
+      "FACT_SOURCE_HUMAN": 3,
+      "FACT_SOURCE_SIM_TRUTH": 4
+    },
+    "GoalType": {
+      "GOAL_TYPE_UNSPECIFIED": 0,
+      "GOAL_TYPE_INSPECT": 1,
+      "GOAL_TYPE_SURVEY": 2,
+      "GOAL_TYPE_DELIVER": 3,
+      "GOAL_TYPE_SEARCH": 4,
+      "GOAL_TYPE_RECHECK": 5,
+      "GOAL_TYPE_OTHER": 6
+    },
+    "ImplementationKind": {
+      "IMPLEMENTATION_KIND_UNSPECIFIED": 0,
+      "IMPLEMENTATION_KIND_DETERMINISTIC": 1,
+      "IMPLEMENTATION_KIND_LEARNED": 2
+    },
+    "LearnedStage": {
+      "LEARNED_STAGE_UNSPECIFIED": 0,
+      "LEARNED_STAGE_SHADOW": 1,
+      "LEARNED_STAGE_LIMITED": 2,
+      "LEARNED_STAGE_FULL": 3
+    },
+    "RecoveryBehavior": {
+      "RECOVERY_BEHAVIOR_UNSPECIFIED": 0,
+      "RECOVERY_BEHAVIOR_HOLD": 1,
+      "RECOVERY_BEHAVIOR_LOITER": 2,
+      "RECOVERY_BEHAVIOR_RTL": 3,
+      "RECOVERY_BEHAVIOR_LAND_HERE": 4,
+      "RECOVERY_BEHAVIOR_LAND_AT": 5,
+      "RECOVERY_BEHAVIOR_HANDOVER_TO_FC_FAILSAFE": 6
+    },
+    "RecoveryTrigger": {
+      "RECOVERY_TRIGGER_UNSPECIFIED": 0,
+      "RECOVERY_TRIGGER_EXECUTIVE_HEARTBEAT_LOST": 1,
+      "RECOVERY_TRIGGER_OBSERVATION_STALE": 2,
+      "RECOVERY_TRIGGER_TRAJECTORY_STALE": 3,
+      "RECOVERY_TRIGGER_LEASE_EXPIRED": 4,
+      "RECOVERY_TRIGGER_ENERGY_LOW": 5,
+      "RECOVERY_TRIGGER_GEOFENCE_PREDICTED_BREACH": 6,
+      "RECOVERY_TRIGGER_LOCALIZATION_DEGRADED": 7,
+      "RECOVERY_TRIGGER_UPLINK_LOST": 8,
+      "RECOVERY_TRIGGER_FC_FAILSAFE_ACTIVE": 9,
+      "RECOVERY_TRIGGER_USER_PAUSE": 10,
+      "RECOVERY_TRIGGER_USER_CANCEL": 11
+    },
+    "ResourceMode": {
+      "RESOURCE_MODE_UNSPECIFIED": 0,
+      "RESOURCE_MODE_EXCLUSIVE": 1,
+      "RESOURCE_MODE_SHARED": 2
+    },
+    "SafetyVerdict": {
+      "SAFETY_VERDICT_UNSPECIFIED": 0,
+      "SAFETY_VERDICT_PROCEED": 1,
+      "SAFETY_VERDICT_HOLD": 2,
+      "SAFETY_VERDICT_RECOVER": 3,
+      "SAFETY_VERDICT_ABORT": 4
+    },
+    "SkillInstanceState": {
+      "SKILL_INSTANCE_STATE_UNSPECIFIED": 0,
+      "SKILL_INSTANCE_STATE_ACCEPTED": 1,
+      "SKILL_INSTANCE_STATE_PREPARING": 2,
+      "SKILL_INSTANCE_STATE_RUNNING": 3,
+      "SKILL_INSTANCE_STATE_VERIFYING": 4,
+      "SKILL_INSTANCE_STATE_COMPLETED": 5,
+      "SKILL_INSTANCE_STATE_PAUSE_REQUESTED": 6,
+      "SKILL_INSTANCE_STATE_PAUSED": 7,
+      "SKILL_INSTANCE_STATE_CANCEL_REQUESTED": 8,
+      "SKILL_INSTANCE_STATE_RECOVERING": 9,
+      "SKILL_INSTANCE_STATE_CANCELLED": 10,
+      "SKILL_INSTANCE_STATE_BLOCKED": 11,
+      "SKILL_INSTANCE_STATE_FAILED": 12,
+      "SKILL_INSTANCE_STATE_OUTCOME_UNKNOWN": 13
+    },
+    "WorldKind": {
+      "WORLD_KIND_UNSPECIFIED": 0,
+      "WORLD_KIND_TRUTH": 1,
+      "WORLD_KIND_BELIEF": 2,
+      "WORLD_KIND_PREDICTED": 3
+    }
+  }
+}

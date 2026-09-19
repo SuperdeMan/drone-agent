@@ -38,7 +38,7 @@ Five principles: models express goals and the runtime executes them; a single co
 
 ## Status
 
-M0 (September 2026): conventions, architecture documents, contract models and contract tests. There is no flyable code yet. M1 targets a single-drone PX4 SITL safety loop without any large model.
+M0 completed on 2026-09-19: contracts, compiled proto drafts, five skill manifests, the fault-injection matrix and the sibling-project reuse review are in place. Lint, 258 tests and an unarmed PX4 v1.17.0 / Gazebo Harmonic 8.15.0 environment smoke pass. See [verification evidence](docs/m0-readiness.md). M1 targets a single-drone safety loop without a large model; no flight runtime is implemented yet.
 
 ## Development
 
@@ -47,9 +47,13 @@ M0 (September 2026): conventions, architecture documents, contract models and co
 UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple uv sync --group dev
 uv run ruff check .
 uv run pytest -q
+uv run python scripts/generate_contract_fields.py --check
+uv run python scripts/generate_proto.py
 ```
 
 PX4 SITL, Gazebo and ROS 2 run on Linux only (WSL2 or Docker) and the repository must live under an ASCII path there. The contract and planning layers are plain Python and test on Windows directly.
+
+The [simulation guide](sim/README.md) stages only simulation inputs into an ASCII directory and runs an unarmed PX4/Gazebo smoke. The [proto guide](proto/README.md) describes wire boundaries; the [skill catalog](docs/m1-skill-catalog.md) distinguishes draft manifests from implemented capabilities. Recovery scenario names denote planned coverage, not passed injection runs.
 
 ## Sibling projects
 

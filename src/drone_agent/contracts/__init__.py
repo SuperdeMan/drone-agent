@@ -81,7 +81,7 @@ from drone_agent.contracts.mission import (
     TemporalWindow,
 )
 from drone_agent.contracts.planner_tools import PlannerTool, PlannerToolAllowlist
-from drone_agent.contracts.recovery import RecoveryEdge, RecoveryPolicy, RecoveryTrigger
+from drone_agent.contracts.recovery import RecoveryEdge, RecoveryPolicy, RecoveryTrigger, RecoveryValidation
 from drone_agent.contracts.skill import (
     ALLOWED_TRANSITIONS,
     TERMINAL_STATES,
@@ -154,6 +154,7 @@ __all__ = [
     "RecoveryEdge",
     "RecoveryPolicy",
     "RecoveryTrigger",
+    "RecoveryValidation",
     "ResourceClaim",
     "ResourceMode",
     "RobotStatus",

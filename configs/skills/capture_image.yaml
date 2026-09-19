@@ -1,0 +1,40 @@
+schema_version: "0.1.0"
+skill_id: skill.flight.capture_image
+version: "0.1.0"
+description: "Capture and verify an image of one asset. / 采集并验证一个资产的影像。"
+embodiments: [aerial_multirotor]
+required_control_modes: []
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: [asset_id, camera_id, quality_profile_ref]
+  properties:
+    asset_id: {type: string, minLength: 1}
+    camera_id: {type: string, enum: [cam_0]}
+    quality_profile_ref: {type: string, enum: [m1_campus_v1.image]}
+preconditions: [package_authorized, camera_available, asset_resolved, observation_pose_valid, camera_lease_valid]
+invariants: [inside_approved_volume, observation_fresh, lease_valid, executive_heartbeat_ok, fc_failsafe_inactive]
+resources:
+  - {resource_id: uav_01.camera, mode: exclusive}
+progress_schema:
+  type: object
+  additionalProperties: false
+  required: [phase, attempts]
+  properties:
+    phase: {type: string, enum: [capturing, persisting, verifying]}
+    attempts: {type: integer, minimum: 0, maximum: 3}
+cancel:
+  cancel_safe_states: [before_trigger, after_persist]
+  cancel_procedure: "Stop new captures, persist or mark partial evidence, release camera; flight recovery stays with guardian. / 停止新拍摄，持久化或标记部分证据，释放相机；飞行恢复仍由 guardian 负责。"
+pause: {pausable: false}
+completion_evidence:
+  - evidence_type: image
+    criteria: {predicate: asset_image_verified, threshold_ref: m1_campus_v1.image, target_id_match: true, sha256_required: true, pose_covariance_required: true, fresh_time_window_required: true}
+failure_modes:
+  - {code: capture_timeout, description: "Camera receipt unknown / 相机响应未知", recovery_hint: reconcile_capture}
+  - {code: image_quality_failed, description: "Image does not meet evidence criteria / 影像不满足证据判据", recovery_hint: bounded_retake_max_3}
+  - {code: evidence_write_failed, description: "Evidence persistence failed / 证据持久化失败", recovery_hint: unverified_and_block_dependents}
+timeout_s: 30
+estimated_duration_s: 5
+implementation: {kind: deterministic}

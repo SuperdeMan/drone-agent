@@ -1,0 +1,55 @@
+syntax = "proto3";
+package drone.control.v1;
+
+import "drone/contracts/v1/contracts.proto";
+import "google/protobuf/timestamp.proto";
+
+// Local guardian IPC only; no planner or public network endpoint.
+// 仅供 guardian 本地 IPC；不暴露给规划器或公共网络。
+service GuardianControl {
+  rpc SubmitIntent(drone.contracts.v1.ControlCommandEnvelope) returns (drone.contracts.v1.EgressDecision);
+  rpc ReconcileCommand(drone.contracts.v1.IdempotencyKey) returns (CommandReconciliation);
+  rpc Heartbeat(ExecutiveHeartbeat) returns (GuardianStatus);
+  // Lease installation requires an authenticated issuer in M1.
+  // M1 安装租约时必须认证签发者身份。
+  rpc InstallLease(drone.contracts.v1.TaskLease) returns (drone.contracts.v1.EgressDecision);
+}
+
+enum ReceiptStatus {
+  RECEIPT_STATUS_UNSPECIFIED = 0;
+  RECEIPT_STATUS_NOT_RECEIVED = 1;
+  RECEIPT_STATUS_RECORDED = 2;
+  RECEIPT_STATUS_UNKNOWN = 3;
+}
+
+message CommandReconciliation {
+  optional string schema_version = 1;
+  drone.contracts.v1.IdempotencyKey key = 2;
+  optional ReceiptStatus receipt_status = 3;
+  drone.contracts.v1.StepOutcome outcome = 4;
+  google.protobuf.Timestamp observed_at = 5;
+  optional string reason = 6;
+}
+
+message ExecutiveHeartbeat {
+  optional string schema_version = 1;
+  optional string robot_id = 2;
+  optional string executive_instance = 3;
+  optional string mission_id = 4;
+  optional int64 mission_version = 5;
+  optional int64 lease_epoch = 6;
+  optional int64 heartbeat_seq = 7;
+  google.protobuf.Timestamp timestamp = 8;
+  google.protobuf.Timestamp valid_until = 9;
+  optional string skill_instance_id = 10;
+  optional drone.contracts.v1.SkillInstanceState skill_state = 11;
+}
+
+message GuardianStatus {
+  optional string schema_version = 1;
+  optional string robot_id = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  optional drone.contracts.v1.SafetyVerdict safety_verdict = 4;
+  optional int64 lease_epoch = 5;
+  optional string reason = 6;
+}
