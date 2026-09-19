@@ -10,6 +10,8 @@ services:
     mem_limit: 2g
     memswap_limit: 2g
     pids_limit: 512
+    volumes:
+      - ${DRONE_M1_RUN:?}/ulog:/opt/PX4-Autopilot/build/px4_sitl_default/rootfs/log
     networks: [simulation]
   collector:
     image: ${DRONE_M1_GROUND_IMAGE:?}

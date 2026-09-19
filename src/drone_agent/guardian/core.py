@@ -183,7 +183,22 @@ class Guardian:
         generation = self.generation
 
         def permitted():
-            return self.generation == generation and self.safety == SafetyVerdict.PROCEED and not self.taken_over
+            if (
+                self.generation != generation
+                or self.safety != SafetyVerdict.PROCEED
+                or self.taken_over
+                or self.adapter.external_takeover
+            ):
+                return False
+            predicates = self.registry.predicates(
+                node,
+                self.adapter.snapshot(),
+                self.package,
+                lease_valid=self.lease_valid(),
+                heartbeat_ok=self.heartbeat_healthy(),
+                camera_available=self.adapter.camera_available,
+            )
+            return all(predicates.get(name, False) for name in self.registry.manifests[node.skill_id].invariants)
 
         self.dispatch_task = asyncio.create_task(self.adapter.execute(node, permitted))
         receipt, reason = "unknown", "dispatch_interrupted"
@@ -244,6 +259,13 @@ class Guardian:
             await self.relinquish(reason or trigger.value)
             return
         priority = {RecoveryTrigger.USER_PAUSE: 1, RecoveryTrigger.USER_CANCEL: 2, RecoveryTrigger.ENERGY_LOW: 4}
+        if self.recovery is not None:
+            current_behavior = self.recovery.then if self.recovery_followed else self.recovery.target
+            if (
+                current_behavior in {RecoveryBehavior.RTL, RecoveryBehavior.LAND_HERE}
+                and edge.target == RecoveryBehavior.HOLD
+            ):
+                return
         if self.recovery is not None and priority.get(trigger, 3) <= priority.get(self.recovery.trigger, 3):
             return
         self.generation += 1
@@ -404,6 +426,11 @@ class Guardian:
             await self.intervene(trigger)
 
     async def supervise(self):
+        deadline = time.monotonic()
+        period = self.registry.data["supervision"]["period_s"]
         while True:
             await self.tick()
-            await asyncio.sleep(self.registry.data["supervision"]["period_s"])
+            deadline += period
+            if deadline < time.monotonic():
+                deadline = time.monotonic()
+            await asyncio.sleep(max(0, deadline - time.monotonic()))

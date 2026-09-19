@@ -11,6 +11,7 @@ LABEL org.drone-agent.role=ground
 CMD ["python3", "-m", "drone_agent.eval.judge"]
 
 FROM aircraft AS sim
+RUN apt-get update && apt-get install -y --no-install-recommends bc
 RUN /usr/bin/python3 /workspace/sim/m1_setup.py
 LABEL org.drone-agent.role=sim
 ENV HEADLESS=1

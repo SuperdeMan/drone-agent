@@ -528,3 +528,14 @@ def test_nominal_scenario_never_enters_fault_injection():
     assert not due({"id": "nominal"}, {"active_step": None})
     assert not due({"id": "nominal"}, {"active_step": "takeoff"})
     assert due({"inject_at": "fly_route"}, {"active_step": "fly_route"})
+
+
+async def test_heartbeat_loss_cannot_interrupt_an_active_safety_return(runtime):
+    guardian, adapter, _, _ = runtime
+    adapter.airborne, adapter.altitude = True, 4
+    guardian.phase = "cruise"
+    await guardian.intervene(RecoveryTrigger.USER_CANCEL)
+    await guardian.recovery_task
+    await guardian.intervene(RecoveryTrigger.EXECUTIVE_HEARTBEAT_LOST)
+    assert guardian.recovery.trigger == RecoveryTrigger.USER_CANCEL
+    assert adapter.writes == [RecoveryBehavior.RTL]

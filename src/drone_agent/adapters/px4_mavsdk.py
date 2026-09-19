@@ -185,7 +185,15 @@ class Px4Adapter:
         self.expect({"MISSION", "HOLD"})
         await self._call("route_no_auto_rtl", self._system.mission.set_return_to_launch_after_mission, permitted, False)
         await self._call("upload_route", self._system.mission.upload_mission, permitted, MissionPlan(items))
+        # PX4 validates an uploaded mission asynchronously; its own integration tests wait one second.
+        # PX4 异步校验上传航线；官方集成测试也等待一秒后启动。
+        await asyncio.sleep(1)
         await self._call("start_route", self._system.mission.start_mission, permitted)
+        async with asyncio.timeout(2):
+            while self.values["mode"].name != "MISSION":
+                if not permitted():
+                    raise PermissionError("route authority changed")
+                await asyncio.sleep(0.05)
 
     async def execute(self, node, permitted):
         action, p = node.skill_id.rsplit(".", 1)[1], node.params

@@ -79,7 +79,7 @@ def run_m1(root: Path, deployment: Path, request: dict):
     for scenario in scenarios:
         for seed in request["seeds"]:
             run = base / f"{scenario['id']}-{seed}"
-            for folder in ("input", "aircraft", "truth", "sensor", "ipc", "judge"):
+            for folder in ("input", "aircraft", "truth", "sensor", "ipc", "judge", "ulog"):
                 (run / folder).mkdir(parents=True)
             env = dict(
                 os.environ,
@@ -239,6 +239,7 @@ def run_m1(root: Path, deployment: Path, request: dict):
                         check=False,
                     )
                 compose("stop", "-t", "5", "executive", "guardian", "collector")
+                compose("stop", "-t", "10", "sitl")
                 compose("logs", "--no-color", "--tail", "160", timeout=30, check=False)
                 judged = compose("run", "-T", "--no-deps", "judge", timeout=90, check=False)
                 result_path = run / "judge/result.json"
