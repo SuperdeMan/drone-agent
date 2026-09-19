@@ -1,4 +1,4 @@
-ARG CHECKS_IMAGE
+ARG CHECKS_IMAGE=drone-agent-checks:required-explicit-revision
 FROM ${CHECKS_IMAGE} AS aircraft
 RUN python3 scripts/generate_proto.py
 ENV PYTHONPATH=/workspace/src:/workspace/gen

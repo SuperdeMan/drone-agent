@@ -29,7 +29,8 @@ def timestamp(header):
 
 
 def image_callback(msg):
-    if msg.pixel_format_type != Image.RGB_INT8 or msg.step != msg.width * 3:
+    pixel_format = msg.DESCRIPTOR.fields_by_name["pixel_format_type"].enum_type.values_by_number[msg.pixel_format_type].name
+    if pixel_format != "RGB_INT8" or msg.step != msg.width * 3:
         return
     value = {
         "timestamp": datetime.now(timezone.utc).isoformat(),

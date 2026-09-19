@@ -5,6 +5,7 @@
 
 import argparse
 import json
+import uuid
 from pathlib import Path
 
 import yaml
@@ -23,7 +24,7 @@ suite = yaml.safe_load((args.root / "configs/scenarios/m1_suite.yaml").read_text
 if args.output:
     scenario = next(case for case in suite["scenarios"] if case["id"] == args.scenario)
     registry = Registry(args.root)
-    package = make_package(registry, args.seed, args.output.parent.name)
+    package = make_package(registry, args.seed, f"m1-{args.scenario}-{args.seed}-{uuid.uuid4().hex}")
     args.output.mkdir(parents=True, exist_ok=True)
     (args.output / "package.json").write_text(package.model_dump_json(indent=2))
     (args.output / "scenario.json").write_text(
