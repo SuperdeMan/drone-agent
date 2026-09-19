@@ -39,6 +39,7 @@ class Px4Adapter:
         self.external_takeover = False
         self.expected_modes = None
         self.mode_grace = 0.0
+        self.transition_from = None
         self.camera_available = sensor.is_file()
         self.capabilities = registry.capability.model_copy(deep=True)
         self.capabilities.recovery_behaviors = {
@@ -103,8 +104,13 @@ class Px4Adapter:
             self.received[name] = time.monotonic()
             if name == "position":
                 self.sample += 1
-            if name == "mode" and self.expected_modes and time.monotonic() > self.mode_grace:
-                if value.name not in self.expected_modes and not self.landed_mode_transition(value.name):
+            if name == "mode" and self.expected_modes:
+                pending_previous = time.monotonic() <= self.mode_grace and value.name == self.transition_from
+                if (
+                    value.name not in self.expected_modes
+                    and not pending_previous
+                    and not self.landed_mode_transition(value.name)
+                ):
                     self.external_takeover = True
 
     def landed_mode_transition(self, mode):
@@ -199,6 +205,8 @@ class Px4Adapter:
         await method(*args)
 
     def expect(self, modes):
+        current = self.values.get("mode")
+        self.transition_from = current.name if current else None
         self.expected_modes = set(modes)
         self.mode_grace = time.monotonic() + 2
 

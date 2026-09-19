@@ -288,6 +288,9 @@ class Guardian:
         if self.taken_over:
             return
         obs = self.adapter.snapshot()
+        if obs.fc_failsafe or self.adapter.external_takeover:
+            await self.relinquish("fc_failsafe_active" if obs.fc_failsafe else "external_mode_takeover")
+            return
         edge = self.policy.select(trigger, self.context(obs))
         if edge is None or edge.target == RecoveryBehavior.HANDOVER_TO_FC_FAILSAFE:
             await self.relinquish(reason or trigger.value)
@@ -336,7 +339,17 @@ class Guardian:
             command_seq=len(self.journal.rows),
         )
         try:
-            await asyncio.wait_for(self.adapter.recover(behavior, lambda: not self.taken_over), 5)
+            await asyncio.wait_for(
+                self.adapter.recover(
+                    behavior,
+                    lambda: (
+                        not self.taken_over
+                        and not self.adapter.external_takeover
+                        and not self.adapter.snapshot().fc_failsafe
+                    ),
+                ),
+                5,
+            )
             self.record("recovery_receipt", behavior=behavior.value, status="accepted")
         except Exception as error:
             self.record("recovery_receipt", behavior=behavior.value, status="unknown", reason=type(error).__name__)

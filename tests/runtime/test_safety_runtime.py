@@ -864,3 +864,28 @@ async def test_restarted_guardian_supervises_persisted_inflight_work_without_rep
     assert adapter.writes.count("skill.flight.takeoff") == 1
     assert adapter.writes[-1] == RecoveryBehavior.HOLD
     assert restarted.ledger.reconcile(command.key.as_string())["receipt"] == "accepted"
+
+
+@pytest.mark.parametrize("mode,takeover", [("POSCTL", True), ("MANUAL", True), ("TAKEOFF", False)])
+async def test_mode_grace_only_allows_the_known_previous_mode(runtime, mode, takeover):
+    from types import SimpleNamespace as NS
+
+    from drone_agent.adapters.px4_mavsdk import Px4Adapter
+
+    guardian, _, _, path = runtime
+    adapter = Px4Adapter(guardian.registry, path, path / "sensor.json")
+    adapter.values["mode"] = NS(name="TAKEOFF")
+    adapter.expect({"MISSION", "HOLD"})
+
+    async def stream():
+        yield NS(name=mode)
+
+    await adapter._watch("mode", stream)
+    assert adapter.external_takeover is takeover
+
+
+async def test_recovery_never_writes_after_manual_takeover_is_observed(runtime):
+    guardian, adapter, _, _ = runtime
+    adapter.airborne, adapter.external_takeover = True, True
+    await guardian.intervene(RecoveryTrigger.USER_CANCEL)
+    assert guardian.taken_over and not adapter.writes
