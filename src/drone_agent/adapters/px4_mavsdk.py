@@ -104,8 +104,20 @@ class Px4Adapter:
             if name == "position":
                 self.sample += 1
             if name == "mode" and self.expected_modes and time.monotonic() > self.mode_grace:
-                if value.name not in self.expected_modes:
+                if value.name not in self.expected_modes and not self.landed_mode_transition(value.name):
                     self.external_takeover = True
+
+    def landed_mode_transition(self, mode):
+        position = self.values.get("position")
+        return bool(
+            mode in {"MISSION", "READY"}
+            and self.expected_modes
+            and "LAND" in self.expected_modes
+            and self.values.get("in_air") is False
+            and position
+            and time.monotonic() - self.received.get("position", 0) < 0.5
+            and abs(position.position.down_m) < 0.5
+        )
 
     async def _watch_link(self):
         # Read the PX4 heartbeat on the same guardian-owned connection. / 在 guardian 唯一连接上读取 PX4 心跳。

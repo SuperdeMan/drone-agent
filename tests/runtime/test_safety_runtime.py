@@ -673,3 +673,34 @@ def test_missing_battery_update_does_not_erase_disarmed_evidence(runtime):
     adapter.received["link"] = time.monotonic()
     obs = adapter.snapshot()
     assert obs.armed is False and obs.in_air is False and obs.battery_fraction is None
+
+
+def test_every_enabled_edge_has_a_specific_sitl_expectation(runtime):
+    import yaml
+
+    guardian, _, _, _ = runtime
+    expectations = yaml.safe_load((ROOT / "configs/scenarios/m1_expectations.yaml").read_text())
+    suite = yaml.safe_load((ROOT / "configs/scenarios/m1_suite.yaml").read_text())
+    assert set(expectations) == {case["id"] for case in suite["scenarios"]}
+    assert {e.fault_injection_scenario for e in guardian.policy.edges} == {
+        e["edge"] for e in expectations.values() if "edge" in e
+    }
+
+
+def test_native_post_landing_mode_reset_is_not_airborne_takeover(runtime):
+    from types import SimpleNamespace as NS
+
+    from drone_agent.adapters.px4_mavsdk import Px4Adapter
+
+    guardian, _, _, path = runtime
+    adapter = Px4Adapter(guardian.registry, path, path / "sensor.json")
+    adapter.expected_modes = {"LAND", "HOLD", "READY"}
+    adapter.values = {"in_air": False, "position": NS(position=NS(down_m=0.1))}
+    adapter.received["position"] = time.monotonic()
+    assert adapter.landed_mode_transition("MISSION")
+    assert not adapter.landed_mode_transition("POSCTL")
+    adapter.values["in_air"] = True
+    assert not adapter.landed_mode_transition("MISSION")
+    adapter.values["in_air"] = False
+    adapter.received["position"] -= 1
+    assert not adapter.landed_mode_transition("MISSION")

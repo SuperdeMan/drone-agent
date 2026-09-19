@@ -11,6 +11,8 @@ import json
 import math
 from pathlib import Path
 
+import yaml
+
 from drone_agent.contracts import MissionPackage, StepOutcome
 from drone_agent.mission.registry import Registry
 from drone_agent.mission.verify import verify_image
@@ -121,6 +123,31 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
                 if not previous or not StepOutcome.model_validate(previous[-1]["data"]["outcome"]).counts_as_completed:
                     problems.append("unverified_dependency_dispatched")
     interventions = [row["data"] for row in events if row["kind"] == "safety_intervention"]
+    expectation = yaml.safe_load((root / "configs/scenarios/m1_expectations.yaml").read_text())[
+        metadata["scenario"]["id"]
+    ]
+    if expectation.get("reason"):
+        matching = [
+            e
+            for e in interventions
+            if e["reason"] == expectation["reason"] and e["behavior"] == expectation["behavior"]
+        ]
+        if not matching:
+            problems.append("expected_recovery_edge_not_observed")
+        follow = expectation.get("follow_up")
+        if follow and not any(
+            row["kind"] == "recovery_receipt"
+            and row["data"].get("behavior") == follow
+            and row["data"].get("status") == "accepted"
+            for row in events
+        ):
+            problems.append("expected_follow_up_not_observed")
+    if expectation.get("resumed") and not any(e["kind"] == "resume_authorized" for e in events):
+        problems.append("explicit_resume_missing")
+    if expectation.get("probe"):
+        path = run / "aircraft/probe.json"
+        if not path.exists() or not json.loads(path.read_text()).get("passed"):
+            problems.append("command_probe_failed")
     terminal = json.loads((run / "aircraft/status.json").read_text())["observation"]
     grounded = bool(
         truth and truth[-1]["position"][2] < 0.5 and terminal["in_air"] is False and terminal["armed"] is False
@@ -156,10 +183,11 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
         "truth_samples": len(truth),
         "sim_duration_s": truth[-1]["sim_time"] - truth[0]["sim_time"] if truth else 0,
         "recovery_reasons": [entry["reason"] for entry in interventions],
+        "validated_edge": expectation.get("edge") if not problems and classification == expected else None,
         "artifacts": {
             str(path.relative_to(run)): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in sorted(run.rglob("*"))
-            if path.is_file() and "judge" not in path.parts
+            if path.is_file() and "judge" not in path.parts and path.name != "compose.log"
         },
     }
 

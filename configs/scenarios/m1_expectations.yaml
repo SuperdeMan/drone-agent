@@ -1,0 +1,22 @@
+# Recovery evidence required in addition to terminal classification. / 除终态分类之外必须具备的恢复证据。
+nominal: {}
+duplicate: {probe: true}
+stale_epoch: {probe: true}
+expired_intent: {probe: true}
+offboard_rejected: {probe: true}
+timeout: {reason: adapter_timeout_reconcile_required, behavior: rtl}
+heartbeat_takeoff: {reason: executive_heartbeat_lost, behavior: land_here, edge: fi.heartbeat.takeoff}
+heartbeat_cruise: {reason: executive_heartbeat_lost, behavior: hold, follow_up: rtl, edge: fi.heartbeat.cruise}
+observation_stale: {reason: observation_stale, behavior: hold, follow_up: rtl, edge: fi.observation.stale}
+lease_expired: {reason: lease_expired, behavior: hold, follow_up: rtl, edge: fi.lease.expired}
+energy_low: {reason: energy_low, behavior: rtl, edge: fi.energy.low}
+energy_critical: {reason: energy_low, behavior: land_here, edge: fi.energy.critical}
+geofence: {reason: geofence_predicted_breach, behavior: hold, follow_up: rtl, edge: fi.geofence.approach}
+cancel_takeoff: {reason: user_cancel, behavior: land_here, edge: fi.cancel.takeoff}
+cancel_cruise: {reason: user_cancel, behavior: rtl, edge: fi.cancel.cruise}
+pause_resume: {reason: user_pause, behavior: hold, resumed: true}
+pause_timeout: {reason: user_pause, behavior: hold, follow_up: rtl, edge: fi.pause.timeout}
+uplink_lost: {reason: uplink_lost, behavior: hold, follow_up: rtl, edge: fi.uplink.lost}
+mode_takeover: {reason: external_mode_takeover, behavior: handover_to_fc_failsafe}
+fc_failsafe: {reason: fc_failsafe_active, behavior: handover_to_fc_failsafe, edge: fi.fc.failsafe}
+localization_lost: {reason: localization_degraded, behavior: handover_to_fc_failsafe, edge: fi.localization.lost}
