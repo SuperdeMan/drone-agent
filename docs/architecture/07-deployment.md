@@ -62,6 +62,20 @@ M0 提前创建 `proto/`、`scripts/`、`sim/`；M1 运行时子模块仍按实�
 
 Windows 开发通过已安装的 Docker Desktop Linux 后端运行；构建、运行与挂载入口使用 ASCII 路径，挂载目录与源仓库分离，仅复制冒烟所需文件，不复制 `.env`、`.git` 或其他项目文件。复现方法与实际结果分别见 `sim/README.md` 与 `docs/m0-readiness.md`。主机安装 WSL 发行版、全局依赖或调整系统设置仍按用户红线先批准。
 
+### 云端开发与联调（D023）
+
+按用户 2026-09-19 的明确要求，后续需要 Linux 真栈、仿真或服务联调时默认使用现有云服务器；本机保留编辑与快速确定性检查。统一入口为 `scripts/dev_stack.py`，只面向 cloud，不在连接失败时回落到本地 Compose。
+
+| 内容 | 云端职责 | 阶段 |
+|---|---|---|
+| 契约验证、PX4/Gazebo 仿真、测试产物 | 云端工作区与独立容器 | 当前可部署 |
+| Planner、Compiler/Admission、Catalog、业务账本、控制台、证据归档 | 任务服务与数据服务 | M2 起按实现部署 |
+| executive、guardian、autonomy、飞控适配器 | 仿真时与模拟飞控在同一云主机；真机时留在设备侧 | M1 起实现，真机不依赖公网连续控制 |
+
+服务器上使用 SSH 用户家目录下的 `drone-agent/`，Compose project 固定 `drone-agent-cloud`，独立网络和产物目录。SITL 上限为 1.5 CPU / 2 GiB，验证容器上限为 1 CPU / 1 GiB；不发布宿主端口。部署不改变现有 car-agent 容器、数据、配置与服务入口。
+
+应用源码只从指定 Git commit 导出；控制脚本、Compose 和锁定依赖分别记录哈希，不能把控制面草案伪称为应用 release。首次复用 M0 已验证的镜像，经 SSH 上传并校验归档哈希、文件系统层与运行配置；后续验证镜像在服务器构建。秘密不进入快照，SSH 连接参数从进程环境读取，不复制 car-agent `.env`。操作、目录与结果边界见 `../cloud-development.md`。
+
 ## 5. 数据记录
 
 - 原始层：MCAP（ROS 2 / 自定义 schema）、ULog（PX4）、任务事件流（JSONL / SQLite）。三者用 `mission_id + 单调时间` 关联。

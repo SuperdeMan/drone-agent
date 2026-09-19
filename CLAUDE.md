@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**M0 已完成，M1 待开始（2026-09-19）**：契约、proto 骨架、五技能草案、注入矩阵、跨仓重估与未解锁 SITL 环境冒烟均已交付。退出标准见 `docs/roadmap.md`，证据见 `docs/m0-readiness.md`。下一步 M1：无大模型的 PX4 SITL 单机安全闭环（executive + guardian + PX4 适配器 + 故障注入 + 独立裁判）。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。
+**M0 已完成，M1 运行时待实现（2026-09-19）**：基础契约与未解锁 SITL 冒烟已交付；云端仿真/契约联调工作区也已就绪，证据分别见 `docs/m0-readiness.md` 与 `docs/cloud-readiness-2026-09-19.md`。退出标准见 `docs/roadmap.md`。下一步 M1：无大模型的 PX4 SITL 单机安全闭环（executive + guardian + PX4 适配器 + 故障注入 + 独立裁判）。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。
 
 ## 目录结构
 
@@ -44,6 +44,7 @@
 
 ## 已知环境约束
 
+- **默认云端联调**（D023，用户明确要求）：Linux 构建、PX4/Gazebo 与服务联调走 `uv run python scripts/dev_stack.py`；本机用于编辑和快速单测，不自动启动本地真栈。连接失败应明确报错；云端操作指南见 `docs/cloud-development.md`。当前只部署仿真/验证工作区，真机 guardian 与飞控连接仍在设备侧。
 - **国内网络**：uv 拉包用每次命令的环境变量走镜像，不写入任何全局配置：`UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple`。
 - **仓库路径含中文**（`产品/`）：原生库（MAVSDK 原生绑定、Gazebo 资产、ONNX Runtime）加载前需复制到 ASCII 路径；Linux 侧（WSL2 / Docker）把仓库放在 ASCII 路径下再挂载。
 - **开发机是 Windows**：PX4 SITL、Gazebo、ROS 2 只在 Linux 容器或 WSL2 中运行；契约、规划、准入等纯 Python 代码在 Windows 直接测试。

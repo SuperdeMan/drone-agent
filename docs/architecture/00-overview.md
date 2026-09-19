@@ -94,9 +94,10 @@
 | `06-extensibility.md` | 插件点清单、厂商能力协商、模型接入、MCP/A2A 边界 |
 | `07-deployment.md` | 仿真两条线、容器与镜像、机载硬件、网络与中间件 |
 | `08-evaluation.md` | 三分类结果、指标、裁判、故障注入、准出标准 |
-| `../decisions.md` | 技术决策记录 D001–D022（只增不删） |
+| `../decisions.md` | 技术决策记录 D001–D023（只增不删） |
 | `../roadmap.md` | 里程碑、退出标准、周期 |
 | `../reuse-from-embodied-agent.md` | 从 `embodied-agent` / `car-agent` 复用什么、怎么迁 |
 | `../research/` | 前沿调研与 GPT-6 Pro 评估摘要 |
 | `../m0-readiness.md` | M0 交付核对与实际验证证据 |
 | `../m1-skill-catalog.md` | 五个 M1 技能草案的参数、资源、取消与完成判据 |
+| `../cloud-development.md` | 默认云端构建、仿真与验证的操作入口及隔离边界 |

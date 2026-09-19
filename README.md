@@ -42,6 +42,17 @@ M0 completed on 2026-09-19: contracts, compiled proto drafts, five skill manifes
 
 ## Development
 
+Linux builds and integration runs now default to the cloud workspace. Use the [cloud development guide](docs/cloud-development.md) and the existing SSH connection settings:
+
+```bash
+uv run python scripts/dev_stack.py target
+uv run python scripts/dev_stack.py status
+uv run python scripts/dev_stack.py verify
+uv run python scripts/dev_stack.py test
+```
+
+Local editing and quick deterministic checks remain available:
+
 ```bash
 # Behind the Chinese firewall: use the mirror per command, never in global config
 UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple uv sync --group dev
@@ -53,7 +64,7 @@ uv run python scripts/generate_proto.py
 
 PX4 SITL, Gazebo and ROS 2 run on Linux only (WSL2 or Docker) and the repository must live under an ASCII path there. The contract and planning layers are plain Python and test on Windows directly.
 
-The [simulation guide](sim/README.md) stages only simulation inputs into an ASCII directory and runs an unarmed PX4/Gazebo smoke. The [proto guide](proto/README.md) describes wire boundaries; the [skill catalog](docs/m1-skill-catalog.md) distinguishes draft manifests from implemented capabilities. Recovery scenario names denote planned coverage, not passed injection runs.
+The [simulation guide](sim/README.md) retains the explicit local fallback recipe. The cloud tooling never silently falls back to a local stack. The [proto guide](proto/README.md) describes wire boundaries; the [skill catalog](docs/m1-skill-catalog.md) distinguishes draft manifests from implemented capabilities. Recovery scenario names denote planned coverage, not passed injection runs.
 
 ## Sibling projects
 

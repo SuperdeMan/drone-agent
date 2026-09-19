@@ -37,6 +37,8 @@ M0 已关闭：`ruff`、默认 importlib 模式下的 258 项测试、proto 编�
 
 ## M1 · 无大模型的单机安全闭环
 
+联调前置已完成（2026-09-19，D023）：现有服务器上的独立 PX4/Gazebo 与契约验证工作区已就绪，默认使用云端资源；实际版本与隔离证据见 [云端验收](cloud-readiness-2026-09-19.md)。以下运行时与飞行闭环任务仍待实现。
+
 任务：
 
 1. `sim/`：三镜像 compose（sim / ground / aircraft），PX4 v1.17 SITL + Gazebo Harmonic，faster-than-real-time 时钟。

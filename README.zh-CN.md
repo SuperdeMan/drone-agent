@@ -42,6 +42,17 @@ M0 已于 2026-09-19 完成：契约、已编译 proto 草案、五技能清单�
 
 ## 开发
 
+Linux 构建与联调现在默认使用云端工作区，见 [云端开发指南](docs/cloud-development.md)，复用已有 SSH 连接参数：
+
+```bash
+uv run python scripts/dev_stack.py target
+uv run python scripts/dev_stack.py status
+uv run python scripts/dev_stack.py verify
+uv run python scripts/dev_stack.py test
+```
+
+本机仍可编辑代码并运行快速确定性检查：
+
 ```bash
 # 国内网络走镜像（每次命令加，不写全局配置）
 UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple uv sync --group dev
@@ -53,7 +64,7 @@ uv run python scripts/generate_proto.py
 
 PX4 SITL / Gazebo / ROS 2 只在 Linux（WSL2 或 Docker）运行，仓库需放在 ASCII 路径下；契约与规划层代码是纯 Python，在 Windows 可直接测试。
 
-[仿真指南](sim/README.md) 只把仿真输入暂存到 ASCII 目录，并执行不解锁的 PX4/Gazebo 冒烟。[proto 指南](proto/README.md) 说明 wire 边界；[技能清单](docs/m1-skill-catalog.md) 区分草案与真实已实现能力。恢复场景名称表示计划覆盖，不是已通过的注入运行。
+[仿真指南](sim/README.md) 保留显式本地回退的操作方法；云端工具不会静默启动本地真栈。[proto 指南](proto/README.md) 说明 wire 边界；[技能清单](docs/m1-skill-catalog.md) 区分草案与真实已实现能力。恢复场景名称表示计划覆盖，不是已通过的注入运行。
 
 ## 姊妹项目
 

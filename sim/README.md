@@ -1,5 +1,7 @@
 # M0 Linux / PX4 / Gazebo 冒烟
 
+日常构建与联调默认走 [云端开发入口](../docs/cloud-development.md)（D023）。下文是 M0 已验证的显式本地操作方法；没有明确本地需求时不启动本机 Compose。
+
 本目录是单服务开发仿真入口，已通过未解锁的真实环境冒烟。基线为 Ubuntu 24.04、Gazebo Harmonic、PX4 v1.17.0；工具链镜像 digest 和源码 commit 固定在 [Dockerfile](Dockerfile) 与 [平台锁](../configs/platforms/px4_sitl_multirotor.yaml)。官方 1.17 预编译 Gazebo 标签缺失时，从稳定源码构建，见 [D022](../docs/decisions.md#d022--用固定官方开发镜像构建-px4-v1170)。
 
 Windows 需要已安装、可运行 Linux 容器的 Docker Desktop。首次构建拉取工具链并编译 PX4；不修改主机 WSL/系统/全局依赖。以 PowerShell 在仓库根运行：

@@ -1,0 +1,41 @@
+name: drone-agent-cloud
+services:
+  sitl:
+    image: ${DRONE_SITL_IMAGE:?verified image required}
+    pull_policy: never
+    init: true
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    cpus: 1.5
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 512
+    environment:
+      HEADLESS: "1"
+      PX4_SIM_MODEL: gz_x500
+      PX4_GZ_WORLD: default
+    volumes:
+      - ${DRONE_ARTIFACTS:?owned artifact path required}:/artifacts
+    networks: [simulation]
+    healthcheck:
+      test: ["CMD", "pgrep", "-x", "px4"]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+      start_period: 90s
+    stop_grace_period: 15s
+  checks:
+    profiles: [checks]
+    image: ${DRONE_CHECKS_IMAGE:?checks image required}
+    pull_policy: never
+    cpus: 1.0
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 256
+    volumes:
+      - ${DRONE_CHECK_ARTIFACTS:?owned artifact path required}:/artifacts
+    network_mode: none
+networks:
+  simulation:
+    internal: true

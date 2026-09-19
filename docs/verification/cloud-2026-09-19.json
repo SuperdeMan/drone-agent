@@ -1,0 +1,142 @@
+{
+  "schema_version": "0.1.0",
+  "deployment": {
+    "status": "verified",
+    "target": "cloud",
+    "timestamp": "2026-09-19T12:50:49.211439+00:00",
+    "source_sha": "f1fdc3e0391c11ca01ee57c930a08392c1f20862",
+    "control_sha256": "bfd290133bfb5e95ea4222cdb9b9b7e9c9a7db26e5619ec9d20380837f378936",
+    "deployment_id": "20260919T124946Z-90d6912a",
+    "capacity_before": {
+      "cpu_count": 4,
+      "load": [
+        2.482421875,
+        1.8974609375,
+        1.1630859375
+      ],
+      "memory": {
+        "MemTotal": 8058519552,
+        "MemAvailable": 5324091392
+      },
+      "disk_free_bytes": 55116075008
+    },
+    "smoke": {
+      "schema_version": "0.1.0",
+      "status": "passed",
+      "scope": "unarmed_environment_smoke",
+      "timestamp": "2026-09-19T12:50:46.222404+00:00",
+      "px4_version": "1.17.0",
+      "px4_commit": "d6f12ad1c4f70ad3230afd7d86e971421e02fef4",
+      "os_release": "PRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.4 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+      "px4_binary_sha256": "1bd27da3d6fb44d584c4a8c476bc117d6be170749e0da6ff8e26d61c6dbbd5a7",
+      "probe_sha256": "67dd5c6d889f3543e6759947b061df7bde3f574c968394b2ce5467d990bd14af",
+      "gazebo_packages": [
+        "gz-harmonic=1.0.0-1~noble",
+        "libgz-sim8=8.15.0-1~noble"
+      ],
+      "telemetry": {
+        "autopilot": "PX4",
+        "armed": false,
+        "system_id": 1,
+        "heartbeat_count": 2,
+        "position_samples": 30,
+        "first_boot_ms": 6104,
+        "last_boot_ms": 7072,
+        "commands_sent": 0
+      },
+      "gazebo": {
+        "world": "default",
+        "model": "x500_0",
+        "first_iteration": 1855,
+        "last_iteration": 2524
+      }
+    },
+    "tests": {
+      "tests": 258,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "other_containers_before": {
+      "count": 30,
+      "sha256": "1e69a32ab99b27d3912dde9dc9d60086a92b3a185bf2ee3a19db1c5de2eceffa"
+    },
+    "other_containers_after": {
+      "count": 30,
+      "sha256": "1e69a32ab99b27d3912dde9dc9d60086a92b3a185bf2ee3a19db1c5de2eceffa"
+    },
+    "images": {
+      "drone-agent-sitl:px4-1.17.0-m0": "sha256:1d0c3261d16ae715ac62955cae73a9094e3244c381c2cbd93784e17dbb3976b9",
+      "px4io/px4-dev-ros2:drone-m0-pinned": "sha256:558f27556d5ddb09a5082ec5a4407e4497b3d5bed646278242488010f267ae23"
+    }
+  },
+  "independent_runtime_check": {
+    "deployment_id": "20260919T124946Z-90d6912a",
+    "runtime": {
+      "id": "1bfb651b82aaffa04ad5fefbc4cafe8491da26b8842c2747eac3468ffd6db68e",
+      "image": "sha256:1d0c3261d16ae715ac62955cae73a9094e3244c381c2cbd93784e17dbb3976b9",
+      "running": true,
+      "health": "healthy",
+      "nano_cpus": 1500000000,
+      "memory": 2147483648,
+      "memory_swap": 2147483648,
+      "pids_limit": 512,
+      "port_bindings": {},
+      "privileged": false
+    },
+    "internal_network": true,
+    "stats": {
+      "CPUPerc": "91.23%",
+      "MemUsage": "196.5MiB / 2GiB",
+      "MemPerc": "9.59%",
+      "PIDs": "57"
+    },
+    "isolated_dependencies_consistent": true
+  },
+  "car_agent_before": {
+    "target": "cloud",
+    "release_sha": "ca4bf3705a8e73d19e56fb713c36c3773af7a5c9",
+    "running_release_sha": "ca4bf3705a8e73d19e56fb713c36c3773af7a5c9",
+    "container_total": null,
+    "container_running": null,
+    "healthy_endpoints": 5,
+    "warning_count": 0,
+    "exit_code": 0
+  },
+  "car_agent_after": {
+    "target": "cloud",
+    "release_sha": "ca4bf3705a8e73d19e56fb713c36c3773af7a5c9",
+    "running_release_sha": "ca4bf3705a8e73d19e56fb713c36c3773af7a5c9",
+    "container_total": null,
+    "container_running": null,
+    "healthy_endpoints": 5,
+    "warning_count": 0,
+    "exit_code": 0
+  },
+  "local_tooling_checks": {
+    "ruff": "passed",
+    "pytest": "passed",
+    "test_count": 286,
+    "scope": "uncommitted working tree including cloud tooling"
+  },
+  "tooling_file_sha256": {
+    "scripts/dev_stack.py": "3466bdc308d297541811af557c56855e92f2a307396faee57245f6934377b682",
+    "scripts/remote_dev_stack.py": "e50cece21e0d39755e4215848f57000f4c9334c71badcfe0dbdf4f68ce60f91d",
+    "sim/compose.cloud.yaml": "5c986f308714b0bd12a61dc1016c230f9dfde1c0248a5dd2ff31ce95d25c798c",
+    "sim/checks.Dockerfile": "dc6eb30e2e40daffb5c40db4efac86f1f8c3ca97362064d5e73cf046c3f8ae41",
+    "tests/test_cloud_dev_stack.py": "af97c91cfa68722eae1408f0c9a22688ee888e72425e05089d96a20302c73d02"
+  },
+  "standalone_commands": {
+    "verify": {
+      "run_id": "20260919T125205Z-6747ff22",
+      "status": "verified"
+    },
+    "test": {
+      "run_id": "20260919T125216Z-5b2eb014",
+      "tests": 258,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  }
+}
