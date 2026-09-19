@@ -123,6 +123,15 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
                 if not previous or not StepOutcome.model_validate(previous[-1]["data"]["outcome"]).counts_as_completed:
                     problems.append("unverified_dependency_dispatched")
     interventions = [row["data"] for row in events if row["kind"] == "safety_intervention"]
+    surrender = [
+        row["timestamp"]
+        for row in events
+        if row["kind"] == "safety_intervention" and row["data"].get("behavior") == "handover_to_fc_failsafe"
+    ]
+    if surrender:
+        commands = json.loads((run / "aircraft/adapter-commands.json").read_text())
+        if any(command["timestamp"] > min(surrender) for command in commands):
+            problems.append("control_write_after_higher_authority_takeover")
     expectation = yaml.safe_load((root / "configs/scenarios/m1_expectations.yaml").read_text())[
         metadata["scenario"]["id"]
     ]
