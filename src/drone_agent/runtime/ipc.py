@@ -79,8 +79,10 @@ async def serve(guardian, address, *, test_tcp=False):
             return encode(value, shared.FlightObservation())
 
         async def Operate(self, request, context):
+            import asyncio
+
             value = await self.checked(
-                context, lambda: guardian.operate(MissionOperation.model_validate(decode(request)))
+                context, lambda: asyncio.shield(guardian.operate(MissionOperation.model_validate(decode(request))))
             )
             return encode(value, control.GuardianStatus())
 

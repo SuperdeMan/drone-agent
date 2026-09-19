@@ -367,9 +367,26 @@ class Guardian:
                 "command_seq": len(self.journal.rows),
             }
             self.record("resume_authorized", request_id=operation.request_id, **self.adapter.control_context)
+            self.operation_ids.add(operation.request_id)
+            generation = self.generation
+
+            def permitted():
+                return (
+                    generation == self.generation
+                    and not self.taken_over
+                    and self.lease_valid()
+                    and self.heartbeat_healthy()
+                    and not self.recovery_followed
+                )
+
             # Resume only the already uploaded route; do not upload it again. / 仅恢复已上传航线，不重新上传。
-            await self.adapter.resume(lambda: not self.taken_over)
-            self.recovery, self.safety, self.reason = None, SafetyVerdict.PROCEED, ""
+            try:
+                await asyncio.wait_for(self.adapter.resume(permitted), 5)
+            except Exception:
+                await self.intervene(RecoveryTrigger.USER_CANCEL, "resume_outcome_unknown")
+            else:
+                if permitted():
+                    self.recovery, self.safety, self.reason = None, SafetyVerdict.PROCEED, ""
         elif operation.action == MissionAction.PAUSE:
             if not self.active_step or not self.registry.manifests[self.active_step.skill_id].pause.pausable:
                 raise ValueError("active skill is not pausable")

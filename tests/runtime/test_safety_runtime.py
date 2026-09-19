@@ -805,3 +805,40 @@ def test_battery_fusion_is_conservative_and_unknown_values_do_not_crash(runtime,
     adapter.raw_battery_fraction = raw
     adapter.received = {key: time.monotonic() for key in ("link", "battery", "battery_status")}
     assert adapter.snapshot().battery_fraction == expected
+
+
+async def test_late_resume_reply_cannot_override_newer_recovery_or_execute_twice(runtime):
+    guardian, adapter, lease, _ = runtime
+    adapter.airborne, adapter.altitude = True, 4
+    guardian.active_step, guardian.phase = guardian.package.nodes[1], "cruise"
+    await guardian.intervene(RecoveryTrigger.USER_PAUSE)
+    await guardian.recovery_task
+    delivered = asyncio.Event()
+    response = asyncio.Event()
+
+    async def delayed_resume(permitted):
+        assert permitted()
+        adapter.writes.append("resume")
+        delivered.set()
+        await response.wait()
+
+    adapter.resume = delayed_resume
+    operation = MissionOperation(
+        robot_id="uav_01",
+        mission_id=lease.mission_id,
+        mission_version=1,
+        lease_epoch=1,
+        executive_instance=lease.holder,
+        action=MissionAction.RESUME,
+        request_id="resume-once",
+    )
+    pending = asyncio.create_task(guardian.operate(operation))
+    await delivered.wait()
+    await guardian.operate(operation)
+    assert adapter.writes.count("resume") == 1
+    await guardian.intervene(RecoveryTrigger.EXECUTIVE_HEARTBEAT_LOST)
+    await guardian.recovery_task
+    response.set()
+    await pending
+    assert guardian.safety == SafetyVerdict.HOLD
+    assert guardian.recovery.trigger == RecoveryTrigger.EXECUTIVE_HEARTBEAT_LOST
