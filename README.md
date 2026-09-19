@@ -38,7 +38,7 @@ Five principles: models express goals and the runtime executes them; a single co
 
 ## Status
 
-M0 completed on 2026-09-19; its [historical verification evidence](docs/m0-readiness.md) is retained. M1 is in cloud SITL validation: the local executive/guardian runtime, durable command reconciliation, five skill implementations, authenticated local IPC, camera relay and independent judge are implemented. See the [implementation and acceptance plan](docs/m1-implementation.md). A passing unit suite alone does not close M1; the complete seeded flight/fault matrix must pass on the release candidate.
+M1 completed on 2026-09-20 for PX4 SITL / Gazebo: executive/guardian processes, durable command reconciliation, five skills, authenticated local IPC, actual camera evidence and an independent judge. Revision `eefe76e` passed 400 tests and all 66 seeded flight/fault cases, with zero false success reports and matching offline replay. See the [qualified release evidence and scope](docs/m1-readiness.md). M2 adds constrained language planning and remote mission services.
 
 ## Development
 

@@ -38,7 +38,7 @@ L6 平台适配器（PX4 经 MAVSDK / px4_ros2、DJI Cloud API、ArduPilot、Nav
 
 ## 当前状态
 
-M0 已于 2026-09-19 完成，[历史验证证据](docs/m0-readiness.md) 保留。M1 正在云端 SITL 验证：本地 executive/guardian 运行时、持久化命令对账、五技能实现、认证本地 IPC、相机转接与独立裁判已实现。见 [实施与验收计划](docs/m1-implementation.md)。单元测试通过不等于 M1 关闭；完整的多种子飞行/故障矩阵必须在发布候选上通过。
+M1 已于 2026-09-20 完成，范围为 PX4 SITL / Gazebo：executive/guardian 双进程、持久化命令对账、五技能、认证本地 IPC、真实相机证据与独立裁判。版本 `eefe76e` 通过 400 项测试和全部 66 组多种子飞行/故障场景，错误成功报告为 0，离线回放一致。见 [版本限定的验收证据与边界](docs/m1-readiness.md)。M2 将接入受约束语言规划和远程任务服务。
 
 ## 开发
 

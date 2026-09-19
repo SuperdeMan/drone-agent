@@ -25,6 +25,8 @@ MuJoCo 继续承担 `embodied-agent` 的机械臂基线，不用于飞控集成�
 
 同一份 `aircraft-image` Dockerfile 同时构建工作站仿真与机载部署，形成垂直集成 CI；`docker compose` 提供 `sim`、`sil`（software-in-the-loop）、`jetson-in-the-loop` 三种拓扑。
 
+以上为完整路线：M1 已实现 amd64 的 sim/aircraft/ground 分工与云端 Compose；arm64、Jetson-in-the-loop 和 ROS 2 自主层仍按 M3 引入，不将当前 amd64 仿真镜像宣称为机载镜像。
+
 网络：`SIM_SUBNET`（仿真内部高速 UDP）与 `AIR_SUBNET`（机器人间链路，可替换为真实无线 / mesh 做 comms-in-the-loop）。
 
 ## 3. 机载硬件路线

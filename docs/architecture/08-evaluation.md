@@ -26,7 +26,7 @@
 ## 3. 裁判（Judge）
 
 - 独立进程，只读 TruthWorld + 事件流 + 证据；被测 agent 只读 BeliefWorld。
-- 裁判规则可执行、可版本化（`configs/scenarios/*/judge.yaml`）。
+- 裁判规则可执行、可版本化；M1 阈值在 `configs/scenarios/m1_campus_v1.yaml`，逐故障期望在 `m1_expectations.yaml`，实现为 `src/drone_agent/eval/judge.py`。后续场景可按目录组织独立判据。
 - 「完成」判据与技能 `completion_evidence` 对齐，但裁判用真值核对（例如影像实际覆盖的是不是目标资产）。
 
 ## 4. 场景与故障注入

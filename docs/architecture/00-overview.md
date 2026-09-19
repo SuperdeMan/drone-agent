@@ -101,4 +101,5 @@
 | `../m0-readiness.md` | M0 交付核对与实际验证证据 |
 | `../m1-skill-catalog.md` | 五个 M1 技能的参数、资源、取消与完成判据 |
 | `../m1-implementation.md` | M1 实施顺序、运行时边界与证据要求 |
+| `../m1-readiness.md` | M1 当前运行版本、完整验收与复现边界 |
 | `../cloud-development.md` | 默认云端构建、仿真与验证的操作入口及隔离边界 |

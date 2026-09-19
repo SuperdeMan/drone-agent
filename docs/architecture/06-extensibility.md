@@ -17,7 +17,7 @@
 | `PlannerTool`（MCP） | 只读工具：地图、资产、天气、空域、历史 | 本地资产库 + 地图服务 | UOM / UTM 查询、气象 API | 工具无副作用；工具清单进入 `test_model_cannot_reach_egress` |
 | `ConstraintProvider` | 准入 / 运行期约束来源 | 地理围栏、能源模型（M1） | `AirspaceConstraintProvider`（UOM 报备、空域属性、Remote ID）（M4 前）、气象 | 约束可离线评估、可回放 |
 | `FleetTransport` | 车队协议消息的传输 | 进程内 / gRPC（M1–M2） | Zenoh（M3）、MQTT（DJI/Dock，M6） | 消息 schema 不变 |
-| `Storage` | 本地事件日志 + MCAP；云端同步 | SQLite + MCAP 文件 | 对象存储 + 时序库 | 本地写路径永不依赖云端 |
+| `Storage` | 本地事件日志 + MCAP；云端同步 | M1：fsync JSONL 哈希链 + MCAP 文件 | 业务 SQLite、对象存储、时序库按阶段引入 | 本地写路径永不依赖云端 |
 | `Judge`（评测） | TruthWorld + 事件流 → 三分类结果 | 场景裁判（M1） | 更多场景、真机日志裁判 | 与被测 agent 进程隔离 |
 
 ## 2. 厂商扩展 = 能力协商

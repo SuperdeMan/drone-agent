@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**M0 已完成，M1 正在云端 SITL 验证（2026-09-19）**。运行时、五技能、记录/回放与独立裁判已实现；完整故障矩阵与 v1 冻结按 `docs/m1-implementation.md`、`docs/roadmap.md` 验收，未全部通过前不标记完成。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。
+**M1 已完成（2026-09-20，SITL 范围）**。运行版本、66 组完整矩阵与 400 项测试证据以 `docs/m1-readiness.md` 为准；下一阶段按 `docs/roadmap.md` 的 M2 推进。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。
 
 ## 目录结构
 

@@ -32,7 +32,7 @@
 
 ## 后续入口与边界
 
-M1 新会话先按 [AGENTS.md](../AGENTS.md) 的必读顺序了解规则、架构与契约，再读 [M0 核对记录](m0-readiness.md)、本页和 [云端开发指南](cloud-development.md)。从 [路线图的 M1 任务](roadmap.md#m1--无大模型的单机安全闭环) 继续；当前仅完成联调前置，六项运行时任务和飞行闭环退出标准仍待实现。开始联调前确认云端状态与冒烟结果：
+新会话先按 [AGENTS.md](../AGENTS.md) 了解规则、架构与契约，再读 [M1 当前验收记录](m1-readiness.md) 和 [云端开发指南](cloud-development.md)。本页首次验收只证明联调前置，当时六项 M1 运行时任务尚待实现。开始联调前确认云端状态与冒烟结果：
 
 ```powershell
 uv run python scripts/dev_stack.py status
@@ -42,4 +42,4 @@ uv run python scripts/dev_stack.py test
 
 需要测试新应用代码时，先形成已提交 SHA，再执行 `deploy --sha <SHA>` 查看计划，随后 `--apply`。工具不自动 commit 或 push。首次 1.23 GB 引导归档已上传，后续通常复用云端镜像，只传输源码与控制文件。慢链路中断使用 `--resume`，不跳过最终整体哈希检查。
 
-当前云端没有 Planner、任务服务、业务控制台或实际 guardian/executive；这些模块按里程碑实现后再部署。真机控制链留在设备侧，不通过公网连续下发飞控动作。测试容器、历史部署与归档保留用于审计，不自动清理。
+首次验收时云端尚无 Planner、任务服务、业务控制台或实际 guardian/executive；M1 当前情况见 [实现与验收记录](m1-readiness.md)。真机控制链留在设备侧，不通过公网连续下发飞控动作。测试容器、历史部署与归档保留用于审计，不自动清理。

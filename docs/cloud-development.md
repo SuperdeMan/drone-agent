@@ -4,6 +4,8 @@
 
 初始 M0 部署见 [2026-09-19 历史验收](cloud-readiness-2026-09-19.md)。当前应用 SHA、部署 ID 和状态以 `status` 及本次部署回执为准；历史测试数字不能转借到新版本。
 
+M1 已通过 [2026-09-20 完整验收](m1-readiness.md)，运行版本为 `eefe76e`；后续文档归档提交与被测应用 SHA 分开记录。
+
 ## 当前部署范围
 
 M0 未解锁冒烟继续作为部署前置；M1 另有 sim/aircraft/ground 三镜像、executive/guardian 双进程和独立裁判。Planner、mission-service 与控制台属于 M2。真机的 guardian、控制出口与飞控连接仍在设备侧，云端只验证模拟飞控。
@@ -53,6 +55,8 @@ uv run python scripts/dev_stack.py m1 --scenario all --seeds 7,19,41
 ```
 
 这两个命令会在云端仿真中解锁/起飞。场景清单为 `configs/scenarios/m1_suite.yaml`；指定部署的不可变源码定义实际任务、种子随机化、注入与裁判。默认 `m1` 跑正常任务的三个种子。任一失败即停止本批扩展并保留产物，不能只按进程退出零判断通过，必须检查回执 `status` 与各项 `passed`。
+
+共享主机的验收默认 `--speed-factor 1`；显式 `--speed-factor 2` 用于单独的加速实验，报告中的 `measured_sim_speed` 才是实际倍率。`--scenario faults` 选择故障子集，也可用逗号列出若干场景；这些子集回执不能单独关闭 M1。完整准出由 `scripts/verify_m1_release.py` 按指定 SHA 中的场景与种子清单核对。
 
 镜像从已校验的检查镜像构建并按 SHA 命名；`bc` 仅安装在仿真镜像内，供 PX4 标准加速时钟启动脚本使用。MAVSDK 固定 `3.17.4`，其电量单位为 0–100，在适配器边界转换为契约的 0–1。航线上传后等待 PX4 异步检查，再确认实际进入 MISSION；依据为 [PX4 官方 MAVSDK 集成测试](https://github.com/PX4/PX4-Autopilot/blob/v1.17.0/test/mavsdk_tests/autopilot_tester.cpp)。
 

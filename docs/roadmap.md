@@ -7,7 +7,7 @@
 | 阶段 | 名称 | 指示周期 | 核心交付 | 退出标准（硬门槛） |
 |---|---|---|---|---|
 | **M0（已完成）** | 领域边界与基础契约 | 2026-09-19 完成（原估约 3 周） | 独立仓库、规范、架构文档、六类契约、proto 草案、技能草案、注入矩阵、复用清单、未解锁环境冒烟 | 258 项测试通过；红线测试、通用/飞行边界与实际环境证据齐备 |
-| **M1** | 无大模型的单机安全闭环 | 2026-10 → 2026-11 底（约 6–8 周） | PX4 SITL + Gazebo；executive / guardian 双进程；PX4 适配器（MAVSDK 3.17+）；技能 takeoff / fly_route / capture_image / return_home / land；恢复策略图 v1；MCAP + 事件流记录与回放；独立裁判；故障注入库 | 关键故障场景（超时、重复命令、旧 epoch、模式被切、取消 / 暂停、上行中断、观测 / 轨迹过期、心跳丢失、低电、围栏逼近）全部通过；错误成功报告 = 0；多种子稳定 |
+| **M1（已完成）** | 无大模型的单机安全闭环 | 2026-09-20 完成（原估 6–8 周） | PX4 SITL + Gazebo；executive / guardian 双进程；五技能；恢复策略 v1；MCAP/ULog/事件与回放；独立裁判；v1 wire 冻结 | `eefe76e`：400 项测试、22 场景 × 3 种子 66/66 通过；错误成功报告 0；14 恢复边覆盖；[验收范围](m1-readiness.md) |
 | **M2** | 接入受约束 Agent | 2026-12 → 2027-01（约 6–8 周） | Provider 移植；Planner（结构化输出 `MissionSpec`）；Compiler / Admission / ApprovalRecord；有界重规划；Evidence Verifier（确定性 + VLM 业务判断）；任务控制台 v0；A2A 任务入口 | 对抗性规划测试（错误坐标 / 能力 / 参数 / 顺序、提示注入、扩大范围）全部被准入拦截；`unknown` 不进入依赖步骤；`MissionSpec` 一次通过准入率有基线 |
 | **M3** | 局部自主与降级 | 2027-02 → 2027-04（约 8–12 周） | ROS 2 Jazzy 集成（uXRCE-DDS、px4_ros2 外部模式路径）；感知 / 定位健康 / 局部 ESDF / 短时域规划；CBF 约束过滤；能源可达性与恢复策略 v2；机载容器（arm64）与 Jetson-in-the-loop；Zenoh；机载小 VLM 事件检测；`AirspaceConstraintProvider` 桩 → 真实接口 | 观测过期、任务卡住、网络中断、计算过载四类场景行为可验证；安全监督周期 p99 达标；guardian 是否需重写为 C++/Rust 有测量结论 |
 | **M4** | 两条验证线并行 | 2027-04 → 2027-06（约 8–10 周） | **A**：单机受限真机（Pixhawk 6 级 + Jetson Orin NX 或 VOXL 2），UOM 报备，共因故障清单；**B**：一架 UAV + 一台 rover 的联合仿真（同一 Gazebo 世界，PX4 rover SITL），Coordinator 四项协同能力，交接协议，空间对齐，复核证据闭环 | A：RC 接管、飞控失效保护、伴飞计算机断电 / 串口拔出全部真机验证；B：交接成功率、重复执行数、任务丢失数、空间标注误差有基线，复核证据闭环通过 |
@@ -33,20 +33,20 @@
 - [x] M1 技能清单：五个 [SkillManifest 草案](../configs/skills/) 与 [行为说明](m1-skill-catalog.md)；恢复策略 15 条边的 [注入矩阵](../configs/scenarios/m0_fault_matrix.yaml) 和 8 类运行时故障，静态覆盖通过
 - [x] 补齐契约回归：撤销后旧代次、续期身份、嵌套参数、审批哈希/有效期/范围、任务空间/时间/能源边界与 UTC 哈希、编译 DAG；恢复场景引用与实际验证记录分离（D021）
 
-M0 已关闭：`ruff`、默认 importlib 模式下的 258 项测试、proto 编译与未解锁环境冒烟均通过。15 条恢复边全部仍是待故障注入验证的草案；M1 任务闭环尚未实现。证据见 [核对记录](m0-readiness.md)。
+M0 已关闭：`ruff`、默认 importlib 模式下的 258 项测试、proto 编译与未解锁环境冒烟均通过。M0 的 15 条恢复边保留为草案；M1 闭环使用后续独立策略。历史证据见 [核对记录](m0-readiness.md)。
 
-## M1 · 无大模型的单机安全闭环
+## M1 · 无大模型的单机安全闭环（已完成，2026-09-20）
 
-联调前置已完成（2026-09-19，D023），运行时已进入云端飞行/故障验证。实现与验收顺序见 [M1 实施计划](m1-implementation.md)；历史 M0 云端证据见 [云端验收](cloud-readiness-2026-09-19.md)。六项任务必须以完整运行证据关闭，不能只按模块存在勾选。
+六项交付已完成并通过 [M1 版本限定验收](m1-readiness.md)。实现顺序见 [实施计划](m1-implementation.md)；历史 M0 云端证据保持独立。当前验收使用 1× 请求时钟，加速入口独立保留；Offboard 物理控制与视觉定位降级仍在 M3。
 
 任务：
 
-1. `sim/`：三镜像 compose（sim / ground / aircraft），PX4 v1.17 SITL + Gazebo Harmonic，faster-than-real-time 时钟。
-2. `guardian`：安全监督器（新鲜度 / 活性 / 租约 / 围栏 / 能源）、恢复策略图执行、Control Egress、PX4 适配器（MAVSDK 3.17+：mission_upload + 遥测；offboard 仅接口预留）。
-3. `executive`：任务 DAG 调度、技能生命周期状态机、本地权威任务状态与事件日志、MCAP 录制。
-4. 五个基础技能（`skill.flight.takeoff / fly_route / capture_image / return_home / land`），每个带完整 `SkillManifest`。
-5. `eval`：场景 DSL、故障注入库、独立裁判（读 Gazebo 真值）、`eval/BASELINES.md` 首条。
-6. 回放工具：任意任务事件流离线重放并重新裁判。
+- [x] `sim/`：sim / ground / aircraft 三镜像 Compose，固定 PX4/Gazebo；显式时钟倍率与实测记录。
+- [x] `guardian`：新鲜度、活性、租约、围栏、能源、模式仲裁；恢复图、持久化出口与 PX4 mission_upload 适配器。
+- [x] `executive`：DAG、生命周期、本地权威事件、MCAP；取消与安全收尾分离。
+- [x] 五个基础技能及完整清单，真实 RGB 影像与逐航点/返航等待/着陆证据。
+- [x] 场景 DSL、故障注入、独立 Gazebo 真值裁判与基线账本。
+- [x] MCAP 重建事件、完整离线重判、v1 字段与 RPC 签名冻结。
 
 退出标准见总览；额外要求：guardian 与 executive 的 proto 契约冻结为 `v1`。
 
