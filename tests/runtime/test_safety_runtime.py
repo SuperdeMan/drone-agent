@@ -842,3 +842,25 @@ async def test_late_resume_reply_cannot_override_newer_recovery_or_execute_twice
     await pending
     assert guardian.safety == SafetyVerdict.HOLD
     assert guardian.recovery.trigger == RecoveryTrigger.EXECUTIVE_HEARTBEAT_LOST
+
+
+async def test_restarted_guardian_supervises_persisted_inflight_work_without_replaying(runtime):
+    guardian, adapter, lease, _ = runtime
+    command = envelope(guardian)
+    assert (await guardian.submit(command)).accepted
+    adapter.airborne, adapter.altitude = True, 4
+    restarted = Guardian(
+        adapter=adapter,
+        package=guardian.package,
+        registry=guardian.registry,
+        journal=guardian.journal,
+        policy=guardian.policy,
+        executive_id="executive-test",
+        simulation=True,
+    )
+    assert not restarted.install_lease(lease).accepted
+    await restarted.tick()
+    await restarted.recovery_task
+    assert adapter.writes.count("skill.flight.takeoff") == 1
+    assert adapter.writes[-1] == RecoveryBehavior.HOLD
+    assert restarted.ledger.reconcile(command.key.as_string())["receipt"] == "accepted"

@@ -56,6 +56,21 @@ class Guardian:
         self.lease_deadline = 0.0
         self.uplink_ok = True
         self.authorized_to_continue = True
+        for row in reversed(journal.rows):
+            if row["kind"] == "intent":
+                prior_key = row["data"]["envelope"]["key"]
+                if (prior_key["mission_id"], prior_key["mission_version"]) != (
+                    package.mission_id,
+                    package.mission_version,
+                ):
+                    raise ValueError("authority journal belongs to a different mission")
+                self.active_step = next((node for node in package.nodes if node.task_id == prior_key["step_id"]), None)
+                if self.active_step is None:
+                    raise ValueError("persisted command is absent from the approved package")
+                self.phase = {"takeoff": "takeoff", "capture_image": "inspect", "land": "landing"}.get(
+                    self.active_step.skill_id.rsplit(".", 1)[1], "cruise"
+                )
+                break
         self.registry.validate_package(package, camera_available=adapter.camera_available)
         if self.policy.validate_against(adapter.capabilities):
             raise ValueError("recovery policy exceeds actual adapter capabilities")
