@@ -178,6 +178,15 @@ def run_m1(root: Path, deployment: Path, request: dict):
                                 "-f",
                                 "^python3 -m drone_agent.runtime.launch executive$",
                             )
+                        elif kind == "mode_changed":
+                            compose(
+                                "exec",
+                                "-T",
+                                "sitl",
+                                "/opt/PX4-Autopilot/build/px4_sitl_default/bin/px4-commander",
+                                "mode",
+                                "posctl",
+                            )
                         elif kind in {"cancel", "pause", "pause_resume"}:
                             write_json(
                                 run / "aircraft/operator.json",

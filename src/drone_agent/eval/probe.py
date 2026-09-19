@@ -6,6 +6,7 @@
 import argparse
 import asyncio
 import json
+import time
 from datetime import timedelta
 from pathlib import Path
 
@@ -18,6 +19,7 @@ async def probe(kind, artifacts):
     rows = read_log(artifacts / "executive.jsonl")
     value = next(row["data"]["envelope"] for row in reversed(rows) if row["kind"] == "command_submitted")
     envelope = ControlCommandEnvelope.model_validate(value)
+    original_key = envelope.key.model_copy(deep=True)
     if kind != "duplicate":
         envelope.key.command_id += "-probe"
         envelope.command_seq += 100
@@ -30,6 +32,11 @@ async def probe(kind, artifacts):
         envelope.intent_kind = "trajectory_segment"
     client = GuardianClient("unix:/run/drone/guardian.sock")
     try:
+        deadline = time.monotonic() + 5
+        while (await client.reconcile(original_key))["receipt_status"] != "recorded":
+            if time.monotonic() >= deadline:
+                raise RuntimeError("original dispatch never acquired a recorded receipt")
+            await asyncio.sleep(0.1)
         result = await client.submit(envelope)
         expected = kind == "duplicate"
         result["passed"] = bool(result.get("accepted")) == expected
