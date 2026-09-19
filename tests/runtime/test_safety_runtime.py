@@ -480,3 +480,44 @@ async def test_timeout_reconciliation_does_not_reexecute(runtime, wire):
     finally:
         await client.close()
         await server.stop(0)
+
+
+def test_mavsdk_percent_and_change_only_state_streams(runtime):
+    from types import SimpleNamespace as NS
+
+    from drone_agent.adapters.px4_mavsdk import Px4Adapter
+
+    guardian, _, _, path = runtime
+    adapter = Px4Adapter(guardian.registry, path, path / "sensor.json")
+    adapter.values = {
+        "battery": NS(remaining_percent=99.0),
+        "armed": False,
+        "in_air": False,
+        "health": NS(is_local_position_ok=True, is_global_position_ok=True, is_home_position_ok=True),
+        "mode": NS(name="HOLD"),
+    }
+    adapter.received = {"link": time.monotonic(), "battery": time.monotonic()}
+    assert adapter.snapshot().battery_fraction == 0.99
+    assert adapter.snapshot().armed is False
+    adapter.received["link"] -= 3
+    assert adapter.snapshot().battery_fraction is None
+    assert adapter.snapshot().armed is None
+
+
+async def test_monotonic_expiry_cannot_be_extended_by_wall_clock(runtime):
+    guardian, adapter, _, _ = runtime
+    guardian.lease_deadline = time.monotonic() - 1
+    assert not guardian.lease_valid()
+    assert not (await guardian.submit(envelope(guardian))).accepted
+    assert not adapter.writes
+
+
+async def test_expired_authorization_stops_an_active_mission(runtime):
+    guardian, adapter, _, _ = runtime
+    adapter.airborne, adapter.altitude = True, 4
+    guardian.active_step, guardian.phase = guardian.package.nodes[1], "cruise"
+    guardian.package.approval.expires_at = utcnow() - timedelta(seconds=1)
+    await guardian.tick()
+    await guardian.recovery_task
+    assert guardian.reason == "mission_authorization_expired"
+    assert adapter.writes == [RecoveryBehavior.RTL]

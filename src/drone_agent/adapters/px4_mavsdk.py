@@ -31,6 +31,7 @@ class Px4Adapter:
         self.mode_grace = 0.0
         self.camera_available = sensor.is_file()
         self.command_log = []
+        self.control_context = {}
         self.evidence = {}
         self._system = None
 
@@ -135,7 +136,7 @@ class Px4Adapter:
                 statuses_fresh and health and health.is_local_position_ok and health.is_global_position_ok
             ),
             home_healthy=bool(statuses_fresh and health and health.is_home_position_ok),
-            battery_fraction=battery.remaining_percent if battery and statuses_fresh else None,
+            battery_fraction=battery.remaining_percent / 100.0 if battery and statuses_fresh else None,
             mission_current=progress.current if progress else 0,
             mission_total=progress.total if progress else 0,
             fc_failsafe=self.fc_failsafe,
@@ -144,7 +145,9 @@ class Px4Adapter:
     async def _call(self, name, method, permitted, *args):
         if not permitted():
             raise PermissionError("control authority changed")
-        self.command_log.append({"operation": name, "timestamp": utcnow().isoformat()})
+        self.command_log.append(
+            {"operation": name, "timestamp": utcnow().isoformat(), "authority": dict(self.control_context)}
+        )
         await method(*args)
 
     def expect(self, modes):

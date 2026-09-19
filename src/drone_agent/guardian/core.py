@@ -49,6 +49,7 @@ class Guardian:
         self.last_tick = None
         self.operation_ids = set()
         self.initial_energy = None
+        self.lease_deadline = 0.0
         self.uplink_ok = True
         self.authorized_to_continue = True
         self.registry.validate_package(package, camera_available=adapter.camera_available)
@@ -78,12 +79,17 @@ class Guardian:
         except ValueError as error:
             return EgressDecision(accepted=False, reason=str(error))
         self.ledger.record("lease", lease.model_dump(mode="json"))
+        self.lease_deadline = time.monotonic() + (lease.expires_at - utcnow()).total_seconds()
         return EgressDecision(accepted=True)
+
+    def lease_valid(self):
+        lease = self.gate.lease
+        return bool(lease and lease.is_valid_at(utcnow()) and time.monotonic() < self.lease_deadline)
 
     def heartbeat(self, pulse: dict):
         lease = self.gate.lease
         now = utcnow()
-        if not lease or not lease.is_valid_at(now):
+        if not lease or not self.lease_valid():
             raise ValueError("heartbeat without live lease")
         expected = {
             "robot_id": lease.robot_id,
@@ -135,7 +141,7 @@ class Guardian:
             if prior["digest"] != digest:
                 return self.reject(envelope, "idempotency_payload_conflict")
             return EgressDecision(accepted=prior["receipt"] == "accepted", reason="duplicate:" + prior["receipt"])
-        if self.safety != SafetyVerdict.PROCEED or not self.heartbeat_healthy():
+        if self.safety != SafetyVerdict.PROCEED or not self.heartbeat_healthy() or not self.lease_valid():
             return self.reject(envelope, "guardian_not_proceeding")
         if self.dispatch_task and not self.dispatch_task.done():
             return self.reject(envelope, "egress_busy")
@@ -165,6 +171,10 @@ class Guardian:
             return self.reject(envelope, decision.reason)
         self.ledger.record("intent", {"key": key, "digest": digest, "envelope": envelope.model_dump(mode="json")})
         self.active_step = node
+        self.adapter.control_context = {
+            "key": envelope.key.model_dump(mode="json"),
+            "command_seq": envelope.command_seq,
+        }
         self.phase = {"takeoff": "takeoff", "capture_image": "inspect", "land": "landing"}.get(
             node.skill_id.rsplit(".", 1)[1], "cruise"
         )
@@ -262,6 +272,7 @@ class Guardian:
         if obs.in_air is False and obs.armed is False:
             self.record("recovered_to", state="landed_disarmed")
             return
+        self.adapter.control_context = {"lease_epoch": self.ledger.highest_epoch, "command_seq": len(self.journal.rows)}
         self.record(
             "recovery_intent",
             behavior=behavior.value,
@@ -279,7 +290,7 @@ class Guardian:
         lease = self.gate.lease
         if (
             not lease
-            or not lease.is_valid_at(utcnow())
+            or not self.lease_valid()
             or any(
                 [
                     operation.robot_id != lease.robot_id,
@@ -310,7 +321,11 @@ class Guardian:
                 raise ValueError("resume conditions not satisfied")
             if self.recovery_task and not self.recovery_task.done():
                 raise ValueError("hold receipt pending")
-            self.record("resume_authorized", request_id=operation.request_id)
+            self.adapter.control_context = {
+                "lease_epoch": self.ledger.highest_epoch,
+                "command_seq": len(self.journal.rows),
+            }
+            self.record("resume_authorized", request_id=operation.request_id, **self.adapter.control_context)
             # Resume only the already uploaded route; do not upload it again. / 仅恢复已上传航线，不重新上传。
             await self.adapter.resume(lambda: not self.taken_over)
             self.recovery, self.safety, self.reason = None, SafetyVerdict.PROCEED, ""
@@ -350,6 +365,8 @@ class Guardian:
             return
         if self.active_step is None:
             return
+        if not self.package.is_authorized(robot_id=self.registry.capability.robot_id, now=utcnow()):
+            await self.intervene(RecoveryTrigger.USER_CANCEL, "mission_authorization_expired")
         if self.phase == "takeoff" and coordinates(obs) and coordinates(obs)[2] >= 3:
             self.phase = "hover"
         checks = []
@@ -359,8 +376,7 @@ class Guardian:
             checks.append(RecoveryTrigger.LOCALIZATION_DEGRADED)
         if not self.heartbeat_healthy():
             checks.append(RecoveryTrigger.EXECUTIVE_HEARTBEAT_LOST)
-        lease = self.gate.lease
-        if not lease or not lease.is_valid_at(utcnow()):
+        if not self.lease_valid():
             checks.append(RecoveryTrigger.LEASE_EXPIRED)
         if not self.uplink_ok and not self.authorized_to_continue:
             checks.append(RecoveryTrigger.UPLINK_LOST)

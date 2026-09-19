@@ -161,7 +161,15 @@ def run_m1(root: Path, deployment: Path, request: dict):
                         if kind in {"duplicate", "stale_epoch", "expired_intent", "offboard_rejected"}:
                             compose("exec", "-T", "executive", "python3", "-m", "drone_agent.eval.probe", kind)
                         elif kind == "heartbeat_stop":
-                            compose("kill", "-s", "SIGSTOP", "executive")
+                            compose(
+                                "exec",
+                                "-T",
+                                "executive",
+                                "pkill",
+                                "-STOP",
+                                "-f",
+                                "^python3 -m drone_agent.runtime.launch executive$",
+                            )
                         elif kind in {"cancel", "pause", "pause_resume"}:
                             write_json(
                                 run / "aircraft/operator.json",
@@ -213,7 +221,16 @@ def run_m1(root: Path, deployment: Path, request: dict):
                 else:
                     raise RuntimeError("scenario exceeded its bounded flight duration")
                 if scenario.get("kind") == "heartbeat_stop":
-                    compose("kill", "-s", "SIGCONT", "executive", check=False)
+                    compose(
+                        "exec",
+                        "-T",
+                        "executive",
+                        "pkill",
+                        "-CONT",
+                        "-f",
+                        "^python3 -m drone_agent.runtime.launch executive$",
+                        check=False,
+                    )
                 compose("stop", "-t", "5", "executive", "guardian", "collector")
                 compose("logs", "--no-color", "--tail", "160", timeout=30, check=False)
                 judged = compose("run", "-T", "--no-deps", "judge", timeout=90, check=False)
@@ -227,7 +244,16 @@ def run_m1(root: Path, deployment: Path, request: dict):
             except Exception as error:
                 result = {"passed": False, "error": str(error), "scenario": scenario["id"], "seed": seed}
                 compose("logs", "--no-color", "--tail", "160", check=False)
-                compose("kill", "-s", "SIGCONT", "executive", check=False)
+                compose(
+                    "exec",
+                    "-T",
+                    "executive",
+                    "pkill",
+                    "-CONT",
+                    "-f",
+                    "^python3 -m drone_agent.runtime.launch executive$",
+                    check=False,
+                )
                 compose("stop", "-t", "5", "executive", "guardian", "collector", check=False)
             results.append(result)
             write_json(base / "progress.json", {"source_sha": sha, "results": results, "artifact_directory": str(base)})
