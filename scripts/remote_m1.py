@@ -259,6 +259,25 @@ def run_m1(root: Path, deployment: Path, request: dict):
                     else {"passed": False, "error": "judge_failed"}
                 )
                 result["judge_exit_code"] = judged.returncode
+                replayed = compose(
+                    "run",
+                    "-T",
+                    "--no-deps",
+                    "judge",
+                    "python3",
+                    "-m",
+                    "drone_agent.eval.replay",
+                    "/run",
+                    timeout=90,
+                    check=False,
+                )
+                replay_path = run / "judge/replay.json"
+                replay_result = json.loads(replay_path.read_text()) if replay_path.exists() else {}
+                result["replay_agrees"] = all(
+                    result.get(key) == replay_result.get(key)
+                    for key in ("classification", "false_success_reports", "problems")
+                )
+                result["passed"] = result["passed"] and replayed.returncode == 0 and result["replay_agrees"]
             except Exception as error:
                 result = {"passed": False, "error": str(error), "scenario": scenario["id"], "seed": seed}
                 compose("logs", "--no-color", "--tail", "160", check=False)

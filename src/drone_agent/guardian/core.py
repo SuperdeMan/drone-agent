@@ -25,7 +25,11 @@ from drone_agent.runtime.ledger import CommandLedger, content_hash
 
 
 class Guardian:
-    def __init__(self, *, adapter, package, registry, journal, policy: RecoveryPolicy, executive_id: str):
+    def __init__(
+        self, *, adapter, package, registry, journal, policy: RecoveryPolicy, executive_id: str, simulation=False
+    ):
+        if not simulation:
+            policy.require_verified()
         self.adapter, self.package, self.registry = adapter, package, registry
         self.journal, self.ledger = journal, CommandLedger(journal)
         self.policy, self.executive_id = policy, executive_id

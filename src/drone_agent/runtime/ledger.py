@@ -22,6 +22,19 @@ def content_hash(value: object) -> str:
     return hashlib.sha256(canonical(value)).hexdigest()
 
 
+def durable_artifact(path: Path, data: bytes):
+    with path.open("wb") as stream:
+        stream.write(data)
+        stream.flush()
+        os.fsync(stream.fileno())
+    if os.name == "posix":
+        descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+
 def read_log(path: Path) -> list[dict]:
     if not path.exists():
         return []

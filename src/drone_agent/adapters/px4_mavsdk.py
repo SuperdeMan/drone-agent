@@ -24,7 +24,7 @@ from drone_agent.contracts import (
     TimeWindow,
     utcnow,
 )
-from drone_agent.runtime.ledger import canonical
+from drone_agent.runtime.ledger import canonical, durable_artifact
 
 
 class Px4Adapter:
@@ -33,6 +33,7 @@ class Px4Adapter:
         self.values, self.stamps = {}, {}
         self.received = {}
         self.fc_failsafe = False
+        self.raw_battery_fraction = None
         self.tasks = []
         self.sample = 0
         self.external_takeover = False
@@ -80,6 +81,7 @@ class Px4Adapter:
         for name, stream in streams.items():
             self.tasks.append(asyncio.create_task(self._watch(name, stream)))
         self.tasks.append(asyncio.create_task(self._watch_link()))
+        self.tasks.append(asyncio.create_task(self._watch_system_status()))
         for method, rate in (
             ("set_rate_position_velocity_ned", 10),
             ("set_rate_position", 5),
@@ -114,6 +116,15 @@ class Px4Adapter:
             self.received["link"] = time.monotonic()
             self.fc_failsafe = fields.get("system_status") in {5, 6}
 
+    async def _watch_system_status(self):
+        async for message in self._system.mavlink_direct.message("SYS_STATUS"):
+            if message.component_id != 1:
+                continue
+            fields = json.loads(message.fields_json)
+            remaining = fields.get("battery_remaining", -1)
+            self.raw_battery_fraction = remaining / 100 if 0 <= remaining <= 100 else None
+            self.received["battery_status"] = time.monotonic()
+
     def snapshot(self):
         now = utcnow()
         stamp = self.stamps.get("position", now - timedelta(days=1))
@@ -136,11 +147,12 @@ class Px4Adapter:
         progress = self.values.get("progress")
         # MAVSDK state streams may emit only changes; link and sensor ages are independent.
         # MAVSDK 状态流可能只在变化时发布；链路与传感器新鲜度分开检查。
-        statuses_fresh = (
-            time.monotonic() - self.received.get("link", 0) < 2.5
-            and time.monotonic() - self.received.get("battery", 0) < 3
-            and all(key in self.values for key in ("armed", "in_air", "health", "mode"))
+        statuses_fresh = time.monotonic() - self.received.get("link", 0) < 2.5 and all(
+            key in self.values for key in ("armed", "in_air", "health", "mode")
         )
+        energy = self.raw_battery_fraction if time.monotonic() - self.received.get("battery_status", 0) < 3 else None
+        if energy is None and battery and time.monotonic() - self.received.get("battery", 0) < 3:
+            energy = battery.remaining_percent / 100.0
         if time.monotonic() - self.received.get("position", 0) >= 0.5:
             stamp = min(stamp, now - timedelta(seconds=1))
         return FlightObservation(
@@ -157,7 +169,7 @@ class Px4Adapter:
                 statuses_fresh and health and health.is_local_position_ok and health.is_global_position_ok
             ),
             home_healthy=bool(statuses_fresh and health and health.is_home_position_ok),
-            battery_fraction=battery.remaining_percent / 100.0 if battery and statuses_fresh else None,
+            battery_fraction=energy if statuses_fresh else None,
             mission_current=progress.current if progress else 0,
             mission_total=progress.total if progress else 0,
             fc_failsafe=self.fc_failsafe,
@@ -230,7 +242,7 @@ class Px4Adapter:
                 self.registry.route(p.get("route_id", p.get("return_route_id"))), p.get("speed_mps", 2), permitted
             )
         elif action == "land":
-            self.expect({"LAND", "HOLD"})
+            self.expect({"LAND", "HOLD", "READY"})
             await self._call("land", self._system.action.land, permitted)
         elif action == "capture_image":
             self.evidence[node.task_id] = await self.capture(node, permitted)
@@ -257,7 +269,7 @@ class Px4Adapter:
         relative = f"images/{digest}.rgb"
         path = self.artifacts / relative
         path.parent.mkdir(exist_ok=True)
-        path.write_bytes(raw)
+        durable_artifact(path, raw)
         evidence = {
             "media_ref": relative,
             "sha256": digest,
@@ -281,7 +293,7 @@ class Px4Adapter:
             quality={"width": frame["width"], "height": frame["height"]},
             produced_by_skill_instance=node.task_id,
         ).model_dump(mode="json")
-        (self.artifacts / f"evidence-{node.task_id}.json").write_bytes(canonical(evidence))
+        durable_artifact(self.artifacts / f"evidence-{node.task_id}.json", canonical(evidence))
         return evidence
 
     async def recover(self, behavior, permitted):
@@ -289,10 +301,10 @@ class Px4Adapter:
             self.expect({"HOLD"})
             await self._call("hold", self._system.action.hold, permitted)
         elif behavior == RecoveryBehavior.RTL:
-            self.expect({"RETURN_TO_LAUNCH", "LAND", "HOLD"})
+            self.expect({"RETURN_TO_LAUNCH", "LAND", "HOLD", "READY"})
             await self._call("rtl", self._system.action.return_to_launch, permitted)
         elif behavior == RecoveryBehavior.LAND_HERE:
-            self.expect({"LAND", "HOLD"})
+            self.expect({"LAND", "HOLD", "READY"})
             await self._call("land_here", self._system.action.land, permitted)
         elif behavior != RecoveryBehavior.HANDOVER_TO_FC_FAILSAFE:
             raise ValueError("unsupported recovery behavior")

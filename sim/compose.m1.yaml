@@ -39,7 +39,7 @@ services:
     network_mode: service:sitl
     environment:
       DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
-    command: [python3, -m, drone_agent.runtime.launch, guardian, --fault, /input/fault.json]
+    command: [python3, -m, drone_agent.runtime.launch, guardian, --simulation, --fault, /input/fault.json]
     volumes:
       - ${DRONE_M1_RUN:?}/input:/input:ro
       - ${DRONE_M1_RUN:?}/sensor:/sensor:ro

@@ -48,6 +48,7 @@ async def main_async(args):
             journal=journal,
             policy=RecoveryPolicy.from_yaml(args.root / "configs/recovery_policies/multirotor_m1_v1.yaml"),
             executive_id=executive_id,
+            simulation=args.simulation,
         )
         if args.fault:
             from drone_agent.eval.faults import install_injection
@@ -124,7 +125,8 @@ async def main_async(args):
             )
             await executive.run()
         except Exception as error:
-            journal.append("executive_error", {"type": type(error).__name__, "reason": str(error)})
+            row = journal.append("executive_error", {"type": type(error).__name__, "reason": str(error)})
+            recorder.write("mission/events", row)
             raise
         finally:
             journal.close()
@@ -142,7 +144,10 @@ def main():
     parser.add_argument("--endpoint", default="unix:/run/drone/guardian.sock")
     parser.add_argument("--epoch", type=int, default=1)
     parser.add_argument("--fault", type=Path)
+    parser.add_argument("--simulation", action="store_true")
     args = parser.parse_args()
+    if args.fault and not args.simulation:
+        parser.error("fault injection requires an explicit simulation process")
     asyncio.run(main_async(args))
 
 

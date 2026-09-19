@@ -110,6 +110,7 @@ def runtime(tmp_path):
         journal=journal,
         policy=RecoveryPolicy.from_yaml(ROOT / "configs/recovery_policies/multirotor_m1_v1.yaml"),
         executive_id="executive-test",
+        simulation=True,
     )
     now = utcnow()
     lease = TaskLease(
@@ -641,3 +642,34 @@ async def test_landing_projection_ends_only_at_the_reserved_site(runtime):
     await guardian.tick()
     await guardian.recovery_task
     assert guardian.reason == "geofence_predicted_breach"
+
+
+def test_unverified_policy_requires_explicit_simulation(runtime):
+    guardian, adapter, _, _ = runtime
+    with pytest.raises(ValueError, match="unverified edges"):
+        Guardian(
+            adapter=adapter,
+            package=guardian.package,
+            registry=guardian.registry,
+            journal=guardian.journal,
+            policy=guardian.policy,
+            executive_id="executive-test",
+        )
+
+
+def test_missing_battery_update_does_not_erase_disarmed_evidence(runtime):
+    from types import SimpleNamespace as NS
+
+    from drone_agent.adapters.px4_mavsdk import Px4Adapter
+
+    guardian, _, _, path = runtime
+    adapter = Px4Adapter(guardian.registry, path, path / "sensor.json")
+    adapter.values = {
+        "armed": False,
+        "in_air": False,
+        "health": NS(is_local_position_ok=True, is_global_position_ok=True, is_home_position_ok=True),
+        "mode": NS(name="READY"),
+    }
+    adapter.received["link"] = time.monotonic()
+    obs = adapter.snapshot()
+    assert obs.armed is False and obs.in_air is False and obs.battery_fraction is None

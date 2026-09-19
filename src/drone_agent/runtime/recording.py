@@ -4,6 +4,7 @@ MCAP 录制与确定性记录回放。
 """
 
 import json
+import os
 import time
 from pathlib import Path
 
@@ -16,7 +17,7 @@ from drone_agent.runtime.ledger import canonical
 class Recorder:
     def __init__(self, path: Path):
         self.stream = path.open("wb")
-        self.writer = Writer(self.stream, compression=CompressionType.NONE)
+        self.writer = Writer(self.stream, compression=CompressionType.NONE, use_chunking=False)
         self.writer.start(profile="drone-agent/v1")
         self.channels = {}
 
@@ -28,8 +29,12 @@ class Recorder:
 
     def close(self):
         self.writer.finish()
-        self.stream.flush()
+        self.flush()
         self.stream.close()
+
+    def flush(self):
+        self.stream.flush()
+        os.fsync(self.stream.fileno())
 
 
 def replay(path: Path):

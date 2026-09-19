@@ -86,27 +86,32 @@ class Executive:
             result = await self.client.install(self.lease)
             if not result.get("accepted"):
                 self.aborted = True
+                self.status = {"safety_verdict": "recover", "reason": "lease_rejected"}
                 return await self.client.observation(self.lease.robot_id)
         if time.monotonic() - self.last_pulse >= 0.2:
             self.pulse_seq += 1
-            self.status = await self.client.heartbeat(
-                {
-                    "schema_version": "0.1.0",
-                    "robot_id": self.lease.robot_id,
-                    "executive_instance": self.executive_id,
-                    "mission_id": self.package.mission_id,
-                    "mission_version": self.package.mission_version,
-                    "lease_epoch": self.epoch,
-                    "heartbeat_seq": self.pulse_seq,
-                    "progress_seq": self.pulse_seq,
-                    "timestamp": now,
-                    "valid_until": now + timedelta(seconds=1),
-                    "skill_instance_id": self.node.task_id if self.node else "idle",
-                    "skill_state": self.states.get(self.node.task_id, SkillInstanceState.ACCEPTED)
-                    if self.node
-                    else SkillInstanceState.ACCEPTED,
-                }
-            )
+            try:
+                self.status = await self.client.heartbeat(
+                    {
+                        "schema_version": "0.1.0",
+                        "robot_id": self.lease.robot_id,
+                        "executive_instance": self.executive_id,
+                        "mission_id": self.package.mission_id,
+                        "mission_version": self.package.mission_version,
+                        "lease_epoch": self.epoch,
+                        "heartbeat_seq": self.pulse_seq,
+                        "progress_seq": self.pulse_seq,
+                        "timestamp": now,
+                        "valid_until": now + timedelta(seconds=1),
+                        "skill_instance_id": self.node.task_id if self.node else "idle",
+                        "skill_state": self.states.get(self.node.task_id, SkillInstanceState.ACCEPTED)
+                        if self.node
+                        else SkillInstanceState.ACCEPTED,
+                    }
+                )
+            except grpc.aio.AioRpcError:
+                self.aborted = True
+                self.status = {"safety_verdict": "recover", "reason": "guardian_authority_unavailable"}
             self.last_pulse = time.monotonic()
         obs = await self.client.observation(self.lease.robot_id)
         self.recorder.write("flight/observation", obs.model_dump(mode="json"))
@@ -271,6 +276,7 @@ class Executive:
             safety_verdict=SafetyVerdict(self.status["safety_verdict"]),
         )
         self.outcomes[node.task_id] = outcome
+        self.recorder.flush()
         self.event("step_outcome", outcome=outcome.model_dump(mode="json"), waypoints_verified=verifier.waypoint)
 
     async def run(self):

@@ -18,15 +18,21 @@ from drone_agent.runtime.ledger import canonical, read_log
 from drone_agent.runtime.recording import replay
 
 
-def judge(run: Path, root: Path) -> dict:
+def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -> dict:
     metadata = json.loads((run / "input/scenario.json").read_text())
     package = MissionPackage.model_validate_json((run / "input/package.json").read_bytes())
     registry = Registry(root)
     truth = [json.loads(line) for line in (run / "truth/truth.jsonl").read_text().splitlines()]
     events = read_log(run / "aircraft/guardian.jsonl")
-    executive = read_log(run / "aircraft/executive.jsonl")
+    executive = read_log(run / "aircraft/executive.jsonl") if replayed_events is None else replayed_events
     result_path = run / "aircraft/result.json"
-    result = json.loads(result_path.read_text()) if result_path.exists() else {"completed": False, "outcomes": {}}
+    if replayed_events is None:
+        result = json.loads(result_path.read_text()) if result_path.exists() else {"completed": False, "outcomes": {}}
+    else:
+        result = next(
+            (row["data"] for row in reversed(executive) if row["kind"] == "mission_result"),
+            {"completed": False, "outcomes": {}},
+        )
     problems = []
     if len(truth) < 20 or truth[-1]["sim_time"] <= truth[0]["sim_time"]:
         problems.append("insufficient_advancing_truth")
