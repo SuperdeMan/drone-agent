@@ -1,0 +1,38 @@
+# Platform lock for the M1 simulation target (docs/decisions.md D008). Version bumps go through
+# decisions.md first. `capability` is the CapabilityDescriptor the PX4 adapter publishes for this
+# platform; note the honest control_modes: M1 enables mission_upload only.
+schema_version: "0.1.0"
+platform_id: px4_sitl_multirotor
+versions:
+  px4: "1.17.x"
+  mavsdk_python: "3.17.x" # v4 native binding not on PyPI as of 2026-09-17; migrate adapter when released
+  gazebo: harmonic
+  ros2: jazzy # M3; evaluate lyrical per D008
+  ubuntu: "24.04"
+  python: "3.12"
+capability:
+  robot_id: uav_01
+  embodiment: aerial_multirotor
+  interface_version: "0.1.0"
+  control_modes: [mission_upload]
+  skills:
+    - { skill_id: skill.flight.takeoff, version: "0.1.0" }
+    - { skill_id: skill.flight.fly_route, version: "0.1.0" }
+    - { skill_id: skill.flight.capture_image, version: "0.1.0" }
+    - { skill_id: skill.flight.return_home, version: "0.1.0" }
+    - { skill_id: skill.flight.land, version: "0.1.0" }
+  sensors:
+    - { sensor_id: gnss_0, kind: gnss, frame_id: uav_01/base_link, nominal_accuracy: { position_m: 1.5 } }
+    - { sensor_id: cam_0, kind: rgb_camera, frame_id: uav_01/cam_0 }
+  payloads: []
+  limits:
+    max_speed_mps: 8.0
+    max_altitude_m_agl: 60.0
+    endurance_s: 1500
+    max_wind_mps: 8.0
+    can_hover: true
+  recovery_behaviors: [hold, rtl, land_here, land_at, handover_to_fc_failsafe]
+  vendor: px4
+  model: x500_sitl
+  vendor_constraints: []
+recovery_policy_ref: multirotor_campus@v1

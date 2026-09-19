@@ -1,0 +1,165 @@
+# 技术决策记录（Decision Log）
+
+> 只增不删。每条含：日期、状态、决策、理由、替代方案、重估触发器。架构级变更先在此增条目，再改代码。
+
+## D001 · 独立仓库；复用姊妹项目采用「复制改造」，抽公共内核有明确触发器
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：`drone-agent` 独立于 `embodied-agent` 与 `car-agent`。复用沿用 embodied-agent D006 的「复制改造、零运行时依赖、文件头标注来源、测试随行、术语改名彻底」规则。公共内核（`agent-kernel`，名字避开 embodied 的进程名 `agent-core`）**不在现在启动**；抽出条件是机械臂与无人机两个真实场景通过同一份契约测试（`tests/contracts/`），届时把契约模型、Provider、技能注册与检索、规划输出校验、事件与证据模型、评测三分类迁入版本化包，内核不依赖 PX4 / MuJoCo / 机械臂驱动 / 车辆 VAL。
+
+**理由**：无人机在持续执行、故障处置、空间表示、飞控接入与评测上需要独立领域边界；embodied-agent 当前 HAL / 世界快照 / halt 语义带明显机械臂语义，用 `if embodiment == "drone"` 塞进去会把跨本体变成特殊分支集合。embodied D006 写明「出现第三个消费者时重估抽库」，本仓库就是第三个消费者；重估结论是「先双场景验证契约，再抽」。
+
+**替代方案**：合并进 embodied-agent（否：领域耦合）；立刻新建 agent-kernel 仓库（否：抽象过早，靠猜测设计内核）。
+
+**重估触发器**：两仓库契约测试双通过；或第三个本体（如 VTOL、人形）出现。需在 embodied-agent 的 `decisions.md` 追加一条记录本次重估（待其维护者执行）。
+
+## D002 · 项目定位：安全约束任务运行时，不是「语音控制无人机」
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：定位为「面向空地异构机器人的安全约束任务运行时，以无人机为首要本体」。产品价值在任务编译、本地约束执行、证据确认与任务交接；语音只是入口之一。
+
+**理由**：「语音 + 飞控 API 封装」没有护城河，也无法承载空地协同。三个姊妹项目应是三种场景对同一套「理解—执行—验证」能力的验证，按本体区分的是控制、安全与物理世界建模。
+
+**替代方案**：做无人机聊天助手（否）。
+
+## D003 · 四级执行分工 + executive / guardian 双进程
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：任务规划（L1）→ 确定性编译与准入（L2）→ 任务执行（L3）→ 局部自主（L4）→ 安全监督与控制出口（L5）→ 本体适配（L6）。机载最小进程拓扑：`executive`（L3 + 证据 + BeliefWorld）与 `guardian`（L5 + L6），后者是唯一持有飞控连接的进程；executive 失效时 guardian 独立执行恢复策略。上层向下传递任务及其边界，不传每帧动作。
+
+**理由**：与 2026 年前沿（Gemini Robotics ER 2 编排 / 执行分离、P–C–A 综述四件套、RTA/Simplex）一致；embodied D008 的三进程活性链证明了「看门狗是唯一执法点」可行，飞行场景需要把执法点与飞控连接放在同一进程以缩短恢复路径。
+
+**替代方案**：「大脑—驱动」两层（否：LLM 延迟进入控制回路）；全部 ROS 2 节点（否：M1 不需要，且通用运行时不应依赖全部 ROS 消息）。
+
+**重估触发器**：M3 测得 guardian 在 Python 下无法满足安全监督周期 p99 预算 → 用 C++/Rust 重写 guardian（接口不变）。
+
+## D004 · LLM 输出类型化 MissionSpec，不输出代码或平台命令
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：Planner 通过结构化输出产生 `MissionSpec` 草案；Compiler 展开为 `MissionPackage`；Admission 校验并绑定审批。Planner 不能新建空间体积，只能引用已批准体积；恢复策略由场景配置指定。有界重规划只重生成受影响子图且仍需准入。
+
+**理由**：CoMuRoS / RobotFleet 等让机器人侧 LLM 生成可执行 Python 的做法不可审计、不可准入；ARIES-Mission2 证明「语义接地 + 确定性优化」分离可行。
+
+**替代方案**：LLM 生成技能调用序列直接执行（否：绕过编译与准入）。
+
+## D005 · 单一控制出口与控制权租约
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：所有控制写入经过 guardian 内的 Control Egress；命令携带 `(mission_id, mission_version, step_id, command_id, robot_id, lease_epoch, command_seq)`；旧 epoch 拒绝、序号单调、超时先对账再重发。控制权优先级：飞控失效保护 > RC/GCS > guardian 恢复 > 持有效租约的 executive。
+
+**理由**：MAVSDK、ROS 2 节点、多个技能多头写入是无人机项目最常见的事故源；MAVSDK Offboard 20 Hz 自动重发会掩盖业务卡死，必须独立检查活性 / 新鲜度 / 租约。
+
+**替代方案**：每个技能各自持有 MAVSDK 连接（否）。
+
+## D006 · 三元状态：execution_status / effect_verdict / safety_verdict
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：命令执行状态、物理效果判定、安全判定分离；`unknown` / `unverified` 不放行后继（除非任务包中的边显式 `allow_unverified` 且经审批）；报告「已完成」只接受 `succeeded ∧ verified`。
+
+**理由**：embodied-agent `executor.py` 中 UNSAT 报告策略保留 `StepStatus.OK`、`_replay_prior()` 把「超时未重发」返回 OK 的语义在飞行场景不可接受（起飞超时 ≠ 已起飞）。
+
+**替代方案**：沿用单一 `StepStatus`（否）。
+
+## D007 · 三种世界与 BeliefWorld 双层表示
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：TruthWorld（仅裁判）、BeliefWorld（运行时）、PredictedWorld（候选评估，不作前置条件）。BeliefWorld = 局部几何层（占据 / ESDF，机载不共享）+ 语义场景图（可共享增量）；所有事实带坐标系、地图版本、时间、有效期、协方差、来源、置信度。
+
+**理由**：继承 embodied 「agent 只见感知、裁判只见真值」；多机器人开放词汇场景图是空地共享世界表示的当前最优实践；世界模型预测不能冒充观测。
+
+## D008 · 首个飞控适配：PX4 v1.17 + MAVSDK-Python 3.17.x（v4 发布后迁移）；ROS 2 基线 Jazzy；Gazebo Harmonic
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：M1 用 PX4 v1.17.x SITL + MAVSDK-Python 3.17.x（PyPI `mavsdk`，gRPC 封装 + 自带 `mavsdk_server`；2026-09-17 核实 PyPI 最新为 3.17.4，`mavsdk-grpc` 3.17.4 已出现，说明包拆分已开始，但 v4 原生绑定尚未发布）。适配器代码隔离在 guardian 内，v4 发布后迁移（`System()` → `Mavsdk`、插件改为类）只动适配器；依赖锁 `mavsdk>=3.17,<5`。M3 引入 ROS 2 Jazzy（Ubuntu 24.04，LTS 至 2029-05）+ uXRCE-DDS + px4_ros2 外部模式作为第二控制路径；Gazebo Harmonic。M3 评估切换 Lyrical Luth（2026-05 LTS 至 2031-05）的条件：px4_msgs、Nav2、BehaviorTree.ROS2、rmw_zenoh 均有稳定发布。版本锁在 `configs/platforms/`。
+
+**理由**：PX4 是开放度最高的飞控且 v1.17（2026-05）成熟；MAVSDK 正在换包名与 API，不按 PyPI 实际发布状态锁定会踩迁移坑（本条初稿曾误把 main 文档的 v4 当作已发布，`uv sync` 失败后纠正）；Lyrical 刚发布四个月，生态包可能滞后。
+
+**替代方案**：ArduPilot 起步（否：AP_DDS 生态较小；列为第二平台）；直接 px4_ros2 起步（否：部分接口实验性，M1 不需要）。
+
+## D009 · 安全体系按 RTA/Simplex 组织；恢复策略图是场景配置
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：四道约束（准入、运行期、本地恢复、飞控 + 人工）；guardian 是 Simplex 决策模块，恢复策略图（`configs/recovery_policies/`）是已验证基线行为集合，边由触发条件 × 上下文守卫决定；每条边须有故障注入场景；切回高性能路径有准入条件。最终安全判断不交给 LLM。不禁用飞控失效保护，不使用 PX4 失效保护延期，不提供 kill 接口。
+
+**理由**：RTA 是既有学科，给评审与认证提供语言；「异常就悬停 / 返航」不是安全策略。
+
+## D010 · 仿真两条线：PX4 SITL + Gazebo 主线；Pegasus / Isaac 后置
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：飞控与系统验证线（PX4 SITL + Gazebo）从 M1 起是 CI 主线；感知与学习数据线（Pegasus 5.1 / Isaac Sim 5.1、Cosmos 3）M3 起按需引入。空地联合仿真优先在同一 Gazebo 世界用 PX4 多旋翼 + PX4 rover SITL。容器形态借鉴 aerial-autonomy-stack：sim / ground / aircraft 三镜像，aircraft 多架构。
+
+**理由**：先验证真实飞控逻辑与故障行为；高保真渲染不是任务闭环的前置条件；跨仿真器时空同步在早期是纯成本。
+
+## D011 · 空地协同：协调器分配任务，各机器人本地闭环；首场景「巡检—发现—复核—报告」
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：共享任务、`WorldFact`、`Evidence`，不共享运动控制；四项能力（能力发现、空间对齐、任务所有权与交接、时空资源预约）从 M4-B 起实现；控制权强一致（租约 + epoch），地图事实最终一致；地面导航用 Nav2 适配器。
+
+**理由**：混合层级优于全去中心化（CoMuRoS 结论）；「空中给全局语义、地面做局部执行」有实验路径；地面可通行性必须由地面机器人自己判断。
+
+## D012 · MCP 只用于规划层只读工具；A2A 只用于任务入口
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：Planner 工具（地图、资产、天气、空域、历史）经 MCP 接入，全部只读，白名单在 `configs/planner_tools.yaml` 并进入契约测试；社区 ROS 2 MCP 服务器（直接发布 `cmd_vel`）不得接入。`cockpit-agent` 等外部 agent 经 A2A 提交任务请求与查询进度，不传控制意图。工具返回视为数据，不作为指令。
+
+**理由**：MCP / A2A 是 2026 主流互操作协议，但它们的社区默认用法与本项目的单一控制出口冲突。
+
+## D013 · 评测三分类 + 独立裁判 + 故障注入
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：结果分为任务完成 / 合理拒绝或安全中止 / 不安全或错误行为；裁判只读 TruthWorld 且与被测 agent 进程隔离；场景 DSL + 故障注入库从 M1 起；`eval/BASELINES.md` 只增不改。学习型组件走回放 → 仿真 → 影子 → 有限接管 → 正式。
+
+**理由**：只看成功率奖励虚报，只看事故率奖励拒绝一切；有限测试集零违规不是实飞安全证明。
+
+## D014 · Python 3.12 单包 + uv / ruff / pytest；proto 先行；ROS 2 节点独立
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：`src/drone_agent/` 单包多子模块，`uv` 管理，`ruff`（120 列）+ `pytest`（importlib 模式，asyncio auto），hatchling 构建；契约用 Pydantic v2；跨进程契约 proto 先行（M1）；ROS 2 节点放 `ros2_ws/`，用系统 Python，与本包只通过 proto / IPC 交互。Python 3.12 与 Ubuntu 24.04 / ROS 2 Jazzy 系统 Python 一致。
+
+**理由**：与 embodied-agent 工具链一致，降低跨仓库维护成本；本包不 import rclpy 避免虚拟环境与系统 Python 冲突。
+
+## D015 · 数据记录：MCAP + ULog + 任务事件流；训练格式是派生视图
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：原始层保留多频率传感器（MCAP）、飞控日志（ULog）、任务事件流（JSONL / SQLite），以 `mission_id + 单调时间` 关联；每次任务绑定任务与审批版本、模型 / 策略 / 软件 / 飞控配置版本；LeRobot 等训练格式按需导出。不在飞行中在线训练或无审批热换策略。
+
+**理由**：训练格式固定采样率会丢失飞控与安全分析需要的信息；embodied D003 的 LeRobot 对齐在这里只适用于派生层。
+
+## D016 · 法规接入点：AirspaceConstraintProvider，M4 真机前必须接入
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：准入层预留 `AirspaceConstraintProvider` 插件（空域属性查询、UOM 报备状态、Remote ID）；M1–M3 用桩实现；M4-A 真机前接入 UOM 流程（实名登记、飞行活动申请、起飞确认）。
+
+**理由**：《无人驾驶航空器飞行管理暂行条例》2024-01-01 施行；2026-05-01 起未实名登记锁飞；法规是准入约束而非事后补丁。
+
+## D017 · 第二平台优先级：DJI Cloud API > ArduPilot；通过能力协商接入
+
+**日期**：2026-09-19 · **状态**：生效（M6 执行）
+
+**决策**：M6 第二平台优先 DJI Cloud API（MQTT：航线、相机、云台、直播、Dock），其适配器只声明真实能力（无 `offboard_*`）；ArduPilot（AP_DDS / MAVLink）次之。Compiler 按能力换用替代技能或拒绝，不做假接口。
+
+**理由**：国内低空经济场景以 DJI 与 Dock 自动化为主；能力协商是本项目扩展性的核心承诺。
+
+## D018 · 术语纪律与移植规则
+
+**日期**：2026-09-19 · **状态**：生效
+
+**决策**：`src/` 中禁止 `qpos`/`qvel`/`gripper`/`ee_pose`/`joint_targets`/`cockpit`/`cabin`/`座舱`（契约测试扫描）；`vehicle` 不禁，因 PX4 / MAVLink 用它指飞行器本身（`VehicleStatus`、`vehicle_command`），禁了会把飞控适配器逼成别扭的改名；移植文件头 `# Ported from <repo> <path> @ <commit>, changes: <summary>`；测试随行；严禁复制 car-agent `.env`；清单外模块想搬先在本文件记一条。
+
+**理由**：与 embodied-agent 的移植规矩一致；防止机械臂 / 座舱语义渗入飞行代码。

@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Generated code (proto codegen output; never hand-edited, never committed)
+gen/
+
+# Runtime artifacts: recordings, logs, evidence, replay outputs
+outputs/
+*.mcap
+*.ulg
+
+# Secrets and local environment (never copy car-agent's .env)
+.env
+.env.*
+!.env.example
+
+# Simulation assets and model weights are pointers only (see assets/README)
+assets/**/*.onnx
+assets/**/*.pt
+assets/**/*.safetensors
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

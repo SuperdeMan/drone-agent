@@ -1,0 +1,43 @@
+[project]
+name = "drone-agent"
+version = "0.1.0"
+description = "Safety-constrained mission runtime for air-ground heterogeneous robots, drone-first"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [{ name = "SuperdeMan" }]
+dependencies = [
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "ruff>=0.6"]
+# M1 (docs/decisions.md D008): flight-controller transport. As of 2026-09-17 PyPI ships
+# mavsdk 3.17.x (gRPC wrapper + bundled mavsdk_server); the v4 native binding is documented
+# upstream but not released. Adapter code stays isolated in guardian so the v4 migration
+# (System() -> Mavsdk, plugin classes) is contained.
+flight = ["mavsdk>=3.17,<5"]
+# M1: local IPC between executive and guardian (proto-first, see proto/).
+rpc = ["grpcio>=1.66", "grpcio-tools>=1.66"]
+# M2: planner providers (ported from embodied-agent, D001).
+planner = ["anthropic>=0.39", "httpx>=0.27"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/drone_agent"]
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib -q"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

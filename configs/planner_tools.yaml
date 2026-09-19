@@ -1,0 +1,21 @@
+# Read-only tools the L1 planner may reach through MCP (docs/decisions.md D012).
+# Anything that writes control, mission packages, leases or platform state is forbidden here;
+# the loader (contracts/planner_tools.py) and tests/contracts/test_model_cannot_reach_egress.py
+# fail closed on violations. Community ROS 2 MCP servers that publish cmd_vel must never be listed.
+schema_version: "0.1.0"
+tools:
+  - name: assets.lookup
+    read_only: true
+    description: Look up asset records (id, type, nominal position, last inspection) by id or region.
+  - name: map.query
+    read_only: true
+    description: Query approved volumes, landing sites and static map features by id or bounding box.
+  - name: weather.current
+    read_only: true
+    description: Current and short-horizon wind, precipitation and visibility for a site.
+  - name: airspace.status
+    read_only: true
+    description: Airspace class and UOM filing status for an approved volume.
+  - name: missions.history
+    read_only: true
+    description: Past mission outcomes, evidence summaries and anomaly candidates for an asset.

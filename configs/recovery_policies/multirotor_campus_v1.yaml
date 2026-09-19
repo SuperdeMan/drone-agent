@@ -1,0 +1,84 @@
+# Recovery policy graph: multirotor, campus inspection (docs/architecture/03-safety.md §3).
+# Nodes are verified baseline behaviours; edges are trigger x context guards, most specific first.
+# `fault_injection_scenario` names the scenario that verified the edge. Edges without one are
+# DRAFT and cannot enter a production platform config (contract test flags them).
+schema_version: "0.1.0"
+policy_id: multirotor_campus
+version: v1
+embodiment: aerial_multirotor
+nodes: [hold, rtl, land_here, land_at, handover_to_fc_failsafe]
+resume_conditions:
+  - observation_fresh
+  - lease_valid
+  - executive_heartbeat_ok
+  - skill_instance_in_cancel_safe_state_or_resume
+edges:
+  - trigger: executive_heartbeat_lost
+    guard: { flight_phase: [takeoff] }
+    target: land_here
+    fault_injection_scenario: fi.heartbeat_lost.takeoff
+  - trigger: executive_heartbeat_lost
+    guard: { flight_phase: [cruise, inspect, hover], localization_healthy: true }
+    target: hold
+    then: rtl
+    after_s: 10
+    fault_injection_scenario: fi.heartbeat_lost.cruise
+  - trigger: observation_stale
+    guard: { control_mode: [offboard_position, offboard_velocity, offboard_trajectory] }
+    target: hold
+    fault_injection_scenario: fi.observation_stale.offboard
+  - trigger: trajectory_stale
+    guard: { control_mode: [offboard_position, offboard_velocity, offboard_trajectory] }
+    target: hold
+    fault_injection_scenario: fi.trajectory_stale.offboard
+  - trigger: lease_expired
+    guard: {}
+    target: hold
+    then: rtl
+    after_s: 30
+    fault_injection_scenario: fi.lease_expired
+  - trigger: energy_low
+    guard: { rtl_reachable: true }
+    target: rtl
+    fault_injection_scenario: fi.energy_low.rtl_reachable
+  - trigger: energy_low
+    guard: { rtl_reachable: false }
+    target: land_at
+    fault_injection_scenario: fi.energy_low.rtl_unreachable
+  - trigger: geofence_predicted_breach
+    guard: {}
+    target: hold
+    fault_injection_scenario: fi.geofence.predicted_breach
+  - trigger: localization_degraded
+    guard: { visual_localization_ok: true }
+    target: hold
+    fault_injection_scenario: fi.localization.gnss_lost_visual_ok
+  - trigger: localization_degraded
+    guard: { visual_localization_ok: false }
+    target: handover_to_fc_failsafe
+    fault_injection_scenario: fi.localization.all_lost
+  - trigger: uplink_lost
+    guard: { authorized_to_continue: true, robot_healthy: true }
+    target: hold
+    # DRAFT: continuing the authorised package after a short hold is M1 work; until the
+    # scenario exists this edge stays unverified and must not ship.
+  - trigger: uplink_lost
+    guard: { authorized_to_continue: false }
+    target: hold
+    then: rtl
+    after_s: 15
+    fault_injection_scenario: fi.uplink_lost.not_authorized
+  - trigger: fc_failsafe_active
+    guard: {}
+    target: handover_to_fc_failsafe
+    fault_injection_scenario: fi.fc_failsafe.active
+  - trigger: user_pause
+    guard: { flight_phase: [cruise, inspect, hover] }
+    target: hold
+    then: rtl
+    after_s: 120
+    fault_injection_scenario: fi.user_pause.airborne
+  - trigger: user_cancel
+    guard: {}
+    target: rtl
+    fault_injection_scenario: fi.user_cancel
