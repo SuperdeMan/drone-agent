@@ -108,4 +108,6 @@ PX4 完成 LAND 并自动上锁后可能恢复先前的 MISSION 意图。只有�
 
 用户在下降阶段取消任务时，guardian 保持就地降落，不切换成返航爬升；executive 等待新鲜地面/上锁证据稳定后才写入 `cancelled`。该分支单独进入降落中取消的 SITL 场景，不能借起飞或巡航取消的结果关闭。
 
+PX4 的模式仲裁采用 `CURRENT_MODE`（实际模式与操作者期望模式）观测，guardian 启动时仅请求该状态消息的 10 Hz 最大发送频率；不更改飞行失效保护。低频 HEARTBEAT 继续用于链路/原生失效保护状态，不能单独承担短暂模式切换检测。定义见 [MAVLink CURRENT_MODE](https://mavlink.io/en/messages/common.html#CURRENT_MODE)。
+
 `guardian` 与 `executive` 分进程只隔离软件故障；供电、计算与通信仍是共因。M4 真机验证清单必须包含：伴飞计算机断电、串口拔出、RC 接管、飞控失效保护触发四类共因测试，验证飞控原生路径不依赖任何机载软件。

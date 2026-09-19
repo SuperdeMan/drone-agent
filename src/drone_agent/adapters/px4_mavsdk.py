@@ -13,6 +13,7 @@ import math
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 from drone_agent.contracts import (
     Evidence,
@@ -83,6 +84,8 @@ class Px4Adapter:
             self.tasks.append(asyncio.create_task(self._watch(name, stream)))
         self.tasks.append(asyncio.create_task(self._watch_link()))
         self.tasks.append(asyncio.create_task(self._watch_system_status()))
+        self.tasks.append(asyncio.create_task(self._watch_current_mode()))
+        await self._request_current_mode()
         for method, rate in (
             ("set_rate_position_velocity_ned", 10),
             ("set_rate_position", 5),
@@ -94,24 +97,85 @@ class Px4Adapter:
         async with asyncio.timeout(60):
             while True:
                 obs = self.snapshot()
-                if obs.pose and obs.localization_healthy and obs.home_healthy and obs.armed is not None:
+                if (
+                    obs.pose
+                    and obs.localization_healthy
+                    and obs.home_healthy
+                    and obs.armed is not None
+                    and obs.flight_mode != "UNKNOWN"
+                    and "current_mode" in self.received
+                ):
                     break
                 await asyncio.sleep(0.1)
 
     async def _watch(self, name, stream):
         async for value in stream():
+            if name == "mode" and time.monotonic() - self.received.get("current_mode", 0) < 2.5:
+                continue
             self.values[name], self.stamps[name] = value, utcnow()
             self.received[name] = time.monotonic()
             if name == "position":
                 self.sample += 1
-            if name == "mode" and self.expected_modes:
-                pending_previous = time.monotonic() <= self.mode_grace and value.name == self.transition_from
-                if (
-                    value.name not in self.expected_modes
-                    and not pending_previous
-                    and not self.landed_mode_transition(value.name)
-                ):
-                    self.external_takeover = True
+            if name == "mode":
+                self.check_mode(value.name)
+
+    def check_mode(self, mode):
+        if self.expected_modes:
+            pending_previous = time.monotonic() <= self.mode_grace and mode == self.transition_from
+            if mode not in self.expected_modes and not pending_previous and not self.landed_mode_transition(mode):
+                self.external_takeover = True
+
+    async def _request_current_mode(self):
+        from mavsdk.mavlink_direct import MavlinkMessage
+
+        # A fixed telemetry request, never a caller-selectable flight command. / 固定的遥测请求，不能由调用者选择飞行命令。
+        fields = {
+            "target_system": 1,
+            "target_component": 1,
+            "command": 511,
+            "confirmation": 0,
+            "param1": 436,
+            "param2": 100000,
+            "param3": 0,
+            "param4": 0,
+            "param5": 0,
+            "param6": 0,
+            "param7": 0,
+        }
+        await self._system.mavlink_direct.send_message(
+            MavlinkMessage("COMMAND_LONG", 245, 190, 1, 1, json.dumps(fields))
+        )
+
+    @staticmethod
+    def px4_mode(custom):
+        main, sub = (int(custom) >> 16) & 255, (int(custom) >> 24) & 255
+        if main == 4:
+            return {
+                1: "READY",
+                2: "TAKEOFF",
+                3: "HOLD",
+                4: "MISSION",
+                5: "RETURN_TO_LAUNCH",
+                6: "LAND",
+                8: "FOLLOW_ME",
+                9: "LAND",
+                10: "TAKEOFF",
+            }.get(sub, "UNKNOWN")
+        return {1: "MANUAL", 2: "ALTCTL", 3: "POSCTL", 5: "ACRO", 6: "OFFBOARD", 7: "STABILIZED"}.get(main, "UNKNOWN")
+
+    def current_mode(self, fields):
+        actual = self.px4_mode(fields["custom_mode"])
+        self.received["current_mode"] = self.received["mode"] = time.monotonic()
+        self.values["mode"] = SimpleNamespace(name=actual)
+        self.stamps["mode"] = utcnow()
+        self.check_mode(actual)
+        if fields.get("intended_custom_mode"):
+            self.check_mode(self.px4_mode(fields["intended_custom_mode"]))
+
+    async def _watch_current_mode(self):
+        async for message in self._system.mavlink_direct.message("CURRENT_MODE"):
+            if message.component_id == 1:
+                self.current_mode(json.loads(message.fields_json))
 
     def landed_mode_transition(self, mode):
         position = self.values.get("position")

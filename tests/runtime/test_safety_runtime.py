@@ -889,3 +889,27 @@ async def test_recovery_never_writes_after_manual_takeover_is_observed(runtime):
     adapter.airborne, adapter.external_takeover = True, True
     await guardian.intervene(RecoveryTrigger.USER_CANCEL)
     assert guardian.taken_over and not adapter.writes
+
+
+def test_current_mode_detects_external_intention_even_before_actual_transition(runtime):
+    from types import SimpleNamespace as NS
+
+    from drone_agent.adapters.px4_mavsdk import Px4Adapter
+
+    guardian, _, _, path = runtime
+    adapter = Px4Adapter(guardian.registry, path, path / "sensor.json")
+    adapter.values["mode"] = NS(name="HOLD")
+    adapter.expect({"MISSION", "HOLD"})
+    hold = (4 << 16) | (3 << 24)
+    adapter.current_mode({"custom_mode": hold, "intended_custom_mode": 3 << 16})
+    assert adapter.values["mode"].name == "HOLD"
+    assert adapter.external_takeover
+
+
+@pytest.mark.parametrize(
+    "main,sub,mode", [(4, 4, "MISSION"), (4, 6, "LAND"), (3, 0, "POSCTL"), (4, 2, "TAKEOFF"), (99, 0, "UNKNOWN")]
+)
+def test_px4_mode_decoding_uses_the_pinned_layout(main, sub, mode):
+    from drone_agent.adapters.px4_mavsdk import Px4Adapter
+
+    assert Px4Adapter.px4_mode((main << 16) | (sub << 24)) == mode
