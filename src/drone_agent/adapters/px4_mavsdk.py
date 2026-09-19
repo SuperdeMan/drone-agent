@@ -22,6 +22,8 @@ class Px4Adapter:
     def __init__(self, registry, artifacts: Path, sensor: Path):
         self.registry, self.artifacts, self.sensor = registry, artifacts, sensor
         self.values, self.stamps = {}, {}
+        self.received = {}
+        self.fc_failsafe = False
         self.tasks = []
         self.sample = 0
         self.external_takeover = False
@@ -55,6 +57,7 @@ class Px4Adapter:
         }
         for name, stream in streams.items():
             self.tasks.append(asyncio.create_task(self._watch(name, stream)))
+        self.tasks.append(asyncio.create_task(self._watch_link()))
         for method, rate in (
             ("set_rate_position_velocity_ned", 10),
             ("set_rate_position", 5),
@@ -73,11 +76,21 @@ class Px4Adapter:
     async def _watch(self, name, stream):
         async for value in stream():
             self.values[name], self.stamps[name] = value, utcnow()
+            self.received[name] = time.monotonic()
             if name == "position":
                 self.sample += 1
             if name == "mode" and self.expected_modes and time.monotonic() > self.mode_grace:
                 if value.name not in self.expected_modes:
                     self.external_takeover = True
+
+    async def _watch_link(self):
+        # Read the PX4 heartbeat on the same guardian-owned connection. / 在 guardian 唯一连接上读取 PX4 心跳。
+        async for message in self._system.mavlink_direct.message("HEARTBEAT"):
+            fields = json.loads(message.fields_json)
+            if fields.get("autopilot") != 12 or message.component_id != 1:
+                continue
+            self.received["link"] = time.monotonic()
+            self.fc_failsafe = fields.get("system_status") in {5, 6}
 
     def snapshot(self):
         now = utcnow()
@@ -86,7 +99,7 @@ class Px4Adapter:
         p, gps = self.values.get("position"), self.values.get("gps")
         if p:
             covariance = None
-            if gps and (now - self.stamps["gps"]).total_seconds() < 3:
+            if gps and time.monotonic() - self.received.get("gps", 0) < 3:
                 h, v = gps.horizontal_uncertainty_m, gps.vertical_uncertainty_m
                 if math.isfinite(h) and math.isfinite(v) and h > 0 and v > 0:
                     covariance = (h * h, 0, 0, 0, h * h, 0, 0, 0, v * v)
@@ -99,10 +112,15 @@ class Px4Adapter:
             velocity = [p.velocity.east_m_s, p.velocity.north_m_s, -p.velocity.down_m_s]
         health, battery, mode = (self.values.get(key) for key in ("health", "battery", "mode"))
         progress = self.values.get("progress")
-        statuses_fresh = all(
-            key in self.stamps and (now - self.stamps[key]).total_seconds() < 3
-            for key in ("armed", "in_air", "health", "mode", "battery")
+        # MAVSDK state streams may emit only changes; link and sensor ages are independent.
+        # MAVSDK 状态流可能只在变化时发布；链路与传感器新鲜度分开检查。
+        statuses_fresh = (
+            time.monotonic() - self.received.get("link", 0) < 2.5
+            and time.monotonic() - self.received.get("battery", 0) < 3
+            and all(key in self.values for key in ("armed", "in_air", "health", "mode"))
         )
+        if time.monotonic() - self.received.get("position", 0) >= 0.5:
+            stamp = min(stamp, now - timedelta(seconds=1))
         return FlightObservation(
             timestamp=stamp,
             valid_until=stamp + timedelta(seconds=0.5),
@@ -120,6 +138,7 @@ class Px4Adapter:
             battery_fraction=battery.remaining_percent if battery and statuses_fresh else None,
             mission_current=progress.current if progress else 0,
             mission_total=progress.total if progress else 0,
+            fc_failsafe=self.fc_failsafe,
         )
 
     async def _call(self, name, method, permitted, *args):
