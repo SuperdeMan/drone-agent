@@ -14,9 +14,9 @@ body.append(
     ET.fromstring("""<link name="inspection_camera">
   <pose>0 0 -0.15 0 1.57079632679 0</pose>
   <inertial><mass>0.001</mass><inertia><ixx>0.00001</ixx><iyy>0.00001</iyy><izz>0.00001</izz></inertia></inertial>
-  <sensor name="cam_0" type="camera"><always_on>true</always_on><update_rate>10</update_rate>
+  <sensor name="cam_0" type="camera"><always_on>true</always_on><update_rate>5</update_rate>
     <topic>/drone/cam_0/image</topic><camera><horizontal_fov>1.4</horizontal_fov>
-      <image><width>320</width><height>240</height><format>R8G8B8</format></image>
+      <image><width>160</width><height>120</height><format>R8G8B8</format></image>
       <clip><near>0.05</near><far>100</far></clip>
     </camera></sensor></link>""")
 )
