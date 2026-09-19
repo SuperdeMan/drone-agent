@@ -157,6 +157,8 @@ accepted → preparing → running → verifying → completed
 
 ## 8. 契约测试（M0 交付）
 
+M1 运行时接收约束与持久化/IPC 实施见 [M1 实施计划](../m1-implementation.md)。本地可信任务包、登记表内容哈希、认证后的 executive 身份共同限定控制权限；单独携带租约不是任务授权。命令回执只表示命令处理结果，技能物理效果必须另验。新增观测、状态查询与任务暂停/恢复接口保留现有字段号及安全缺省语义；v1 在真实双进程验证后冻结。
+
 | 测试 | 断言 |
 |---|---|
 | `test_unknown_is_never_success` | 任何 `effect_verdict ∈ {unknown, unverified}` 的前驱都不能放行后继（无 `allow_unverified` 时） |

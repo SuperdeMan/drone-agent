@@ -1,0 +1,76 @@
+name: drone-agent-cloud
+services:
+  sitl:
+    image: ${DRONE_M1_SIM_IMAGE:?}
+    pull_policy: never
+    init: true
+    stdin_open: true
+    tty: true
+    cpus: 1.5
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 512
+    networks: [simulation]
+  collector:
+    image: ${DRONE_M1_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.3
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    network_mode: service:sitl
+    environment:
+      PYTHONPATH: /usr/lib/python3/dist-packages
+    command: [/usr/bin/python3, /workspace/sim/collect.py]
+    volumes:
+      - ${DRONE_M1_RUN:?}/sensor:/sensor
+      - ${DRONE_M1_RUN:?}/truth:/truth
+  guardian:
+    image: ${DRONE_M1_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.6
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    network_mode: service:sitl
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+    command: [python3, -m, drone_agent.runtime.launch, guardian, --fault, /input/fault.json]
+    volumes:
+      - ${DRONE_M1_RUN:?}/input:/input:ro
+      - ${DRONE_M1_RUN:?}/sensor:/sensor:ro
+      - ${DRONE_M1_RUN:?}/aircraft:/artifacts
+      - ${DRONE_M1_RUN:?}/ipc:/run/drone
+  executive:
+    image: ${DRONE_M1_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.4
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 64
+    network_mode: none
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+    command: [python3, -m, drone_agent.runtime.launch, executive]
+    volumes:
+      - ${DRONE_M1_RUN:?}/input:/input:ro
+      - ${DRONE_M1_RUN:?}/aircraft:/artifacts
+      - ${DRONE_M1_RUN:?}/ipc:/run/drone
+  judge:
+    image: ${DRONE_M1_GROUND_IMAGE:?}
+    pull_policy: never
+    cpus: 0.5
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 64
+    network_mode: none
+    command: [python3, -m, drone_agent.eval.judge, /run]
+    volumes:
+      - ${DRONE_M1_RUN:?}:/run:ro
+      - ${DRONE_M1_RUN:?}/judge:/output
+networks:
+  simulation:
+    internal: true

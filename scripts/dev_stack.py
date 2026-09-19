@@ -108,7 +108,7 @@ def prepare_packet(sha_ref: str, artifact_root: Path, images: dict) -> tuple[Pat
         REMOTE["validate_archive"](stream)
         stream.extractall(source, filter="data")
     env = dict(os.environ, UV_DEFAULT_INDEX="https://pypi.tuna.tsinghua.edu.cn/simple")
-    requirements = local(["uv", "export", "--frozen", "--group", "dev", "--no-emit-project", "--no-header",
+    requirements = local(["uv", "export", "--frozen", "--group", "dev", "--group", "flight", "--no-emit-project", "--no-header",
                           "--format", "requirements.txt"], cwd=source, env=env)
     (packet / "requirements.txt").write_bytes(requirements)
     for name in ("compose.cloud.yaml", "checks.Dockerfile"):
@@ -218,6 +218,9 @@ def main() -> None:
     commands.add_parser("target")
     for name in ("status", "verify", "test", "start", "stop", "logs"):
         commands.add_parser(name)
+    m1_parser = commands.add_parser("m1")
+    m1_parser.add_argument("--scenario", default="nominal")
+    m1_parser.add_argument("--seeds", default="7,19,41")
     deploy_parser = commands.add_parser("deploy")
     source = deploy_parser.add_mutually_exclusive_group()
     source.add_argument("--sha", default="HEAD")
@@ -231,9 +234,13 @@ def main() -> None:
             result = {"target": "cloud", "policy": "D023", "local_stack_fallback": False}
         else:
             connection = Connection.from_environment()
-            result = deploy_command(connection, args) if args.command == "deploy" else ssh(
-                connection, {"action": args.command, "run_id": new_run_id()},
-            )
+            if args.command == "deploy":
+                result = deploy_command(connection, args)
+            elif args.command == "m1":
+                result = ssh(connection, {"action": "m1", "run_id": new_run_id(), "scenario": args.scenario,
+                                          "seeds": [int(seed) for seed in args.seeds.split(",")]}, timeout=14400)
+            else:
+                result = ssh(connection, {"action": args.command, "run_id": new_run_id()})
         print(json.dumps(result, ensure_ascii=False, indent=2))
     except (ValueError, RuntimeError, OSError, subprocess.TimeoutExpired) as error:
         print(json.dumps({"status": "error", "reason": str(error)}, ensure_ascii=False))

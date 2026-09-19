@@ -1,0 +1,33 @@
+schema_version: "0.1.0"
+registry_id: m1_campus_v1
+frame: {frame_id: map_enu, map_version: campus_v1}
+approved_volume_id: campus_training
+bounds: {x: [-40, 40], y: [-40, 40], z: [-0.5, 60]}
+routes:
+  inspection: [[0, 4, 4], [4, 4, 4]]
+  return: [[0, 4, 4], [0, 0, 4]]
+home: {id: home_v1, position: [0, 0, 4]}
+landing_sites:
+  home_pad: {position: [0, 0, 0], radius_m: 2, reserved_for: uav_01}
+assets:
+  asset_red: {position: [4, 4, 0], camera_id: cam_0, visual_signature: red, size_m: 2}
+thresholds:
+  takeoff: {tolerance_m: 0.7, hold_duration_s: 2}
+  route: {tolerance_m: 1.3, hold_duration_s: 0.5}
+  return_home: {tolerance_m: 1.3, hold_duration_s: 2}
+  land: {tolerance_m: 0.5, hold_duration_s: 2}
+  image: {min_width: 160, min_height: 120, max_age_s: 0.5, max_position_variance: 9, min_red_fraction: 0.02}
+supervision:
+  observation_timeout_s: 0.5
+  heartbeat_timeout_s: 2
+  lease_duration_s: 10
+  command_timeout_s: 5
+  period_s: 0.1
+  prediction_s: 2
+  return_margin_fraction: 0.1
+  max_pause_s: 120
+simulation:
+  speed_factor: 2
+  model: x500
+  camera_topic: /drone/cam_0/image
+  policy_ref: multirotor_m1@v1

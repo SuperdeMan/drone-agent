@@ -101,6 +101,13 @@ enum LearnedStage {
   LEARNED_STAGE_FULL = 3;
 }
 
+enum MissionAction {
+  MISSION_ACTION_UNSPECIFIED = 0;
+  MISSION_ACTION_PAUSE = 1;
+  MISSION_ACTION_RESUME = 2;
+  MISSION_ACTION_CANCEL = 3;
+}
+
 enum RecoveryBehavior {
   RECOVERY_BEHAVIOR_UNSPECIFIED = 0;
   RECOVERY_BEHAVIOR_HOLD = 1;
@@ -303,6 +310,26 @@ message FailureMode {
   optional string recovery_hint = 4;
 }
 
+message FlightObservation {
+  optional string schema_version = 1;
+  optional google.protobuf.Timestamp timestamp = 2;
+  optional google.protobuf.Timestamp valid_until = 3;
+  optional int64 sample_id = 4;
+  optional string robot_id = 5;
+  optional Pose pose = 6;
+  repeated double velocity_enu_mps = 7;
+  optional bool armed = 8;
+  optional bool in_air = 9;
+  optional string flight_mode = 10;
+  optional bool localization_healthy = 11;
+  optional bool home_healthy = 12;
+  optional double battery_fraction = 13;
+  optional int64 mission_current = 14;
+  optional int64 mission_total = 15;
+  optional bool fc_failsafe = 16;
+  optional string source = 17;
+}
+
 message Frame {
   optional string schema_version = 1;
   optional string frame_id = 2;
@@ -354,6 +381,17 @@ message LocalizationHealth {
   optional bool healthy = 4;
 }
 
+message MissionOperation {
+  optional string schema_version = 1;
+  optional string robot_id = 2;
+  optional string mission_id = 3;
+  optional int64 mission_version = 4;
+  optional int64 lease_epoch = 5;
+  optional string executive_instance = 6;
+  optional MissionAction action = 7;
+  optional string request_id = 8;
+}
+
 message MissionPackage {
   optional string schema_version = 1;
   optional string mission_id = 2;
@@ -391,6 +429,11 @@ message ObservationHeader {
   optional Frame frame = 5;
   optional FactSource source = 6;
   optional string source_version = 7;
+}
+
+message ObservationRequest {
+  optional string schema_version = 1;
+  optional string robot_id = 2;
 }
 
 message PackageNode {

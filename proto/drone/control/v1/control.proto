@@ -13,6 +13,8 @@ service GuardianControl {
   // Lease installation requires an authenticated issuer in M1.
   // M1 安装租约时必须认证签发者身份。
   rpc InstallLease(drone.contracts.v1.TaskLease) returns (drone.contracts.v1.EgressDecision);
+  rpc GetObservation(drone.contracts.v1.ObservationRequest) returns (drone.contracts.v1.FlightObservation);
+  rpc Operate(drone.contracts.v1.MissionOperation) returns (GuardianStatus);
 }
 
 enum ReceiptStatus {
@@ -43,6 +45,7 @@ message ExecutiveHeartbeat {
   google.protobuf.Timestamp valid_until = 9;
   optional string skill_instance_id = 10;
   optional drone.contracts.v1.SkillInstanceState skill_state = 11;
+  optional int64 progress_seq = 12;
 }
 
 message GuardianStatus {

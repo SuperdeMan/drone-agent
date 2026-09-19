@@ -1,0 +1,26 @@
+schema_version: "0.1.0"
+suite_id: m1_campus_v1
+seeds: [7, 19, 41]
+randomization: [route_speed_mps, injection_delay_s]
+scenarios:
+  - {id: nominal, expected: completed}
+  - {id: duplicate, expected: completed, inject_at: fly_route, kind: duplicate}
+  - {id: stale_epoch, expected: completed, inject_at: fly_route, kind: stale_epoch}
+  - {id: expired_intent, expected: completed, inject_at: fly_route, kind: expired_intent}
+  - {id: offboard_rejected, expected: completed, inject_at: fly_route, kind: offboard_rejected}
+  - {id: timeout, expected: safe_abort, inject_at: fly_route, kind: command_timeout, pre_dispatch: true}
+  - {id: heartbeat_takeoff, expected: safe_abort, inject_at: takeoff, kind: heartbeat_stop, during_takeoff: true}
+  - {id: heartbeat_cruise, expected: safe_abort, inject_at: fly_route, kind: heartbeat_stop}
+  - {id: observation_stale, expected: safe_abort, inject_at: fly_route, kind: observation_stale}
+  - {id: lease_expired, expected: safe_abort, inject_at: fly_route, kind: lease_expired}
+  - {id: energy_low, expected: safe_abort, inject_at: fly_route, kind: energy_low}
+  - {id: energy_critical, expected: safe_abort, inject_at: fly_route, kind: energy_critical}
+  - {id: geofence, expected: safe_abort, inject_at: fly_route, kind: geofence}
+  - {id: cancel_takeoff, expected: safe_abort, inject_at: takeoff, kind: cancel, during_takeoff: true}
+  - {id: cancel_cruise, expected: safe_abort, inject_at: fly_route, kind: cancel}
+  - {id: pause_resume, expected: completed, inject_at: fly_route, kind: pause_resume}
+  - {id: pause_timeout, expected: safe_abort, inject_at: fly_route, kind: pause}
+  - {id: uplink_lost, expected: safe_abort, inject_at: fly_route, kind: uplink_lost}
+  - {id: mode_takeover, expected: safe_abort, inject_at: fly_route, kind: mode_changed}
+  - {id: fc_failsafe, expected: safe_abort, inject_at: fly_route, kind: fc_failsafe}
+  - {id: localization_lost, expected: safe_abort, inject_at: fly_route, kind: localization_lost}

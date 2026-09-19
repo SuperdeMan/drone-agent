@@ -82,6 +82,7 @@ from drone_agent.contracts.mission import (
 )
 from drone_agent.contracts.planner_tools import PlannerTool, PlannerToolAllowlist
 from drone_agent.contracts.recovery import RecoveryEdge, RecoveryPolicy, RecoveryTrigger, RecoveryValidation
+from drone_agent.contracts.runtime import FlightObservation, MissionAction, MissionOperation, ObservationRequest
 from drone_agent.contracts.skill import (
     ALLOWED_TRANSITIONS,
     TERMINAL_STATES,
@@ -106,6 +107,10 @@ __all__ = [
     "AUTHORITY_PRIORITY",
     "CONTRACT_VERSION",
     "FORBIDDEN_PARAM_KEYS",
+    "FlightObservation",
+    "MissionAction",
+    "MissionOperation",
+    "ObservationRequest",
     "TERMINAL_STATES",
     "AerialState",
     "ApprovalRecord",

@@ -1,0 +1,247 @@
+"""PX4 mission-mode adapter; no Offboard or raw flight-control interface.
+
+PX4 任务模式适配器；不提供 Offboard 或原始飞控接口。
+"""
+
+from __future__ import annotations
+
+import asyncio
+import base64
+import hashlib
+import json
+import math
+import time
+from datetime import datetime, timedelta
+from pathlib import Path
+
+from drone_agent.contracts import FlightObservation, Frame, Pose, Position, RecoveryBehavior, utcnow
+from drone_agent.runtime.ledger import canonical
+
+
+class Px4Adapter:
+    def __init__(self, registry, artifacts: Path, sensor: Path):
+        self.registry, self.artifacts, self.sensor = registry, artifacts, sensor
+        self.values, self.stamps = {}, {}
+        self.tasks = []
+        self.sample = 0
+        self.external_takeover = False
+        self.expected_modes = None
+        self.mode_grace = 0.0
+        self.camera_available = sensor.is_file()
+        self.command_log = []
+        self.evidence = {}
+        self._system = None
+
+    async def connect(self, address="udpin://0.0.0.0:14540"):
+        from mavsdk import System
+
+        self._system = System()
+        await self._system.connect(system_address=address)
+        async with asyncio.timeout(45):
+            async for state in self._system.core.connection_state():
+                if state.is_connected:
+                    break
+        streams = {
+            "position": self._system.telemetry.position_velocity_ned,
+            "global": self._system.telemetry.position,
+            "health": self._system.telemetry.health,
+            "armed": self._system.telemetry.armed,
+            "in_air": self._system.telemetry.in_air,
+            "mode": self._system.telemetry.flight_mode,
+            "battery": self._system.telemetry.battery,
+            "home": self._system.telemetry.home,
+            "gps": self._system.telemetry.raw_gps,
+            "progress": self._system.mission.mission_progress,
+        }
+        for name, stream in streams.items():
+            self.tasks.append(asyncio.create_task(self._watch(name, stream)))
+        for method, rate in (
+            ("set_rate_position_velocity_ned", 10),
+            ("set_rate_position", 5),
+            ("set_rate_raw_gps", 5),
+            ("set_rate_battery", 2),
+            ("set_rate_home", 2),
+        ):
+            await getattr(self._system.telemetry, method)(rate)
+        async with asyncio.timeout(60):
+            while True:
+                obs = self.snapshot()
+                if obs.pose and obs.localization_healthy and obs.home_healthy and obs.armed is not None:
+                    break
+                await asyncio.sleep(0.1)
+
+    async def _watch(self, name, stream):
+        async for value in stream():
+            self.values[name], self.stamps[name] = value, utcnow()
+            if name == "position":
+                self.sample += 1
+            if name == "mode" and self.expected_modes and time.monotonic() > self.mode_grace:
+                if value.name not in self.expected_modes:
+                    self.external_takeover = True
+
+    def snapshot(self):
+        now = utcnow()
+        stamp = self.stamps.get("position", now - timedelta(days=1))
+        pose, velocity = None, []
+        p, gps = self.values.get("position"), self.values.get("gps")
+        if p:
+            covariance = None
+            if gps and (now - self.stamps["gps"]).total_seconds() < 3:
+                h, v = gps.horizontal_uncertainty_m, gps.vertical_uncertainty_m
+                if math.isfinite(h) and math.isfinite(v) and h > 0 and v > 0:
+                    covariance = (h * h, 0, 0, 0, h * h, 0, 0, 0, v * v)
+            pose = Pose(
+                frame=Frame(**self.registry.data["frame"]),
+                position=Position(
+                    x=p.position.east_m, y=p.position.north_m, z=-p.position.down_m, covariance=covariance
+                ),
+            )
+            velocity = [p.velocity.east_m_s, p.velocity.north_m_s, -p.velocity.down_m_s]
+        health, battery, mode = (self.values.get(key) for key in ("health", "battery", "mode"))
+        progress = self.values.get("progress")
+        statuses_fresh = all(
+            key in self.stamps and (now - self.stamps[key]).total_seconds() < 3
+            for key in ("armed", "in_air", "health", "mode", "battery")
+        )
+        return FlightObservation(
+            timestamp=stamp,
+            valid_until=stamp + timedelta(seconds=0.5),
+            sample_id=self.sample,
+            robot_id=self.registry.capability.robot_id,
+            pose=pose,
+            velocity_enu_mps=velocity,
+            armed=self.values.get("armed") if statuses_fresh else None,
+            in_air=self.values.get("in_air") if statuses_fresh else None,
+            flight_mode=mode.name if mode else "UNKNOWN",
+            localization_healthy=bool(
+                statuses_fresh and health and health.is_local_position_ok and health.is_global_position_ok
+            ),
+            home_healthy=bool(statuses_fresh and health and health.is_home_position_ok),
+            battery_fraction=battery.remaining_percent if battery and statuses_fresh else None,
+            mission_current=progress.current if progress else 0,
+            mission_total=progress.total if progress else 0,
+        )
+
+    async def _call(self, name, method, permitted, *args):
+        if not permitted():
+            raise PermissionError("control authority changed")
+        self.command_log.append({"operation": name, "timestamp": utcnow().isoformat()})
+        await method(*args)
+
+    def expect(self, modes):
+        self.expected_modes = set(modes)
+        self.mode_grace = time.monotonic() + 2
+
+    async def route(self, points, speed, permitted):
+        from mavsdk.mission import MissionItem, MissionPlan
+
+        origin = self.values["home"]
+        items = []
+        for east, north, altitude in points:
+            latitude = origin.latitude_deg + math.degrees(north / 6378137)
+            longitude = origin.longitude_deg + math.degrees(
+                east / (6378137 * math.cos(math.radians(origin.latitude_deg)))
+            )
+            items.append(
+                MissionItem(
+                    latitude,
+                    longitude,
+                    altitude,
+                    speed,
+                    False,
+                    float("nan"),
+                    float("nan"),
+                    MissionItem.CameraAction.NONE,
+                    1.0,
+                    float("nan"),
+                    0.8,
+                    float("nan"),
+                    float("nan"),
+                    MissionItem.VehicleAction.NONE,
+                )
+            )
+        self.expect({"MISSION", "HOLD"})
+        await self._call("route_no_auto_rtl", self._system.mission.set_return_to_launch_after_mission, permitted, False)
+        await self._call("upload_route", self._system.mission.upload_mission, permitted, MissionPlan(items))
+        await self._call("start_route", self._system.mission.start_mission, permitted)
+
+    async def execute(self, node, permitted):
+        action, p = node.skill_id.rsplit(".", 1)[1], node.params
+        if action == "takeoff":
+            self.expect({"TAKEOFF", "HOLD"})
+            await self._call(
+                "takeoff_altitude", self._system.action.set_takeoff_altitude, permitted, p["altitude_m_agl"]
+            )
+            await self._call("arm", self._system.action.arm, permitted)
+            await self._call("takeoff", self._system.action.takeoff, permitted)
+        elif action in {"fly_route", "return_home"}:
+            await self.route(
+                self.registry.route(p.get("route_id", p.get("return_route_id"))), p.get("speed_mps", 2), permitted
+            )
+        elif action == "land":
+            self.expect({"LAND", "HOLD"})
+            await self._call("land", self._system.action.land, permitted)
+        elif action == "capture_image":
+            self.evidence[node.task_id] = await self.capture(node, permitted)
+        else:
+            raise ValueError("unsupported skill")
+
+    async def capture(self, node, permitted):
+        observation = self.snapshot()
+        async with asyncio.timeout(2):
+            while True:
+                frame = json.loads(self.sensor.read_text())
+                stamp = datetime.fromisoformat(frame["timestamp"])
+                if (
+                    observation.timestamp <= stamp < observation.valid_until
+                    and (utcnow() - stamp).total_seconds() < 0.5
+                ):
+                    break
+                observation = self.snapshot()
+                await asyncio.sleep(0.05)
+        if not permitted():
+            raise PermissionError("capture authority changed")
+        raw = base64.b64decode(frame["rgb"], validate=True)
+        digest = hashlib.sha256(raw).hexdigest()
+        relative = f"images/{digest}.rgb"
+        path = self.artifacts / relative
+        path.parent.mkdir(exist_ok=True)
+        path.write_bytes(raw)
+        evidence = {
+            "media_ref": relative,
+            "sha256": digest,
+            "asset_id": node.params["asset_id"],
+            "width": frame["width"],
+            "height": frame["height"],
+            "capture_timestamp": frame["timestamp"],
+            "sim_time": frame["sim_time"],
+            "observation": observation.model_dump(mode="json"),
+            "skill_instance": node.task_id,
+            "source": "gazebo_rgb_sensor",
+        }
+        (self.artifacts / f"evidence-{node.task_id}.json").write_bytes(canonical(evidence))
+        return evidence
+
+    async def recover(self, behavior, permitted):
+        if behavior == RecoveryBehavior.HOLD:
+            self.expect({"HOLD"})
+            await self._call("hold", self._system.action.hold, permitted)
+        elif behavior == RecoveryBehavior.RTL:
+            self.expect({"RETURN_TO_LAUNCH", "LAND", "HOLD"})
+            await self._call("rtl", self._system.action.return_to_launch, permitted)
+        elif behavior == RecoveryBehavior.LAND_HERE:
+            self.expect({"LAND", "HOLD"})
+            await self._call("land_here", self._system.action.land, permitted)
+        elif behavior != RecoveryBehavior.HANDOVER_TO_FC_FAILSAFE:
+            raise ValueError("unsupported recovery behavior")
+
+    async def resume(self, permitted):
+        self.expect({"MISSION", "HOLD"})
+        await self._call("resume_route", self._system.mission.start_mission, permitted)
+
+    async def close(self):
+        for task in self.tasks:
+            task.cancel()
+        await asyncio.gather(*self.tasks, return_exceptions=True)
+        if self._system:
+            self._system._stop_mavsdk_server()

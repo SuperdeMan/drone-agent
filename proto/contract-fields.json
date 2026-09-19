@@ -1224,6 +1224,242 @@
         }
       }
     ],
+    "FlightObservation": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "timestamp",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        }
+      },
+      {
+        "name": "valid_until",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      {
+        "name": "sample_id",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "minimum": 0,
+          "title": "Sample Id",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "robot_id",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Robot Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "pose",
+        "number": 6,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "Pose",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Pose"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      {
+        "name": "velocity_enu_mps",
+        "number": 7,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "double",
+        "schema": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Velocity Enu Mps",
+          "type": "array"
+        }
+      },
+      {
+        "name": "armed",
+        "number": 8,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Armed"
+        }
+      },
+      {
+        "name": "in_air",
+        "number": 9,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "In Air"
+        }
+      },
+      {
+        "name": "flight_mode",
+        "number": 10,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "UNKNOWN",
+          "title": "Flight Mode",
+          "type": "string"
+        }
+      },
+      {
+        "name": "localization_healthy",
+        "number": 11,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "default": false,
+          "title": "Localization Healthy",
+          "type": "boolean"
+        }
+      },
+      {
+        "name": "home_healthy",
+        "number": 12,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "default": false,
+          "title": "Home Healthy",
+          "type": "boolean"
+        }
+      },
+      {
+        "name": "battery_fraction",
+        "number": 13,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Battery Fraction"
+        }
+      },
+      {
+        "name": "mission_current",
+        "number": 14,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "default": 0,
+          "title": "Mission Current",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "mission_total",
+        "number": 15,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "default": 0,
+          "title": "Mission Total",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "fc_failsafe",
+        "number": 16,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "bool",
+        "schema": {
+          "default": false,
+          "title": "Fc Failsafe",
+          "type": "boolean"
+        }
+      },
+      {
+        "name": "source",
+        "number": 17,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "px4_telemetry",
+          "title": "Source",
+          "type": "string"
+        }
+      }
+    ],
     "Frame": [
       {
         "name": "schema_version",
@@ -1688,6 +1924,96 @@
         }
       }
     ],
+    "MissionOperation": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "robot_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Robot Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_id",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Mission Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_version",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "title": "Mission Version",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "lease_epoch",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "title": "Lease Epoch",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "executive_instance",
+        "number": 6,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Executive Instance",
+          "type": "string"
+        }
+      },
+      {
+        "name": "action",
+        "number": 7,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "MissionAction",
+        "schema": {
+          "$ref": "#/$defs/MissionAction"
+        }
+      },
+      {
+        "name": "request_id",
+        "number": 8,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Request Id",
+          "type": "string"
+        }
+      }
+    ],
     "MissionPackage": [
       {
         "name": "schema_version",
@@ -2085,6 +2411,31 @@
           ],
           "default": null,
           "title": "Source Version"
+        }
+      }
+    ],
+    "ObservationRequest": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "robot_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "title": "Robot Id",
+          "type": "string"
         }
       }
     ],
@@ -4267,6 +4618,12 @@
       "LEARNED_STAGE_SHADOW": 1,
       "LEARNED_STAGE_LIMITED": 2,
       "LEARNED_STAGE_FULL": 3
+    },
+    "MissionAction": {
+      "MISSION_ACTION_UNSPECIFIED": 0,
+      "MISSION_ACTION_PAUSE": 1,
+      "MISSION_ACTION_RESUME": 2,
+      "MISSION_ACTION_CANCEL": 3
     },
     "RecoveryBehavior": {
       "RECOVERY_BEHAVIOR_UNSPECIFIED": 0,

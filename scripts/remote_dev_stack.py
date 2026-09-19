@@ -298,7 +298,7 @@ def deploy(root: Path, request: dict) -> dict:
 
 def dispatch(request: dict) -> dict:
     action = request.get("action")
-    if action not in {"status", "prepare", "deploy", "verify", "test", "start", "stop", "logs"}:
+    if action not in {"status", "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1"}:
         raise ValueError("unsupported cloud action")
     if action != "status" and not RUN_ID.fullmatch(request.get("run_id", "")):
         raise ValueError("invalid run identity")
@@ -313,6 +313,10 @@ def dispatch(request: dict) -> dict:
         if action == "deploy":
             return deploy(root, request)
         deployment = current(root)
+        if action == "m1":
+            import runpy
+
+            return runpy.run_path(str(deployment / "source/scripts/remote_m1.py"))["run_m1"](root, deployment, request)
         if action == "verify":
             return operation_receipt(deployment, request["run_id"], smoke(root, deployment, request["run_id"]))
         if action == "test":

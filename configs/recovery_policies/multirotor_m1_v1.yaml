@@ -1,0 +1,72 @@
+# Experimental SITL policy; physical validation is recorded separately. / 实验性 SITL 策略；物理验证单独留证。
+schema_version: "0.1.0"
+policy_id: multirotor_m1
+version: v1
+embodiment: aerial_multirotor
+nodes: [hold, rtl, land_here, handover_to_fc_failsafe]
+resume_conditions: [observation_fresh, lease_valid, executive_heartbeat_ok, explicit_resume, unchanged_authority]
+edges:
+  - trigger: executive_heartbeat_lost
+    guard: {flight_phase: takeoff}
+    target: land_here
+    fault_injection_scenario: fi.heartbeat.takeoff
+  - trigger: executive_heartbeat_lost
+    guard: {localization_healthy: true}
+    target: hold
+    then: rtl
+    after_s: 10
+    fault_injection_scenario: fi.heartbeat.cruise
+  - trigger: observation_stale
+    guard: {}
+    target: hold
+    then: rtl
+    after_s: 10
+    fault_injection_scenario: fi.observation.stale
+  - trigger: lease_expired
+    guard: {}
+    target: hold
+    then: rtl
+    after_s: 30
+    fault_injection_scenario: fi.lease.expired
+  - trigger: energy_low
+    guard: {rtl_reachable: true}
+    target: rtl
+    fault_injection_scenario: fi.energy.low
+  - trigger: energy_low
+    guard: {rtl_reachable: false}
+    target: land_here
+    fault_injection_scenario: fi.energy.critical
+  - trigger: geofence_predicted_breach
+    guard: {}
+    target: hold
+    then: rtl
+    after_s: 10
+    fault_injection_scenario: fi.geofence.approach
+  - trigger: localization_degraded
+    guard: {}
+    target: handover_to_fc_failsafe
+    fault_injection_scenario: fi.localization.lost
+  - trigger: uplink_lost
+    guard: {authorized_to_continue: false}
+    target: hold
+    then: rtl
+    after_s: 15
+    fault_injection_scenario: fi.uplink.lost
+  - trigger: fc_failsafe_active
+    guard: {}
+    target: handover_to_fc_failsafe
+    fault_injection_scenario: fi.fc.failsafe
+  - trigger: user_pause
+    guard: {flight_phase: [cruise, hover, inspect]}
+    target: hold
+    then: rtl
+    after_s: 120
+    fault_injection_scenario: fi.pause.timeout
+  - trigger: user_cancel
+    guard: {flight_phase: takeoff}
+    target: land_here
+    fault_injection_scenario: fi.cancel.takeoff
+  - trigger: user_cancel
+    guard: {}
+    target: rtl
+    fault_injection_scenario: fi.cancel.cruise
