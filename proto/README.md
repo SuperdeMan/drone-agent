@@ -1,6 +1,6 @@
 # 本地运行时与车队协议
 
-这些文件定义传输边界，M1 已实现 guardian 本地服务。目标命名空间是 v1；冻结条件仍是 M1 的双进程及故障矩阵通过。车队协议保持 M2/M4 接入边界，不提供控制接口。
+这些文件定义传输边界，M1 已实现 guardian 本地服务。`drone.*.v1` 的字段号、枚举和 RPC 签名已锁定于 [v1-wire-lock.json](v1-wire-lock.json)，破坏性变更必须使用新的 wire 主版本。M1 完成仍需完整故障矩阵通过。车队协议保持 M2/M4 接入边界，不提供控制接口。
 
 | 文件 | 内容 |
 |---|---|
@@ -13,6 +13,7 @@
 $env:UV_DEFAULT_INDEX = 'https://pypi.tuna.tsinghua.edu.cn/simple'
 uv run python scripts/generate_contract_fields.py --check
 uv run python scripts/generate_proto.py
+uv run python scripts/freeze_wire.py --check
 uv run pytest tests/contracts/test_proto_contracts.py -q
 ```
 
@@ -23,3 +24,5 @@ uv run pytest tests/contracts/test_proto_contracts.py -q
 标量使用显式存在性；空消息不提供授权，所有枚举零值为 `UNSPECIFIED`。自由 JSON 使用 UTF-8 bytes 保留整数精度，必须解码并经过领域校验。proto 自身不执行 Pydantic 的范围、DAG、审批或租约校验。
 
 M1 本地服务使用私有 UDS + gRPC local credentials，并绑定启动时的可信任务包与 executive 身份；账本持久化代次/对账，wire 编解码保留存在性并重新校验领域模型。`HandoffReply.accepted` 只表示愿意接收，不能当作所有权已转移。远程签名签发与证书管理属于 M2，不能把本地哈希检查当成数字签名。
+
+wire 命名空间与领域载荷版本分开：本发行包的领域 `schema_version` 为 `0.1.0`，本地运行时拒绝缺版本或不支持的载荷版本；冻结的 v1 线路布局禁止重编号，允许兼容增字段。不可把 protobuf 能解码等同于任务获得授权。

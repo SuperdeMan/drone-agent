@@ -151,7 +151,7 @@ accepted → preparing → running → verifying → completed
 - proto3 标量显式 `optional`，枚举零值统一 `UNSPECIFIED`，不能默认成功、verified 或 proceed。缺省对象必须经过 Pydantic 与业务接收检查，不能把 protobuf 能解析当作授权。
 - 自由 JSON 字段以 UTF-8 JSON `bytes` 传输，保留整数精度；解码后重跑领域模型校验。时间为 `google.protobuf.Timestamp`，跨进程单调时钟与 UTC 的转换由 M1 运行时处理。
 - 审批哈希中的任务时间窗先规范化为 UTC，避免同一时刻的时区写法在 Timestamp 编解码后造成哈希漂移；显式 `tz` 元数据仍作为任务内容参与哈希。
-- 本批仍是 `schema_version=0.1.0` 的未发布草案；`drone.*.v1` 是目标 wire 命名空间，冻结在 M1 退出时进行，不表示已有可运行服务。
+- 领域载荷版本保留 `schema_version=0.1.0`；`drone.*.v1` 线路布局已由 `proto/v1-wire-lock.json` 冻结，`scripts/freeze_wire.py --check` 与契约测试阻止字段/枚举重编号和 RPC 签名破坏。M1 本地运行时已经实现；是否达到阶段准出标准仍以路线图和完整运行证据为准。
 
 设计依据：[protobuf 字段存在性](https://protobuf.dev/programming-guides/field_presence/)。
 

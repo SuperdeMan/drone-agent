@@ -1,0 +1,3071 @@
+{
+  "enums": {
+    "drone.contracts.v1.ControlMode": {
+      "CONTROL_MODE_EXTERNAL_MODE": 5,
+      "CONTROL_MODE_MISSION_UPLOAD": 1,
+      "CONTROL_MODE_NAV_TO_POSE": 6,
+      "CONTROL_MODE_NONE": 7,
+      "CONTROL_MODE_OFFBOARD_POSITION": 2,
+      "CONTROL_MODE_OFFBOARD_TRAJECTORY": 4,
+      "CONTROL_MODE_OFFBOARD_VELOCITY": 3,
+      "CONTROL_MODE_UNSPECIFIED": 0
+    },
+    "drone.contracts.v1.EffectVerdict": {
+      "EFFECT_VERDICT_REFUTED": 3,
+      "EFFECT_VERDICT_UNKNOWN": 4,
+      "EFFECT_VERDICT_UNSPECIFIED": 0,
+      "EFFECT_VERDICT_UNVERIFIED": 2,
+      "EFFECT_VERDICT_VERIFIED": 1
+    },
+    "drone.contracts.v1.Embodiment": {
+      "EMBODIMENT_AERIAL_FIXED_WING": 3,
+      "EMBODIMENT_AERIAL_MULTIROTOR": 1,
+      "EMBODIMENT_AERIAL_VTOL": 2,
+      "EMBODIMENT_GROUND_LEGGED": 5,
+      "EMBODIMENT_GROUND_WHEELED": 4,
+      "EMBODIMENT_MANIPULATOR": 6,
+      "EMBODIMENT_UNSPECIFIED": 0
+    },
+    "drone.contracts.v1.EventType": {
+      "EVENT_TYPE_COMMAND_ACCEPTED": 1,
+      "EVENT_TYPE_COMMAND_REJECTED": 2,
+      "EVENT_TYPE_EFFECT_REFUTED": 10,
+      "EVENT_TYPE_EFFECT_UNKNOWN": 11,
+      "EVENT_TYPE_EFFECT_VERIFIED": 9,
+      "EVENT_TYPE_HANDOFF_ACCEPTED": 18,
+      "EVENT_TYPE_HANDOFF_COMPLETED": 20,
+      "EVENT_TYPE_HANDOFF_OFFERED": 17,
+      "EVENT_TYPE_HANDOFF_REJECTED": 19,
+      "EVENT_TYPE_HANDOFF_TIMEOUT": 21,
+      "EVENT_TYPE_LEASE_EXPIRED": 14,
+      "EVENT_TYPE_LEASE_ISSUED": 13,
+      "EVENT_TYPE_LEASE_REVOKED": 15,
+      "EVENT_TYPE_RECOVERED_TO": 16,
+      "EVENT_TYPE_SAFETY_INTERVENTION": 12,
+      "EVENT_TYPE_SKILL_CANCEL_REQUESTED": 6,
+      "EVENT_TYPE_SKILL_COMPLETED": 7,
+      "EVENT_TYPE_SKILL_FAILED": 8,
+      "EVENT_TYPE_SKILL_PAUSED": 5,
+      "EVENT_TYPE_SKILL_PROGRESS": 4,
+      "EVENT_TYPE_SKILL_STARTED": 3,
+      "EVENT_TYPE_UNSPECIFIED": 0
+    },
+    "drone.contracts.v1.ExecutionStatus": {
+      "EXECUTION_STATUS_ACCEPTED": 2,
+      "EXECUTION_STATUS_CANCELLED": 6,
+      "EXECUTION_STATUS_FAILED": 5,
+      "EXECUTION_STATUS_PENDING": 1,
+      "EXECUTION_STATUS_RUNNING": 3,
+      "EXECUTION_STATUS_SUCCEEDED": 4,
+      "EXECUTION_STATUS_TIMEOUT": 7,
+      "EXECUTION_STATUS_UNKNOWN": 8,
+      "EXECUTION_STATUS_UNSPECIFIED": 0
+    },
+    "drone.contracts.v1.FactSource": {
+      "FACT_SOURCE_HUMAN": 3,
+      "FACT_SOURCE_MODEL": 2,
+      "FACT_SOURCE_SENSOR": 1,
+      "FACT_SOURCE_SIM_TRUTH": 4,
+      "FACT_SOURCE_UNSPECIFIED": 0
+    },
+    "drone.contracts.v1.GoalType": {
+      "GOAL_TYPE_DELIVER": 3,
+      "GOAL_TYPE_INSPECT": 1,
+      "GOAL_TYPE_OTHER": 6,
+      "GOAL_TYPE_RECHECK": 5,
+      "GOAL_TYPE_SEARCH": 4,
+      "GOAL_TYPE_SURVEY": 2,
+      "GOAL_TYPE_UNSPECIFIED": 0
+    },
+    "drone.contracts.v1.ImplementationKind": {
+      "IMPLEMENTATION_KIND_DETERMINISTIC": 1,
+      "IMPLEMENTATION_KIND_LEARNED": 2,
+      "IMPLEMENTATION_KIND_UNSPECIFIED": 0
+    },
+    "drone.contracts.v1.LearnedStage": {
+      "LEARNED_STAGE_FULL": 3,
+      "LEARNED_STAGE_LIMITED": 2,
+      "LEARNED_STAGE_SHADOW": 1,
+      "LEARNED_STAGE_UNSPECIFIED": 0
+    },
+    "drone.contracts.v1.MissionAction": {
+      "MISSION_ACTION_CANCEL": 3,
+      "MISSION_ACTION_PAUSE": 1,
+      "MISSION_ACTION_RESUME": 2,
+      "MISSION_ACTION_UNSPECIFIED": 0
+    },
+    "drone.contracts.v1.RecoveryBehavior": {
+      "RECOVERY_BEHAVIOR_HANDOVER_TO_FC_FAILSAFE": 6,
+      "RECOVERY_BEHAVIOR_HOLD": 1,
+      "RECOVERY_BEHAVIOR_LAND_AT": 5,
+      "RECOVERY_BEHAVIOR_LAND_HERE": 4,
+      "RECOVERY_BEHAVIOR_LOITER": 2,
+      "RECOVERY_BEHAVIOR_RTL": 3,
+      "RECOVERY_BEHAVIOR_UNSPECIFIED": 0
+    },
+    "drone.contracts.v1.RecoveryTrigger": {
+      "RECOVERY_TRIGGER_ENERGY_LOW": 5,
+      "RECOVERY_TRIGGER_EXECUTIVE_HEARTBEAT_LOST": 1,
+      "RECOVERY_TRIGGER_FC_FAILSAFE_ACTIVE": 9,
+      "RECOVERY_TRIGGER_GEOFENCE_PREDICTED_BREACH": 6,
+      "RECOVERY_TRIGGER_LEASE_EXPIRED": 4,
+      "RECOVERY_TRIGGER_LOCALIZATION_DEGRADED": 7,
+      "RECOVERY_TRIGGER_OBSERVATION_STALE": 2,
+      "RECOVERY_TRIGGER_TRAJECTORY_STALE": 3,
+      "RECOVERY_TRIGGER_UNSPECIFIED": 0,
+      "RECOVERY_TRIGGER_UPLINK_LOST": 8,
+      "RECOVERY_TRIGGER_USER_CANCEL": 11,
+      "RECOVERY_TRIGGER_USER_PAUSE": 10
+    },
+    "drone.contracts.v1.ResourceMode": {
+      "RESOURCE_MODE_EXCLUSIVE": 1,
+      "RESOURCE_MODE_SHARED": 2,
+      "RESOURCE_MODE_UNSPECIFIED": 0
+    },
+    "drone.contracts.v1.SafetyVerdict": {
+      "SAFETY_VERDICT_ABORT": 4,
+      "SAFETY_VERDICT_HOLD": 2,
+      "SAFETY_VERDICT_PROCEED": 1,
+      "SAFETY_VERDICT_RECOVER": 3,
+      "SAFETY_VERDICT_UNSPECIFIED": 0
+    },
+    "drone.contracts.v1.SkillInstanceState": {
+      "SKILL_INSTANCE_STATE_ACCEPTED": 1,
+      "SKILL_INSTANCE_STATE_BLOCKED": 11,
+      "SKILL_INSTANCE_STATE_CANCELLED": 10,
+      "SKILL_INSTANCE_STATE_CANCEL_REQUESTED": 8,
+      "SKILL_INSTANCE_STATE_COMPLETED": 5,
+      "SKILL_INSTANCE_STATE_FAILED": 12,
+      "SKILL_INSTANCE_STATE_OUTCOME_UNKNOWN": 13,
+      "SKILL_INSTANCE_STATE_PAUSED": 7,
+      "SKILL_INSTANCE_STATE_PAUSE_REQUESTED": 6,
+      "SKILL_INSTANCE_STATE_PREPARING": 2,
+      "SKILL_INSTANCE_STATE_RECOVERING": 9,
+      "SKILL_INSTANCE_STATE_RUNNING": 3,
+      "SKILL_INSTANCE_STATE_UNSPECIFIED": 0,
+      "SKILL_INSTANCE_STATE_VERIFYING": 4
+    },
+    "drone.contracts.v1.WorldKind": {
+      "WORLD_KIND_BELIEF": 2,
+      "WORLD_KIND_PREDICTED": 3,
+      "WORLD_KIND_TRUTH": 1,
+      "WORLD_KIND_UNSPECIFIED": 0
+    },
+    "drone.control.v1.ReceiptStatus": {
+      "RECEIPT_STATUS_NOT_RECEIVED": 1,
+      "RECEIPT_STATUS_RECORDED": 2,
+      "RECEIPT_STATUS_UNKNOWN": 3,
+      "RECEIPT_STATUS_UNSPECIFIED": 0
+    }
+  },
+  "format": "drone.wire-lock/v1",
+  "messages": {
+    "drone.contracts.v1.AerialState": {
+      "armed": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "control_mode": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.ControlMode"
+      },
+      "energy": {
+        "label": 1,
+        "number": 10,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.EnergyState"
+      },
+      "fc_failsafe_active": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "flight_phase": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "header": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.ObservationHeader"
+      },
+      "localization": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.LocalizationHealth"
+      },
+      "pose": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Pose"
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "velocity_mps": {
+        "label": 3,
+        "number": 4,
+        "optional": false,
+        "type": 1,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.ApprovalRecord": {
+      "allowed_robots": {
+        "label": 3,
+        "number": 8,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "approved_at": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "approver": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "expires_at": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "mission_id": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mission_version": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "package_hash": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.CancelSpec": {
+      "cancel_procedure": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "cancel_safe_states": {
+        "label": 3,
+        "number": 2,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.CapabilityDescriptor": {
+      "control_modes": {
+        "label": 3,
+        "number": 5,
+        "optional": false,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.ControlMode"
+      },
+      "embodiment": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.Embodiment"
+      },
+      "interface_version": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "limits": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Limits"
+      },
+      "model": {
+        "label": 1,
+        "number": 12,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "payloads": {
+        "label": 3,
+        "number": 8,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.PayloadSpec"
+      },
+      "recovery_behaviors": {
+        "label": 3,
+        "number": 10,
+        "optional": false,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.RecoveryBehavior"
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "sensors": {
+        "label": 3,
+        "number": 7,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.SensorSpec"
+      },
+      "skills": {
+        "label": 3,
+        "number": 6,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.SkillRef"
+      },
+      "vendor": {
+        "label": 1,
+        "number": 11,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "vendor_constraints": {
+        "label": 3,
+        "number": 13,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.CollaborationRule": {
+      "handoff_timeout_s": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "required_embodiments": {
+        "label": 3,
+        "number": 4,
+        "optional": false,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.Embodiment"
+      },
+      "required_skill": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "trigger": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.CommsState": {
+      "last_seen": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "latency_ms": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "uplink_ok": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.ControlCommandEnvelope": {
+      "command_seq": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "intent_kind": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "issued_at": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "key": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.IdempotencyKey"
+      },
+      "payload": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 12,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "valid_until": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      }
+    },
+    "drone.contracts.v1.EgressDecision": {
+      "accepted": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "reason": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.EnergyBudget": {
+      "max_consumption_fraction": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "reserve_fraction": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.EnergyState": {
+      "remaining_energy_wh": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "remaining_fraction": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "reserve_required_fraction": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.Evidence": {
+      "captured_pose": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Pose"
+      },
+      "evidence_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "kind": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "media_ref": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "produced_by_skill_instance": {
+        "label": 1,
+        "number": 10,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "quality": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 12,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "sha256": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "subject_ids": {
+        "label": 3,
+        "number": 8,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "time_window": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.TimeWindow"
+      }
+    },
+    "drone.contracts.v1.EvidenceRequirement": {
+      "criteria": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 12,
+        "type_name": ""
+      },
+      "evidence_type": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.ExecutionEvent": {
+      "command_id": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "data": {
+        "label": 1,
+        "number": 16,
+        "optional": true,
+        "type": 12,
+        "type_name": ""
+      },
+      "effect_verdict": {
+        "label": 1,
+        "number": 12,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.EffectVerdict"
+      },
+      "event_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "event_type": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.EventType"
+      },
+      "evidence_refs": {
+        "label": 3,
+        "number": 15,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "execution_status": {
+        "label": 1,
+        "number": 11,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.ExecutionStatus"
+      },
+      "lease_epoch": {
+        "label": 1,
+        "number": 10,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "mission_id": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mission_version": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "reason": {
+        "label": 1,
+        "number": 14,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "safety_verdict": {
+        "label": 1,
+        "number": 13,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.SafetyVerdict"
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "step_id": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "timestamp": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      }
+    },
+    "drone.contracts.v1.FailureMode": {
+      "code": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "description": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "recovery_hint": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.FlightObservation": {
+      "armed": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "battery_fraction": {
+        "label": 1,
+        "number": 13,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "fc_failsafe": {
+        "label": 1,
+        "number": 16,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "flight_mode": {
+        "label": 1,
+        "number": 10,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "home_healthy": {
+        "label": 1,
+        "number": 12,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "in_air": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "localization_healthy": {
+        "label": 1,
+        "number": 11,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "mission_current": {
+        "label": 1,
+        "number": 14,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "mission_total": {
+        "label": 1,
+        "number": 15,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "pose": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Pose"
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "sample_id": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "source": {
+        "label": 1,
+        "number": 17,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "timestamp": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "valid_until": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "velocity_enu_mps": {
+        "label": 3,
+        "number": 7,
+        "optional": false,
+        "type": 1,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.Frame": {
+      "frame_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "map_version": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.GroundMobileState": {
+      "energy": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.EnergyState"
+      },
+      "header": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.ObservationHeader"
+      },
+      "localization": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.LocalizationHealth"
+      },
+      "pose": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Pose"
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "traversability_ok": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "velocity_mps": {
+        "label": 3,
+        "number": 4,
+        "optional": false,
+        "type": 1,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.IdempotencyKey": {
+      "command_id": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "lease_epoch": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "mission_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mission_version": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "step_id": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.Implementation": {
+      "kind": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.ImplementationKind"
+      },
+      "learned_stage": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.LearnedStage"
+      },
+      "model_version": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.Limits": {
+      "can_hover": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "endurance_s": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "max_altitude_m_agl": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "max_payload_kg": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "max_speed_mps": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "max_wind_mps": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "min_turn_radius_m": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.LocalizationHealth": {
+      "fix_type": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "healthy": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "position_std_m": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.MissionOperation": {
+      "action": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.MissionAction"
+      },
+      "executive_instance": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "lease_epoch": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "mission_id": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mission_version": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "request_id": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.MissionPackage": {
+      "approval": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.ApprovalRecord"
+      },
+      "energy_budget": {
+        "label": 1,
+        "number": 10,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.EnergyBudget"
+      },
+      "mission_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mission_version": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "nodes": {
+        "label": 3,
+        "number": 4,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.PackageNode"
+      },
+      "package_hash": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "recovery_policy_ref": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "spatial_scope": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.SpatialScope"
+      },
+      "temporal_window": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.TemporalWindow"
+      }
+    },
+    "drone.contracts.v1.MissionSpec": {
+      "collaboration_rules": {
+        "label": 3,
+        "number": 12,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.CollaborationRule"
+      },
+      "energy_budget": {
+        "label": 1,
+        "number": 10,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.EnergyBudget"
+      },
+      "goal": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "goal_type": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.GoalType"
+      },
+      "mission_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mission_version": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "provenance": {
+        "label": 1,
+        "number": 13,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Provenance"
+      },
+      "recovery_policy_ref": {
+        "label": 1,
+        "number": 11,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "spatial_scope": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.SpatialScope"
+      },
+      "targets": {
+        "label": 3,
+        "number": 6,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.TargetRef"
+      },
+      "tasks": {
+        "label": 3,
+        "number": 9,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.TaskNode"
+      },
+      "temporal_window": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.TemporalWindow"
+      }
+    },
+    "drone.contracts.v1.ObservationHeader": {
+      "frame": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Frame"
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "source": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.FactSource"
+      },
+      "source_version": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "timestamp": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "valid_until": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      }
+    },
+    "drone.contracts.v1.ObservationRequest": {
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.PackageNode": {
+      "allow_unverified_from": {
+        "label": 3,
+        "number": 11,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "completion_evidence": {
+        "label": 3,
+        "number": 10,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "depends_on": {
+        "label": 3,
+        "number": 7,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "params": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 12,
+        "type_name": ""
+      },
+      "resources": {
+        "label": 3,
+        "number": 8,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.ResourceClaim"
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "skill_id": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "skill_version": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "task_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "timeout_s": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.PauseSpec": {
+      "max_wait_s": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "pausable": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "safe_wait_condition": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.PayloadSpec": {
+      "capabilities": {
+        "label": 3,
+        "number": 4,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "kind": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "payload_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.PlannerTool": {
+      "description": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "name": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "read_only": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.PlannerToolAllowlist": {
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "tools": {
+        "label": 3,
+        "number": 2,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.PlannerTool"
+      }
+    },
+    "drone.contracts.v1.Pose": {
+      "frame": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Frame"
+      },
+      "orientation": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Quaternion"
+      },
+      "position": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Position"
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.Position": {
+      "covariance": {
+        "label": 3,
+        "number": 5,
+        "optional": false,
+        "type": 1,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "x": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "y": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "z": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.Provenance": {
+      "generated_at": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "input_hash": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "model_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "prompt_version": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.Quaternion": {
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "w": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "x": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "y": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "z": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.RecoveryEdge": {
+      "after_s": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "fault_injection_scenario": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "guard": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 12,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "target": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.RecoveryBehavior"
+      },
+      "then": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.RecoveryBehavior"
+      },
+      "trigger": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.RecoveryTrigger"
+      },
+      "validation": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.RecoveryValidation"
+      }
+    },
+    "drone.contracts.v1.RecoveryPolicy": {
+      "edges": {
+        "label": 3,
+        "number": 6,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.RecoveryEdge"
+      },
+      "embodiment": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.Embodiment"
+      },
+      "nodes": {
+        "label": 3,
+        "number": 5,
+        "optional": false,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.RecoveryBehavior"
+      },
+      "policy_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "resume_conditions": {
+        "label": 3,
+        "number": 7,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "version": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.RecoveryValidation": {
+      "edge_hash": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "evidence_ref": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "scenario_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "software_revision": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "tested_at": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      }
+    },
+    "drone.contracts.v1.ResourceClaim": {
+      "mode": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.ResourceMode"
+      },
+      "resource_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "shared_mode": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.RobotStatus": {
+      "active_skill_instance": {
+        "label": 1,
+        "number": 10,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "comms": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.CommsState"
+      },
+      "control_mode": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.ControlMode"
+      },
+      "energy": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.EnergyState"
+      },
+      "fc_failsafe_active": {
+        "label": 1,
+        "number": 12,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "flight_phase": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "held_resources": {
+        "label": 3,
+        "number": 11,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "lease_epoch": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "localization": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.LocalizationHealth"
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "timestamp": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      }
+    },
+    "drone.contracts.v1.SensorSpec": {
+      "frame_id": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "kind": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "nominal_accuracy": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 12,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "sensor_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.SkillManifest": {
+      "cancel": {
+        "label": 1,
+        "number": 11,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.CancelSpec"
+      },
+      "completion_evidence": {
+        "label": 3,
+        "number": 13,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.EvidenceRequirement"
+      },
+      "description": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "embodiments": {
+        "label": 3,
+        "number": 5,
+        "optional": false,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.Embodiment"
+      },
+      "estimated_duration_s": {
+        "label": 1,
+        "number": 16,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "estimated_energy_fraction": {
+        "label": 1,
+        "number": 17,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "failure_modes": {
+        "label": 3,
+        "number": 14,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.FailureMode"
+      },
+      "implementation": {
+        "label": 1,
+        "number": 18,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Implementation"
+      },
+      "invariants": {
+        "label": 3,
+        "number": 8,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "params_schema": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 12,
+        "type_name": ""
+      },
+      "pause": {
+        "label": 1,
+        "number": 12,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.PauseSpec"
+      },
+      "preconditions": {
+        "label": 3,
+        "number": 7,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "progress_schema": {
+        "label": 1,
+        "number": 10,
+        "optional": true,
+        "type": 12,
+        "type_name": ""
+      },
+      "required_control_modes": {
+        "label": 3,
+        "number": 19,
+        "optional": false,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.ControlMode"
+      },
+      "resources": {
+        "label": 3,
+        "number": 9,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.ResourceClaim"
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "skill_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "timeout_s": {
+        "label": 1,
+        "number": 15,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "version": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.SkillRef": {
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "skill_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "version": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.SpatialScope": {
+      "approved_volume_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "frame": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Frame"
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.StepOutcome": {
+      "effect_verdict": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.EffectVerdict"
+      },
+      "execution_status": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.ExecutionStatus"
+      },
+      "mission_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mission_version": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "safety_verdict": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.SafetyVerdict"
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "step_id": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.TargetRef": {
+      "asset_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "description": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "pose": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Pose"
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.TaskLease": {
+      "expires_at": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "holder": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "issued_at": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "lease_epoch": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "mission_id": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mission_version": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "resources": {
+        "label": 3,
+        "number": 9,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.TaskNode": {
+      "allow_unverified_from": {
+        "label": 3,
+        "number": 7,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "completion_evidence": {
+        "label": 3,
+        "number": 6,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "depends_on": {
+        "label": 3,
+        "number": 5,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "params": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 12,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "skill_id": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "task_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.TemporalWindow": {
+      "not_after": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "not_before": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "tz": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.contracts.v1.TimeWindow": {
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "timestamp": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "valid_until": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      }
+    },
+    "drone.contracts.v1.WorldFact": {
+      "confidence": {
+        "label": 1,
+        "number": 12,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "evidence_refs": {
+        "label": 3,
+        "number": 14,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "fact_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "frame": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Frame"
+      },
+      "position": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.Position"
+      },
+      "predicate": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "source": {
+        "label": 1,
+        "number": 10,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.FactSource"
+      },
+      "source_version": {
+        "label": 1,
+        "number": 11,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "subject": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "timestamp": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "valid_until": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "value": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 12,
+        "type_name": ""
+      },
+      "world_kind": {
+        "label": 1,
+        "number": 13,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.WorldKind"
+      }
+    },
+    "drone.control.v1.CommandReconciliation": {
+      "key": {
+        "label": 1,
+        "number": 2,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.IdempotencyKey"
+      },
+      "observed_at": {
+        "label": 1,
+        "number": 5,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "outcome": {
+        "label": 1,
+        "number": 4,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.StepOutcome"
+      },
+      "reason": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "receipt_status": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.control.v1.ReceiptStatus"
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.control.v1.ExecutiveHeartbeat": {
+      "executive_instance": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "heartbeat_seq": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "lease_epoch": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "mission_id": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mission_version": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "progress_seq": {
+        "label": 1,
+        "number": 12,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "skill_instance_id": {
+        "label": 1,
+        "number": 10,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "skill_state": {
+        "label": 1,
+        "number": 11,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.SkillInstanceState"
+      },
+      "timestamp": {
+        "label": 1,
+        "number": 8,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "valid_until": {
+        "label": 1,
+        "number": 9,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      }
+    },
+    "drone.control.v1.GuardianStatus": {
+      "lease_epoch": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "reason": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "safety_verdict": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.contracts.v1.SafetyVerdict"
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "timestamp": {
+        "label": 1,
+        "number": 3,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      }
+    },
+    "drone.fleet.v1.DeliveryReceipt": {
+      "accepted": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "message_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "reason": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "received_at": {
+        "label": 1,
+        "number": 5,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.fleet.v1.HandoffOffer": {
+      "evidence_refs": {
+        "label": 3,
+        "number": 9,
+        "optional": false,
+        "type": 9,
+        "type_name": ""
+      },
+      "expires_at": {
+        "label": 1,
+        "number": 8,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "from_robot_id": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "handoff_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mission_id": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mission_version": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "target": {
+        "label": 1,
+        "number": 10,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.contracts.v1.WorldFact"
+      },
+      "task_id": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "to_robot_id": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.fleet.v1.HandoffReply": {
+      "accepted": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "handoff_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "reason": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "timestamp": {
+        "label": 1,
+        "number": 5,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      }
+    }
+  },
+  "services": {
+    "drone.control.v1.GuardianControl": {
+      "GetObservation": {
+        "client_streaming": false,
+        "input": ".drone.contracts.v1.ObservationRequest",
+        "output": ".drone.contracts.v1.FlightObservation",
+        "server_streaming": false
+      },
+      "Heartbeat": {
+        "client_streaming": false,
+        "input": ".drone.control.v1.ExecutiveHeartbeat",
+        "output": ".drone.control.v1.GuardianStatus",
+        "server_streaming": false
+      },
+      "InstallLease": {
+        "client_streaming": false,
+        "input": ".drone.contracts.v1.TaskLease",
+        "output": ".drone.contracts.v1.EgressDecision",
+        "server_streaming": false
+      },
+      "Operate": {
+        "client_streaming": false,
+        "input": ".drone.contracts.v1.MissionOperation",
+        "output": ".drone.control.v1.GuardianStatus",
+        "server_streaming": false
+      },
+      "ReconcileCommand": {
+        "client_streaming": false,
+        "input": ".drone.contracts.v1.IdempotencyKey",
+        "output": ".drone.control.v1.CommandReconciliation",
+        "server_streaming": false
+      },
+      "SubmitIntent": {
+        "client_streaming": false,
+        "input": ".drone.contracts.v1.ControlCommandEnvelope",
+        "output": ".drone.contracts.v1.EgressDecision",
+        "server_streaming": false
+      }
+    },
+    "drone.fleet.v1.FleetTransport": {
+      "DeliverPackage": {
+        "client_streaming": false,
+        "input": ".drone.contracts.v1.MissionPackage",
+        "output": ".drone.fleet.v1.DeliveryReceipt",
+        "server_streaming": false
+      },
+      "OfferHandoff": {
+        "client_streaming": false,
+        "input": ".drone.fleet.v1.HandoffOffer",
+        "output": ".drone.fleet.v1.HandoffReply",
+        "server_streaming": false
+      },
+      "PublishCapability": {
+        "client_streaming": false,
+        "input": ".drone.contracts.v1.CapabilityDescriptor",
+        "output": ".drone.fleet.v1.DeliveryReceipt",
+        "server_streaming": false
+      },
+      "PublishEvent": {
+        "client_streaming": false,
+        "input": ".drone.contracts.v1.ExecutionEvent",
+        "output": ".drone.fleet.v1.DeliveryReceipt",
+        "server_streaming": false
+      },
+      "PublishEvidence": {
+        "client_streaming": false,
+        "input": ".drone.contracts.v1.Evidence",
+        "output": ".drone.fleet.v1.DeliveryReceipt",
+        "server_streaming": false
+      },
+      "PublishFact": {
+        "client_streaming": false,
+        "input": ".drone.contracts.v1.WorldFact",
+        "output": ".drone.fleet.v1.DeliveryReceipt",
+        "server_streaming": false
+      },
+      "PublishStatus": {
+        "client_streaming": false,
+        "input": ".drone.contracts.v1.RobotStatus",
+        "output": ".drone.fleet.v1.DeliveryReceipt",
+        "server_streaming": false
+      }
+    }
+  }
+}
