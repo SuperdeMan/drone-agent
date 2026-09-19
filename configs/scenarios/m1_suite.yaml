@@ -22,6 +22,6 @@ scenarios:
   - {id: pause_resume, expected: completed, inject_at: fly_route, kind: pause_resume}
   - {id: pause_timeout, expected: safe_abort, inject_at: fly_route, kind: pause}
   - {id: uplink_lost, expected: safe_abort, inject_at: fly_route, kind: uplink_lost}
-  - {id: mode_takeover, expected: safe_abort, inject_at: fly_route, kind: mode_changed}
+  - {id: mode_takeover, expected: safe_abort, inject_at: fly_route, kind: mode_changed, external_action: land}
   - {id: fc_failsafe, expected: safe_abort, inject_at: fly_route, kind: fc_failsafe}
   - {id: localization_lost, expected: safe_abort, inject_at: fly_route, kind: localization_lost}

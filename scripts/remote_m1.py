@@ -20,7 +20,7 @@ def injection_due(scenario, state):
     step = scenario.get("inject_at")
     if step is None or state["active_step"] != step:
         return False
-    if scenario.get("kind") in {"pause", "pause_resume"}:
+    if scenario.get("kind") in {"pause", "pause_resume", "mode_changed"}:
         if state["observation"]["flight_mode"] != "MISSION" or state.get("command_pending", False):
             return False
     if scenario.get("during_takeoff"):
@@ -190,8 +190,7 @@ def run_m1(root: Path, deployment: Path, request: dict):
                                 "-T",
                                 "sitl",
                                 "/opt/PX4-Autopilot/build/px4_sitl_default/bin/px4-commander",
-                                "mode",
-                                "posctl",
+                                "land",
                             )
                         elif kind in {"cancel", "pause", "pause_resume"}:
                             write_json(
@@ -260,6 +259,17 @@ def run_m1(root: Path, deployment: Path, request: dict):
                 compose("stop", "-t", "5", "executive", "guardian", "collector")
                 compose("stop", "-t", "10", "sitl")
                 compose("logs", "--no-color", "--tail", "160", timeout=30, check=False)
+                compose(
+                    "run",
+                    "-T",
+                    "--no-deps",
+                    "judge",
+                    "/usr/bin/python3",
+                    "/workspace/sim/read_ulog.py",
+                    "/run/ulog",
+                    "/output/fc-events.json",
+                    timeout=90,
+                )
                 judged = compose("run", "-T", "--no-deps", "judge", timeout=90, check=False)
                 result_path = run / "judge/result.json"
                 result = (

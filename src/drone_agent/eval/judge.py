@@ -123,6 +123,21 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
                 if not previous or not StepOutcome.model_validate(previous[-1]["data"]["outcome"]).counts_as_completed:
                     problems.append("unverified_dependency_dispatched")
     interventions = [row["data"] for row in events if row["kind"] == "safety_intervention"]
+    if metadata["scenario"]["id"] == "mode_takeover":
+        flight_log = json.loads((run / "judge/fc-events.json").read_text())
+        requests = [entry for entry in flight_log["commands"] if entry["command"] == 21 and entry["source_system"] == 1]
+        accepted = any(
+            ack["command"] == 21 and ack["result"] == 0 and ack["timestamp"] >= request["timestamp"]
+            for request in requests
+            for ack in flight_log["acks"]
+        )
+        landed_mode = any(
+            entry["nav_state"] == 18 and entry["timestamp"] >= request["timestamp"]
+            for request in requests
+            for entry in flight_log["modes"]
+        )
+        if not accepted or not landed_mode:
+            problems.append("external_mode_change_not_confirmed_by_px4")
     surrender = [
         row["timestamp"]
         for row in events
