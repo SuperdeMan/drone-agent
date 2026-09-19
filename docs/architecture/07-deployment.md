@@ -47,7 +47,7 @@ MuJoCo 继续承担 `embodied-agent` 的机械臂基线，不用于飞控集成�
 | ROS 2 | Jazzy Jalisco（LTS → 2029-05） | M3 评估 Lyrical Luth（LTS → 2031-05）：条件是 px4_msgs、Nav2、BehaviorTree.ROS2、rmw_zenoh 均有稳定发布 |
 | Gazebo | Harmonic（Jazzy 配对） | 随 ROS 2 升级到 Jetty |
 | PX4 | v1.17.x（锁定小版本） | 不跟随 main |
-| MAVSDK-Python | 3.17.x（PyPI `mavsdk`，gRPC 封装 + `mavsdk_server`）；锁 `>=3.17,<5` | v4 原生绑定发布后迁移适配器（上游已拆出 `mavsdk-grpc`） |
+| MAVSDK-Python | 精确锁定 `3.17.4`（gRPC 封装 + `mavsdk_server`，D025） | 原生绑定或 `mavsdk-grpc` 迁移单独验证 |
 | RMW | Fast DDS（机器人内）；Zenoh（跨机器人） | — |
 | Nav2 | Jazzy 对应版本 | 随 ROS 2 |
 | Anthropic SDK | 最新稳定；模型 `claude-opus-5` | 按模型迁移指南 |
@@ -91,7 +91,7 @@ Windows 开发通过已安装的 Docker Desktop Linux 后端运行；构建、�
 
 ## 7. 安全（信息安全）
 
-- 上行任务包签名（审批记录 + 包哈希）；机载验签后才接受。
-- 机器人 ↔ mission-service 双向 TLS；Zenoh 路由启用认证。
+- M1 仿真从本地可信文件加载批准任务包，gRPC local credentials + 私有 UDS 验证本地连接，包哈希绑定范围；不把哈希宣称为数字签名。
+- M2 的远程任务入口增加签名、机载验签与机器人 ↔ mission-service 双向 TLS；Zenoh 接入时启用认证。
 - 密钥不进代码与镜像；通过运行时挂载。
 - 认知链路攻击（提示注入进入 Planner 工具返回）：工具返回视为数据，不作为指令；任何来自工具的「扩大范围」建议都必须经准入。
