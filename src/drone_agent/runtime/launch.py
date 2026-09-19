@@ -38,6 +38,7 @@ async def main_async(args):
 
         adapter = Px4Adapter(registry, args.artifacts, args.sensor)
         await adapter.connect()
+        (args.artifacts / "capabilities.json").write_text(adapter.capabilities.model_dump_json(indent=2))
         journal = Journal(args.artifacts / "guardian.jsonl")
         recorder = Recorder(args.artifacts / "guardian.mcap")
         guardian = Guardian(

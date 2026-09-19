@@ -4,14 +4,14 @@
 
 ## 当前阶段
 
-**M0 已完成，M1 运行时待实现（2026-09-19）**：基础契约与未解锁 SITL 冒烟已交付；云端仿真/契约联调工作区也已就绪，证据分别见 `docs/m0-readiness.md` 与 `docs/cloud-readiness-2026-09-19.md`。退出标准见 `docs/roadmap.md`。下一步 M1：无大模型的 PX4 SITL 单机安全闭环（executive + guardian + PX4 适配器 + 故障注入 + 独立裁判）。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。
+**M0 已完成，M1 正在云端 SITL 验证（2026-09-19）**。运行时、五技能、记录/回放与独立裁判已实现；完整故障矩阵与 v1 冻结按 `docs/m1-implementation.md`、`docs/roadmap.md` 验收，未全部通过前不标记完成。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。
 
 ## 目录结构
 
 完整定义与理由见 `docs/architecture/07-deployment.md` 与各文档；本节只列约定：
 
 - `docs/` — `architecture/`（00–08 分主题，`00-overview.md` 是入口与文档地图）、`decisions.md`、`roadmap.md`、`reuse-from-embodied-agent.md`、`research/`（前沿调研、GPT-6 Pro 评估原文与摘要）。架构级变更**先改文档 + `decisions.md` 增条目，再动代码**。
-- `src/drone_agent/` — 单包多子模块。**模块随里程碑创建，不预建空模块。** M0 只有 `contracts/`。规划中的子模块与里程碑：`contracts`(M0) · `runtime`(M1：obs、ledger、ipc) · `guardian`(M1：安全监督、约束过滤、恢复策略、控制出口) · `adapters`(M1：`px4_mavsdk`、`sim`) · `mission`(M1：executive、skills) · `eval`(M1：裁判、场景、故障注入) · `providers`(M2，移植) · `planner`(M2) · `admission`(M2) · `fleet`(M4) · `autonomy`(M3，ROS 2 节点放 `ros2_ws/`，不进本包)。
+- `src/drone_agent/` — 单包多子模块。**模块随里程碑创建，不预建空模块。** 已有 `contracts`(M0)、`runtime`(日志/IPC/MCAP)、`guardian`(监督/恢复/出口)、`adapters`(PX4)、`mission`(执行/登记表/验证)、`eval`(裁判/场景/注入)。后续 `providers`/`planner`/`admission`(M2)、`fleet`(M4)、`autonomy`(M3；ROS 2 节点在 `ros2_ws/`，不进本包)。
 - `proto/` — 进程间契约（executive ↔ guardian；车队协议）与共享消息；M0 骨架，M1 冻结，包名 `drone.<service>.v1`。字段清单与共享 proto 由 `scripts/generate_contract_fields.py` 导出；禁止旧字段重编号。
 - `configs/` — `platforms/`（版本锁定与目标能力描述）、`skills/`（技能草案）、`recovery_policies/`（恢复策略图）、`scenarios/`（注入矩阵与后续评测场景）、`planner_tools.yaml`（规划层工具白名单，只读）。草案中的场景名不代表已验证。
 - `tests/` — 镜像 `src/`；`tests/contracts/` 是契约测试，`tests/fault_injection/`（M1）是故障注入测试。

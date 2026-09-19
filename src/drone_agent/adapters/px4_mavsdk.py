@@ -14,7 +14,16 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from drone_agent.contracts import FlightObservation, Frame, Pose, Position, RecoveryBehavior, utcnow
+from drone_agent.contracts import (
+    Evidence,
+    FlightObservation,
+    Frame,
+    Pose,
+    Position,
+    RecoveryBehavior,
+    TimeWindow,
+    utcnow,
+)
 from drone_agent.runtime.ledger import canonical
 
 
@@ -30,6 +39,18 @@ class Px4Adapter:
         self.expected_modes = None
         self.mode_grace = 0.0
         self.camera_available = sensor.is_file()
+        self.capabilities = registry.capability.model_copy(deep=True)
+        self.capabilities.recovery_behaviors = {
+            RecoveryBehavior.HOLD,
+            RecoveryBehavior.RTL,
+            RecoveryBehavior.LAND_HERE,
+            RecoveryBehavior.HANDOVER_TO_FC_FAILSAFE,
+        }
+        if not self.camera_available:
+            self.capabilities.skills = [
+                s for s in self.capabilities.skills if s.skill_id != "skill.flight.capture_image"
+            ]
+            self.capabilities.sensors = [s for s in self.capabilities.sensors if s.sensor_id != "cam_0"]
         self.command_log = []
         self.control_context = {}
         self.evidence = {}
@@ -249,6 +270,17 @@ class Px4Adapter:
             "skill_instance": node.task_id,
             "source": "gazebo_rgb_sensor",
         }
+        evidence["contract"] = Evidence(
+            evidence_id="image:" + digest,
+            kind="image",
+            media_ref=relative,
+            sha256=digest,
+            time_window=TimeWindow(timestamp=stamp, valid_until=observation.valid_until),
+            captured_pose=observation.pose,
+            subject_ids=[node.params["asset_id"]],
+            quality={"width": frame["width"], "height": frame["height"]},
+            produced_by_skill_instance=node.task_id,
+        ).model_dump(mode="json")
         (self.artifacts / f"evidence-{node.task_id}.json").write_bytes(canonical(evidence))
         return evidence
 

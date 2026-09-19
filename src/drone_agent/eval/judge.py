@@ -38,6 +38,10 @@ def judge(run: Path, root: Path) -> dict:
         if after["sim_time"] <= before["sim_time"]:
             problems.append("nonmonotonic_truth")
             break
+        vertical_speed = (after["position"][2] - before["position"][2]) / (after["sim_time"] - before["sim_time"])
+        if after["position"][2] < 0.5 and vertical_speed < -2:
+            problems.append("unsafe_touchdown_speed")
+            break
     completed = result.get("completed", False)
     outcomes = {key: StepOutcome.model_validate(value) for key, value in result.get("outcomes", {}).items()}
     false_success = 0

@@ -42,25 +42,26 @@ def run_m1(root: Path, deployment: Path, request: dict):
     for role, image in images.items():
         if HELPERS["inspect_image"](image):
             continue
-        result = subprocess.run(
-            [
-                "docker",
-                "build",
-                "--pull=false",
-                "--build-arg",
-                f"CHECKS_IMAGE={checks}",
-                "--target",
-                role,
-                "-f",
-                str(source / "sim/m1.Dockerfile"),
-                "-t",
-                image,
-                str(source),
-            ],
-            capture_output=True,
-            timeout=900,
-        )
-        (base / f"build-{role}.log").write_bytes(result.stdout + result.stderr)
+        with (base / f"build-{role}.log").open("wb") as build_log:
+            result = subprocess.run(
+                [
+                    "docker",
+                    "build",
+                    "--pull=false",
+                    "--build-arg",
+                    f"CHECKS_IMAGE={checks}",
+                    "--target",
+                    role,
+                    "-f",
+                    str(source / "sim/m1.Dockerfile"),
+                    "-t",
+                    image,
+                    str(source),
+                ],
+                stdout=build_log,
+                stderr=subprocess.STDOUT,
+                timeout=900,
+            )
         if result.returncode:
             raise RuntimeError(f"M1 {role} build failed: {base}")
     suite = json.loads(

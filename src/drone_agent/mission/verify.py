@@ -7,7 +7,7 @@ import hashlib
 import math
 from pathlib import Path
 
-from drone_agent.contracts import EffectVerdict, FlightObservation, utcnow
+from drone_agent.contracts import EffectVerdict, Evidence, FlightObservation, utcnow
 from drone_agent.mission.registry import coordinates, distance
 
 
@@ -64,7 +64,8 @@ def image_quality(raw: bytes, width: int, height: int) -> dict:
     if len(raw) != width * height * 3 or width <= 0 or height <= 0:
         return {}
     red = sum(r > 70 and r > g * 1.5 and r > b * 1.5 for r, g, b in zip(raw[0::3], raw[1::3], raw[2::3], strict=True))
-    return {"width": width, "height": height, "red_fraction": red / (width * height)}
+    edge = sum(abs(raw[index] - raw[index - 3]) for index in range(3, len(raw)) if (index // 3) % width)
+    return {"width": width, "height": height, "red_fraction": red / (width * height), "edge_contrast": edge / len(raw)}
 
 
 def verify_image(evidence: dict, root: Path, node, registry) -> EffectVerdict:
@@ -82,6 +83,16 @@ def verify_image(evidence: dict, root: Path, node, registry) -> EffectVerdict:
         from datetime import datetime
 
         captured = datetime.fromisoformat(stamp)
+        contract = Evidence.model_validate(evidence["contract"])
+        if (
+            contract.sha256 != evidence["sha256"]
+            or contract.media_ref != evidence["media_ref"]
+            or contract.subject_ids != [node.params["asset_id"]]
+            or contract.captured_pose != obs.pose
+            or contract.time_window.timestamp != captured
+            or contract.produced_by_skill_instance != node.task_id
+        ):
+            return EffectVerdict.REFUTED
         threshold = registry.data["thresholds"]["image"]
         if not obs.timestamp <= captured < obs.valid_until:
             return EffectVerdict.UNKNOWN
@@ -95,6 +106,8 @@ def verify_image(evidence: dict, root: Path, node, registry) -> EffectVerdict:
             quality.get("width", 0) < threshold["min_width"]
             or quality.get("height", 0) < threshold["min_height"]
             or quality.get("red_fraction", 0) < threshold["min_red_fraction"]
+            or quality.get("red_fraction", 0) > threshold["max_red_fraction"]
+            or quality.get("edge_contrast", 0) < threshold["min_edge_contrast"]
         ):
             return EffectVerdict.UNVERIFIED
         asset = registry.data["assets"][node.params["asset_id"]]

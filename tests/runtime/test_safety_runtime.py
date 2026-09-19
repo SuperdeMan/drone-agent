@@ -48,7 +48,8 @@ class Adapter:
     camera_available = True
     external_takeover = False
 
-    def __init__(self):
+    def __init__(self, registry):
+        self.capabilities = registry.capability.model_copy(deep=True)
         self.writes = []
         self.airborne = False
         self.altitude = 0
@@ -100,7 +101,7 @@ class Adapter:
 def runtime(tmp_path):
     registry = Registry(ROOT)
     package = make_package(registry, 7, "mission-test")
-    adapter = Adapter()
+    adapter = Adapter(registry)
     journal = Journal(tmp_path / "authority.jsonl")
     guardian = Guardian(
         adapter=adapter,
@@ -539,3 +540,68 @@ async def test_heartbeat_loss_cannot_interrupt_an_active_safety_return(runtime):
     await guardian.intervene(RecoveryTrigger.EXECUTIVE_HEARTBEAT_LOST)
     assert guardian.recovery.trigger == RecoveryTrigger.USER_CANCEL
     assert adapter.writes == [RecoveryBehavior.RTL]
+
+
+async def test_executive_blocks_successors_when_takeoff_has_no_physical_effect(runtime):
+    from drone_agent.mission.executive import Executive
+
+    guardian, adapter, _, path = runtime
+    package = guardian.package
+    package.nodes[0].timeout_s = 0.2
+    package.package_hash = package.compute_hash()
+    package.approval.package_hash = package.package_hash
+
+    class Client:
+        async def install(self, lease):
+            return guardian.install_lease(lease).model_dump(mode="json")
+
+        async def heartbeat(self, value):
+            result = guardian.heartbeat(value)
+            result["safety_verdict"] = result["safety_verdict"].value
+            return result
+
+        async def observation(self, robot_id):
+            return adapter.snapshot()
+
+        async def submit(self, command):
+            return (await guardian.submit(command)).model_dump(mode="json")
+
+        async def operate(self, operation):
+            return await guardian.operate(operation)
+
+    journal, recorder = Journal(path / "executive.jsonl"), Recorder(path / "executive.mcap")
+    try:
+        executive = Executive(
+            client=Client(),
+            registry=guardian.registry,
+            package=package,
+            journal=journal,
+            recorder=recorder,
+            artifacts=path,
+            executive_id="executive-test",
+            epoch=2,
+        )
+        result = await executive.run()
+        await guardian.recovery_task
+        assert not result["completed"]
+        assert result["not_run"] == ["fly_route", "capture_image", "return_home", "land"]
+        assert adapter.writes == ["skill.flight.takeoff"]
+        assert result["outcomes"]["takeoff"]["effect_verdict"] != "verified"
+    finally:
+        journal.close()
+        recorder.close()
+
+
+def test_fresh_epoch_cannot_retake_an_airborne_robot(runtime):
+    guardian, adapter, lease, _ = runtime
+    adapter.airborne = True
+    lease.lease_epoch = 2
+    assert not guardian.install_lease(lease).accepted
+
+
+def test_blank_and_flat_color_images_cannot_meet_quality_profile():
+    from drone_agent.mission.verify import image_quality
+
+    assert image_quality(bytes(160 * 120 * 3), 160, 120)["red_fraction"] == 0
+    quality = image_quality(bytes([255, 0, 0]) * (160 * 120), 160, 120)
+    assert quality["red_fraction"] == 1 and quality["edge_contrast"] == 0

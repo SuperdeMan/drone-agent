@@ -11,7 +11,10 @@ LABEL org.drone-agent.role=ground
 CMD ["python3", "-m", "drone_agent.eval.judge"]
 
 FROM aircraft AS sim
-RUN apt-get update && apt-get install -y --no-install-recommends bc
+RUN no_proxy=mirrors.tuna.tsinghua.edu.cn apt-get \
+    -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/ubuntu.sources -o Dir::Etc::sourceparts=- \
+    -o Acquire::Retries=1 -o Acquire::https::Timeout=20 update \
+    && no_proxy=mirrors.tuna.tsinghua.edu.cn apt-get install -y --no-install-recommends bc
 RUN /usr/bin/python3 /workspace/sim/m1_setup.py
 LABEL org.drone-agent.role=sim
 ENV HEADLESS=1

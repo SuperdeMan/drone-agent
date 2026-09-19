@@ -38,7 +38,7 @@ Five principles: models express goals and the runtime executes them; a single co
 
 ## Status
 
-M0 completed on 2026-09-19: contracts, compiled proto drafts, five skill manifests, the fault-injection matrix and the sibling-project reuse review are in place. Lint, 258 tests and an unarmed PX4 v1.17.0 / Gazebo Harmonic 8.15.0 environment smoke pass. See [verification evidence](docs/m0-readiness.md). M1 targets a single-drone safety loop without a large model; no flight runtime is implemented yet.
+M0 completed on 2026-09-19; its [historical verification evidence](docs/m0-readiness.md) is retained. M1 is in cloud SITL validation: the local executive/guardian runtime, durable command reconciliation, five skill implementations, authenticated local IPC, camera relay and independent judge are implemented. See the [implementation and acceptance plan](docs/m1-implementation.md). A passing unit suite alone does not close M1; the complete seeded flight/fault matrix must pass on the release candidate.
 
 ## Development
 

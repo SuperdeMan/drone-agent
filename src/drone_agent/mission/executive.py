@@ -189,6 +189,8 @@ class Executive:
         verdict, execution = EffectVerdict.UNKNOWN, ExecutionStatus.UNKNOWN
         verifier = EffectVerifier(self.registry, node)
         deadline = time.monotonic() + node.timeout_s
+        captures = 1
+        last_capture = time.monotonic()
         while accepted and time.monotonic() < deadline:
             obs = await self.pump()
             state = self.states[node.task_id]
@@ -210,6 +212,22 @@ class Executive:
                     if path.exists()
                     else EffectVerdict.UNKNOWN
                 )
+                if verdict == EffectVerdict.UNVERIFIED and captures < 3 and time.monotonic() - last_capture >= 1:
+                    now = utcnow()
+                    envelope = envelope.model_copy(deep=True)
+                    envelope.key.command_id = uuid.uuid4().hex
+                    envelope.command_seq = self.seq
+                    envelope.valid_until = now + timedelta(seconds=2)
+                    envelope.issued_at = now
+                    self.seq += 1
+                    captures += 1
+                    self.event("command_submitted", envelope=envelope.model_dump(mode="json"), capture_attempt=captures)
+                    accepted = await self.send(envelope)
+                    last_capture = time.monotonic()
+                    continue
+                if verdict == EffectVerdict.UNVERIFIED and captures == 3:
+                    execution = ExecutionStatus.FAILED
+                    break
             else:
                 verdict = verifier.observe(obs, time.monotonic())
             if verdict == EffectVerdict.VERIFIED:

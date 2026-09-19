@@ -53,6 +53,8 @@ class Guardian:
         self.uplink_ok = True
         self.authorized_to_continue = True
         self.registry.validate_package(package, camera_available=adapter.camera_available)
+        if self.policy.validate_against(adapter.capabilities):
+            raise ValueError("recovery policy exceeds actual adapter capabilities")
 
     def record(self, kind, **data):
         return self.journal.append(kind, {"mission_id": self.package.mission_id, **data})
@@ -74,12 +76,25 @@ class Guardian:
             return EgressDecision(accepted=False, reason="lease_resource_mismatch")
         if self.ledger.lease is None and lease.lease_epoch <= self.ledger.highest_epoch:
             return EgressDecision(accepted=False, reason="restart_or_revocation_requires_new_epoch")
+        new_epoch = lease.lease_epoch > self.ledger.highest_epoch
+        if new_epoch:
+            obs = self.adapter.snapshot()
+            if (
+                obs.in_air is not False
+                or obs.armed is not False
+                or (self.dispatch_task and not self.dispatch_task.done())
+            ):
+                return EgressDecision(accepted=False, reason="new_authority_requires_grounded_reconciliation")
         try:
             self.gate.grant(lease)
         except ValueError as error:
             return EgressDecision(accepted=False, reason=str(error))
         self.ledger.record("lease", lease.model_dump(mode="json"))
         self.lease_deadline = time.monotonic() + (lease.expires_at - utcnow()).total_seconds()
+        if new_epoch:
+            self.generation += 1
+            self.heartbeat_seq = self.progress_seq = -1
+            self.last_progress = self.last_heartbeat = None
         return EgressDecision(accepted=True)
 
     def lease_valid(self):
