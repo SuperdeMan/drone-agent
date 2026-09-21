@@ -1,0 +1,39 @@
+name: drone-agent-cloud
+services:
+  console:
+    image: ${DRONE_CONSOLE_IMAGE:?required}
+    pull_policy: never
+    restart: unless-stopped
+    labels:
+      io.drone-agent.component: tailnet-console
+      io.drone-agent.source-sha: ${DRONE_CONSOLE_SHA:?required}
+    user: ${DRONE_CONSOLE_UID:?required}:${DRONE_CONSOLE_GID:?required}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    cpus: 0.4
+    mem_limit: 512m
+    memswap_limit: 512m
+    ports: ["127.0.0.1:8768:8768"]
+    networks: [console]
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      DRONE_CONSOLE_ORIGIN: ${DRONE_CONSOLE_ORIGIN:?required}
+    command: ["python3", "-m", "drone_agent.console.cloud", "--origin", "${DRONE_CONSOLE_ORIGIN:?required}", "--source-sha", "${DRONE_CONSOLE_SHA:?required}"]
+    volumes:
+      - ${DRONE_CONSOLE_ROOT:?required}/console/ipc:/broker:ro
+      - ${DRONE_CONSOLE_ROOT:?required}/artifacts:/records:ro
+      - ${DRONE_CONSOLE_ROOT:?required}/releases:/releases:ro
+      - ${DRONE_CONSOLE_ROOT:?required}/console/pages:/outputs
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import os,urllib.request,urllib.parse; u=os.environ['DRONE_CONSOLE_ORIGIN']; r=urllib.request.Request('http://127.0.0.1:8768/health',headers={'Host':urllib.parse.urlsplit(u).netloc}); urllib.request.urlopen(r,timeout=5).read()"]
+      interval: 15s
+      timeout: 8s
+      start_period: 30s
+      retries: 3
+networks:
+  console:
+    internal: true

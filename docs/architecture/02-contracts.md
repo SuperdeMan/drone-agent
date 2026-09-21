@@ -165,6 +165,8 @@ M1 运行时接收约束与持久化/IPC 实施见 [M1 实施计划](../m1-imple
 
 提交、机载接受、安全收尾、独立裁判结果分开展示。云端运行 ID 是启动幂等键；重复请求返回原运行，不再次起飞。刷新或关闭页面不隐含暂停/取消；断开后的状态显示为陈旧，恢复连接先读权威状态，不自动重发。
 
+D028 将相同页面协议增加云端入口：Tailscale Serve → ASGI 网页服务 → 有界 JSON/Unix socket 任务代理 → 原操作者通道。代理只允许 `live_status/live_start/live_operate` 三个方法，各方法拒绝额外字段；连接以 Unix peer UID 校验。该传输仅在仿真云主机本机使用，不替代 M2 签名上行或改变 `drone.*.v1`。
+
 | 测试 | 断言 |
 |---|---|
 | `test_unknown_is_never_success` | 任何 `effect_verdict ∈ {unknown, unverified}` 的前驱都不能放行后继（无 `allow_unverified` 时） |

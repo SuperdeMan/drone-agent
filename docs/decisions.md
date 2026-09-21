@@ -291,3 +291,19 @@ D024 的实施已完成并通过完整 SITL 验收，状态转为生效；D025 �
 **验收**：本地 HTTP 鉴权、启动/操作幂等、并发互斥、过期与错目标拒绝、断开/刷新不重复启动；云端正常巡检、人工暂停/恢复与取消，覆盖多个种子；受影响的 M1 取消/暂停场景回归。每份证据绑定准确 SHA、控制面哈希、裁判和回放结果，不转借历史 66/66。
 
 **重估触发器**：需要从其他设备直连、多人权限、任意任务输入、真机或完整 M2 服务时，重新决策身份/签名/部署；不能把本机桥直接绑定公网。
+
+## D028 · Tailscale 私网常驻仿真控制台（2026-09-22）
+
+**决策**：用户确认参照 car-agent 的 Tailscale 私网方式，现阶段不新增应用账号/登录体系，并授权实施。将 D027 页面与证据生成常驻到云端；只经独立的 Tailscale Serve HTTPS 端口 `8447` 访问，后端宿主端口仅绑定 `127.0.0.1:8768`，不启用 Funnel，不修改既有 car-agent 映射、tailnet ACL、安全组或 `.env`。能通过现有 tailnet 规则到达此入口的设备被视为本阶段可信操作者；这不是多人角色权限或真机准入。
+
+**进程边界**：网页服务使用 Uvicorn 的单进程 ASGI 入口，在受限、只读根文件系统的容器中运行，复用已验证的源码镜像，不持 Docker socket、SSH 密钥或飞控连接。只读挂载本项目记录及版本目录，证据页面写入独立缓存目录。机内任务代理 `scripts/console_broker.py` 以原工作区属主运行，由本项目专用 systemd unit 常驻；只在私有 Unix socket 接受同 UID 的固定 `live_status/live_start/live_operate` 请求，调用原有 `remote_live.py`。网页 HTTP 输入不能指定 shell、路径、部署、任意场景或控制意图。
+
+代理的 systemd unit 使用 `KillMode=process`：重启入口不能杀死已经独立运行、持有 `stack.lock` 的仿真任务。飞行、任务准入、恢复策略、操作有效期和幂等语义保持 D027；浏览器和入口进程不是机载心跳。网页和代理具有独立资源与请求上限。
+
+**访问保护**：固定配置外部 HTTPS Origin，继续校验 Host、Origin、会话 nonce、JSON 类型与大小；不因位于 tailnet 而去掉防跨站保护。公网监听与 Funnel 不是回退方案。升级/失败回退只处理本项目服务和新 Serve 端口；禁止 `tailscale serve reset` 或覆盖整个 Serve 配置。
+
+**部署**：`dev_stack.py console-cloud` 只读生成部署计划，`--apply` 激活本项目专用代理 unit、网页容器及独立 Serve 映射；状态与证据绑定准确应用 SHA、镜像、控制面及配置摘要。升级前后核对其余容器及 Serve 配置，检测非本项目配置变化时不能声称隔离通过。依赖只进入项目锁文件/镜像，不安装全局 Python 包。
+
+**验收**：HTTP 边界、私有 socket 方法/身份限制、路径隔离、运行幂等、入口重启不重跑/中断任务；经真实 Tailnet HTTPS 运行正常巡检、暂停恢复、取消并核对裁判/回放；验证 loopback 发布、Funnel 关闭、旧映射不变。完整 M1 66 组、M2 或浏览器视觉验收分别记录，不转借历史结果。
+
+**重估触发器**：访问者中出现只允许观看的成员、开启公网/Funnel、引入任意任务或真机时，重新决策应用身份与授权。依据：[Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve)、[Uvicorn](https://uvicorn.dev/)。

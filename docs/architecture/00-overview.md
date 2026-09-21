@@ -108,3 +108,4 @@
 | `../cloud-development.md` | 默认云端构建、仿真与验证的操作入口及隔离边界 |
 | `../live-simulation.md` | M1 固定任务的实时操作、连接语义与完整证据入口 |
 | `../live-console-readiness.md` | 实时仿真入口的准确版本、HTTP 操作验证与回归范围 |
+| `../tailnet-console.md` | 云端常驻控制台、Tailscale 私网入口与机内权限边界 |

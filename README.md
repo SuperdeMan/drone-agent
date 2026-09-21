@@ -51,7 +51,7 @@ uv run python scripts/dev_stack.py verify
 uv run python scripts/dev_stack.py test
 ```
 
-To start and observe a fixed cloud inspection from your browser, run `uv run python scripts/dev_stack.py console` and open <http://127.0.0.1:8768>. The page shows live onboard telemetry and camera frames, with pause/resume/cancel through the existing executive channel. The simulation runs in the cloud over the existing SSH connection. See the [live simulation guide](docs/live-simulation.md) for setup, connection semantics and evidence boundaries; this is the M1 human entry, not the full M2 planning/approval console.
+The fixed simulation console can run in the cloud behind Tailscale Serve, with no separate application login. Run `uv run python scripts/dev_stack.py console-cloud --status` to get its private HTTPS URL; see the [Tailnet console guide](docs/tailnet-console.md) for deployment and access boundaries. The original local bridge remains available through `uv run python scripts/dev_stack.py console` at <http://127.0.0.1:8768>. Both entries show telemetry and camera frames and send pause/resume/cancel through the existing executive channel. This is the M1 human entry; full M2 planning and approval remain separate.
 
 The [version-qualified live entry validation](docs/live-console-readiness.md) records the deployed runtime, local UI version, 8 live HTTP runs and the 18-case M1 regression subset. The original 66-case M1 baseline remains tied to `eefe76e`.
 

@@ -51,7 +51,7 @@ uv run python scripts/dev_stack.py verify
 uv run python scripts/dev_stack.py test
 ```
 
-亲自从浏览器启动并观察固定巡检：运行 `uv run python scripts/dev_stack.py console`，打开 <http://127.0.0.1:8768>。页面显示机载遥测与相机画面，暂停/恢复/取消经过既有 executive 通道；仿真通过已有 SSH 连接在云端运行。配置、连接语义和证据边界见 [实时仿真指南](docs/live-simulation.md)。这是 M1 人工入口，完整 M2 规划/审批控制台仍待实现。
+固定仿真控制台可常驻云端，通过 Tailscale Serve 私网访问，不另设应用登录页。运行 `uv run python scripts/dev_stack.py console-cloud --status` 获取私有 HTTPS 地址，部署和访问边界见 [Tailnet 控制台指南](docs/tailnet-console.md)。原本机桥仍可通过 `uv run python scripts/dev_stack.py console` 在 <http://127.0.0.1:8768> 使用。两个入口都展示机载遥测与相机画面，暂停/恢复/取消经过既有 executive 通道。这是 M1 人工入口，完整 M2 规划/审批控制台仍待实现。
 
 [版本限定的实时入口验收](docs/live-console-readiness.md) 记录云端运行版本、本机界面版本、8 轮 HTTP 实时验证和 18 组 M1 回归子集。原有 66 组 M1 基线仍只属于 `eefe76e`。
 

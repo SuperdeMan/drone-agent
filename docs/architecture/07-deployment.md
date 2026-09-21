@@ -76,6 +76,8 @@ Windows 开发通过已安装的 Docker Desktop Linux 后端运行；构建、�
 
 服务器上使用 SSH 用户家目录下的 `drone-agent/`，Compose project 固定 `drone-agent-cloud`，独立网络和产物目录。SITL 上限为 1.5 CPU / 2 GiB，验证容器上限为 1 CPU / 1 GiB；不发布宿主端口。部署不改变现有 car-agent 容器、数据、配置与服务入口。
 
+D028 对网页入口增加明确例外：`sim/compose.console.yaml` 的网页容器只发布 `127.0.0.1:8768`，由现有 Tailscale Serve 的独立 HTTPS `8447` 端口代理，不向公网监听、不启用 Funnel。网页使用受限 ASGI 容器；同机专用 systemd 任务代理经私有 UDS 接收固定请求。原 SITL、executive、guardian 与验证容器的网络和资源限制不变。入口安装及回退只能调整本项目服务与新 Serve 映射，保持 car-agent 的 443/8443–8446 映射原样。
+
 应用源码只从指定 Git commit 导出；控制脚本、Compose 和锁定依赖分别记录哈希，不能把控制面草案伪称为应用 release。首次复用 M0 已验证的镜像，经 SSH 上传并校验归档哈希、文件系统层与运行配置；后续验证镜像在服务器构建。秘密不进入快照，SSH 连接参数从进程环境读取，不复制 car-agent `.env`。操作、目录与结果边界见 `../cloud-development.md`。
 
 ## 5. 数据记录

@@ -6,21 +6,17 @@
 from __future__ import annotations
 
 import base64
-import hmac
 import json
 import re
-import secrets
-import subprocess
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
 
+from drone_agent.console.application import MAX_BODY, ConsoleApplication, Response, json_response
 from drone_agent.eval.viewer import _label, png_data_uri
 
 RUN_ID = re.compile(r"^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
-TEMPLATE = Path(__file__).with_name("live.html")
 
 
 class Bridge:
@@ -112,103 +108,45 @@ class ConsoleHTTPServer(ThreadingHTTPServer):
 
     def __init__(self, port: int, bridge: Bridge):
         self.bridge = bridge
-        self.nonce = secrets.token_urlsafe(32)
         super().__init__(("127.0.0.1", port), Handler)
         self.origin = f"http://127.0.0.1:{self.server_address[1]}"
+        self.application = ConsoleApplication(bridge, self.origin)
+        self.nonce = self.application.nonce
 
 
 class Handler(BaseHTTPRequestHandler):
     server: ConsoleHTTPServer
 
     def log_message(self, *_args):
-        # Never log session nonces or operator payloads. / 不把会话 nonce 或操作者载荷写入日志。
+        # Do not log session nonces or operator payloads. / 不记录会话 nonce 或操作者载荷。
         return
 
-    def respond(self, status: int, value, *, html: bool = False):
-        content = value if html else json.dumps(value, ensure_ascii=False).encode()
-        self.send_response(status)
-        self.send_header("Content-Type", "text/html; charset=utf-8" if html else "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(content)))
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("X-Frame-Options", "DENY")
-        self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
+    def respond(self, response: Response):
+        self.send_response(response.status)
+        for key, value in response.headers:
+            self.send_header(key.title(), value)
         self.end_headers()
-        self.wfile.write(content)
-
-    def authenticated(self, *, write: bool) -> bool:
-        if self.headers.get("Host") != urlsplit(self.server.origin).netloc:
-            self.respond(403, {"error": "invalid host"})
-            return False
-        origin = self.headers.get("Origin")
-        if (write and origin != self.server.origin) or (origin and origin != self.server.origin):
-            self.respond(403, {"error": "cross-origin access rejected"})
-            return False
-        if write and not hmac.compare_digest(self.headers.get("X-Console-Nonce", ""), self.server.nonce):
-            self.respond(403, {"error": "reload this console session before submitting"})
-            return False
-        return True
+        self.wfile.write(response.body)
 
     def do_GET(self):
-        if not self.authenticated(write=False):
-            return
-        url = urlsplit(self.path)
-        try:
-            if url.path == "/":
-                page = TEMPLATE.read_text(encoding="utf-8").replace("__NONCE__", self.server.nonce)
-                self.respond(200, page.encode(), html=True)
-            elif url.path == "/live.js":
-                content = TEMPLATE.with_suffix(".js").read_bytes()
-                self.send_response(200)
-                self.send_header("Content-Type", "text/javascript; charset=utf-8")
-                self.send_header("Content-Length", str(len(content)))
-                self.send_header("Cache-Control", "no-store")
-                self.end_headers()
-                self.wfile.write(content)
-            elif url.path == "/api/state":
-                self.respond(200, self.server.bridge.state())
-            elif url.path == "/api/evidence":
-                run_id = parse_qs(url.query).get("run", [""])[0]
-                self.respond(200, self.server.bridge.evidence(run_id))
-            elif url.path.startswith("/evidence/"):
-                run_id = url.path.removeprefix("/evidence/")
-                path = self.server.bridge.pages.get(run_id)
-                if path is None:
-                    self.respond(404, {"error": "verified evidence page not available"})
-                else:
-                    self.respond(200, path.read_bytes(), html=True)
-            else:
-                self.respond(404, {"error": "not found"})
-        except (ValueError, RuntimeError, OSError, subprocess.TimeoutExpired) as error:
-            self.respond(503, {"error": str(error), "fresh": False})
+        self.respond(self.server.application.handle("GET", self.path, list(self.headers.raw_items())))
 
     def do_POST(self):
-        if not self.authenticated(write=True):
-            return
-        if self.headers.get("Content-Type", "").split(";", 1)[0] != "application/json":
-            self.respond(415, {"error": "JSON required"})
-            return
+        headers = list(self.headers.raw_items())
+        rejection = self.server.application.authorized("POST", headers)
         try:
             size = int(self.headers.get("Content-Length", "0"))
-            if not 0 < size <= 4096 or self.headers.get("Transfer-Encoding"):
+            if not 0 < size <= MAX_BODY or self.headers.get("Transfer-Encoding"):
                 raise ValueError("invalid request length")
             self.connection.settimeout(10)
-            body = json.loads(self.rfile.read(size))
-            if not isinstance(body, dict):
-                raise ValueError("JSON object required")
-            if self.path == "/api/start":
-                result = self.server.bridge.start(body)
-            elif self.path == "/api/operate":
-                result = self.server.bridge.operate(body)
-            elif self.path == "/api/evidence" and set(body) == {"run_id"}:
-                result = self.server.bridge.evidence(body["run_id"], start=True)
-            else:
-                self.respond(404, {"error": "not found"})
-                return
-            self.respond(202, result)
-        except (ValueError, RuntimeError, OSError, TypeError, subprocess.TimeoutExpired) as error:
-            self.respond(409, {"error": str(error)})
+            body = self.rfile.read(size)
+        except (OSError, ValueError) as error:
+            self.respond(rejection or json_response(409, {"error": str(error)}))
+            return
+        if rejection:
+            self.respond(rejection)
+            return
+        self.respond(self.server.application.handle("POST", self.path, headers, body))
 
 
 def serve_console(*, port: int, request, fetch) -> None:

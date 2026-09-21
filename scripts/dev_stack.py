@@ -399,6 +399,10 @@ def main() -> None:
     console_parser = commands.add_parser("console", help="open a loopback browser entry to the cloud simulation")
     console_parser.add_argument("--port", type=int, default=8768)
     console_parser.add_argument("--artifacts", type=Path, default=Path(tempfile.gettempdir()) / "drone-agent-cloud")
+    cloud_console_parser = commands.add_parser("console-cloud", help="plan or activate the private Tailnet console")
+    cloud_console_action = cloud_console_parser.add_mutually_exclusive_group()
+    cloud_console_action.add_argument("--apply", action="store_true")
+    cloud_console_action.add_argument("--status", action="store_true")
     fetch_parser = commands.add_parser("fetch", help="copy a recorded run locally and build the evidence viewer")
     fetch_parser.add_argument("--run", required=True, help="run directory name, e.g. m1-20260919T171218Z-db465377")
     fetch_parser.add_argument("--deployment", default=None, help="deployment id; defaults to the current one")
@@ -425,6 +429,11 @@ def main() -> None:
             result = {"target": "cloud", "policy": "D023", "local_stack_fallback": False}
         else:
             connection = Connection.from_environment()
+            if args.command == "console-cloud":
+                action = "console_status" if args.status else "console_apply" if args.apply else "console_plan"
+                result = ssh(connection, {"action": action, "run_id": new_run_id()}, timeout=300)
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+                return
             if args.command == "console":
                 from drone_agent.console.server import serve_console
 
