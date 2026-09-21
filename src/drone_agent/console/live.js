@@ -85,8 +85,9 @@ function render(){
  byId("resultTitle").className="result-title"+(classification==='safe_abort'||(result&&!result.passed)||job?.phase==='failed'?' warn':'');
  byId("falseSuccess").textContent=result?.false_success_reports??"—";
  byId("replay").textContent=result?.replay_agrees===true?'与在线一致':result?.replay_agrees===false?'不一致':'等待结果';
- byId("passed").textContent=result?.passed===true?'通过':result?.passed===false?'未通过':'等待裁判';
- byId("resultNote").textContent=result?(result.passed?'结果来自独立裁判；完整证据可继续拉取核对。':'本轮未通过，请查看完整证据；安全中止不等于业务任务完成。'):'收到命令不等于任务完成；最终结果由飞行证据与独立裁判确认。';
+ const batchPassed=job?.completion?.status==='passed'&&result?.passed===true;
+ byId("passed").textContent=job?.completion?(batchPassed?'通过':'未通过'):'等待裁判';
+ byId("resultNote").textContent=job?.completion?(batchPassed?'结果来自独立裁判；完整证据可继续拉取核对。':'本轮未通过，请查看完整证据；任务效果与环境隔离验收分开核对。'):'收到命令不等于任务完成；最终结果由飞行证据与独立裁判确认。';
  const image=photoMode==='capture'?view.capture:view.camera;
  byId("cameraCapture").disabled=!view.capture;byId("cameraLive").setAttribute('aria-pressed',String(photoMode==='live'));byId("cameraCapture").setAttribute('aria-pressed',String(photoMode==='capture'));
  byId("cameraImage").hidden=!image;byId("cameraEmpty").hidden=!!image;

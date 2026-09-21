@@ -58,7 +58,7 @@ test('stale or unconfirmed state disables operations while final outcomes stay s
 test('cancelled run shows safe abort, unexecuted steps and actual captured frame',async()=>{
  const ui=setup();await ui.run('poll()');
  ui.setNext({source_sha:'a'.repeat(40),fresh:false,allowed_actions:[],job:{run_id:'20260921T120000Z-0123abcd',phase:'finished',
-  completion:{results:[{classification:'safe_abort',passed:true,false_success_reports:0,replay_agrees:true}]}},
+  completion:{status:'passed',results:[{classification:'safe_abort',passed:true,false_success_reports:0,replay_agrees:true}]}},
   mission_result:{completed:false},events:[],capture:{png:'data:image/png;base64,AA==',timestamp:'2026-09-21T12:00:00Z',sha256:'a'.repeat(64)},
   runtime:{observation:{armed:false,in_air:false,pose:{position:{x:0,y:0,z:0}}}}});
  await ui.run('poll()');
@@ -67,4 +67,15 @@ test('cancelled run shows safe abort, unexecuted steps and actual captured frame
  ui.nodes.get('cameraCapture').onclick();assert.equal(ui.nodes.get('cameraImage').src,'data:image/png;base64,AA==');
  assert.equal(ui.nodes.get('cameraImage').hidden,false);
  assert(!/NaN|undefined/.test(ui.nodes.get('craft').innerHTML));
+});
+
+test('a successful mission cannot mask failed batch isolation',async()=>{
+ const ui=setup();await ui.run('poll()');
+ ui.setNext({source_sha:'a'.repeat(40),fresh:false,allowed_actions:[],events:[],
+  job:{run_id:'20260921T120000Z-0123abcd',phase:'failed',completion:{status:'failed',
+   results:[{classification:'completed',passed:true,false_success_reports:0,replay_agrees:true}]}}});
+ await ui.run('poll()');
+ assert.equal(ui.nodes.get('resultTitle').textContent,'任务完成');
+ assert.equal(ui.nodes.get('passed').textContent,'未通过');
+ assert.match(ui.nodes.get('resultNote').textContent,/本轮未通过/);
 });
