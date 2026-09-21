@@ -38,4 +38,4 @@ uv run python scripts/dev_stack.py console --port 8768 --artifacts D:/drone-agen
 
 人工运行产物为 `artifacts/<deployment_id>/m1-<run_id>/interactive-<seed>/`，后台回执为 `live/<run_id>/result.json`。`interactive` 不属于 M1 的固定 22 场景发布矩阵；实际收到的取消或暂停超时决定预期中止，裁判仍独立检查真实效果、安全终态与错误成功。新提交的验证不得引用历史 `eefe76e` 的 66/66 作为本提交结果。
 
-本次实现与云端验证回执在完成后记入 `eval/BASELINES.md` 和 `docs/verification/`。
+本次实现、准确版本与云端验证范围见 [实时入口验收](live-console-readiness.md)；原始回执在 `docs/verification/`，历史基线按批次保留在 `eval/BASELINES.md`。

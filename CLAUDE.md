@@ -4,14 +4,14 @@
 
 ## 当前阶段
 
-**M1 已完成（2026-09-20，SITL 范围）**。运行版本、66 组完整矩阵与 400 项测试证据以 `docs/m1-readiness.md` 为准；下一阶段按 `docs/roadmap.md` 的 M2 推进，M2–M4 的批次、工作包与验收判据见 `docs/m2-implementation.md`、`docs/m3-implementation.md`、`docs/m4-implementation.md`（D026）；每份计划的「决策待办」未补进 `docs/decisions.md` 前不写对应代码。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。
+**M1 已完成（2026-09-20，SITL 范围）**。原里程碑版本、66 组完整矩阵与 400 项测试证据以 `docs/m1-readiness.md` 为准；D027 实时仿真入口补遗的当前部署、测试与版本边界见 `docs/live-console-readiness.md`。下一阶段按 `docs/roadmap.md` 的 M2 推进，M2–M4 的批次、工作包与验收判据见 `docs/m2-implementation.md`、`docs/m3-implementation.md`、`docs/m4-implementation.md`（D026）；每份计划的「决策待办」未补进 `docs/decisions.md` 前不写对应代码。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。
 
 ## 目录结构
 
 完整定义与理由见 `docs/architecture/07-deployment.md` 与各文档；本节只列约定：
 
 - `docs/` — `architecture/`（00–08 分主题，`00-overview.md` 是入口与文档地图）、`decisions.md`、`roadmap.md`、`reuse-from-embodied-agent.md`、`research/`（前沿调研、GPT-6 Pro 评估原文与摘要）。架构级变更**先改文档 + `decisions.md` 增条目，再动代码**。
-- `src/drone_agent/` — 单包多子模块。**模块随里程碑创建，不预建空模块。** 已有 `contracts`(M0)、`runtime`(日志/IPC/MCAP)、`guardian`(监督/恢复/出口)、`adapters`(PX4)、`mission`(执行/登记表/验证)、`eval`(裁判/场景/注入)。后续 `providers`/`planner`/`admission`/`console`(M2)、`fleet`(M2 起：业务账本、目录、传输、直通协调器、A2A；M4：协调器四项能力与交接)、`autonomy`(M3；ROS 2 节点在 `ros2_ws/`，不进本包)。
+- `src/drone_agent/` — 单包多子模块。**模块随里程碑创建，不预建空模块。** 已有 `contracts`(M0)、`runtime`(日志/IPC/MCAP)、`guardian`(监督/恢复/出口)、`adapters`(PX4)、`mission`(执行/登记表/验证)、`eval`(裁判/场景/注入)、`console`(D027 的 M1 固定仿真入口，M2 扩展规划/审批)。后续 `providers`/`planner`/`admission`(M2)、`fleet`(M2 起：业务账本、目录、传输、直通协调器、A2A；M4：协调器四项能力与交接)、`autonomy`(M3；ROS 2 节点在 `ros2_ws/`，不进本包)。
 - `proto/` — 进程间契约（executive ↔ guardian；车队协议）与共享消息；M0 骨架，M1 冻结，包名 `drone.<service>.v1`。字段清单与共享 proto 由 `scripts/generate_contract_fields.py` 导出；禁止旧字段重编号。
 - `configs/` — `platforms/`（版本锁定与目标能力描述）、`skills/`（技能草案）、`recovery_policies/`（恢复策略图）、`scenarios/`（注入矩阵与后续评测场景）、`planner_tools.yaml`（规划层工具白名单，只读）。草案中的场景名不代表已验证。
 - `tests/` — 镜像 `src/`；`tests/contracts/` 是契约测试，`tests/fault_injection/`（M1）是故障注入测试；`tests/admission/` 与 `tests/planner/`（M2）承载对抗性规划测试，语料版本化在 `eval/adversarial/`。
