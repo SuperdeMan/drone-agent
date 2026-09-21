@@ -109,3 +109,4 @@
 | `../live-simulation.md` | M1 固定任务的实时操作、连接语义与完整证据入口 |
 | `../live-console-readiness.md` | 实时仿真入口的准确版本、HTTP 操作验证与回归范围 |
 | `../tailnet-console.md` | 云端常驻控制台、Tailscale 私网入口与机内权限边界 |
+| `../tailnet-console-readiness.md` | 私网入口部署、HTTPS 操作、重启与隔离验证的准确版本 |

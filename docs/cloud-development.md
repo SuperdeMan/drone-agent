@@ -10,9 +10,11 @@ M1 已通过 [2026-09-20 完整验收](m1-readiness.md)，原里程碑运行版�
 
 M0 未解锁冒烟继续作为部署前置；M1 另有 sim/aircraft/ground 三镜像、executive/guardian 双进程和独立裁判。Planner、mission-service 与控制台属于 M2。真机的 guardian、控制出口与飞控连接仍在设备侧，云端只验证模拟飞控。
 
-工作区使用 SSH 用户的 `~/drone-agent/`，不放入 car-agent 目录。Docker project 为 `drone-agent-cloud`；SITL 限 1.5 CPU / 2 GiB，契约测试限 1 CPU / 1 GiB。仿真网络为内部桥接，测试容器无网络，不发布宿主端口。SSH 是当前管理与验证入口。
+工作区使用 SSH 用户的 `~/drone-agent/`，不放入 car-agent 目录。Docker project 为 `drone-agent-cloud`；SITL 限 1.5 CPU / 2 GiB，契约测试限 1 CPU / 1 GiB。仿真网络为内部桥接，测试容器无网络，二者不发布宿主端口。SSH 用于部署与管理。
 
 D027 增加固定 M1 任务的 [实时浏览器入口](live-simulation.md)：`dev_stack.py console` 在本机回环地址提供页面，经 SSH 读取云端并提交有界操作。云端不增加公开服务端口；它与后续 M2 的 mission-service/审批控制台分开验收。
+
+D028 将网页常驻到云端，使用仅绑定宿主 `127.0.0.1:8768` 的受限容器和专用任务代理，由独立 Tailscale Serve HTTPS `8447` 入口提供私网访问。日常体验不再需要本机桥；`dev_stack.py console-cloud --status` 返回地址，配置与准确版本见 [Tailnet 指南](tailnet-console.md) 和 [验收记录](tailnet-console-readiness.md)。它不启用 Funnel、不改变既有其他映射，也不新增应用登录体系。
 
 配置依据：[Compose 资源属性](https://docs.docker.com/reference/compose-file/services/#cpus)、[内部网络](https://docs.docker.com/reference/compose-file/networks/#internal)。验收还会读取实际容器设置，确认配置已经生效。
 

@@ -1,0 +1,26 @@
+{
+  "schema_version": "0.1.0",
+  "attempts": [
+    {
+      "source_sha": "0dcfd0b8cf5b07c2c8af5e7aa9cb9f97334b8da7",
+      "stage": "activation",
+      "result": "rolled_back_before_serve_route",
+      "cause": "internal network did not publish configured host port",
+      "observed": {
+        "inside_health": "ready",
+        "actual_ports": {
+          "8768/tcp": null
+        },
+        "host_probe": "connection refused"
+      }
+    },
+    {
+      "source_sha": "b1957481549df07c1c35496ad4d449b32b5c21c8",
+      "run_id": "20260921T170858Z-5397e4de",
+      "stage": "first simulation image build",
+      "result": "failed_before_flight",
+      "cause": "Buildx attempted to write user-home cache under ProtectHome=read-only",
+      "fix": "project-owned DOCKER_CONFIG; keep home read-only"
+    }
+  ]
+}

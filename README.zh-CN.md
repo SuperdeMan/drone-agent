@@ -55,6 +55,8 @@ uv run python scripts/dev_stack.py test
 
 [版本限定的实时入口验收](docs/live-console-readiness.md) 记录云端运行版本、本机界面版本、8 轮 HTTP 实时验证和 18 组 M1 回归子集。原有 66 组 M1 基线仍只属于 `eefe76e`。
 
+云端常驻入口另有 [Tailnet 验收记录](docs/tailnet-console-readiness.md)，记录私网 HTTPS 边界、服务重启行为和准确部署版本。
+
 人工核对一次云端记录的运行：列出运行、拉取其中一次（每个文件都与远端摘要和裁判回执核对）、打开生成的离线 `viewer.html`：
 
 ```bash

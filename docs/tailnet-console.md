@@ -45,4 +45,6 @@ uv run python scripts/dev_stack.py console-cloud --status
 
 部署回执记录应用 SHA、控制面摘要、网页镜像、容器实际隔离设置、代理 unit 摘要，以及其他容器和 Serve 映射的前后摘要。验收需经真实 Tailnet HTTPS 操作，验证源文件、裁判与回放；不能把本机 HTTP 测试或历史 M1 66/66 当作新入口的通过证据。
 
+当前版本和验证范围见 [Tailnet 控制台验收](tailnet-console-readiness.md)。
+
 如果以后增加只读访客、跨团队共享、Funnel/公网、自定义任务或真机，需要重新决定应用身份和授权。当前简化依赖于私网可信操作者的范围。

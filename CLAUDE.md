@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**M1 已完成（2026-09-20，SITL 范围）**。原里程碑版本、66 组完整矩阵与 400 项测试证据以 `docs/m1-readiness.md` 为准；D027 实时仿真入口补遗的当前部署、测试与版本边界见 `docs/live-console-readiness.md`。下一阶段按 `docs/roadmap.md` 的 M2 推进，M2–M4 的批次、工作包与验收判据见 `docs/m2-implementation.md`、`docs/m3-implementation.md`、`docs/m4-implementation.md`（D026）；每份计划的「决策待办」未补进 `docs/decisions.md` 前不写对应代码。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。
+**M1 已完成（2026-09-20，SITL 范围）**。原里程碑版本、66 组完整矩阵与 400 项测试证据以 `docs/m1-readiness.md` 为准；D027 本机实时桥见 `docs/live-console-readiness.md`；当前 D028 Tailnet 常驻入口、部署与验证边界见 `docs/tailnet-console-readiness.md`。下一阶段按 `docs/roadmap.md` 的 M2 推进，M2–M4 的批次、工作包与验收判据见 `docs/m2-implementation.md`、`docs/m3-implementation.md`、`docs/m4-implementation.md`（D026）；每份计划的「决策待办」未补进 `docs/decisions.md` 前不写对应代码。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。
 
 ## 目录结构
 

@@ -58,6 +58,8 @@ M0 已关闭：`ruff`、默认 importlib 模式下的 258 项测试、proto 编�
 
 M1 人工体验补遗 D027 已增加固定任务的 [实时仿真入口](live-simulation.md)，部署与受影响场景验证见 [验收记录](live-console-readiness.md)。这不关闭 M2 的自然语言、审批、签名上行或完整控制台工作包。
 
+D028 将该入口常驻到云端，经现有 Tailscale 私网访问；使用与本批证据见 [Tailnet 指南](tailnet-console.md) 和 [验收记录](tailnet-console-readiness.md)，同样不替代 M2 的工作包。
+
 拆解见 [M2 实施计划](m2-implementation.md)：四个批次、20 个工作包；批次 A / B 的确定性部分在本机完成，服务联调与飞行在云端。原任务清单（Provider 移植；Planner `claude-opus-5` 结构化输出 `MissionSpec` 与 `refusal` 回退；MCP 只读工具；Compiler / Admission；ApprovalRecord 与控制台审批流；Evidence Verifier；有界重规划；A2A 入口；对抗性规划测试集）全部映射到下列工作包。
 
 任务：

@@ -55,6 +55,8 @@ The fixed simulation console can run in the cloud behind Tailscale Serve, with n
 
 The [version-qualified live entry validation](docs/live-console-readiness.md) records the deployed runtime, local UI version, 8 live HTTP runs and the 18-case M1 regression subset. The original 66-case M1 baseline remains tied to `eefe76e`.
 
+The cloud-resident entry has its own [Tailnet validation record](docs/tailnet-console-readiness.md), including the private HTTPS boundary, service restart behavior and exact deployed revision.
+
 To review a recorded cloud run as a human, list the runs, fetch one (every file is checked against the remote digests and the judge receipt) and open the generated offline `viewer.html`:
 
 ```bash
