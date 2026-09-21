@@ -54,7 +54,7 @@ function drawMap(){
 }
 function render(){
  const job=view.job,obs=view.runtime?.observation,events=view.events||[],result=job?.completion?.results?.[0];
- if(job?.run_id!==lastJob){lastJob=job?.run_id;photoMode="live";exportRun=null;byId("evidenceLink").hidden=true;byId("evidence").textContent="拉取并核对完整证据";byId("operatorResult").textContent="";lastEventKey="";}
+ if(job?.run_id!==lastJob){lastJob=job?.run_id;if(Number.isInteger(job?.seed))byId("seed").value=String(job.seed);photoMode="live";exportRun=null;byId("evidenceLink").hidden=true;byId("evidence").textContent="拉取并核对完整证据";byId("operatorResult").textContent="";lastEventKey="";}
  const terminal=job&&['finished','failed'].includes(job.phase);
  byId("version").textContent="运行版本 "+(job?.source_sha||view.source_sha).slice(0,7);
  byId("runId").textContent=job?"RUN · "+job.run_id:"RUN · 尚未开始";
