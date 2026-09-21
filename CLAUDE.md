@@ -41,6 +41,7 @@
 - 评测驱动（M1 起）：任何执行 / 安全 / 策略变更以固定场景集 + 多随机种子的三分类结果说话；基线只能被数据推翻。
 - proto 变更后运行 `uv run python scripts/generate_contract_fields.py --check` 与 `uv run python scripts/generate_proto.py` 确认一致性和编译；stub 在 `gen/`，不进 git。
 - 文档改动后自查相对链接有效、`roadmap.md` 阶段状态与实际一致。
+- 人工核对（M1 补遗）：`uv run python scripts/dev_stack.py runs` 列出云端运行，`fetch --run <run> --cases <a-7,b-19> --apply` 拉取并核对摘要后自动生成 `viewer.html`；本地目录用 `uv run python -m drone_agent.eval.viewer <目录>`。页面只展示与复算，不产生判定，不能替代 `judge/` 与发布门禁；扩展只加提取器，见 `docs/architecture/08-evaluation.md` §7。
 
 ## 已知环境约束
 

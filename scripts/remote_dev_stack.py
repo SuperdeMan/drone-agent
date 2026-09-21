@@ -24,6 +24,11 @@ IMAGE_REFS = ("drone-agent-sitl:px4-1.17.0-m0", "px4io/px4-dev-ros2:drone-m0-pin
 CONTROL_FILES = ("compose.cloud.yaml", "checks.Dockerfile", "requirements.txt")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 RUN_ID = re.compile(r"^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
+# Recorded run directories (`m1-<run_id>`) and case directories (`<scenario>-<seed>`) under artifacts/.
+# artifacts/ 下的运行目录（`m1-<run_id>`）与用例目录（`<scenario>-<seed>`）。
+RUN_DIR = re.compile(r"^m[0-9]+-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
+CASE_DIR = re.compile(r"^[a-z][a-z0-9_]*-[0-9]+$")
+READ_ONLY_ACTIONS = frozenset({"status", "runs", "inspect"})
 
 
 def digest(path: Path) -> str:
@@ -296,15 +301,74 @@ def deploy(root: Path, request: dict) -> dict:
     return receipt
 
 
+def artifact_runs(root: Path) -> dict:
+    """List recorded runs with their receipt summaries; read-only. / 只读列出已记录的运行及其回执摘要。"""
+    rows = []
+    base = root / "artifacts"
+    for deployment in sorted(base.iterdir()) if base.is_dir() else []:
+        if deployment.is_symlink() or not deployment.is_dir() or not RUN_ID.fullmatch(deployment.name):
+            continue
+        for run in sorted(deployment.iterdir()):
+            if run.is_symlink() or not run.is_dir() or not RUN_DIR.fullmatch(run.name):
+                continue
+            summary = {"deployment_id": deployment.name, "run": run.name, "source_sha": None, "cases": [],
+                       "passed": None, "total": 0, "has_receipt": False}
+            progress = run / "progress.json"
+            if progress.is_file():
+                data = json.loads(progress.read_text())
+                results = data.get("results", [])
+                summary.update(source_sha=data.get("source_sha"), has_receipt=True, total=len(results),
+                               passed=sum(1 for row in results if row.get("passed") is True),
+                               cases=[f"{row.get('scenario')}-{row.get('seed')}" for row in results])
+            rows.append(summary)
+    return {"target": "cloud", "runs": rows}
+
+
+def inspect_run(root: Path, request: dict) -> dict:
+    """Receipt plus per-file size and digest for one run so the client can verify what it downloads.
+
+    返回一次运行的回执与逐文件大小、摘要，供客户端核对下载内容。
+    """
+    deployment, run = request.get("deployment", ""), request.get("run", "")
+    if not RUN_ID.fullmatch(deployment) or not RUN_DIR.fullmatch(run):
+        raise ValueError("invalid run reference")
+    wanted = request.get("cases")
+    if wanted is not None and (not isinstance(wanted, list) or any(not CASE_DIR.fullmatch(str(c)) for c in wanted)):
+        raise ValueError("invalid case selection")
+    path = root / "artifacts" / deployment / run
+    if path.is_symlink() or not path.is_dir():
+        raise ValueError("run directory not found")
+    receipt = json.loads((path / "progress.json").read_text()) if (path / "progress.json").is_file() else None
+    cases = {}
+    for case in sorted(path.iterdir()):
+        if case.is_symlink() or not case.is_dir() or not CASE_DIR.fullmatch(case.name):
+            continue
+        if wanted is not None and case.name not in wanted:
+            continue
+        files = {}
+        for file in sorted(case.rglob("*")):
+            if file.is_file() and not file.is_symlink():
+                files[file.relative_to(case).as_posix()] = {"size": file.stat().st_size, "sha256": digest(file)}
+        cases[case.name] = files
+    return {"target": "cloud", "deployment_id": deployment, "run": run, "path": str(path),
+            "receipt": receipt, "cases": cases}
+
+
 def dispatch(request: dict) -> dict:
     action = request.get("action")
-    if action not in {"status", "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1"}:
+    if action not in {*READ_ONLY_ACTIONS, "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1"}:
         raise ValueError("unsupported cloud action")
-    if action != "status" and not RUN_ID.fullmatch(request.get("run_id", "")):
+    if action not in READ_ONLY_ACTIONS and not RUN_ID.fullmatch(request.get("run_id", "")):
         raise ValueError("invalid run identity")
     root = workspace(create=action == "prepare")
+    # Read-only queries never take the mutation lock: they neither block nor wait for a running batch.
+    # 只读查询不占用变更锁：既不阻塞运行中的批次，也不等待它。
     if action == "status":
         return status(root)
+    if action == "runs":
+        return artifact_runs(root)
+    if action == "inspect":
+        return inspect_run(root, request)
     with locked(root):
         if action == "prepare":
             owned = root / "incoming" / request["run_id"]

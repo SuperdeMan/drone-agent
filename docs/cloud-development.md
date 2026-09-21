@@ -66,6 +66,23 @@ uv run python scripts/dev_stack.py m1 --scenario all --seeds 7,19,41
 
 离线重判使用同一版本 ground 镜像执行 `python3 -m drone_agent.eval.judge <run目录> --root /workspace --output <结果文件>`。裁判复算影像、真值轨迹、前驱门控与 MCAP 事件一致性。新规则重判必须保留旧结果并标注新的软件 SHA。
 
+## 查看与人工核对结果
+
+裁判结论是机器产出；人工核对用证据浏览器。它读取的正是裁判读取的产物，只展示与复算摘要，不产生也不修改判定。
+
+```powershell
+uv run python scripts/dev_stack.py runs
+uv run python scripts/dev_stack.py fetch --run m1-<run_id> --cases nominal-7,cancel_cruise-7
+uv run python scripts/dev_stack.py fetch --run m1-<run_id> --cases nominal-7,cancel_cruise-7 --apply --artifacts D:/drone-agent-cloud
+uv run python -m drone_agent.eval.viewer D:/drone-agent-cloud/runs/<deployment_id>/m1-<run_id>
+```
+
+`runs` 只读列出云端 `artifacts/` 下的运行及其回执摘要，不占用变更锁。`fetch` 默认只返回计划（用例、文件数、字节数）；`--apply` 经 SFTP 拉取到本地 ASCII 目录 `runs/<deployment_id>/<run>/`，逐文件核对远端清单摘要，对裁判散列过的文件再与回执比对；任何差异都报错、写入 `fetch.json` 并且不生成页面。`--receipt` 指定归档回执（如 `docs/verification/m1-2026-09-20-receipt.json`）时，另报告云端回执是否与归档一致。`--exclude ulog,sensor` 跳过大文件；`--cases all` 拉整批。远端只有 `runs` / `inspect` 两个只读动作，拉取不改变服务器状态。
+
+拉取成功后自动生成 `viewer.html`（单文件、离线、只读）。页面内容：裁判结论与期望、错误成功数、离线重判一致性；ENU 俯视轨迹（Gazebo 真值与 guardian 观测估计叠加，批准体积、登记航线、资产、降落点）；高度曲线、时间轴与事件带（任务 / 控制权 / 安全 / 操作者 / 注入）；任务步骤三元判定与状态迁移；影像证据（原始 RGB 无损转 PNG，媒体哈希、采集位姿、真值距资产距离）；监督周期 p99 与终态；账本哈希链、MCAP 事件重放、文件 SHA-256 与裁判 / 回执摘要核对；飞控 ULog 模式迁移摘录；原始文件清单。ULog 本身用 PX4 Flight Review 或 PlotJuggler 打开。
+
+页面不是证据：证据是拉取目录里的原始文件与它们的摘要。页面显示不一致或缺席时以原始文件和裁判结果为准。设计原则与后续扩展点见 [评测体系](architecture/08-evaluation.md) §7。
+
 ## 部署流程
 
 应用源码固定为指定的已提交 commit，且必须从本地 main 可达。工具不会自动 commit 或 push，脏工作树中的应用改动不进入源码包。远端执行脚本、Compose、验证 Dockerfile 与锁定依赖另以 `control_sha256` 绑定；验收时必须同时报告应用 SHA 与控制面哈希。

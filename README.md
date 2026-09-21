@@ -51,6 +51,16 @@ uv run python scripts/dev_stack.py verify
 uv run python scripts/dev_stack.py test
 ```
 
+To review a recorded cloud run as a human, list the runs, fetch one (every file is checked against the remote digests and the judge receipt) and open the generated offline `viewer.html`:
+
+```bash
+uv run python scripts/dev_stack.py runs
+uv run python scripts/dev_stack.py fetch --run m1-<run_id> --cases nominal-7 --apply --artifacts D:/drone-agent-cloud
+uv run python -m drone_agent.eval.viewer <fetched run directory>
+```
+
+The viewer only displays and re-hashes; every verdict comes from the judge (see [evaluation](docs/architecture/08-evaluation.md) §7).
+
 Local editing and quick deterministic checks remain available:
 
 ```bash

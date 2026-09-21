@@ -52,6 +52,8 @@ M0 已关闭：`ruff`、默认 importlib 模式下的 258 项测试、proto 编�
 
 退出标准见总览；额外要求：guardian 与 executive 的 proto 契约冻结为 `v1`。
 
+补遗（2026-09-21）：人工核对入口。`scripts/dev_stack.py runs` / `fetch` 只读列出并拉取云端运行、核对摘要；`drone_agent.eval.viewer` 生成离线证据浏览器页面。它不改变 M1 结论，只让人能看；原则与扩展点见 [评测体系](architecture/08-evaluation.md) §7，操作见 [云端开发指南](cloud-development.md)。
+
 ## M2 · 接入受约束 Agent
 
 拆解见 [M2 实施计划](m2-implementation.md)：四个批次、20 个工作包；批次 A / B 的确定性部分在本机完成，服务联调与飞行在云端。原任务清单（Provider 移植；Planner `claude-opus-5` 结构化输出 `MissionSpec` 与 `refusal` 回退；MCP 只读工具；Compiler / Admission；ApprovalRecord 与控制台审批流；Evidence Verifier；有界重规划；A2A 入口；对抗性规划测试集）全部映射到下列工作包。

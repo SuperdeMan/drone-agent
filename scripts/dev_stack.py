@@ -212,6 +212,128 @@ def upload_packet(connection: Connection, packet: Path, manifest: dict, destinat
         raise RuntimeError(f"SFTP upload failed; retry deploy --resume {packet} --apply; SSH stderr withheld")
 
 
+CASE_NAME = re.compile(r"^[a-z][a-z0-9_]*-[0-9]+$")
+
+
+def download_files(connection: Connection, transfers: list[tuple[str, Path]]) -> None:
+    """Pull files in one SFTP batch; the first failed get aborts the batch. / 用一个 SFTP 批处理拉取文件；首个失败即中止。"""
+    commands = []
+    for remote, local_path in transfers:
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        commands.append(f"get {sftp_literal(remote)} {sftp_literal(str(local_path))}")
+    print(f"Downloading {len(transfers)} files via SFTP...", file=sys.stderr, flush=True)
+    result = subprocess.run(
+        ["sftp", "-b", "-", *connection.arguments(), connection.target],
+        input=("\n".join(commands) + "\n").encode(),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=7200,
+    )
+    if result.returncode:
+        raise RuntimeError("SFTP download failed; partial files are kept for inspection; SSH stderr withheld")
+
+
+def fetch_command(connection: Connection, args: argparse.Namespace, *, transport=None, download=None) -> dict:
+    """Copy one recorded cloud run into a local ASCII directory, verify every digest, build the viewer.
+
+    Without --apply this only returns the plan. Digests come from the remote listing and, for the files
+    the judge hashed, from the run receipt; any difference is an error, never a warning.
+
+    把一次云端记录的运行复制到本地 ASCII 目录，核对每个摘要，并生成证据浏览器。
+
+    不带 --apply 只返回计划。摘要来自远端清单，裁判散列过的文件另与回执比对；任何差异都是错误，不是警告。
+    """
+    transport = transport or ssh
+    download = download or download_files
+    if not REMOTE["RUN_DIR"].fullmatch(args.run):
+        raise ValueError("invalid run directory name")
+    deployment = args.deployment or transport(connection, {"action": "status"}).get("deployment_id", "")
+    if not REMOTE["RUN_ID"].fullmatch(deployment or ""):
+        raise ValueError("invalid deployment identifier")
+    wanted = None if args.cases == "all" else args.cases.split(",")
+    if wanted is not None and any(not CASE_NAME.fullmatch(name) for name in wanted):
+        raise ValueError("invalid case name")
+    if not str(args.artifacts.resolve()).isascii():
+        raise ValueError("transport artifacts need an ASCII path")
+    listing = transport(
+        connection,
+        {"action": "inspect", "run_id": new_run_id(), "deployment": deployment, "run": args.run, "cases": wanted},
+    )
+    remote_root = listing["path"]
+    pattern = r"/home/[a-z_][a-z0-9_-]*/drone-agent/artifacts/" + re.escape(deployment) + "/" + re.escape(args.run)
+    if not re.fullmatch(pattern, remote_root):
+        raise ValueError("unexpected remote artifact directory")
+    excluded = {part for part in args.exclude.split(",") if part}
+    local_root = args.artifacts.resolve() / "runs" / deployment / args.run
+    transfers, expected = [], {}
+    for case, files in sorted(listing["cases"].items()):
+        if not CASE_NAME.fullmatch(case):
+            raise ValueError("unexpected case directory")
+        for name, meta in sorted(files.items()):
+            parts = name.split("/")
+            if name.startswith("/") or any(part in {"", ".", ".."} for part in parts):
+                raise ValueError("unexpected artifact path")
+            if parts[0] in excluded or name in excluded:
+                continue
+            transfers.append((f"{remote_root}/{case}/{name}", local_root / case / name))
+            expected[f"{case}/{name}"] = meta
+    receipt = listing.get("receipt")
+    rows = {f"{row.get('scenario')}-{row.get('seed')}": row for row in (receipt or {}).get("results", [])}
+    archived_agrees = None
+    if args.receipt:
+        archived = json.loads(args.receipt.read_text(encoding="utf-8-sig"))
+        archived_rows = {f"{row.get('scenario')}-{row.get('seed')}": row for row in archived.get("results", [])}
+        archived_agrees = bool(receipt) and archived.get("source_sha") == receipt.get("source_sha") and all(
+            archived_rows.get(case, {}).get("artifacts") == rows.get(case, {}).get("artifacts")
+            for case in listing["cases"]
+        )
+    plan = {
+        "status": "plan",
+        "target": "cloud",
+        "deployment_id": deployment,
+        "run": args.run,
+        "source_sha": (receipt or {}).get("source_sha"),
+        "cases": sorted(listing["cases"]),
+        "files": len(transfers),
+        "bytes": sum(meta["size"] for meta in expected.values()),
+        "excluded": sorted(excluded),
+        "local_directory": str(local_root),
+        "archived_receipt_agrees": archived_agrees,
+    }
+    if not args.apply:
+        return plan
+    download(connection, transfers)
+    mismatched = sorted(name for name, meta in expected.items() if REMOTE["digest"](local_root / name) != meta["sha256"])
+    # The judge's own digest map is a second witness for the files it hashed. / 裁判自己的摘要图是它散列过的文件的第二见证。
+    for case, row in rows.items():
+        for name, value in (row.get("artifacts") or {}).items():
+            key = f"{case}/{name}"
+            if key in expected and key not in mismatched and REMOTE["digest"](local_root / key) != value:
+                mismatched.append(key)
+    local_root.mkdir(parents=True, exist_ok=True)
+    if receipt is not None:
+        (local_root / "receipt.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
+    record = plan | {
+        "status": "fetched" if not mismatched else "digest_mismatch",
+        "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "digests": {name: meta["sha256"] for name, meta in expected.items()},
+        "mismatched": sorted(mismatched),
+    }
+    (local_root / "fetch.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+    if mismatched:
+        raise RuntimeError(f"{len(mismatched)} downloaded files differ from the recorded digests: {sorted(mismatched)[:5]}")
+    if not args.no_viewer:
+        from drone_agent.eval.viewer import build_page
+
+        cases = [local_root / case for case in sorted(listing["cases"]) if (local_root / case / "input/scenario.json").is_file()]
+        try:
+            viewer_receipt = {**receipt, "deployment_id": deployment} if receipt else None
+            record["viewer"] = str(build_page(cases, root=ROOT, output=local_root / "viewer.html", receipt=viewer_receipt))
+        except Exception as error:  # noqa: BLE001 - a viewer defect must not undo a verified fetch / 浏览器缺陷不能推翻已核对的拉取
+            record["viewer_error"] = f"{type(error).__name__}: {error}"
+    return record
+
+
 def deploy_command(connection: Connection, args: argparse.Namespace) -> dict:
     state = ssh(connection, {"action": "status"})
     if args.resume:
@@ -272,8 +394,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("target")
-    for name in ("status", "verify", "test", "start", "stop", "logs"):
+    for name in ("status", "verify", "test", "start", "stop", "logs", "runs"):
         commands.add_parser(name)
+    fetch_parser = commands.add_parser("fetch", help="copy a recorded run locally and build the evidence viewer")
+    fetch_parser.add_argument("--run", required=True, help="run directory name, e.g. m1-20260919T171218Z-db465377")
+    fetch_parser.add_argument("--deployment", default=None, help="deployment id; defaults to the current one")
+    fetch_parser.add_argument("--cases", default="all", help="comma-separated <scenario>-<seed> names or all")
+    fetch_parser.add_argument("--exclude", default="", help="comma-separated case subfolders to skip, e.g. ulog,sensor")
+    fetch_parser.add_argument("--receipt", type=Path, default=None, help="archived receipt to cross-check against")
+    fetch_parser.add_argument("--artifacts", type=Path, default=Path(tempfile.gettempdir()) / "drone-agent-cloud")
+    fetch_parser.add_argument("--apply", action="store_true")
+    fetch_parser.add_argument("--no-viewer", action="store_true")
     m1_parser = commands.add_parser("m1")
     m1_parser.add_argument("--scenario", default="nominal")
     m1_parser.add_argument("--seeds", default="7,19,41")
@@ -293,6 +424,8 @@ def main() -> None:
             connection = Connection.from_environment()
             if args.command == "deploy":
                 result = deploy_command(connection, args)
+            elif args.command == "fetch":
+                result = fetch_command(connection, args)
             elif args.command == "m1":
                 result = ssh(
                     connection,

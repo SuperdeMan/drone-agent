@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>drone-agent 证据浏览器</title>
+<style>
+:root{--bg:#f4f3ee;--panel:#ffffff;--ink:#1f2a24;--muted:#6b756f;--line:#d6d9d1;--ok:#24563f;--warn:#b67027;--bad:#a3382c;--truth:#1f6f5f;--estimate:#c0742e;--route:#7b8a80;--mono:"Cascadia Code",Consolas,"Courier New",monospace;--sans:"Segoe UI","Microsoft YaHei UI","PingFang SC",sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13px;line-height:1.6}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:baseline;padding:14px 3vw;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:18px;margin:0;font-family:var(--mono);letter-spacing:-.5px}
+.chip{display:inline-block;font:11px var(--mono);border:1px solid var(--line);border-radius:3px;padding:1px 7px;margin:2px 4px 2px 0;background:#fafaf7}
+.chip.ok{border-color:var(--ok);color:var(--ok)}.chip.warn{border-color:var(--warn);color:var(--warn)}.chip.bad{border-color:var(--bad);color:var(--bad)}
+main{display:grid;grid-template-columns:230px minmax(0,1fr);gap:18px;padding:18px 3vw;max-width:1700px;margin:auto}
+nav{position:sticky;top:12px;align-self:start}
+nav button{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);padding:8px 10px;margin-bottom:6px;cursor:pointer;font:inherit;color:inherit}
+nav button[aria-pressed=true]{border-color:var(--ink);background:#e9ede7}
+nav button small{display:block;font:10px var(--mono);color:var(--muted)}
+section.card{background:var(--panel);border:1px solid var(--line);padding:14px 16px;margin-bottom:16px}
+section.card h2{font-size:13px;margin:0 0 10px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.verdict{display:flex;flex-wrap:wrap;gap:18px;align-items:center}
+.verdict .big{font-size:26px;font-weight:600}
+.verdict .big.ok{color:var(--ok)}.verdict .big.warn{color:var(--warn)}.verdict .big.bad{color:var(--bad)}.verdict .big.none{color:var(--muted)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
+@media(max-width:1000px){main{grid-template-columns:1fr}nav{position:static}.grid2{grid-template-columns:1fr}}
+svg{width:100%;display:block;background:#fbfbf8;border:1px solid var(--line)}
+svg text{font:10px var(--mono);fill:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;margin-top:6px}
+.legend label{cursor:pointer}
+.legend i{display:inline-block;width:18px;border-top:2px solid;vertical-align:middle;margin-right:5px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:10px 0 4px}
+.controls button,.controls select{font:inherit;padding:5px 12px;border:1px solid var(--line);background:#fafaf7;cursor:pointer}
+input[type=range]{flex:1 1 240px;accent-color:var(--ok)}
+.readout{font:11px var(--mono);color:var(--muted);white-space:nowrap}
+.lanes{display:grid;grid-template-columns:84px 1fr;gap:4px 8px;align-items:center;margin-top:8px}
+.lanes .name{font:10px var(--mono);color:var(--muted);text-align:right}
+.lane{position:relative;height:18px;border-bottom:1px dotted var(--line)}
+.lane b{position:absolute;top:3px;width:8px;height:12px;margin-left:-4px;border-radius:2px;background:#8fa596;cursor:pointer;border:0;padding:0}
+.lane b.alert{background:var(--bad)}.lane b.warn{background:var(--warn)}.lane b.minor{background:#c8cfc9;height:8px;top:5px}
+.lane b[aria-current=true]{outline:2px solid var(--ink)}
+.cursor{position:absolute;top:0;bottom:0;width:1px;background:var(--ink);pointer-events:none}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:11px}
+td.mono,th.mono{font-family:var(--mono);font-size:11px}
+.badge{font:10px var(--mono);padding:1px 6px;border-radius:3px;border:1px solid var(--line)}
+.badge.ok{color:var(--ok);border-color:var(--ok)}.badge.warn{color:var(--warn);border-color:var(--warn)}.badge.bad{color:var(--bad);border-color:var(--bad)}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.gallery figure{margin:0;border:1px solid var(--line);padding:8px;background:#fafaf7}
+.gallery img{width:100%;image-rendering:pixelated;border:1px solid var(--line);background:#ddd}
+.gallery figcaption{font:10px/1.7 var(--mono);color:var(--muted);word-break:break-all}
+pre{font:11px/1.6 var(--mono);white-space:pre-wrap;word-break:break-all;background:#fafaf7;border:1px solid var(--line);padding:8px;max-height:280px;overflow:auto;margin:0}
+details{margin-top:8px}summary{cursor:pointer;color:var(--muted)}
+ul.plain{margin:0;padding-left:18px}
+.muted{color:var(--muted)}
+footer{padding:16px 3vw 30px;font:11px/1.8 var(--mono);color:var(--muted);border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<header>
+  <h1>drone-agent · 证据浏览器 <span class="muted">v__VIEWER_VERSION__</span></h1>
+  <div id="runChips"></div>
+</header>
+<main>
+  <nav aria-label="用例列表"><div id="caseList"></div></nav>
+  <div>
+    <section class="card" id="verdictCard"><h2>裁判结论（只读，本页不产生判定）</h2><div class="verdict" id="verdict"></div></section>
+    <div class="grid2">
+      <section class="card">
+        <h2>平面轨迹 · ENU 俯视（东→右，北→上，米）</h2>
+        <svg id="map" viewBox="0 0 720 520" role="img" aria-label="真值与机载估计的俯视轨迹"></svg>
+        <div class="legend" id="legend"></div>
+      </section>
+      <section class="card">
+        <h2>高度曲线与事件带</h2>
+        <svg id="profile" viewBox="0 0 720 150" preserveAspectRatio="none" aria-label="高度随时间"></svg>
+        <div class="controls">
+          <button id="play">▶ 播放</button><button id="reset">↺ 归零</button>
+          <select id="speed" aria-label="播放速度"><option value="1">1×</option><option value="2">2×</option><option value="4" selected>4×</option><option value="8">8×</option></select>
+          <span class="readout" id="clock"></span>
+        </div>
+        <input id="seek" type="range" min="0" max="1000" value="0" aria-label="时间轴">
+        <div class="readout" id="onboard"></div>
+        <div class="lanes" id="lanes"></div>
+        <details open><summary>选中事件</summary><pre id="eventDetail">点击事件带上的标记查看原始记录。</pre></details>
+      </section>
+    </div>
+    <section class="card"><h2>任务步骤与三元判定</h2><div id="steps"></div></section>
+    <section class="card"><h2>证据图集</h2><div class="gallery" id="gallery"></div></section>
+    <div class="grid2">
+      <section class="card"><h2>裁判细节</h2><div id="judge"></div></section>
+      <section class="card"><h2>监督周期与终态</h2><div id="supervision"></div></section>
+    </div>
+    <section class="card"><h2>完整性核对</h2><div id="integrity"></div></section>
+    <section class="card"><h2>附加表格</h2><div id="tables"></div></section>
+    <section class="card"><h2>任务包与身份</h2><div id="identity"></div></section>
+    <section class="card"><h2>原始文件</h2><div id="files"></div></section>
+  </div>
+</main>
+<footer id="footer"></footer>
+<script id="record-data" type="application/json">__DATA__</script>
+<script>
+"use strict";
+// Data-driven, read-only rendering. Series, lanes, tables and gallery are generic primitives; new
+// milestones extend the Python extractors, not this script.
+// 数据驱动的只读渲染。序列、事件带、表格、图集是通用原语；后续里程碑扩展 Python 提取器而不是本脚本。
+const DATA = JSON.parse(document.getElementById("record-data").textContent);
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const fmt = (v, d = 2) => (v === null || v === undefined || Number.isNaN(v)) ? "—" : Number(v).toFixed(d);
+const LANES = ["mission", "authority", "safety", "operator", "injection", "guardian", "harness"];
+const state = {index: 0, t: 0, playing: false, speed: 4, last: 0, hidden: new Set(), showMinor: false};
+
+function current() { return DATA.cases[state.index]; }
+function seriesById(c, id) { return c.series.find((s) => s.id === id); }
+function sampleAt(series, t) {
+  // Binary search for the last point at or before t. / 二分查找不晚于 t 的最后一个点。
+  if (!series || !series.points.length) return null;
+  const p = series.points; let lo = 0, hi = p.length - 1;
+  if (t < p[0][0]) return p[0];
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (p[mid][0] <= t) lo = mid; else hi = mid - 1; }
+  return p[lo];
+}
+function verdictClass(v) {
+  if (!v.judged) return "none";
+  if (v.classification === "unsafe_or_incorrect" || v.passed === false) return "bad";
+  if (v.classification === "safe_abort") return "warn";
+  return v.classification === "completed" ? "ok" : "none";
+}
+const CLASS_TEXT = {completed: "任务完成", safe_abort: "合理安全中止", unsafe_or_incorrect: "不安全或错误行为"};
+
+function renderCaseList() {
+  $("caseList").innerHTML = DATA.cases.map((c, i) => {
+    const v = c.verdict; const cls = verdictClass(v);
+    return `<button aria-pressed="${i === state.index}" data-i="${i}"><span class="chip ${cls}">${esc(v.judged ? (CLASS_TEXT[v.classification] || v.classification) : "未裁判")}</span> ${esc(c.id)}<small>${esc(c.identity.scenario || "?")} · seed ${esc(c.identity.seed)} · ${esc(c.duration_s)} s</small></button>`;
+  }).join("");
+  for (const b of $("caseList").querySelectorAll("button")) b.onclick = () => choose(Number(b.dataset.i));
+}
+function renderHeader(c) {
+  const r = DATA.receipt || {}; const id = c.identity;
+  const chips = [["SHA", (id.source_sha || r.source_sha || "?").slice(0, 12)], ["部署", r.deployment_id || "—"], ["用例", c.id],
+    ["记录起点 UTC", c.t0_iso || "—"], ["登记表", c.world.present ? (c.world.matches_run === false ? "哈希不一致" : (c.world.registry_id || "已加载")) : "未加载"]];
+  $("runChips").innerHTML = chips.map(([k, v]) => `<span class="chip">${esc(k)} ${esc(v)}</span>`).join("");
+}
+function renderVerdict(c) {
+  const v = c.verdict; const cls = verdictClass(v); const g = c.integrity;
+  const chip = (ok, text) => `<span class="chip ${ok === true ? "ok" : ok === false ? "bad" : ""}">${esc(text)}</span>`;
+  const digests = g.judge_digests.present ? chip(g.judge_digests.mismatched.length === 0 && g.judge_digests.missing.length === 0, `裁判摘要 ${g.judge_digests.matched}/${g.judge_digests.checked}`) : chip(null, "裁判摘要缺席");
+  const receipt = g.receipt_digests.present ? chip(g.receipt_digests.mismatched.length === 0 && g.receipt_digests.missing.length === 0, `回执摘要 ${g.receipt_digests.matched}/${g.receipt_digests.checked}`) : chip(null, "无回执");
+  $("verdict").innerHTML = `<div class="big ${cls}">${esc(v.judged ? (CLASS_TEXT[v.classification] || v.classification) : "未裁判")}</div>
+    <div>${chip(v.judged ? v.passed : null, v.judged ? (v.passed ? "通过" : "未通过") : "无裁判结果")} ${chip(v.judged ? v.classification === v.expected : null, "期望 " + esc(v.expected ?? "?"))}
+    ${chip(v.judged ? v.false_success_reports === 0 : null, "错误成功报告 " + esc(v.judged ? v.false_success_reports : "?"))}
+    ${chip(v.replay ? v.replay.agrees : null, "离线重判 " + (v.replay ? (v.replay.present ? (v.replay.agrees ? "一致" : "不一致") : "缺席") : "—"))}
+    ${chip(g.journals.executive === "ok" && g.journals.guardian === "ok", "账本哈希链 " + (g.journals.executive === "ok" && g.journals.guardian === "ok" ? "完整" : esc(g.journals.executive + " / " + g.journals.guardian)))}
+    ${chip(g.mcap_replay_matches_journal, "MCAP 事件 " + (g.mcap_replay_matches_journal === null ? "未检" : g.mcap_replay_matches_journal ? "与账本一致" : "与账本不一致"))}
+    ${digests} ${receipt}</div>
+    ${c.notes.length ? `<ul class="plain">${c.notes.map((n) => `<li class="muted">${esc(n)}</li>`).join("")}</ul>` : ""}`;
+}
+
+// ---- map / 俯视图 ----
+let mapState = null;
+function renderMap(c) {
+  const svg = $("map"); const w = 720, h = 520, m = 36;
+  const xs = [], ys = [];
+  if (c.world.present && c.world.bounds) { xs.push(...c.world.bounds.x); ys.push(...c.world.bounds.y); }
+  for (const s of c.series) for (const p of s.points) { xs.push(p[1]); ys.push(p[2]); }
+  if (!xs.length) { svg.innerHTML = `<text x="20" y="30">无轨迹与登记表数据 / no trajectory or registry data</text>`; mapState = null; return; }
+  const minX = Math.min(...xs) - 2, maxX = Math.max(...xs) + 2, minY = Math.min(...ys) - 2, maxY = Math.max(...ys) + 2;
+  const scale = Math.min((w - 2 * m) / (maxX - minX), (h - 2 * m) / (maxY - minY));
+  const px = (x) => m + (x - minX) * scale, py = (y) => h - m - (y - minY) * scale;
+  mapState = {px, py, scale};
+  let out = "";
+  const step = (maxX - minX) > 60 ? 20 : 10;
+  for (let x = Math.ceil(minX / step) * step; x <= maxX; x += step) out += `<line x1="${px(x)}" y1="${py(minY)}" x2="${px(x)}" y2="${py(maxY)}" stroke="#eceee8"/><text x="${px(x) + 2}" y="${h - 4}">${x}</text>`;
+  for (let y = Math.ceil(minY / step) * step; y <= maxY; y += step) out += `<line x1="${px(minX)}" y1="${py(y)}" x2="${px(maxX)}" y2="${py(y)}" stroke="#eceee8"/><text x="4" y="${py(y) - 2}">${y}</text>`;
+  if (c.world.present) {
+    const b = c.world.bounds;
+    if (b) out += `<rect x="${px(b.x[0])}" y="${py(b.y[1])}" width="${(b.x[1] - b.x[0]) * scale}" height="${(b.y[1] - b.y[0]) * scale}" fill="none" stroke="#9aa89f" stroke-dasharray="6 4"/><text x="${px(b.x[0]) + 4}" y="${py(b.y[1]) + 12}">批准体积 ${esc(c.world.approved_volume_id || "")}</text>`;
+    for (const [name, pts] of Object.entries(c.world.routes || {})) out += `<polyline points="${pts.map((p) => px(p[0]) + "," + py(p[1])).join(" ")}" fill="none" stroke="var(--route)" stroke-width="1.2" stroke-dasharray="4 4"/><text x="${px(pts[pts.length - 1][0]) + 4}" y="${py(pts[pts.length - 1][1]) - 4}">route ${esc(name)}</text>`;
+    for (const [name, site] of Object.entries(c.world.landing_sites || {})) out += `<circle cx="${px(site.position[0])}" cy="${py(site.position[1])}" r="${(site.radius_m || 1) * scale}" fill="none" stroke="#7fa08a"/><text x="${px(site.position[0]) + 4}" y="${py(site.position[1]) - 4}">${esc(name)}</text>`;
+    if (c.world.home) out += `<text x="${px(c.world.home.position[0]) - 4}" y="${py(c.world.home.position[1]) + 4}" style="font-size:13px;fill:var(--ok)">H</text>`;
+    for (const [name, asset] of Object.entries(c.world.assets || {})) { const s = (asset.size_m || 1) * scale; out += `<rect x="${px(asset.position[0]) - s / 2}" y="${py(asset.position[1]) - s / 2}" width="${s}" height="${s}" fill="#e8b4a8" stroke="#a3382c"/><text x="${px(asset.position[0]) + s / 2 + 3}" y="${py(asset.position[1]) + 4}">${esc(name)}</text>`; }
+  }
+  for (const s of c.series) {
+    const color = s.kind === "truth" ? "var(--truth)" : "var(--estimate)";
+    out += `<polyline class="series" data-id="${esc(s.id)}" points="${s.points.map((p) => px(p[1]).toFixed(1) + "," + py(p[2]).toFixed(1)).join(" ")}" fill="none" stroke="${color}" stroke-width="${s.kind === "truth" ? 1.8 : 1.4}" ${s.kind === "truth" ? "" : 'stroke-dasharray="2 3"'} ${state.hidden.has(s.id) ? 'visibility="hidden"' : ""}/>`;
+  }
+  for (const g of c.gallery) if (g.pose) out += `<g><circle cx="${px(g.pose[0])}" cy="${py(g.pose[1])}" r="4" fill="none" stroke="var(--estimate)"/><text x="${px(g.pose[0]) + 6}" y="${py(g.pose[1]) + 4}">📷 ${esc(g.step)}</text></g>`;
+  out += `<g id="markers"></g>`;
+  svg.innerHTML = out;
+  $("legend").innerHTML = c.series.map((s) => `<label><input type="checkbox" data-id="${esc(s.id)}" ${state.hidden.has(s.id) ? "" : "checked"}> <i style="border-color:${s.kind === "truth" ? "var(--truth)" : "var(--estimate)"}"></i>${esc(s.name)}（${s.points.length} 点）</label>`).join("") + `<span class="muted">虚线框 = 批准体积；虚线 = 登记航线；方块 = 资产；圆 = 降落点</span>`;
+  for (const box of $("legend").querySelectorAll("input")) box.onchange = () => { box.checked ? state.hidden.delete(box.dataset.id) : state.hidden.add(box.dataset.id); renderMap(c); updateTime(); };
+}
+
+// ---- profile + lanes / 高度曲线与事件带 ----
+let profState = null;
+function renderProfile(c) {
+  const svg = $("profile"); const w = 720, h = 150, m = 24; const dur = Math.max(c.duration_s, 1e-3);
+  const zs = [0]; for (const s of c.series) for (const p of s.points) zs.push(p[3]);
+  const minZ = Math.min(...zs) - 0.5, maxZ = Math.max(...zs) + 0.5;
+  const px = (t) => m + (t / dur) * (w - 2 * m), pz = (z) => h - 16 - ((z - minZ) / (maxZ - minZ)) * (h - 28);
+  profState = {px, pz};
+  let out = `<line x1="${m}" y1="${pz(0)}" x2="${w - m}" y2="${pz(0)}" stroke="#d6d9d1"/><text x="4" y="${pz(maxZ - 0.5) + 4}">${fmt(maxZ - 0.5, 0)} m</text><text x="4" y="${pz(0) - 2}">0</text>`;
+  for (let t = 0; t <= dur; t += dur > 120 ? 30 : 10) out += `<text x="${px(t)}" y="${h - 3}">${t}s</text>`;
+  for (const s of c.series) if (!state.hidden.has(s.id)) out += `<polyline points="${s.points.map((p) => px(p[0]).toFixed(1) + "," + pz(p[3]).toFixed(1)).join(" ")}" fill="none" stroke="${s.kind === "truth" ? "var(--truth)" : "var(--estimate)"}" stroke-width="1.3" ${s.kind === "truth" ? "" : 'stroke-dasharray="2 3"'}/>`;
+  out += `<line id="profCursor" x1="${m}" y1="8" x2="${m}" y2="${h - 14}" stroke="var(--ink)"/>`;
+  svg.innerHTML = out;
+  const lanes = LANES.filter((l) => c.events.some((e) => e.lane === l));
+  $("lanes").innerHTML = lanes.map((l) => `<div class="name">${esc(l)}</div><div class="lane" data-lane="${esc(l)}">${c.events.map((e, i) => e.lane === l && (state.showMinor || e.level !== "minor") ? `<b class="${esc(e.level)}" data-i="${i}" style="left:${(e.t / dur * 100).toFixed(3)}%" title="${esc(e.t.toFixed(2) + "s " + e.label)}"></b>` : "").join("")}<span class="cursor" style="left:0"></span></div>`).join("") +
+    `<div class="name"></div><div><label class="muted"><input type="checkbox" id="minor" ${state.showMinor ? "checked" : ""}> 显示次要事件（状态迁移、回执、对账）</label></div>`;
+  for (const b of $("lanes").querySelectorAll("b")) b.onclick = () => selectEvent(Number(b.dataset.i));
+  $("minor").onchange = (ev) => { state.showMinor = ev.target.checked; renderProfile(c); updateTime(); };
+}
+function selectEvent(i) {
+  const c = current(); const e = c.events[i];
+  state.t = e.t; state.playing = false; $("play").textContent = "▶ 播放";
+  for (const b of $("lanes").querySelectorAll("b")) b.setAttribute("aria-current", b.dataset.i === String(i));
+  $("eventDetail").textContent = `t=${e.t.toFixed(3)} s · ${e.source} · ${e.kind} · ${e.label}\n` + JSON.stringify(e.data, null, 2);
+  updateTime();
+}
+function updateTime() {
+  const c = current(); const dur = Math.max(c.duration_s, 1e-3); const t = Math.min(Math.max(state.t, 0), dur);
+  $("seek").value = Math.round(t / dur * 1000);
+  const truth = sampleAt(seriesById(c, "truth"), t), est = sampleAt(seriesById(c, "estimate"), t);
+  $("clock").textContent = `t = ${t.toFixed(2)} s / ${dur.toFixed(1)} s · UTC ${c.t0 ? new Date((c.t0 + t) * 1000).toISOString().slice(11, 23) : "—"}` + (truth && truth[4] !== null && truth[4] !== undefined ? ` · sim ${fmt(truth[4], 2)} s` : "");
+  $("onboard").textContent = est ? `机载视角：mode ${est[7] ?? "?"} · armed ${est[6]} · in_air ${est[5]} · battery ${fmt(est[8], 2)} · localization_ok ${est[9]} · σxy ${fmt(est[4], 2)} m · 估计 (${fmt(est[1])}, ${fmt(est[2])}, ${fmt(est[3])})` + (truth ? ` · 真值 (${fmt(truth[1])}, ${fmt(truth[2])}, ${fmt(truth[3])})` : "") : (truth ? `真值 (${fmt(truth[1])}, ${fmt(truth[2])}, ${fmt(truth[3])})；无机载观测记录` : "无轨迹数据");
+  if (mapState) {
+    const {px, py, scale} = mapState; let out = "";
+    if (truth && !state.hidden.has("truth")) out += `<circle cx="${px(truth[1])}" cy="${py(truth[2])}" r="5" fill="var(--truth)"/>`;
+    if (est && !state.hidden.has("estimate")) { out += `<circle cx="${px(est[1])}" cy="${py(est[2])}" r="4" fill="none" stroke="var(--estimate)" stroke-width="2"/>`; if (est[4]) out += `<circle cx="${px(est[1])}" cy="${py(est[2])}" r="${est[4] * scale}" fill="rgba(192,116,46,.08)" stroke="var(--estimate)" stroke-dasharray="2 2"/>`; }
+    $("markers").innerHTML = out;
+  }
+  if (profState) { const x = profState.px(t); const cur = $("profCursor"); if (cur) { cur.setAttribute("x1", x); cur.setAttribute("x2", x); } }
+  for (const cur of $("lanes").querySelectorAll(".cursor")) cur.style.left = (t / dur * 100).toFixed(3) + "%";
+}
+function tick(now) {
+  if (state.playing) { const c = current(); state.t += (now - state.last) / 1000 * state.speed; if (state.t >= c.duration_s) { state.t = c.duration_s; state.playing = false; $("play").textContent = "▶ 播放"; } updateTime(); }
+  state.last = now; requestAnimationFrame(tick);
+}
+
+// ---- panels / 各面板 ----
+const badge = (v, okValues) => `<span class="badge ${okValues.includes(v) ? "ok" : v === "unknown" || v === "unverified" || v === "hold" || v === "timeout" ? "warn" : "bad"}">${esc(v ?? "—")}</span>`;
+function renderSteps(c) {
+  if (!c.steps.length) { $("steps").innerHTML = `<p class="muted">任务包缺席或没有节点。</p>`; return; }
+  $("steps").innerHTML = `<table><thead><tr><th>步骤</th><th>技能</th><th>参数</th><th>开始</th><th>结束</th><th>execution</th><th>effect</th><th>safety</th><th>状态迁移</th></tr></thead><tbody>` + c.steps.map((s) => {
+    const o = s.outcome || {};
+    return `<tr><td class="mono">${esc(s.id)}</td><td class="mono">${esc(s.skill)}</td><td class="mono">${esc(JSON.stringify(s.params))}</td><td class="mono">${fmt(s.start)}</td><td class="mono">${fmt(s.end)}</td><td>${s.outcome ? badge(o.execution_status, ["succeeded"]) : '<span class="muted">未运行</span>'}</td><td>${s.outcome ? badge(o.effect_verdict, ["verified"]) : ""}</td><td>${s.outcome ? badge(o.safety_verdict, ["proceed"]) : ""}</td><td class="mono">${esc(s.states.map((x) => x[2]).join(" → "))}</td></tr>`;
+  }).join("") + `</tbody></table><p class="muted">「已完成」只接受 succeeded ∧ verified；unknown 与 unverified 不放行后继。</p>`;
+}
+function renderGallery(c) {
+  if (!c.gallery.length) { $("gallery").innerHTML = `<p class="muted">该用例没有影像证据。</p>`; return; }
+  $("gallery").innerHTML = c.gallery.map((g) => `<figure>${g.png ? `<img src="${g.png}" alt="${esc(g.step)} 采集的原始帧" width="${g.width}" height="${g.height}">` : `<div class="muted">无法解码媒体</div>`}
+    <figcaption>${esc(g.step)} · ${esc(g.asset_id || "")} · effect ${esc(g.effect_verdict || "—")}<br>t=${fmt(g.t)} s · sim ${fmt(g.sim_time, 3)} s · ${esc(g.width)}×${esc(g.height)}<br>位姿 (${g.pose ? g.pose.map((v) => fmt(v)).join(", ") : "—"}) σxy ${fmt(g.sigma_xy_m)} m<br>真值 (${g.truth_at_capture ? g.truth_at_capture.map((v) => fmt(v)).join(", ") : "—"}) 距资产 ${fmt(g.truth_distance_to_asset_m)} m（浏览器复算，非裁判结论）<br>sha256 ${esc((g.sha256 || "").slice(0, 16))}… ${g.sha_ok === true ? '<span class="badge ok">媒体哈希一致</span>' : g.sha_ok === false ? '<span class="badge bad">媒体哈希不一致</span>' : ""}</figcaption></figure>`).join("");
+}
+function renderJudge(c) {
+  const v = c.verdict;
+  if (!v.judged) { $("judge").innerHTML = `<p class="muted">judge/result.json 缺席：此运行没有裁判结论，页面不会代替裁判。</p>`; return; }
+  const rows = [["classification", v.classification], ["expected", v.expected], ["passed", v.passed], ["false_success_reports", v.false_success_reports], ["recovery_reasons", (v.recovery_reasons || []).join(", ") || "—"], ["validated_edge", v.validated_edge || "—"], ["measured_sim_speed", fmt(v.measured_sim_speed, 3)], ["truth_samples", v.truth_samples], ["sim_duration_s", fmt(v.sim_duration_s, 2)], ["error", v.error || "—"]];
+  if (v.receipt) rows.push(["receipt.passed", v.receipt.passed], ["receipt.replay_agrees", v.receipt.replay_agrees], ["receipt.judge_exit_code", v.receipt.judge_exit_code]);
+  $("judge").innerHTML = `<table><tbody>${rows.map(([k, val]) => `<tr><th class="mono">${esc(k)}</th><td class="mono">${esc(val)}</td></tr>`).join("")}</tbody></table>
+    <p><b>problems</b>: ${v.problems && v.problems.length ? v.problems.map((p) => `<span class="badge bad">${esc(p)}</span>`).join(" ") : '<span class="badge ok">无</span>'}</p>
+    ${v.replay ? `<p><b>离线重判逐项</b>: ${Object.entries(v.replay.keys).map(([k, ok]) => `<span class="badge ${ok === true ? "ok" : ok === false ? "bad" : ""}">${esc(k)} ${ok === null ? "—" : ok ? "一致" : "不一致"}</span>`).join(" ")}</p>` : ""}`;
+}
+function renderSupervision(c) {
+  const s = c.supervision, t = c.terminal;
+  const over = s.present && s.budget_s ? (s.p99_s > s.budget_s * 1.2 ? "bad" : "ok") : "";
+  $("supervision").innerHTML = (s.present ? `<table><tbody><tr><th>监督周期样本</th><td class="mono">${esc(s.samples)}</td></tr><tr><th>p99</th><td class="mono"><span class="badge ${over}">${fmt(s.p99_s * 1000, 1)} ms</span></td></tr><tr><th>最大</th><td class="mono">${fmt(s.max_s * 1000, 1)} ms</td></tr><tr><th>目标周期</th><td class="mono">${s.budget_s ? fmt(s.budget_s * 1000, 0) + " ms" : "—"}</td></tr></tbody></table>` : `<p class="muted">aircraft/supervision.json 缺席。</p>`) +
+    `<p><b>终态</b>：in_air ${esc(t.in_air)} · armed ${esc(t.armed)} · mode ${esc(t.flight_mode || "—")} · battery ${fmt(t.battery_fraction, 2)} · phase ${esc(t.phase || "—")} · safety ${esc(t.safety || "—")} ${t.reason ? "· " + esc(t.reason) : ""}</p>`;
+}
+function renderIntegrity(c) {
+  const g = c.integrity; const block = (title, d) => d.present ? `<p><b>${esc(title)}</b>：核对 ${d.checked} 个，匹配 ${d.matched}${d.mismatched.length ? `，<span class="badge bad">不一致 ${d.mismatched.length}</span> ${d.mismatched.map(esc).join(", ")}` : ""}${d.missing.length ? `，<span class="badge bad">缺失 ${d.missing.length}</span> ${d.missing.map(esc).join(", ")}` : ""}${d.extra.length ? `，<span class="muted">未覆盖的额外文件 ${d.extra.length}：${d.extra.map(esc).join(", ")}</span>` : ""}</p>` : `<p class="muted">${esc(title)}：无可比对的摘要。</p>`;
+  $("integrity").innerHTML = `<p>账本哈希链：executive <span class="badge ${g.journals.executive === "ok" ? "ok" : "bad"}">${esc(g.journals.executive)}</span> · guardian <span class="badge ${g.journals.guardian === "ok" ? "ok" : "bad"}">${esc(g.journals.guardian)}</span> · MCAP 事件重放 ${g.mcap_replay_matches_journal === null ? '<span class="badge">未检</span>' : g.mcap_replay_matches_journal ? '<span class="badge ok">与账本一致</span>' : '<span class="badge bad">与账本不一致</span>'} · 本页重算 ${g.files_hashed} 个文件的 SHA-256</p>` + block("裁判记录的摘要", g.judge_digests) + block("云端回执记录的摘要", g.receipt_digests) +
+    (c.absent.length ? `<p class="muted">缺席产物：${c.absent.map(esc).join("；")}</p>` : "");
+}
+function renderTables(c) {
+  $("tables").innerHTML = c.tables.length ? c.tables.map((t) => `<details><summary>${esc(t.title)}（${t.rows.length} 行）</summary><table><thead><tr>${t.columns.map((col) => `<th class="mono">${esc(col)}</th>`).join("")}</tr></thead><tbody>${t.rows.map((r) => `<tr>${r.map((v) => `<td class="mono">${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></details>`).join("") : `<p class="muted">无附加表格。</p>`;
+}
+function renderIdentity(c) {
+  const id = c.identity;
+  $("identity").innerHTML = `<pre>${esc(JSON.stringify(id, null, 2))}</pre>`;
+}
+function renderFiles(c) {
+  $("files").innerHTML = `<table><thead><tr><th>路径</th><th>大小</th><th>说明</th></tr></thead><tbody>${c.files.map((f) => `<tr><td class="mono">${esc(f.path)}</td><td class="mono">${(f.size / 1024).toFixed(1)} KiB</td><td>${esc(f.hint)}</td></tr>`).join("")}</tbody></table>`;
+}
+
+function choose(index) {
+  state.index = index; state.t = 0; state.playing = false; $("play").textContent = "▶ 播放";
+  const c = current();
+  renderCaseList(); renderHeader(c); renderVerdict(c); renderMap(c); renderProfile(c); renderSteps(c); renderGallery(c);
+  renderJudge(c); renderSupervision(c); renderIntegrity(c); renderTables(c); renderIdentity(c); renderFiles(c);
+  $("eventDetail").textContent = "点击事件带上的标记查看原始记录。";
+  updateTime();
+}
+$("play").onclick = () => { state.playing = !state.playing; if (state.playing && state.t >= current().duration_s) state.t = 0; $("play").textContent = state.playing ? "❚❚ 暂停" : "▶ 播放"; };
+$("reset").onclick = () => { state.t = 0; state.playing = false; $("play").textContent = "▶ 播放"; updateTime(); };
+$("speed").onchange = (ev) => { state.speed = Number(ev.target.value); };
+$("seek").oninput = (ev) => { state.t = Number(ev.target.value) / 1000 * current().duration_s; state.playing = false; $("play").textContent = "▶ 播放"; updateTime(); };
+$("footer").textContent = `viewer ${DATA.viewer_version} · 生成于 ${DATA.generated_at} · ${DATA.cases.length} 个用例 · 本页只读：所有结论来自裁判与账本，浏览器只展示与复算摘要，不产生也不修改判定。`;
+choose(0);
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

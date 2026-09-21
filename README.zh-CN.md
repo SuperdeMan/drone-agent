@@ -51,6 +51,16 @@ uv run python scripts/dev_stack.py verify
 uv run python scripts/dev_stack.py test
 ```
 
+人工核对一次云端记录的运行：列出运行、拉取其中一次（每个文件都与远端摘要和裁判回执核对）、打开生成的离线 `viewer.html`：
+
+```bash
+uv run python scripts/dev_stack.py runs
+uv run python scripts/dev_stack.py fetch --run m1-<run_id> --cases nominal-7 --apply --artifacts D:/drone-agent-cloud
+uv run python -m drone_agent.eval.viewer <拉取到的运行目录>
+```
+
+浏览器只展示与复算摘要；所有判定来自裁判（见 [评测体系](docs/architecture/08-evaluation.md) §7）。
+
 本机仍可编辑代码并运行快速确定性检查：
 
 ```bash
