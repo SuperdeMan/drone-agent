@@ -51,6 +51,8 @@ uv run python scripts/dev_stack.py verify
 uv run python scripts/dev_stack.py test
 ```
 
+To start and observe a fixed cloud inspection from your browser, run `uv run python scripts/dev_stack.py console` and open <http://127.0.0.1:8768>. The page shows live onboard telemetry and camera frames, with pause/resume/cancel through the existing executive channel. The simulation runs in the cloud over the existing SSH connection. See the [live simulation guide](docs/live-simulation.md) for setup, connection semantics and evidence boundaries; this is the M1 human entry, not the full M2 planning/approval console.
+
 To review a recorded cloud run as a human, list the runs, fetch one (every file is checked against the remote digests and the judge receipt) and open the generated offline `viewer.html`:
 
 ```bash

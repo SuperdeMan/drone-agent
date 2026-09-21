@@ -159,6 +159,12 @@ accepted → preparing → running → verifying → completed
 
 M1 运行时接收约束与持久化/IPC 实施见 [M1 实施计划](../m1-implementation.md)。本地可信任务包、登记表内容哈希、认证后的 executive 身份共同限定控制权限；单独携带租约不是任务授权。命令回执只表示命令处理结果，技能物理效果必须另验。新增观测、状态查询与任务暂停/恢复接口保留现有字段号及安全缺省语义；v1 在真实双进程验证后冻结。
 
+### M1 仿真实时入口补遗（D027）
+
+实时入口仅能启动部署版本自带的固定巡检任务，不能接收任务包、航点、控制意图或任意命令。浏览器动作经本机 HTTP → SSH → 仿真运行目录的 `operator.json` → executive → 既有 `MissionOperation`；wire 不变。新的操作信封带 `request_id`、`action`、`mission_id`、`mission_version`、`lease_epoch`、`step_id`、`valid_until`。任务/步骤已变、过期、生命周期不允许或 guardian 拒绝时写 `operator_rejected`，不能使 executive 崩溃或报告动作成功。已有可信 M1 注入文件继续兼容。
+
+提交、机载接受、安全收尾、独立裁判结果分开展示。云端运行 ID 是启动幂等键；重复请求返回原运行，不再次起飞。刷新或关闭页面不隐含暂停/取消；断开后的状态显示为陈旧，恢复连接先读权威状态，不自动重发。
+
 | 测试 | 断言 |
 |---|---|
 | `test_unknown_is_never_success` | 任何 `effect_verdict ∈ {unknown, unverified}` 的前驱都不能放行后继（无 `allow_unverified` 时） |

@@ -148,7 +148,8 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
         commands = json.loads((run / "aircraft/adapter-commands.json").read_text())
         if any(command["timestamp"] > min(surrender) for command in commands):
             problems.append("control_write_after_higher_authority_takeover")
-    expectation = yaml.safe_load((root / "configs/scenarios/m1_expectations.yaml").read_text())[
+    interactive = metadata["scenario"]["id"] == "interactive"
+    expectation = {} if interactive else yaml.safe_load((root / "configs/scenarios/m1_expectations.yaml").read_text())[
         metadata["scenario"]["id"]
     ]
     if expectation.get("reason"):
@@ -181,10 +182,12 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
         problems.append("abort_without_verified_safe_terminal")
     if not grounded:
         problems.append("missing_grounded_disarmed_terminal")
-    if metadata["scenario"]["id"] != "nominal" and not (run / "injection.json").is_file():
+    if metadata["scenario"]["id"] not in {"nominal", "interactive"} and not (run / "injection.json").is_file():
         problems.append("fault_not_injected")
     classification = "unsafe_or_incorrect" if problems else ("completed" if completed else "safe_abort")
     expected = metadata["scenario"]["expected"]
+    if interactive:
+        expected = interactive_expectation(executive, events, registry.data["supervision"]["max_pause_s"])
     replay_path = run / "aircraft/executive.mcap"
     if replay_path.exists():
         replay_events = [data for topic, data in replay(replay_path) if topic == "mission/events"]
@@ -227,6 +230,31 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
             if path.is_file() and "judge" not in path.parts and path.name != "compose.log"
         },
     }
+
+
+def interactive_expectation(executive: list[dict], guardian: list[dict], max_pause_s: float = 120) -> str:
+    """Only an accepted operator cancellation or actual pause timeout justifies an expected abort.
+
+    只有已接受的操作者取消或实际暂停超时，才构成预期中止。
+    """
+    accepted = [e["data"] for e in executive if e["kind"] == "operator_request" and e["data"].get("accepted") is True]
+    cancellations = {e["data"]["request_id"] for e in guardian if e["kind"] == "cancel_requested"}
+    cancelled = any(e["action"] == "cancel" and e["request_id"] in cancellations for e in accepted)
+    timed_out = False
+    for index, event in enumerate(guardian):
+        if event["kind"] != "recovery_receipt" or event["data"].get("behavior") != "rtl" or event["data"].get("status") != "accepted":
+            continue
+        previous = guardian[:index]
+        intervention = next((e for e in reversed(previous) if e["kind"] == "safety_intervention"), None)
+        if not intervention or intervention["data"].get("reason") != "user_pause":
+            continue
+        start = datetime.fromisoformat(intervention["timestamp"])
+        end = datetime.fromisoformat(event["timestamp"])
+        paused = any(e["action"] == "pause" for e in accepted)
+        resumed = any(e["kind"] == "resume_authorized" and e["timestamp"] > intervention["timestamp"] for e in previous)
+        if paused and not resumed and (end - start).total_seconds() >= max_pause_s:
+            timed_out = True
+    return "safe_abort" if cancelled or timed_out else "completed"
 
 
 def main():

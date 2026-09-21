@@ -42,6 +42,7 @@
 - proto 变更后运行 `uv run python scripts/generate_contract_fields.py --check` 与 `uv run python scripts/generate_proto.py` 确认一致性和编译；stub 在 `gen/`，不进 git。
 - 文档改动后自查相对链接有效、`roadmap.md` 阶段状态与实际一致。
 - 人工核对（M1 补遗）：`uv run python scripts/dev_stack.py runs` 列出云端运行，`fetch --run <run> --cases <a-7,b-19> --apply` 拉取并核对摘要后自动生成 `viewer.html`；本地目录用 `uv run python -m drone_agent.eval.viewer <目录>`。页面只展示与复算，不产生判定，不能替代 `judge/` 与发布门禁；扩展只加提取器，见 `docs/architecture/08-evaluation.md` §7。
+- 实时体验（D027）：`uv run python scripts/dev_stack.py console`，浏览器访问 `http://127.0.0.1:8768`，操作云端固定 M1 仿真；只允许开始、暂停、恢复、取消，走 executive 通道，不能直达飞控。见 [实时指南](docs/live-simulation.md)。这不是完整 M2 控制台；新提交验证不能转借历史 M1 的 66/66。
 
 ## 已知环境约束
 

@@ -9,7 +9,7 @@ import asyncio
 import json
 import time
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import grpc
 
@@ -116,29 +116,81 @@ class Executive:
         obs = await self.client.observation(self.lease.robot_id)
         self.recorder.write("flight/observation", obs.model_dump(mode="json"))
         if self.control_path.exists():
-            control = json.loads(self.control_path.read_text())
-            request_id = control["request_id"]
-            if request_id not in self.operator_ids:
-                action = MissionAction(control["action"])
-                if action == MissionAction.CANCEL and self.node:
-                    self.transition(self.node, SkillInstanceState.CANCEL_REQUESTED)
-                if action == MissionAction.PAUSE and self.node:
-                    self.transition(self.node, SkillInstanceState.PAUSE_REQUESTED)
-                operation = MissionOperation(
-                    robot_id=self.lease.robot_id,
-                    mission_id=self.package.mission_id,
-                    mission_version=self.package.mission_version,
-                    lease_epoch=self.epoch,
-                    executive_instance=self.executive_id,
-                    action=action,
-                    request_id=request_id,
-                )
-                self.status = await self.client.operate(operation)
-                self.operator_ids.add(request_id)
-                self.event("operator_request", **control)
-                if action == MissionAction.RESUME and self.node:
-                    self.transition(self.node, SkillInstanceState.RUNNING)
+            await self.handle_operator(json.loads(self.control_path.read_text()))
         return obs
+
+    async def handle_operator(self, control):
+        """Reject late or invalid operator requests without disrupting the running skill.
+
+        拒绝迟到或无效的操作者请求，不干扰正在执行的技能。
+        """
+        request_id = control.get("request_id")
+        if not isinstance(request_id, str) or not request_id or request_id in self.operator_ids:
+            return
+        self.operator_ids.add(request_id)
+        try:
+            action = MissionAction(control["action"])
+            if self.node is None:
+                raise ValueError("no_active_skill")
+            binding = {
+                "mission_id": self.package.mission_id,
+                "mission_version": self.package.mission_version,
+                "lease_epoch": self.epoch,
+                "step_id": self.node.task_id,
+            }
+            if any(key in control for key in (*binding, "valid_until")):
+                if any(control.get(key) != value for key, value in binding.items()):
+                    raise ValueError("operator_target_changed")
+                if not isinstance(control.get("valid_until"), str):
+                    raise ValueError("operator_validity_missing")
+                valid_until = datetime.fromisoformat(control["valid_until"].replace("Z", "+00:00"))
+                if valid_until.tzinfo is None or utcnow() >= valid_until:
+                    raise ValueError("operator_request_expired")
+            state = self.states.get(self.node.task_id, SkillInstanceState.ACCEPTED)
+            target = {
+                MissionAction.PAUSE: SkillInstanceState.PAUSE_REQUESTED,
+                MissionAction.RESUME: SkillInstanceState.RUNNING,
+                MissionAction.CANCEL: SkillInstanceState.CANCEL_REQUESTED,
+            }[action]
+            if action == MissionAction.RESUME and state != SkillInstanceState.PAUSED:
+                raise ValueError("skill_not_paused")
+            if action == MissionAction.PAUSE and state != SkillInstanceState.RUNNING:
+                raise ValueError("skill_not_running")
+            if not can_transition(state, target):
+                raise ValueError("operator_lifecycle_conflict")
+            operation = MissionOperation(
+                robot_id=self.lease.robot_id,
+                mission_id=self.package.mission_id,
+                mission_version=self.package.mission_version,
+                lease_epoch=self.epoch,
+                executive_instance=self.executive_id,
+                action=action,
+                request_id=request_id,
+            )
+            status = await self.client.operate(operation)
+        except (ValueError, KeyError, TypeError) as error:
+            self.event("operator_rejected", request_id=request_id, action=control.get("action"), reason=str(error))
+            return
+        except grpc.aio.AioRpcError as error:
+            uncertain = error.code() in {grpc.StatusCode.DEADLINE_EXCEEDED, grpc.StatusCode.UNAVAILABLE}
+            self.event(
+                "operator_rejected", request_id=request_id, action=control.get("action"),
+                reason="outcome_unknown" if uncertain else "guardian_rejected",
+            )
+            if uncertain:
+                self.aborted = True
+                self.status = {"safety_verdict": "recover", "reason": "operator_outcome_unknown"}
+            return
+        self.status = status
+        if action == MissionAction.PAUSE and (status["safety_verdict"] != "hold" or status.get("reason") != "user_pause"):
+            self.event("operator_rejected", request_id=request_id, action=action.value, reason="pause_not_authorized")
+            return
+        if action == MissionAction.RESUME and status["safety_verdict"] != "proceed":
+            self.event("operator_rejected", request_id=request_id, action=action.value, reason="resume_not_authorized")
+            return
+        # Change lifecycle only after the guardian accepts the request. / guardian 接受请求后才改变生命周期。
+        self.transition(self.node, target)
+        self.event("operator_request", **control, accepted=True)
 
     async def send(self, envelope):
         request = asyncio.create_task(self.client.submit(envelope))

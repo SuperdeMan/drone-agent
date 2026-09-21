@@ -51,6 +51,8 @@ uv run python scripts/dev_stack.py verify
 uv run python scripts/dev_stack.py test
 ```
 
+亲自从浏览器启动并观察固定巡检：运行 `uv run python scripts/dev_stack.py console`，打开 <http://127.0.0.1:8768>。页面显示机载遥测与相机画面，暂停/恢复/取消经过既有 executive 通道；仿真通过已有 SSH 连接在云端运行。配置、连接语义和证据边界见 [实时仿真指南](docs/live-simulation.md)。这是 M1 人工入口，完整 M2 规划/审批控制台仍待实现。
+
 人工核对一次云端记录的运行：列出运行、拉取其中一次（每个文件都与远端摘要和裁判回执核对）、打开生成的离线 `viewer.html`：
 
 ```bash

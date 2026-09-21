@@ -12,6 +12,8 @@ M0 未解锁冒烟继续作为部署前置；M1 另有 sim/aircraft/ground 三�
 
 工作区使用 SSH 用户的 `~/drone-agent/`，不放入 car-agent 目录。Docker project 为 `drone-agent-cloud`；SITL 限 1.5 CPU / 2 GiB，契约测试限 1 CPU / 1 GiB。仿真网络为内部桥接，测试容器无网络，不发布宿主端口。SSH 是当前管理与验证入口。
 
+D027 增加固定 M1 任务的 [实时浏览器入口](live-simulation.md)：`dev_stack.py console` 在本机回环地址提供页面，经 SSH 读取云端并提交有界操作。云端不增加公开服务端口；它与后续 M2 的 mission-service/审批控制台分开验收。
+
 配置依据：[Compose 资源属性](https://docs.docker.com/reference/compose-file/services/#cpus)、[内部网络](https://docs.docker.com/reference/compose-file/networks/#internal)。验收还会读取实际容器设置，确认配置已经生效。
 
 ## 连接参数

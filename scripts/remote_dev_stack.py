@@ -28,7 +28,7 @@ RUN_ID = re.compile(r"^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 # artifacts/ 下的运行目录（`m1-<run_id>`）与用例目录（`<scenario>-<seed>`）。
 RUN_DIR = re.compile(r"^m[0-9]+-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 CASE_DIR = re.compile(r"^[a-z][a-z0-9_]*-[0-9]+$")
-READ_ONLY_ACTIONS = frozenset({"status", "runs", "inspect"})
+READ_ONLY_ACTIONS = frozenset({"status", "runs", "inspect", "live_status"})
 
 
 def digest(path: Path) -> str:
@@ -356,7 +356,8 @@ def inspect_run(root: Path, request: dict) -> dict:
 
 def dispatch(request: dict) -> dict:
     action = request.get("action")
-    if action not in {*READ_ONLY_ACTIONS, "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1"}:
+    if action not in {*READ_ONLY_ACTIONS, "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1",
+                       "live_start", "live_operate"}:
         raise ValueError("unsupported cloud action")
     if action not in READ_ONLY_ACTIONS and not RUN_ID.fullmatch(request.get("run_id", "")):
         raise ValueError("invalid run identity")
@@ -369,6 +370,17 @@ def dispatch(request: dict) -> dict:
         return artifact_runs(root)
     if action == "inspect":
         return inspect_run(root, request)
+    if action in {"live_status", "live_start", "live_operate"}:
+        import runpy
+
+        deployment = current(root)
+        script = deployment / "source/scripts/remote_live.py"
+        if not script.is_file():
+            raise ValueError("deploy a version with the live simulation entry first")
+        live = runpy.run_path(str(script))
+        if action == "live_status":
+            return live["snapshot"](root, deployment)
+        return live["start" if action == "live_start" else "operate"](root, deployment, request)
     with locked(root):
         if action == "prepare":
             owned = root / "incoming" / request["run_id"]

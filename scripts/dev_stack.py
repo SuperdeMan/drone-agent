@@ -396,6 +396,9 @@ def main() -> None:
     commands.add_parser("target")
     for name in ("status", "verify", "test", "start", "stop", "logs", "runs"):
         commands.add_parser(name)
+    console_parser = commands.add_parser("console", help="open a loopback browser entry to the cloud simulation")
+    console_parser.add_argument("--port", type=int, default=8768)
+    console_parser.add_argument("--artifacts", type=Path, default=Path(tempfile.gettempdir()) / "drone-agent-cloud")
     fetch_parser = commands.add_parser("fetch", help="copy a recorded run locally and build the evidence viewer")
     fetch_parser.add_argument("--run", required=True, help="run directory name, e.g. m1-20260919T171218Z-db465377")
     fetch_parser.add_argument("--deployment", default=None, help="deployment id; defaults to the current one")
@@ -422,6 +425,17 @@ def main() -> None:
             result = {"target": "cloud", "policy": "D023", "local_stack_fallback": False}
         else:
             connection = Connection.from_environment()
+            if args.command == "console":
+                from drone_agent.console.server import serve_console
+
+                def fetch_live(job):
+                    return fetch_command(connection, argparse.Namespace(
+                        run="m1-" + job["run_id"], deployment=job["deployment_id"], cases=job["case"],
+                        exclude="ulog,sensor", receipt=None, artifacts=args.artifacts, apply=True, no_viewer=False,
+                    ))
+
+                serve_console(port=args.port, request=lambda value: ssh(connection, value, timeout=25), fetch=fetch_live)
+                return
             if args.command == "deploy":
                 result = deploy_command(connection, args)
             elif args.command == "fetch":

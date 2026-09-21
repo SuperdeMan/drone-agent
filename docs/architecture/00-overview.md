@@ -106,3 +106,4 @@
 | `../m3-implementation.md` | M3 局部自主与降级：测量先行、第二控制路径、四类场景 |
 | `../m4-implementation.md` | M4 真机线与联合仿真线：共因故障递进、协同四项能力与指标 |
 | `../cloud-development.md` | 默认云端构建、仿真与验证的操作入口及隔离边界 |
+| `../live-simulation.md` | M1 固定任务的实时操作、连接语义与完整证据入口 |

@@ -134,6 +134,7 @@ def _label(kind: str, data: dict) -> str:
         "skill_state": f"{data.get('step_id', '')} {data.get('previous', '?')} → {data.get('state', '?')}",
         "mission_result": "任务完成" if data.get("completed") else "任务未完成，进入安全收尾",
         "operator_request": f"操作者请求 {data.get('action', '')}",
+        "operator_rejected": f"操作者请求被拒 {data.get('action', '')}: {data.get('reason', '')}",
         "command_rejected": f"命令被拒 {data.get('reason', '')}",
         "command_reconciled": f"对账 {data.get('step_id', data.get('key', ''))} {data.get('receipt', data.get('status', ''))}",
         "executive_error": f"executive 错误 {data.get('type', '')}",

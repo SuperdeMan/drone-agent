@@ -82,6 +82,11 @@ def run_m1(root: Path, deployment: Path, request: dict):
             raise ValueError("unknown M1 scenario in selection")
     if not scenarios or not request["seeds"]:
         raise ValueError("unknown or empty M1 scenario selection")
+    interactive = request.get("interactive", False)
+    if interactive:
+        if request["scenario"] != "nominal" or len(request["seeds"]) != 1:
+            raise ValueError("interactive mode accepts one fixed inspection only")
+        scenarios = [{"id": "interactive", "expected": "operator_dependent"}]
     results = []
     for scenario in scenarios:
         for seed in request["seeds"]:
@@ -132,13 +137,14 @@ def run_m1(root: Path, deployment: Path, request: dict):
                         "--output",
                         "/input",
                         "--scenario",
-                        scenario["id"],
+                        "nominal" if interactive else scenario["id"],
                         "--seed",
                         str(seed),
                         "--sha",
                         sha,
                         "--speed-factor",
                         str(request.get("speed_factor", 1)),
+                        *(["--interactive"] if interactive else []),
                     ]
                 )
                 if scenario.get("pre_dispatch"):
