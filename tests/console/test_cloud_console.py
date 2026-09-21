@@ -12,6 +12,7 @@ import socket
 import threading
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -121,7 +122,8 @@ def test_service_restart_preserves_detached_flight_and_cloud_web_has_no_docker_a
     assert web["ports"] == ["127.0.0.1:8768:8768"]
     assert web["read_only"] is True and web["cap_drop"] == ["ALL"]
     assert web["security_opt"] == ["no-new-privileges:true"]
-    assert compose["networks"]["console"]["internal"] is True
+    assert web["networks"] == ["console_ingress"]
+    assert compose["networks"] == {"console_ingress": {"driver": "bridge"}}
     assert all("docker.sock" not in value and ".ssh" not in value for value in web["volumes"])
     assert any(value.endswith("/artifacts:/records:ro") for value in web["volumes"])
     assert web["restart"] == "unless-stopped"
@@ -229,3 +231,31 @@ def test_cloud_evidence_verifies_files_before_rendering_and_keeps_recordings_unc
     with pytest.raises(ValueError, match="digest mismatch"):
         backend.fetch(job)
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize("defect", [None, "unpublished", "public", "simulation_network"])
+def test_container_verification_checks_real_port_publication_and_network_membership(tmp_path, monkeypatch, defect):
+    ports = {"8768/tcp": [{"HostIp": "127.0.0.1", "HostPort": "8768"}]}
+    mounts = [("/broker", "console/ipc", False), ("/records", "artifacts", False),
+              ("/releases", "releases", False), ("/outputs", "console/pages", True)]
+    container = {
+        "Id": "console", "Image": "sha256:test", "State": {"Running": True},
+        "Config": {"User": "1000:1001", "Labels": {"io.drone-agent.component": "tailnet-console", "io.drone-agent.source-sha": "a" * 40}},
+        "HostConfig": {"PortBindings": copy.deepcopy(ports), "ReadonlyRootfs": True, "Privileged": False, "CapDrop": ["ALL"]},
+        "NetworkSettings": {"Ports": copy.deepcopy(ports), "Networks": {"drone-agent-cloud_console_ingress": {}}},
+        "Mounts": [{"Destination": dest, "Source": str(tmp_path / source), "RW": writable, "Type": "bind"} for dest, source, writable in mounts],
+    }
+    if defect == "unpublished":
+        container["NetworkSettings"]["Ports"] = {"8768/tcp": None}
+    elif defect == "public":
+        container["NetworkSettings"]["Ports"]["8768/tcp"][0]["HostIp"] = "0.0.0.0"
+    elif defect == "simulation_network":
+        container["NetworkSettings"]["Networks"]["drone-agent-cloud_simulation"] = {}
+    function = MANAGER["inspect_console"]
+    monkeypatch.setitem(function.__globals__, "os", SimpleNamespace(getuid=lambda: 1000, getgid=lambda: 1001))
+    monkeypatch.setitem(function.__globals__, "command", lambda argv: SimpleNamespace(stdout="console\n" if argv[1] == "ps" else json.dumps([container])))
+    if defect:
+        with pytest.raises(ValueError):
+            function(tmp_path, source_sha="a" * 40)
+    else:
+        assert function(tmp_path, source_sha="a" * 40)["published_ports"] == ports

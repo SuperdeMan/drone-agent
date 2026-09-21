@@ -36,7 +36,7 @@ uv run python scripts/dev_stack.py console-cloud --status
 ## 进程与访问边界
 
 - Tailscale Serve：私网 HTTPS `8447` → 宿主 `127.0.0.1:8768`；Funnel 不启用。网络准入沿用 tailnet 策略，本轮不修改 ACL。
-- 网页：Uvicorn 单进程 ASGI；0.4 CPU / 512 MiB、只读根文件系统、非 root、去除 Linux capabilities；只在独立内部网络中运行。没有 Docker socket、SSH 密钥或飞控连接。
+- 网页：Uvicorn 单进程 ASGI；0.4 CPU / 512 MiB、只读根文件系统、非 root、去除 Linux capabilities；使用独立的 `console_ingress` 入口桥接网络，不连接仿真网络。只有宿主回环端口可进入，没有 Docker socket、SSH 密钥或飞控连接；不宣称完全禁止容器出站。
 - 任务代理：工作区属主运行的本机 Unix socket 服务，限制 peer UID 与 `live_status/live_start/live_operate` 方法；没有任意命令或文件接口。代理 unit 使用 `KillMode=process`，不杀死已独立运行的飞行后台进程。
 - 数据：记录与历史源码只读挂载；生成页面放在 `~/drone-agent/console/pages/`，摘要核对后缓存，网页重启后可恢复链接。
 - 浏览器请求：继续检查固定 Host、Origin、nonce、JSON 大小与操作身份；页面掉线时不能使用旧状态自动重发操作。

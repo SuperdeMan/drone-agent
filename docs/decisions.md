@@ -307,3 +307,5 @@ D024 的实施已完成并通过完整 SITL 验收，状态转为生效；D025 �
 **验收**：HTTP 边界、私有 socket 方法/身份限制、路径隔离、运行幂等、入口重启不重跑/中断任务；经真实 Tailnet HTTPS 运行正常巡检、暂停恢复、取消并核对裁判/回放；验证 loopback 发布、Funnel 关闭、旧映射不变。完整 M1 66 组、M2 或浏览器视觉验收分别记录，不转借历史结果。
 
 **重估触发器**：访问者中出现只允许观看的成员、开启公网/Funnel、引入任意任务或真机时，重新决策应用身份与授权。依据：[Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve)、[Uvicorn](https://uvicorn.dev/)。
+
+**实施补充（2026-09-22）**：首次激活时，网页容器和机内代理均健康，但 Docker 对 `internal: true` 网络返回实际端口映射 `8768/tcp: null`，宿主回环入口不可达，激活已回退。网页入口改用独立的 `console_ingress` 桥接网络，宿主仍仅绑定回环；不连接仿真网络，SITL/guardian/executive 的内部网络保持原样。本阶段的网页网络边界是“独立入口网络 + 仅回环发布 + 私有 Serve”，不宣称网页容器完全禁止出站。部署同时检查声明端口与 Docker 的实际发布结果，不能只看 Compose 配置。

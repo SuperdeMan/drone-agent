@@ -16,7 +16,7 @@ services:
     mem_limit: 512m
     memswap_limit: 512m
     ports: ["127.0.0.1:8768:8768"]
-    networks: [console]
+    networks: [console_ingress]
     tmpfs: ["/tmp:size=32m,mode=1777"]
     environment:
       PYTHONDONTWRITEBYTECODE: "1"
@@ -35,5 +35,5 @@ services:
       start_period: 30s
       retries: 3
 networks:
-  console:
-    internal: true
+  console_ingress:
+    driver: bridge

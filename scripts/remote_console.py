@@ -95,8 +95,14 @@ def inspect_console(root: Path, *, source_sha: str | None = None) -> dict:
     if source_sha and labels.get("io.drone-agent.source-sha") != source_sha:
         raise ValueError("console container revision differs")
     expected_ports = {"8768/tcp": [{"HostIp": "127.0.0.1", "HostPort": "8768"}]}
-    if host.get("PortBindings") != expected_ports or not host.get("ReadonlyRootfs") or host.get("Privileged"):
+    if (
+        host.get("PortBindings") != expected_ports
+        or details["NetworkSettings"].get("Ports") != expected_ports
+        or not host.get("ReadonlyRootfs") or host.get("Privileged")
+    ):
         raise ValueError("console public binding or filesystem boundary differs")
+    if set(details["NetworkSettings"].get("Networks", {})) != {"drone-agent-cloud_console_ingress"}:
+        raise ValueError("console must use only its dedicated ingress network")
     if config.get("User") != f"{os.getuid()}:{os.getgid()}" or host.get("CapDrop") != ["ALL"]:
         raise ValueError("console process privilege boundary differs")
     expected_mounts = {
