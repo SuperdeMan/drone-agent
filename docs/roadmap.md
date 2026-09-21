@@ -14,6 +14,8 @@
 | **M5** | 真实空地协同 | 2027-07 → 2027-09（约 8–12 周） | 明确授权与受控范围内的「巡检—发现—复核—报告」；Nav2 地面平台接入；报告三列（已完成 / 未完成 / 不确定） | 部分完成不被报告为全部完成；设备失联、退出、交接失败时正确收尾；三分类结果与仿真基线可比 |
 | **M6** | 模型与平台扩展 | 2027-Q4 起，持续 | VLA / 世界模型插件（影子 → 有限接管）；第二平台（DJI Cloud API）；多机调度（LLM 提议 + 优化器裁决）；数据飞轮；抽出 `agent-kernel`（触发器见 D001） | 相同任务与裁判下新增能力有可量化收益且无不可接受的安全 / 可靠性退化 |
 
+M1 提前于估算关闭；M2–M4 的窗口保持指示性，实际起点以前一阶段的 readiness 为准。三段的可执行拆解（批次、工作包、验收判据、决策待办）见 [M2 实施计划](m2-implementation.md)、[M3 实施计划](m3-implementation.md)、[M4 实施计划](m4-implementation.md)（D026）；每段动手前先补对应的 `decisions.md` 条目。
+
 ## M0 · 领域边界与基础契约（已完成，2026-09-19）
 
 已完成（2026-09-19）：
@@ -52,16 +54,52 @@ M0 已关闭：`ruff`、默认 importlib 模式下的 258 项测试、proto 编�
 
 ## M2 · 接入受约束 Agent
 
-任务：Provider 移植（`embodied-agent/providers`，含限流 / 健康 / 超时）；Planner（`claude-opus-5`，adaptive thinking，结构化输出 `MissionSpec`；`refusal` 回退处理）；MCP 只读工具（资产库、地图）；Compiler / Admission；ApprovalRecord 与控制台审批流；Evidence Verifier；有界重规划；A2A 入口（cockpit-agent 调用）；对抗性规划测试集。
+拆解见 [M2 实施计划](m2-implementation.md)：四个批次、20 个工作包；批次 A / B 的确定性部分在本机完成，服务联调与飞行在云端。原任务清单（Provider 移植；Planner `claude-opus-5` 结构化输出 `MissionSpec` 与 `refusal` 回退；MCP 只读工具；Compiler / Admission；ApprovalRecord 与控制台审批流；Evidence Verifier；有界重规划；A2A 入口；对抗性规划测试集）全部映射到下列工作包。
+
+任务：
+
+- [ ] 批次 A 规划层地基：Provider 移植与录制回放（WP-M2-01）；结构化 Issue 与 scope（WP-M2-02）；MCP 只读工具（WP-M2-03）；Compiler（WP-M2-04）；Admission（WP-M2-05）；`AirspaceConstraintProvider` 桩（WP-M2-06）；SITL 能耗估计（WP-M2-07）
+- [ ] 批次 B 模型接入：Planner 引擎（WP-M2-08）；自然语言对抗集（WP-M2-09）；有界重规划与审批策略（WP-M2-10）
+- [ ] 批次 C 服务与入口：签名与机器人身份（WP-M2-11）；mission-service 骨架（WP-M2-12）；Evidence Verifier 与三列报告（WP-M2-13）；`skill.inspect.asset`（WP-M2-14）；任务控制台 v0（WP-M2-15）；A2A 入口（WP-M2-16）；机载 uplink 进程（WP-M2-17）
+- [ ] 批次 D 准出：云端部署扩展（WP-M2-18）；E2E 场景集与裁判扩展（WP-M2-19）；准入率基线与发布门禁（WP-M2-20）
+- [ ] 决策待办：签名与机器人身份；受限上行网络与 executive 无网络边界；审批策略
+
+退出标准见总览；额外要求：远程任务包有签名与机载验签；`drone.*.v1` 只增字段。
 
 ## M3 · 局部自主与降级
 
-任务：`ros2_ws/` 节点（感知、定位健康、局部地图、局部规划）；px4_ros2 外部模式作为第二控制路径（不使用失效保护延期）；CBF 约束过滤；能源可达性模型；机载容器多架构构建与 Jetson-in-the-loop；Zenoh 跨机器人通信；机载 VLM 事件检测；ROS 2 Lyrical 切换评估（D008）；`LocalPolicy` 影子运行框架（研究支线接入点）。
+拆解见 [M3 实施计划](m3-implementation.md)：五个批次、20 个工作包；测量与算力决策先于功能。当前共享云主机不足以同时承载 SITL + ROS 2 自主层 + VLM，批次 A 必须先决定算力拓扑（D023 重估触发器）。原任务清单（`ros2_ws/` 节点；px4_ros2 外部模式第二控制路径，不使用失效保护延期；CBF 约束过滤；能源可达性模型；机载容器多架构与 Jetson-in-the-loop；Zenoh；机载 VLM 事件检测；ROS 2 Lyrical 评估；`LocalPolicy` 影子运行框架）全部映射到下列工作包。
+
+任务：
+
+- [ ] 批次 A 测量与地基：算力与拓扑决策（WP-M3-01）；aircraft 镜像 ROS 2 Jazzy 化与 arm64（WP-M3-02）；Jetson-in-the-loop 拓扑（WP-M3-03）；周期预算与 guardian 语言测量（WP-M3-04，D003 触发器）；ROS 2 Lyrical 评估（WP-M3-05，D008）
+- [ ] 批次 B 自主层节点：`autonomy/` 插件接口与桥接（WP-M3-06）；感知（WP-M3-07）；定位健康（WP-M3-08）；局部地图与短时域规划（WP-M3-09）
+- [ ] 批次 C 第二控制路径与安全过滤：外部模式出口节点（WP-M3-10）；CBF 约束过滤（WP-M3-11）；Offboard 类技能（WP-M3-12）；能源可达性模型（WP-M3-13）；恢复策略 v2（WP-M3-14）
+- [ ] 批次 D 机载推理与通信：edge-inference 小 VLM 事件检测（WP-M3-15）；Zenoh 传输（WP-M3-16）；计算过载与网络中断场景（WP-M3-17）
+- [ ] 批次 E 准出：`LocalPolicy` 影子运行框架（WP-M3-18）；`AirspaceConstraintProvider` 真实接口（WP-M3-19）；四类场景门禁与 readiness（WP-M3-20）
+- [ ] 决策待办：外部模式出口节点边界与 `drone.autonomy.v1`；算力拓扑；周期预算与 guardian 语言；传感器与感知模型
+
+退出标准见总览；额外要求：第二控制路径下单一控制出口不变，两条飞控链路互斥。
 
 ## M4 · 两条验证线并行
 
+拆解见 [M4 实施计划](m4-implementation.md)：A 线 11 个工作包、B 线 10 个工作包，并行推进，证据分别留存。A 线的硬件选型与实名登记在 M3 期间启动（A0）。
+
 A（真机）：硬件选型与组装、UOM 报备、地理围栏与返航点验证、共因故障清单、首飞降速、受限场景任务。
+
+- [ ] A0：硬件选型条目、采购、实名登记（WP-M4A-01）
+- [ ] A1：组装与台架（WP-M4A-02）；真机平台配置与适配器差异（WP-M4A-03）；共因故障清单台架级（WP-M4A-04）
+- [ ] A2：围栏与返航点验证（WP-M4A-05）；UOM 报备接入（WP-M4A-06）；飞行前检查单与现场规程（WP-M4A-07）；真机裁判（WP-M4A-08）；系留 / 低空共因故障（WP-M4A-09）
+- [ ] A3：首飞降速与受限任务（WP-M4A-10）；readiness（WP-M4A-11）
+
 B（联合仿真）：PX4 rover SITL 同世界、Coordinator 四项协同能力、交接协议、`SpatialAlignment` 服务、复核证据闭环、协同指标基线。
+
+- [ ] B1：rover SITL 同世界（WP-M4B-01）；rover 运行时（WP-M4B-02）
+- [ ] B2：能力发现（WP-M4B-03）；`SpatialAlignment`（WP-M4B-04）；任务所有权与交接协议（WP-M4B-05）；时空资源预约（WP-M4B-06）
+- [ ] B3：复核证据闭环（WP-M4B-07）；多机器人裁判与故障注入（WP-M4B-08）；基线与 readiness（WP-M4B-09）；Nav2 适配器仿真版（WP-M4B-10，可延至 M5 首批）
+- [ ] 决策待办：真机硬件与供电 / 串口拓扑；真机模式入口隔离；rover 形态与恢复行为；交接 wire 增字段与 Zenoh 可靠性
+
+退出标准见总览；共因故障从台架到系留再到受限任务逐级放开，任何一级不通过回退一级。
 
 ## M5 · 真实空地协同
 
