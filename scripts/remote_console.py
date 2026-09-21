@@ -132,6 +132,7 @@ Type=simple
 User={user}
 WorkingDirectory={root.as_posix()}
 Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=DOCKER_CONFIG={root.as_posix()}/console/docker-client
 ExecStart=/usr/bin/python3 {deployment.as_posix()}/source/scripts/console_broker.py
 Restart=on-failure
 RestartSec=2
@@ -197,7 +198,8 @@ def status(root: Path) -> dict:
     except (OSError, ValueError):
         health = {"status": "unavailable"}
     active = command(["systemctl", "is-active", UNIT], check=False).returncode == 0
-    return {**current, "status": "ready" if health.get("status") == "ready" and active and route_matches(config, current["origin"]) else "unhealthy",
+    revision_matches = health.get("console_source_sha") == current["source_sha"] == health.get("runtime_source_sha")
+    return {**current, "status": "ready" if health.get("status") == "ready" and active and revision_matches and route_matches(config, current["origin"]) else "unhealthy",
             "health": health, "tailnet_only_route": route_matches(config, current["origin"]), "broker_active": active}
 
 
@@ -218,7 +220,7 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
     directory = root / "console"
     if directory.is_symlink() or not directory.resolve().is_relative_to(root.resolve()):
         raise ValueError("invalid console workspace")
-    for subdir in ("ipc", "pages", "deployments"):
+    for subdir in ("ipc", "pages", "deployments", "docker-client"):
         (directory / subdir).mkdir(parents=True, exist_ok=True, mode=0o700)
     artifact = directory / "deployments" / request["run_id"]
     artifact.mkdir()

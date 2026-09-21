@@ -117,6 +117,8 @@ def test_broker_dispatches_only_the_fixed_live_method(tmp_path, monkeypatch):
 def test_service_restart_preserves_detached_flight_and_cloud_web_has_no_docker_access():
     unit = MANAGER["unit_text"](Path("/home/ubuntu/drone-agent"), Path("/home/ubuntu/drone-agent/releases") / DEPLOYMENT, "ubuntu")
     assert "KillMode=process" in unit and "User=ubuntu" in unit and "Restart=on-failure" in unit
+    assert "Environment=DOCKER_CONFIG=/home/ubuntu/drone-agent/console/docker-client" in unit
+    assert "ProtectHome=read-only" in unit
     compose = yaml.safe_load((ROOT / "sim/compose.console.yaml").read_text())
     web = compose["services"]["console"]
     assert web["ports"] == ["127.0.0.1:8768:8768"]
@@ -259,3 +261,13 @@ def test_container_verification_checks_real_port_publication_and_network_members
             function(tmp_path, source_sha="a" * 40)
     else:
         assert function(tmp_path, source_sha="a" * 40)["published_ports"] == ports
+
+
+def test_cloud_entry_status_does_not_hide_different_runtime_revision(tmp_path, monkeypatch):
+    function = MANAGER["status"]
+    monkeypatch.setitem(function.__globals__, "read_json", lambda path: {"source_sha": "a" * 40, "origin": ORIGIN})
+    monkeypatch.setitem(function.__globals__, "serve_config", lambda: {})
+    monkeypatch.setitem(function.__globals__, "route_matches", lambda *_: True)
+    monkeypatch.setitem(function.__globals__, "command", lambda *_args, **_kwargs: SimpleNamespace(returncode=0))
+    monkeypatch.setitem(function.__globals__, "probe", lambda _origin: {"status": "ready", "console_source_sha": "a" * 40, "runtime_source_sha": "b" * 40})
+    assert function(tmp_path)["status"] == "unhealthy"

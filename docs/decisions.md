@@ -309,3 +309,5 @@ D024 的实施已完成并通过完整 SITL 验收，状态转为生效；D025 �
 **重估触发器**：访问者中出现只允许观看的成员、开启公网/Funnel、引入任意任务或真机时，重新决策应用身份与授权。依据：[Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve)、[Uvicorn](https://uvicorn.dev/)。
 
 **实施补充（2026-09-22）**：首次激活时，网页容器和机内代理均健康，但 Docker 对 `internal: true` 网络返回实际端口映射 `8768/tcp: null`，宿主回环入口不可达，激活已回退。网页入口改用独立的 `console_ingress` 桥接网络，宿主仍仅绑定回环；不连接仿真网络，SITL/guardian/executive 的内部网络保持原样。本阶段的网页网络边界是“独立入口网络 + 仅回环发布 + 私有 Serve”，不宣称网页容器完全禁止出站。部署同时检查声明端口与 Docker 的实际发布结果，不能只看 Compose 配置。
+
+**构建缓存补充（2026-09-22）**：首次经常驻代理启动任务时，Buildx 向用户的 `.docker/buildx/activity` 写缓存，被 `ProtectHome=read-only` 拒绝，尚未起飞。代理显式设置 `DOCKER_CONFIG` 到本项目 `console/docker-client/`，只允许本项目范围内的缓存写入；不放宽用户目录保护、不复制其他项目或用户的 Docker 凭据。
