@@ -36,7 +36,9 @@ docker compose ... exec -T sitl python3 /opt/drone-sim/smoke.py ... -> passed
 
 原始日志与 JUnit 保存在 `D:/drone-agent-m0/artifacts/`。启动日志含 SDF `gz_frame_id` 扩展提示及未连接 GCS 的预飞检查提示；本轮未验证解锁或起飞，也未为通过检查修改飞控失效保护。取证后已停止仿真容器，保留可复用镜像与产物。
 
-用户已明确授权清理本次临时资源。四个已退出、无挂载的探针容器 `drone-agent-m0-{proxycheck,toolchain-check,mirrorcheck,osrfcheck}` 已删除；`D:/drone-agent-m0/tools`（约 1 GB）的删除在授权后仍被自动审批审查以 `blocked by policy` 拒绝，目录继续保留，需用户手动删除。这些临时资源不影响 M0 验证结果。
+用户已明确授权清理本次临时资源。四个已退出、无挂载的探针容器 `drone-agent-m0-{proxycheck,toolchain-check,mirrorcheck,osrfcheck}` 已删除；`D:/drone-agent-m0/tools`（约 1 GB）的删除当时被自动审批审查以 `blocked by policy` 拒绝，目录保留。这些临时资源不影响 M0 验证结果。
+
+2026-09-22 用户确认后，`D:/drone-agent-m0/tools` 与本地传输缓存 `D:/drone-agent-cloud` 共 3,727 个文件、约 2.18 GiB 已移入 Windows 回收站，并核对可恢复；永久删除再次被自动审批审查拒绝，因此尚未释放这部分磁盘空间。清理前核对了 27 份 Git 源码包和 258 个云端原始文件，将 164 个回执、查看页及辅助文件归档并逐项校验，记录保存在本地 `outputs/cleanup-2026-09-22/`。M0 原始 `artifacts/`、原有项目 `outputs/`、Git 验收证据与云端产物保留；旧本地 8767/8768 演示服务已关闭，Tailnet 常驻入口仍返回 HTTP 200、运行版本仍为 `f0caa94`。
 
 embodied-agent 修改前 HEAD 为 `16ceae82a309fc511d6de9fd73b8fd32b281f1c5`，本批只追加文档重估记录，没有运行或改变其代码/仿真基线。
 
