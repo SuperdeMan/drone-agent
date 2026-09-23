@@ -44,7 +44,8 @@ uv run python scripts/dev_stack.py desk-cloud --status
 | 组件 | 运行方式 | 边界 |
 |---|---|---|
 | `desk` 页面 | Uvicorn 单进程 ASGI，0.4 CPU / 512 MiB | 只读根、属主 UID、无 capabilities；只发布 `127.0.0.1:8769`，独立 `desk_ingress` 网络；只读挂载 API 套接字目录与监管者公开状态；没有 Docker socket、SSH 密钥、签名私钥、模型 key 或飞控连接 |
-| `desk-service` 任务服务 | `fleet.main --planner auto`，0.5 CPU / 512 MiB | 只接入内部 `desk_uplink` 网络；签名私钥、服务证书与模型 key 只读挂载；账本、媒体与录制在 `~/drone-agent/desk/service/` |
+| `desk-service` 任务服务 | `fleet.main --planner auto`，0.5 CPU / 512 MiB | 只接入内部 `desk_uplink` 与 `desk_model` 网络，没有直接出站；签名私钥、服务证书与模型 key 只读挂载；账本、媒体与录制在 `~/drone-agent/desk/service/` |
+| `desk-model-proxy` 模型出站代理 | `fleet.model_proxy`，0.2 CPU / 128 MiB | D036：唯一接入可出站 `desk_egress` 网络的常驻容器；只为 `api.minimaxi.com:443` 建立 CONNECT 隧道，TLS 端到端，看不到内容与 key；其他目标一律拒绝并记录；不挂载任何目录 |
 | `desk-uplink` 机载 uplink | 0.3 CPU / 256 MiB | 只接入 `desk_uplink`，主动拨出 mTLS；只读挂载飞行产物；够不到 guardian 套接字 |
 | 仿真监管者 | systemd unit，工作区属主，`KillMode=process` | 只读 uplink 写入的已验签任务包，不接收网页或网络输入；飞行时持有项目锁；重启时接管进行中的飞行，不重飞 |
 | 飞行容器 | `desk-sitl` / `desk-collector` / `desk-guardian` / `desk-executive` / `desk-judge`，profile `flight` | 与端到端用例相同的网络与挂载：executive 无网络，guardian 只在仿真网络；不做故障注入 |

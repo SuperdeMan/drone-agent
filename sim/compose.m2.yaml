@@ -1,11 +1,14 @@
 # M2 end-to-end case (D031, WP-M2-18). Networks: `simulation` carries MAVLink and Gazebo only (sitl, collector,
-# guardian); `uplink` carries mTLS between the mission service and the onboard uplink only. The executive has no
-# network; the uplink mounts the flight artifacts read-only and never the guardian socket. No host ports.
-# Secrets are mounted read-only into the single container that needs each of them.
+# guardian); `uplink` carries mTLS between the mission service and the onboard uplink only; `model` connects the
+# mission service to `model-proxy`, the allowlisted CONNECT proxy that alone joins the outbound `egress` network
+# (D036), so live planning reaches only the model endpoint. The executive has no network; the uplink mounts the
+# flight artifacts read-only and never the guardian socket. No host ports. Secrets are mounted read-only into the
+# single container that needs each of them.
 #
 # M2 端到端用例（D031，WP-M2-18）。网络：`simulation` 只承载 MAVLink 与 Gazebo（sitl、collector、guardian）；
-# `uplink` 只承载任务服务与机载 uplink 之间的 mTLS。executive 无网络；uplink 只读挂载飞行产物，从不挂载
-# guardian 套接字。不发布宿主端口。每个密钥只读挂载到唯一需要它的容器。
+# `uplink` 只承载任务服务与机载 uplink 之间的 mTLS；`model` 连接任务服务与 `model-proxy`，后者是唯一接入可出站
+# `egress` 网络的允许列表 CONNECT 代理（D036），实调规划因此只能到达模型端点。executive 无网络；uplink 只读挂载
+# 飞行产物，从不挂载 guardian 套接字。不发布宿主端口。每个密钥只读挂载到唯一需要它的容器。
 name: drone-agent-cloud
 services:
   sitl:
@@ -51,6 +54,8 @@ services:
     environment:
       DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
       MINIMAX_API_KEY_FILE: /model/minimax.key
+      HTTPS_PROXY: http://model-proxy:3128
+      NO_PROXY: localhost,127.0.0.1
       PYTHONDONTWRITEBYTECODE: "1"
     command: [python3, -m, drone_agent.fleet.main, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
               --planner, "${DRONE_M2_PLANNER:?}", --fixtures, /input/planner-fixtures.json, --state, /state,
@@ -63,7 +68,24 @@ services:
       - ${DRONE_M2_SECRETS:?}/service-tls:/tls:ro
       - ${DRONE_M2_SECRETS:?}/approval-signing.key:/secrets/approval-signing.key:ro
       - ${DRONE_M2_MODEL:?}:/model:ro
-    networks: [uplink]
+    depends_on: [model-proxy]
+    networks: [uplink, model]
+  model-proxy:
+    image: ${DRONE_M2_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:size=8m"]
+    cpus: 0.2
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 32
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    command: [python3, -m, drone_agent.fleet.model_proxy, --listen, "0.0.0.0:3128", --allow, "api.minimaxi.com:443"]
+    networks: [model, egress]
   uplink:
     image: ${DRONE_M2_AIRCRAFT_IMAGE:?}
     pull_policy: never
@@ -149,3 +171,7 @@ networks:
     internal: true
   uplink:
     internal: true
+  model:
+    internal: true
+  egress:
+    driver: bridge

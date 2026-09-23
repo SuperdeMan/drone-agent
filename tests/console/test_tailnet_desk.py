@@ -37,11 +37,13 @@ def test_page_is_loopback_only_read_only_and_holds_no_secret_or_control_path():
     assert "--tailnet" in web["command"] and "--a2a-clients" not in web["command"]
 
 
-def test_residents_share_only_the_internal_uplink_network_and_mount_secrets_read_only():
+def test_residents_share_only_internal_networks_and_mount_secrets_read_only():
     services = COMPOSE["services"]
-    for name in ("desk-service", "desk-uplink"):
+    assert services["desk-service"]["networks"] == ["desk_uplink", "desk_model"]
+    assert services["desk-uplink"]["networks"] == ["desk_uplink"]
+    for name in ("desk-service", "desk-uplink", "desk-model-proxy"):
         service = services[name]
-        assert service["networks"] == ["desk_uplink"] and "ports" not in service and "profiles" not in service
+        assert "ports" not in service and "profiles" not in service
         assert service["read_only"] is True and service["cap_drop"] == ["ALL"]
     assert all(v.endswith(":ro") for v in services["desk-service"]["volumes"] if "SECRETS" in v or "MODEL" in v)
     assert services["desk-service"]["environment"]["MINIMAX_API_KEY_FILE"] == "/model/minimax.key"
@@ -53,6 +55,23 @@ def test_residents_share_only_the_internal_uplink_network_and_mount_secrets_read
     assert networks["desk_ingress"] == {"driver": "bridge"}
     text = (ROOT / "sim/compose.desk.yaml").read_text(encoding="utf-8")
     assert "secrets/m2" not in text and "docker.sock" not in text and ".ssh" not in text
+
+
+@pytest.mark.parametrize("path,proxy,service", [("sim/compose.desk.yaml", "desk-model-proxy", "desk-service"),
+                                               ("sim/compose.m2.yaml", "model-proxy", "mission-service")])
+def test_only_the_allowlisted_proxy_reaches_the_outbound_network(path, proxy, service):
+    compose = yaml.safe_load((ROOT / path).read_text(encoding="utf-8"))
+    prefix = "desk_" if "desk" in path else ""
+    egress, model = f"{prefix}egress", f"{prefix}model"
+    assert compose["networks"][egress] == {"driver": "bridge"} and compose["networks"][model] == {"internal": True}
+    on = {name: set(s.get("networks", [])) for name, s in compose["services"].items()}
+    assert [name for name, nets in on.items() if egress in nets] == [proxy]
+    assert sorted(name for name, nets in on.items() if model in nets) == sorted([proxy, service])
+    command = compose["services"][proxy]["command"]
+    assert [command[i + 1] for i, part in enumerate(command) if part == "--allow"] == ["api.minimaxi.com:443"]
+    assert "volumes" not in compose["services"][proxy] and "ports" not in compose["services"][proxy]
+    assert compose["services"][service]["environment"]["HTTPS_PROXY"] == f"http://{proxy}:3128"
+    assert compose["services"][service]["depends_on"] == [proxy]
 
 
 def test_flight_services_only_start_under_the_supervisor_profile_without_fault_injection():
@@ -107,22 +126,23 @@ def test_status_is_unhealthy_when_page_and_service_revisions_differ(tmp_path, mo
     assert function(tmp_path)["status"] == "ready"
 
 
-@pytest.mark.parametrize("defect", [None, "public", "extra_network", "writable_api", "root_user"])
+@pytest.mark.parametrize("defect", [None, "public", "extra_network", "writable_api", "root_user", "service_egress",
+                                    "proxy_mount"])
 def test_container_verification_reads_actual_publication_mounts_and_user(tmp_path, monkeypatch, defect):
     desk = SUP["Desk"](tmp_path)
     ports = {"8769/tcp": [{"HostIp": "127.0.0.1", "HostPort": "8769"}]}
 
     def container(service):
         web = service == "desk"
-        mounts = [("/api", desk.base / "api", False), ("/supervisor", desk.public, False)] if web else \
-            [("/state", desk.service, True)]
+        mounts = {"desk": [("/api", desk.base / "api", False), ("/supervisor", desk.public, False)],
+                  "desk-model-proxy": []}.get(service, [("/state", desk.service, True)])
         value = {
             "Id": service, "Image": "sha256:test", "State": {"Running": True},
             "Config": {"User": "1000:1001", "Labels": {"io.drone-agent.source-sha": "a" * 40}},
             "HostConfig": {"PortBindings": copy.deepcopy(ports) if web else {}, "ReadonlyRootfs": True,
                            "Privileged": False, "CapDrop": ["ALL"]},
             "NetworkSettings": {"Ports": copy.deepcopy(ports) if web else {},
-                                "Networks": {"drone-agent-cloud_desk_ingress" if web else "drone-agent-cloud_desk_uplink": {}}},
+                                "Networks": {f"drone-agent-cloud_{name}": {} for name in DESK["NETWORKS"][service]}},
             "Mounts": [{"Destination": d, "Source": str(s), "RW": rw, "Type": "bind"} for d, s, rw in mounts],
         }
         if web and defect == "public":
@@ -133,6 +153,10 @@ def test_container_verification_reads_actual_publication_mounts_and_user(tmp_pat
             value["Mounts"][0]["RW"] = True
         if service == "desk-uplink" and defect == "root_user":
             value["Config"]["User"] = ""
+        if service == "desk-service" and defect == "service_egress":
+            value["NetworkSettings"]["Networks"]["drone-agent-cloud_desk_egress"] = {}
+        if service == "desk-model-proxy" and defect == "proxy_mount":
+            value["Mounts"] = [{"Destination": "/secrets", "Source": str(desk.secrets), "RW": False, "Type": "bind"}]
         return value
 
     def command(argv, **_kwargs):
@@ -147,7 +171,7 @@ def test_container_verification_reads_actual_publication_mounts_and_user(tmp_pat
         with pytest.raises(ValueError):
             function(desk, "a" * 40)
     else:
-        assert set(function(desk, "a" * 40)) == {"desk-service", "desk-uplink", "desk"}
+        assert set(function(desk, "a" * 40)) == {"desk-model-proxy", "desk-service", "desk-uplink", "desk"}
 
 
 # ── the simulation supervisor / 仿真监管者 ──

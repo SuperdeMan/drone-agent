@@ -36,7 +36,10 @@ MARKER = "# Managed by drone-agent D035"
 HTTPS_PORT = 8448
 LISTENER = "127.0.0.1:8769"
 BACKEND = "http://" + LISTENER
-RESIDENTS = ("desk-service", "desk-uplink", "desk")
+RESIDENTS = ("desk-model-proxy", "desk-service", "desk-uplink", "desk")
+# The approved topology (D035, D036): only the model proxy joins the outbound network. / 只有模型代理接入出站网络。
+NETWORKS = {"desk": {"desk_ingress"}, "desk-service": {"desk_uplink", "desk_model"}, "desk-uplink": {"desk_uplink"},
+            "desk-model-proxy": {"desk_model", "desk_egress"}}
 command, serve_config, fingerprint, read_json = (CONSOLE["command"], CONSOLE["serve_config"], CONSOLE["fingerprint"],
                                                  CONSOLE["read_json"])
 
@@ -156,21 +159,20 @@ def inspect_desk(desk, source_sha: str) -> dict:
         mounts = {m["Destination"]: (m["Source"], m["RW"]) for m in details["Mounts"] if m["Type"] == "bind"}
         if any("docker.sock" in source or "/.ssh" in source for source, _ in mounts.values()):
             raise ValueError(f"{service} mounts a host control path")
+        if networks != {f"{project}_{name}" for name in NETWORKS[service]}:
+            raise ValueError(f"{service} networks differ from the approved topology")
         if service == "desk":
             ports = {"8769/tcp": [{"HostIp": "127.0.0.1", "HostPort": "8769"}]}
             if host.get("PortBindings") != ports or details["NetworkSettings"].get("Ports") != ports:
                 raise ValueError("desk public binding differs")
-            if networks != {f"{project}_desk_ingress"}:
-                raise ValueError("desk must use only its dedicated ingress network")
             if mounts != {"/api": (str(desk.base / "api"), False), "/supervisor": (str(desk.public), False)}:
                 raise ValueError("desk mounts differ from the approved scope")
             if (config.get("Labels") or {}).get("io.drone-agent.source-sha") != source_sha:
                 raise ValueError("desk container revision differs")
-        else:
-            if host.get("PortBindings") or details["NetworkSettings"].get("Ports"):
-                raise ValueError(f"{service} must not publish ports")
-            if networks != {f"{project}_desk_uplink"}:
-                raise ValueError(f"{service} must use only the internal uplink network")
+        elif host.get("PortBindings") or details["NetworkSettings"].get("Ports"):
+            raise ValueError(f"{service} must not publish ports")
+        if service == "desk-model-proxy" and mounts:
+            raise ValueError("the model proxy mounts nothing")
         found[service] = {"container_id": details["Id"], "image_id": details["Image"], "user": config["User"],
                           "networks": sorted(networks), "read_only": True, "docker_access": False}
     return found

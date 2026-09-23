@@ -166,7 +166,7 @@ def run_case(root, source, base, images, keys, sha, run_id, planner, scenario, s
                         "python3", "-m", "drone_agent.eval.m2_prepare", "--output", "/input", "--scenario",
                         scenario["id"], "--seed", str(seed), "--sha", sha])
         metadata = json.loads((case / "input/scenario.json").read_text())
-        compose("stop", "executive", "guardian", "uplink", "mission-service", "collector", check=False)
+        compose("stop", "executive", "guardian", "uplink", "mission-service", "model-proxy", "collector", check=False)
         compose("up", "-d", "--no-build", "--pull", "never", "--force-recreate", "sitl")
         compose("up", "-d", "--no-build", "--pull", "never", "--force-recreate", "collector")
         wait(lambda: (case / "sensor/latest.json").exists(), 100, "Gazebo RGB frame")
@@ -185,7 +185,7 @@ def run_case(root, source, base, images, keys, sha, run_id, planner, scenario, s
         (case / "service-export/view.json").write_text(json.dumps(view, ensure_ascii=False, indent=2))
         (case / "service-export/robots.json").write_text(json.dumps(api("robots"), indent=2))
         save_sitl_log(case, compose, "sitl.log")
-        compose("stop", "-t", "5", "uplink", "mission-service", "collector")
+        compose("stop", "-t", "5", "uplink", "mission-service", "model-proxy", "collector")
         compose("stop", "-t", "10", "sitl")
         judged = compose("run", "-T", "--no-deps", "judge", timeout=120, check=False)
         path = case / "judge/result.json"
@@ -202,7 +202,7 @@ def run_case(root, source, base, images, keys, sha, run_id, planner, scenario, s
         return result
     except Exception as error:
         compose("logs", "--no-color", "--tail", "200", check=False)
-        compose("stop", "-t", "5", "executive", "guardian", "uplink", "mission-service", "collector", check=False)
+        compose("stop", "-t", "5", "executive", "guardian", "uplink", "mission-service", "model-proxy", "collector", check=False)
         return {"passed": False, "error": str(error), "scenario": scenario["id"], "seed": seed}
 
 
