@@ -87,7 +87,11 @@ mission_defaults:
   home_ref: home_v1
   return_route_id: return
   landing_site_id: home_pad
-  energy_budget: {max_consumption_fraction: 0.75, reserve_fraction: 0.2}
+  # 0.78 + 0.2 reserve leaves 2 % slack for battery rounding at takeoff; the SITL battery drains ~1.45 %/s,
+  # so a single-asset inspection (conservative 0.77) fits and a two-asset one (0.97) does not (D034).
+  # 0.78 加 0.2 余量为起飞时的电量取整留 2% 裕度；SITL 电池约每秒放电 1.45%，单资产巡检（保守 0.77）可行，
+  # 双资产（0.97）不可行（D034）。
+  energy_budget: {max_consumption_fraction: 0.78, reserve_fraction: 0.2}
   min_reserve_fraction: 0.2
   window_minutes: 30
   max_window_minutes: 120

@@ -103,6 +103,8 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "resource.conflict": IssueLayer.ADMISSION,
     "approval.unverified_edge_requires_human": IssueLayer.ADMISSION,
     "policy.recovery_mismatch": IssueLayer.ADMISSION,
+    "package.hash_mismatch": IssueLayer.ADMISSION,
+    "package.boundary_missing": IssueLayer.ADMISSION,
     # Approval and replanning / 审批与重规划
     "approval.identity_missing": IssueLayer.APPROVAL,
     "approval.stale_version": IssueLayer.APPROVAL,
