@@ -1,0 +1,27 @@
+{
+  "schema_version": "0.1.0",
+  "runs": [
+    {
+      "source_sha": "dd0b3ff59b188a4bf420c394e64606028f4fb3a5",
+      "deployment_id": "20260923T110825Z-b4415905",
+      "mission_id": "m-b3be8247a874",
+      "request": "red marker (seed 19 text)",
+      "result": "completed, judge passed, false success 0, replay agrees"
+    },
+    {
+      "source_sha": "dd0b3ff59b188a4bf420c394e64606028f4fb3a5",
+      "deployment_id": "20260923T110825Z-b4415905",
+      "mission_id": "m-2f6e5877b667",
+      "request": "blue marker with a page and supervisor restart in flight",
+      "result": "completed, flight adopted after the restart, judge passed; the probe itself crashed on reconnect (handshake rejected while the page restarted) and was fixed in b9cf00c"
+    },
+    {
+      "source_sha": "dd0b3ff59b188a4bf420c394e64606028f4fb3a5",
+      "deployment_id": "20260923T110825Z-b4415905",
+      "mission_id": "m-a41867836402",
+      "request": "blue marker with pause at return_home",
+      "result": "completed, judge passed; the page offered pause but the guardian rejected it (operator_rejected guardian_rejected): no step of an M2 inspection package is pausable in its manifest; fixed in 5dffbd7 by applying the manifest rule in the service"
+    }
+  ],
+  "not_counted": "these runs belong to the development revision and are not the acceptance evidence of b9cf00c"
+}

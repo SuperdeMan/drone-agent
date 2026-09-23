@@ -63,6 +63,6 @@ uv run python scripts/desk_probe.py session --origin <origin> --text "<请求>" 
 uv run python scripts/desk_probe.py session --origin <origin> --text "<请求>" --asset asset_red --approve --cancel-step inspect_asset_red
 ```
 
-探针按页面相同的 hri.v0 协议驱动任务并记录服务、监管者与裁判报告的内容，回执对 tailnet 主机名与操作者登录名脱敏；它本身不做判定。
+探针按页面相同的 hri.v0 协议驱动任务并记录服务、监管者与裁判报告的内容，回执对 tailnet 主机名与操作者登录名脱敏；它本身不做判定。`watch --mission <任务ID>` 可接上已有任务直到裁判结果公布。当前版本与验收结果见 [任务台验收记录](tailnet-desk-readiness.md)。
 
 如果以后出现只读成员、多角色、A2A 调用方、公网访问、并发飞行或真机，需要按 D035 的重估触发器重新决定身份、授权与部署。

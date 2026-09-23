@@ -1,0 +1,577 @@
+{
+  "schema_version": "0.1.0",
+  "probe": "session",
+  "hello": {
+    "identity_scheme": "tailnet",
+    "can_write": true,
+    "planner": "scripted"
+  },
+  "host_states": [
+    {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "b9cf00cccc99411d6676643fe4fa70a6b6d25042",
+      "updated_at": "2026-09-23T11:36:45.476499+00:00"
+    },
+    {
+      "schema_version": "0.1.0",
+      "state": "preparing",
+      "mission_id": "m-5c9319d2718a",
+      "version": 1,
+      "detail": "booting a fresh flight controller (battery swap) and waiting for PX4 home",
+      "queue": [],
+      "source_sha": "b9cf00cccc99411d6676643fe4fa70a6b6d25042",
+      "updated_at": "2026-09-23T11:37:58.546799+00:00"
+    },
+    {
+      "schema_version": "0.1.0",
+      "state": "flying",
+      "mission_id": "m-5c9319d2718a",
+      "version": 1,
+      "detail": "epoch 4",
+      "queue": [],
+      "source_sha": "b9cf00cccc99411d6676643fe4fa70a6b6d25042",
+      "updated_at": "2026-09-23T11:38:47.413691+00:00"
+    },
+    {
+      "schema_version": "0.1.0",
+      "state": "restoring",
+      "mission_id": "m-5c9319d2718a",
+      "version": 1,
+      "detail": null,
+      "queue": [],
+      "source_sha": "b9cf00cccc99411d6676643fe4fa70a6b6d25042",
+      "updated_at": "2026-09-23T11:39:32.298552+00:00"
+    },
+    {
+      "schema_version": "0.1.0",
+      "state": "judging",
+      "mission_id": "m-5c9319d2718a",
+      "version": 1,
+      "detail": null,
+      "queue": [],
+      "source_sha": "b9cf00cccc99411d6676643fe4fa70a6b6d25042",
+      "updated_at": "2026-09-23T11:39:39.470359+00:00"
+    },
+    {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "b9cf00cccc99411d6676643fe4fa70a6b6d25042",
+      "updated_at": "2026-09-23T11:40:13.863155+00:00"
+    }
+  ],
+  "timeline": [
+    {
+      "t": 0.3,
+      "status": "awaiting_approval",
+      "versions": [
+        [
+          1,
+          "awaiting_approval"
+        ]
+      ],
+      "live": null,
+      "cloud": [],
+      "judge": null
+    },
+    {
+      "t": 0.4,
+      "status": "queued",
+      "versions": [
+        [
+          1,
+          "queued"
+        ]
+      ],
+      "live": null,
+      "cloud": [],
+      "judge": null
+    },
+    {
+      "t": 1.3,
+      "status": "delivered",
+      "versions": [
+        [
+          1,
+          "delivered"
+        ]
+      ],
+      "live": null,
+      "cloud": [],
+      "judge": null
+    },
+    {
+      "t": 2.3,
+      "status": "delivered",
+      "versions": [
+        [
+          1,
+          "delivered"
+        ]
+      ],
+      "live": null,
+      "cloud": [
+        [
+          1,
+          "preparing"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 50.5,
+      "status": "delivered",
+      "versions": [
+        [
+          1,
+          "delivered"
+        ]
+      ],
+      "live": null,
+      "cloud": [
+        [
+          1,
+          "flying"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 52.5,
+      "status": "running",
+      "versions": [
+        [
+          1,
+          "running"
+        ]
+      ],
+      "live": [
+        "takeoff",
+        "running",
+        [
+          "cancel"
+        ]
+      ],
+      "cloud": [
+        [
+          1,
+          "flying"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 62.5,
+      "status": "running",
+      "versions": [
+        [
+          1,
+          "running"
+        ]
+      ],
+      "live": [
+        "inspect_asset_red",
+        "running",
+        [
+          "cancel"
+        ]
+      ],
+      "cloud": [
+        [
+          1,
+          "flying"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 71.7,
+      "status": "running",
+      "versions": [
+        [
+          1,
+          "running"
+        ]
+      ],
+      "live": [
+        "return_home",
+        "running",
+        [
+          "cancel"
+        ]
+      ],
+      "cloud": [
+        [
+          1,
+          "flying"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 80.7,
+      "status": "running",
+      "versions": [
+        [
+          1,
+          "running"
+        ]
+      ],
+      "live": [
+        "land",
+        "running",
+        [
+          "cancel"
+        ]
+      ],
+      "cloud": [
+        [
+          1,
+          "flying"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 94.0,
+      "status": "completed",
+      "versions": [
+        [
+          1,
+          "finished"
+        ]
+      ],
+      "live": null,
+      "cloud": [
+        [
+          1,
+          "flying"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 103.1,
+      "status": "completed",
+      "versions": [
+        [
+          1,
+          "finished"
+        ]
+      ],
+      "live": null,
+      "cloud": [
+        [
+          1,
+          "finished"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 137.3,
+      "status": "completed",
+      "versions": [
+        [
+          1,
+          "finished"
+        ]
+      ],
+      "live": null,
+      "cloud": [
+        [
+          1,
+          "finished"
+        ]
+      ],
+      "judge": true
+    }
+  ],
+  "errors": [],
+  "sent": [
+    {
+      "t": 0.3,
+      "action": "approve",
+      "version": 1
+    }
+  ],
+  "reconnects": 0,
+  "planning_s": 0.3,
+  "duration_s": 137.4,
+  "media": [
+    {
+      "evidence_id": "image:5b0bab6ea0b51744109d4cabc09ea0e5a50e1a9e8a165bc057ccc1bf37bd7462",
+      "png_data_uri_bytes": 2038,
+      "sha256": "7077a3e349a9d8c3c9c8cd4c406f4bcb0bbdd361bb7135ce331d6ab7cd92aa87"
+    }
+  ],
+  "mission": {
+    "mission_id": "m-5c9319d2718a",
+    "status": "completed",
+    "replans": 0,
+    "request": {
+      "text": "检查起飞点东侧的红色设备标记，带回一张清晰照片。",
+      "channel": "console",
+      "requested_by": "tailnet:<operator>",
+      "approved_volume_id": "campus_training",
+      "asset_ids": []
+    },
+    "versions": [
+      {
+        "version": 1,
+        "status": "finished",
+        "origin": "console",
+        "package_hash": "0ae51b36ee459a0a7e52825a61298a5302b07227ba4906ab1ecdc8c82e9527d4",
+        "planner": {
+          "status": "planned",
+          "provider_id": "scripted",
+          "model_id": "scripted-fixture",
+          "prompt_version": "planner-v1",
+          "input_hash": "997f07aefc7352bcd5c3998528bafa180bb58b7fc09015e7a16540edcd407f03",
+          "decline_reason": "",
+          "notes": "",
+          "attempts": 1,
+          "channels": [
+            "toolcall"
+          ]
+        },
+        "admission": {
+          "accepted": true,
+          "codes": [],
+          "energy_upper_fraction": 0.7696,
+          "checks": [
+            {
+              "check": "hash",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "boundaries",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "recovery_policy",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "capability",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "params",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "spatial",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "order_and_resources",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "time",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "energy",
+              "detail": "upper=0.7696",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "airspace",
+              "detail": "simulated_unfiled",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "unverified_edges",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            }
+          ]
+        },
+        "approval": {
+          "approver": "tailnet:<operator>",
+          "approved_at": "2026-09-23T11:37:57.600054Z",
+          "expires_at": "2026-09-23T12:07:57.560867Z",
+          "signer_key_id": "ed25519:6563c47cfafa2a22"
+        },
+        "journals": {
+          "executive": {
+            "rows": 34,
+            "chain": "ok"
+          },
+          "guardian": {
+            "rows": 23,
+            "chain": "ok"
+          }
+        },
+        "decision": {
+          "blocked_at": null,
+          "codes": [],
+          "collaboration": []
+        }
+      }
+    ],
+    "operations": [],
+    "report": {
+      "all_targets_completed": true,
+      "facts": [],
+      "generated_at": "2026-09-23T11:39:30.427181Z",
+      "mission_id": "m-5c9319d2718a",
+      "rows": [
+        {
+          "column": "completed",
+          "effect_verdict": "verified",
+          "execution_status": "succeeded",
+          "mission_version": 1,
+          "reason": "",
+          "schema_version": "0.1.0",
+          "service_verdict": null,
+          "skill_id": "skill.flight.takeoff",
+          "step_id": "takeoff",
+          "target": null
+        },
+        {
+          "column": "completed",
+          "effect_verdict": "verified",
+          "execution_status": "succeeded",
+          "mission_version": 1,
+          "reason": "",
+          "schema_version": "0.1.0",
+          "service_verdict": "verified",
+          "skill_id": "skill.inspect.asset",
+          "step_id": "inspect_asset_red",
+          "target": "asset_red"
+        },
+        {
+          "column": "completed",
+          "effect_verdict": "verified",
+          "execution_status": "succeeded",
+          "mission_version": 1,
+          "reason": "",
+          "schema_version": "0.1.0",
+          "service_verdict": null,
+          "skill_id": "skill.flight.return_home",
+          "step_id": "return_home",
+          "target": null
+        },
+        {
+          "column": "completed",
+          "effect_verdict": "verified",
+          "execution_status": "succeeded",
+          "mission_version": 1,
+          "reason": "",
+          "schema_version": "0.1.0",
+          "service_verdict": null,
+          "skill_id": "skill.flight.land",
+          "step_id": "land",
+          "target": null
+        }
+      ],
+      "schema_version": "0.1.0",
+      "summary": {
+        "completed": 1,
+        "not_completed": 0,
+        "uncertain": 0
+      },
+      "targets": {
+        "asset_red": "completed"
+      },
+      "versions": [
+        1
+      ]
+    },
+    "evidence": [
+      {
+        "evidence_id": "image:5b0bab6ea0b51744109d4cabc09ea0e5a50e1a9e8a165bc057ccc1bf37bd7462",
+        "version": 1,
+        "step_id": "inspect_asset_red",
+        "sha256": "5b0bab6ea0b51744109d4cabc09ea0e5a50e1a9e8a165bc057ccc1bf37bd7462",
+        "verification": {
+          "agrees": true,
+          "checks": {
+            "distance": "ok",
+            "media": "ok",
+            "pose": "ok",
+            "quality": "ok",
+            "target": "ok",
+            "time_window": "ok"
+          },
+          "evidence_id": "image:5b0bab6ea0b51744109d4cabc09ea0e5a50e1a9e8a165bc057ccc1bf37bd7462",
+          "final_verdict": "verified",
+          "mission_id": "m-5c9319d2718a",
+          "mission_version": 1,
+          "onboard_verdict": "verified",
+          "schema_version": "0.1.0",
+          "service_verdict": "verified",
+          "step_id": "inspect_asset_red",
+          "verified_at": "2026-09-23T11:39:08.608483Z"
+        }
+      }
+    ],
+    "issues": [],
+    "facts": [],
+    "cloud": {
+      "schema_version": "0.1.0",
+      "mission_id": "m-5c9319d2718a",
+      "flights": [
+        {
+          "version": 1,
+          "status": "finished",
+          "epoch": 4,
+          "started_at": "2026-09-23T11:37:58.545881+00:00",
+          "ended_at": "2026-09-23T11:39:39.461444+00:00",
+          "detail": null,
+          "manual_cleanup": false
+        }
+      ],
+      "judge": {
+        "classification": "completed",
+        "false_success_reports": 0,
+        "problems": [],
+        "flown_versions": [
+          1
+        ],
+        "truly_inspected": [
+          "asset_red"
+        ],
+        "report_targets": {
+          "asset_red": "completed"
+        },
+        "judged_at": "2026-09-23T11:39:54.662637+00:00",
+        "error": null,
+        "passed": true,
+        "replay_agrees": true,
+        "after_version": 1,
+        "case": "judge/m-5c9319d2718a/after-v1"
+      }
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": "0.1.0",
+  "probe": "http",
+  "page": {
+    "status": 200,
+    "desk_page": true,
+    "csp_names_socket_origin": true
+  },
+  "script": {
+    "status": 200,
+    "matches_checkout": true
+  },
+  "health": {
+    "status": 200,
+    "ok": true,
+    "service": "ready",
+    "planner": "scripted",
+    "signer_key_id": "ed25519:6563c47cfafa2a22",
+    "console_source_sha": "b9cf00cccc99411d6676643fe4fa70a6b6d25042",
+    "service_source_sha": "b9cf00cccc99411d6676643fe4fa70a6b6d25042",
+    "supervisor_state": "idle"
+  },
+  "agent_card": {
+    "status": 200,
+    "skills": [
+      "mission.submit",
+      "mission.read"
+    ]
+  },
+  "a2a_without_token": {
+    "status": 401,
+    "error": "auth.token_invalid"
+  },
+  "a2a_unknown_token": {
+    "status": 401,
+    "error": "auth.token_invalid"
+  },
+  "cross_origin_websocket": {
+    "accepted": false,
+    "rejected_status": 403
+  }
+}

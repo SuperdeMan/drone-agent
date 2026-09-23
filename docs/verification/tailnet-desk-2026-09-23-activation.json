@@ -1,0 +1,86 @@
+{
+  "status": "verified",
+  "source_sha": "b9cf00cccc99411d6676643fe4fa70a6b6d25042",
+  "control_sha256": "0475da8dad21a8916f3cb41975a96029c08910ae76ef69652d55843f7087160d",
+  "deployment_id": "20260923T113254Z-bb8c2a70",
+  "origin": "https://<tailnet-host>:8448",
+  "listener": "127.0.0.1:8769",
+  "images": {
+    "sim": "drone-agent-m2-sim:b9cf00cccc99411d6676643fe4fa70a6b6d25042-0475da8dad21",
+    "aircraft": "drone-agent-m1-aircraft:b9cf00cccc99411d6676643fe4fa70a6b6d25042-0475da8dad21",
+    "ground": "drone-agent-m1-ground:b9cf00cccc99411d6676643fe4fa70a6b6d25042-0475da8dad21"
+  },
+  "planner": "scripted",
+  "signer_key_id": "ed25519:6563c47cfafa2a22",
+  "certificate_fingerprints": {
+    "ca": "c0e1bca164a5817a5aa477738aa5a340a24da6e3722f2ed9a57c3341792af2e5",
+    "service": "fcac24effa0c96900d7a9b48ca2dbfbb94f28c29d094f0944aa33d5b94d1a206",
+    "robot": "74f38d4714bbcc1ac0653581c1ef3b1b59a7b13b3cf00b3faaa37dd24bbd1a3e"
+  },
+  "planner_label": "scripted",
+  "health": {
+    "ok": true,
+    "result": {
+      "status": "ready",
+      "signer_key_id": "ed25519:6563c47cfafa2a22",
+      "robot_id": "uav_01",
+      "planner": "scripted",
+      "source_sha": "b9cf00cccc99411d6676643fe4fa70a6b6d25042"
+    },
+    "console_source_sha": "b9cf00cccc99411d6676643fe4fa70a6b6d25042",
+    "supervisor": {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "b9cf00cccc99411d6676643fe4fa70a6b6d25042",
+      "updated_at": "2026-09-23T11:36:45.476499+00:00"
+    }
+  },
+  "funnel": false,
+  "containers": {
+    "desk-service": {
+      "container_id": "94e776b968515efe588aab10b0d6b03de49f73ffb9a357405fd4e341f25f7482",
+      "image_id": "sha256:feb90e17b6be70eea4b7283759ce492449cf672f5932cabf6024109c677464ad",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-uplink": {
+      "container_id": "8943574451f4e13759f88ab0dad0e6345494176a2ba54eb523cd68326bf0ae75",
+      "image_id": "sha256:956c790ab027d8e612b3c66adb95e0808e859a270cddd6cd6def0b4963b4a28f",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk": {
+      "container_id": "8016bfa5d64535c662c3c5034f26a7e95857bc9666ea73e570786c1b46104ca9",
+      "image_id": "sha256:feb90e17b6be70eea4b7283759ce492449cf672f5932cabf6024109c677464ad",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_ingress"
+      ],
+      "read_only": true,
+      "docker_access": false
+    }
+  },
+  "other_serve_before_sha256": "349f04197a2a7e4747c39ec22a20f21bd45708ae3c2d9f8a12dd0164fe16b28b",
+  "other_serve_after_sha256": "349f04197a2a7e4747c39ec22a20f21bd45708ae3c2d9f8a12dd0164fe16b28b",
+  "other_containers_before": {
+    "count": 30,
+    "sha256": "ee5a3cf695169f83be9d509783e8d853e00b34c650e602781461eea8222cbd5a"
+  },
+  "other_containers_after": {
+    "count": 30,
+    "sha256": "ee5a3cf695169f83be9d509783e8d853e00b34c650e602781461eea8222cbd5a"
+  },
+  "supervisor_unit_sha256": "df80a2968b219cc9814a3e86b6f51b9d6609279aa3586572e48219132aa298b2"
+}
