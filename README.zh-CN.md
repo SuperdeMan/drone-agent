@@ -53,7 +53,7 @@ uv run python scripts/dev_stack.py verify
 uv run python scripts/dev_stack.py test
 ```
 
-固定仿真控制台可常驻云端，通过 Tailscale Serve 私网访问，不另设应用登录页。运行 `uv run python scripts/dev_stack.py console-cloud --status` 获取私有 HTTPS 地址，部署和访问边界见 [Tailnet 控制台指南](docs/tailnet-console.md)。原本机桥仍可通过 `uv run python scripts/dev_stack.py console` 在 <http://127.0.0.1:8768> 使用。两个入口都展示机载遥测与相机画面，暂停/恢复/取消经过既有 executive 通道。这是 M1 人工入口。M2 任务台（hri.v0 控制台与 A2A 网关）可在本机运行：`uv run python -m drone_agent.console.mission --local`（<http://127.0.0.1:8769>），提交、规划、准入、审批与签名在进程内完成，飞行只在云端（D023）；它尚未接入 Tailnet 常驻入口。
+固定仿真控制台可常驻云端，通过 Tailscale Serve 私网访问，不另设应用登录页。运行 `uv run python scripts/dev_stack.py console-cloud --status` 获取私有 HTTPS 地址，部署和访问边界见 [Tailnet 控制台指南](docs/tailnet-console.md)。原本机桥仍可通过 `uv run python scripts/dev_stack.py console` 在 <http://127.0.0.1:8768> 使用。两个入口都展示机载遥测与相机画面，暂停/恢复/取消经过既有 executive 通道。这是 M1 人工入口。M2 任务台（hri.v0 控制台与 A2A 网关）可在本机运行：`uv run python -m drone_agent.console.mission --local`（<http://127.0.0.1:8769>），提交、规划、准入、审批与签名在进程内完成，飞行只在云端（D023）。它也可常驻云端，经独立的 Tailscale Serve 端口访问（D035）：`uv run python scripts/dev_stack.py desk-cloud --status` 返回私有地址；批准的任务由持有项目锁的监管者在云端仿真中飞行，每个结束的任务都用仿真真值独立裁判。见 [任务台指南](docs/tailnet-desk.md)。
 
 [版本限定的实时入口验收](docs/live-console-readiness.md) 记录云端运行版本、本机界面版本、8 轮 HTTP 实时验证和 18 组 M1 回归子集。原有 66 组 M1 基线仍只属于 `eefe76e`。
 

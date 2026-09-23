@@ -45,6 +45,7 @@
 - 实时体验（D027）：`uv run python scripts/dev_stack.py console`，浏览器访问 `http://127.0.0.1:8768`，操作云端固定 M1 仿真；只允许开始、暂停、恢复、取消，走 executive 通道，不能直达飞控。见 [实时指南](docs/live-simulation.md)。这不是完整 M2 控制台；新提交验证不能转借历史 M1 的 66/66。
 - M2 端到端（D029–D034）：`dev_stack.py m2 --scenario all --seeds 7,19,41` 在云端跑自然语言 → 审批签名 → mTLS 上行 → 飞行 → 报告的 6 场景；默认脚本规划回答只证明链路，不计模型行为；`m2-key --apply` 把本机环境里的 `MINIMAX_API_KEY` 写入云端项目 secrets 供 `--planner live`。M2 是否关闭只看 `scripts/verify_m2_release.py`（同一 commit 的检查、对抗语料、E2E、M1 回归与实调基线）。本机任务台 `python -m drone_agent.console.mission --local` 只规划与签名、不飞。见 [M2 验收记录](docs/m2-readiness.md)。
 - 云端常驻入口（D028）：`dev_stack.py console-cloud` 只读计划，`--apply` 激活本项目代理 unit、受限网页容器及独立 Serve `8447` 映射，`--status` 返回入口。网络准入交给既有 Tailscale，不新增登录页、不启用 Funnel、不改变其他应用映射或 ACL；见 [Tailnet 指南](docs/tailnet-console.md)。
+- M2 任务台常驻入口（D035）：`dev_stack.py desk-cloud` 只读计划，`--apply` 构建该版本 M2 镜像、激活 `desk*` 常驻容器、仿真监管者 unit 与独立 Serve `8448` 映射，`--status` 返回入口；写入或更换模型 key 后需重新 `--apply`。批准的任务由监管者持项目锁在仿真中飞行，任务终态后在线 / 回放独立裁判。验收用 `scripts/desk_probe.py` 经真实 Tailnet HTTPS 进行；见 [任务台指南](docs/tailnet-desk.md)。
 
 ## 已知环境约束
 

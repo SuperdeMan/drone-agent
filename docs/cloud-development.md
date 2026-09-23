@@ -100,6 +100,8 @@ uv run python scripts/m2_baseline.py --output docs/verification/m2-baseline-<日
 
 没有给出价格来源时费用记为 unpriced。基线以 `HEAD` 记录软件版本，门禁要求所有判据来自同一 commit；要给已验证过的候选补基线，在该候选的独立工作树里运行（步骤见 [M2 验收记录](m2-readiness.md#复现与审计)）。门禁输入哈希按字节计算、仓库按 LF 存储，门禁拒收 CRLF 输入。
 
+常驻任务台（D035）：`dev_stack.py desk-cloud` 只读计划，`--apply` 构建当前部署版本的 M2 镜像、在 `secrets/desk/` 生成任务台自己的信任根、启动 `desk` / `desk-service` / `desk-uplink` 并安装仿真监管者 unit，新增 Serve `8448` 映射；`--status` 返回入口与监管者状态。批准的任务由监管者持项目锁飞行，所以任务台飞行与部署、M1 / M2 批次及 D028 运行互斥，排队时页面显示「等待云端工作区」。使用与边界见 [任务台指南](tailnet-desk.md)。
+
 本机任务台 `uv run python -m drone_agent.console.mission --local` 在 <http://127.0.0.1:8769> 提供 hri.v0 控制台和进程内任务服务：提交、规划、准入、审批与签名都在本机完成，没有机器人连接，不起飞（D023）；有 `MINIMAX_API_KEY` 时实调规划，否则只回答 M2 场景集中的请求原文，页面标明所用规划器。M2 是否关闭只看 `scripts/verify_m2_release.py`：在同一 commit 上核对云端检查、对抗语料、E2E、M1 完整回归与实调基线，缺证据的判据记为 missing。
 
 ## 查看与人工核对结果

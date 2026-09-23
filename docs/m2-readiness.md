@@ -88,7 +88,7 @@
 - **规划器**：本轮云端端到端全部使用 `m2_prepare` 生成的脚本回答（`drone.planner.scripted/v1`，文件内注明「hand-written test double, not model output」，规划记录中的模型 ID 为 `scripted-fixture`）。它验证的是服务、编译、准入、审批、签名、上行、机载复核、飞行、证据与报告这条链路，以及「被骗模型之后仍被拦住」；它不代表 MiniMax-M3 的规划质量，也不计入准入率基线。实调路径（`dev_stack.py m2-key --apply` 后 `m2 --planner live`、`m2_baseline.py`、`adversarial --mode live`）已实现并有无密钥时明确拒绝的测试，但没有真实运行记录。
 - **审批人**：端到端用例的人工审批由编排身份 `harness:m2-<run>-<case>` 完成，重试版本由 `policy:m2_approval@v1` 自动批准；二者都如实写入审批记录与签名陈述，不冒充人工操作者。控制台审批路径（tailnet 身份、`package_hash` 绑定、审批后改包机载拒收）由测试覆盖。
 - **地勤换电**：同一 SITL 会话中二次起飞既受我们自己的起飞前置条件约束（`energy_budget_feasible` 要求电量不低于最大消耗 + 余量），也曾触发 PX4 电池仿真停止发布后锁存的「Battery unhealthy」。编排在新任务版本前执行一次「落地上锁 → 换电（飞控断电重启）」，写入 `ground-crew-v<n>.json`；伴飞计算机上的代次水位与已接受版本不随之重置，新版本仍须在地面、以更高代次接管。
-- **控制台部署**：控制台 v0 与 A2A 已实现，可在本机任务台（`console.mission --local`）使用；它尚未接入 D028 的 Tailnet 常驻入口（那需要常驻 mission-service / uplink 与按需飞行代理，应按 D028 的流程单独部署与验收）。
+- **控制台部署**：控制台 v0 与 A2A 已实现，可在本机任务台（`console.mission --local`）使用。常驻 Tailnet 入口（常驻任务服务、uplink 与按需飞行的仿真监管者）在候选之后按 D035 单独实现、部署与验收，见 [任务台指南](tailnet-desk.md)；它不属于本候选的门禁证据。
 - **能耗与空域**：能耗估计来自 M1 的 SITL 遥测统计，只用于仿真准入；空域约束仍是桩，真实模式一律拒绝。
 - **不在 M2 范围**：Offboard / ROS 2、机载 VLM、多机器人交接、真机与空域报备，见 [实施计划](m2-implementation.md)。
 

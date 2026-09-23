@@ -111,3 +111,4 @@
 | `../live-console-readiness.md` | 实时仿真入口的准确版本、HTTP 操作验证与回归范围 |
 | `../tailnet-console.md` | 云端常驻控制台、Tailscale 私网入口与机内权限边界 |
 | `../tailnet-console-readiness.md` | 私网入口部署、HTTPS 操作、重启与隔离验证的准确版本 |
+| `../tailnet-desk.md` | M2 任务台常驻 Tailnet 入口：使用、部署、仿真监管者与进程边界（D035） |
