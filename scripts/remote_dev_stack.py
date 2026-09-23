@@ -202,7 +202,7 @@ def smoke(root: Path, deployment: Path, run_id: str) -> dict:
 
 def checks(root: Path, deployment: Path, run_id: str) -> dict:
     (root / "artifacts" / deployment.name / run_id).mkdir(parents=True, exist_ok=False)
-    compose(root, deployment, ["run", "-T", "--no-deps", "--name", f"drone-agent-checks-{run_id}", "checks"],
+    compose(root, deployment, ["run", "-T", "--rm", "--no-deps", "--name", f"drone-agent-checks-{run_id}", "checks"],
             run_id=run_id, timeout=300)
     xml = root / "artifacts" / deployment.name / run_id / "contracts.xml"
     suites = ET.parse(xml).findall(".//testsuite")

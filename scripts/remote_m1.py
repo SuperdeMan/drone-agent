@@ -69,7 +69,7 @@ def run_m1(root: Path, deployment: Path, request: dict):
             raise RuntimeError(f"M1 {role} build failed: {base}")
     suite = json.loads(
         HELPERS["run"](
-            ["docker", "run", "--network", "none", images["ground"], "python3", "-m", "drone_agent.eval.prepare"]
+            ["docker", "run", "--rm", "--network", "none", images["ground"], "python3", "-m", "drone_agent.eval.prepare"]
         )
     )
     scenarios = suite["scenarios"]
@@ -126,6 +126,7 @@ def run_m1(root: Path, deployment: Path, request: dict):
                     [
                         "docker",
                         "run",
+                        "--rm",
                         "--network",
                         "none",
                         "-v",
@@ -271,6 +272,7 @@ def run_m1(root: Path, deployment: Path, request: dict):
                 compose(
                     "run",
                     "-T",
+                    "--rm",
                     "--no-deps",
                     "judge",
                     "/usr/bin/python3",
@@ -279,7 +281,7 @@ def run_m1(root: Path, deployment: Path, request: dict):
                     "/output/fc-events.json",
                     timeout=90,
                 )
-                judged = compose("run", "-T", "--no-deps", "judge", timeout=90, check=False)
+                judged = compose("run", "-T", "--rm", "--no-deps", "judge", timeout=90, check=False)
                 result_path = run / "judge/result.json"
                 result = (
                     json.loads(result_path.read_text())
@@ -290,6 +292,7 @@ def run_m1(root: Path, deployment: Path, request: dict):
                 replayed = compose(
                     "run",
                     "-T",
+                    "--rm",
                     "--no-deps",
                     "judge",
                     "python3",

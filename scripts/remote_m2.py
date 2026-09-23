@@ -85,7 +85,7 @@ def run_m2(root: Path, deployment: Path, request: dict) -> dict:
         raise ValueError("planner must be scripted or live")
     if planner == "live" and not (model / "minimax.key").is_file():
         raise ValueError("live planning needs the model key in the project secrets; none is configured")
-    suite = json.loads(HELPERS["run"](["docker", "run", "--network", "none", images["ground"], "python3", "-m",
+    suite = json.loads(HELPERS["run"](["docker", "run", "--rm", "--network", "none", images["ground"], "python3", "-m",
                                        "drone_agent.eval.m2_prepare"]))
     scenarios = suite["scenarios"]
     if request["scenario"] != "all":
@@ -162,7 +162,7 @@ def run_case(root, source, base, images, keys, sha, run_id, planner, scenario, s
         wait(lambda: (case / "service/ready.json").exists(), 90, "mission service")
 
     try:
-        HELPERS["run"](["docker", "run", "--network", "none", "-v", f"{case / 'input'}:/input", images["ground"],
+        HELPERS["run"](["docker", "run", "--rm", "--network", "none", "-v", f"{case / 'input'}:/input", images["ground"],
                         "python3", "-m", "drone_agent.eval.m2_prepare", "--output", "/input", "--scenario",
                         scenario["id"], "--seed", str(seed), "--sha", sha])
         metadata = json.loads((case / "input/scenario.json").read_text())
@@ -187,11 +187,11 @@ def run_case(root, source, base, images, keys, sha, run_id, planner, scenario, s
         save_sitl_log(case, compose, "sitl.log")
         compose("stop", "-t", "5", "uplink", "mission-service", "model-proxy", "collector")
         compose("stop", "-t", "10", "sitl")
-        judged = compose("run", "-T", "--no-deps", "judge", timeout=120, check=False)
+        judged = compose("run", "-T", "--rm", "--no-deps", "judge", timeout=120, check=False)
         path = case / "judge/result.json"
         result = json.loads(path.read_text()) if path.exists() else {"passed": False, "error": "judge_failed"}
         result["judge_exit_code"] = judged.returncode
-        replayed = compose("run", "-T", "--no-deps", "judge", "python3", "-m", "drone_agent.eval.judge_m2", "/run",
+        replayed = compose("run", "-T", "--rm", "--no-deps", "judge", "python3", "-m", "drone_agent.eval.judge_m2", "/run",
                            "--replay", "--output", "/output/replay.json", timeout=120, check=False)
         replay_path = case / "judge/replay.json"
         replay_result = json.loads(replay_path.read_text()) if replay_path.exists() else {}
