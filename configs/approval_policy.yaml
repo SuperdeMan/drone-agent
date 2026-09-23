@@ -1,0 +1,21 @@
+# Approval policy for replanned mission versions (D032, WP-M2-10). Human approval is the default; this file
+# only names the one class of change that may be approved automatically and the hard limits around it.
+# Changing this file is an approval-policy change: record it in docs/decisions.md first.
+#
+# 重规划任务版本的审批策略（D032，WP-M2-10）。人工审批是默认；本文件只列出唯一可自动批准的改动类别及其
+# 硬边界。修改本文件属于审批策略变更：先在 docs/decisions.md 记录。
+schema_version: "0.1.0"
+policy_id: m2_approval
+version: v1
+max_replans_per_mission: 2
+approval_ttl_minutes: 30
+auto_approve:
+  # Re-run content nodes whose last outcome was not completed, with the same skill, version and parameters.
+  # 原样重跑最近结果未完成的内容节点，技能、版本与参数不变。
+  retry_unfinished_nodes:
+    eligible_outcomes: [failed, unverified, refuted, unknown, not_run]
+# Changes that are rejected outright, whoever proposes them. / 无论谁提出都直接拒绝的改动。
+reject:
+  - scope_expansion          # other volume, assets outside the base plan, other robots
+  - unverified_edge_added    # any new allow_unverified_from
+  - recovery_policy_change
