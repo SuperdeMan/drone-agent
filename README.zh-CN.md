@@ -38,7 +38,9 @@ L6 平台适配器（PX4 经 MAVSDK / px4_ros2、DJI Cloud API、ArduPilot、Nav
 
 ## 当前状态
 
-M1 已于 2026-09-20 完成，范围为 PX4 SITL / Gazebo：executive/guardian 双进程、持久化命令对账、五技能、认证本地 IPC、真实相机证据与独立裁判。版本 `eefe76e` 通过 400 项测试和全部 66 组多种子飞行/故障场景，错误成功报告为 0，离线回放一致。见 [版本限定的验收证据与边界](docs/m1-readiness.md)。M2 将接入受约束语言规划和远程任务服务。
+M1 已于 2026-09-20 完成，范围为 PX4 SITL / Gazebo：executive/guardian 双进程、持久化命令对账、五技能、认证本地 IPC、真实相机证据与独立裁判。版本 `eefe76e` 通过 400 项测试和全部 66 组多种子飞行/故障场景，错误成功报告为 0，离线回放一致。见 [版本限定的验收证据与边界](docs/m1-readiness.md)。
+
+M2（受约束 Agent）已实现并在云端验证，但尚未关闭。自然语言请求默认由 MiniMax-M3（D029）规划为窄草案，经 fail-closed 编译与准入，按确切任务包哈希审批、Ed25519 签名，由机载 uplink 经 mTLS 拉取；executive 与 guardian 起飞前再次验签并执行新的两相位巡检技能，任务服务复核证据并生成三列报告。版本 `f362b9e` 上 18/18 组多种子端到端用例（三种措辞的标称请求、影像降级后的重试、服务停机、拒答、被骗规划器）通过，错误成功报告 0、回放一致；M1 完整矩阵仍全部通过（66/66，在共享主机的静默窗口分批运行）；两套对抗语料全部拦截。这些运行使用带标注的脚本规划回答；实调准入率基线需要 `MINIMAX_API_KEY`，尚未运行，发布门禁将其记为 missing。见 [M2 验收记录](docs/m2-readiness.md)。
 
 ## 开发
 
@@ -51,7 +53,7 @@ uv run python scripts/dev_stack.py verify
 uv run python scripts/dev_stack.py test
 ```
 
-固定仿真控制台可常驻云端，通过 Tailscale Serve 私网访问，不另设应用登录页。运行 `uv run python scripts/dev_stack.py console-cloud --status` 获取私有 HTTPS 地址，部署和访问边界见 [Tailnet 控制台指南](docs/tailnet-console.md)。原本机桥仍可通过 `uv run python scripts/dev_stack.py console` 在 <http://127.0.0.1:8768> 使用。两个入口都展示机载遥测与相机画面，暂停/恢复/取消经过既有 executive 通道。这是 M1 人工入口，完整 M2 规划/审批控制台仍待实现。
+固定仿真控制台可常驻云端，通过 Tailscale Serve 私网访问，不另设应用登录页。运行 `uv run python scripts/dev_stack.py console-cloud --status` 获取私有 HTTPS 地址，部署和访问边界见 [Tailnet 控制台指南](docs/tailnet-console.md)。原本机桥仍可通过 `uv run python scripts/dev_stack.py console` 在 <http://127.0.0.1:8768> 使用。两个入口都展示机载遥测与相机画面，暂停/恢复/取消经过既有 executive 通道。这是 M1 人工入口。M2 任务台（hri.v0 控制台与 A2A 网关）可在本机运行：`uv run python -m drone_agent.console.mission --local`（<http://127.0.0.1:8769>），提交、规划、准入、审批与签名在进程内完成，飞行只在云端（D023）；它尚未接入 Tailnet 常驻入口。
 
 [版本限定的实时入口验收](docs/live-console-readiness.md) 记录云端运行版本、本机界面版本、8 轮 HTTP 实时验证和 18 组 M1 回归子集。原有 66 组 M1 基线仍只属于 `eefe76e`。
 

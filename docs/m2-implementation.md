@@ -6,6 +6,10 @@
 
 M1 人工体验补遗 D027 提前提供 `console/` 中固定任务的 SSH 实时入口。它复用离线证据浏览器，尚不提供本计划 WP-M2-15 的目标提交、审批、签名上行及 hri.v0，不能据此勾选 M2 控制台工作包。
 
+## 实施状态（2026-09-23）
+
+20 个工作包均已实现，候选 `f362b9e` 的云端端到端、M1 完整回归与对抗语料证据见 [M2 验收记录](m2-readiness.md)。退出标准中「`MissionSpec` 一次通过准入率有基线」需要真实模型实调，当前没有配置 `MINIMAX_API_KEY`，发布门禁记为 missing，因此 M2 尚未关闭。与本计划的差异：签名拒绝测试落在 `tests/contracts/test_package_signatures.py` 与 `tests/runtime/test_m2_onboard.py`（executive 与 guardian 各自拒绝五类坏任务包），而非扩展 `test_mission_package_authorization.py`；端到端在任务版本之间由编排执行地勤换电（起飞前置条件要求满足最大消耗 + 余量的电量）；控制台 v0 以本机任务台交付，接入 D028 Tailnet 常驻入口单独进行。
+
 ## 退出标准拆解
 
 路线图的三条硬门槛，加上架构文档已对 M2 作出的承诺，拆成可检查项：

@@ -4,14 +4,14 @@
 
 ## 当前阶段
 
-**M1 已完成（2026-09-20，SITL 范围）**。原里程碑版本、66 组完整矩阵与 400 项测试证据以 `docs/m1-readiness.md` 为准；D027 本机实时桥见 `docs/live-console-readiness.md`；当前 D028 Tailnet 常驻入口、部署与验证边界见 `docs/tailnet-console-readiness.md`。下一阶段按 `docs/roadmap.md` 的 M2 推进，M2–M4 的批次、工作包与验收判据见 `docs/m2-implementation.md`、`docs/m3-implementation.md`、`docs/m4-implementation.md`（D026）；每份计划的「决策待办」未补进 `docs/decisions.md` 前不写对应代码。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。
+**M1 已完成（2026-09-20，SITL 范围）**。原里程碑版本、66 组完整矩阵与 400 项测试证据以 `docs/m1-readiness.md` 为准；D027 本机实时桥见 `docs/live-console-readiness.md`；当前 D028 Tailnet 常驻入口、部署与验证边界见 `docs/tailnet-console-readiness.md`。下一阶段按 `docs/roadmap.md` 的 M2 推进，M2–M4 的批次、工作包与验收判据见 `docs/m2-implementation.md`、`docs/m3-implementation.md`、`docs/m4-implementation.md`（D026）；每份计划的「决策待办」未补进 `docs/decisions.md` 前不写对应代码。任何执行 / 安全语义的改动先改 `docs/architecture/02-contracts.md` 与 `03-safety.md`，再改代码。M2 的 20 个工作包已实现并在候选 `f362b9e` 上完成云端端到端与 M1 回归（[M2 验收记录](docs/m2-readiness.md)）；实调准入率基线缺模型密钥，门禁未全部通过，M2 尚未关闭，当前阶段不改。
 
 ## 目录结构
 
 完整定义与理由见 `docs/architecture/07-deployment.md` 与各文档；本节只列约定：
 
 - `docs/` — `architecture/`（00–08 分主题，`00-overview.md` 是入口与文档地图）、`decisions.md`、`roadmap.md`、`reuse-from-embodied-agent.md`、`research/`（前沿调研、GPT-6 Pro 评估原文与摘要）。架构级变更**先改文档 + `decisions.md` 增条目，再动代码**。
-- `src/drone_agent/` — 单包多子模块。**模块随里程碑创建，不预建空模块。** 已有 `contracts`(M0)、`runtime`(日志/IPC/MCAP)、`guardian`(监督/恢复/出口)、`adapters`(PX4)、`mission`(执行/登记表/验证)、`eval`(裁判/场景/注入)、`console`(D027 的 M1 固定仿真入口，M2 扩展规划/审批)。后续 `providers`/`planner`/`admission`(M2)、`fleet`(M2 起：业务账本、目录、传输、直通协调器、A2A；M4：协调器四项能力与交接)、`autonomy`(M3；ROS 2 节点在 `ros2_ws/`，不进本包)。
+- `src/drone_agent/` — 单包多子模块。**模块随里程碑创建，不预建空模块。** 已有 `contracts`(M0)、`runtime`(日志/IPC/MCAP；M2 加签名、机器人状态、机载 `uplink`)、`guardian`(监督/恢复/出口)、`adapters`(PX4)、`mission`(执行/登记表/验证)、`eval`(裁判/场景/注入/对抗语料/M2 裁判)、`console`(D027 的 M1 固定仿真入口；M2 的 hri.v0 任务台与 A2A 网关)、`providers`/`planner`/`admission`(M2)、`fleet`(M2：业务账本、目录、mTLS 传输、证据复核与报告、直通协调器、任务服务与本机 API；M4：协调器四项能力与交接)。后续 `autonomy`(M3；ROS 2 节点在 `ros2_ws/`，不进本包)。机载代码（`mission`/`guardian`/`adapters`/`runtime` 的机载模块与 `uplink`）不得导入 `providers`/`planner`/`admission`，契约测试钉住传递导入图。
 - `proto/` — 进程间契约（executive ↔ guardian；车队协议）与共享消息；M0 骨架，M1 冻结，包名 `drone.<service>.v1`。字段清单与共享 proto 由 `scripts/generate_contract_fields.py` 导出；禁止旧字段重编号。
 - `configs/` — `platforms/`（版本锁定与目标能力描述）、`skills/`（技能草案）、`recovery_policies/`（恢复策略图）、`scenarios/`（注入矩阵与后续评测场景）、`planner_tools.yaml`（规划层工具白名单，只读）。草案中的场景名不代表已验证。
 - `tests/` — 镜像 `src/`；`tests/contracts/` 是契约测试，`tests/fault_injection/`（M1）是故障注入测试；`tests/admission/` 与 `tests/planner/`（M2）承载对抗性规划测试，语料版本化在 `eval/adversarial/`。
@@ -43,6 +43,7 @@
 - 文档改动后自查相对链接有效、`roadmap.md` 阶段状态与实际一致。
 - 人工核对（M1 补遗）：`uv run python scripts/dev_stack.py runs` 列出云端运行，`fetch --run <run> --cases <a-7,b-19> --apply` 拉取并核对摘要后自动生成 `viewer.html`；本地目录用 `uv run python -m drone_agent.eval.viewer <目录>`。页面只展示与复算，不产生判定，不能替代 `judge/` 与发布门禁；扩展只加提取器，见 `docs/architecture/08-evaluation.md` §7。
 - 实时体验（D027）：`uv run python scripts/dev_stack.py console`，浏览器访问 `http://127.0.0.1:8768`，操作云端固定 M1 仿真；只允许开始、暂停、恢复、取消，走 executive 通道，不能直达飞控。见 [实时指南](docs/live-simulation.md)。这不是完整 M2 控制台；新提交验证不能转借历史 M1 的 66/66。
+- M2 端到端（D029–D034）：`dev_stack.py m2 --scenario all --seeds 7,19,41` 在云端跑自然语言 → 审批签名 → mTLS 上行 → 飞行 → 报告的 6 场景；默认脚本规划回答只证明链路，不计模型行为；`m2-key --apply` 把本机环境里的 `MINIMAX_API_KEY` 写入云端项目 secrets 供 `--planner live`。M2 是否关闭只看 `scripts/verify_m2_release.py`（同一 commit 的检查、对抗语料、E2E、M1 回归与实调基线）。本机任务台 `python -m drone_agent.console.mission --local` 只规划与签名、不飞。见 [M2 验收记录](docs/m2-readiness.md)。
 - 云端常驻入口（D028）：`dev_stack.py console-cloud` 只读计划，`--apply` 激活本项目代理 unit、受限网页容器及独立 Serve `8447` 映射，`--status` 返回入口。网络准入交给既有 Tailscale，不新增登录页、不启用 Funnel、不改变其他应用映射或 ACL；见 [Tailnet 指南](docs/tailnet-console.md)。
 
 ## 已知环境约束

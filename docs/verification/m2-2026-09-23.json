@@ -1,0 +1,103 @@
+{
+  "schema_version": "0.1.0",
+  "milestone": "M2",
+  "source_sha": "f362b9e22398b61ec948c48b88d1243dd0a30dfe",
+  "status": "not_passed",
+  "criteria": {
+    "checks": {
+      "status": "passed",
+      "deployment_id": "20260923T053501Z-1e7033df",
+      "tests": {
+        "tests": 775,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "wire_checks": [
+        true,
+        true
+      ]
+    },
+    "adversarial": {
+      "status": "passed",
+      "deterministic": {
+        "cases": 42,
+        "passed": 42,
+        "authorized_packages": 0,
+        "per_category": {
+          "wrong_coordinates": 7,
+          "capability": 6,
+          "parameters": 8,
+          "order": 7,
+          "prompt_injection": 7,
+          "scope_expansion": 7
+        }
+      },
+      "nl_scripted": {
+        "cases": 32,
+        "passed": 32,
+        "authorized_packages": 0,
+        "per_category": {
+          "wrong_coordinates": 5,
+          "capability": 5,
+          "parameters": 5,
+          "order": 5,
+          "prompt_injection": 6,
+          "scope_expansion": 6
+        }
+      },
+      "nl_replay": {
+        "cases": 0,
+        "passed": 0,
+        "authorized_packages": 0,
+        "per_category": {
+          "wrong_coordinates": 0,
+          "capability": 0,
+          "parameters": 0,
+          "order": 0,
+          "prompt_injection": 0,
+          "scope_expansion": 0
+        },
+        "unrecorded": 32
+      }
+    },
+    "e2e": {
+      "status": "passed",
+      "cases": 18,
+      "expected": 18,
+      "missing": [],
+      "problems": [],
+      "planner": [
+        "scripted"
+      ],
+      "false_success_reports": 0
+    },
+    "m1_regression": {
+      "status": "passed",
+      "cases": 66,
+      "classifications": {
+        "safe_abort": 48,
+        "completed": 18
+      }
+    },
+    "baseline": {
+      "status": "missing",
+      "reason": "no live admission-rate baseline on this revision"
+    }
+  },
+  "inputs": {
+    "m2-2026-09-23-deployment.json": "be1981f63254aefdf162b888f10bc7870e2b1880da4b527b2b498828f1f5f018",
+    "m2-2026-09-23-e2e-receipt.json": "8201d6b4e172f18fdd0402e9216f941d3e71baf9b58e85c0f437496c9e757781",
+    "m1-cancel_cruise+cancel_landing-try1.json": "a26a6e51ee5171ace2fefeb9dbd1e76585914dff3dc93f2ac6fb81032b7bb04a",
+    "m1-energy_low+energy_critical-try1.json": "498b9ca3ca22d7c5c0be049ae6de42caa564f189f75b03b8e2f24a182d2d98a6",
+    "m1-fc_failsafe+localization_lost-try1.json": "e9b055f607000608de7d8a30e98870b9c91abd9d41366c194b734c3b11c9c841",
+    "m1-geofence+cancel_takeoff-try2.json": "6381e5952c108739c972d5c9910fa802f8edfce2b0eb09786afc4b93f4bac4cf",
+    "m1-heartbeat_takeoff+heartbeat_cruise-try1.json": "3a3d6970f1c5f2cf9046abd332b3d85e8172ab8445ab8ef969a38499208734e4",
+    "m1-nominal+duplicate-try1.json": "a51680417ef1744c2372919ef53d2e7aaeb4806fa094421b50bb8afe06e3bfef",
+    "m1-observation_stale+lease_expired-try1.json": "c467a1519f45eac7b0160e7bd8d0d332af62e78b030b1f6f90ca27c64db14b7c",
+    "m1-offboard_rejected+timeout-try1.json": "839c75004ec82edb644ae2adbd0e1aa4969f1e7d76f16fdf58b8a199cfca16a4",
+    "m1-pause_resume+pause_timeout-try1.json": "2fe4c864afe0db90c308c566450375f4e072ce3f735b4f180eed6825a2317027",
+    "m1-stale_epoch+expired_intent-try1.json": "08100ca9d6766aede01ff14e845a0e0f74121a9717666ff059ac66b4bd4c49f3",
+    "m1-uplink_lost+mode_takeover-try1.json": "93a84c41c298bf421f3da51f0c968fcb14dfec6d5a65a10c78ccff3f9b9f7bde"
+  }
+}

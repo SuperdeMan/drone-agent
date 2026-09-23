@@ -38,7 +38,9 @@ Five principles: models express goals and the runtime executes them; a single co
 
 ## Status
 
-M1 completed on 2026-09-20 for PX4 SITL / Gazebo: executive/guardian processes, durable command reconciliation, five skills, authenticated local IPC, actual camera evidence and an independent judge. Revision `eefe76e` passed 400 tests and all 66 seeded flight/fault cases, with zero false success reports and matching offline replay. See the [qualified release evidence and scope](docs/m1-readiness.md). M2 adds constrained language planning and remote mission services.
+M1 completed on 2026-09-20 for PX4 SITL / Gazebo: executive/guardian processes, durable command reconciliation, five skills, authenticated local IPC, actual camera evidence and an independent judge. Revision `eefe76e` passed 400 tests and all 66 seeded flight/fault cases, with zero false success reports and matching offline replay. See the [qualified release evidence and scope](docs/m1-readiness.md).
+
+M2 (constrained agent) is implemented and verified in the cloud but not yet closed. Natural-language requests are planned by MiniMax-M3 by default (D029) into a narrow draft, compiled and admitted fail-closed, approved against the exact package hash, signed with Ed25519 and pulled over mTLS by an onboard uplink; the executive and guardian verify the signature again before flying the new two-phase inspection skill, and a mission service rechecks the evidence and writes a three-column report. On revision `f362b9e` 18/18 seeded end-to-end cases (nominal requests in three phrasings, a degraded-image retry, a service outage, a refusal and a fooled planner) passed with zero false success reports and matching replay, the full M1 matrix still passes (66/66, run in quiet-window batches on the shared server), and both adversarial corpora block every case. These runs used labelled scripted planner answers; the live admission-rate baseline needs `MINIMAX_API_KEY` and has not been run, so the release gate reports it missing. See the [M2 record](docs/m2-readiness.md).
 
 ## Development
 
@@ -51,7 +53,7 @@ uv run python scripts/dev_stack.py verify
 uv run python scripts/dev_stack.py test
 ```
 
-The fixed simulation console can run in the cloud behind Tailscale Serve, with no separate application login. Run `uv run python scripts/dev_stack.py console-cloud --status` to get its private HTTPS URL; see the [Tailnet console guide](docs/tailnet-console.md) for deployment and access boundaries. The original local bridge remains available through `uv run python scripts/dev_stack.py console` at <http://127.0.0.1:8768>. Both entries show telemetry and camera frames and send pause/resume/cancel through the existing executive channel. This is the M1 human entry; full M2 planning and approval remain separate.
+The fixed simulation console can run in the cloud behind Tailscale Serve, with no separate application login. Run `uv run python scripts/dev_stack.py console-cloud --status` to get its private HTTPS URL; see the [Tailnet console guide](docs/tailnet-console.md) for deployment and access boundaries. The original local bridge remains available through `uv run python scripts/dev_stack.py console` at <http://127.0.0.1:8768>. Both entries show telemetry and camera frames and send pause/resume/cancel through the existing executive channel. This is the M1 human entry. The M2 mission desk (hri.v0 console and A2A gateway) runs locally with `uv run python -m drone_agent.console.mission --local` at <http://127.0.0.1:8769>: submit, plan, admit, approve and sign in process, while flights stay in the cloud (D023); it is not yet behind the Tailnet entry.
 
 The [version-qualified live entry validation](docs/live-console-readiness.md) records the deployed runtime, local UI version, 8 live HTTP runs and the 18-case M1 regression subset. The original 66-case M1 baseline remains tied to `eefe76e`.
 

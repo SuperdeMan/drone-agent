@@ -8,7 +8,7 @@ M1 已通过 [2026-09-20 完整验收](m1-readiness.md)，原里程碑运行版�
 
 ## 当前部署范围
 
-M0 未解锁冒烟继续作为部署前置；M1 另有 sim/aircraft/ground 三镜像、executive/guardian 双进程和独立裁判。Planner、mission-service 与控制台属于 M2。真机的 guardian、控制出口与飞控连接仍在设备侧，云端只验证模拟飞控。
+M0 未解锁冒烟继续作为部署前置；M1 另有 sim/aircraft/ground 三镜像、executive/guardian 双进程和独立裁判。M2 在同一工作区增加 `sim2` 仿真镜像（多一个蓝色资产）、ground 镜像中的 mission-service、aircraft 镜像中的 uplink，以及项目 `secrets/` 下的签名密钥与 mTLS 证书；端到端用例按需启停，不常驻。真机的 guardian、控制出口与飞控连接仍在设备侧，云端只验证模拟飞控。
 
 工作区使用 SSH 用户的 `~/drone-agent/`，不放入 car-agent 目录。Docker project 为 `drone-agent-cloud`；SITL 限 1.5 CPU / 2 GiB，契约测试限 1 CPU / 1 GiB。仿真网络为内部桥接，测试容器无网络，二者不发布宿主端口。SSH 用于部署与管理。
 
@@ -70,6 +70,38 @@ uv run python scripts/dev_stack.py m1 --scenario all --seeds 7,19,41
 
 离线重判使用同一版本 ground 镜像执行 `python3 -m drone_agent.eval.judge <run目录> --root /workspace --output <结果文件>`。裁判复算影像、真值轨迹、前驱门控与 MCAP 事件一致性。新规则重判必须保留旧结果并标注新的软件 SHA。
 
+## M2 端到端验证
+
+部署已提交版本后运行（会在云端仿真中解锁 / 起飞）：
+
+```powershell
+uv run python scripts/dev_stack.py m2 --scenario nl_inspect_red --seeds 7
+uv run python scripts/dev_stack.py m2 --scenario all --seeds 7,19,41
+```
+
+场景集为 `configs/scenarios/m2_suite.yaml`：红 / 蓝资产的自然语言请求（种子选择三种措辞）、第一版影像被抹平后的策略批准重试、飞行全程任务服务停机、应拒答请求、被骗规划器扩大范围。每个用例依次：生成输入 → 启动 SITL 与真值采集 → 启动 mission-service 与 uplink → 以 `harness:m2-<run>-<case>` 身份经服务 API 提交请求 → 按确切 `package_hash` 审批 → 等 uplink 验签并写入 inbox → 每个任务版本用新 guardian / executive 与新代次飞行 → 等服务镜像追平两本账本 → 导出服务视图 → 在线与 MCAP 回放各跑一次 `eval/judge_m2.py`。回执 `suite.json` 记录签名密钥 ID、证书指纹与其他容器身份。
+
+`--planner scripted`（默认）使用 `m2_prepare` 生成的带标注脚本回答，只证明服务、签名、上行、飞行与报告链路，不能当作模型行为或准入率基线。`--planner live` 需要先把本机进程环境里的 `MINIMAX_API_KEY` 写入云端项目 secrets：
+
+```powershell
+uv run python scripts/dev_stack.py m2-key            # 只返回计划
+uv run python scripts/dev_stack.py m2-key --apply    # 写入 secrets/m2-model/minimax.key（0600），不回显
+```
+
+密钥与证书由 `fleet/provision.py` 在 ground 镜像中以工作区用户身份生成到 `~/drone-agent/secrets/m2/`，重复运行保留签名密钥；它们不进入快照、Compose 文件、镜像或日志。
+
+产物位于 `artifacts/<deployment_id>/m2-<run_id>/<scenario>-<seed>/`：`input/`（场景、脚本回答、故障文件）、`service/`（业务账本、媒体、`ready.json`、实调录制）、`inbox/`、`mailbox/`、`uplink/`、`robot/`、`aircraft/<mission_id>/v<n>/`（每个版本一次飞行）、`truth/`、`ulog/`、`service-export/`、`judge/`。拉取与人工核对沿用 `fetch`；证据浏览器对 M2 用例按任务版本各生成一条记录，并显示规划事件带与规划 / 审批 / 报告 / 复核 / 问题表。
+
+准入率基线只在本机、有密钥时运行，会产生模型费用：
+
+```powershell
+uv run python scripts/m2_baseline.py --output docs/verification/m2-baseline-<日期>.json --price-input <元/百万> --price-output <元/百万> --price-source "<厂商价格页与日期>"
+```
+
+没有给出价格来源时费用记为 unpriced。
+
+本机任务台 `uv run python -m drone_agent.console.mission --local` 在 <http://127.0.0.1:8769> 提供 hri.v0 控制台和进程内任务服务：提交、规划、准入、审批与签名都在本机完成，没有机器人连接，不起飞（D023）；有 `MINIMAX_API_KEY` 时实调规划，否则只回答 M2 场景集中的请求原文，页面标明所用规划器。M2 是否关闭只看 `scripts/verify_m2_release.py`：在同一 commit 上核对云端检查、对抗语料、E2E、M1 完整回归与实调基线，缺证据的判据记为 missing。
+
 ## 查看与人工核对结果
 
 裁判结论是机器产出；人工核对用证据浏览器。它读取的正是裁判读取的产物，只展示与复算摘要，不产生也不修改判定。
@@ -113,7 +145,8 @@ uv run python scripts/dev_stack.py deploy --sha HEAD --apply
 │  ├─ source/                # git archive 的应用 commit
 │  ├─ control/               # Compose、验证 Dockerfile、锁定依赖
 │  └─ manifest.json
-└─ artifacts/<run_id>/       # 构建日志、冒烟 JSON、JUnit、部署回执
+├─ secrets/                  # 0700；m2/ 签名密钥、trust、CA 与 mTLS 证书，m2-model/ 实调 key（均 0600）
+└─ artifacts/<run_id>/       # 构建日志、冒烟 JSON、JUnit、部署回执；m1-*/ 与 m2-*/ 为飞行批次
 ```
 
 同一项目的变更使用独立 `flock` 串行化，不占用 car-agent 发布锁。重任务开始前检查共享服务器余量；当前部署要求至少 3 GiB 可用内存、8 GiB 可用磁盘。归档、旧部署、停止的测试容器和证据不自动清理；不改系统设置、安全组、Tailscale、systemd、CI/CD 或数据库 schema。
