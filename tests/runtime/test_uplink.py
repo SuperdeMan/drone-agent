@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import timedelta
 
 from drone_agent.contracts import MissionAction, OperatorRequest, utcnow
@@ -57,6 +58,26 @@ async def test_operator_requests_are_checked_before_the_mailbox(tmp_path):
     mailbox = json.loads((tmp_path / "mailbox/operator.json").read_text())
     assert set(mailbox) == {"request_id", "action", "mission_id", "mission_version", "lease_epoch", "step_id",
                             "valid_until", "requested_by"}
+
+
+async def test_status_follows_the_most_recent_flight_across_missions(tmp_path):
+    loop, package = await delivered(tmp_path)
+    await loop.fly(package, epoch=1)
+    flown = tmp_path / "aircraft" / package.mission_id / "v1/status.json"
+    # An older flight of a mission whose id sorts last must not speak for the robot now.
+    # 任务 ID 排在最后、但更早的飞行，不能代表机器人当前状态。
+    other = "m-" + "f" * 12
+    loop.uplink.state["accepted"][other] = {"version": 1, "versions": [1], "package_hash": "a" * 64,
+                                            "signer_key_id": loop.key.key_id}
+    stale = tmp_path / "aircraft" / other / "v1/status.json"
+    stale.parent.mkdir(parents=True)
+    value = json.loads(flown.read_text())
+    value["observation"].update(in_air=True, armed=True)
+    stale.write_text(json.dumps(value))
+    os.utime(stale, ns=(1, 1))
+    assert loop.uplink.status().flight_phase == "grounded"
+    os.utime(stale)
+    assert loop.uplink.status().flight_phase == "airborne"
 
 
 async def test_only_flights_of_accepted_packages_are_forwarded(tmp_path):

@@ -100,6 +100,9 @@ class Uplink:
         self.comms_ok = False
         self.capability_sent = False
         self.last_status = 0.0
+        # Flights already bound to their accepted package; the first mission_accepted row never changes.
+        # 已绑定到所接受任务包的飞行；第一条 mission_accepted 行不会再变。
+        self.bound: set[tuple[str, int]] = set()
 
     def note(self, kind: str, **data) -> None:
         self.notes = [*self.notes[-49:], {"kind": kind, "at": self.clock().isoformat(), **data}]
@@ -195,13 +198,18 @@ class Uplink:
 
     def _bound_to_package(self, mission_id: str, version: int, directory: Path) -> bool:
         """The flight journal must name the package this uplink accepted. / 飞行账本必须指向本 uplink 接受的任务包。"""
+        if (mission_id, version) in self.bound:
+            return True
         path = directory / "executive.jsonl"
         history = self.inbox / "history" / f"{mission_id}-v{version}.json"
         if not path.exists() or not history.exists():
             return False
         first = next((row for row, _ in complete_rows(path, 0) if row["kind"] == "mission_accepted"), None)
         expected = json.loads(history.read_text(encoding="utf-8"))["package_hash"]
-        return first is not None and first["data"].get("package_hash") == expected
+        if first is not None and first["data"].get("package_hash") == expected:
+            self.bound.add((mission_id, version))
+            return True
+        return False
 
     async def push(self) -> None:
         for mission_id, version, directory in self._version_dirs():
@@ -252,13 +260,21 @@ class Uplink:
                 self.note("evidence_refused", key=key, reason=receipt.reason)
 
     def status(self) -> RobotStatus | None:
-        """Status from the guardian's latest observation; unknown energy means no status. / 由最新观测得到状态。"""
-        latest = None
+        """Status from the guardian's latest observation; unknown energy means no status. / 由最新观测得到状态。
+
+        The most recently written status file is the latest observation: a robot keeps flights of many missions,
+        and neither mission ids nor versions order them in time.
+        最近写入的状态文件才是最新观测：机器人保留多个任务的飞行，任务 ID 与版本号都不按时间排序。
+        """
+        written = []
         for _, _, directory in self._version_dirs():
-            if (directory / "status.json").exists():
-                latest = directory / "status.json"
-        if latest is None:
+            try:
+                written.append(((directory / "status.json").stat().st_mtime_ns, directory / "status.json"))
+            except OSError:
+                continue
+        if not written:
             return None
+        latest = max(written)[1]
         try:
             status = json.loads(latest.read_text(encoding="utf-8"))
             obs = FlightObservation.model_validate(status["observation"])
