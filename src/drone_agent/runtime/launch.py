@@ -2,12 +2,12 @@
 
 M1 reads a locally trusted package. M2 (D030) adds `--trust`: the package must carry an approval signed by
 a key in the read-only trust file, verified independently by each process, and `--robot-state` keeps the
-robot's epoch watermark and accepted versions across mission versions. `--scene` selects the registry.
+robot's epoch watermark and accepted versions across mission versions. `--scene` selects the registry and `--operator-mailbox` reads operator requests from the uplink's mailbox.
 
 使用预批准任务包启动一个机载进程。
 
 M1 读取本地可信任务包。M2（D030）增加 `--trust`：任务包必须带有由只读信任文件中的密钥签署的审批，
-由每个进程独立验签；`--robot-state` 跨任务版本保存机器人的代次水位与已接受版本；`--scene` 选择登记表。
+由每个进程独立验签；`--robot-state` 跨任务版本保存机器人的代次水位与已接受版本；`--scene` 选择登记表，`--operator-mailbox` 从 uplink 的信箱读取操作请求。
 """
 
 from __future__ import annotations
@@ -142,6 +142,7 @@ async def main_async(args):
                 executive_id=executive_id,
                 epoch=args.epoch,
                 trust=trust,
+                mailbox=args.operator_mailbox,
             )
             await executive.run()
         except Exception as error:
@@ -168,6 +169,7 @@ def main():
     parser.add_argument("--scene", type=Path, help="registry file; defaults to the M1 campus scene")
     parser.add_argument("--trust", type=Path, help="read-only trust file; requires signed approvals (M2)")
     parser.add_argument("--robot-state", type=Path, help="robot-level authority state file (guardian, M2)")
+    parser.add_argument("--operator-mailbox", type=Path, help="operator mailbox written by the uplink (executive, M2)")
     args = parser.parse_args()
     if args.fault and not args.simulation:
         parser.error("fault injection requires an explicit simulation process")

@@ -24,6 +24,7 @@ from drone_agent.providers.llm import (
 from drone_agent.providers.ratelimit import RateLimiter, TokenBucket
 from drone_agent.providers.replay import (
     Exchange,
+    KeyedScriptedProvider,
     Recording,
     RecordingProvider,
     ReplayMismatch,
@@ -60,6 +61,7 @@ __all__ = [
     "RecordingProvider",
     "ReplayMismatch",
     "ReplayProvider",
+    "KeyedScriptedProvider",
     "ScriptedProvider",
     "ThinkStreamStripper",
     "TokenBucket",

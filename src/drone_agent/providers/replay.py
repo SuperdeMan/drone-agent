@@ -182,6 +182,49 @@ class ReplayProvider(BaseProvider):
         return exchange.content, exchange.model_used, exchange.finish, exchange.usage, list(exchange.tool_calls)
 
 
+SCRIPTED_FORMAT = "drone.planner.scripted/v1"
+
+
+class KeyedScriptedProvider(BaseProvider):
+    """A hand-written double that answers by the exact operator request text; never reported as a model.
+
+    Harness runs without a model key use it so the service, signing, uplink and flight path can be
+    exercised; every outcome it produces carries the model id `scripted` and must not be counted as model
+    behaviour (admission-rate baselines need `recorded` or live answers).
+
+    按操作者请求原文作答的手写替身；永远不当作模型报告。没有模型密钥的编排运行用它来走通服务、签名、
+    uplink 与飞行路径；它产生的每个结果都带模型 ID `scripted`，不能计入模型行为（准入率基线需要
+    `recorded` 或实调回答）。
+    """
+
+    def __init__(self, answers: dict[str, dict], model: str = "scripted"):
+        self.answers, self.model = dict(answers), model
+
+    @classmethod
+    def load(cls, path: str | Path) -> KeyedScriptedProvider:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        if data.get("format") != SCRIPTED_FORMAT or data.get("source") != "scripted":
+            raise ValueError("not a scripted planner fixture")
+        return cls(data["answers"])
+
+    def _answer(self, messages) -> dict:
+        user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+        text = str(user).split("OPERATOR_REQUEST:\n", 1)[-1].split("\n\nOPERATOR_SCOPE:", 1)[0].strip()
+        if text not in self.answers:
+            raise ReplayMismatch("no scripted answer for this request / 该请求没有脚本回答")
+        return self.answers[text]
+
+    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
+        answer = self._answer(messages)
+        return answer.get("content", ""), self.model, answer.get("finish", "stop"), tuple(answer.get("usage", (0, 0)))
+
+    async def complete_tools(self, messages, model, temperature, max_tokens, tools=None, tool_choice=None,
+                             thinking=None, timeout_s=None):
+        answer = self._answer(messages)
+        return (answer.get("content", ""), self.model, answer.get("finish", "stop"),
+                tuple(answer.get("usage", (0, 0))), list(answer.get("tool_calls", [])))
+
+
 class ScriptedProvider(BaseProvider):
     """A hand-written test double that answers from a queue; wrap it to produce `scripted` fixtures.
 

@@ -128,6 +128,7 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "auth.flight_scope_denied": IssueLayer.AUTH,
     "auth.control_intent_rejected": IssueLayer.AUTH,
     "auth.method_not_allowed": IssueLayer.AUTH,
+    "auth.robot_mismatch": IssueLayer.AUTH,
     # Service / 服务
     "service.degraded": IssueLayer.SERVICE,
     "service.transport_error": IssueLayer.SERVICE,

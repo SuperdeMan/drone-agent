@@ -43,7 +43,8 @@ from drone_agent.runtime.signing import verify_package
 
 
 class Executive:
-    def __init__(self, *, client, registry, package, journal, recorder, artifacts, executive_id, epoch=1, trust=None):
+    def __init__(self, *, client, registry, package, journal, recorder, artifacts, executive_id, epoch=1, trust=None,
+                 mailbox=None):
         # Signed mode (M2): verify independently of the guardian and the uplink. / 签名模式（M2）：独立于 guardian 与 uplink 验签。
         self.signer_key_id = (
             verify_package(package, trust, robot_id=registry.capability.robot_id, now=utcnow()) if trust else None
@@ -56,7 +57,9 @@ class Executive:
         self.lease = None
         self.status = {"safety_verdict": "hold", "reason": "initializing"}
         self.last_pulse = 0
-        self.control_path = artifacts / "operator.json"
+        # M2 (D031): the uplink writes the mailbox in its own volume; M1 keeps it beside the artifacts.
+        # M2（D031）：uplink 在自己的卷里写信箱；M1 仍放在产物目录旁。
+        self.control_path = mailbox or artifacts / "operator.json"
         self.operator_ids = set()
         self.node = None
         self.aborted = False

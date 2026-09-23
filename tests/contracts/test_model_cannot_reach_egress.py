@@ -103,6 +103,61 @@ def test_non_read_only_tool_is_rejected():
         PlannerTool(name="assets.lookup", read_only=False)
 
 
+SRC = REPO / "src" / "drone_agent"
+# Onboard code (M1 runtime plus the M2 signing/state modules) never loads a model or planner (M2 design rule).
+# 机载代码（M1 运行时与 M2 签名 / 状态模块）从不加载模型或规划器（M2 设计边界）。
+ONBOARD = [SRC / "mission", SRC / "guardian", SRC / "adapters", *(SRC / "runtime" / name for name in (
+    "launch.py", "ipc.py", "ledger.py", "wire.py", "recording.py", "signing.py", "robot_state.py", "uplink.py"))]
+# Off-board and entry code never holds the guardian control channel (single control egress, D005/D031/D033).
+# 机外与入口代码从不持有 guardian 控制通道（单一控制出口，D005/D031/D033）。
+OFFBOARD = [SRC / "providers", SRC / "planner", SRC / "admission", SRC / "fleet", SRC / "console",
+            SRC / "runtime" / "uplink.py"]
+
+
+def _imports(paths) -> dict[str, set[str]]:
+    import ast
+
+    found = {}
+    for root in paths:
+        for path in sorted(root.rglob("*.py")) if root.is_dir() else ([root] if root.exists() else []):
+            names = set()
+            for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+                if isinstance(node, ast.Import):
+                    names |= {alias.name for alias in node.names}
+                elif isinstance(node, ast.ImportFrom) and node.module:
+                    names.add(node.module)
+            found[str(path.relative_to(REPO))] = names
+    return found
+
+
+def test_onboard_processes_never_import_models_or_planners():
+    forbidden = ("drone_agent.providers", "drone_agent.planner", "drone_agent.admission", "httpx")
+    offending = {path: sorted(n for n in names if n.startswith(forbidden)) for path, names in _imports(ONBOARD).items()}
+    assert not {p: n for p, n in offending.items() if n}, offending
+
+
+def test_offboard_and_entry_code_cannot_reach_the_guardian_channel():
+    forbidden = ("drone_agent.runtime.ipc", "drone.control", "drone_agent.guardian", "drone_agent.adapters", "mavsdk")
+    offending = {path: sorted(n for n in names if n.startswith(forbidden)) for path, names in _imports(OFFBOARD).items()}
+    assert not {p: n for p, n in offending.items() if n}, offending
+    assert any(path.endswith(".py") for path in _imports(OFFBOARD)), "the scan must see the off-board modules"
+
+
+def test_uplink_import_graph_stays_onboard():
+    # Transitively, not only direct imports: the networked onboard process loads no planner, model or
+    # guardian channel code (D031). / 传递地而不只是直接导入：联网的机载进程不加载规划、模型或 guardian 通道代码。
+    import os
+    import subprocess
+    import sys
+
+    probe = ("import sys, drone_agent.runtime.uplink; print(sorted(m for m in sys.modules if m.startswith(("
+             "'drone_agent.providers', 'drone_agent.planner', 'drone_agent.admission', 'drone_agent.fleet.service', "
+             "'drone_agent.runtime.ipc', 'drone_agent.guardian', 'drone_agent.adapters', 'httpx', 'mavsdk'))))")
+    result = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, check=True,
+                            cwd=REPO, env={**os.environ, "PYTHONPATH": str(REPO / "src")})
+    assert result.stdout.strip() == "[]", result.stdout
+
+
 def test_recovery_policy_is_a_reference_not_planner_content():
     # The planner names a policy; it never authors one (D009). / 规划器只引用策略，不编写策略（D009）。
     spec = mission_spec()
