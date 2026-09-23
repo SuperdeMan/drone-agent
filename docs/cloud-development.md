@@ -98,7 +98,7 @@ uv run python scripts/dev_stack.py m2-key --apply    # 写入 secrets/m2-model/m
 uv run python scripts/m2_baseline.py --output docs/verification/m2-baseline-<日期>.json --price-input <元/百万> --price-output <元/百万> --price-source "<厂商价格页与日期>"
 ```
 
-没有给出价格来源时费用记为 unpriced。
+没有给出价格来源时费用记为 unpriced。基线以 `HEAD` 记录软件版本，门禁要求所有判据来自同一 commit；要给已验证过的候选补基线，在该候选的独立工作树里运行（步骤见 [M2 验收记录](m2-readiness.md#复现与审计)）。门禁输入哈希按字节计算、仓库按 LF 存储，门禁拒收 CRLF 输入。
 
 本机任务台 `uv run python -m drone_agent.console.mission --local` 在 <http://127.0.0.1:8769> 提供 hri.v0 控制台和进程内任务服务：提交、规划、准入、审批与签名都在本机完成，没有机器人连接，不起飞（D023）；有 `MINIMAX_API_KEY` 时实调规划，否则只回答 M2 场景集中的请求原文，页面标明所用规划器。M2 是否关闭只看 `scripts/verify_m2_release.py`：在同一 commit 上核对云端检查、对抗语料、E2E、M1 完整回归与实调基线，缺证据的判据记为 missing。
 

@@ -102,4 +102,19 @@ uv run python scripts/dev_stack.py fetch --run <m2-运行> --cases replan_degrad
 uv run python scripts/verify_m2_release.py --sha f362b9e22398b61ec948c48b88d1243dd0a30dfe --deployment <部署回执> --e2e <M2 回执> --m1 <M1 回执> --output <门禁结果>
 ```
 
-补齐 M2 只差一步：在本机进程环境设置 `MINIMAX_API_KEY` 后，在同一候选上运行 `scripts/m2_baseline.py`（写入 `docs/verification/` 并追加 `eval/BASELINES.md`），必要时用 `dev_stack.py m2-key --apply` 与 `m2 --planner live` 做实调端到端抽样，再以 `--baseline` 重跑门禁。实调产生模型费用；报告只在给出价格来源时计算费用。
+门禁的输入哈希按字节计算，仓库按 LF 存储（`.gitattributes`）。首次运行门禁时，回执是 Windows 文本模式写出的 CRLF，记下的哈希无法从克隆复现。提交后发现这一点：证据已统一转为 LF，并在候选 `f362b9e` 的独立工作树里重跑门禁，五项判据与首次逐字相同，13 个输入哈希现在都等于仓库中的文件。候选之后的脚本已改为以 LF 写回执与报告，两个门禁都拒收 CRLF 输入；候选自身的脚本仍是旧行为，所以下面在候选上补跑时要先转换。
+
+补齐 M2 只差实调基线。`main` 已在候选之后前进（测试、文档与证据脚本的行尾修复，不改 `src/` 与 `configs/`），而 `m2_baseline.py` 以 `HEAD` 记录软件版本、门禁要求 `HEAD` 就是候选，所以两者都在候选的独立工作树里运行；录制与报告写回主仓库，保持工作树 `eval/` 干净：
+
+```powershell
+git worktree add --detach ../drone-agent-m2-close f362b9e22398b61ec948c48b88d1243dd0a30dfe
+cd ../drone-agent-m2-close
+# 在本机进程环境设置 MINIMAX_API_KEY，不写入任何文件
+uv run python scripts/m2_baseline.py --output <主仓库>/docs/verification/m2-baseline-<日期>.json --recordings <主仓库>/eval/requests/recordings --price-input <元/百万> --price-output <元/百万> --price-source "<厂商价格页与日期>"
+# 候选的脚本在 Windows 写出 CRLF，先转为 LF
+uv run python -c "import pathlib, sys; p = pathlib.Path(sys.argv[1]); p.write_bytes(p.read_bytes().replace(b'\r\n', b'\n'))" <基线报告>
+uv run python scripts/generate_proto.py
+uv run python scripts/verify_m2_release.py --sha f362b9e22398b61ec948c48b88d1243dd0a30dfe --deployment <主仓库>/docs/verification/m2-2026-09-23-deployment.json --e2e <主仓库>/docs/verification/m2-2026-09-23-e2e-receipt.json --m1 <m2-2026-09-23-m1-regression/ 中除 geofence+cancel_takeoff-try1 外的 11 个回执> --baseline <基线报告> --output <主仓库>/docs/verification/m2-<日期>.json
+```
+
+门禁全部通过后，在主仓库提交基线报告、录制与门禁结果，追加 `eval/BASELINES.md`，再勾选路线图并更新 `CLAUDE.md` 当前阶段（WP-M2-20）。需要实调端到端抽样时，用 `dev_stack.py m2-key --apply` 与 `m2 --planner live`。实调产生模型费用；报告只在给出价格来源时计算费用。
