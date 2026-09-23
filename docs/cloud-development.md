@@ -88,6 +88,17 @@ uv run python scripts/dev_stack.py m2-key            # 只返回计划
 uv run python scripts/dev_stack.py m2-key --apply    # 写入 secrets/m2-model/minimax.key（0600），不回显
 ```
 
+本机的 key 只放在进程环境里，本项目不读 `.env`（D029）。需要推送或更换云端 key、重跑准入率基线，或者让本机任务台实调时，在自己的 PowerShell 窗口临时设为用户环境变量；输入不回显，也不进命令历史：
+
+```powershell
+$k = Read-Host "MINIMAX_API_KEY" -AsSecureString
+[Environment]::SetEnvironmentVariable("MINIMAX_API_KEY", [Net.NetworkCredential]::new("", $k).Password, "User")
+# 用完删除，云端副本不受影响：
+[Environment]::SetEnvironmentVariable("MINIMAX_API_KEY", $null, "User")
+```
+
+已经打开的终端和 Claude Code 会话不会自动继承新设的用户变量，需要在命令里读取 `[Environment]::GetEnvironmentVariable("MINIMAX_API_KEY", "User")`，或者重开会话。本机环境若设有 SOCKS 的 `ALL_PROXY`，httpx 会因缺少 `socksio` 在发请求前失败。MiniMax 是国内端点，只在该命令的进程里移除 `ALL_PROXY`，并把 `api.minimaxi.com` 加入 `NO_PROXY` 直连即可。
+
 密钥与证书由 `fleet/provision.py` 在 ground 镜像中以工作区用户身份生成到 `~/drone-agent/secrets/m2/`，重复运行保留签名密钥；它们不进入快照、Compose 文件、镜像或日志。
 
 产物位于 `artifacts/<deployment_id>/m2-<run_id>/<scenario>-<seed>/`：`input/`（场景、脚本回答、故障文件）、`service/`（业务账本、媒体、`ready.json`、实调录制）、`inbox/`、`mailbox/`、`uplink/`、`robot/`、`aircraft/<mission_id>/v<n>/`（每个版本一次飞行）、`truth/`、`ulog/`、`service-export/`、`judge/`。拉取与人工核对沿用 `fetch`；证据浏览器对 M2 用例按任务版本各生成一条记录，并显示规划事件带与规划 / 审批 / 报告 / 复核 / 问题表。
