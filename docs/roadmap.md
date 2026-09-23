@@ -60,7 +60,7 @@ M1 人工体验补遗 D027 已增加固定任务的 [实时仿真入口](live-si
 
 D028 将该入口常驻到云端，经现有 Tailscale 私网访问；使用与本批证据见 [Tailnet 指南](tailnet-console.md) 和 [验收记录](tailnet-console-readiness.md)，同样不替代 M2 的工作包。
 
-拆解见 [M2 实施计划](m2-implementation.md)：四个批次、20 个工作包；批次 A / B 的确定性部分在本机完成，服务联调与飞行在云端。原任务清单（Provider 移植；Planner `claude-opus-5` 结构化输出 `MissionSpec` 与 `refusal` 回退；MCP 只读工具；Compiler / Admission；ApprovalRecord 与控制台审批流；Evidence Verifier；有界重规划；A2A 入口；对抗性规划测试集）全部映射到下列工作包。
+拆解见 [M2 实施计划](m2-implementation.md)：四个批次、20 个工作包；批次 A / B 的确定性部分在本机完成，服务联调与飞行在云端。原任务清单（Provider 移植；Planner 结构化输出 `MissionSpec` 与拒答回退，默认模型按 2026-09-23 用户更正为 MiniMax-M3，沿用 car-agent 配置（D029）；MCP 只读工具；Compiler / Admission；ApprovalRecord 与控制台审批流；Evidence Verifier；有界重规划；A2A 入口；对抗性规划测试集）全部映射到下列工作包。
 
 任务：
 
@@ -68,7 +68,7 @@ D028 将该入口常驻到云端，经现有 Tailscale 私网访问；使用与�
 - [ ] 批次 B 模型接入：Planner 引擎（WP-M2-08）；自然语言对抗集（WP-M2-09）；有界重规划与审批策略（WP-M2-10）
 - [ ] 批次 C 服务与入口：签名与机器人身份（WP-M2-11）；mission-service 骨架（WP-M2-12）；Evidence Verifier 与三列报告（WP-M2-13）；`skill.inspect.asset`（WP-M2-14）；任务控制台 v0（WP-M2-15）；A2A 入口（WP-M2-16）；机载 uplink 进程（WP-M2-17）
 - [ ] 批次 D 准出：云端部署扩展（WP-M2-18）；E2E 场景集与裁判扩展（WP-M2-19）；准入率基线与发布门禁（WP-M2-20）
-- [ ] 决策待办：签名与机器人身份；受限上行网络与 executive 无网络边界；审批策略
+- [x] 决策待办：签名与机器人身份（D030）；受限上行网络与 executive 无网络边界（D031）；审批策略（D032）；另补 Provider 默认模型（D029）、控制台与 A2A 身份（D033）、落位补充（D034）
 
 退出标准见总览；额外要求：远程任务包有签名与机载验签；`drone.*.v1` 只增字段。
 

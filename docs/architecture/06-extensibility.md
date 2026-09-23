@@ -13,7 +13,7 @@
 | `WorldPredictor` | 观测序列 → `PredictedWorld` 事实 | 无 | WorldFly 类世界模型；轨迹预测 | 只用于候选评估；永不作为前置条件 |
 | `PerceptionProvider` | 传感器流 → `WorldFact` / 检测 | YOLO 级检测器（M3） | 开放词汇检测、机载小 VLM 事件检测 | 输出带协方差与置信度 |
 | `EvidenceVerifier` | `Evidence` + 判据 → `effect_verdict` | 确定性检查器（M1） | VLM 判定（仅业务层，M2） | 确定性部分覆盖所有安全相关判据 |
-| `LLMProvider` | 复用 `embodied-agent` Provider 抽象 | Claude Opus 5（`claude-opus-5`，adaptive thinking，结构化输出） | 其他云模型；机载小模型 | 输出通过 `MissionSpec` schema 校验 |
+| `LLMProvider` | 复用 `embodied-agent` Provider 抽象（来源链 car-agent `llm-gateway`） | MiniMax-M3（OpenAI 兼容，沿用 car-agent 配置；结构化规划关思考，强制函数调用 + JSON 抢救，D029） | 同一注册表中的其他 OpenAI 兼容厂商（DeepSeek、Qwen、MiMo）；机载小模型 | 输出通过 `MissionSpec` schema 校验 |
 | `PlannerTool`（MCP） | 只读工具：地图、资产、天气、空域、历史 | 本地资产库 + 地图服务 | UOM / UTM 查询、气象 API | 工具无副作用；工具清单进入 `test_model_cannot_reach_egress` |
 | `ConstraintProvider` | 准入 / 运行期约束来源 | 地理围栏、能源模型（M1） | `AirspaceConstraintProvider`（UOM 报备、空域属性、Remote ID）（M4 前）、气象 | 约束可离线评估、可回放 |
 | `FleetTransport` | 车队协议消息的传输 | 进程内 / gRPC（M1–M2） | Zenoh（M3）、MQTT（DJI/Dock，M6） | 消息 schema 不变 |
@@ -41,7 +41,8 @@
 - 输出：`MissionSpec` 草案，通过结构化输出（schema 强约束）产生；再经 Compiler / Admission。
 - 允许的工具：MCP 只读工具。工具清单是配置项，进入契约测试。
 - 有界重规划：只在事件（异常、任务失败、能力变化）触发时重新生成受影响的子图，且新版本仍需准入（可配置为「小改动自动批准」，范围由审批策略定义）。
-- 模型选择与调用方式复用 `embodied-agent` 的 Provider；默认 `claude-opus-5`，adaptive thinking，`refusal` 停止原因需处理并回退。
+- 模型选择与调用方式复用 `embodied-agent` 的 Provider；默认 MiniMax-M3（2026-09-23 用户更正，沿用 car-agent 配置，D029）。结构化规划关思考；强制函数调用未被遵守时从正文抢救 JSON，再做客户端校验；拒答与内容过滤映射为明确的规划失败，不重试、不跨厂商回退。
+- M2 的上下文由引擎经 MCP 只读工具检索后以数据块注入，模型只拿到输出函数（D034）；工具返回是数据，真正的防线是 Compiler / Admission / 机载复核。
 
 ### 3.2 VLM 验证与事件检测
 

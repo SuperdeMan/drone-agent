@@ -115,3 +115,13 @@ D028 的网络准入由 Tailscale 提供，后端只发布到宿主回环地址�
 PX4 的模式仲裁采用 `CURRENT_MODE`（实际模式与操作者期望模式）观测，guardian 启动时仅请求该状态消息的 10 Hz 最大发送频率；不更改飞行失效保护。低频 HEARTBEAT 继续用于链路/原生失效保护状态，不能单独承担短暂模式切换检测。定义见 [MAVLink CURRENT_MODE](https://mavlink.io/en/messages/common.html#CURRENT_MODE)。
 
 `guardian` 与 `executive` 分进程只隔离软件故障；供电、计算与通信仍是共因。M4 真机验证清单必须包含：伴飞计算机断电、串口拔出、RC 接管、飞控失效保护触发四类共因测试，验证飞控原生路径不依赖任何机载软件。
+
+## 9. M2 受约束 Agent 的安全边界（D029–D034）
+
+- **模型输出止于草案**：规划模型只能调用输出函数 `submit_mission_draft`，其 schema 由请求范围内的体积、资产与技能枚举约束；草案到 `MissionSpec` 的转换、框架节点、恢复策略引用、时间窗与能源预算都是确定性代码。Compiler、Admission 与机载复核三层都必须独立拦住越界内容，不能依赖模型服从提示。
+- **准入 fail closed**：能力、空间（体积存在、坐标系与地图版本一致、目标在体积内、请求范围不被扩大）、时间、能源（按技能能耗上界求和，缺估计即拒绝）、空域（仿真模式必须由场景显式声明，真实模式缺报备即拒绝）、资源、参数 schema、`allow_unverified_from` 须人工审批；任何 unknown 都不放行。
+- **签名与复核**：机载的 uplink、executive、guardian 各自验签；签名不替代能力与登记表复核。
+- **没有第二条控制路径**：控制台、A2A、mission-service 与 uplink 都不持有 guardian 的控制套接字；操作请求只能经 executive 的操作者通道，由 executive 与 guardian 复核任务、版本、代次、步骤与有效期。uplink 进程崩溃或服务掉线不触发、也不阻止机载恢复。
+- **版本切换只在落地后**：重规划得到的新版本只在 `landed_disarmed` 之后以更高代次接管；M1 的「空中不授予新代次」规则不放宽（D032）。自动批准只覆盖原样重试，且不得扩范围或新增 `allow_unverified_from`。
+- **多相位技能**：guardian 只接受清单中声明的相位，相位的前置条件与持续约束分别检查；`capture` 须在同一步骤的 `approach` 被接受之后。巡检接近阶段的能源前置条件按「本节点及其后继的能耗上界 + 返航余量」计算，而不是整个预算。
+- **VLM 只做业务判断**：Evidence Verifier 的确定性复算决定 `effect_verdict`；VLM 输出只进入带置信度与模型版本的 `WorldFact`，低于阈值只作候选，不能改变判定、不能触发恢复或飞行。服务侧复算与机载判定不一致时记为 `unknown` 并告警，不能升级为已完成。

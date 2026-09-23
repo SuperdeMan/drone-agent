@@ -177,3 +177,24 @@ D028 将相同页面协议增加云端入口：Tailscale Serve → ASGI 网页�
 | `test_skill_resources_exclusive` | 同一机器人上两个声明 `motion: exclusive` 的技能不能同时 `running` |
 | `test_predicted_world_not_precondition` | `world_kind = predicted` 的事实不能满足 `preconditions` |
 | `test_schema_backward_compatible` | 新版本对象能被旧版本解析（增字段） |
+
+## 10. M2 增量（D029–D034）
+
+M2 只对 `drone.*.v1` 追加字段、消息、枚举值与 RPC；领域载荷 `schema_version` 仍为 `0.1.0`，已冻结的字段号、枚举与签名不变（`freeze_wire.py --check`）。
+
+**跨到机器人的契约（进入 wire）**
+
+| 对象 | 追加 | 语义 |
+|---|---|---|
+| `ApprovalRecord` | `signature`、`signer_key_id` | Ed25519 签在「审批陈述」上：域分隔前缀 `drone-agent/approval-statement/v1\n` + 去掉这两个字段后的规范 JSON（时间统一 UTC、键排序）。陈述含 `package_hash`，所以签名同时绑定可执行内容与授权；签名字段不进入 `package_hash`（D030） |
+| `SkillManifest` | `intent_phases[]`（`phase`、`preconditions[]`）、`energy_estimate` | 多相位技能（`skill.inspect.asset`：`approach` → `capture`）的每个控制意图声明所属相位；guardian 按清单而不是技能名绑定载荷与前置条件。能耗估计带 `basis: sim_only`、来源运行、样本数、均值与上界；`estimated_energy_fraction` 取上界（D034） |
+| `Evidence` | `mission_id`、`mission_version`、`robot_id` | 证据离开机载后仍能关联到任务版本；机载本地证据可以不填 |
+| `OperatorRequest`（新） | — | 服务到机器人的暂停 / 恢复 / 取消：`request_id`、机器人、任务与版本、`lease_epoch`、`step_id`、`action`、`valid_until`、`requested_by`。uplink 转写进 M1 操作者信箱，executive 与 guardian 仍各自复核绑定与时效 |
+| `EventType` | `mission_accepted`、`mission_finished`、`operator_request_accepted`、`operator_request_rejected`、`runtime_record` | uplink 把机载账本行映射为 `ExecutionEvent`；`event_id` 取账本行哈希，`data` 保留原账本种类、序号、前项哈希与原始数据，业务账本据此复核哈希链；无专门类型的行用 `runtime_record`，不丢弃 |
+| `drone.fleet.v1` | `FetchDeliveries`、`AcknowledgeDelivery`、`PublishMedia`；`DeliveryKind`、`Delivery`、`DeliveryBatch`、`DeliveryRequest`、`DeliveryAck`、`EvidenceMedia` | 机器人主动拨出（mTLS）拉取已签名任务包与操作请求，按游标至少一次投递、按投递 ID 幂等确认；证据影像随元数据与 SHA-256 上传。`DeliveryKind` 零值不代表任何投递 |
+
+**服务侧对象（不进入 wire，仍带 `schema_version`）**：`MissionRequest`（请求 ID、原文、请求者身份与信任级别、入口、指定体积与可选资产范围、幂等键）、`AdmissionResult`（`accepted` + `Issue[]` + 各层检查记录）、`Issue`（受控码表见 `runtime/issues.py`，准入、A2A 与控制台鉴权共用）、规划结果（`planned` / `refused` / `failed`，带尝试次数、通道与费用）、三列报告。
+
+**规划草案**：模型输出的是 `submit_mission_draft` 函数参数，schema 由引擎按请求范围生成（体积、资产、技能用枚举约束；每个对象 `additionalProperties: false`）。草案不是契约：引擎确定性地把它变成 `MissionSpec`，任务 ID / 版本、`Provenance`、`recovery_policy_ref`、时间窗与能源预算由服务按场景配置填写，不由模型决定；Compiler 再补齐框架节点并校验。
+
+**机载接受（M2 签名模式）**：除 §2 的 M0/M1 接收边界外，还要求审批签名有效、签名密钥在本机 `trust.json` 中、陈述与任务包一致、同一任务不回退版本、控制权代次高于本机持久化水位。未签名的包只能在显式的 M1 本地信任模式下运行。

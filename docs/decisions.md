@@ -311,3 +311,116 @@ D024 的实施已完成并通过完整 SITL 验收，状态转为生效；D025 �
 **实施补充（2026-09-22）**：首次激活时，网页容器和机内代理均健康，但 Docker 对 `internal: true` 网络返回实际端口映射 `8768/tcp: null`，宿主回环入口不可达，激活已回退。网页入口改用独立的 `console_ingress` 桥接网络，宿主仍仅绑定回环；不连接仿真网络，SITL/guardian/executive 的内部网络保持原样。本阶段的网页网络边界是“独立入口网络 + 仅回环发布 + 私有 Serve”，不宣称网页容器完全禁止出站。部署同时检查声明端口与 Docker 的实际发布结果，不能只看 Compose 配置。
 
 **构建缓存补充（2026-09-22）**：首次经常驻代理启动任务时，Buildx 向用户的 `.docker/buildx/activity` 写缓存，被 `ProtectHome=read-only` 拒绝，尚未起飞。代理显式设置 `DOCKER_CONFIG` 到本项目 `console/docker-client/`，只允许本项目范围内的缓存写入；不放宽用户目录保护、不复制其他项目或用户的 Docker 凭据。
+
+## D029 · M2 Planner 默认 MiniMax-M3，沿用 car-agent 的 Provider 配置（2026-09-23 用户更正）
+
+**日期**：2026-09-23 · **状态**：生效
+
+**决策**：按用户更正，M2 Planner / Provider 的默认模型由 `claude-opus-5` 改为 MiniMax `MiniMax-M3`，配置沿用 car-agent `llm-gateway` 已在真栈使用的形态：OpenAI 兼容 `chat/completions`（默认 `https://api.minimaxi.com/v1/chat/completions`，`MINIMAX_BASE_URL` 可覆盖）、Bearer 鉴权、`max_completion_tokens`、结构化规划恒关思考（`thinking: {type: disabled}`），头部 `<think>` 内联段一律剥离。变量名只参照 car-agent `.env.example`（`MINIMAX_API_KEY`、`MINIMAX_LLM_MODEL`）；值只来自进程环境或部署挂载的密钥文件，不读取、不复制 car-agent `.env`。
+
+移植范围：从 embodied-agent `providers/{llm,runtime,ratelimit,health,cache,guarded}.py`（其 LLM 段本身移植自 car-agent `llm-gateway`）复制改造到 `src/drone_agent/providers/`。保留 `OpenAICompatibleProvider`（厂商差异由 token 参数、思考开关、鉴权三项覆盖）、厂商注册表（默认 minimax；mimo / deepseek / qwen 只在有 key 时注册；独立视觉档 `qwen-vl`）、限流 / 健康 / 缓存。去掉 Redis 持久化、全局热切换控制面、embedding 与 `AnthropicProvider`：它们不属于 M2 规划链路，需要时另立条目。新增录制回放 provider。
+
+结构化输出：MiniMax 不保证遵守强制工具调用（car-agent 实测 MiniMax-M3 走成工具调用约 45–48%），因此沿用 car-agent M1a 的双通道——强制函数调用 `submit_mission_draft`，未走工具时从正文抢救 JSON——之后在客户端做 JSON Schema 与 Pydantic 校验。无效时附校验错误重试，总调用不超过 3 次（1 + 2 次重试），仍无效即失败；每次记录走的通道（toolcall / salvage）。
+
+拒答：模型在草案中选择 `decline`，或服务商以内容过滤结束（`finish_reason=content_filter`、MiniMax `base_resp` 敏感内容码），均映射为 `refused`，不重试、不换厂商。规划请求不做跨厂商自动回退：同一基线必须固定模型，换模型只能显式配置并写入 `Provenance.model_id`（与 car-agent「pin 请求恒不跨」一致）。
+
+视觉：Evidence Verifier 的 VLM 业务判断沿用 car-agent 的独立视觉档（`qwen-vl`，DashScope key）；无 key 时如实记录未运行，不影响确定性判定。
+
+测试默认走录制回放或桩；实调需显式 `DRONE_LIVE_LLM=1` 且有 key，结果单独记录，不计入门禁（D026 不变）。
+
+**理由**：用户要求与 car-agent 共用同一供应商与配置；该配置在 car-agent 有真栈探针、A/B 数据和弱工具调用的抢救经验。本项目的安全保证来自 Compiler / Admission / 机载复核，不依赖某个模型是否服从，换厂商不改变边界。
+
+**替代方案**：保留 `claude-opus-5` 为默认（否：用户更正）；为 MiniMax 改用 `response_format=json_schema`（否：car-agent 未验证该能力，工具调用 + 抢救是已测路径）；规划请求跨厂商自动降级（否：破坏基线的固定模型前提）。
+
+**重估触发器**：MiniMax 模型或工具调用率变化；准入率基线显示一次通过率不足；需要第二厂商对照评测时另立条目。
+
+## D030 · 任务包签名、机载验签与机器人身份（M2 决策待办①）
+
+**日期**：2026-09-23 · **状态**：生效
+
+**决策**：
+
+- 签名对象：mission-service 对 `ApprovalRecord` 的规范陈述签名。算法 Ed25519；消息为域分隔前缀 `drone-agent/approval-statement/v1\n` 加规范 JSON（去掉签名字段、时间统一为 UTC、键排序、UTF-8）。陈述含 `package_hash`、任务 ID / 版本、审批人、审批时间、有效期与机器人集合，因此一个签名同时绑定可执行内容与授权。`ApprovalRecord` 兼容追加 `signature`（base64）与 `signer_key_id`，二者不进入 `package_hash`。`MissionPackage` 不另加签名字段：其可执行内容已经以 `package_hash` 进入被签陈述，第二个签名不增加任何安全性质。
+- 密钥保管：签发私钥由部署脚本在云主机本项目 `secrets/` 下生成（0600），只读挂载给 mission-service，不进镜像、仓库、日志或源码快照。机器人只持公钥：`trust.json`（key id 为 `ed25519:` 加公钥 SHA-256 前 16 位十六进制）在配置阶段只读挂载，进程启动时加载一次，空中不轮换。轮换即停飞后换发公钥并重启机载进程；已移除的旧钥签发的包一律拒绝。
+- 机载验签（纵深）：uplink 收包时、executive 与 guardian 构造时各自独立验签，任一失败即 fail closed；此外继续执行 M1 的哈希、审批窗口、机器人范围与登记表复核。同一 `mission_id` 已接受 v 版本后，机载拒绝 ≤ v 的包。控制权代次水位按机器人持久化，跨任务版本单调。
+- 链路身份：部署脚本为每次部署生成私有 CA（ECDSA P-256），签发 mission-service 服务端证书与机器人客户端证书（`CN=uav_01`、URI SAN `drone-agent://robot/uav_01`）。gRPC 双向 TLS；服务端以证书身份判定 `robot_id`，请求中的机器人与证书不符即拒绝。证书指纹写入部署回执；私钥只挂载到各自容器。
+- M1 本地信任模式保留：未给 `--trust` 的 guardian / executive 仍按 M1 读取本地可信任务包（固定 M1 回归、D027/D028 入口）。M2 编排恒给 `--trust`，uplink 不写入未签名的包。
+
+**理由**：签名解决传输中的篡改与伪造审批；它不替代机载复核，机载仍按本机能力描述与登记表重新校验。Ed25519 签名短、实现确定；TLS 证书用 P-256 以保证 gRPC（BoringSSL）兼容。
+
+**替代方案**：只做 mTLS 不签名（否：链路身份不能证明审批内容）；HMAC 共享密钥（否：机载持有即可伪造）；任务包与审批各签一次（否：无额外性质）。
+
+**重估触发器**：M4-A 真机需要硬件密钥存储；出现多个签发方或第二台机器人（M4-B）。
+
+## D031 · 机载 uplink 进程与 executive 无网络边界（M2 决策待办②）
+
+**日期**：2026-09-23 · **状态**：生效
+
+**决策**：
+
+- 机载新增 `uplink` 进程（`runtime/uplink.py`），是机载唯一的对外网络端点：只接入到 mission-service 的受限上行网络，由机器人主动拨出 mTLS 连接；不监听端口、不发布宿主端口、不接入仿真网络、不挂载 guardian 的 IPC 目录。guardian 只接仿真网络（MAVLink），executive 保持 `network_mode: none`。
+- 下行交接：uplink 验签后把任务包原样（含签名）原子写入机载私有卷的 `inbox/`；操作请求（暂停 / 恢复 / 取消）经身份、绑定与有效期检查后写入 M1 已验证的操作者信箱，同一时刻只有一个待处理请求。executive 与 guardian 仍各自验签和复核。uplink 物理上够不到 guardian 控制套接字，因此不能提交控制意图。用私有卷而非另一个 UDS 服务：两者都不跨网络命名空间；文件交接复用 M1 已验证的信箱语义，uplink 重启不丢状态，且迫使消费者独立重验。
+- 上行：uplink 只读地读取机载账本与证据，经 `FleetTransport` 发布（至少一次；事件 ID 取账本行哈希，服务端去重）；证据影像经新增的 `PublishMedia` 上传；能力与约 1 Hz 状态同样上报。
+- 失联语义：服务或 uplink 不可用时，机载按已授权任务包继续或按恢复策略收尾；M2 不因服务掉线触发恢复（包默认允许继续，与 M1 `authorized_to_continue` 相同）。uplink 崩溃不影响 guardian 与 executive。
+- 仿真中的机载监管者：M2 编排脚本在 inbox 出现已验签的包后才启动 guardian 与 executive，进程生命周期与 M1 相同；真机常驻监管者在 M4-A 定义。
+
+**理由**：只有一个进程持网络，攻击面与故障面都集中在它身上；机器人主动拨出与真实蜂窝链路常见的 NAT 形态一致；控制出口仍只在 guardian，uplink 无法越过 executive 的操作通道。
+
+**替代方案**：executive 直接联网（否：打破 M1 边界）；mission-service 推送到机载监听端口（否：机载需开放入站端口）；uplink 经 UDS 直连 guardian（否：给 uplink 触达控制出口的路径）。
+
+**重估触发器**：M3 引入 Zenoh 传输；M4-A 定义真机常驻监管者；需要在空中接收新任务版本。
+
+## D032 · 审批策略与有界重规划（M2 决策待办③）
+
+**日期**：2026-09-23 · **状态**：生效
+
+**决策**：
+
+- 人工审批是默认：控制台审批人（D033 的会话身份）对确定版本的 `package_hash` 签署 `ApprovalRecord`。
+- `configs/approval_policy.yaml` 定义可自动批准的重规划，M2 只允许一类改动：对最近一次结果为失败、未证实或未知的内容节点原样重试（技能、版本与参数不变）。同时必须满足：同一空间体积、同一恢复策略、能源预算不增加、不新增 `allow_unverified_from`、机器人集合不变、时间窗不超出原审批、每任务重规划不超过 2 次。其余改动（新目标、新技能、改参数、删除证据要求、换体积）一律回控制台人工审批。自动批准的 `approver` 为 `policy:<policy_id>@<version>`；业务账本记录基础版本哈希、改动分类、策略版本与触发事件。
+- 触发：`skill_failed`，效果 `unverified` / `refuted` / `unknown`，能力变化。VLM 异常候选在 M2 只入账和进入报告，交地面复核属于 M4-B。
+- 只重生成受影响子图：默认提议器是确定性原样重试；规划模型也可作为提议器，但其输出同样经过 Compiler、Admission 与审批策略，扩范围或新增 `allow_unverified_from` 一律拒绝。
+- 机载版本切换只在安全点：落地、上锁并记录 `recovered_to(landed_disarmed)` 或任务结果之后，新版本使用更高的控制权代次。空中切换版本需要重新设计空中授权并单独验证，不在 M2 实施。
+
+**理由**：M1 已验证的规则禁止在空中授予新代次（`new_authority_requires_grounded_reconciliation`）；放宽它需要新的安全论证与 SITL 场景。落地后切换同时满足「安全点 + 新代次」，不改变已验证的控制权语义。原样重试的风险不超过已批准的原节点，适合自动批准。
+
+**替代方案**：空中悬停等待新版本（否：需放宽已验证规则，另立条目）；所有重规划人工审批（否：原样重试也要人工，成本高且无额外安全性）；允许模型自行批准（否）。
+
+**重估触发器**：M3 需要空中改航或自主层要求在线替换子图；自动批准分类出现误判。
+
+## D033 · M2 控制台与 A2A 的身份与权限（D028 重估）
+
+**日期**：2026-09-23 · **状态**：生效
+
+**决策**：M2 起控制台可以提交任意自然语言任务，命中 D028 的重估触发器，身份与授权重定为：
+
+- 控制台（Tailnet）身份取 Tailscale Serve 注入的 `Tailscale-User-Login`（Serve 为 tailnet 用户注入并剥除客户端伪造的同名头；后端仍只绑定回环）。没有该头（如 tagged 设备）只能查看，不能提交、审批或操作。本机桥模式身份为 `local:<操作系统用户>`。仍不新增应用账号体系、不启用 Funnel。
+- 角色：tailnet 操作者可提交、审批与暂停 / 恢复 / 取消；审批绑定 `package_hash`、会话身份与时间，审批后的任何改动都使签名失效。
+- A2A：`/a2a` JSON-RPC 2.0（`message/send`、`tasks/get`）与 `/.well-known/agent-card.json`。调用方以 Bearer token 认证（服务端只存 token 的 SHA-256），信任级别为第三方，只授予 `mission.submit` / `mission.read`；载荷出现控制级键、`flight.*` scope、审批或操作请求一律拒绝并记 Issue。A2A 提交的任务只进入待审批，返回的只有状态与报告。语音与声纹不构成授权。
+- 权限判定与 Issue 码表共用 `runtime/permission.py` 与 `runtime/issues.py`。
+- 控制台 hri.v0 使用 WebSocket；实现为既有 Uvicorn ASGI 入口加纯 Python `wsproto`，依赖锁定在 `uv.lock`，不引入前端框架。
+
+**理由**：Serve 身份头由 Tailscale 注入并防伪造，是现有私网准入之上最小的可审计身份。A2A 调用方不是人，不能审批。
+
+**替代方案**：新增登录系统（否：当前阶段不需要，保持 D028 原则）；A2A 直接创建已批准任务（否：绕过人工审批）。
+
+**重估触发器**：出现只读成员或多角色；开启公网访问；真机；外部 agent 需要写权限。依据：[Tailscale Serve identity headers](https://tailscale.com/kb/1312/serve)。
+
+## D034 · M2 落位补充：规划检索、MCP 子集、场景 v2、巡检技能相位与能耗估计
+
+**日期**：2026-09-23 · **状态**：生效
+
+**决策**：
+
+- Planner 的上下文由引擎经 MCP 只读工具检索，按请求范围（体积、资产、历史、天气、空域状态）以数据块注入提示；模型只拿到输出函数 `submit_mission_draft`，不直接调用工具。对弱工具调用厂商，单次调用更可复现，回放哈希也覆盖全部工具返回。
+- MCP 为本项目内最小子集：JSON-RPC 2.0 over stdio，`initialize`、`tools/list`、`tools/call`、`ping`，协议修订 `2025-06-18`；工具带 `readOnlyHint`，服务器进程没有写路径。不引入第三方 MCP 包。
+- M2 场景登记表 `configs/scenarios/m2_campus_v2.yaml`（`map_version=campus_v2`）：在 M1 场景基础上增加蓝色资产 `asset_blue`、每个资产的预验证观察航线，以及未报备的 `campus_rooftop` 体积（真实空域模式，准入必须 fail closed）。M1 场景文件与哈希不变；仿真世界增加对应静态标记。
+- `skill.inspect.asset` 在一个技能内分两个意图相位：`approach`（上传登记的观察航线）与 `capture`（拍照）。`SkillManifest` 兼容追加 `intent_phases`（每相位的前置条件）；guardian 只接受载荷 `{skill_id, params, phase}`，相位须在清单内且顺序合法；补拍上限来自参数，用尽仍不合格即 `unverified`。
+- 能耗估计：从 M1 完整验收运行的遥测按技能统计，写入技能清单的 `energy_estimate`（`basis: sim_only`、来源运行、样本数、均值与上界），`estimated_energy_fraction` 取保守上界；只用于仿真准入。
+- 规划、准入、审批与报告等服务侧模型（`MissionRequest`、`AdmissionResult`、`Issue`、报告）不进入 `drone.contracts.v1`。跨到机器人的新增对象（`OperatorRequest`、投递、媒体）按只增原则追加；`ApprovalRecord` 与 `Evidence` 只追加字段。
+
+**理由**：规划检索是 M2 计划已写明的设计边界；小型 MCP 子集足以承载只读工具，且不给机载镜像带入额外依赖；新地图版本避免改动 M1 已留证的登记表；把相位写进清单，guardian 才能按声明而不是按技能名绑定。
+
+**替代方案**：模型自主调用工具的多轮循环（否：MiniMax 工具调用率约一半，且更难复现）；把接近与补拍拆成两个技能（否：与架构中 `inspect_asset` 的内部状态机不一致）。
+
+**重估触发器**：需要模型按需检索大规模地图；MCP 规范出现不兼容修订；M3 引入 Offboard 接近路径。

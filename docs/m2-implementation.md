@@ -35,7 +35,7 @@ M1 人工体验补遗 D027 提前提供 `console/` 中固定任务的 SSH 实时
 
 | 工作包 | 内容与落位 | 前置 | 验收判据 |
 |---|---|---|---|
-| WP-M2-01 Provider 移植 | 从 `embodied-agent/src/embodied/providers/{llm,runtime,ratelimit,health,cache}.py`（当前 HEAD `24d780a`，移植时以实际 commit 为准）复制到 `src/drone_agent/providers/`，文件头标注来源（其 LLM 段本身移植自 car-agent，来源链一并写明）。默认 `claude-opus-5`、adaptive thinking、结构化输出；`refusal` 停止原因映射为明确失败而非重试；限流 / 健康 / 超时保留；新增录制回放 provider（fixture 带模型与提示版本哈希）；密钥只从环境读，日志脱敏 | — | `tests/providers/`：限流、超时、健康、refusal、回放一致性；无 `ANTHROPIC_API_KEY` 时全绿；`test_no_forbidden_terms` 绿 |
+| WP-M2-01 Provider 移植 | 从 `embodied-agent/src/embodied/providers/{llm,runtime,ratelimit,health,cache,guarded}.py`（当前 HEAD `24d780a`，移植时以实际 commit 为准）复制到 `src/drone_agent/providers/`，文件头标注来源（其 LLM 段本身移植自 car-agent，来源链一并写明）。默认 MiniMax `MiniMax-M3`（D029，沿用 car-agent 配置：OpenAI 兼容、Bearer、`max_completion_tokens`、结构化规划关思考）；结构化输出为强制函数调用 + 正文 JSON 抢救，客户端校验；内容过滤 / 拒答映射为明确失败而非重试，不跨厂商回退；限流 / 健康 / 超时保留；新增录制回放 provider（fixture 带模型与提示版本哈希）；密钥只从环境或密钥文件读，日志脱敏 | — | `tests/providers/`：限流、超时、健康、拒答、工具通道与抢救、回放一致性；无 `MINIMAX_API_KEY` 时全绿；`test_no_forbidden_terms` 绿 |
 | WP-M2-02 结构化 Issue 与 scope | 移植 `car-agent runtime/issues.py`（代码、严重度、范围、受控恢复动作）到 `runtime/issues.py`；移植 `embodied-agent safety/{scopes,permission}.py` 到 `runtime/permission.py`；scope 目录 `mission.*` / `flight.*` / `camera.*` / `payload.*`；第三方与工具类身份对 `flight.*` 硬拒 | — | 准入拒绝码、A2A 与控制台鉴权共用同一码表；scope 覆盖规则单测 |
 | WP-M2-03 MCP 只读工具 | `planner/tools/`：本地 MCP 服务器进程暴露 `assets.lookup`、`map.query`（读登记表与资产库）；`weather.current` / `missions.history` 读本地记录；`airspace.status` 由 WP-06 的桩回答；工具返回统一包成数据（带来源与哈希），不作为指令；白名单仍是 `configs/planner_tools.yaml` | — | 工具无写副作用（文件系统与网络快照前后一致）；`test_model_cannot_reach_egress` 不变；工具返回中的注入文本进入对抗集 |
 | WP-M2-04 Compiler | `admission/compiler.py`：`MissionSpec` → `MissionPackage`。从登记表解析 `approved_volume_id`；用 `CapabilityDescriptor` 绑定技能版本、用 `SkillManifest` 绑定资源 / 超时 / 证据要求；单机器人 `uav_01` 由目录分配；补齐或校验 `takeoff → … → return_home → land` 框架节点；`recovery_policy_ref` 由场景配置写入并校验 Planner 未改；`inspect` 目标展开为 `skill.inspect.asset` 节点；能源预算按 WP-07 的估计核算 | 02 | 编译结果通过 M1 `Registry.validate_package`；编译是纯函数（同输入同 `package_hash`）；Planner 写入的 `recovery_policy_ref` 与场景不同即拒绝 |
@@ -85,15 +85,17 @@ M1 人工体验补遗 D027 提前提供 `console/` 中固定任务的 SSH 实时
 
 ## 决策待办（动手前补 `decisions.md`）
 
-| 编号 | 议题 | 阻塞 |
-|---|---|---|
-| ① | 任务包 / 审批签名算法、密钥保管与轮换、mTLS 证书签发与机器人身份 | WP-M2-11 |
-| ② | aircraft 容器增加受限上行网络后如何保留 M1「executive 无网络」的边界；建议独立 `uplink` 进程持网络、经 UDS 交给 executive | WP-M2-12、17、18 |
-| ③ | 审批策略：可自动批准的重规划改动范围与审计要求 | WP-M2-10 |
+| 编号 | 议题 | 阻塞 | 结论 |
+|---|---|---|---|
+| ① | 任务包 / 审批签名算法、密钥保管与轮换、mTLS 证书签发与机器人身份 | WP-M2-11 | D030 |
+| ② | aircraft 容器增加受限上行网络后如何保留 M1「executive 无网络」的边界；建议独立 `uplink` 进程持网络、经 UDS 交给 executive | WP-M2-12、17、18 | D031（uplink 持网络，经机载私有卷交接） |
+| ③ | 审批策略：可自动批准的重规划改动范围与审计要求 | WP-M2-10 | D032（只自动批准原样重试；版本只在落地后切换） |
+
+另补：Provider 默认模型按用户更正改为 MiniMax（D029）；控制台与 A2A 身份（D033，D028 重估）；规划检索、MCP 子集、场景 v2、巡检技能相位与能耗估计的落位（D034）。
 
 ## 云端执行边界
 
-沿用 D023：只对 `drone-agent-cloud` 工作区操作；mission-service 与控制台跑在 ground 容器，不开放宿主端口，控制台经 SSH 隧道访问；API key 由部署脚本以环境变量注入，不写入快照或 Compose 文件。模型调用产生费用，E2E 批次前记录预算；录制回放覆盖门禁所需的全部场景，实调只做抽样核对。
+沿用 D023：只对 `drone-agent-cloud` 工作区操作；mission-service 跑在 ground 容器，不开放宿主端口；控制台沿用 D028 的回环发布与私有 Tailscale Serve 入口（D033）。模型 key（`MINIMAX_API_KEY`）由部署脚本写入本项目 `secrets/` 下的 0600 文件并只读挂载给 mission-service，不进入快照、Compose 文件、镜像或 `docker inspect` 可见的环境。模型调用产生费用，E2E 批次前记录预算；录制回放覆盖门禁所需的全部场景，实调只做抽样核对。
 
 ## 验收记录要求
 

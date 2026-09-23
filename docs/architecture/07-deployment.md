@@ -52,7 +52,7 @@ MuJoCo 继续承担 `embodied-agent` 的机械臂基线，不用于飞控集成�
 | MAVSDK-Python | 精确锁定 `3.17.4`（gRPC 封装 + `mavsdk_server`，D025） | 原生绑定或 `mavsdk-grpc` 迁移单独验证 |
 | RMW | Fast DDS（机器人内）；Zenoh（跨机器人） | — |
 | Nav2 | Jazzy 对应版本 | 随 ROS 2 |
-| Anthropic SDK | 最新稳定；模型 `claude-opus-5` | 按模型迁移指南 |
+| LLM Provider | MiniMax-M3，OpenAI 兼容 HTTP（`httpx`），配置沿用 car-agent（D029） | 模型或工具调用率变化时按 D029 重估 |
 
 版本组合锁定在 `configs/platforms/*.yaml` 与容器基础镜像标签中；任何变更走 ADR。
 
@@ -78,6 +78,8 @@ Windows 开发通过已安装的 Docker Desktop Linux 后端运行；构建、�
 
 D028 对网页入口增加明确例外：`sim/compose.console.yaml` 的网页容器只发布 `127.0.0.1:8768`，由现有 Tailscale Serve 的独立 HTTPS `8447` 端口代理，不向公网监听、不启用 Funnel。网页使用受限 ASGI 容器；同机专用 systemd 任务代理经私有 UDS 接收固定请求。原 SITL、executive、guardian 与验证容器的网络和资源限制不变。入口安装及回退只能调整本项目服务与新 Serve 映射，保持 car-agent 的 443/8443–8446 映射原样。
 
+M2（D030、D031、D033）在同一工作区增加：ground 镜像中的 mission-service（Planner、Compiler / Admission、审批与签名、业务账本、Evidence Verifier、报告），只在内部上行网络上以 mTLS 接受机器人连接，不发布宿主端口；aircraft 侧新增 uplink 进程，是机载唯一接入该网络的进程，主动拨出、无监听端口，与 guardian（仿真网络）和 executive（无网络）经机载私有卷交接。签发私钥、模型 key、CA 与各证书私钥只存在本项目 `secrets/`（0600）并只读挂载到需要它的单个容器；机器人只挂载公钥 `trust.json` 与自己的客户端证书。控制台沿用 D028 入口，身份取 Serve 注入的 tailnet 登录名。
+
 应用源码只从指定 Git commit 导出；控制脚本、Compose 和锁定依赖分别记录哈希，不能把控制面草案伪称为应用 release。首次复用 M0 已验证的镜像，经 SSH 上传并校验归档哈希、文件系统层与运行配置；后续验证镜像在服务器构建。秘密不进入快照，SSH 连接参数从进程环境读取，不复制 car-agent `.env`。操作、目录与结果边界见 `../cloud-development.md`。
 
 ## 5. 数据记录
@@ -96,6 +98,6 @@ D028 对网页入口增加明确例外：`sim/compose.console.yaml` 的网页容
 ## 7. 安全（信息安全）
 
 - M1 仿真从本地可信文件加载批准任务包，gRPC local credentials + 私有 UDS 验证本地连接，包哈希绑定范围；不把哈希宣称为数字签名。
-- M2 的远程任务入口增加签名、机载验签与机器人 ↔ mission-service 双向 TLS；Zenoh 接入时启用认证。
+- M2 的远程任务入口增加签名、机载验签与机器人 ↔ mission-service 双向 TLS（D030）；Zenoh 接入时启用认证。
 - 密钥不进代码与镜像；通过运行时挂载。
 - 认知链路攻击（提示注入进入 Planner 工具返回）：工具返回视为数据，不作为指令；任何来自工具的「扩大范围」建议都必须经准入。
