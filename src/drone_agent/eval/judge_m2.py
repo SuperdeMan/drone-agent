@@ -219,8 +219,7 @@ def judge_case(case: Path, root: Path, *, use_replay: bool = False) -> dict:
         "artifacts": {} if use_replay else {
             str(path.relative_to(case)).replace("\\", "/"): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in sorted(case.rglob("*"))
-            if path.is_file() and "judge" not in path.parts and path.name not in ("compose.log",)
-            and not path.name.endswith((".sock", ".lock")) and "api" not in path.parts},
+            if path.is_file() and "judge" not in path.parts and path.name != "compose.log"},
         "judged_at": datetime.now().astimezone().isoformat(),
     }
 

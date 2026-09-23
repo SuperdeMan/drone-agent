@@ -471,7 +471,8 @@ class MissionService:
             journals = self._journals(mission_id, record["version"])
             versions.append({
                 "version": record["version"], "status": record["status"], "origin": record["origin"],
-                "package_hash": record["package_hash"], "spec": record["spec"], "package": record["package"],
+                "created_at": record["created_at"], "package_hash": record["package_hash"], "spec": record["spec"],
+                "package": record["package"],
                 "diff": package_diff(previous, record["package"]) if record["package"] else None,
                 "planner": {k: planner.get(k) for k in ("status", "provider_id", "model_id", "prompt_version",
                                                         "input_hash", "decline_reason", "notes")}

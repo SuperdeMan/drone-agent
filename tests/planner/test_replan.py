@@ -101,7 +101,9 @@ def test_adding_an_unverified_edge_is_rejected():
 def test_parameter_change_goes_to_a_human():
     base_spec, package = base()
     found = triggers(package, aborted_after_unverified_inspection())
-    tuned = spec(mission_version=2, tasks=[inspect_task(max_captures=2)])
+    # Same window as the approved package, so the parameter is the only difference.
+    # 与已批准任务包相同的时间窗，使参数成为唯一差异。
+    tuned = spec(mission_version=2, tasks=[inspect_task(max_captures=2)], temporal_window=package.temporal_window)
     proposed = compile_spec(tuned, compile_context()).package
     decision = classify(package, proposed, found, POLICY, replans_so_far=0, base_approval=package.approval)
     assert decision.classification == "requires_human" and codes(decision.issues) == ["replan.requires_human"]
@@ -110,10 +112,12 @@ def test_parameter_change_goes_to_a_human():
 def test_retrying_a_completed_node_goes_to_a_human():
     base_spec, package = base()
     completed = {n.task_id: outcome(n.task_id) for n in package.nodes}
-    proposed = compile_spec(spec(mission_version=2), compile_context()).package
+    proposed = compile_spec(spec(mission_version=2, temporal_window=package.temporal_window),
+                            compile_context()).package
     decision = classify(package, proposed, triggers(package, completed), POLICY, replans_so_far=0,
                         base_approval=package.approval)
-    assert decision.classification == "requires_human"
+    assert decision.classification == "requires_human" and codes(decision.issues) == ["replan.requires_human"]
+    assert "not eligible" in decision.issues[0].message
 
 
 def test_the_replan_cap_is_a_hard_limit():
@@ -141,7 +145,8 @@ def test_framework_change_goes_to_a_human():
     found = triggers(package, aborted_after_unverified_inspection())
     higher = spec(mission_version=2, tasks=[TaskNode(task_id="takeoff", skill_id="skill.flight.takeoff",
                                                      params={"altitude_m_agl": 6}),
-                                            inspect_task(depends_on=["takeoff"])])
+                                            inspect_task(depends_on=["takeoff"])],
+                  temporal_window=package.temporal_window)
     proposed = compile_spec(higher, compile_context()).package
     decision = classify(package, proposed, found, POLICY, replans_so_far=0, base_approval=package.approval)
-    assert decision.classification == "requires_human"
+    assert decision.classification == "requires_human" and codes(decision.issues) == ["replan.requires_human"]

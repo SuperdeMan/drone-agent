@@ -115,3 +115,22 @@ def test_provisioning_keeps_the_signing_key_and_reports_only_public_facts(tmp_pa
 def test_no_flight_scenarios_expect_nothing_delivered(scenario):
     expected = next(s for s in load_suite(ROOT)["scenarios"] if s["id"] == scenario)["expected"]
     assert expected["flight"] is False and expected["classification"] == "not_completed"
+
+
+async def test_viewer_renders_each_version_with_the_planning_band_and_tables(tmp_path):
+    from drone_agent.eval.viewer import build_page, load_m2_case
+
+    case = tmp_path / "replan_degraded_image-7"
+    case.mkdir()
+    await build_case(case, frames=[None, None, None],
+                     expected={"status": "completed", "versions": 2, "replans": 1, "classification": "completed"})
+    records = load_m2_case(case, ROOT)
+    assert [r["id"] for r in records] == ["replan_degraded_image-7 · v1", "replan_degraded_image-7 · v2"]
+    for record in records:
+        assert any(e["lane"] == "planning" for e in record["events"])
+        assert {"planning", "approval", "report"} <= {t["id"] for t in record["tables"]}
+        assert record["gallery"] and record["integrity"]["journals"] == {"executive": "ok", "guardian": "ok"}
+    approvals = next(t for t in records[0]["tables"] if t["id"] == "approval")["rows"]
+    assert [row[1] for row in approvals] == ["harness:test", "policy:m2_approval@v1"]
+    page = build_page([case], root=ROOT, output=tmp_path / "viewer.html")
+    assert "planning" in page.read_text(encoding="utf-8")

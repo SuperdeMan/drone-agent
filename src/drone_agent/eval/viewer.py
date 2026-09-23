@@ -224,20 +224,29 @@ def _compare(actual: dict[str, str], expected: dict[str, str] | None) -> dict:
     }
 
 
-def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path | None = None) -> dict:
+def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path | None = None,
+             flight: Path | None = None, package_path: Path | None = None, service_view: dict | None = None,
+             label: str | None = None) -> dict:
     """Assemble one case record from a run directory; every section reports presence explicitly.
 
-    从运行目录组装一条记录；每个部分都显式报告是否存在。
+    M2 cases pass one mission version's flight directory, its inbox package and the exported service view;
+    M1 runs keep the single `aircraft/` directory and `input/package.json`.
+
+    从运行目录组装一条记录；每个部分都显式报告是否存在。M2 用例传入某个任务版本的飞行目录、inbox 任务包与导出的
+    服务视图；M1 运行仍使用单一 `aircraft/` 目录与 `input/package.json`。
     """
     run = run.resolve()
+    aircraft = (flight or run / "aircraft").resolve()
     absent: list[str] = []
     notes: list[str] = []
     scenario = read_json(run / "input/scenario.json") or {}
-    package = read_json(run / "input/package.json") or {}
+    package = read_json(package_path or run / "input/package.json") or {}
+    described = scenario.get("scenario") if isinstance(scenario.get("scenario"), dict) else {
+        "id": scenario.get("scenario"), "expected": (scenario.get("expected") or {}).get("classification")}
     identity = {
-        "case": run.name,
-        "scenario": (scenario.get("scenario") or {}).get("id"),
-        "expected": (scenario.get("scenario") or {}).get("expected"),
+        "case": label or run.name,
+        "scenario": described.get("id"),
+        "expected": described.get("expected"),
         "seed": scenario.get("seed"),
         "source_sha": scenario.get("source_sha"),
         "registry_hash": scenario.get("registry_hash"),
@@ -249,14 +258,14 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
         "recovery_policy_ref": package.get("recovery_policy_ref"),
         "robots": sorted({node.get("robot_id") for node in package.get("nodes", []) if node.get("robot_id")}),
     }
-    capabilities = read_json(run / "aircraft/capabilities.json")
+    capabilities = read_json(aircraft / "capabilities.json")
     if capabilities:
         identity["platform"] = {k: capabilities.get(k) for k in ("robot_id", "embodiment", "vendor", "model")}
         identity["control_modes"] = sorted(capabilities.get("control_modes", []))
     else:
         absent.append("aircraft/capabilities.json")
     for role in ("executive", "guardian"):
-        record = read_json(run / f"aircraft/{role}-identity.json")
+        record = read_json(aircraft / f"{role}-identity.json")
         if record:
             identity[f"{role}_pid"] = record.get("pid")
             identity.setdefault("recorded_sha", record.get("source_sha"))
@@ -292,11 +301,11 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
         truth_rows = [json.loads(line) for line in truth_path.read_text(encoding="utf-8").splitlines() if line.strip()]
     else:
         absent.append("truth/truth.jsonl")
-    observations = _observations(run / "aircraft/guardian.mcap") or _observations(run / "aircraft/executive.mcap")
+    observations = _observations(aircraft / "guardian.mcap") or _observations(aircraft / "executive.mcap")
     if not observations:
         absent.append("aircraft/guardian.mcap flight/observation")
-    executive_rows, executive_error = _journal(run / "aircraft/executive.jsonl")
-    guardian_rows, guardian_error = _journal(run / "aircraft/guardian.jsonl")
+    executive_rows, executive_error = _journal(aircraft / "executive.jsonl")
+    guardian_rows, guardian_error = _journal(aircraft / "guardian.jsonl")
     if not executive_rows:
         absent.append("aircraft/executive.jsonl")
     if not guardian_rows:
@@ -304,6 +313,9 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
 
     starts = [stamp(row["timestamp"]) for row in truth_rows[:1] + executive_rows[:1] + guardian_rows[:1]]
     starts += [stamp(value["timestamp"]) for value in observations[:1]]
+    request = (service_view or {}).get("request") or {}
+    if isinstance(request.get("received_at"), str):
+        starts.append(stamp(request["received_at"]))
     t0 = min(starts) if starts else 0.0
 
     series = []
@@ -340,8 +352,12 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
                 "lane": _lane(source, kind), "label": _label(kind, data), "level": _level(kind, data), "data": data,
             })
     harness = []
-    for name in ("injection.json", "input/fault.json", "aircraft/operator.json", "manual-cleanup.json", "aircraft/probe.json"):
-        value = read_json(run / name)
+    for name, path in (("injection.json", run / "injection.json"), ("input/fault.json", run / "input/fault.json"),
+                       ("aircraft/operator.json", aircraft / "operator.json"),
+                       ("manual-cleanup.json", run / "manual-cleanup.json"), ("aircraft/probe.json", aircraft / "probe.json"),
+                       ("mailbox/operator.json", run / "mailbox/operator.json"),
+                       ("manual-cleanup.json", aircraft / "manual-cleanup.json")):
+        value = read_json(path) if path.is_file() else None
         if value is not None:
             harness.append({"file": name, "data": value})
             if isinstance(value, dict) and isinstance(value.get("timestamp"), str):
@@ -350,6 +366,9 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
                     "lane": "injection", "label": f"{name}: {value.get('kind', value.get('action', value.get('reason', '')))}",
                     "level": "alert", "data": value,
                 })
+    for when, text, level in _planning_events(service_view):
+        events.append({"t": round(stamp(when) - t0, 3), "seq": None, "source": "service", "kind": "planning",
+                       "lane": "planning", "label": text, "level": level, "data": {}})
     events.sort(key=lambda e: (e["t"], e["seq"] if e["seq"] is not None else -1))
 
     steps = []
@@ -370,7 +389,7 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
         })
 
     gallery = []
-    for evidence_path in sorted(run.glob("aircraft/evidence-*.json")):
+    for evidence_path in sorted(aircraft.glob("evidence-*.json")):
         evidence = read_json(evidence_path) or {}
         entry = {
             "step": evidence_path.stem.removeprefix("evidence-"), "asset_id": evidence.get("asset_id"),
@@ -384,7 +403,7 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
             entry["pose"] = [pose.get("x"), pose.get("y"), pose.get("z")]
             covariance = pose.get("covariance") or []
             entry["sigma_xy_m"] = round(max(covariance[0], covariance[4]) ** 0.5, 3) if len(covariance) == 9 else None
-        media = run / "aircraft" / evidence.get("media_ref", "") if evidence.get("media_ref") else None
+        media = aircraft / evidence.get("media_ref", "") if evidence.get("media_ref") else None
         if media and media.is_file():
             raw = media.read_bytes()
             entry["sha_ok"] = hashlib.sha256(raw).hexdigest() == evidence.get("sha256")
@@ -422,19 +441,19 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
     if expected is not None:
         verdict["receipt"] = {k: expected.get(k) for k in ("passed", "classification", "replay_agrees", "judge_exit_code")}
 
-    supervision = read_json(run / "aircraft/supervision.json") or {}
+    supervision = read_json(aircraft / "supervision.json") or {}
     supervision_view = {
         "present": bool(supervision), "samples": supervision.get("samples"), "p99_s": supervision.get("p99_s"),
         "max_s": supervision.get("max_s"), "budget_s": (world.get("supervision") or {}).get("period_s"),
     }
     if not supervision:
         absent.append("aircraft/supervision.json")
-    status = read_json(run / "aircraft/status.json") or {}
+    status = read_json(aircraft / "status.json") or {}
     terminal = status.get("observation") or {}
 
     actual = _digest_map(run)
     mcap_matches = None
-    mcap_path = run / "aircraft/executive.mcap"
+    mcap_path = aircraft / "executive.mcap"
     if mcap_path.is_file() and executive_rows and executive_error is None:
         try:
             replayed_events = [value for topic, value in replay(mcap_path) if topic == "mission/events"]
@@ -471,7 +490,7 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
             "id": "harness", "title": "注入与操作者文件（仿真 harness 写入）", "columns": ["file", "content"],
             "rows": [[h["file"], json.dumps(h["data"], ensure_ascii=False)] for h in harness],
         })
-    adapter_commands = read_json(run / "aircraft/adapter-commands.json")
+    adapter_commands = read_json(aircraft / "adapter-commands.json")
     if isinstance(adapter_commands, list):
         tables.append({
             "id": "adapter", "title": "适配器控制写入（guardian 唯一出口）", "columns": ["t", "command"],
@@ -479,6 +498,8 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
                       json.dumps({k: v for k, v in c.items() if k != "timestamp"}, ensure_ascii=False)]
                      for c in adapter_commands],
         })
+
+    tables += _service_tables(service_view)
 
     files = []
     for path in sorted(run.rglob("*")):
@@ -489,7 +510,7 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
 
     duration = max([s["points"][-1][0] for s in series if s["points"]] + [e["t"] for e in events] + [0.0])
     return {
-        "id": run.name, "path": str(run), "t0": t0, "t0_iso": iso(t0) if starts else None, "duration_s": round(duration, 3),
+        "id": identity["case"], "path": str(run), "t0": t0, "t0_iso": iso(t0) if starts else None, "duration_s": round(duration, 3),
         "identity": identity, "world": world, "series": series, "events": events, "steps": steps, "gallery": gallery,
         "verdict": verdict, "supervision": supervision_view, "terminal": {
             "in_air": terminal.get("in_air"), "armed": terminal.get("armed"), "flight_mode": terminal.get("flight_mode"),
@@ -498,6 +519,94 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
         },
         "integrity": integrity, "tables": tables, "files": files, "absent": absent, "notes": notes,
     }
+
+
+FAILED_VERSION_STATES = frozenset({"rejected", "refused", "declined", "delivery_rejected", "planning_failed"})
+
+
+def _planning_events(view: dict | None) -> list[tuple[str, str, str]]:
+    """The planning band: request, each version's creation and approval, the report. / 规划事件带。"""
+    if not view:
+        return []
+    request = view.get("request") or {}
+    found = [(request.get("received_at"), f"请求 / request · {request.get('requested_by')}: {request.get('text', '')[:80]}",
+              "info")]
+    for version in view.get("versions", []):
+        level = "alert" if version.get("status") in FAILED_VERSION_STATES else "info"
+        found.append((version.get("created_at"), f"v{version['version']} {version.get('origin')} → {version.get('status')}",
+                      level))
+        approval = version.get("approval") or {}
+        found.append((approval.get("approved_at"),
+                      f"v{version['version']} 审批 / approved by {approval.get('approver')} · {approval.get('signer_key_id')}",
+                      "info"))
+    report = view.get("report") or {}
+    found.append((report.get("generated_at"), f"报告 / report · {json.dumps(report.get('targets'), ensure_ascii=False)}",
+                  "info"))
+    return [item for item in found if isinstance(item[0], str)]
+
+
+def _service_tables(view: dict | None) -> list[dict]:
+    """Planning, approval, report, verification and issue tables from the service export. / 服务导出的各表。"""
+    if not view:
+        return []
+    planning, approvals = [], []
+    for v in view.get("versions", []):
+        planner, admission = v.get("planner") or {}, v.get("admission") or {}
+        planning.append([v["version"], v.get("origin"), v.get("status"),
+                         f"{planner.get('provider_id')}/{planner.get('model_id')}" if planner else "—",
+                         planner.get("prompt_version") or "—", (planner.get("input_hash") or "")[:16] or "—",
+                         f"{planner.get('attempts')} · {','.join(planner.get('channels') or [])}" if planner else "—",
+                         admission.get("accepted"), admission.get("energy_upper_fraction"),
+                         ", ".join(admission.get("codes") or []) or "—"])
+        approval = v.get("approval") or {}
+        if approval:
+            approvals.append([v["version"], approval.get("approver"), approval.get("approved_at"),
+                              approval.get("expires_at"), approval.get("signer_key_id"), (v.get("package_hash") or "")[:16]])
+    tables = [
+        {"id": "planning", "title": "规划与准入（任务服务） / planning and admission",
+         "columns": ["version", "origin", "status", "planner", "prompt", "input_hash", "attempts", "admitted",
+                     "energy_upper", "codes"], "rows": planning},
+        {"id": "approval", "title": "审批与签名 / approvals and signatures",
+         "columns": ["version", "approver", "approved_at", "expires_at", "signer_key_id", "package_hash"],
+         "rows": approvals},
+    ]
+    report = view.get("report")
+    if report:
+        tables.append({"id": "report", "title": "三列报告（服务生成，裁判另行核对） / three-column report",
+                       "columns": ["version", "step", "column", "onboard", "service", "reason"],
+                       "rows": [[r["mission_version"], r["step_id"], r["column"],
+                                 f"{r.get('execution_status')} / {r.get('effect_verdict')}", r.get("service_verdict"),
+                                 r.get("reason")] for r in report.get("rows", [])]})
+    checked = [e for e in view.get("evidence", []) if e.get("verification")]
+    if checked:
+        tables.append({"id": "verification", "title": "证据复核（服务） / service evidence recheck",
+                       "columns": ["version", "step", "evidence", "onboard", "service", "final", "agrees"],
+                       "rows": [[e["version"], e["step_id"], e["evidence_id"][:22], e["verification"].get("onboard_verdict"),
+                                 e["verification"].get("service_verdict"), e["verification"].get("final_verdict"),
+                                 e["verification"].get("agrees")] for e in checked]})
+    if view.get("issues"):
+        tables.append({"id": "issues", "title": "问题码 / issues", "columns": ["code", "message"],
+                       "rows": [[i.get("code"), i.get("message")] for i in view["issues"]]})
+    return tables
+
+
+def load_m2_case(case: Path, root: Path, *, expected: dict | None = None) -> list[dict]:
+    """One record per flown mission version, or one record without a flight. / 每个已飞行的任务版本一条记录。"""
+    from drone_agent.mission.registry import M2_SCENE
+
+    view = read_json(case / "service-export/view.json")
+    scene = root / M2_SCENE
+    flights = []
+    for mission in sorted((case / "aircraft").iterdir()) if (case / "aircraft").is_dir() else []:
+        for version in sorted(mission.iterdir()) if mission.is_dir() else []:
+            if version.is_dir() and version.name.startswith("v") and version.name[1:].isdigit():
+                flights.append((mission.name, int(version.name[1:]), version))
+    if not flights:
+        return [load_run(case, root, expected=expected, scene=scene, flight=case / "aircraft" / "none",
+                         package_path=case / "input" / "none.json", service_view=view, label=f"{case.name} · no flight")]
+    return [load_run(case, root, expected=expected, scene=scene, flight=flight,
+                     package_path=case / "inbox/history" / f"{mission}-v{version}.json", service_view=view,
+                     label=f"{case.name} · v{version}") for mission, version, flight in sorted(flights, key=lambda f: f[1])]
 
 
 def discover(path: Path) -> tuple[list[Path], dict | None]:
@@ -530,7 +639,12 @@ def build_page(cases: list[Path], *, root: Path, output: Path, receipt: dict | N
     if not cases:
         raise ValueError("no case directories to render")
     expected = receipt_results(receipt)
-    records = [load_run(case, root, expected=expected.get(case.name), scene=scene) for case in cases]
+    records = []
+    for case in cases:
+        if (case / "service-export").is_dir():
+            records += load_m2_case(case, root, expected=expected.get(case.name))
+        else:
+            records.append(load_run(case, root, expected=expected.get(case.name), scene=scene))
     payload = {
         "viewer_version": VIEWER_VERSION,
         "generated_at": iso(datetime.now(tz=timezone.utc).timestamp()),
