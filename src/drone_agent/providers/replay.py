@@ -208,7 +208,11 @@ class KeyedScriptedProvider(BaseProvider):
         return cls(data["answers"])
 
     def _answer(self, messages) -> dict:
-        user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+        # Key on the request block, not on the latest user turn: retries append validation feedback, and a
+        # fooled double keeps giving the same answer. / 以请求块为键而非最新用户轮次：重试会追加校验反馈，
+        # 被骗的替身会一直给出同一个回答。
+        user = next((m["content"] for m in messages if m["role"] == "user" and "OPERATOR_REQUEST:" in str(m["content"])),
+                    "")
         text = str(user).split("OPERATOR_REQUEST:\n", 1)[-1].split("\n\nOPERATOR_SCOPE:", 1)[0].strip()
         if text not in self.answers:
             raise ReplayMismatch("no scripted answer for this request / 该请求没有脚本回答")
