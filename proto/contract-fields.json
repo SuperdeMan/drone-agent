@@ -225,6 +225,46 @@
           "title": "Allowed Robots",
           "type": "array"
         }
+      },
+      {
+        "name": "signature",
+        "number": 9,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "base64 Ed25519 signature over the approval statement / 审批陈述的 base64 Ed25519 签名",
+          "title": "Signature"
+        }
+      },
+      {
+        "name": "signer_key_id",
+        "number": 10,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "trusted signer key id, e.g. ed25519:<hex16> / 受信签发密钥 ID，如 ed25519:<hex16>",
+          "title": "Signer Key Id"
+        }
       }
     ],
     "CancelSpec": [
@@ -723,6 +763,109 @@
         }
       }
     ],
+    "EnergyEstimate": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "basis",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "description": "sim_only until real-aircraft data exists / 在有真机数据前为 sim_only",
+          "title": "Basis",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mean_fraction",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Mean Fraction",
+          "type": "number"
+        }
+      },
+      {
+        "name": "upper_fraction",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "double",
+        "schema": {
+          "description": "conservative bound used by admission / 准入使用的保守上界",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Upper Fraction",
+          "type": "number"
+        }
+      },
+      {
+        "name": "samples",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "minimum": 1,
+          "title": "Samples",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "method",
+        "number": 6,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "",
+          "title": "Method",
+          "type": "string"
+        }
+      },
+      {
+        "name": "source_revision",
+        "number": 7,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "",
+          "title": "Source Revision",
+          "type": "string"
+        }
+      },
+      {
+        "name": "source_runs",
+        "number": 8,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Runs",
+          "type": "array"
+        }
+      }
+    ],
     "EnergyState": [
       {
         "name": "schema_version",
@@ -906,6 +1049,63 @@
         "schema": {
           "title": "Produced By Skill Instance",
           "type": "string"
+        }
+      },
+      {
+        "name": "mission_id",
+        "number": 11,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mission Id"
+        }
+      },
+      {
+        "name": "mission_version",
+        "number": 12,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mission Version"
+        }
+      },
+      {
+        "name": "robot_id",
+        "number": 13,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Robot Id"
         }
       }
     ],
@@ -1743,6 +1943,46 @@
         }
       }
     ],
+    "IntentPhase": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "phase",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "description": "phase name, e.g. approach / 相位名，如 approach",
+          "title": "Phase",
+          "type": "string"
+        }
+      },
+      {
+        "name": "preconditions",
+        "number": 3,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "string",
+        "schema": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        }
+      }
+    ],
     "Limits": [
       {
         "name": "schema_version",
@@ -2435,6 +2675,129 @@
         "wire_type": "string",
         "schema": {
           "title": "Robot Id",
+          "type": "string"
+        }
+      }
+    ],
+    "OperatorRequest": [
+      {
+        "name": "schema_version",
+        "number": 1,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "default": "0.1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      {
+        "name": "request_id",
+        "number": 2,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "maxLength": 80,
+          "minLength": 8,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "title": "Request Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "robot_id",
+        "number": 3,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Robot Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_id",
+        "number": 4,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Mission Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "mission_version",
+        "number": 5,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "minimum": 1,
+          "title": "Mission Version",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "lease_epoch",
+        "number": 6,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "int64",
+        "schema": {
+          "minimum": 0,
+          "title": "Lease Epoch",
+          "type": "integer"
+        }
+      },
+      {
+        "name": "step_id",
+        "number": 7,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "minLength": 1,
+          "title": "Step Id",
+          "type": "string"
+        }
+      },
+      {
+        "name": "action",
+        "number": 8,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "MissionAction",
+        "schema": {
+          "$ref": "#/$defs/MissionAction"
+        }
+      },
+      {
+        "name": "valid_until",
+        "number": 9,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "google.protobuf.Timestamp",
+        "schema": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      {
+        "name": "requested_by",
+        "number": 10,
+        "required": true,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "description": "authenticated operator identity / 已认证的操作者身份",
+          "minLength": 1,
+          "title": "Requested By",
           "type": "string"
         }
       }
@@ -3810,6 +4173,39 @@
           "type": "array",
           "uniqueItems": true
         }
+      },
+      {
+        "name": "intent_phases",
+        "number": 20,
+        "required": false,
+        "cardinality": "repeated",
+        "wire_type": "IntentPhase",
+        "schema": {
+          "description": "ordered control-intent phases; empty means one intent per step / 有序意图相位；为空表示每步一个意图",
+          "items": {
+            "$ref": "#/$defs/IntentPhase"
+          },
+          "title": "Intent Phases",
+          "type": "array"
+        }
+      },
+      {
+        "name": "energy_estimate",
+        "number": 21,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "EnergyEstimate",
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EnergyEstimate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
       }
     ],
     "SkillRef": [
@@ -4579,7 +4975,12 @@
       "EVENT_TYPE_HANDOFF_ACCEPTED": 18,
       "EVENT_TYPE_HANDOFF_REJECTED": 19,
       "EVENT_TYPE_HANDOFF_COMPLETED": 20,
-      "EVENT_TYPE_HANDOFF_TIMEOUT": 21
+      "EVENT_TYPE_HANDOFF_TIMEOUT": 21,
+      "EVENT_TYPE_MISSION_ACCEPTED": 22,
+      "EVENT_TYPE_MISSION_FINISHED": 23,
+      "EVENT_TYPE_OPERATOR_REQUEST_ACCEPTED": 24,
+      "EVENT_TYPE_OPERATOR_REQUEST_REJECTED": 25,
+      "EVENT_TYPE_RUNTIME_RECORD": 26
     },
     "ExecutionStatus": {
       "EXECUTION_STATUS_UNSPECIFIED": 0,

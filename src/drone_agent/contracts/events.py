@@ -80,6 +80,13 @@ class EventType(StrEnum):
     HANDOFF_REJECTED = "handoff_rejected"
     HANDOFF_COMPLETED = "handoff_completed"
     HANDOFF_TIMEOUT = "handoff_timeout"
+    # M2 (02-contracts §10): appended for journal rows forwarded by the uplink; order is wire-significant.
+    # M2（02-contracts §10）：为 uplink 转发的账本行追加；顺序影响 wire 编号。
+    MISSION_ACCEPTED = "mission_accepted"
+    MISSION_FINISHED = "mission_finished"
+    OPERATOR_REQUEST_ACCEPTED = "operator_request_accepted"
+    OPERATOR_REQUEST_REJECTED = "operator_request_rejected"
+    RUNTIME_RECORD = "runtime_record"
 
 
 class StepOutcome(ContractModel):
@@ -165,3 +172,8 @@ class Evidence(ContractModel):
     subject_ids: list[str] = Field(default_factory=list)
     quality: dict[str, float] = Field(default_factory=dict)
     produced_by_skill_instance: str
+    # M2: appended so evidence stays attributable after it leaves the aircraft; onboard files may omit them.
+    # M2：追加字段，证据离开机载后仍能归属到任务版本；机载本地文件可以不填。
+    mission_id: str | None = None
+    mission_version: int | None = None
+    robot_id: str | None = None

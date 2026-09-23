@@ -14,6 +14,11 @@ service FleetTransport {
   rpc PublishStatus(drone.contracts.v1.RobotStatus) returns (DeliveryReceipt);
   rpc PublishCapability(drone.contracts.v1.CapabilityDescriptor) returns (DeliveryReceipt);
   rpc OfferHandoff(HandoffOffer) returns (HandoffReply);
+  // M2 (D031): the robot dials out over mTLS and pulls signed packages and operator requests.
+  // M2（D031）：机器人经 mTLS 主动拨出，拉取已签名任务包与操作请求。
+  rpc FetchDeliveries(DeliveryRequest) returns (DeliveryBatch);
+  rpc AcknowledgeDelivery(DeliveryAck) returns (DeliveryReceipt);
+  rpc PublishMedia(EvidenceMedia) returns (DeliveryReceipt);
 }
 
 message DeliveryReceipt {
@@ -45,4 +50,63 @@ message HandoffReply {
   google.protobuf.Timestamp timestamp = 5;
   // An accepted offer is not ownership transfer; M4 requires source ack and a new lease.
   // 接受提议不等于所有权转移；M4 仍需原所有者确认与新租约。
+}
+
+// The zero value names no delivery and must never be acted on.
+// 零值不代表任何投递，永远不能据此行动。
+enum DeliveryKind {
+  DELIVERY_KIND_UNSPECIFIED = 0;
+  DELIVERY_KIND_MISSION_PACKAGE = 1;
+  DELIVERY_KIND_OPERATOR_REQUEST = 2;
+}
+
+message DeliveryRequest {
+  optional string schema_version = 1;
+  // Must equal the robot identity in the client certificate. / 必须等于客户端证书中的机器人身份。
+  optional string robot_id = 2;
+  optional int64 after_cursor = 3;
+  optional int64 max_items = 4;
+}
+
+message Delivery {
+  optional string schema_version = 1;
+  optional string delivery_id = 2;
+  optional int64 cursor = 3;
+  optional DeliveryKind kind = 4;
+  // A signed package is re-verified by the uplink, the executive and the guardian.
+  // 已签名任务包由 uplink、executive 与 guardian 各自重新验签。
+  drone.contracts.v1.MissionPackage package = 5;
+  drone.contracts.v1.OperatorRequest operation = 6;
+  google.protobuf.Timestamp issued_at = 7;
+}
+
+message DeliveryBatch {
+  optional string schema_version = 1;
+  repeated Delivery items = 2;
+  optional int64 cursor = 3;
+}
+
+message DeliveryAck {
+  optional string schema_version = 1;
+  optional string robot_id = 2;
+  optional string delivery_id = 3;
+  // True only when the item passed onboard verification and was handed over.
+  // 仅当该项通过机载验证并完成交接时为真。
+  optional bool accepted = 4;
+  optional string reason = 5;
+}
+
+message EvidenceMedia {
+  optional string schema_version = 1;
+  optional string robot_id = 2;
+  optional string mission_id = 3;
+  optional int64 mission_version = 4;
+  optional string evidence_id = 5;
+  optional string sha256 = 6;
+  optional string media_type = 7;
+  optional int64 width = 8;
+  optional int64 height = 9;
+  // Raw media bytes; the receiver recomputes the digest before storing.
+  // 原始媒体字节；接收方入库前重算摘要。
+  optional bytes data = 10;
 }

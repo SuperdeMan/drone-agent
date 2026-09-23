@@ -7,16 +7,22 @@ requires-python = ">=3.12"
 license = "Apache-2.0"
 authors = [{ name = "SuperdeMan" }]
 dependencies = [
+    # M2 (D030): Ed25519 approval signatures verified onboard; mTLS certificates for the uplink.
+    # M2（D030）：机载验证 Ed25519 审批签名；uplink 的 mTLS 证书。
+    "cryptography>=46",
     "grpcio>=1.66",
     "jsonschema>=4.23,<5",
     "mcap>=1.2,<2",
     "pydantic>=2.7",
     "pyyaml>=6.0",
     "uvicorn==0.53.0",
+    # M2 (D033): pure-Python WebSocket implementation for the hri.v0 console session.
+    # M2（D033）：hri.v0 控制台会话使用的纯 Python WebSocket 实现。
+    "wsproto>=1.2",
 ]
 
 [dependency-groups]
-dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "ruff>=0.6", { include-group = "rpc" }]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "ruff>=0.6", { include-group = "rpc" }, { include-group = "planner" }]
 # M1 (docs/decisions.md D008): flight-controller transport. As of 2026-09-17 PyPI ships
 # mavsdk 3.17.x (gRPC wrapper + bundled mavsdk_server); the v4 native binding is documented
 # upstream but not released. Adapter code stays isolated in guardian so the v4 migration
@@ -30,9 +36,11 @@ flight = [
 # M1: local IPC between executive and guardian (proto-first, see proto/).
 # M1：executive 与 guardian 之间的本地 IPC（proto 先行，见 proto/）。
 rpc = ["grpcio>=1.66", "grpcio-tools>=1.66"]
-# M2: planner providers (ported from embodied-agent, D001).
-# M2：规划器 Provider（从 embodied-agent 移植，D001）。
-planner = ["anthropic>=0.39", "httpx>=0.27"]
+# M2: planner providers ported from embodied-agent / car-agent (D001, D029): MiniMax-M3 and other
+# OpenAI-compatible vendors over plain HTTP; onboard processes never import them.
+# M2：从 embodied-agent / car-agent 移植的规划器 Provider（D001、D029）：MiniMax-M3 等 OpenAI 兼容厂商走
+# 普通 HTTP；机载进程从不导入。
+planner = ["httpx>=0.28,<1"]
 
 [build-system]
 requires = ["hatchling"]

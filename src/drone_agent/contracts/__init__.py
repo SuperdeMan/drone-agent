@@ -82,15 +82,23 @@ from drone_agent.contracts.mission import (
 )
 from drone_agent.contracts.planner_tools import PlannerTool, PlannerToolAllowlist
 from drone_agent.contracts.recovery import RecoveryEdge, RecoveryPolicy, RecoveryTrigger, RecoveryValidation
-from drone_agent.contracts.runtime import FlightObservation, MissionAction, MissionOperation, ObservationRequest
+from drone_agent.contracts.runtime import (
+    FlightObservation,
+    MissionAction,
+    MissionOperation,
+    ObservationRequest,
+    OperatorRequest,
+)
 from drone_agent.contracts.skill import (
     ALLOWED_TRANSITIONS,
     TERMINAL_STATES,
     CancelSpec,
+    EnergyEstimate,
     EvidenceRequirement,
     FailureMode,
     Implementation,
     ImplementationKind,
+    IntentPhase,
     LearnedStage,
     PauseSpec,
     ResourceClaim,
@@ -111,6 +119,7 @@ __all__ = [
     "MissionAction",
     "MissionOperation",
     "ObservationRequest",
+    "OperatorRequest",
     "TERMINAL_STATES",
     "AerialState",
     "ApprovalRecord",
@@ -126,6 +135,7 @@ __all__ = [
     "EgressGate",
     "Embodiment",
     "EnergyBudget",
+    "EnergyEstimate",
     "EnergyState",
     "EventType",
     "Evidence",
@@ -140,6 +150,7 @@ __all__ = [
     "IdempotencyKey",
     "Implementation",
     "ImplementationKind",
+    "IntentPhase",
     "LearnedStage",
     "Limits",
     "LocalizationHealth",

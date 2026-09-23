@@ -56,6 +56,11 @@ enum EventType {
   EVENT_TYPE_HANDOFF_REJECTED = 19;
   EVENT_TYPE_HANDOFF_COMPLETED = 20;
   EVENT_TYPE_HANDOFF_TIMEOUT = 21;
+  EVENT_TYPE_MISSION_ACCEPTED = 22;
+  EVENT_TYPE_MISSION_FINISHED = 23;
+  EVENT_TYPE_OPERATOR_REQUEST_ACCEPTED = 24;
+  EVENT_TYPE_OPERATOR_REQUEST_REJECTED = 25;
+  EVENT_TYPE_RUNTIME_RECORD = 26;
 }
 
 enum ExecutionStatus {
@@ -193,6 +198,8 @@ message ApprovalRecord {
   optional string package_hash = 6;
   optional google.protobuf.Timestamp expires_at = 7;
   repeated string allowed_robots = 8;
+  optional string signature = 9;
+  optional string signer_key_id = 10;
 }
 
 message CancelSpec {
@@ -255,6 +262,17 @@ message EnergyBudget {
   optional double reserve_fraction = 3;
 }
 
+message EnergyEstimate {
+  optional string schema_version = 1;
+  optional string basis = 2;
+  optional double mean_fraction = 3;
+  optional double upper_fraction = 4;
+  optional int64 samples = 5;
+  optional string method = 6;
+  optional string source_revision = 7;
+  repeated string source_runs = 8;
+}
+
 message EnergyState {
   optional string schema_version = 1;
   optional double remaining_fraction = 2;
@@ -274,6 +292,9 @@ message Evidence {
   // UTF-8 JSON; validate after decoding. / UTF-8 JSON；解码后重新校验。
   optional bytes quality = 9;
   optional string produced_by_skill_instance = 10;
+  optional string mission_id = 11;
+  optional int64 mission_version = 12;
+  optional string robot_id = 13;
 }
 
 message EvidenceRequirement {
@@ -363,6 +384,12 @@ message Implementation {
   optional string model_version = 4;
 }
 
+message IntentPhase {
+  optional string schema_version = 1;
+  optional string phase = 2;
+  repeated string preconditions = 3;
+}
+
 message Limits {
   optional string schema_version = 1;
   optional double max_speed_mps = 2;
@@ -434,6 +461,19 @@ message ObservationHeader {
 message ObservationRequest {
   optional string schema_version = 1;
   optional string robot_id = 2;
+}
+
+message OperatorRequest {
+  optional string schema_version = 1;
+  optional string request_id = 2;
+  optional string robot_id = 3;
+  optional string mission_id = 4;
+  optional int64 mission_version = 5;
+  optional int64 lease_epoch = 6;
+  optional string step_id = 7;
+  optional MissionAction action = 8;
+  optional google.protobuf.Timestamp valid_until = 9;
+  optional string requested_by = 10;
 }
 
 message PackageNode {
@@ -592,6 +632,8 @@ message SkillManifest {
   optional double estimated_energy_fraction = 17;
   optional Implementation implementation = 18;
   repeated ControlMode required_control_modes = 19;
+  repeated IntentPhase intent_phases = 20;
+  optional EnergyEstimate energy_estimate = 21;
 }
 
 message SkillRef {

@@ -237,6 +237,15 @@ class ApprovalRecord(ContractModel):
     package_hash: str
     expires_at: AwareDatetime
     allowed_robots: list[str] = Field(default_factory=list)
+    # M2 (D030): appended fields, outside package_hash; the signature covers every other field here.
+    # M2（D030）：追加字段，不进入 package_hash；签名覆盖本记录的其余全部字段。
+    signature: str | None = Field(
+        default=None,
+        description="base64 Ed25519 signature over the approval statement / 审批陈述的 base64 Ed25519 签名",
+    )
+    signer_key_id: str | None = Field(
+        default=None, description="trusted signer key id, e.g. ed25519:<hex16> / 受信签发密钥 ID，如 ed25519:<hex16>"
+    )
 
 
 class PackageNode(ContractModel):

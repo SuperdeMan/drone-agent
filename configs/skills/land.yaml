@@ -35,3 +35,14 @@ failure_modes:
 timeout_s: 90
 estimated_duration_s: 30
 implementation: {kind: deterministic}
+# SITL-only estimate from M1 telemetry (WP-M2-07, D034); admission uses the upper bound.
+# 基于 M1 遥测的仅仿真估计（WP-M2-07，D034）；准入使用上界。
+estimated_energy_fraction: 0.2206
+energy_estimate:
+  basis: sim_only
+  mean_fraction: 0.1772
+  upper_fraction: 0.2206
+  samples: 18
+  method: "PX4 SITL linear drain fitted on 99 uncensored steps; mean=rate_mean*duration_mean, upper=rate_p95*duration_p95; docs/verification/m2-energy-estimates-2026-09-23.json"
+  source_revision: eefe76e7c579200b998f9af0a0e29bc8358a1af7
+  source_runs: [m1-20260919T171218Z-db465377]

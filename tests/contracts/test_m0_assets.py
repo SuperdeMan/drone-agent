@@ -22,11 +22,23 @@ def load_yaml(path):
     return yaml.safe_load((ROOT / path).read_text(encoding="utf-8"))
 
 
-def test_five_skill_drafts_match_target_platform():
+# The five M1 skills keep their M1 thresholds; the M2 inspection skill references the M2 scene (D034).
+# 五个 M1 技能保持 M1 阈值；M2 巡检技能引用 M2 场景（D034）。
+SCENE_OF_SKILL = {
+    "skill.flight.takeoff": "m1_campus_v1",
+    "skill.flight.fly_route": "m1_campus_v1",
+    "skill.flight.capture_image": "m1_campus_v1",
+    "skill.flight.return_home": "m1_campus_v1",
+    "skill.flight.land": "m1_campus_v1",
+    "skill.inspect.asset": "m2_campus_v2",
+}
+
+
+def test_skill_manifests_match_target_platform():
     platform = CapabilityDescriptor.model_validate(load_yaml("configs/platforms/px4_sitl_multirotor.yaml")["capability"])
     manifests = [SkillManifest.model_validate(load_yaml(path)) for path in sorted((ROOT / "configs/skills").glob("*.yaml"))]
     assert {m.skill_id: m.version for m in manifests} == {s.skill_id: s.version for s in platform.skills}
-    assert len(manifests) == 5
+    assert {m.skill_id for m in manifests} == set(SCENE_OF_SKILL)
     for manifest in manifests:
         assert platform.embodiment in manifest.embodiments
         assert not platform.missing_for(skills=[manifest.skill_id], control_modes=manifest.required_control_modes)
@@ -35,13 +47,25 @@ def test_five_skill_drafts_match_target_platform():
         assert set(manifest.params_schema["required"]) <= set(manifest.params_schema["properties"])
         assert 0 < manifest.estimated_duration_s <= manifest.timeout_s
         assert all(claim.resource_id.startswith(platform.robot_id + ".") for claim in manifest.resources)
-        assert all(evidence.criteria["threshold_ref"].startswith("m1_campus_v1.") for evidence in manifest.completion_evidence)
+        prefix = SCENE_OF_SKILL[manifest.skill_id] + "."
+        assert all(evidence.criteria["threshold_ref"].startswith(prefix) for evidence in manifest.completion_evidence)
         if manifest.pause.pausable:
             assert manifest.pause.safe_wait_condition and 0 < manifest.pause.max_wait_s <= manifest.timeout_s
+        # Every skill carries a simulation-only estimate whose scalar is the conservative bound (D034).
+        # 每个技能都带仅仿真的能耗估计，标量取保守上界（D034）。
+        estimate = manifest.energy_estimate
+        assert estimate is not None and estimate.basis == "sim_only" and estimate.source_runs
+        assert manifest.estimated_energy_fraction == estimate.upper_fraction >= estimate.mean_fraction
+        # A phased skill declares preconditions for every phase and no phase may be empty.
+        # 多相位技能为每个相位声明前置条件，且不能为空。
+        assert all(phase.preconditions for phase in manifest.intent_phases)
     motion = [m for m in manifests if m.skill_id != "skill.flight.capture_image"]
     for index, first in enumerate(motion):
         for second in motion[index + 1:]:
             assert find_resource_conflicts(first.resources, second.resources) == ["uav_01.motion"]
+    inspect = next(m for m in manifests if m.skill_id == "skill.inspect.asset")
+    assert [p.phase for p in inspect.intent_phases] == ["approach", "capture"]
+    assert {c.resource_id for c in inspect.resources} == {"uav_01.motion", "uav_01.camera"}
 
 
 def test_each_recovery_edge_has_a_matching_planned_injection():

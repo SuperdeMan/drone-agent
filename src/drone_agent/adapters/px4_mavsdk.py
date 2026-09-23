@@ -50,8 +50,10 @@ class Px4Adapter:
             RecoveryBehavior.HANDOVER_TO_FC_FAILSAFE,
         }
         if not self.camera_available:
+            # Every camera-dependent skill disappears with the camera. / 相机缺席时所有依赖相机的技能一并缺席。
             self.capabilities.skills = [
-                s for s in self.capabilities.skills if s.skill_id != "skill.flight.capture_image"
+                s for s in self.capabilities.skills
+                if s.skill_id not in {"skill.flight.capture_image", "skill.inspect.asset"}
             ]
             self.capabilities.sensors = [s for s in self.capabilities.sensors if s.sensor_id != "cam_0"]
         self.command_log = []

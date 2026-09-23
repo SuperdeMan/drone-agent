@@ -1,0 +1,68 @@
+# skill.inspect.asset (WP-M2-14, D034): one skill, two control-intent phases. `approach` uploads the asset's
+# registered observation route through mission_upload; `capture` takes a real camera frame over the asset.
+# The executive retakes at most `max_captures` times; if no frame meets the evidence criteria the step ends
+# `unverified`, never succeeded. Phase preconditions are checked by the guardian for each intent.
+#
+# skill.inspect.asset（WP-M2-14，D034）：一个技能、两个控制意图相位。`approach` 经 mission_upload 上传该资产
+# 登记的观察航线；`capture` 在资产上方拍摄真实相机帧。executive 最多补拍 `max_captures` 次；若没有影像满足
+# 证据判据，该步骤以 `unverified` 结束，绝不记为成功。guardian 按相位逐个意图检查前置条件。
+schema_version: "0.1.0"
+skill_id: skill.inspect.asset
+version: "0.1.0"
+description: "Approach a registered asset along its prevalidated observation route, then capture and verify an image with bounded retakes. / 沿预验证观察航线接近登记资产，再拍摄并验证影像，补拍有上限。"
+embodiments: [aerial_multirotor]
+required_control_modes: [mission_upload]
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: [asset_id, approach_route_id, camera_id, quality_profile_ref, speed_mps, max_captures]
+  properties:
+    asset_id: {type: string, minLength: 1}
+    approach_route_id: {type: string, minLength: 1}
+    camera_id: {type: string, enum: [cam_0]}
+    quality_profile_ref: {type: string, pattern: "^[a-z][a-z0-9_]*\\.image$"}
+    speed_mps: {type: number, exclusiveMinimum: 0, maximum: 5, unit: m/s}
+    max_captures: {type: integer, minimum: 1, maximum: 3}
+preconditions: [package_authorized, airborne, localization_healthy, approach_route_resolved_and_in_scope, asset_resolved, energy_remaining_plan_feasible, motion_lease_valid, camera_lease_valid]
+invariants: [inside_approved_volume, observation_fresh, lease_valid, executive_heartbeat_ok, energy_above_reserve, fc_failsafe_inactive]
+intent_phases:
+  - phase: approach
+    preconditions: [package_authorized, airborne, localization_healthy, approach_route_resolved_and_in_scope, asset_resolved, energy_remaining_plan_feasible, motion_lease_valid]
+  - phase: capture
+    preconditions: [package_authorized, camera_available, asset_resolved, observation_pose_valid, above_asset, camera_lease_valid]
+resources:
+  - {resource_id: uav_01.motion, mode: exclusive}
+  - {resource_id: uav_01.camera, mode: exclusive}
+progress_schema:
+  type: object
+  additionalProperties: false
+  required: [phase, attempts]
+  properties:
+    phase: {type: string, enum: [approaching, observing, capturing, verifying]}
+    attempts: {type: integer, minimum: 0, maximum: 3}
+cancel:
+  cancel_safe_states: [before_approach, observing]
+  cancel_procedure: "Stop the approach through guardian recovery and stop new captures; keep partial evidence marked unverified; flight recovery stays with guardian. / 经 guardian 恢复停止接近并停止新拍摄；部分证据保留并标为未证实；飞行恢复仍由 guardian 负责。"
+pause: {pausable: false}
+completion_evidence:
+  - evidence_type: image
+    criteria: {predicate: asset_image_verified, threshold_ref: m2_campus_v2.image, target_id_match: true, sha256_required: true, pose_covariance_required: true, fresh_time_window_required: true, max_distance_to_asset_m: 2}
+failure_modes:
+  - {code: approach_timeout, description: "Observation point not confirmed in time / 未及时确认到达观察点", recovery_hint: outcome_unknown_then_policy}
+  - {code: image_quality_failed, description: "No capture met the evidence criteria within max_captures / 补拍上限内没有影像满足证据判据", recovery_hint: unverified_then_replan_or_report}
+  - {code: evidence_write_failed, description: "Evidence persistence failed / 证据持久化失败", recovery_hint: unverified_and_block_dependents}
+timeout_s: 180
+estimated_duration_s: 20
+implementation: {kind: deterministic}
+# SITL-only estimate composed from M1 fly_route + capture_image durations (WP-M2-07, D034).
+# 由 M1 fly_route 与 capture_image 时长组合的仅仿真估计（WP-M2-07，D034）。
+estimated_energy_fraction: 0.2024
+energy_estimate:
+  basis: sim_only
+  mean_fraction: 0.1301
+  upper_fraction: 0.2024
+  samples: 21
+  method: "Composed from M1 fly_route and capture_image durations under the fitted PX4 SITL drain; upper=rate_p95*duration_p95; docs/verification/m2-energy-estimates-2026-09-23.json"
+  source_revision: eefe76e7c579200b998f9af0a0e29bc8358a1af7
+  source_runs: [m1-20260919T171218Z-db465377]

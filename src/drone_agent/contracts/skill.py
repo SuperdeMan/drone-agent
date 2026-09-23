@@ -121,6 +121,53 @@ class FailureMode(ContractModel):
     recovery_hint: str = ""
 
 
+PHASE_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+
+class IntentPhase(ContractModel):
+    """One control-intent phase of a multi-phase skill and the preconditions for entering it.
+
+    The guardian binds each intent to a declared phase, so a skill with several physical
+    stages (approach, then capture) never needs a name-based special case.
+
+    多相位技能中的一个控制意图相位，以及进入该相位的前置条件。
+
+    guardian 按声明的相位绑定每个意图，因此具有多个物理阶段（先接近、再拍摄）的技能
+    不需要按技能名做特殊分支。
+    """
+
+    phase: str = Field(description="phase name, e.g. approach / 相位名，如 approach")
+    preconditions: list[str] = Field(default_factory=list)
+
+    @field_validator("phase")
+    @classmethod
+    def _phase_format(cls, value: str) -> str:
+        if not PHASE_RE.match(value):
+            raise ValueError("intent phase must be a lower_snake_case name")
+        return value
+
+
+class EnergyEstimate(ContractModel):
+    """Where a skill's energy estimate came from; simulation estimates never claim real-aircraft use.
+
+    技能能耗估计的来源；仿真估计不宣称适用于真机。
+    """
+
+    basis: str = Field(description="sim_only until real-aircraft data exists / 在有真机数据前为 sim_only")
+    mean_fraction: float = Field(ge=0.0, le=1.0)
+    upper_fraction: float = Field(ge=0.0, le=1.0, description="conservative bound used by admission / 准入使用的保守上界")
+    samples: int = Field(ge=1)
+    method: str = ""
+    source_revision: str = ""
+    source_runs: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _ordered(self) -> EnergyEstimate:
+        if self.upper_fraction < self.mean_fraction:
+            raise ValueError("the conservative bound cannot be below the mean")
+        return self
+
+
 class SkillManifest(ContractModel):
     """Declarative description of a skill; the executive never special-cases skill names.
 
@@ -145,6 +192,12 @@ class SkillManifest(ContractModel):
     estimated_energy_fraction: float | None = None
     implementation: Implementation = Field(default_factory=Implementation)
     required_control_modes: set[ControlMode] = Field(default_factory=set)
+    # M2 (D034): appended fields. / M2（D034）：追加字段。
+    intent_phases: list[IntentPhase] = Field(
+        default_factory=list,
+        description="ordered control-intent phases; empty means one intent per step / 有序意图相位；为空表示每步一个意图",
+    )
+    energy_estimate: EnergyEstimate | None = None
 
     @field_validator("skill_id")
     @classmethod
@@ -152,6 +205,22 @@ class SkillManifest(ContractModel):
         if not SKILL_ID_RE.match(value):
             raise ValueError("skill_id must match skill.<domain>.<action>")
         return value
+
+    @model_validator(mode="after")
+    def _phases_unique_and_estimate_consistent(self) -> SkillManifest:
+        names = [p.phase for p in self.intent_phases]
+        if len(names) != len(set(names)):
+            raise ValueError("intent phase names must be unique")
+        estimate = self.energy_estimate
+        if estimate is not None and self.estimated_energy_fraction != estimate.upper_fraction:
+            # Admission reads the scalar; it must be the conservative bound, never the mean.
+            # 准入读取的是标量，它必须是保守上界而不是均值。
+            raise ValueError("estimated_energy_fraction must equal the estimate's conservative bound")
+        return self
+
+    def phase(self, name: str | None) -> IntentPhase | None:
+        """The declared phase with this name, or None. / 返回同名的已声明相位，没有则为 None。"""
+        return next((p for p in self.intent_phases if p.phase == name), None)
 
 
 class SkillInstanceState(StrEnum):
