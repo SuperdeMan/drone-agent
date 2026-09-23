@@ -64,4 +64,4 @@ D028 将固定 M1 仿真入口常驻到云端，网络准入使用既有 Tailsca
 
 ## 后续激活（2026-09-23）
 
-M2 部署新版本后，本入口的页面仍是 `f0caa94`、运行时已是新版本，状态检查因此报告版本不一致。随 D035 任务台验收，本入口在 `b9cf00c` 上重新激活：健康、映射与隔离核对通过，状态 ready，见 [激活回执](verification/tailnet-desk-2026-09-23-console-activation.json)。这只是激活核对，没有重跑上文九轮飞行；上文的飞行证据仍属于 `f0caa94`。
+M2 部署新版本后，本入口的页面仍是 `f0caa94`、运行时已是新版本，状态检查因此报告版本不一致。随 D035 任务台验收，本入口先在 `b9cf00c`、再在 `74984f9` 上重新激活：健康、映射与隔离核对通过，状态 ready，见 [激活回执](verification/tailnet-desk-2026-09-23-console-activation.json) 与 [第二次回执](verification/tailnet-desk-2026-09-23-live-console-activation.json)。这只是激活核对，没有重跑上文九轮飞行；上文的飞行证据仍属于 `f0caa94`。

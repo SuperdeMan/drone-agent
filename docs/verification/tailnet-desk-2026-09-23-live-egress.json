@@ -1,0 +1,43 @@
+{
+  "schema_version": "0.1.0",
+  "source_sha": "74984f9f7117de9dfae1f2c75e3d3a61370001e3",
+  "decision": "D036",
+  "method": "a Python probe run inside each resident container with docker exec; it resolves the model host, connects to a public IP, and sends CONNECT through desk-model-proxy for a foreign target and for the model endpoint",
+  "containers": {
+    "desk-service": {
+      "resolve_model_endpoint": "refused: gaierror",
+      "direct_connect_public_ip": "refused: OSError",
+      "proxy_other_target": "HTTP/1.1 403 Forbidden",
+      "proxy_model_endpoint": "HTTP/1.1 200 Connection established"
+    },
+    "desk-uplink": {
+      "resolve_model_endpoint": "refused: gaierror",
+      "direct_connect_public_ip": "refused: OSError",
+      "proxy_other_target": "refused: gaierror",
+      "proxy_model_endpoint": "refused: gaierror"
+    },
+    "desk": {
+      "resolve_model_endpoint": "resolved",
+      "direct_connect_public_ip": "connected",
+      "proxy_other_target": "refused: gaierror",
+      "proxy_model_endpoint": "refused: gaierror"
+    }
+  },
+  "proxy_log": [
+    {
+      "listening": "0.0.0.0:3128",
+      "allow": [
+        "api.minimaxi.com:443"
+      ]
+    },
+    {
+      "target": "example.com:443",
+      "decision": "target_refused"
+    },
+    {
+      "target": "api.minimaxi.com:443",
+      "decision": "tunnel_opened"
+    }
+  ],
+  "notes": "The page container sits on the ingress bridge network, like D028's console (Docker internal networks cannot publish host ports), so it can reach the internet; it holds no key and joins neither desk_model nor desk_egress."
+}

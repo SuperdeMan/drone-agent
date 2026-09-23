@@ -1,0 +1,17 @@
+{
+  "schema_version": "0.1.0",
+  "findings": [
+    {
+      "where": "local machine",
+      "observation": "the first live planning call failed before sending: ALL_PROXY is a SOCKS proxy and httpx needs the socksio package, which the project does not install",
+      "handling": "the key was fine; live commands on this machine drop ALL_PROXY and add api.minimaxi.com to NO_PROXY for their own process only, reaching the domestic endpoint directly"
+    },
+    {
+      "where": "cloud desk on b9cf00c",
+      "mission_id": "m-24ffaa3daf85",
+      "observation": "planning_failed in 0.4 s: ConnectError, temporary failure in name resolution; the mission service sits on internal networks only",
+      "handling": "D036: allowlisted CONNECT proxy, deployed in 74984f9; the same gap existed for the end-to-end live path"
+    }
+  ],
+  "model_key": "written from this machine's user environment to the cloud project's secrets/m2-model/minimax.key (0600) with dev_stack.py m2-key --apply; never printed"
+}
