@@ -226,3 +226,26 @@ async def test_real_uvicorn_wsproto_session_says_hello(tmp_path):
     finally:
         server.should_exit = True
         await asyncio.wait_for(serving, 10)
+
+
+async def test_local_desk_plans_and_signs_with_a_labelled_scripted_planner(tmp_path, monkeypatch):
+    from drone_agent.console.mission import local_service
+
+    monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
+    monkeypatch.delenv("MINIMAX_API_KEY_FILE", raising=False)
+    service, label = local_service(ROOT, SCENE, tmp_path)
+    try:
+        assert label == "scripted"
+        app = MissionConsole(LocalApi(service), "http://127.0.0.1:8769", tailnet=False,
+                             scope={**scene_scope(ROOT, SCENE), "planner": label}, local_user="tester")
+        session = Socket(app, [(b"host", b"127.0.0.1:8769"), (b"origin", b"http://127.0.0.1:8769")])
+        await session.next()
+        assert (await session.next("hello"))["planner"] == "scripted"
+        session.send({"type": "text", "rid": "r1", "text": RED_REQUEST, "volume_id": "campus_training",
+                      "asset_ids": []})
+        view = (await session.next("mission"))["view"]
+        assert view["versions"][0]["planner"]["model_id"] == "scripted-fixture"
+        await session.close()
+    finally:
+        service.planner.tools.close()
+        service.ledger.close()

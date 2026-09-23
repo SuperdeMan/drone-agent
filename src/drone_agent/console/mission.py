@@ -391,21 +391,89 @@ def scene_scope(root: Path, scene: Path) -> dict:
     return {"volumes": volumes, "assets": assets}
 
 
+def local_service(root: Path, scene: Path, state: Path):
+    """An in-process mission service for the local desk: plans, admits and signs, but no robot connects (D023).
+
+    Live planning uses MINIMAX_API_KEY from the environment; without it the planner answers only the M2 suite's
+    request texts from a labelled scripted fixture, and the page says so.
+
+    本机任务台的进程内任务服务：可规划、准入与签名，但没有机器人连接（D023）。有 MINIMAX_API_KEY 时实调规划；
+    没有时只按带标注的脚本夹具回答 M2 场景集中的请求原文，页面会如实标明。
+    """
+    from types import SimpleNamespace
+
+    from drone_agent.eval.adversarial import NOMINAL_DRAFT
+    from drone_agent.eval.m2_prepare import load_suite
+    from drone_agent.fleet.ledger import BusinessLedger
+    from drone_agent.fleet.main import build_planner
+    from drone_agent.fleet.service import MissionService
+    from drone_agent.fleet.transport import FleetHub
+    from drone_agent.mission.registry import Registry
+    from drone_agent.planner.draft import TOOL_NAME
+    from drone_agent.planner.replan import ApprovalPolicy
+    from drone_agent.providers.replay import SCRIPTED_FORMAT
+    from drone_agent.providers.runtime import secret
+    from drone_agent.runtime.signing import SigningKey
+
+    state.mkdir(parents=True, exist_ok=True)
+    key_path = state / "approval-signing.key"
+    if not key_path.exists():
+        SigningKey.generate().save(key_path)
+    suite = load_suite(root)
+    answers = {}
+    for scenario in suite["scenarios"]:
+        for text in suite["texts"][scenario["texts"]].values():
+            answers[text] = {"tool_calls": [{"id": "c1", "name": TOOL_NAME,
+                                             "arguments": {**NOMINAL_DRAFT, **scenario["planner"]}}]}
+    fixtures = state / "planner-fixtures.json"
+    fixtures.write_text(json.dumps({"format": SCRIPTED_FORMAT, "source": "scripted", "answers": answers},
+                                   ensure_ascii=False), encoding="utf-8")
+    mode = "live" if secret("MINIMAX_API_KEY") else "scripted"
+    registry = Registry(root, scene=scene)
+    planner, label = build_planner(SimpleNamespace(planner=mode, root=root, scene=scene, state=state,
+                                                   fixtures=fixtures), registry)
+    if planner is not None:
+        planner.label = label
+    ledger = BusinessLedger(state / "ledger.sqlite3")
+    service = MissionService(root=root, scene=scene, ledger=ledger, hub=FleetHub(ledger, state / "media"),
+                             signing_key=SigningKey.load(key_path),
+                             approval_policy=ApprovalPolicy.from_yaml(root / "configs/approval_policy.yaml"),
+                             planner=planner)
+    return service, label
+
+
 def main() -> None:
+    import tempfile
+
     import uvicorn
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--origin", required=True)
+    parser.add_argument("--local", action="store_true",
+                        help="in-process mission service on this machine; plans and signs, nothing flies (D023)")
+    parser.add_argument("--origin", help="explicit origin; defaults to http://127.0.0.1:<port> with --local")
     parser.add_argument("--tailnet", action="store_true", help="identity from Tailscale-User-Login (D033)")
     parser.add_argument("--api", type=Path, default=Path("/run/mission/api.sock"))
-    parser.add_argument("--root", type=Path, default=Path("/workspace"))
-    parser.add_argument("--scene", type=Path, required=True)
+    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[3])
+    parser.add_argument("--scene", type=Path, default=None)
+    parser.add_argument("--state", type=Path, default=Path(tempfile.gettempdir()) / "drone-agent-desk")
     parser.add_argument("--a2a-clients", type=Path, help="JSON file with client ids and token SHA-256 values")
     parser.add_argument("--port", type=int, default=8769)
     parser.add_argument("--host", default="127.0.0.1")
     args = parser.parse_args()
-    console = MissionConsole(SocketApi(args.api), args.origin, tailnet=args.tailnet,
-                             scope=scene_scope(args.root, args.scene),
+    scene = args.scene or args.root / "configs/scenarios/m2_campus_v2.yaml"
+    origin = args.origin or f"http://127.0.0.1:{args.port}"
+    scope = scene_scope(args.root, scene)
+    if args.local:
+        if args.tailnet:
+            parser.error("--local serves the loopback desk only")
+        service, label = local_service(args.root, scene, args.state)
+        api = LocalApi(service)
+        scope["planner"] = label
+        print(json.dumps({"console_url": origin, "mode": "local", "planner": label, "flights": "cloud only"}),
+              flush=True)
+    else:
+        api = SocketApi(args.api)
+    console = MissionConsole(api, origin, tailnet=args.tailnet, scope=scope,
                              local_user=None if args.tailnet else getpass.getuser(),
                              clients=a2a_clients(args.a2a_clients))
     uvicorn.run(console, host=args.host, port=args.port, workers=1, lifespan="off", proxy_headers=False,

@@ -34,7 +34,7 @@ function onHello(message) {
   hello = message;
   byId("who").className = "who good";
   byId("whoText").textContent = message.identity ? message.identity : "只读会话（无 tailnet 身份）";
-  byId("whoMode").textContent = message.protocol;
+  byId("whoMode").textContent = message.protocol + (message.planner ? " · 规划 " + message.planner : "");
   byId("volume").innerHTML = message.volumes.map(v => `<option value="${esc(v.volume_id)}">${esc(v.volume_id)} · ${esc(v.airspace_mode)}</option>`).join("");
   byId("assets").innerHTML = message.assets.map(a => `<label><input type="checkbox" value="${esc(a.asset_id)}">${esc(a.asset_id)}</label>`).join("") +
     '<p>不勾选表示体积内任意登记资产。</p>';
