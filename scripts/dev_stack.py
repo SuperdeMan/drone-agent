@@ -312,14 +312,14 @@ def fetch_command(connection: Connection, args: argparse.Namespace, *, transport
                 mismatched.append(key)
     local_root.mkdir(parents=True, exist_ok=True)
     if receipt is not None:
-        (local_root / "receipt.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
+        (local_root / "receipt.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8", newline="\n")
     record = plan | {
         "status": "fetched" if not mismatched else "digest_mismatch",
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "digests": {name: meta["sha256"] for name, meta in expected.items()},
         "mismatched": sorted(mismatched),
     }
-    (local_root / "fetch.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+    (local_root / "fetch.json").write_text(json.dumps(record, indent=2), encoding="utf-8", newline="\n")
     if mismatched:
         raise RuntimeError(f"{len(mismatched)} downloaded files differ from the recorded digests: {sorted(mismatched)[:5]}")
     if not args.no_viewer:
@@ -386,7 +386,7 @@ def deploy_command(connection: Connection, args: argparse.Namespace) -> dict:
     upload_packet(connection, packet, manifest, destination, resume=bool(args.resume))
     print("Verifying and starting cloud workspace...", file=sys.stderr, flush=True)
     receipt = ssh(connection, {"action": "deploy", "run_id": packet.name})
-    (packet / "deployment.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
+    (packet / "deployment.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8", newline="\n")
     return receipt | {"local_receipt": str(packet / "deployment.json")}
 
 

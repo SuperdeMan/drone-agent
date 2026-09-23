@@ -145,6 +145,12 @@ def main() -> None:
     args = parser.parse_args()
     if not re.fullmatch(r"[0-9a-f]{40}", args.sha):
         parser.error("a full immutable commit is required")
+    inputs = [p for p in [args.deployment, args.baseline, *args.e2e, *args.m1] if p]
+    # The repository stores LF (.gitattributes), so a hash of CRLF bytes could never be reproduced from a clone.
+    # 仓库按 LF 存储（.gitattributes），对 CRLF 字节记录的哈希无法从克隆复现。
+    crlf = [p.name for p in inputs if b"\r\n" in p.read_bytes()]
+    if crlf:
+        parser.error(f"convert these inputs to LF line endings first: {crlf}")
     at_revision(args.sha)
 
     def load(path):
@@ -161,11 +167,10 @@ def main() -> None:
         "schema_version": "0.1.0", "milestone": "M2", "source_sha": args.sha,
         "status": "passed" if all(c["status"] == "passed" for c in criteria.values()) else "not_passed",
         "criteria": criteria,
-        "inputs": {str(p.name): hashlib.sha256(p.read_bytes()).hexdigest()
-                   for p in [args.deployment, args.baseline, *args.e2e, *args.m1] if p},
+        "inputs": {str(p.name): hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs},
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps({"status": report["status"], **{k: v["status"] for k, v in criteria.items()}}))
     raise SystemExit(0 if report["status"] == "passed" else 1)
 

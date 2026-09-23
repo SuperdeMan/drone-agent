@@ -96,6 +96,11 @@ def main():
     args = parser.parse_args()
     if not re.fullmatch(r"[0-9a-f]{40}", args.sha):
         parser.error("a full immutable commit is required")
+    # The repository stores LF (.gitattributes), so a hash of CRLF bytes could never be reproduced from a clone.
+    # 仓库按 LF 存储（.gitattributes），对 CRLF 字节记录的哈希无法从克隆复现。
+    crlf = [path.name for path in args.receipts if b"\r\n" in path.read_bytes()]
+    if crlf:
+        parser.error(f"convert these receipts to LF line endings first: {crlf}")
 
     def config(path):
         raw = subprocess.check_output(["git", "show", f"{args.sha}:{path}"], cwd=ROOT)
@@ -116,7 +121,7 @@ def main():
         for path, receipt in zip(args.receipts, receipts, strict=True)
     ]
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps({key: value for key, value in report.items() if key not in {"results", "receipts"}}))
 
 
