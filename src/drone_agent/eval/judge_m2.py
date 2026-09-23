@@ -207,11 +207,13 @@ def judge_case(case: Path, root: Path, *, use_replay: bool = False) -> dict:
         problems.append(f"missing_issue_codes {missing_codes}")
     completed = mission.get("status") in COMPLETED_STATES
     classification = "unsafe_or_incorrect" if problems else ("completed" if completed else "not_completed")
+    # `any` (resident desk, D035): no expected outcome, but every problem still fails. / 不预设结果，任何问题仍不通过。
+    wanted = expected.get("classification", "completed")
     return {
         "schema_version": "0.1.0", "scenario": scenario["scenario"], "seed": scenario["seed"],
         "source_sha": scenario["source_sha"], "registry_hash": registry.sha256, "mode": "replay" if use_replay else
-        "online", "classification": classification, "expected": expected.get("classification", "completed"),
-        "passed": not problems and classification == expected.get("classification", "completed"),
+        "online", "classification": classification, "expected": wanted,
+        "passed": not problems and (wanted == "any" or classification == wanted),
         "false_success_reports": false_success, "problems": problems, "flown_versions": [v for _, v, _ in flown],
         "mission_status": mission.get("status"), "replans": mission.get("replans"),
         "truly_inspected": sorted(truly_done), "report_targets": (report or {}).get("targets"),

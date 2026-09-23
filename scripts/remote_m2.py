@@ -43,12 +43,15 @@ def build_images(source: Path, base: Path, tag: str, checks: str) -> dict:
     return images
 
 
-def provision(root: Path, image: str) -> dict:
+def provision(root: Path, image: str, name: str = "m2") -> dict:
     """Keys and certificates stay in this project's secrets directory; only public facts return.
 
-    密钥与证书留在本项目的 secrets 目录；只返回公开事实。
+    `name` separates trust roots: `m2` for the end-to-end cases, `desk` for the resident desk (D035).
+
+    密钥与证书留在本项目的 secrets 目录；只返回公开事实。`name` 分隔信任根：端到端用例为 `m2`，常驻任务台为
+    `desk`（D035）。
     """
-    secrets = root / "secrets" / "m2"
+    secrets = root / "secrets" / name
     secrets.mkdir(parents=True, exist_ok=True)
     os.chmod(root / "secrets", 0o700)
     output = HELPERS["run"](["docker", "run", "--rm", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",

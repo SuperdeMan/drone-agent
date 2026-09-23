@@ -68,3 +68,28 @@ def test_scripted_planner_mode_is_labelled_and_live_mode_reports_a_missing_key(t
     Args.planner = "live"
     planner, label = build_planner(Args, registry)
     assert planner is None and label.startswith("unavailable:") and "MINIMAX_API_KEY" in label
+
+
+def test_auto_mode_is_live_only_with_a_key_and_otherwise_answers_the_suite(tmp_path, monkeypatch):
+    from drone_agent.eval.m2_prepare import load_suite
+    from drone_agent.fleet.main import planner_mode
+
+    for name in ("MINIMAX_API_KEY", "MINIMAX_API_KEY_FILE", "LLM_PROVIDER"):
+        monkeypatch.delenv(name, raising=False)
+
+    class Args:
+        root, scene, state, fixtures, planner = ROOT, SCENE, tmp_path, None, "auto"
+
+    planner, label = build_planner(Args, Registry(ROOT, scene=SCENE))
+    try:
+        assert label == "scripted" and planner.identity.model == "scripted-fixture"
+    finally:
+        planner.tools.close()
+    written = json.loads((tmp_path / "planner-fixtures.json").read_text(encoding="utf-8"))
+    suite = load_suite(ROOT)
+    texts = {text for case in suite["scenarios"] for text in suite["texts"][case["texts"]].values()}
+    assert set(written["answers"]) == texts and written["note"].startswith("hand-written")
+    key = tmp_path / "minimax.key"
+    key.write_text("not-a-real-key-0123456789")
+    monkeypatch.setenv("MINIMAX_API_KEY_FILE", str(key))
+    assert planner_mode("auto") == "live" and planner_mode("scripted") == "scripted"

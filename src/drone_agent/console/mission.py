@@ -5,9 +5,10 @@
 """Mission console v0 and A2A gateway: an ASGI app that only speaks to the mission-service API.
 
 hri.v0 over `WS /ws/session` carries JSON text frames:
-  down: {"type":"hello","protocol":"hri.v0","identity":...,"can_write":bool,"volumes":[...],"assets":[...]}
-        {"type":"missions","items":[...]}   {"type":"mission","view":{...}}   {"type":"media",...}
-        {"type":"error","message":...,"issue":{...}}
+  down: {"type":"hello","protocol":"hri.v0","identity":...,"can_write":bool,"volumes":[...],"assets":[...],
+         "planner":...}
+        {"type":"missions","items":[...]}   {"type":"mission","view":{...,"cloud":{...}}}   {"type":"media",...}
+        {"type":"host","status":{...}}      {"type":"error","message":...,"issue":{...}}
   up:   {"type":"text","rid":...,"text":...,"volume_id":...,"asset_ids":[...]}      submit a request
         {"type":"watch","mission_id":...}   {"type":"list"}   {"type":"media","mission_id":...,"evidence_id":...}
         {"type":"approve","mission_id":...,"version":N,"package_hash":...}
@@ -22,10 +23,17 @@ bearer token whose SHA-256 is configured. External agents are third-party: they 
 wait for human approval, and read status and reports; control-level keys, flight scopes, approvals and
 operations are rejected and audited.
 
+On the resident desk (D035) the page also shows the simulation supervisor's public records, read-only from
+`--supervisor`: the flight host state (`host`) and, per mission, the cloud flights and the independent judge
+(`view.cloud`). They are displayed, never used to decide anything here.
+
 任务控制台 v0 与 A2A 网关：只与任务服务 API 通信的 ASGI 应用。写操作需要身份：Tailscale Serve 注入的
 `Tailscale-User-Login`（后端只监听回环）或本机桥用户；没有身份的会话只读。这里没有任何路径能触达
 guardian：审批在服务中变成已签名任务包，操作变成飞行器会复核的操作请求。A2A 调用方是第三方：可以提交
 请求（等待人工审批）并读取状态与报告；控制级键、飞行 scope、审批与操作请求一律拒绝并记审计。
+
+常驻任务台（D035）另从 `--supervisor` 只读展示仿真监管者的公开记录：飞行主机状态（`host`），以及每个
+任务的云端飞行与独立裁判（`view.cloud`）。它们只用于展示，这里不据此做任何决定。
 """
 
 from __future__ import annotations
@@ -36,18 +44,21 @@ import getpass
 import hashlib
 import hmac
 import json
+import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
 import yaml
 
-from drone_agent.console.application import Response, json_response, validate_origin
+from drone_agent.console.application import CSP, Response, json_response, validate_origin
 from drone_agent.contracts.mission import FORBIDDEN_PARAM_KEYS
 from drone_agent.runtime.permission import ACTUATION_PREFIXES
 
 PAGE = Path(__file__).with_name("mission.html")
 MAX_FRAME = 16 * 1024
 MAX_BODY = 16 * 1024
+MAX_PUBLIC_RECORD = 256 * 1024
+MISSION_ID = re.compile(r"^m-[0-9a-f]{12}$")
 PROTOCOL = "hri.v0"
 A2A_FORBIDDEN_KEYS = FORBIDDEN_PARAM_KEYS | {"approval", "approve", "approver", "package_hash", "signature",
                                              "operate", "operator_request", "lease"}
@@ -117,13 +128,21 @@ class Session:
         self.trust = "first_party" if identity else "anonymous"
         self.watched: str | None = None
         self.last_view: str | None = None
+        self.last_host: str | None = None
         self.busy = False
 
     async def send(self, payload: dict) -> None:
         await self._send({"type": "websocket.send", "text": json.dumps(payload, ensure_ascii=False)})
 
     async def call(self, method: str, **params):
-        result = await self.console.api.call(method, self.identity, self.trust, **params)
+        try:
+            result = await self.console.api.call(method, self.identity, self.trust, **params)
+        except (OSError, TimeoutError, RuntimeError, ValueError) as error:
+            # Unreachable or slow service: report it; the request may still finish there. / 服务不可达或太慢：如实报告。
+            await self.send({"type": "error", "message": f"mission service unavailable ({type(error).__name__}); "
+                                                         "refresh the mission list later",
+                             "issue": {"code": "service.degraded"}})
+            return None
         if not result.get("ok"):
             issue = result.get("issue") or {}
             await self.send({"type": "error", "message": issue.get("message") or issue.get("code", "rejected"),
@@ -132,9 +151,21 @@ class Session:
         return result["result"]
 
     async def hello(self) -> None:
-        await self.send({"type": "hello", "protocol": PROTOCOL, "identity": self.identity or None,
-                         "can_write": bool(self.identity), **self.console.scope})
+        payload = {"type": "hello", "protocol": PROTOCOL, "identity": self.identity or None,
+                   "can_write": bool(self.identity), **self.console.scope}
+        if "planner" not in payload:
+            health = await self.call("health")
+            payload["planner"] = (health or {}).get("planner")
+        await self.send(payload)
+        await self.push_host(force=True)
         await self.list()
+
+    async def push_host(self, force: bool = False) -> None:
+        status = self.console.host_status()
+        text = json.dumps(status, sort_keys=True)
+        if force or text != self.last_host:
+            self.last_host = text
+            await self.send({"type": "host", "status": status})
 
     async def list(self) -> None:
         items = await self.call("list")
@@ -148,6 +179,7 @@ class Session:
         if view is None:
             self.watched = None
             return
+        view["cloud"] = self.console.cloud_record(self.watched)
         text = json.dumps(view, sort_keys=True, default=str)
         if force or text != self.last_view:
             self.last_view = text
@@ -199,9 +231,39 @@ class Session:
 
 class MissionConsole:
     def __init__(self, api, origin: str, *, tailnet: bool, scope: dict, local_user: str | None = None,
-                 clients: dict[str, str] | None = None, poll_s: float = 1.0):
+                 clients: dict[str, str] | None = None, poll_s: float = 1.0, supervisor: Path | None = None,
+                 source_sha: str | None = None):
         self.api, self.origin, self.tailnet = api, validate_origin(origin, tailnet=tailnet), tailnet
         self.scope, self.local_user, self.clients, self.poll_s = scope, local_user, clients or {}, poll_s
+        self.supervisor, self.source_sha = supervisor, source_sha
+        # Name the WebSocket origin explicitly next to 'self'. / 在 'self' 之外显式列出 WebSocket 源。
+        socket_scheme = "wss" if self.origin.startswith("https:") else "ws"
+        self.csp = CSP.replace("connect-src 'self'",
+                               f"connect-src 'self' {socket_scheme}://{urlsplit(self.origin).netloc}")
+
+    # ── supervisor records (display only) / 监管者记录（仅展示）──
+
+    def _public(self, name: str) -> dict | None:
+        """A bounded JSON record from the supervisor's read-only directory; anything else is none.
+
+        监管者只读目录中的有界 JSON 记录；其他情况一律视为没有。
+        """
+        if self.supervisor is None:
+            return None
+        path = self.supervisor / name
+        try:
+            if path.is_symlink() or path.stat().st_size > MAX_PUBLIC_RECORD:
+                return None
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        return value if isinstance(value, dict) else None
+
+    def host_status(self) -> dict | None:
+        return self._public("status.json")
+
+    def cloud_record(self, mission_id: str) -> dict | None:
+        return self._public(f"missions/{mission_id}.json") if MISSION_ID.fullmatch(mission_id) else None
 
     # ── identity and request checks / 身份与请求检查 ──
 
@@ -254,13 +316,18 @@ class MissionConsole:
                 if not event.get("more_body"):
                     break
         if method == "GET" and path == "/":
-            return await self.respond(send, Response(200, PAGE.read_bytes(), "text/html; charset=utf-8"))
+            return await self.respond(send, Response(200, PAGE.read_bytes(), "text/html; charset=utf-8",
+                                                     csp=self.csp))
         if method == "GET" and path == "/mission.js":
             return await self.respond(send, Response(200, PAGE.with_suffix(".js").read_bytes(),
                                                      "text/javascript; charset=utf-8"))
         if method == "GET" and path == "/health":
-            result = await self.api.call("health", "", "anonymous")
-            return await self.respond(send, json_response(200 if result.get("ok") else 503, result))
+            try:
+                result = await self.api.call("health", "", "anonymous")
+            except (OSError, TimeoutError, RuntimeError, ValueError) as error:
+                result = {"ok": False, "error": f"mission service unavailable ({type(error).__name__})"}
+            return await self.respond(send, json_response(200 if result.get("ok") else 503, {
+                **result, "console_source_sha": self.source_sha, "supervisor": self.host_status()}))
         if method == "GET" and path == "/.well-known/agent-card.json":
             return await self.respond(send, json_response(200, self.agent_card()))
         if method == "POST" and path == "/a2a":
@@ -283,6 +350,7 @@ class MissionConsole:
         async def watch():
             while True:
                 await asyncio.sleep(self.poll_s)
+                await session.push_host()
                 await session.push_view()
 
         watcher = asyncio.create_task(watch())
@@ -402,36 +470,21 @@ def local_service(root: Path, scene: Path, state: Path):
     """
     from types import SimpleNamespace
 
-    from drone_agent.eval.adversarial import NOMINAL_DRAFT
-    from drone_agent.eval.m2_prepare import load_suite
     from drone_agent.fleet.ledger import BusinessLedger
     from drone_agent.fleet.main import build_planner
     from drone_agent.fleet.service import MissionService
     from drone_agent.fleet.transport import FleetHub
     from drone_agent.mission.registry import Registry
-    from drone_agent.planner.draft import TOOL_NAME
     from drone_agent.planner.replan import ApprovalPolicy
-    from drone_agent.providers.replay import SCRIPTED_FORMAT
-    from drone_agent.providers.runtime import secret
     from drone_agent.runtime.signing import SigningKey
 
     state.mkdir(parents=True, exist_ok=True)
     key_path = state / "approval-signing.key"
     if not key_path.exists():
         SigningKey.generate().save(key_path)
-    suite = load_suite(root)
-    answers = {}
-    for scenario in suite["scenarios"]:
-        for text in suite["texts"][scenario["texts"]].values():
-            answers[text] = {"tool_calls": [{"id": "c1", "name": TOOL_NAME,
-                                             "arguments": {**NOMINAL_DRAFT, **scenario["planner"]}}]}
-    fixtures = state / "planner-fixtures.json"
-    fixtures.write_text(json.dumps({"format": SCRIPTED_FORMAT, "source": "scripted", "answers": answers},
-                                   ensure_ascii=False), encoding="utf-8")
-    mode = "live" if secret("MINIMAX_API_KEY") else "scripted"
     registry = Registry(root, scene=scene)
-    planner, label = build_planner(SimpleNamespace(planner=mode, root=root, scene=scene, state=state,
-                                                   fixtures=fixtures), registry)
+    planner, label = build_planner(SimpleNamespace(planner="auto", root=root, scene=scene, state=state,
+                                                   fixtures=None), registry)
     if planner is not None:
         planner.label = label
     ledger = BusinessLedger(state / "ledger.sqlite3")
@@ -457,6 +510,8 @@ def main() -> None:
     parser.add_argument("--scene", type=Path, default=None)
     parser.add_argument("--state", type=Path, default=Path(tempfile.gettempdir()) / "drone-agent-desk")
     parser.add_argument("--a2a-clients", type=Path, help="JSON file with client ids and token SHA-256 values")
+    parser.add_argument("--supervisor", type=Path, help="read-only public records of the simulation supervisor (D035)")
+    parser.add_argument("--source-sha", help="committed revision this page was deployed from, shown by /health")
     parser.add_argument("--port", type=int, default=8769)
     parser.add_argument("--host", default="127.0.0.1")
     args = parser.parse_args()
@@ -475,7 +530,8 @@ def main() -> None:
         api = SocketApi(args.api)
     console = MissionConsole(api, origin, tailnet=args.tailnet, scope=scope,
                              local_user=None if args.tailnet else getpass.getuser(),
-                             clients=a2a_clients(args.a2a_clients))
+                             clients=a2a_clients(args.a2a_clients), supervisor=args.supervisor,
+                             source_sha=args.source_sha)
     uvicorn.run(console, host=args.host, port=args.port, workers=1, lifespan="off", proxy_headers=False,
                 access_log=False, limit_concurrency=32, timeout_keep_alive=5, timeout_graceful_shutdown=10,
                 server_header=False, ws="wsproto", ws_max_size=MAX_FRAME, http="h11")

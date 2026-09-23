@@ -189,6 +189,60 @@ async def test_a2a_control_intent_is_rejected_and_audited(tmp_path, payload, cod
     assert [row["code"] for row in audited] == [code] and "a2a:cockpit-agent" in audited[0]["body"]
 
 
+async def test_supervisor_records_are_shown_and_never_trusted_as_paths(tmp_path):
+    loop = build_loop(tmp_path / "loop")
+    loop.service.planner.label = "scripted"  # as fleet.main labels it / 与 fleet.main 的标注方式相同
+    public = tmp_path / "public"
+    (public / "missions").mkdir(parents=True)
+    (public / "status.json").write_text(json.dumps({"state": "idle", "queue": []}))
+    app = console(loop, supervisor=public, source_sha="a" * 40)
+    session = Socket(app, headers(origin=ORIGIN, tailscale_user_login="alice@example.test"))
+    await session.next()
+    hello = await session.next("hello")
+    assert hello["planner"] == "scripted"
+    assert (await session.next("host"))["status"] == {"state": "idle", "queue": []}
+    session.send({"type": "text", "rid": "r1", "text": RED_REQUEST, "volume_id": "campus_training", "asset_ids": []})
+    view = (await session.next("mission"))["view"]
+    mission_id = view["mission"]["mission_id"]
+    assert view["cloud"] is None
+    (public / "missions" / f"{mission_id}.json").write_text(json.dumps({"flights": [{"version": 1}], "judge": None}))
+    (public / "status.json").write_text(json.dumps({"state": "flying", "mission_id": mission_id, "version": 1}))
+    assert (await session.next("host"))["status"]["state"] == "flying"
+    assert (await session.next("mission"))["view"]["cloud"] == {"flights": [{"version": 1}], "judge": None}
+    await session.close()
+    assert app.cloud_record("../status") is None and app.cloud_record("m-0123456789ab") is None
+    status, body = await http(app, "GET", "/health")
+    health = json.loads(body)
+    assert status == 200 and health["console_source_sha"] == "a" * 40 and health["supervisor"]["state"] == "flying"
+    page = []
+
+    async def send(message):
+        page.append(message)
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    await app({"type": "http", "method": "GET", "path": "/", "headers": headers()}, receive, send)
+    csp = dict(page[0]["headers"])[b"content-security-policy"].decode()
+    assert "connect-src 'self' wss://desk.example-tailnet.ts.net" in csp
+
+
+async def test_an_unreachable_service_is_reported_without_closing_the_session(tmp_path):
+    class Down:
+        async def call(self, *_args, **_kwargs):
+            raise ConnectionRefusedError("socket closed")
+
+    app = MissionConsole(Down(), ORIGIN, tailnet=True, scope=scene_scope(ROOT, SCENE))
+    session = Socket(app, headers(origin=ORIGIN, tailscale_user_login="alice@example.test"))
+    await session.next()
+    error = await session.next("error")
+    assert error["issue"]["code"] == "service.degraded" and "ConnectionRefusedError" in error["message"]
+    assert (await session.next("hello"))["planner"] is None
+    status, body = await http(app, "GET", "/health")
+    assert status == 503 and json.loads(body)["ok"] is False
+    await session.close()
+
+
 async def test_real_uvicorn_wsproto_session_says_hello(tmp_path):
     import uvicorn
     import wsproto

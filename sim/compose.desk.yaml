@@ -1,0 +1,201 @@
+# Resident M2 mission desk (D035). Resident: `desk` (the page, loopback 127.0.0.1:8769 only, behind the private
+# Tailscale Serve port 8448), `desk-service` (mission service) and `desk-uplink` (the onboard uplink); they share
+# only the internal `desk_uplink` network and the API socket directory. Profile `flight`: the simulator, truth
+# collector, guardian, executive and judge, started and stopped only by the simulation supervisor with the same
+# networks and mounts as the end-to-end cases. No fault injection. Secrets are mounted read-only into the single
+# container that needs each of them; the page holds none.
+#
+# 常驻 M2 任务台（D035）。常驻：`desk`（页面，只发布 127.0.0.1:8769，位于私有 Tailscale Serve 8448 之后）、
+# `desk-service`（任务服务）与 `desk-uplink`（机载 uplink）；它们只共享内部 `desk_uplink` 网络与 API 套接字
+# 目录。profile `flight`：仿真器、真值采集、guardian、executive 与裁判，只由仿真监管者启停，网络与挂载同端到端
+# 用例；不做故障注入。每个密钥只读挂载到唯一需要它的容器；页面不持任何密钥。
+name: drone-agent-cloud
+services:
+  desk:
+    image: ${DRONE_DESK_GROUND_IMAGE:?}
+    pull_policy: never
+    restart: unless-stopped
+    init: true
+    labels:
+      io.drone-agent.component: tailnet-desk
+      io.drone-agent.source-sha: ${DRONE_DESK_SHA:?}
+    user: ${DRONE_DESK_UID:?}:${DRONE_DESK_GID:?}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    cpus: 0.4
+    mem_limit: 512m
+    memswap_limit: 512m
+    ports: ["127.0.0.1:8769:8769"]
+    networks: [desk_ingress]
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      DRONE_DESK_ORIGIN: ${DRONE_DESK_ORIGIN:?}
+    command: [python3, -m, drone_agent.console.mission, --tailnet, --origin, "${DRONE_DESK_ORIGIN:?}",
+              --api, /api/api.sock, --supervisor, /supervisor, --source-sha, "${DRONE_DESK_SHA:?}",
+              --host, 0.0.0.0, --port, "8769"]
+    volumes:
+      - ${DRONE_DESK_ROOT:?}/api:/api:ro
+      - ${DRONE_DESK_ROOT:?}/supervisor/public:/supervisor:ro
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import os,urllib.request,urllib.parse; u=os.environ['DRONE_DESK_ORIGIN']; r=urllib.request.Request('http://127.0.0.1:8769/health',headers={'Host':urllib.parse.urlsplit(u).netloc}); urllib.request.urlopen(r,timeout=5).read()"]
+      interval: 15s
+      timeout: 8s
+      start_period: 30s
+      retries: 3
+  desk-service:
+    image: ${DRONE_DESK_GROUND_IMAGE:?}
+    pull_policy: never
+    restart: unless-stopped
+    init: true
+    user: ${DRONE_DESK_UID:?}:${DRONE_DESK_GID:?}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:size=32m"]
+    cpus: 0.5
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_DESK_SHA:?}
+      MINIMAX_API_KEY_FILE: /model/minimax.key
+      PYTHONDONTWRITEBYTECODE: "1"
+    command: [python3, -m, drone_agent.fleet.main, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
+              --planner, auto, --state, /state, --tls, /tls, --signing-key, /secrets/approval-signing.key,
+              --api, /api/api.sock, --listen, "0.0.0.0:8450"]
+    volumes:
+      - ${DRONE_DESK_ROOT:?}/service:/state
+      - ${DRONE_DESK_ROOT:?}/api:/api
+      - ${DRONE_DESK_SECRETS:?}/service-tls:/tls:ro
+      - ${DRONE_DESK_SECRETS:?}/approval-signing.key:/secrets/approval-signing.key:ro
+      - ${DRONE_DESK_MODEL:?}:/model:ro
+    networks: [desk_uplink]
+  desk-uplink:
+    image: ${DRONE_DESK_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    restart: unless-stopped
+    init: true
+    user: ${DRONE_DESK_UID:?}:${DRONE_DESK_GID:?}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:size=16m"]
+    cpus: 0.3
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    command: [python3, -m, drone_agent.runtime.uplink, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
+              --service, "desk-service:8450", --server-name, mission-service, --tls, /tls,
+              --trust, /trust/trust.json, --inbox, /inbox, --mailbox, /mailbox, --aircraft, /aircraft,
+              --state, /uplink]
+    volumes:
+      - ${DRONE_DESK_ROOT:?}/robot/aircraft:/aircraft:ro
+      - ${DRONE_DESK_ROOT:?}/robot/inbox:/inbox
+      - ${DRONE_DESK_ROOT:?}/robot/mailbox:/mailbox
+      - ${DRONE_DESK_ROOT:?}/robot/uplink:/uplink
+      - ${DRONE_DESK_SECRETS:?}/robot-tls:/tls:ro
+      - ${DRONE_DESK_SECRETS:?}/trust:/trust:ro
+    networks: [desk_uplink]
+  desk-sitl:
+    profiles: [flight]
+    image: ${DRONE_DESK_SIM_IMAGE:?}
+    pull_policy: never
+    init: true
+    stdin_open: true
+    tty: true
+    cpus: 1.5
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 512
+    environment:
+      PX4_SIM_SPEED_FACTOR: "1"
+    volumes:
+      - ${DRONE_DESK_FLIGHT:?}/ulog:/opt/PX4-Autopilot/build/px4_sitl_default/rootfs/log
+    networks: [desk_simulation]
+  desk-collector:
+    profiles: [flight]
+    image: ${DRONE_DESK_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.3
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    network_mode: service:desk-sitl
+    environment:
+      PYTHONPATH: /usr/lib/python3/dist-packages
+    command: [/usr/bin/python3, /workspace/sim/collect.py]
+    volumes:
+      - ${DRONE_DESK_FLIGHT:?}/sensor:/sensor
+      - ${DRONE_DESK_FLIGHT:?}/truth:/truth
+  desk-guardian:
+    profiles: [flight]
+    image: ${DRONE_DESK_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.6
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    network_mode: service:desk-sitl
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_DESK_SHA:?}
+    command: [python3, -m, drone_agent.runtime.launch, guardian, --simulation,
+              --scene, /workspace/configs/scenarios/m2_campus_v2.yaml, --trust, /trust/trust.json,
+              --robot-state, /robot/authority.json, --package, "/inbox/history/${DRONE_DESK_PACKAGE:?}"]
+    volumes:
+      - ${DRONE_DESK_FLIGHT:?}/sensor:/sensor:ro
+      - ${DRONE_DESK_ROOT:?}/robot/inbox:/inbox:ro
+      - ${DRONE_DESK_AIRCRAFT:?}:/artifacts
+      - ${DRONE_DESK_ROOT:?}/robot/ipc:/run/drone
+      - ${DRONE_DESK_ROOT:?}/robot/state:/robot
+      - ${DRONE_DESK_SECRETS:?}/trust:/trust:ro
+  desk-executive:
+    profiles: [flight]
+    image: ${DRONE_DESK_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.4
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 64
+    network_mode: none
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_DESK_SHA:?}
+    command: [python3, -m, drone_agent.runtime.launch, executive,
+              --scene, /workspace/configs/scenarios/m2_campus_v2.yaml, --trust, /trust/trust.json,
+              --package, "/inbox/history/${DRONE_DESK_PACKAGE:?}", --epoch, "${DRONE_DESK_EPOCH:?}",
+              --operator-mailbox, /mailbox/operator.json]
+    volumes:
+      - ${DRONE_DESK_ROOT:?}/robot/inbox:/inbox:ro
+      - ${DRONE_DESK_AIRCRAFT:?}:/artifacts
+      - ${DRONE_DESK_ROOT:?}/robot/ipc:/run/drone
+      - ${DRONE_DESK_ROOT:?}/robot/mailbox:/mailbox:ro
+      - ${DRONE_DESK_SECRETS:?}/trust:/trust:ro
+  desk-judge:
+    profiles: [flight]
+    image: ${DRONE_DESK_GROUND_IMAGE:?}
+    pull_policy: never
+    user: ${DRONE_DESK_UID:?}:${DRONE_DESK_GID:?}
+    cpus: 0.5
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 64
+    network_mode: none
+    command: [python3, -m, drone_agent.eval.judge_m2, /run]
+    volumes:
+      - ${DRONE_DESK_CASE:?}:/run:ro
+      - ${DRONE_DESK_CASE:?}/judge:/output
+networks:
+  desk_ingress:
+    driver: bridge
+  desk_uplink:
+    internal: true
+  desk_simulation:
+    internal: true

@@ -28,7 +28,8 @@ RUN_ID = re.compile(r"^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 # artifacts/ 下的运行目录（`m1-<run_id>`）与用例目录（`<scenario>-<seed>`）。
 RUN_DIR = re.compile(r"^m[0-9]+-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 CASE_DIR = re.compile(r"^[a-z][a-z0-9_]*-[0-9]+$")
-READ_ONLY_ACTIONS = frozenset({"status", "runs", "inspect", "live_status", "console_plan", "console_status"})
+READ_ONLY_ACTIONS = frozenset({"status", "runs", "inspect", "live_status", "console_plan", "console_status",
+                               "desk_plan", "desk_status"})
 
 
 def digest(path: Path) -> str:
@@ -377,7 +378,7 @@ def store_model_key(root: Path, request: dict) -> dict:
 def dispatch(request: dict) -> dict:
     action = request.get("action")
     if action not in {*READ_ONLY_ACTIONS, "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1", "m2",
-                       "m2_key", "live_start", "live_operate", "console_apply"}:
+                       "m2_key", "live_start", "live_operate", "console_apply", "desk_apply"}:
         raise ValueError("unsupported cloud action")
     if action not in READ_ONLY_ACTIONS and not RUN_ID.fullmatch(request.get("run_id", "")):
         raise ValueError("invalid run identity")
@@ -404,6 +405,20 @@ def dispatch(request: dict) -> dict:
             return console["plan"](root, deployment)
         with locked(root):
             return console["apply"](root, deployment, request)
+    if action in {"desk_plan", "desk_status", "desk_apply"}:
+        import runpy
+
+        deployment = current(root)
+        script = deployment / "source/scripts/remote_desk.py"
+        if not script.is_file():
+            raise ValueError("deploy a committed mission-desk version first")
+        desk = runpy.run_path(str(script))
+        if action == "desk_status":
+            return desk["status"](root)
+        if action == "desk_plan":
+            return desk["plan"](root, deployment)
+        with locked(root):
+            return desk["apply"](root, deployment, request)
     if action in {"live_status", "live_start", "live_operate"}:
         import runpy
 

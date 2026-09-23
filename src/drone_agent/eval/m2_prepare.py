@@ -30,6 +30,24 @@ def load_suite(root: Path) -> dict:
     return suite
 
 
+def suite_answers(root: Path) -> dict:
+    """Scripted answers for every request text of the suite, keyed by the exact text (labelled test double).
+
+    Used when no model key is configured (local desk, resident desk without a key); any other text gets no plan.
+
+    场景集中每条请求原文的脚本回答，以原文为键（带标注的测试替身）。未配置模型 key 时使用（本机任务台、
+    没有 key 的常驻任务台）；其他文本得不到规划。
+    """
+    suite = load_suite(root)
+    answers = {}
+    for scenario in suite["scenarios"]:
+        for text in suite["texts"][scenario["texts"]].values():
+            answers[text] = {"tool_calls": [{"id": "c1", "name": TOOL_NAME,
+                                             "arguments": {**NOMINAL_DRAFT, **scenario["planner"]}}]}
+    return {"format": SCRIPTED_FORMAT, "source": "scripted", "note": "hand-written test double, not model output",
+            "answers": answers}
+
+
 def materialize(root: Path, output: Path, scenario_id: str, seed: int, sha: str) -> dict:
     suite = load_suite(root)
     scenario = next(case for case in suite["scenarios"] if case["id"] == scenario_id)

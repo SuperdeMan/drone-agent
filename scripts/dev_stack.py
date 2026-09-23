@@ -403,6 +403,10 @@ def main() -> None:
     cloud_console_action = cloud_console_parser.add_mutually_exclusive_group()
     cloud_console_action.add_argument("--apply", action="store_true")
     cloud_console_action.add_argument("--status", action="store_true")
+    desk_parser = commands.add_parser("desk-cloud", help="plan or activate the resident M2 mission desk (D035)")
+    desk_action = desk_parser.add_mutually_exclusive_group()
+    desk_action.add_argument("--apply", action="store_true")
+    desk_action.add_argument("--status", action="store_true")
     fetch_parser = commands.add_parser("fetch", help="copy a recorded run locally and build the evidence viewer")
     fetch_parser.add_argument("--run", required=True, help="run directory name, e.g. m1-20260919T171218Z-db465377")
     fetch_parser.add_argument("--deployment", default=None, help="deployment id; defaults to the current one")
@@ -439,6 +443,12 @@ def main() -> None:
             if args.command == "console-cloud":
                 action = "console_status" if args.status else "console_apply" if args.apply else "console_plan"
                 result = ssh(connection, {"action": action, "run_id": new_run_id()}, timeout=300)
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+                return
+            if args.command == "desk-cloud":
+                action = "desk_status" if args.status else "desk_apply" if args.apply else "desk_plan"
+                # Activation may build the M2 images of the revision first. / 激活可能先构建该版本的 M2 镜像。
+                result = ssh(connection, {"action": action, "run_id": new_run_id()}, timeout=3600)
                 print(json.dumps(result, ensure_ascii=False, indent=2))
                 return
             if args.command == "console":

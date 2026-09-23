@@ -15,6 +15,8 @@ from urllib.parse import parse_qs, urlsplit
 
 TEMPLATE = Path(__file__).with_name("live.html")
 MAX_BODY = 4096
+CSP = ("default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; "
+       "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
 
 
 def validate_origin(value: str, *, tailnet: bool = False) -> str:
@@ -42,6 +44,7 @@ class Response:
     status: int
     body: bytes
     content_type: str = "application/json; charset=utf-8"
+    csp: str = CSP
 
     @property
     def headers(self) -> list[tuple[str, str]]:
@@ -49,7 +52,7 @@ class Response:
             ("content-type", self.content_type), ("content-length", str(len(self.body))),
             ("cache-control", "no-store"), ("x-content-type-options", "nosniff"),
             ("referrer-policy", "no-referrer"), ("x-frame-options", "DENY"),
-            ("content-security-policy", "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"),
+            ("content-security-policy", self.csp),
         ]
 
 

@@ -45,23 +45,24 @@ def serve_config() -> dict:
     return json.loads(command(["tailscale", "serve", "status", "--json"]).stdout)
 
 
-def other_routes(config: dict) -> dict:
+def other_routes(config: dict, port: int = HTTPS_PORT) -> dict:
+    """Every Serve entry except the one on `port` (the mission desk passes 8448). / 除 `port` 之外的全部 Serve 条目。"""
     value = copy.deepcopy(config)
-    value.get("TCP", {}).pop(str(HTTPS_PORT), None)
+    value.get("TCP", {}).pop(str(port), None)
     for section in ("Web", "AllowFunnel"):
         for name in list(value.get(section, {})):
-            if name.rsplit(":", 1)[-1] == str(HTTPS_PORT):
+            if name.rsplit(":", 1)[-1] == str(port):
                 value[section].pop(name)
         if not value.get(section):
             value.pop(section, None)
     return value
 
 
-def route_matches(config: dict, origin: str) -> bool:
+def route_matches(config: dict, origin: str, port: int = HTTPS_PORT, backend: str = BACKEND) -> bool:
     authority = urlsplit(origin).netloc
     return (
-        config.get("TCP", {}).get(str(HTTPS_PORT), {}).get("HTTPS") is True
-        and config.get("Web", {}).get(authority, {}).get("Handlers") == {"/": {"Proxy": BACKEND}}
+        config.get("TCP", {}).get(str(port), {}).get("HTTPS") is True
+        and config.get("Web", {}).get(authority, {}).get("Handlers") == {"/": {"Proxy": backend}}
         and config.get("AllowFunnel", {}).get(authority, False) is False
     )
 

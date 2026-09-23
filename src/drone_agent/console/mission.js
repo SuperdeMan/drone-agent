@@ -9,7 +9,15 @@ const STATUS = {planning: "规划中", awaiting_approval: "待审批", approving
 const TONE = {completed: "ok", delivered: "ok", running: "ok", awaiting_approval: "warn", incomplete: "warn", approved: "warn",
   queued: "warn", refused: "bad", rejected: "bad", declined: "bad", delivery_rejected: "bad", planning_failed: "bad"};
 const COLUMN = {completed: "已完成", not_completed: "未完成", uncertain: "不确定"};
-let socket = null, hello = null, current = null, selected = null, retry = 500, photos = {};
+// Simulation supervisor records (D035): shown as recorded, never used to decide anything here.
+// 仿真监管者记录（D035）：按记录原样展示，这里不据此做任何决定。
+const HOST = {idle: "空闲，等待已审批任务", waiting_for_workspace: "等待云端工作区（其他仿真或部署占用）",
+  waiting_for_memory: "等待共享主机内存", preparing: "启动仿真并预热（地勤换电）", flying: "飞行中",
+  landing: "仿真操作员降落收尾", restoring: "收尾并恢复空闲仿真", judging: "独立裁判中", error: "监管者异常"};
+const FLIGHT = {preparing: "准备中", flying: "飞行中", finished: "落地结束", skipped: "未起飞", overrun: "超时，由仿真操作员降落",
+  failed: "失败", interrupted: "中断"};
+const JUDGE = {completed: "完成", not_completed: "未完成", unsafe_or_incorrect: "不安全或不正确"};
+let socket = null, hello = null, current = null, selected = null, retry = 500, photos = {}, host = null, planning = null;
 
 function notice(text) { byId("notice").textContent = text || ""; byId("notice").hidden = !text; }
 function chip(status) { return `<span class="chip ${TONE[status] || ""}">${esc(STATUS[status] || status)}</span>`; }
@@ -24,9 +32,10 @@ function connect() {
     const message = JSON.parse(event.data);
     if (message.type === "hello") onHello(message);
     else if (message.type === "missions") renderList(message.items);
-    else if (message.type === "mission") { current = message.view; render(); }
+    else if (message.type === "mission") { if (planning) planned(); current = message.view; render(); }
     else if (message.type === "media") { photos[message.evidence_id] = message.png; renderEvidence(); }
-    else if (message.type === "error") notice((message.issue?.code ? message.issue.code + " · " : "") + message.message);
+    else if (message.type === "host") { host = message.status; renderHost(); }
+    else if (message.type === "error") { if (planning) planned(); notice((message.issue?.code ? message.issue.code + " · " : "") + message.message); }
   };
 }
 
@@ -34,7 +43,9 @@ function onHello(message) {
   hello = message;
   byId("who").className = "who good";
   byId("whoText").textContent = message.identity ? message.identity : "只读会话（无 tailnet 身份）";
-  byId("whoMode").textContent = message.protocol + (message.planner ? " · 规划 " + message.planner : "");
+  const planner = message.planner || "";
+  byId("whoMode").textContent = message.protocol + " · 规划 " + (planner === "scripted" ? "脚本回答（非模型，只认场景集原文）"
+    : planner.startsWith("live:") ? planner.slice(5) : planner.startsWith("unavailable") ? "不可用" : planner || "未知");
   byId("volume").innerHTML = message.volumes.map(v => `<option value="${esc(v.volume_id)}">${esc(v.volume_id)} · ${esc(v.airspace_mode)}</option>`).join("");
   byId("assets").innerHTML = message.assets.map(a => `<label><input type="checkbox" value="${esc(a.asset_id)}">${esc(a.asset_id)}</label>`).join("") +
     '<p>不勾选表示体积内任意登记资产。</p>';
@@ -48,10 +59,18 @@ byId("submit").onclick = () => {
   notice("");
   const assets = [...byId("assets").querySelectorAll("input:checked")].map(i => i.value);
   byId("submit").disabled = true;
-  byId("submit").textContent = "规划中…";
+  byId("submit").textContent = "规划中…（实调模型可能需要数十秒）";
+  // Re-enable on the planned mission or an error; a live model can take a while. / 收到规划结果或错误时恢复按钮。
+  planning = setTimeout(planned, 180000);
   send({type: "text", rid: rid(), text, volume_id: byId("volume").value, asset_ids: assets});
-  setTimeout(() => { byId("submit").disabled = !hello?.can_write; byId("submit").textContent = "规划并提交审批"; }, 3000);
 };
+
+function planned() {
+  if (planning) clearTimeout(planning);
+  planning = null;
+  byId("submit").disabled = !hello?.can_write;
+  byId("submit").textContent = "规划并提交审批";
+}
 
 function renderList(items) {
   byId("missions").innerHTML = items.length ? items.map(m => `<button data-id="${esc(m.mission_id)}" aria-current="${m.mission_id === current?.mission.mission_id}">
@@ -96,6 +115,19 @@ function render() {
       <p>操作经机载 uplink 写入操作者信箱，由 executive 与 guardian 复核绑定与时效；页面按钮不直达飞控。</p>`;
   }
   if (view.operations.length) html += `<h3>操作请求</h3><table>${view.operations.map(o => `<tr><td>${esc(o.action)}</td><td>${esc(o.requested_by)}</td><td>${o.acked ? (o.accepted ? "已转入信箱" : "被拒：" + esc(o.reason)) : "待拉取"}</td></tr>`).join("")}</table>`;
+  const cloud = view.cloud;
+  if (cloud) {
+    html += `<h3>云端飞行</h3><table><tr><th>版本</th><th>状态</th><th>代次</th><th>开始 / 结束</th><th>说明</th></tr>
+      ${(cloud.flights || []).map(f => `<tr><td>v${esc(f.version)}</td><td>${esc(FLIGHT[f.status] || f.status)}${f.manual_cleanup ? " · 仿真操作员降落" : ""}</td>
+      <td>${esc(f.epoch ?? "—")}</td><td>${esc((f.started_at || "").slice(11, 19))} / ${esc((f.ended_at || "").slice(11, 19))}</td><td>${esc(f.detail || "")}</td></tr>`).join("")}</table>`;
+    const judge = cloud.judge;
+    html += judge ? `<h3>独立裁判</h3><dl><div><dt>分类</dt><dd>${esc(JUDGE[judge.classification] || judge.classification)}${judge.passed ? " · 通过" : " · 未通过"}</dd></div>
+      <div><dt>错误成功报告</dt><dd>${esc(judge.false_success_reports)}</dd></div><div><dt>在线 / 回放</dt><dd>${judge.replay_agrees ? "一致" : "不一致"}</dd></div>
+      <div><dt>飞行版本</dt><dd>${esc((judge.flown_versions || []).join(", "))}</dd></div>
+      ${(judge.problems || []).length ? `<div><dt>问题</dt><dd>${esc(judge.problems.join(", "))}</dd></div>` : ""}</dl>
+      <p>裁判用仿真真值独立核对飞行与报告；页面只展示它的记录。</p>`
+      : `<p>任务到达终态后，监管者用仿真真值运行独立裁判（在线与回放）。</p>`;
+  }
   const events = v.events || [];
   html += `<h3>机载事件 <small class="chip">${Object.entries(v.journals || {}).map(([k, j]) => `${esc(k)} ${esc(j.rows)} · ${esc(j.chain)}`).join(" / ") || "尚未同步"}</small></h3>
     <div class="events">${events.length ? events.slice().reverse().map(e => `<div class="event ${["command_rejected", "safety_intervention", "operator_rejected"].includes(e.kind) ? "alert" : ""}">
@@ -125,6 +157,15 @@ function renderEvidence() {
     · ${e.verification ? esc(e.verification.final_verdict) + (e.verification.agrees ? "" : " · 机载/服务不一致") : "待复核"}</button>
     ${photos[e.evidence_id] ? `<div class="photo"><img alt="机载相机证据" src="${esc(photos[e.evidence_id])}"></div>` : ""}`).join("") : '<div class="empty">暂无证据。</div>';
   for (const button of byId("evidence").querySelectorAll("button")) button.onclick = () => send({type: "media", mission_id: current.mission.mission_id, evidence_id: button.dataset.id});
+}
+
+function renderHost() {
+  if (!host) { byId("host").innerHTML = '<div class="empty">本入口没有仿真飞行监管者：可规划与签名，不起飞。</div>'; return; }
+  byId("host").innerHTML = `<dl><div><dt>状态</dt><dd>${esc(HOST[host.state] || host.state)}</dd></div>
+    ${host.mission_id ? `<div><dt>任务</dt><dd>${esc(host.mission_id)} v${esc(host.version)}</dd></div>` : ""}
+    ${(host.queue || []).length ? `<div><dt>排队</dt><dd>${esc(host.queue.map(q => q.mission_id + " v" + q.version).join(", "))}</dd></div>` : ""}
+    <div><dt>更新</dt><dd>${esc((host.updated_at || "").slice(11, 19))}</dd></div></dl>
+    ${host.detail ? `<p>${esc(host.detail)}</p>` : ""}<p>批准后由云端仿真飞行：每个版本前飞控断电重启（地勤换电），与其他仿真和部署互斥排队。</p>`;
 }
 
 function renderIssues() {

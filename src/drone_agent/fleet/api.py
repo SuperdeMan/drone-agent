@@ -145,7 +145,8 @@ async def _call(service: MissionService, method: str, params: dict, who: Caller)
             raise ServiceError("service.not_found", params["evidence_id"])
         return {"evidence_id": row["evidence_id"], "png": png_data_uri(media, row["width"], row["height"])}
     return {"status": "ready", "signer_key_id": service.key.key_id, "robot_id": service.robot_id,
-            "planner": getattr(service.planner, "label", None) if service.planner else None}
+            "planner": getattr(service.planner, "label", None) if service.planner else None,
+            "source_sha": os.environ.get("DRONE_SOURCE_SHA", "uncommitted")}
 
 
 async def serve_api(service: MissionService, path: Path):

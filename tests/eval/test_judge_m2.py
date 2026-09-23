@@ -72,6 +72,18 @@ async def test_a_report_the_truth_does_not_support_is_a_false_success(tmp_path):
     assert "report_completed_without_true_inspection:asset_red" in result["problems"]
 
 
+async def test_a_desk_case_expects_no_outcome_but_still_fails_on_any_problem(tmp_path):
+    await build_case(tmp_path, expected={"classification": "any"})
+    result = judge_case(tmp_path, ROOT)
+    assert (result["passed"], result["classification"], result["expected"]) == (True, "completed", "any")
+    rows = [json.loads(line) for line in (tmp_path / "truth/truth.jsonl").read_text().splitlines()]
+    for row in rows:
+        row["position"][0] += 3.0
+    (tmp_path / "truth/truth.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    result = judge_case(tmp_path, ROOT)
+    assert not result["passed"] and result["classification"] == "unsafe_or_incorrect"
+
+
 async def test_an_incomplete_service_mirror_and_a_wrong_signer_fail_the_case(tmp_path):
     loop, _ = await build_case(tmp_path)
     view = json.loads((tmp_path / "service-export/view.json").read_text())
