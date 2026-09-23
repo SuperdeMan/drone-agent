@@ -80,6 +80,28 @@ async def test_unverified_inspection_is_retried_as_a_policy_approved_version_aft
     assert columns[(1, "inspect_asset_red")] == "uncertain" and columns[(2, "inspect_asset_red")] == "completed"
 
 
+async def test_an_operator_cancel_is_never_overridden_by_an_automatic_retry(tmp_path):
+    from datetime import timedelta
+
+    from drone_agent.contracts import utcnow
+
+    loop = build_loop(tmp_path)
+    mission_id = (await approved(loop))["mission"]["mission_id"]
+    await loop.sync()
+    # Cancel during takeoff, before the inspection node ever runs. / 起飞中取消，巡检节点从未运行。
+    (tmp_path / "mailbox").mkdir(exist_ok=True)
+    (tmp_path / "mailbox/operator.json").write_text(json.dumps({
+        "request_id": "op-cancel-takeoff", "action": "cancel", "mission_id": mission_id, "mission_version": 1,
+        "lease_epoch": 1, "step_id": "takeoff", "valid_until": (utcnow() + timedelta(seconds=60)).isoformat(),
+        "requested_by": "tailnet:operator@example.test"}))
+    result = await loop.fly(loop.inbox_package(), epoch=1)
+    assert not result["completed"]
+    missions = await loop.sync()
+    assert (missions[mission_id]["status"], missions[mission_id]["current_version"]) == ("incomplete", 1)
+    codes = [i["code"] for i in loop.ledger.issues(mission_id)]
+    assert "replan.cancelled_by_operator" in codes and loop.ledger.version(mission_id, 2) is None
+
+
 async def test_a_new_version_waits_until_the_robot_reports_grounded(tmp_path):
     loop = build_loop(tmp_path)
     mission_id = (await approved(loop))["mission"]["mission_id"]

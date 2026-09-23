@@ -33,6 +33,7 @@ from drone_agent.contracts import (
     ApprovalRecord,
     EffectVerdict,
     Evidence,
+    ExecutionStatus,
     MissionAction,
     MissionPackage,
     MissionSpec,
@@ -382,6 +383,12 @@ class MissionService:
             self._issues(found, mission_id)
             self.ledger.update_mission(mission_id, status="incomplete")
 
+        cancelled = sorted(step for step, outcome in outcomes.items()
+                           if outcome is not None and outcome.execution_status is ExecutionStatus.CANCELLED)
+        if cancelled:
+            # Only an operator cancel yields `cancelled`; flying again would override that decision (D035).
+            # 只有操作者取消会产生 `cancelled`；再次起飞会推翻这一决定（D035）。
+            return incomplete([issue("replan.cancelled_by_operator", ", ".join(cancelled), affected=cancelled)])
         if mission["replans"] >= self.policy.max_replans_per_mission:
             return incomplete([issue("replan.limit_exceeded", f"{mission['replans']} replans used")])
         package = MissionPackage.model_validate(record["package"])

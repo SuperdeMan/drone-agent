@@ -113,6 +113,7 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "replan.requires_human": IssueLayer.APPROVAL,
     "replan.scope_expanded": IssueLayer.APPROVAL,
     "replan.unverified_edge_added": IssueLayer.APPROVAL,
+    "replan.cancelled_by_operator": IssueLayer.APPROVAL,
     # Onboard acceptance / 机载接受
     "onboard.unsigned": IssueLayer.ONBOARD,
     "onboard.untrusted_signer": IssueLayer.ONBOARD,
