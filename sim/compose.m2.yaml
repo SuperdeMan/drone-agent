@@ -1,0 +1,151 @@
+# M2 end-to-end case (D031, WP-M2-18). Networks: `simulation` carries MAVLink and Gazebo only (sitl, collector,
+# guardian); `uplink` carries mTLS between the mission service and the onboard uplink only. The executive has no
+# network; the uplink mounts the flight artifacts read-only and never the guardian socket. No host ports.
+# Secrets are mounted read-only into the single container that needs each of them.
+#
+# M2 端到端用例（D031，WP-M2-18）。网络：`simulation` 只承载 MAVLink 与 Gazebo（sitl、collector、guardian）；
+# `uplink` 只承载任务服务与机载 uplink 之间的 mTLS。executive 无网络；uplink 只读挂载飞行产物，从不挂载
+# guardian 套接字。不发布宿主端口。每个密钥只读挂载到唯一需要它的容器。
+name: drone-agent-cloud
+services:
+  sitl:
+    image: ${DRONE_M2_SIM_IMAGE:?}
+    pull_policy: never
+    init: true
+    stdin_open: true
+    tty: true
+    cpus: 1.5
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 512
+    environment:
+      PX4_SIM_SPEED_FACTOR: "1"
+    volumes:
+      - ${DRONE_M2_RUN:?}/ulog:/opt/PX4-Autopilot/build/px4_sitl_default/rootfs/log
+    networks: [simulation]
+  collector:
+    image: ${DRONE_M2_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.3
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    network_mode: service:sitl
+    environment:
+      PYTHONPATH: /usr/lib/python3/dist-packages
+    command: [/usr/bin/python3, /workspace/sim/collect.py]
+    volumes:
+      - ${DRONE_M2_RUN:?}/sensor:/sensor
+      - ${DRONE_M2_RUN:?}/truth:/truth
+  mission-service:
+    image: ${DRONE_M2_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=32m"]
+    cpus: 0.5
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+      MINIMAX_API_KEY_FILE: /model/minimax.key
+      PYTHONDONTWRITEBYTECODE: "1"
+    command: [python3, -m, drone_agent.fleet.main, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
+              --planner, "${DRONE_M2_PLANNER:?}", --fixtures, /input/planner-fixtures.json, --state, /state,
+              --tls, /tls, --signing-key, /secrets/approval-signing.key, --api, /run/mission/api.sock,
+              --listen, "0.0.0.0:8450"]
+    volumes:
+      - ${DRONE_M2_RUN:?}/input:/input:ro
+      - ${DRONE_M2_RUN:?}/service:/state
+      - ${DRONE_M2_RUN:?}/api:/run/mission
+      - ${DRONE_M2_SECRETS:?}/service-tls:/tls:ro
+      - ${DRONE_M2_SECRETS:?}/approval-signing.key:/secrets/approval-signing.key:ro
+      - ${DRONE_M2_MODEL:?}:/model:ro
+    networks: [uplink]
+  uplink:
+    image: ${DRONE_M2_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=16m"]
+    cpus: 0.3
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+    command: [python3, -m, drone_agent.runtime.uplink, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
+              --service, "mission-service:8450", --server-name, mission-service, --tls, /tls,
+              --trust, /trust/trust.json, --inbox, /inbox, --mailbox, /mailbox, --aircraft, /aircraft,
+              --state, /uplink]
+    volumes:
+      - ${DRONE_M2_RUN:?}/aircraft:/aircraft:ro
+      - ${DRONE_M2_RUN:?}/inbox:/inbox
+      - ${DRONE_M2_RUN:?}/mailbox:/mailbox
+      - ${DRONE_M2_RUN:?}/uplink:/uplink
+      - ${DRONE_M2_SECRETS:?}/robot-tls:/tls:ro
+      - ${DRONE_M2_SECRETS:?}/trust:/trust:ro
+    networks: [uplink]
+  guardian:
+    image: ${DRONE_M2_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.6
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    network_mode: service:sitl
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+    command: [python3, -m, drone_agent.runtime.launch, guardian, --simulation,
+              --scene, /workspace/configs/scenarios/m2_campus_v2.yaml, --trust, /trust/trust.json,
+              --robot-state, /robot/authority.json, --package, "/inbox/history/${DRONE_M2_PACKAGE:?}",
+              --fault, "/input/fault-v${DRONE_M2_VERSION:?}.json"]
+    volumes:
+      - ${DRONE_M2_RUN:?}/input:/input:ro
+      - ${DRONE_M2_RUN:?}/sensor:/sensor:ro
+      - ${DRONE_M2_RUN:?}/inbox:/inbox:ro
+      - ${DRONE_M2_FLIGHT:?}:/artifacts
+      - ${DRONE_M2_RUN:?}/ipc:/run/drone
+      - ${DRONE_M2_RUN:?}/robot:/robot
+      - ${DRONE_M2_SECRETS:?}/trust:/trust:ro
+  executive:
+    image: ${DRONE_M2_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.4
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 64
+    network_mode: none
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+    command: [python3, -m, drone_agent.runtime.launch, executive,
+              --scene, /workspace/configs/scenarios/m2_campus_v2.yaml, --trust, /trust/trust.json,
+              --package, "/inbox/history/${DRONE_M2_PACKAGE:?}", --epoch, "${DRONE_M2_EPOCH:?}",
+              --operator-mailbox, /mailbox/operator.json]
+    volumes:
+      - ${DRONE_M2_RUN:?}/inbox:/inbox:ro
+      - ${DRONE_M2_FLIGHT:?}:/artifacts
+      - ${DRONE_M2_RUN:?}/ipc:/run/drone
+      - ${DRONE_M2_RUN:?}/mailbox:/mailbox:ro
+      - ${DRONE_M2_SECRETS:?}/trust:/trust:ro
+  judge:
+    image: ${DRONE_M2_GROUND_IMAGE:?}
+    pull_policy: never
+    cpus: 0.5
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 64
+    network_mode: none
+    command: [python3, -m, drone_agent.eval.judge_m2, /run]
+    volumes:
+      - ${DRONE_M2_RUN:?}:/run:ro
+      - ${DRONE_M2_RUN:?}/judge:/output
+networks:
+  simulation:
+    internal: true
+  uplink:
+    internal: true

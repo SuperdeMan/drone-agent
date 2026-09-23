@@ -416,6 +416,11 @@ def main() -> None:
     m1_parser.add_argument("--scenario", default="nominal")
     m1_parser.add_argument("--seeds", default="7,19,41")
     m1_parser.add_argument("--speed-factor", type=int, choices=[1, 2], default=1)
+    m2_parser = commands.add_parser("m2", help="run M2 end-to-end cases (natural language to report) in the cloud")
+    m2_parser.add_argument("--scenario", default="all")
+    m2_parser.add_argument("--seeds", default="7,19,41")
+    m2_parser.add_argument("--planner", choices=["scripted", "live"], default="scripted",
+                           help="scripted fixtures are labelled test doubles; live needs the model key in cloud secrets")
     deploy_parser = commands.add_parser("deploy")
     source = deploy_parser.add_mutually_exclusive_group()
     source.add_argument("--sha", default="HEAD")
@@ -458,6 +463,18 @@ def main() -> None:
                         "scenario": args.scenario,
                         "seeds": [int(seed) for seed in args.seeds.split(",")],
                         "speed_factor": args.speed_factor,
+                    },
+                    timeout=14400,
+                )
+            elif args.command == "m2":
+                result = ssh(
+                    connection,
+                    {
+                        "action": "m2",
+                        "run_id": new_run_id(),
+                        "scenario": args.scenario,
+                        "seeds": [int(seed) for seed in args.seeds.split(",")],
+                        "planner": args.planner,
                     },
                     timeout=14400,
                 )

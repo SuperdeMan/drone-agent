@@ -356,7 +356,7 @@ def inspect_run(root: Path, request: dict) -> dict:
 
 def dispatch(request: dict) -> dict:
     action = request.get("action")
-    if action not in {*READ_ONLY_ACTIONS, "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1",
+    if action not in {*READ_ONLY_ACTIONS, "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1", "m2",
                        "live_start", "live_operate", "console_apply"}:
         raise ValueError("unsupported cloud action")
     if action not in READ_ONLY_ACTIONS and not RUN_ID.fullmatch(request.get("run_id", "")):
@@ -407,6 +407,13 @@ def dispatch(request: dict) -> dict:
             import runpy
 
             return runpy.run_path(str(deployment / "source/scripts/remote_m1.py"))["run_m1"](root, deployment, request)
+        if action == "m2":
+            import runpy
+
+            script = deployment / "source/scripts/remote_m2.py"
+            if not script.is_file():
+                raise ValueError("deploy a version with the M2 end-to-end runner first")
+            return runpy.run_path(str(script))["run_m2"](root, deployment, request)
         if action == "verify":
             return operation_receipt(deployment, request["run_id"], smoke(root, deployment, request["run_id"]))
         if action == "test":

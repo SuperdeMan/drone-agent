@@ -21,3 +21,9 @@ ENV HEADLESS=1
 ENV PX4_SIM_SPEED_FACTOR=2
 ENV PX4_GZ_HEADLESS_RENDERING=1
 ENTRYPOINT ["bash", "/opt/drone-sim/entrypoint.sh"]
+
+FROM sim AS sim2
+# M2 adds the blue asset in its own image so recorded M1 runs keep their exact world.
+# M2 在独立镜像中加入蓝色资产，已记录的 M1 运行保持原世界不变。
+RUN /usr/bin/python3 /workspace/sim/m2_setup.py
+LABEL org.drone-agent.role=sim-m2

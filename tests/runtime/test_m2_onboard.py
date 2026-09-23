@@ -92,6 +92,7 @@ class FlightFake:
         self.position, self.path = [0.0, 0.0, 0.0], []
         self.airborne, self.mode, self.sample = False, "HOLD", 0
         self.writes, self.frames = [], list(frames or [])
+        self.sim_clock = None
 
     def snapshot(self):
         if self.path:
@@ -142,7 +143,8 @@ class FlightFake:
                             captured_pose=observation.pose, subject_ids=[node.params["asset_id"]],
                             quality={"width": 160, "height": 120}, produced_by_skill_instance=node.task_id)
         record = {"media_ref": relative, "sha256": digest, "asset_id": node.params["asset_id"], "width": 160,
-                  "height": 120, "capture_timestamp": observation.timestamp.isoformat(), "sim_time": 0.0,
+                  "height": 120, "capture_timestamp": observation.timestamp.isoformat(),
+                  "sim_time": self.sim_clock() if self.sim_clock else 0.0,
                   "observation": observation.model_dump(mode="json"), "skill_instance": node.task_id,
                   "source": "deterministic_test", "contract": contract.model_dump(mode="json")}
         (self.artifacts / f"evidence-{node.task_id}.json").write_text(json.dumps(record))

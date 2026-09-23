@@ -13,6 +13,7 @@ flight fake from the onboard tests.
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -82,15 +83,31 @@ class Loop:
     def inbox_package(self) -> MissionPackage:
         return MissionPackage.model_validate_json((self.root / "inbox/package.json").read_bytes())
 
-    async def fly(self, package: MissionPackage, *, epoch: int, frames=()) -> dict:
+    async def fly(self, package: MissionPackage, *, epoch: int, frames=(), truth: list | None = None) -> dict:
         """Fly `package` with a fresh guardian and executive in its own version directory.
 
-        以新的 guardian 与 executive 在独立版本目录中执行 `package`。
+        `truth`, when given, collects the fake's positions like the simulator's truth collector.
+
+        以新的 guardian 与 executive 在独立版本目录中执行 `package`。给出 `truth` 时，像仿真真值采集器一样
+        收集替身的位置。
         """
         artifacts = self.root / "aircraft" / package.mission_id / f"v{package.mission_version}"
         artifacts.mkdir(parents=True)
         reg = fast_registry()
         adapter = FlightFake(reg, artifacts, frames)
+        if truth is not None:
+            start = truth[0]["mono"] if truth else time.monotonic()
+            adapter.sim_clock = lambda: time.monotonic() - start
+            snapshot = adapter.snapshot
+
+            def recorded():
+                obs = snapshot()
+                point = obs.pose.position
+                truth.append({"timestamp": obs.timestamp.isoformat(), "sim_time": adapter.sim_clock(),
+                              "mono": time.monotonic(), "position": [point.x, point.y, point.z]})
+                return obs
+
+            adapter.snapshot = recorded
         guardian_journal = Journal(artifacts / "guardian.jsonl")
         state = RobotAuthorityState(self.root / "robot/authority.json", "uav_01")
         guardian = Guardian(adapter=adapter, package=package, registry=reg, journal=guardian_journal,
