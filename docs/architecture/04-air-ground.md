@@ -1,5 +1,9 @@
 # 空地协同
 
+[返回架构总览](00-overview.md) · [M4 实施计划](../m4-implementation.md) · [路线图](../roadmap.md)
+
+**状态：目标设计，M4-B / M5 待实施。** 当前 M2 仅运行单架 `uav_01`；[直通协调器](../../src/drone_agent/fleet/coordinator.py)校验并记录协同规则为 `recorded_not_executed`，不发起、接受或转移任务。下文的空间对齐、交接和资源预约不能作为现有能力使用。
+
 ## 1. 协同模型
 
 **一个协调器分配任务，每台机器人维护自己的本地执行与安全闭环。** 协同的单位是任务、空间事实与证据，不是聊天消息，也不是底层运动控制。
@@ -76,7 +80,7 @@ handoff_offered(task, from, to, expires_at)
 
 | 对象 | 一致性 | 机制 |
 |---|---|---|
-| 控制权（谁控制哪台机器人、哪个任务版本有效） | 强一致、单写者 | `TaskLease` + `lease_epoch` + 旧指令拒绝；Coordinator 是唯一签发者 |
+| 跨机器人任务所有权（目标设计） | 强一致、单写者 | Coordinator 仲裁任务分配与交接；接收方按授权建立本地 `TaskLease`，guardian 校验 `lease_epoch` 并拒绝旧指令 |
 | 地图与观测事实 | 最终一致、允许迟到 | 带时间戳与版本的增量合并；冲突以更新且不确定性更小者为准，保留历史 |
 | 任务账本（云端） | 可暂时不可用 | 机载本地权威状态 + 事后同步 |
 
@@ -92,4 +96,4 @@ handoff_offered(task, from, to, expires_at)
 
 ## 7. 仿真中的空地联合
 
-M4-B 联合仿真优先在**同一个 Gazebo 世界**里用 PX4 SITL 同时运行多旋翼与 rover（PX4 v1.17 提供 rover 模式与 Ackermann SIH），避免早期对接两个仿真器并处理时空同步。Nav2 版本的地面机器人在 M5 前接入。
+M4-B 联合仿真优先在**同一个 Gazebo 世界**里用 PX4 SITL 同时运行多旋翼与 rover（PX4 v1.17 提供 rover 模式与 Ackermann SIH），避免早期对接两个仿真器并处理时空同步。Nav2 仿真适配列为 M4-B 的后续工作包，可延至 M5 首批，必须在真实地面平台前完成（WP-M4B-10）。

@@ -1,19 +1,23 @@
 # 分层职责、进程拓扑与层间接口
 
+[返回架构总览](00-overview.md) · [部署](07-deployment.md) · [契约](02-contracts.md)
+
+**当前范围：M2 单机 PX4 SITL。** 第 1 节说明层的职责及后续扩展；第 2–3 节列出当前进程与接口，规划项单独标明。实现与验收见 [M2 记录](../m2-readiness.md) 和 [任务台记录](../tailnet-desk-readiness.md)。
+
 ## 1. 各层职责
 
 ### L0 操作者与入口
 
 - 任务控制台：提交目标、确认范围、审批任务版本、看进度与证据、发起暂停 / 取消 / 接管。
-- 座舱 / 语音入口（`cockpit-agent`）：通过 A2A 调用 `drone-agent` 的协调器 **只提交任务请求与查询进度**；声纹或语音不能单独构成飞行授权。
-- 所有入口的输出都是「任务请求」，没有任何入口能直接触达 L5/L6。
+- A2A 网关已实现任务提交、状态与报告查询；外部调用方无审批与控制权限。`cockpit-agent` 等语音入口属于待接入方，不能把网关可用视为这些项目已完成联调；声纹或语音不能单独构成飞行授权。
+- 人工任务台还可提交审批与操作请求，但均经任务服务和机载复核，没有入口能直接触达 L5/L6。
 
 ### L1 任务规划与协同（off-board）
 
 | 组件 | 职责 | 不负责 |
 |---|---|---|
-| Planner | 理解目标、拆解任务、选择技能、解释异常、提出重规划；输出 `MissionSpec` 草案（结构化输出） | 扩大已批准空间范围；生成代码；决定安全动作 |
-| Fleet Coordinator | 能力发现、任务分配（LLM 提议 + 规则 / 优化器裁决）、任务交接、时空资源预约 | 机器人底层运动控制 |
+| Planner | M2 模型输出受约束草案；引擎确定性构建 `MissionSpec`，补齐身份、时间窗、能源预算与恢复策略引用 | 扩大已批准空间范围；生成代码；决定安全动作 |
+| Fleet Coordinator | M2 为 `uav_01` 检查技能并直通分配，协同规则记为 `recorded_not_executed`；M4-B 起实现交接等四项能力，多机优化分配在 M6 | 机器人底层运动控制 |
 | Catalog | 技能清单（`SkillManifest`）、设备能力（`CapabilityDescriptor`）与实时状态（`RobotStatus`） | — |
 | Mission Ledger | 任务版本、审批记录、事件流、证据索引的**业务账本**（云端可暂时不可用） | 飞行任务的权威状态（在机载 executive） |
 | Evidence Verifier | 确定性检查判「完成」；VLM 判「疑似异常 / 进度」并带置信度 | 安全判定 |
@@ -29,10 +33,10 @@
 
 - Mission Executive：任务 DAG 调度；每个技能实例是带生命周期的长任务（状态机 / 行为树），支持进度、暂停、取消、超时、恢复。
 - 持有**本地权威任务状态**与事件日志（本地持久化）；云端账本只做同步。
-- 维护 `BeliefWorld` 的机载视图，产出 `WorldFact` 与 `Evidence`。
-- 向 L5 提交的是「技能层意图」：模式请求、航线、局部目标、轨迹片段；不直接写飞控。
+- M2 使用登记表、飞控观测、任务状态和 `Evidence`；完整 `BeliefWorld` 双层表示按后续阶段引入，见[世界表示](05-world-model.md)。
+- 向 L5 提交「技能层意图」；M2 使用已登记技能与相位（巡检的 approach / capture），模式与航线由 guardian / 适配器执行。局部目标与轨迹片段属于 M3 扩展；executive 不直接写飞控。
 
-### L4 局部自主（autonomy）
+### L4 局部自主（autonomy，M3 计划）
 
 - 感知、定位健康度、局部地图（占据 / ESDF）、短时域局部规划。
 - 两种技能实现向下提交**相同类型的候选目标 / 轨迹**：确定性实现（默认）与学习型实现（插件，先影子运行）。
@@ -48,84 +52,86 @@
 
 ### L6 本体适配器
 
-- 把 Control Egress 的抽象命令翻译为平台协议：PX4（MAVSDK 3.17+；后续 px4_ros2 外部模式）、DJI Cloud API（航线 / 云台 / 相机 / Dock）、ArduPilot（AP_DDS / MAVLink）、Nav2（地面）。
+- 当前只有 PX4 / MAVSDK 3.17.4 适配器，声明 `mission_upload`，支持 M1 五个基础技能与 M2 资产巡检。px4_ros2 外部模式、DJI Cloud API、ArduPilot 和 Nav2 均为后续适配方向，见[扩展性](06-extensibility.md)。
 - 每个适配器发布 `CapabilityDescriptor`（静态能力）与 `RobotStatus`（动态状态）；不支持的控制模式明确缺席，不做假实现。
 
 ## 2. 进程与部署拓扑
 
-### 2.1 机载（每台无人机）
+### 2.1 当前机载角色（M2 在云端容器中仿真）
 
-```text
-┌──────────────── 伴飞计算机（Jetson Orin 级；M1 为工作站上的容器）────────────────┐
-│                                                                                  │
-│  executive 进程（Python）            guardian 进程（Python@M1；M3 评估 C++/Rust）│
-│  ├ Mission Executive                 ├ Safety Supervisor                          │
-│  ├ Skill Runtime（状态机/BT）        ├ Constraint Filter（围栏/包络；M3 起 CBF）  │
-│  ├ BeliefWorld（机载视图）           ├ Recovery Policy Graph                      │
-│  ├ Evidence Recorder（MCAP+事件流）  ├ Control Egress（租约/序号/新鲜度）         │
-│  └ Uplink/Downlink 客户端            └ Platform Adapter（MAVSDK ↔ 飞控）           │
-│          │  本地 IPC（gRPC/UDS；每条命令带 lease_epoch + seq）                    │
-│          └──────────────────────────────►                                        │
-│                                                                                  │
-│  autonomy（ROS 2 节点，M3 起）：感知 · 定位 · 局部地图 · 局部规划 · 学习策略插件   │
-│  edge-inference 服务（M3 起）：小 VLM 事件检测（TensorRT/ONNX）                   │
-└──────────────────────────────────────────────────────────────────────────────────┘
-                     │ 串口 / 以太网（MAVLink 2；M3 起 uXRCE-DDS）
-                     ▼
-              飞控（PX4 v1.17）— 姿态/位置控制、任务模式、失效保护、RC 接管
-```
+| 进程 | 职责与连接 | 隔离边界 |
+|---|---|---|
+| `uplink` | 主动经 mTLS 连接任务服务；验签并写入 inbox / 操作者信箱；上传事件、证据与状态 | 独立进程；无飞控连接，不挂载 guardian 控制套接字 |
+| `executive` | 接受已批准任务、独立验签；维护权威任务状态；调度技能与本地证据记录 | `network_mode: none`；通过私有 gRPC/UDS 向 guardian 提交租约、心跳、意图与操作 |
+| `guardian` | 独立验签与授权复核；监督租约、活性、新鲜度与边界；选择恢复策略 | 唯一持有 PX4/MAVSDK 连接；不依赖规划模型 |
+| PX4 SITL | 飞控原生任务执行、控制与失效保护 | 与业务运行时分开；保留人工接管路径 |
 
-隔离原则：
+uplink 与执行进程通过私有卷交接任务和事件，**网络客户端不在 executive 内**（D031）。executive 创建并续期本地 `TaskLease`，guardian 依据已验证任务包、身份与持久化代次水位接受或拒绝；租约不是服务端经 mTLS 下发的飞行授权。代码入口：[uplink](../../src/drone_agent/runtime/uplink.py)、[executive](../../src/drone_agent/mission/executive.py)、[guardian](../../src/drone_agent/guardian/core.py)。
 
-| 故障 | 期望行为 |
+M3 计划新增 ROS 2 autonomy 节点与 edge-inference 服务，评估 guardian 的语言及延迟预算；M4-A 再验证设备侧部署。当前 amd64 仿真容器不代表 Jetson 或真机已经验收。
+
+| 故障 | 当前边界 |
 |---|---|
-| executive 崩溃 | guardian 检测心跳丢失 → 按恢复策略图处理（默认：安全等待 → 返航） |
-| guardian 崩溃 | 飞控 Offboard 信号丢失 → 飞控原生失效保护接管；RC 可随时接管 |
-| 上行链路断 | executive 继续已授权任务包或按失联策略收尾；不需要 L1 |
-| 伴飞计算机整体失电 | 飞控原生失效保护 |
+| executive 崩溃 / 心跳丢失 | guardian 依据飞行阶段、定位与能源选择已验证恢复边；不存在统一的“先悬停再返航”默认动作 |
+| 任务服务或 uplink 不可用 | 不阻断本地监督；执行已授权任务包允许的继续 / 收尾策略，恢复连接后对账与补齐事件 |
+| guardian 崩溃 | 业务控制出口失去写入能力；实际后续行为取决于飞控模式与原生失效保护配置，不能用尚未启用的 Offboard 丢信号规则解释 M2 |
+| 伴飞计算机整体失电 / 串口断开 | 属于 M4-A 的共因故障真机验证；当前 SITL 证据不证明设备侧故障后的物理行为 |
 
-### 2.2 地面 / 云端
+### 2.2 当前地面 / 云端
 
-```text
-mission-service（Python）：Planner · Coordinator · Catalog · Ledger · Compiler · Admission · Evidence Verifier
-console（Web）
-数据平台：MCAP/ULog 归档 · 回放 · 评测裁判 · 数据集导出
-```
+| 组件 | 职责 |
+|---|---|
+| `mission-service` | Planner、直通 Coordinator、Catalog、SQLite 业务账本、Compiler / Admission、审批签名、证据复核与报告 |
+| Web 任务台 / A2A 网关 | 只经任务服务 API；人工审批绑定包哈希，第三方 Agent 只提交与查询 |
+| 模型出站代理 | 允许列表 CONNECT 隧道，供任务服务访问已配置的模型端点（D036） |
+| 仿真监管者 | 常驻任务台中按已验签任务包启停飞行，持本项目锁；网页 / 监管者重启不重飞（D035） |
+| 真值采集 / Judge / Viewer | 隔离采集真值、在线与回放裁判、只读证据展示；真值不提供给被测执行进程 |
 
-`mission-service` 不在飞行实时依赖链上；它不可用时，机载运行时仍能完成或安全收尾已授权任务。
+`mission-service` 不在飞行实时依赖链上。当前 M1 固定入口与 M2 任务台是两个独立入口；本机任务台不连接机器人，常驻云端任务台才执行仿真飞行。网络与容器落位见[部署](07-deployment.md)。
 
 ### 2.3 通信与中间件
 
-| 范围 | 选择 |
+| 范围 | 当前实现 | 后续路线 |
+|---|---|---|
+| executive ↔ guardian | 本地 gRPC over UDS + local credentials，不经过网络 | 保持本地控制边界 |
+| uplink ↔ mission-service | 主动拨出 mTLS gRPC；车队协议传任务包、操作请求、事件、媒体与状态 | M3 评估 Zenoh；其他厂商传输按平台接入 |
+| 任务台 ↔ mission-service | hri.v0 WebSocket → 服务 API；常驻部署使用私有 UDS | 按入口权限扩展 |
+| 飞控 | MAVLink 2 / MAVSDK 3.17.4，`mission_upload` 路径 | M3 引入 uXRCE-DDS / px4_ros2 外部模式 |
+| autonomy 内部 / 跨机器人 | 尚未实现 | ROS 2 独立域；跨机器人走 Zenoh 或车队协议，DDS 发现不跨无线链路 |
+
+## 3. 当前层间接口一览
+
+| 接口 | 载荷与边界 |
 |---|---|
-| 机器人内部（executive ↔ guardian） | 本地 IPC（gRPC over UDS）；不经过网络 |
-| 机器人内部（autonomy 节点） | ROS 2（每台机器人独立 ROS_DOMAIN_ID） |
-| 机器人 ↔ mission-service、机器人 ↔ 机器人 | 车队协议（protobuf/JSON Schema 定义的 `MissionPackage` / `ExecutionEvent` / `WorldFact` / `RobotStatus`），传输可插拔：Zenoh（ROS 2 机器人）、MQTT（DJI Cloud API 类平台、Dock）、gRPC |
-| 飞控 | MAVLink 2（MAVSDK 3.17+）；M3 起 uXRCE-DDS |
-
-DDS 发现流量不跨无线链路；跨机器人一律经 Zenoh 路由或车队协议。
-
-## 3. 层间接口一览
-
-| 接口 | 方向 | 载荷 | 频率 / 性质 |
-|---|---|---|---|
-| Entry → Planner | 下 | 任务请求（自然语言 + 结构化上下文） | 事件 |
-| Planner → Compiler | 下 | `MissionSpec`（草案，带模型与提示版本） | 事件 |
-| Compiler/Admission → Executive | 下（uplink） | `MissionPackage` + `ApprovalRecord` + `TaskLease` | 事件；机载复核 |
-| Executive → Guardian | 下（本地） | `ControlIntent`（模式请求 / 航线 / 局部目标 / 轨迹片段）+ lease_epoch + seq | 意图级：事件；轨迹片段：≤ 10 Hz |
-| Guardian → Adapter → FC | 下 | 平台命令；Offboard 设定值 | 平台要求（PX4 Offboard ≥ 2 Hz 存活；MAVSDK 20 Hz 重发） |
-| FC → Guardian → Executive | 上 | 遥测、模式、失效保护状态、健康 | 5–50 Hz |
-| Autonomy → Executive | 上 | 局部地图摘要、候选目标 / 轨迹、定位健康 | 1–10 Hz |
-| Executive → Ledger / Console | 上（downlink） | `ExecutionEvent`、`Evidence` 引用、`WorldFact`、`RobotStatus` | 事件 + 1 Hz 状态 |
-| Robot ↔ Robot | 横向 | `WorldFact`（场景图增量）、交接协议消息 | 事件 |
+| Entry → mission-service / Planner | 带请求者、空间与资产范围的任务请求 |
+| Planner → Compiler / Admission | 引擎从草案构建的 `MissionSpec`；编译补齐框架技能并检查准入 |
+| Service → uplink → 机载 inbox | 已批准、签名的 `MissionPackage`；三处机载验签 |
+| Service → uplink → 操作者信箱 | 绑定任务、版本、代次、步骤与时效的暂停 / 恢复 / 取消请求；executive 与 guardian 复核 |
+| Executive → Guardian | 本地租约、心跳、`ControlCommandEnvelope` 中的技能意图、操作与命令对账 |
+| Guardian → Adapter → PX4 | 已授权技能对应的原生任务 / 模式 / 相机操作；当前不发送 Offboard 设定值 |
+| 飞控 / 相机 → Guardian → Executive | 遥测、模式、健康与采集证据 |
+| 机载账本 / 媒体 → uplink → Service | 事件、证据与约 1 Hz 状态；服务去重、核对哈希链并复核证据 |
 
 ## 4. 一个任务的生命周期（示例）
+
+### 4.1 当前 M2：单资产巡检
+
+1. 操作者在 `campus_training` 内选择 `asset_red` 并提出拍照请求。
+2. Planner 提交窄草案；引擎构建规格，Compiler 补齐起飞、返航和降落，Admission 检查各项约束。
+3. 操作者批准确切版本与 `package_hash`；任务服务生成 Ed25519 签名并等待机器人拉取。
+4. uplink、guardian、executive 各自验签；executive 申请本地租约，guardian 检查通过后执行。
+5. `skill.inspect.asset` 沿登记观察航线接近并采集影像；任务服务复核证据，输出三列报告。
+6. 独立裁判用仿真真值核对报告，并从 MCAP 回放复判。失败后的原样重试受审批策略限制，新版本只在落地后执行；操作者取消不触发自动重试。
+
+### 4.2 目标场景：空中巡检与地面复核（M4-B / M5）
+
+以下包含尚未实现的多目标协同与交接；当前 M2 的能源估计仅准入单资产示例，不能把此流程当作可执行演示。
 
 用户：「检查 A 区三处设备的外观，发现疑似异常后安排地面机器人复核，最后给我带照片的报告。」
 
 1. Planner 产出 `MissionSpec`：目标、对象 `asset_01..03`、空间范围引用 `inspection_volume_A`、完成要求「每个对象有位置与时间绑定的有效影像」、协同规则「疑似异常进入地面复核队列」、恢复策略引用。
 2. Compiler 展开为 DAG：`takeoff → fly_route(pre-validated) → inspect_asset ×3 → return_home → land`，每个 `inspect_asset` 标注证据要求与资源（`uav_01.motion` 独占、`uav_01.camera` 占用）。
-3. Admission 校验并绑定审批；签发 `TaskLease(lease_epoch=n)`。
+3. Admission 校验并绑定任务审批；机载接收后按控制权协议建立新的本地租约。跨机器人任务所有权的协调属于 M4-B。
 4. 机载 executive 复核并 `accept`；逐节点执行；`inspect_asset` 内部状态机：接近 → 观察 → 影像质量检查 → 补拍 → 产出 `Evidence`。
 5. Evidence Verifier：确定性检查通过 → `effect_verdict=verified`；VLM 标记「疑似异常，置信度 0.7」→ Coordinator 生成地面复核任务并交接。
 6. 地面机器人重新判断可达性，近距离复核，产出证据。

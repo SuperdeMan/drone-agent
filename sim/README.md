@@ -1,10 +1,25 @@
-# M0 Linux / PX4 / Gazebo 冒烟
+# PX4 / Gazebo 仿真与验证入口
 
-日常构建与联调默认走 [云端开发入口](../docs/cloud-development.md)（D023）。下文是 M0 已验证的显式本地操作方法；没有明确本地需求时不启动本机 Compose。
+[项目首页](../README.zh-CN.md) · [部署架构](../docs/architecture/07-deployment.md) · [云端开发](../docs/cloud-development.md)
 
-M1 入口是 [compose.m1.yaml](compose.m1.yaml) 和 [m1.Dockerfile](m1.Dockerfile)，通过云端 `dev_stack.py m1` 执行。`m1_setup.py` 增加实际下视 RGB 相机与巡检目标，`collect.py` 隔离传感器帧与裁判真值；M0 的原镜像与只读冒烟保持独立。M1 的飞行、记录和故障结果以对应候选 SHA 的验收回执为准。
+当前目录包含 M0 冒烟、M1 飞行 / 故障验证、M2 任务闭环和两类常驻入口。日常构建与联调默认使用云端 `scripts/dev_stack.py`（D023），每个结果绑定对应源码和控制面哈希。
 
-本目录是单服务开发仿真入口，已通过未解锁的真实环境冒烟。基线为 Ubuntu 24.04、Gazebo Harmonic、PX4 v1.17.0；工具链镜像 digest 和源码 commit 固定在 [Dockerfile](Dockerfile) 与 [平台锁](../configs/platforms/px4_sitl_multirotor.yaml)。官方 1.17 预编译 Gazebo 标签缺失时，从稳定源码构建，见 [D022](../docs/decisions.md#d022--用固定官方开发镜像构建-px4-v1170)。
+| 入口 | 配置 | 用途与证据 |
+|---|---|---|
+| M0 本地冒烟 | [compose.yaml](compose.yaml) | 单服务、未解锁；[M0 记录](../docs/m0-readiness.md) |
+| 云端基础工作区 | [compose.cloud.yaml](compose.cloud.yaml) | 空闲 SITL 与检查；[云端指南](../docs/cloud-development.md) |
+| M1 飞行 / 故障批次 | [compose.m1.yaml](compose.m1.yaml) | `dev_stack.py m1`；[M1 记录](../docs/m1-readiness.md) |
+| M2 任务闭环批次 | [compose.m2.yaml](compose.m2.yaml) | `dev_stack.py m2`；[M2 记录](../docs/m2-readiness.md) |
+| M1 固定任务控制台 | [compose.console.yaml](compose.console.yaml) | `console-cloud`；[使用指南](../docs/tailnet-console.md) |
+| M2 常驻任务台 | [compose.desk.yaml](compose.desk.yaml) | `desk-cloud`；[使用指南](../docs/tailnet-desk.md) |
+
+飞行镜像由 [m1.Dockerfile](m1.Dockerfile) 构建；`m1_setup.py` / `m2_setup.py` 准备相机与场景，`collect.py` 隔离传感器帧和裁判真值。M2 默认脚本规划只验证链路，真实模型行为单独留证；本机任务台不运行这些飞行容器。M0 镜像和历史冒烟证据保持独立。
+
+## M0 显式本地冒烟
+
+下文保留 M0 已验证的本地操作方法；没有明确本地需求时不启动本机 Compose。
+
+M0 单服务入口已通过未解锁的真实环境冒烟。基线为 Ubuntu 24.04、Gazebo Harmonic、PX4 v1.17.0；工具链镜像 digest 和源码 commit 固定在 [Dockerfile](Dockerfile) 与 [平台锁](../configs/platforms/px4_sitl_multirotor.yaml)。官方 1.17 预编译 Gazebo 标签缺失时，从稳定源码构建，见 [D022](../docs/decisions.md#d022--用固定官方开发镜像构建-px4-v1170)。
 
 Windows 需要已安装、可运行 Linux 容器的 Docker Desktop。首次构建拉取工具链并编译 PX4；不修改主机 WSL/系统/全局依赖。以 PowerShell 在仓库根运行：
 

@@ -1,10 +1,12 @@
 # 架构总览
 
+[项目首页](../../README.zh-CN.md) · [English](../../README.md) · [路线图](../roadmap.md) · [M2 验收](../m2-readiness.md)
+
 ## 1. 定位
 
 **drone-agent 是面向空地异构机器人的安全约束任务运行时，以无人机为首要本体。**
 
-它把自然语言目标编译为可验证的类型化任务，在本地约束内持续执行，按真实证据确认结果，并支持任务在无人机与地面机器人之间交接。
+当前实现把自然语言巡检目标转成可验证的类型化任务，在本地约束内执行，并按证据确认结果。无人机与地面机器人之间的任务交接是后续扩展方向，尚未实现。
 
 它不是：
 
@@ -14,11 +16,27 @@
 
 设计假设（M0–M5）：民用多旋翼；园区 / 设施巡检类任务；仿真先行；单机逐步扩展到「一架无人机 + 一台地面机器人」；不预设某一厂商开放全部控制接口。
 
+### 当前实现与阅读边界（2026-09-23）
+
+**M2 已完成，验证范围是单架 PX4 无人机的 SITL / Gazebo 仿真。** 本页先说明当前实现；第 3 节保留完整目标架构，不能把图中所有组件视为已交付。
+
+| 链路 | 当前落地 | 进一步阅读 |
+|---|---|---|
+| 请求与规划 | Web 任务台、A2A 提交 / 查询；MiniMax-M3 输出受约束草案，由引擎构建 `MissionSpec` | [入口与规划](01-layers.md) |
+| 编译、准入与审批 | 确定性检查；审批绑定版本与包哈希；Ed25519 签名 | [契约与 M2 增量](02-contracts.md) |
+| 机载执行 | 独立 `uplink` 经 mTLS 拉取；无网络的 executive 调度技能；guardian 持有唯一飞控连接 | [进程拓扑](01-layers.md#2-进程与部署拓扑) |
+| 飞行与证据 | `mission_upload` 路径、六个技能、影像 / 遥测复核、三列报告、独立裁判与回放 | [平台声明](../../configs/platforms/px4_sitl_multirotor.yaml) · [评测](08-evaluation.md) |
+| 使用入口 | 本机任务台只规划与签名；云端常驻任务台在仿真中飞行，实调模型经允许列表代理出站 | [任务台](../tailnet-desk.md) · [部署](07-deployment.md) |
+
+尚未落地：ROS 2 / Offboard 局部自主、完整语义场景图、机载 VLM、真机、跨机器人交接，以及 DJI / ArduPilot / Nav2 适配。空域接口仍为仿真桩，能耗估计只用于仿真。
+
+验收按版本区分：[M1](../m1-readiness.md) 对应 `eefe76e`，[M2 门禁](../m2-readiness.md) 对应 `f362b9e`；[常驻任务台](../tailnet-desk-readiness.md) 的脚本规划验收与实调验收分别对应 `b9cf00c`、`74984f9`。这些是归档证据，后续提交不自动继承其结论。
+
 ## 2. 五条设计原则
 
 | # | 原则 | 含义 | 违反的典型表现 |
 |---|---|---|---|
-| P1 | **模型表达目标，运行时执行目标** | LLM/VLM 输出类型化 `MissionSpec` 与证据判断；确定性运行时负责执行、恢复与安全 | LLM 生成 Python 直接调用飞控；LLM 决定是否悬停 |
+| P1 | **模型表达目标，运行时执行目标** | 模型提出任务草案与业务判断；确定性代码构建任务规格，运行时负责执行、恢复与安全 | LLM 生成 Python 直接调用飞控；LLM 决定是否悬停 |
 | P2 | **单一控制出口** | 所有控制写入经过 `guardian` 进程内唯一的 Control Egress，携带控制权租约与命令序号 | MAVSDK、ROS 2 节点、技能各自向飞控写设定值 |
 | P3 | **证据先于成功** | 执行状态、效果判定、安全判定三元分离；`UNKNOWN` 永远不是成功；依赖步骤只在效果被证实后放行 | 「命令已发送」记为步骤 OK；超时未重发记为 OK |
 | P4 | **契约先于模块** | 先定义并测试六类契约，模块随里程碑创建 | 预建几十个空目录；状态塞进 `extras` |
@@ -26,52 +44,59 @@
 
 ## 3. 总体分层
 
-```text
-┌────────────────────────────────────────────────────────────────────┐
-│ L0 操作者与入口                                                     │
-│   任务控制台（Web）· 语音/座舱（cockpit-agent, A2A）· API           │
-│   任务输入 · 范围确认 · 审批 · 进度 · 接管 · 证据报告               │
-└───────────────────────────────┬────────────────────────────────────┘
-                                ▼ 自然语言 / 结构化请求
-┌────────────────────────────────────────────────────────────────────┐
-│ L1 任务规划与协同（地面站或云端，非实时）                            │
-│   Planner（LLM/VLM，MCP 只读工具：地图·资产·天气·空域）             │
-│   Fleet Coordinator · Skill/Capability Catalog · Mission Ledger     │
-│   Evidence Verifier（确定性检查 + VLM 业务判断）                     │
-└───────────────────────────────┬────────────────────────────────────┘
-                                ▼ MissionSpec（草案）
-┌────────────────────────────────────────────────────────────────────┐
-│ L2 确定性任务编译与准入（Compiler + Admission）                      │
-│   参数 · 能力 · 空间 · 时间 · 能源 · 法规 · 资源校验                 │
-│   审批记录绑定任务版本 → MissionPackage                             │
-└───────────────────────────────┬────────────────────────────────────┘
-                                ▼ 已授权 MissionPackage（uplink）
-┌──────────────────────────────┐   ┌──────────────────────────────┐
-│ L3 机载任务执行（executive）  │   │ L3 地面机器人任务执行         │
-│   Mission Executive           │   │   Mission Executive           │
-│   任务 DAG 调度 · 技能生命周期 │   │   （同一套契约）              │
-│   BeliefWorld · 证据记录       │   │                              │
-├──────────────────────────────┤   ├──────────────────────────────┤
-│ L4 局部自主（autonomy）       │   │ L4 Nav2 / 操作技能            │
-│   感知 · 定位 · 局部地图       │   │                              │
-│   确定性局部规划（默认）       │   │                              │
-│   学习型策略（插件，影子运行） │   │                              │
-├──────────────────────────────┤   ├──────────────────────────────┤
-│ L5 安全监督与控制出口         │   │ L5 本体专用安全控制           │
-│   （guardian，独立进程）      │   │                              │
-│   租约/序号 · 新鲜度 · 包络   │   │                              │
-│   Simplex 决策 · 恢复策略图   │   │                              │
-├──────────────────────────────┤   ├──────────────────────────────┤
-│ L6 飞控适配器                 │   │ L6 底盘 / 机械臂适配器        │
-│   PX4(MAVSDK / px4_ros2)      │   │   Nav2 · 厂商 SDK             │
-│   DJI Cloud API · ArduPilot   │   │                              │
-└──────────────┬───────────────┘   └──────────────┬───────────────┘
-               ▼                                  ▼
-      飞控原生控制与失效保护                 本体控制器
-      RC / GCS 人工接管（始终保留）
+**目标架构。** 当前链路使用 L0–L3、L5、L6 的 PX4/MAVSDK 路径；L4 在 M3 引入，地面机器人与协同在 M4-B / M5 引入，其他飞控与学习策略按后续里程碑接入。M2 的协调器只为单机分配任务，协同规则只记录不执行。
 
-贯穿：安全监督 · 观测证据 · 任务事件 · 数据记录（MCAP+ULog+事件流）· 回放 · 评测 · 可观测
+```mermaid
+flowchart TB
+    subgraph offboard["地面站 / 云端 · 非实时"]
+        entry["L0 操作者与入口"]
+        planner["L1 任务规划与协同"]
+        admission["L2 编译、准入与审批"]
+        entry -->|"任务请求"| planner
+        planner -->|"MissionSpec"| admission
+    end
+
+    uplink["无人机任务接入 · uplink（SITL）"]
+    executive["L3 任务执行 · executive"]
+    autonomy["L4 局部自主 · M3 计划"]
+    guardian["L5 安全监督 · guardian"]
+    adapter["L6 PX4 适配（guardian 内）"]
+    flightController["PX4 原生控制与失效保护"]
+
+    admission -->|"签名任务包 · mTLS"| uplink
+    uplink -->|"独立验签"| executive
+    executive -->|"M2 技能意图"| guardian
+    executive -.-> autonomy
+    autonomy -.->|"M3 候选目标 / 轨迹"| guardian
+    guardian --> adapter
+    adapter --> flightController
+
+    groundExecutive["L3 地面任务执行 · M4-B / M5 计划"]
+    groundAutonomy["L4 导航与操作"]
+    groundGuardian["L5 本体安全监督"]
+    groundAdapter["L6 地面平台适配"]
+    groundController["本体控制器"]
+
+    admission -.->|"授权任务包 · 规划中"| groundExecutive
+    groundExecutive -.-> groundAutonomy
+    groundAutonomy -.-> groundGuardian
+    groundGuardian -.-> groundAdapter
+    groundAdapter -.-> groundController
+
+    classDef implemented stroke:#277563,stroke-width:2px
+    classDef planned stroke:#8793a3,stroke-dasharray:5 4
+    classDef safety stroke:#b88219,stroke-width:3px
+    class entry,planner,admission,uplink,executive,adapter,flightController implemented
+    class autonomy,groundExecutive,groundAutonomy,groundGuardian,groundAdapter,groundController planned
+    class guardian safety
 ```
+
+实线表示当前 M2 执行路径，虚线及标注“计划”的节点表示后续扩展；金色边框的 guardian 是唯一控制出口。图中表示任务与控制意图的下行关系，观测、证据和状态按同一边界回传。
+
+- **L0–L2**：Web / A2A / API 入口；Planner、只读工具、Catalog、业务账本与证据复核；确定性编译、准入及审批签名。M2 的 Coordinator 为单机直通，跨机器人协同仍待实施。
+- **机载边界**：独立 uplink 拉取任务包；executive 与 guardian 各自验签；飞控连接只在 guardian 内，飞控失效保护与 RC / GCS 接管始终保留。
+- **后续扩展**：L4 感知、定位、局部地图与规划，学习策略先影子运行；px4_ros2、其他飞控和地面平台适配按里程碑接入。
+- **贯穿链路**：安全监督、观测证据、任务事件、MCAP / ULog 记录、回放与评测。
 
 **关键性质：L1/L2 与 L3–L6 之间传递的是任务及其边界，不是依赖公网连续下发的每帧动作。** 断链时 L3–L5 依据已授权任务包与本地恢复策略自主收尾。
 
@@ -79,37 +104,37 @@
 
 | 路线 | 内容 | 进入系统的方式 |
 |---|---|---|
-| 工程主线 | 声明式任务 + 确定性执行 + 成熟局部规划 + 飞控原生模式 | M1 起为默认路径 |
+| 工程主线 | 声明式任务 + 确定性执行 + 飞控原生模式；M3 再接入成熟局部规划 | M1 运行时、M2 受约束规划已落地；局部规划待实施 |
 | 研究支线 | VLA / VLN、世界模型、学习型局部技能、合成数据 | 只以 `LocalPolicy` / `WorldPredictor` 插件形式接入；先影子运行与离线评测，再有限接管；不成为 M1–M4 的前置条件 |
 
 ## 5. 文档地图
 
 | 文档 | 回答的问题 |
 |---|---|
-| `01-layers.md` | 每一层具体负责什么、进程与部署拓扑、层间接口 |
-| `02-contracts.md` | 六类契约、三元状态、幂等键、版本规则 |
-| `03-safety.md` | 四道约束、恢复策略图、停止语义、活性与新鲜度、并发 |
-| `04-air-ground.md` | 协同模型、首个端到端场景、四项协同能力、一致性策略 |
-| `05-world-model.md` | 三种世界、空间契约、BeliefWorld 双层表示 |
-| `06-extensibility.md` | 插件点清单、厂商能力协商、模型接入、MCP/A2A 边界 |
-| `07-deployment.md` | 仿真两条线、容器与镜像、机载硬件、网络与中间件 |
-| `08-evaluation.md` | 三分类结果、指标、裁判、故障注入、准出标准 |
-| `../decisions.md` | 技术决策记录（只增不删） |
-| `../roadmap.md` | 里程碑、退出标准、周期 |
-| `../reuse-from-embodied-agent.md` | 从 `embodied-agent` / `car-agent` 复用什么、怎么迁 |
-| `../research/` | 前沿调研与 GPT-6 Pro 评估摘要 |
-| `../m0-readiness.md` | M0 交付核对与实际验证证据 |
-| `../m1-skill-catalog.md` | 五个 M1 技能的参数、资源、取消与完成判据 |
-| `../m1-implementation.md` | M1 实施顺序、运行时边界与证据要求 |
-| `../m1-readiness.md` | M1 当前运行版本、完整验收与复现边界 |
-| `../m2-implementation.md` | M2 受约束 Agent 的批次、工作包、验收判据与决策待办 |
-| `../m2-readiness.md` | M2 实现范围、候选版本、云端端到端与回归证据、实调准入率基线与发布门禁（已关闭） |
-| `../m3-implementation.md` | M3 局部自主与降级：测量先行、第二控制路径、四类场景 |
-| `../m4-implementation.md` | M4 真机线与联合仿真线：共因故障递进、协同四项能力与指标 |
-| `../cloud-development.md` | 默认云端构建、仿真与验证的操作入口及隔离边界 |
-| `../live-simulation.md` | M1 固定任务的实时操作、连接语义与完整证据入口 |
-| `../live-console-readiness.md` | 实时仿真入口的准确版本、HTTP 操作验证与回归范围 |
-| `../tailnet-console.md` | 云端常驻控制台、Tailscale 私网入口与机内权限边界 |
-| `../tailnet-console-readiness.md` | 私网入口部署、HTTPS 操作、重启与隔离验证的准确版本 |
-| `../tailnet-desk.md` | M2 任务台常驻 Tailnet 入口：使用、部署、仿真监管者与进程边界（D035） |
-| `../tailnet-desk-readiness.md` | 任务台常驻入口的准确版本、隔离核对、Tailnet HTTPS 任务验收与开发负记录 |
+| [01-layers.md](01-layers.md) | 每一层具体负责什么、进程与部署拓扑、层间接口 |
+| [02-contracts.md](02-contracts.md) | 六类契约、三元状态、幂等键、版本规则 |
+| [03-safety.md](03-safety.md) | 四道约束、恢复策略图、停止语义、活性与新鲜度、并发 |
+| [04-air-ground.md](04-air-ground.md) | 协同模型、首个端到端场景、四项协同能力、一致性策略 |
+| [05-world-model.md](05-world-model.md) | 三种世界、空间契约、BeliefWorld 双层表示 |
+| [06-extensibility.md](06-extensibility.md) | 插件点清单、厂商能力协商、模型接入、MCP/A2A 边界 |
+| [07-deployment.md](07-deployment.md) | 仿真两条线、容器与镜像、机载硬件、网络与中间件 |
+| [08-evaluation.md](08-evaluation.md) | 三分类结果、指标、裁判、故障注入、准出标准 |
+| [../decisions.md](../decisions.md) | 技术决策记录（只增不删） |
+| [../roadmap.md](../roadmap.md) | 里程碑、退出标准、周期 |
+| [../reuse-from-embodied-agent.md](../reuse-from-embodied-agent.md) | 从 `embodied-agent` / `car-agent` 复用什么、怎么迁 |
+| [../research/](../research/) | 前沿调研与 GPT-6 Pro 评估摘要 |
+| [../m0-readiness.md](../m0-readiness.md) | M0 交付核对与实际验证证据 |
+| [../m1-skill-catalog.md](../m1-skill-catalog.md) | 五个 M1 技能的参数、资源、取消与完成判据 |
+| [../m1-implementation.md](../m1-implementation.md) | M1 实施顺序、运行时边界与证据要求 |
+| [../m1-readiness.md](../m1-readiness.md) | M1 验收版本、完整证据与复现边界 |
+| [../m2-implementation.md](../m2-implementation.md) | M2 受约束 Agent 的批次、工作包、验收判据与决策待办 |
+| [../m2-readiness.md](../m2-readiness.md) | M2 实现范围、候选版本、云端端到端与回归证据、实调准入率基线与发布门禁（已关闭） |
+| [../m3-implementation.md](../m3-implementation.md) | M3 局部自主与降级：测量先行、第二控制路径、四类场景 |
+| [../m4-implementation.md](../m4-implementation.md) | M4 真机线与联合仿真线：共因故障递进、协同四项能力与指标 |
+| [../cloud-development.md](../cloud-development.md) | 默认云端构建、仿真与验证的操作入口及隔离边界 |
+| [../live-simulation.md](../live-simulation.md) | M1 固定任务的实时操作、连接语义与完整证据入口 |
+| [../live-console-readiness.md](../live-console-readiness.md) | 实时仿真入口的准确版本、HTTP 操作验证与回归范围 |
+| [../tailnet-console.md](../tailnet-console.md) | 云端常驻控制台、Tailscale 私网入口与机内权限边界 |
+| [../tailnet-console-readiness.md](../tailnet-console-readiness.md) | 私网入口部署、HTTPS 操作、重启与隔离验证的准确版本 |
+| [../tailnet-desk.md](../tailnet-desk.md) | M2 任务台常驻 Tailnet 入口：使用、部署、仿真监管者与进程边界（D035） |
+| [../tailnet-desk-readiness.md](../tailnet-desk-readiness.md) | 任务台常驻入口的准确版本、隔离核对、Tailnet HTTPS 任务验收与开发负记录 |

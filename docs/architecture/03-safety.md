@@ -1,5 +1,9 @@
 # 安全体系
 
+[返回架构总览](00-overview.md) · [契约](02-contracts.md) · [M1 验收](../m1-readiness.md) · [M2 验收](../m2-readiness.md)
+
+当前已验证的是 M1/M2 的 `mission_upload` 仿真路径。下文的 Offboard 新鲜度、局部规划和真机共因故障要求约束后续实现；示例恢复表不等于当前运行配置，当前策略见 [multirotor_m1_v1.yaml](../../configs/recovery_policies/multirotor_m1_v1.yaml)，具体通过范围以验收记录为准。
+
 > 原则：最终安全判断与控制权不交给任何 LLM。安全体系按运行时保障（Runtime Assurance, RTA）/ Simplex 架构组织：高性能路径（技能 + 局部规划 / 学习策略）、已验证基线（恢复策略图 + 飞控原生模式）、决策模块（guardian 内的安全监督器）。
 
 ## 1. 四道约束

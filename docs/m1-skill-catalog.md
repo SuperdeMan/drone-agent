@@ -1,6 +1,8 @@
 # M1 技能与执行边界
 
-五个 [SkillManifest 配置](../configs/skills/) 面向 `uav_01` 的园区仿真目标，已由 M1 登记表与执行器接入并通过 [完整准出验证](m1-readiness.md)。能源估计保持留空；M1 通过任务预算与实际电量门控，不将猜测的能耗模型冒充实测能力。
+本页描述 M1 的五个基础技能及其[完整准出验证](m1-readiness.md)。M1 验收时能耗估计留空，通过任务预算与实际电量门控；这是历史阶段边界。
+
+**当前 M2 增量：** [技能配置目录](../configs/skills/)已有六个技能，新增 `skill.inspect.asset` 的 approach / capture 两相位巡检；各清单已补充基于 M1 遥测的 `basis: sim_only` 能耗估计与保守上界，仅用于仿真准入。见[巡检配置](../configs/skills/inspect_asset.yaml)与 [M2 验收](m2-readiness.md)。下表仍保留 M1 五技能的行为说明。
 
 | 技能 | 参数与完成证据 | 资源与取消 |
 |---|---|---|
@@ -20,4 +22,4 @@
 
 M0 的 `gz_x500` 保留为未解锁冒烟。M1 镜像增加下视 RGB 传感器与可见巡检资产；图像通过传感器专用目录转接，位姿来自 PX4 估计，真值仅交给裁判。运行适配器输出实际能力快照；无相机数据时去掉拍照能力。默认 x500 启动成功不能证明 capture_image 可用。
 
-故障场景见 [注入矩阵](../configs/scenarios/m0_fault_matrix.yaml)，通过结果后续进入运行证据与恢复边验证记录。
+M0 的[注入矩阵](../configs/scenarios/m0_fault_matrix.yaml)保留设计来源；已执行的 M1 场景见 [m1_suite.yaml](../configs/scenarios/m1_suite.yaml)，通过范围与恢复边证据见 [M1 验收](m1-readiness.md)。

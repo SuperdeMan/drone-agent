@@ -1,5 +1,7 @@
 # M3 实施与验收计划
 
+**状态：下一阶段的实施计划，尚无 M3 阶段验收。** 当前已关闭的是 [M2](m2-readiness.md)；以下工作包、接口和设备是待实施目标，完成状态以[路线图](roadmap.md)及后续验收为准。
+
 本轮拆解路线图的 M3「局部自主与降级」。范围：在 M2 的任务服务与 M1 的安全闭环之上，引入 ROS 2 Jazzy 自主层、px4_ros2 外部模式作为第二控制路径、CBF 约束过滤、能源可达性、恢复策略 v2、机载容器（arm64）与 Jetson-in-the-loop、Zenoh、机载小 VLM 事件检测、`AirspaceConstraintProvider` 真实接口定义与 `LocalPolicy` 影子运行框架。不接真机（M4-A），不做多机器人（M4-B）。
 
 前置：M2 已关闭。M3 是三段中风险最高的一段，原因有三：它第一次把控制写入路径扩展到 ROS 2；它需要当前云端 4 vCPU / 8 GiB 之外的算力（GPU 与 Jetson）；它决定 guardian 是否改写为 C++/Rust（D003 触发器）。因此批次 A 先做测量与决策，再做功能。M4-A 的硬件选型与实名登记应在本阶段期间启动（见 [M4 计划](m4-implementation.md) A0）。

@@ -1,6 +1,10 @@
 # 契约规范
 
-> 契约是本项目扩展性的来源。代码实现见 `src/drone_agent/contracts/`（Pydantic v2），契约测试见 `tests/contracts/`。本文定义语义；字段以代码为准，两者冲突时先改本文再改代码。
+[返回架构总览](00-overview.md) · [安全体系](03-safety.md) · [Wire 协议](../../proto/README.md)
+
+> 契约是本项目扩展性的来源。代码实现见 [contracts](../../src/drone_agent/contracts/)（Pydantic v2），契约测试见 [tests/contracts](../../tests/contracts/)。本文定义语义；字段以代码为准，两者冲突时先改本文再改代码。
+
+阅读边界：本页同时定义当前运行时与后续扩展所需的领域对象；存在消息或字段不代表对应执行能力已实现。M2 的具体接收行为见第 10 节；多机器人交接、Offboard 与局部自主的执行仍属后续阶段。
 
 ## 0. 通用规则
 
