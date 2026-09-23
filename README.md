@@ -1,94 +1,123 @@
 # drone-agent
 
+**Natural-language missions. Deterministic execution. Verifiable outcomes.**
+
 **English** | [中文](README.zh-CN.md)
 
-A safety-constrained mission runtime for air-ground heterogeneous robots, drone-first.
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
+[![M2 complete in simulation](https://img.shields.io/badge/Milestone-M2%20%7C%20simulation-0F766E)](docs/m2-readiness.md)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue)](LICENSE)
 
-It compiles natural-language goals into verifiable, typed missions (`MissionSpec`), executes them onboard within local constraints, confirms outcomes with real evidence, and hands tasks off between drones and ground robots. Large models only express goals and judge evidence; a deterministic runtime owns execution, recovery and safety; the flight controller's native failsafes and manual takeover are never bypassed.
+A safety-constrained mission runtime for drones, designed to grow into air-ground robotics. It turns inspection requests into typed missions, checks their boundaries, binds approval to the exact task, and reports what the evidence supports.
 
-## Where to start
+> **Current scope:** M2 completed on **2026-09-23** for a single drone in **PX4 SITL + Gazebo** (software-in-the-loop simulation). Local autonomy, hardware flights and air-ground handoff are [planned milestones](docs/roadmap.md).
 
-| Question | Read |
-|---|---|
-| Project rules, current phase, red lines | [CLAUDE.md](CLAUDE.md) (entry for AI coding agents: [AGENTS.md](AGENTS.md)) |
-| Architecture overview and document map | [docs/architecture/00-overview.md](docs/architecture/00-overview.md) |
-| The six contracts and the three-way verdict | [docs/architecture/02-contracts.md](docs/architecture/02-contracts.md) |
-| Safety (runtime assurance, recovery policy graph, stop semantics) | [docs/architecture/03-safety.md](docs/architecture/03-safety.md) |
-| Air-ground collaboration | [docs/architecture/04-air-ground.md](docs/architecture/04-air-ground.md) |
-| Roadmap M0–M6 | [docs/roadmap.md](docs/roadmap.md) |
-| Decision log | [docs/decisions.md](docs/decisions.md) |
-| Frontier survey and the GPT-6 Pro review | [docs/research/](docs/research/) |
-| What is reused from the sibling projects | [docs/reuse-from-embodied-agent.md](docs/reuse-from-embodied-agent.md) |
+[Try locally](#try-locally) · [Design](#design) · [Validation](#validation) · [Documentation](#documentation) · [Roadmap](#roadmap)
 
-Design documents are written in Chinese; code identifiers are English and code comments are bilingual (English first, then Chinese).
+## What it does
 
-## Architecture in one picture
+- **Plans inspection missions from natural language.** MiniMax-M3 produces a constrained draft; the planner builds its context from read-only tools and registered assets, routes and flight volumes.
+- **Checks before execution.** Deterministic compilation and admission validate capabilities, parameters, space, time, energy, airspace and resources. Unknown or invalid inputs are rejected.
+- **Binds approval to the task.** Ed25519 signatures cover the approved version and package hash. Packages travel over mTLS and are independently checked onboard.
+- **Executes under local supervision.** The mission executive schedules skills; a separate `guardian` process owns the only flight-controller connection and applies recovery policies. Native failsafes and manual takeover remain available.
+- **Reports evidence, including uncertainty.** Image and telemetry checks feed completed / not completed / uncertain reports. MCAP, ULog and event records support independent judging and offline replay.
+- **Provides human and agent entry points.** A Web mission desk supports planning and approval; the A2A gateway accepts task submissions and status queries. A resident desk can run behind Tailscale.
 
-```text
-L0 operator entry (console, voice via cockpit-agent over A2A, API)
-L1 mission planning and coordination (LLM/VLM planner, read-only MCP tools, fleet coordinator)
-L2 deterministic compilation and admission (capability, space, time, energy, airspace, resources; approval bound to version)
-L3 onboard mission executive (task DAG, long-running skills, local authoritative state, evidence)
-L4 local autonomy (perception, localization, local map, deterministic planner; learned policies as shadow-first plugins)
-L5 safety supervisor and control egress (guardian process: lease and sequence, freshness, envelope, Simplex decision)
-L6 platform adapters (PX4 via MAVSDK / px4_ros2, DJI Cloud API, ArduPilot, Nav2) -> flight controller failsafes, RC takeover
+The implemented skill set covers takeoff, registered routes, image capture, asset inspection, return-home and landing. M2 inspection uses predefined observation routes in the [simulation scene](configs/scenarios/m2_campus_v2.yaml).
+
+## Try locally
+
+Prerequisites: **Python 3.12+**, **uv** and **Git**. The local mission desk runs on Windows or Linux without PX4 or Gazebo.
+
+```bash
+git clone https://github.com/SuperdeMan/drone-agent.git
+cd drone-agent
+uv sync --group dev
+uv run python -m drone_agent.console.mission --local
 ```
 
-Five principles: models express goals and the runtime executes them; a single control egress; evidence before success (`UNKNOWN` is never success); contracts before modules; capability negotiation instead of fake uniform interfaces.
+Open **<http://127.0.0.1:8769>**, select `campus_training` and `asset_red`, then submit this exact example:
 
-## Status
+> Inspect the red equipment marker east of the pad and bring back a photo.
 
-M1 completed on 2026-09-20 for PX4 SITL / Gazebo: executive/guardian processes, durable command reconciliation, five skills, authenticated local IPC, actual camera evidence and an independent judge. Revision `eefe76e` passed 400 tests and all 66 seeded flight/fault cases, with zero false success reports and matching offline replay. See the [qualified release evidence and scope](docs/m1-readiness.md).
+Review the plan and admission checks, then approve the package. **Local mode plans, admits and signs; no robot is connected and nothing flies.**
 
-M2 (constrained agent) closed on 2026-09-23: revision `f362b9e` passed the release gate, whose last criterion, the live admission-rate baseline with MiniMax-M3, admitted all 20 plannable requests on the first attempt, refused all 8 that should be refused, and admitted none of the 4 that must be blocked. Natural-language requests are planned by MiniMax-M3 by default (D029) into a narrow draft, compiled and admitted fail-closed, approved against the exact package hash, signed with Ed25519 and pulled over mTLS by an onboard uplink; the executive and guardian verify the signature again before flying the new two-phase inspection skill, and a mission service rechecks the evidence and writes a three-column report. On revision `f362b9e` 18/18 seeded end-to-end cases (nominal requests in three phrasings, a degraded-image retry, a service outage, a refusal and a fooled planner) passed with zero false success reports and matching replay, the full M1 matrix still passes (66/66, run in quiet-window batches on the shared server), and both adversarial corpora block every case. Those runs used labelled scripted planner answers; the baseline is the recorded live run. See the [M2 record](docs/m2-readiness.md).
+Without `MINIMAX_API_KEY`, the desk uses labelled scripted answers for the exact requests in the [M2 scenario set](configs/scenarios/m2_suite.yaml). With a key in the process environment, it uses live MiniMax-M3 planning. The page identifies the planner; key setup is documented in the [cloud development guide](docs/cloud-development.md).
 
-## Development
+### Run the flight loop in simulation
 
-Linux builds and integration runs now default to the cloud workspace. Use the [cloud development guide](docs/cloud-development.md) and the existing SSH connection settings:
+Integration uses a configured Linux cloud workspace. After following the [setup guide](docs/cloud-development.md), inspect the target and retrieve the resident mission desk URL:
 
 ```bash
 uv run python scripts/dev_stack.py target
 uv run python scripts/dev_stack.py status
-uv run python scripts/dev_stack.py verify
-uv run python scripts/dev_stack.py test
+uv run python scripts/dev_stack.py desk-cloud --status
 ```
 
-The fixed simulation console can run in the cloud behind Tailscale Serve, with no separate application login. Run `uv run python scripts/dev_stack.py console-cloud --status` to get its private HTTPS URL; see the [Tailnet console guide](docs/tailnet-console.md) for deployment and access boundaries. The original local bridge remains available through `uv run python scripts/dev_stack.py console` at <http://127.0.0.1:8768>. Both entries show telemetry and camera frames and send pause/resume/cancel through the existing executive channel. This is the M1 human entry. The M2 mission desk (hri.v0 console and A2A gateway) runs locally with `uv run python -m drone_agent.console.mission --local` at <http://127.0.0.1:8769>: submit, plan, admit, approve and sign in process, while flights stay in the cloud (D023). It can also run resident in the cloud behind its own Tailscale Serve port (D035): `uv run python scripts/dev_stack.py desk-cloud --status` returns the private URL, approved missions fly in the cloud simulator under a supervisor that holds the project lock, and every finished mission is judged independently against simulator truth. See the [mission desk guide](docs/tailnet-desk.md). On revision `b9cf00c` it was accepted over real Tailnet HTTPS with labelled scripted planning: a nominal inspection, an in-flight restart of the page and the supervisor (adopted, not flown again, finished after a policy-approved retry), an operator cancel (no automatic retry), a refusal and an out-of-scope request, with zero false success reports and matching replay; see the [desk validation record](docs/tailnet-desk-readiness.md). On `74984f9`, with the model key in place and the mission service reaching the model only through an allowlisted egress proxy (D036), MiniMax-M3 planned free-form Chinese and English requests in about 3.4 s each (both flown and judged completed) and refused a privacy-intrusive request.
+In the resident desk, approved missions fly in PX4/Gazebo and produce evidence reports and independent judge results. See the [mission desk guide](docs/tailnet-desk.md) for deployment and access, or the [fixed M1 console](docs/live-simulation.md) for the earlier simulation entry.
 
-The [version-qualified live entry validation](docs/live-console-readiness.md) records the deployed runtime, local UI version, 8 live HTTP runs and the 18-case M1 regression subset. The original 66-case M1 baseline remains tied to `eefe76e`.
+PX4 SITL and Gazebo run on Linux; use an ASCII repository path for native components. The [simulation guide](sim/README.md) also documents the explicit local fallback.
 
-The cloud-resident entry has its own [Tailnet validation record](docs/tailnet-console-readiness.md), including the private HTTPS boundary, service restart behavior and exact deployed revision.
+## Design
 
-To review a recorded cloud run as a human, list the runs, fetch one (every file is checked against the remote digests and the judge receipt) and open the generated offline `viewer.html`:
+**Request → constrained draft → compilation and admission → signed approval → local execution → evidence report.**
+
+| Boundary | Responsibility |
+|---|---|
+| Ground / cloud planning | The planner proposes a draft; deterministic code builds `MissionSpec`. Models have no control access. |
+| Admission and approval | Validate the mission, bind approval to `package_hash`, and deliver a signed `MissionPackage`. |
+| Onboard execution | `uplink` receives packages; `executive` schedules skills; `guardian` checks authority, freshness and constraints before control writes. |
+| Verification and replay | Recheck evidence and keep `execution_status`, `effect_verdict` and `safety_verdict` separate. `UNKNOWN` never counts as success. |
+
+The cloud sends an authorized mission and its limits. Local execution and recovery do not depend on a continuous stream of cloud-generated control commands. See the [architecture overview](docs/architecture/00-overview.md), [contracts](docs/architecture/02-contracts.md) and [safety model](docs/architecture/03-safety.md).
+
+## Validation
+
+Recorded results below belong to their **exact revisions and scopes**; they are not test results for every later commit.
+
+| Evidence | Revision | Recorded result |
+|---|---|---|
+| [M1 runtime](docs/m1-readiness.md) | `eefe76e` | 400 tests; 22 flight/fault scenarios × 3 seeds = 66/66 passed; zero false success reports; matching replay. |
+| [M2 release gate](docs/m2-readiness.md) | `f362b9e` | 775 tests; 18/18 end-to-end cases; 66/66 M1 regression; 42 deterministic and 32 scripted adversarial cases blocked or refused; zero false success reports and matching flight replay. |
+| [Live planner baseline](docs/verification/m2-baseline-2026-09-23.json) | `f362b9e` | MiniMax-M3: 20/20 plannable requests admitted on the first attempt, 8/8 expected refusals, 4/4 required blocks. |
+| [Resident desk with live planning](docs/tailnet-desk-readiness.md) | `74984f9` | Chinese and English requests planned, approved, flown and independently verified; a privacy-intrusive request refused. |
+
+The M2 end-to-end and natural-language adversarial runs used **labelled scripted planner answers** to test the execution chain and its boundaries. Live model behavior is documented separately in the baseline and resident-desk records. The [machine-readable release result](docs/verification/m2-2026-09-23-release.json) links the M2 evidence together.
+
+## Development
 
 ```bash
-uv run python scripts/dev_stack.py runs
-uv run python scripts/dev_stack.py fetch --run m1-<run_id> --cases nominal-7 --apply --artifacts D:/drone-agent-cloud
-uv run python -m drone_agent.eval.viewer <fetched run directory>
-```
-
-The viewer only displays and re-hashes; every verdict comes from the judge (see [evaluation](docs/architecture/08-evaluation.md) §7).
-
-Local editing and quick deterministic checks remain available:
-
-```bash
-# Behind the Chinese firewall: use the mirror per command, never in global config
-UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple uv sync --group dev
 uv run ruff check .
 uv run pytest -q
 uv run python scripts/generate_contract_fields.py --check
 uv run python scripts/generate_proto.py
 ```
 
-PX4 SITL, Gazebo and ROS 2 run on Linux only (WSL2 or Docker) and the repository must live under an ASCII path there. The contract and planning layers are plain Python and test on Windows directly.
+For dependency downloads through the project mirror, set `UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple` for the current command or terminal session. Contract and planning checks run directly on Windows; Linux builds and integration use `scripts/dev_stack.py`.
 
-The [simulation guide](sim/README.md) retains the explicit local fallback recipe. The cloud tooling never silently falls back to a local stack. The [proto guide](proto/README.md) describes wire boundaries; the [skill catalog](docs/m1-skill-catalog.md) distinguishes draft manifests from implemented capabilities. Recovery scenario names denote planned coverage, not passed injection runs.
+Read [CLAUDE.md](CLAUDE.md) before contributing ([AGENTS.md](AGENTS.md) is the coding-agent entry). Architecture and execution changes start with the relevant design documents. Design documents are in Chinese; the READMEs and code comments are bilingual.
 
-## Sibling projects
+## Documentation
 
-- `../embodied-agent`: tabletop manipulator; template for this repository and the main source of reused code.
-- `../car-agent`: intelligent cockpit; reference for voice, permissions and the task ledger; can act as an authorized mission entry point over A2A.
+| Start here | Guide |
+|---|---|
+| System boundaries and document map | [Architecture overview](docs/architecture/00-overview.md) |
+| Message semantics and runtime assurance | [Contracts](docs/architecture/02-contracts.md) · [Safety](docs/architecture/03-safety.md) · [Wire protocol](proto/README.md) |
+| Cloud simulation and the mission desk | [Cloud development](docs/cloud-development.md) · [Mission desk](docs/tailnet-desk.md) |
+| Review flight evidence and replay | [Evaluation](docs/architecture/08-evaluation.md) · [Fetch and view a run](docs/cloud-development.md#查看与人工核对结果) |
+| Design rationale and reuse | [Decisions](docs/decisions.md) · [Sibling-project reuse](docs/reuse-from-embodied-agent.md) |
+
+## Roadmap
+
+| Stage | Scope | Status |
+|---|---|---|
+| M0–M2 | Contracts, single-drone runtime, constrained agent and evidence loop | Complete in simulation |
+| M3 | Local autonomy, perception, localization and degradation handling | Next |
+| M4 | Restricted hardware validation and UAV–rover joint simulation | Planned |
+| M5–M6 | Real air-ground collaboration, more platforms and model plugins | Planned |
+
+See the [full roadmap and exit criteria](docs/roadmap.md). ROS 2 / Offboard autonomy, cross-robot handoff and DJI / ArduPilot support are outside the current implementation. Real airspace admission remains a stub that rejects real-mode missions; energy estimates are for simulation only.
 
 ## License
 
-Apache-2.0
+[Apache License 2.0](LICENSE).
