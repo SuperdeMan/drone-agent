@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>drone-agent · 任务台</title>
+<style>
+:root{--bg:#eeeae1;--ink:#213329;--muted:#6b786b;--line:#cbd0c1;--green:#315b3e;--lime:#d4ed95;--orange:#a85d2d;--red:#8a3b2a;--dark:#14271e;--mono:"Cascadia Code",Consolas,monospace;--font:Bahnschrift,"Microsoft YaHei UI","PingFang SC",sans-serif}
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;color:var(--ink);background:var(--bg);font-family:var(--font)}
+button,select,textarea{font:inherit;color:inherit}button{cursor:pointer}button:disabled{cursor:default;opacity:.4}
+button:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #af6c2b;outline-offset:2px}
+header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:20px 4vw;gap:20px}
+.brand{font:700 21px var(--mono);letter-spacing:-1px}.brand span{font:10px var(--mono);letter-spacing:2px;color:var(--muted);margin-left:20px}
+.who{display:flex;align-items:center;gap:9px;font-size:12px}.who i{width:7px;height:7px;border-radius:50%;background:var(--orange)}.who.good i{background:#4e7f40}.who small{font:10px var(--mono);color:var(--muted)}
+main{max-width:1640px;margin:auto;padding:26px 4vw 36px}
+.notice{padding:10px 14px;margin-bottom:18px;border-left:3px solid var(--orange);background:#e5dfd0;font-size:12px;line-height:1.7}
+.layout{display:grid;grid-template-columns:300px minmax(420px,1fr) 320px;gap:26px;align-items:start}
+.eyebrow{font:10px var(--mono);letter-spacing:1.7px;color:var(--muted);margin:0 0 12px}
+.box{border:1px solid var(--line);padding:16px;margin-bottom:20px}
+textarea{width:100%;min-height:92px;border:1px solid #b0bca7;background:#f6f3ec;padding:9px;font-size:13px;resize:vertical}
+select{border:1px solid #b0bca7;background:transparent;padding:5px 8px;font:11px var(--mono)}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:10px 0;font-size:12px;flex-wrap:wrap}
+.assets label{display:inline-flex;gap:5px;align-items:center;font:11px var(--mono);margin-right:10px}
+.primary{width:100%;border:0;background:var(--green);color:#f4f5e8;padding:12px;font-size:12px}
+.ghost{border:1px solid #98a78e;background:transparent;padding:8px 12px;font-size:12px}
+.danger{border-color:#bca189;color:#884c2c}
+p,.note{font-size:11px;line-height:1.8;color:var(--muted);margin:6px 0}
+.list button{display:grid;grid-template-columns:1fr auto;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;padding:9px 2px;font-size:12px;gap:8px}
+.list button[aria-current=true]{background:#e2ddcf}.list small{font:10px var(--mono);color:var(--muted)}
+.chip{display:inline-block;font:10px var(--mono);padding:2px 7px;border:1px solid var(--line);border-radius:9px;white-space:nowrap}
+.chip.ok{border-color:#7da66d;color:var(--green)}.chip.warn{border-color:#c79a6f;color:var(--orange)}.chip.bad{border-color:#c28b7d;color:var(--red)}
+h2{font-size:20px;font-weight:600;margin:0 0 6px}h3{font-size:13px;font-weight:600;margin:18px 0 8px}
+.versions{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap}.versions button{border:1px solid var(--line);background:transparent;padding:4px 10px;font:11px var(--mono)}.versions button[aria-pressed=true]{border-color:var(--green);color:var(--green)}
+table{width:100%;border-collapse:collapse;font-size:11px}th,td{text-align:left;border-bottom:1px solid #d9ddcf;padding:6px 4px;vertical-align:top}th{font-weight:600;color:var(--muted)}td code{font:10px var(--mono);overflow-wrap:anywhere}
+dl{margin:0}dl div{display:flex;justify-content:space-between;font-size:11px;line-height:2.1;gap:10px}dt{color:var(--muted)}dd{margin:0;font-family:var(--mono);text-align:right;overflow-wrap:anywhere}
+.approval{border:1px solid #c79a6f;background:#f1e7d6;padding:12px;margin:14px 0}.approval code{font:10px var(--mono);overflow-wrap:anywhere}
+.buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.events{max-height:260px;overflow:auto}.event{display:grid;grid-template-columns:78px 1fr;gap:10px;border-bottom:1px solid #d9ddcf;padding:6px 0;font-size:11px}.event time{font:10px var(--mono);color:var(--muted)}.event.alert{color:var(--orange)}
+.columns{display:grid;grid-template-columns:1fr;gap:10px}.column{border-top:2px solid var(--line);padding-top:6px}.column.completed{border-color:#7da66d}.column.uncertain{border-color:#c79a6f}.column.not_completed{border-color:#c28b7d}
+.column b{font-size:12px}.column ul{margin:6px 0;padding-left:16px;font:11px var(--mono)}
+.evidence button{width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;padding:7px 2px;font:10px var(--mono)}
+.photo{aspect-ratio:4/3;background:#d8ddcf;border:1px solid #bbc5b4;display:grid;place-items:center;margin-top:8px}.photo img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.empty{color:var(--muted);font-size:12px;padding:12px 0}
+@media(max-width:1180px){.layout{grid-template-columns:280px 1fr}.right{grid-column:1/-1}}
+@media(max-width:720px){.layout{display:block}header{padding:16px 5vw}.brand span{display:none}}
+</style>
+</head>
+<body>
+<header><div class="brand">drone-agent<span>MISSION DESK / M2</span></div><div class="who" id="who"><i></i><span id="whoText">连接任务服务中</span><small id="whoMode"></small></div></header>
+<main>
+<div class="notice" id="notice" hidden role="status"></div>
+<div class="layout">
+<aside>
+ <div class="eyebrow">01 / 提交任务</div>
+ <section class="box" aria-label="提交自然语言任务">
+  <textarea id="text" maxlength="2000" placeholder="例：检查起飞点东侧的红色设备标记，带回一张清晰照片。"></textarea>
+  <div class="row"><label for="volume">飞行体积</label><select id="volume"></select></div>
+  <div class="assets" id="assets"></div>
+  <p>模型只生成任务草案；编译、准入、人工审批与机载验签决定它能否飞。</p>
+  <button class="primary" id="submit" disabled>规划并提交审批</button>
+ </section>
+ <div class="eyebrow">02 / 任务</div>
+ <section class="list" id="missions"><div class="empty">暂无任务。</div></section>
+</aside>
+<section aria-label="任务详情" id="detail">
+ <div class="empty">选择或提交一个任务后显示规格、任务包、审批与进度。</div>
+</section>
+<aside class="right">
+ <div class="eyebrow">03 / 报告</div>
+ <section class="box" id="report"><div class="empty">飞行结束后生成三列报告：已完成只接受「执行成功 ∧ 效果已证实」。</div></section>
+ <div class="eyebrow">04 / 证据</div>
+ <section class="box evidence" id="evidence"><div class="empty">暂无证据。</div></section>
+ <div class="eyebrow">05 / 问题</div>
+ <section class="box" id="issues"><div class="empty">暂无问题。</div></section>
+</aside>
+</div>
+</main>
+<script src="/mission.js"></script>
+</body>
+</html>

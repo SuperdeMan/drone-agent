@@ -1,0 +1,211 @@
+"""Local mission-service API: one JSON request per line over a private Unix socket.
+
+Callers are the console, the A2A gateway and harness scripts; each passes the identity it authenticated
+(`tailnet:<login>`, `local:<user>`, `a2a:<client>` or `harness:<run>`) and the trust level that identity
+has. The socket itself is the boundary: it lives in a private directory shared only with those callers.
+Permissions are decided here with the shared scope table (D033) and again inside the service, so an A2A
+identity can submit and read but never approve, decline or operate, whatever the gateway sends.
+
+本机任务服务 API：经私有 Unix 套接字每行一个 JSON 请求。调用方是控制台、A2A 网关与编排脚本；各自传入
+已认证的身份（`tailnet:<login>`、`local:<user>`、`a2a:<client>` 或 `harness:<run>`）及其信任级别。套接字
+本身就是边界：它位于只与这些调用方共享的私有目录中。权限在这里按共用 scope 表判定（D033），服务内部
+再判定一次，因此无论网关发送什么，A2A 身份都只能提交与读取，永远不能审批、驳回或操作。
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import os
+import uuid
+from pathlib import Path
+
+from drone_agent.admission.models import MissionRequest, RequestChannel
+from drone_agent.contracts import utcnow
+from drone_agent.eval.viewer import png_data_uri
+from drone_agent.fleet.service import MissionService, ServiceError
+from drone_agent.runtime.issues import ISSUE_CODES, IssueLayer, issue
+from drone_agent.runtime.permission import (
+    MISSION_APPROVE,
+    MISSION_OPERATE,
+    MISSION_READ,
+    MISSION_SUBMIT,
+    TRUST_LEVEL_CAPS,
+    Caller,
+    TrustLevel,
+    authorize,
+)
+
+MAX_REQUEST = 64 * 1024
+MAX_RESPONSE = 16 * 1024 * 1024
+# Method -> (required scope, exact parameter set). / 方法 -> （所需 scope，精确参数集）。
+METHODS: dict[str, tuple[str, frozenset[str]]] = {
+    "submit": (MISSION_SUBMIT, frozenset({"text", "volume_id", "asset_ids", "idempotency_key"})),
+    "approve": (MISSION_APPROVE, frozenset({"mission_id", "version", "package_hash"})),
+    "decline": (MISSION_APPROVE, frozenset({"mission_id", "version", "reason"})),
+    "operate": (MISSION_OPERATE, frozenset({"mission_id", "action", "request_id"})),
+    "view": (MISSION_READ, frozenset({"mission_id"})),
+    "summary": (MISSION_READ, frozenset({"mission_id"})),
+    "list": (MISSION_READ, frozenset()),
+    "robots": (MISSION_READ, frozenset()),
+    "media": (MISSION_READ, frozenset({"mission_id", "evidence_id"})),
+    "health": (MISSION_READ, frozenset()),
+    # Gateways record the requests they refused before reaching the service. / 网关记录在到达服务前拒绝的请求。
+    "audit": (MISSION_READ, frozenset({"code", "message"})),
+}
+CHANNELS = {"tailnet": RequestChannel.CONSOLE, "local": RequestChannel.CONSOLE, "a2a": RequestChannel.A2A,
+            "harness": RequestChannel.HARNESS}
+# Third-party callers submit, read the summary of their own missions and nothing else.
+# 第三方调用方只能提交并读取自己任务的摘要，别无其他。
+THIRD_PARTY_METHODS = {"submit", "summary", "health", "audit"}
+
+
+def caller(actor: str, trust: str) -> Caller:
+    """The caller for an authenticated actor; the prefix decides the trust ceiling. / 由身份前缀决定信任上限。"""
+    prefix = actor.split(":", 1)[0] if ":" in actor else ""
+    if prefix not in CHANNELS or not actor.split(":", 1)[1]:
+        return Caller(actor or "anonymous", TrustLevel.ANONYMOUS, frozenset({MISSION_READ}))
+    level = TrustLevel(trust)
+    if prefix == "a2a" and level is not TrustLevel.THIRD_PARTY:
+        level = TrustLevel.THIRD_PARTY
+    return Caller(actor, level, TRUST_LEVEL_CAPS[level])
+
+
+def _error(code: str, message: str = "") -> dict:
+    return {"ok": False, "issue": issue(code, message).model_dump(mode="json")}
+
+
+async def dispatch(service: MissionService, request: dict) -> dict:
+    """Validate, authorize and execute one API request. / 校验、授权并执行一个 API 请求。"""
+    if not isinstance(request, dict) or set(request) != {"method", "actor", "trust", "params"}:
+        return _error("service.invalid_request", "expected method, actor, trust and params")
+    method, actor, params = request["method"], request["actor"], request["params"]
+    if method not in METHODS or not isinstance(params, dict) or set(params) != METHODS[method][1]:
+        return _error("service.invalid_request", f"unknown method or parameters for {method}")
+    try:
+        who = caller(str(actor), str(request["trust"]))
+    except ValueError:
+        return _error("auth.identity_missing", "unknown trust level")
+    decision = authorize(who, [METHODS[method][0]])
+    if not decision.allowed:
+        return _error(decision.code, decision.reason)
+    if who.trust_level is TrustLevel.THIRD_PARTY and method not in THIRD_PARTY_METHODS:
+        return _error("auth.method_not_allowed", f"{method} is not available to external agents")
+    try:
+        if method == "summary" and who.trust_level is TrustLevel.THIRD_PARTY:
+            mission = service.ledger.mission(params["mission_id"])
+            owner = mission and service.ledger.request(mission["request_id"])["requested_by"]
+            if owner != who.identity:
+                raise ServiceError("service.not_found", params["mission_id"])
+        return {"ok": True, "result": await _call(service, method, params, who)}
+    except ServiceError as error:
+        return {"ok": False, "issue": error.issue.model_dump(mode="json")}
+    except (ValueError, KeyError, TypeError) as error:
+        return _error("service.invalid_request", str(error)[:300])
+
+
+async def _call(service: MissionService, method: str, params: dict, who: Caller):
+    if method == "submit":
+        request = MissionRequest(
+            request_id="req-" + uuid.uuid4().hex[:16], text=params["text"], requested_by=who.identity,
+            trust_level=who.trust_level, channel=CHANNELS[who.identity.split(":", 1)[0]],
+            approved_volume_id=params["volume_id"], asset_ids=list(params["asset_ids"] or []),
+            idempotency_key=params["idempotency_key"], received_at=utcnow())
+        view = await service.submit(request)
+        return service.summary(view["mission"]["mission_id"]) if who.trust_level is TrustLevel.THIRD_PARTY else view
+    if method == "approve":
+        return service.approve(params["mission_id"], int(params["version"]), approver=who.identity,
+                               package_hash=params["package_hash"])
+    if method == "decline":
+        return service.decline(params["mission_id"], int(params["version"]), approver=who.identity,
+                               reason=str(params["reason"]))
+    if method == "operate":
+        return service.operate(params["mission_id"], params["action"], requested_by=who.identity,
+                               request_id=params["request_id"])
+    if method == "view":
+        return service.view(params["mission_id"])
+    if method == "summary":
+        return service.summary(params["mission_id"])
+    if method == "list":
+        return [{k: m[k] for k in ("mission_id", "status", "current_version", "robot_id", "created_at", "updated_at")}
+                for m in service.ledger.missions(50)]
+    if method == "robots":
+        return service.catalog.view()
+    if method == "audit":
+        if ISSUE_CODES.get(params["code"]) is not IssueLayer.AUTH:
+            raise ServiceError("service.invalid_request", "only authentication issues are audited here")
+        service.ledger.record_issue(issue(params["code"], f"{who.identity}: {params['message']}"[:300]))
+        return {"recorded": params["code"]}
+    if method == "media":
+        row = next((r for r in service.ledger.evidence(params["mission_id"])
+                    if r["evidence_id"] == params["evidence_id"]), None)
+        media = service.hub.media(row["media_path"]) if row and row["media_path"] else None
+        if media is None:
+            raise ServiceError("service.not_found", params["evidence_id"])
+        return {"evidence_id": row["evidence_id"], "png": png_data_uri(media, row["width"], row["height"])}
+    return {"status": "ready", "signer_key_id": service.key.key_id, "robot_id": service.robot_id,
+            "planner": getattr(service.planner, "label", None) if service.planner else None}
+
+
+async def serve_api(service: MissionService, path: Path):
+    """Serve the API on a Unix socket readable only by the owner and group. / 在仅属主与属组可读写的 Unix 套接字上服务。"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        path.unlink()
+
+    async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            line = await asyncio.wait_for(reader.readline(), 10)
+            if len(line) > MAX_REQUEST or not line.endswith(b"\n"):
+                response = _error("service.invalid_request", "invalid frame")
+            else:
+                response = await dispatch(service, json.loads(line))
+        except (ValueError, TimeoutError, asyncio.LimitOverrunError) as error:
+            response = _error("service.invalid_request", type(error).__name__)
+        writer.write(json.dumps(response, ensure_ascii=False).encode() + b"\n")
+        try:
+            await writer.drain()
+        finally:
+            writer.close()
+
+    server = await asyncio.start_unix_server(handle, path=str(path), limit=MAX_REQUEST + 1)
+    os.chmod(path, 0o660)
+    return server
+
+
+class ApiClient:
+    """Async client for the API socket. / API 套接字的异步客户端。"""
+
+    def __init__(self, path: Path, *, actor: str, trust: str):
+        self.path, self.actor, self.trust = path, actor, trust
+
+    async def call(self, method: str, **params) -> dict:
+        reader, writer = await asyncio.open_unix_connection(str(self.path), limit=MAX_RESPONSE + 1)
+        try:
+            request = {"method": method, "actor": self.actor, "trust": self.trust, "params": params}
+            writer.write(json.dumps(request, ensure_ascii=False).encode() + b"\n")
+            await writer.drain()
+            line = await asyncio.wait_for(reader.readline(), 120)
+        finally:
+            writer.close()
+        if not line.endswith(b"\n"):
+            raise RuntimeError("incomplete API response")
+        return json.loads(line)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--socket", type=Path, default=Path("/run/mission/api.sock"))
+    parser.add_argument("--actor", required=True)
+    parser.add_argument("--trust", default=TrustLevel.FIRST_PARTY.value)
+    parser.add_argument("method", choices=sorted(METHODS))
+    parser.add_argument("params", nargs="?", default="{}")
+    args = parser.parse_args()
+    result = asyncio.run(ApiClient(args.socket, actor=args.actor, trust=args.trust).call(args.method,
+                                                                                         **json.loads(args.params)))
+    print(json.dumps(result, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()
