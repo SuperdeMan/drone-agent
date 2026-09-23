@@ -224,10 +224,17 @@ def battery_swap(case, compose, wait, version: int) -> None:
     compose("up", "-d", "--no-build", "--pull", "never", "--force-recreate", "sitl")
     compose("up", "-d", "--no-build", "--pull", "never", "--force-recreate", "collector")
     wait(lambda: (case / "sensor/latest.json").exists(), 100, "Gazebo RGB frame after the battery swap")
+    # Same warm-up as the first flight gets: the rebooted estimator sets home before anything connects.
+    # Thresholds are untouched; a telemetry gap after this still aborts the flight.
+    # 与首飞相同的预热：重启后的估计器先设置 home 再有任何连接。阈值不变；此后的遥测间隙仍会中止飞行。
+    wait(lambda: b"home set" in compose("logs", "--no-color", "--no-log-prefix", "sitl", timeout=60, check=False,
+                                        quiet=True).stdout, 90, "PX4 home position after the battery swap")
+    time.sleep(5)
     (case / f"ground-crew-v{version}.json").write_text(json.dumps({
         "action": "battery_swap_power_cycle", "before_version": version,
         "timestamp": HELPERS["datetime"].now(HELPERS["timezone"].utc).isoformat(),
-        "reason": "new mission version after landing; the flight controller reboots with a full battery"}))
+        "reason": "new mission version after landing; the flight controller reboots with a full battery",
+        "warmup": "PX4 home set plus 5 s, as before the first flight"}))
 
 
 def fly_versions(case, compose, api, wait, service_up, mission_id, metadata, env) -> None:
