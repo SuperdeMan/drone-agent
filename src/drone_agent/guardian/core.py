@@ -1,6 +1,14 @@
 """Mission-bound egress with durable receipts and preemptive recovery.
 
+M2 adds, in signed mode only, onboard signature verification and a robot-level epoch watermark that
+survives mission versions (D030), and binds each intent of a multi-phase skill to a declared phase whose
+preconditions are checked separately (D034). Without a trust store the M1 local-trust behaviour is
+unchanged.
+
 绑定任务的控制出口，具备持久化回执与抢占式恢复。
+
+M2 仅在签名模式下增加机载验签与跨任务版本保留的机器人级代次水位（D030），并把多相位技能的每个意图
+绑定到声明的相位、分别检查其前置条件（D034）。没有信任存储时，M1 本地信任行为不变。
 """
 
 from __future__ import annotations
@@ -22,12 +30,31 @@ from drone_agent.contracts import (
 )
 from drone_agent.mission.registry import coordinates
 from drone_agent.runtime.ledger import CommandLedger, content_hash
+from drone_agent.runtime.signing import verify_package
+
+PHASE_OF_ACTION = {"takeoff": "takeoff", "capture_image": "inspect", "land": "landing"}
+PHASE_OF_INTENT = {"approach": "cruise", "capture": "inspect"}
+
+
+def flight_phase(node, intent_phase=None):
+    """Recovery-policy flight phase for a node and optional intent phase.
+
+    节点（及可选意图相位）对应的恢复策略飞行阶段。
+    """
+    if intent_phase is not None:
+        return PHASE_OF_INTENT.get(intent_phase, "cruise")
+    return PHASE_OF_ACTION.get(node.skill_id.rsplit(".", 1)[1], "cruise")
 
 
 class Guardian:
     def __init__(
-        self, *, adapter, package, registry, journal, policy: RecoveryPolicy, executive_id: str, simulation=False
+        self, *, adapter, package, registry, journal, policy: RecoveryPolicy, executive_id: str, simulation=False,
+        trust=None, robot_state=None,
     ):
+        # Signed mode (M2): verify before trusting any package content. / 签名模式（M2）：信任任何任务包内容之前先验签。
+        self.signer_key_id = (
+            verify_package(package, trust, robot_id=registry.capability.robot_id, now=utcnow()) if trust else None
+        )
         if not simulation:
             policy.require_verified()
         self.adapter, self.package, self.registry = adapter, package, registry
@@ -67,13 +94,19 @@ class Guardian:
                 self.active_step = next((node for node in package.nodes if node.task_id == prior_key["step_id"]), None)
                 if self.active_step is None:
                     raise ValueError("persisted command is absent from the approved package")
-                self.phase = {"takeoff": "takeoff", "capture_image": "inspect", "land": "landing"}.get(
-                    self.active_step.skill_id.rsplit(".", 1)[1], "cruise"
-                )
+                self.phase = flight_phase(self.active_step, row["data"]["envelope"]["payload"].get("phase"))
                 break
         self.registry.validate_package(package, camera_available=adapter.camera_available)
         if self.policy.validate_against(adapter.capabilities):
             raise ValueError("recovery policy exceeds actual adapter capabilities")
+        self.robot_state = robot_state
+        self.epoch_floor = 0
+        if robot_state is not None:
+            robot_state.accept_version(package.mission_id, package.mission_version, package.package_hash)
+            self.epoch_floor = robot_state.minimum_epoch()
+        if self.signer_key_id is not None:
+            self.record("package_verified", package_hash=package.package_hash, signer_key_id=self.signer_key_id,
+                        epoch_floor=self.epoch_floor)
 
     def record(self, kind, **data):
         return self.journal.append(kind, {"mission_id": self.package.mission_id, **data})
@@ -95,6 +128,9 @@ class Guardian:
             return EgressDecision(accepted=False, reason="lease_resource_mismatch")
         if self.ledger.lease is None and lease.lease_epoch <= self.ledger.highest_epoch:
             return EgressDecision(accepted=False, reason="restart_or_revocation_requires_new_epoch")
+        if lease.lease_epoch < self.epoch_floor:
+            # A new mission version never reuses an epoch granted to an earlier one. / 新任务版本从不复用旧版本的代次。
+            return EgressDecision(accepted=False, reason="epoch_below_robot_watermark")
         new_epoch = lease.lease_epoch > self.ledger.highest_epoch
         if new_epoch:
             obs = self.adapter.snapshot()
@@ -109,6 +145,8 @@ class Guardian:
         except ValueError as error:
             return EgressDecision(accepted=False, reason=str(error))
         self.ledger.record("lease", lease.model_dump(mode="json"))
+        if self.robot_state is not None:
+            self.robot_state.record_epoch(lease.lease_epoch)
         self.lease_deadline = time.monotonic() + (lease.expires_at - utcnow()).total_seconds()
         if new_epoch:
             self.generation += 1
@@ -160,6 +198,34 @@ class Guardian:
             "reason": self.reason,
         }
 
+    def accepted_phases(self, step_id):
+        """Intent phases already accepted for a step, in order. / 某步骤已被接受的意图相位，按顺序。"""
+        return [
+            command["envelope"]["payload"].get("phase")
+            for command in self.ledger.commands.values()
+            if command["envelope"]["key"]["step_id"] == step_id and command.get("receipt") == "accepted"
+        ]
+
+    def bind_intent(self, node, envelope):
+        """The declared phase an intent belongs to, or a rejection reason. / 意图所属的声明相位，或拒绝原因。"""
+        manifest = self.registry.manifests[node.skill_id]
+        payload = envelope.payload
+        phase = payload.get("phase") if manifest.intent_phases else None
+        expected = {"skill_id": node.skill_id, "params": node.params}
+        if manifest.intent_phases:
+            expected["phase"] = phase
+        if envelope.intent_kind != "skill" or payload != expected:
+            return None, "intent_not_bound_to_package"
+        if manifest.intent_phases:
+            declared = [p.phase for p in manifest.intent_phases]
+            if phase not in declared:
+                return None, "intent_not_bound_to_package"
+            done = self.accepted_phases(node.task_id)
+            index = declared.index(phase)
+            if (index == 0 and done) or (index > 0 and declared[index - 1] not in done):
+                return None, "phase_out_of_order"
+        return phase, ""
+
     def reject(self, envelope, reason):
         self.record("command_rejected", key=envelope.key.model_dump(mode="json"), reason=reason)
         return EgressDecision(accepted=False, reason=reason)
@@ -180,12 +246,11 @@ class Guardian:
         if self.dispatch_task and not self.dispatch_task.done():
             return self.reject(envelope, "egress_busy")
         node = next((n for n in self.package.nodes if n.task_id == envelope.key.step_id), None)
-        if (
-            node is None
-            or envelope.intent_kind != "skill"
-            or envelope.payload != {"skill_id": node.skill_id, "params": node.params}
-        ):
+        if node is None:
             return self.reject(envelope, "intent_not_bound_to_package")
+        phase, problem = self.bind_intent(node, envelope)
+        if problem:
+            return self.reject(envelope, problem)
         if not {r.resource_id for r in node.resources} <= set(lease.resources):
             return self.reject(envelope, "resource_outside_lease")
         obs = self.adapter.snapshot()
@@ -194,6 +259,7 @@ class Guardian:
                 node,
                 obs,
                 self.package,
+                phase=phase,
                 lease_valid=lease.is_valid_at(utcnow()),
                 heartbeat_ok=self.heartbeat_healthy(),
                 camera_available=self.adapter.camera_available,
@@ -209,9 +275,7 @@ class Guardian:
             "key": envelope.key.model_dump(mode="json"),
             "command_seq": envelope.command_seq,
         }
-        self.phase = {"takeoff": "takeoff", "capture_image": "inspect", "land": "landing"}.get(
-            node.skill_id.rsplit(".", 1)[1], "cruise"
-        )
+        self.phase = flight_phase(node, phase)
         if self.initial_energy is None:
             self.initial_energy = obs.battery_fraction
         generation = self.generation
@@ -234,7 +298,9 @@ class Guardian:
             )
             return all(predicates.get(name, False) for name in self.registry.manifests[node.skill_id].invariants)
 
-        self.dispatch_task = asyncio.create_task(self.adapter.execute(node, permitted))
+        # Single-phase M1 skills keep the original adapter call. / 单相位的 M1 技能保持原有适配器调用。
+        dispatch = self.adapter.execute(node, permitted, phase=phase) if phase else self.adapter.execute(node, permitted)
+        self.dispatch_task = asyncio.create_task(dispatch)
         receipt, reason = "unknown", "dispatch_interrupted"
         try:
             await asyncio.wait_for(

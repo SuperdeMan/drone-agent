@@ -1,6 +1,13 @@
-"""Launch one aircraft process with a preapproved local package.
+"""Launch one aircraft process with a preapproved package.
 
-使用本地预批准任务包启动一个机载进程。
+M1 reads a locally trusted package. M2 (D030) adds `--trust`: the package must carry an approval signed by
+a key in the read-only trust file, verified independently by each process, and `--robot-state` keeps the
+robot's epoch watermark and accepted versions across mission versions. `--scene` selects the registry.
+
+使用预批准任务包启动一个机载进程。
+
+M1 读取本地可信任务包。M2（D030）增加 `--trust`：任务包必须带有由只读信任文件中的密钥签署的审批，
+由每个进程独立验签；`--robot-state` 跨任务版本保存机器人的代次水位与已接受版本；`--scene` 选择登记表。
 """
 
 from __future__ import annotations
@@ -17,11 +24,13 @@ from drone_agent.mission.registry import Registry
 from drone_agent.runtime.ipc import GuardianClient, serve
 from drone_agent.runtime.ledger import Journal, canonical
 from drone_agent.runtime.recording import Recorder
+from drone_agent.runtime.signing import TrustStore
 
 
 async def main_async(args):
-    registry = Registry(args.root)
+    registry = Registry(args.root, scene=args.scene)
     package = MissionPackage.model_validate_json(args.package.read_bytes())
+    trust = TrustStore.load(args.trust) if args.trust else None
     args.artifacts.mkdir(parents=True, exist_ok=True)
     executive_id = "executive:" + package.mission_id
     identity = {
@@ -30,6 +39,8 @@ async def main_async(args):
         "mission_id": package.mission_id,
         "source_sha": os.environ.get("DRONE_SOURCE_SHA", "uncommitted"),
         "registry_hash": registry.sha256,
+        "trust_mode": "signed" if trust else "local_file",
+        "trust_signers": trust.key_ids if trust else [],
     }
     (args.artifacts / f"{args.role}-identity.json").write_bytes(canonical(identity))
     if args.role == "guardian":
@@ -41,6 +52,11 @@ async def main_async(args):
         (args.artifacts / "capabilities.json").write_text(adapter.capabilities.model_dump_json(indent=2))
         journal = Journal(args.artifacts / "guardian.jsonl")
         recorder = Recorder(args.artifacts / "guardian.mcap")
+        robot_state = None
+        if args.robot_state:
+            from drone_agent.runtime.robot_state import RobotAuthorityState
+
+            robot_state = RobotAuthorityState(args.robot_state, registry.capability.robot_id)
         guardian = Guardian(
             adapter=adapter,
             package=package,
@@ -49,6 +65,8 @@ async def main_async(args):
             policy=RecoveryPolicy.from_yaml(args.root / "configs/recovery_policies/multirotor_m1_v1.yaml"),
             executive_id=executive_id,
             simulation=args.simulation,
+            trust=trust,
+            robot_state=robot_state,
         )
         if args.fault:
             from drone_agent.eval.faults import install_injection
@@ -123,6 +141,7 @@ async def main_async(args):
                 artifacts=args.artifacts,
                 executive_id=executive_id,
                 epoch=args.epoch,
+                trust=trust,
             )
             await executive.run()
         except Exception as error:
@@ -146,6 +165,9 @@ def main():
     parser.add_argument("--epoch", type=int, default=1)
     parser.add_argument("--fault", type=Path)
     parser.add_argument("--simulation", action="store_true")
+    parser.add_argument("--scene", type=Path, help="registry file; defaults to the M1 campus scene")
+    parser.add_argument("--trust", type=Path, help="read-only trust file; requires signed approvals (M2)")
+    parser.add_argument("--robot-state", type=Path, help="robot-level authority state file (guardian, M2)")
     args = parser.parse_args()
     if args.fault and not args.simulation:
         parser.error("fault injection requires an explicit simulation process")

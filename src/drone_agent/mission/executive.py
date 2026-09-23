@@ -1,6 +1,15 @@
 """Mission DAG and skill lifecycles with evidence-gated successors.
 
+M2 adds signature verification in signed mode (D030) and a phased path for multi-phase skills such as
+`skill.inspect.asset` (D034): the approach intent runs until its registered route is verified, then
+capture intents run with at most `max_captures` attempts; running out of attempts ends the step
+`unverified`, never succeeded. Single-phase M1 skills keep their original flow.
+
 任务 DAG 与技能生命周期；证据门控后继步骤。
+
+M2 在签名模式下增加验签（D030），并为 `skill.inspect.asset` 等多相位技能增加相位化流程（D034）：接近
+意图执行到登记航线被证实为止，然后执行拍摄意图，最多 `max_captures` 次；次数用尽即以 `unverified`
+结束，绝不记为成功。单相位的 M1 技能保持原流程。
 """
 
 from __future__ import annotations
@@ -28,12 +37,17 @@ from drone_agent.contracts import (
     may_run_successor,
     utcnow,
 )
-from drone_agent.mission.verify import EffectVerifier, verify_image
+from drone_agent.mission.verify import EffectVerifier, verify_asset_image, verify_image
 from drone_agent.runtime.ledger import canonical
+from drone_agent.runtime.signing import verify_package
 
 
 class Executive:
-    def __init__(self, *, client, registry, package, journal, recorder, artifacts, executive_id, epoch=1):
+    def __init__(self, *, client, registry, package, journal, recorder, artifacts, executive_id, epoch=1, trust=None):
+        # Signed mode (M2): verify independently of the guardian and the uplink. / 签名模式（M2）：独立于 guardian 与 uplink 验签。
+        self.signer_key_id = (
+            verify_package(package, trust, robot_id=registry.capability.robot_id, now=utcnow()) if trust else None
+        )
         self.client, self.registry, self.package = client, registry, package
         self.journal, self.recorder, self.artifacts = journal, recorder, artifacts
         self.executive_id, self.epoch = executive_id, epoch
@@ -77,7 +91,9 @@ class Executive:
         result = await self.client.install(self.lease)
         if not result.get("accepted"):
             raise ValueError("lease rejected: " + result.get("reason", "unknown"))
-        self.event("mission_accepted", package_hash=self.package.package_hash, registry_hash=self.registry.sha256)
+        signed = {"signer_key_id": self.signer_key_id} if self.signer_key_id else {}
+        self.event("mission_accepted", package_hash=self.package.package_hash, registry_hash=self.registry.sha256,
+                   **signed)
 
     async def pump(self):
         now = utcnow()
@@ -301,6 +317,13 @@ class Executive:
                 execution = ExecutionStatus.FAILED
                 break
             await asyncio.sleep(0.1)
+        await self._conclude(node, execution, verdict, verifier.waypoint)
+
+    async def _conclude(self, node, execution, verdict, waypoints):
+        """Shared end of a step: cancellation settling, abort, lifecycle and the three-way outcome.
+
+        步骤的共同收尾：取消收敛、中止、生命周期与三元结果。
+        """
         if self.states[node.task_id] == SkillInstanceState.RECOVERING and any(
             row["kind"] == "operator_request" and row["data"].get("action") == "cancel" for row in self.journal.rows
         ):
@@ -355,7 +378,111 @@ class Executive:
         )
         self.outcomes[node.task_id] = outcome
         self.recorder.flush()
-        self.event("step_outcome", outcome=outcome.model_dump(mode="json"), waypoints_verified=verifier.waypoint)
+        self.event("step_outcome", outcome=outcome.model_dump(mode="json"), waypoints_verified=waypoints)
+
+    def _gate(self, node, obs):
+        """The per-cycle safety gate of the M1 loop: None, "wait" or "stop".
+
+        M1 循环中每个周期的安全闸门：None、"wait" 或 "stop"。
+        """
+        state = self.states[node.task_id]
+        safety = self.status["safety_verdict"]
+        if state == SkillInstanceState.PAUSE_REQUESTED and obs.flight_mode == "HOLD":
+            self.transition(node, SkillInstanceState.PAUSED)
+        if safety != "proceed":
+            if self.status.get("reason") == "user_pause" and safety == "hold":
+                return "wait"
+            self.aborted = True
+            if state == SkillInstanceState.CANCEL_REQUESTED:
+                self.transition(node, SkillInstanceState.RECOVERING)
+            elif state in {SkillInstanceState.PAUSED, SkillInstanceState.PAUSE_REQUESTED}:
+                self.transition(node, SkillInstanceState.RECOVERING)
+            return "stop"
+        return None
+
+    async def send_phase(self, node, phase, attempt=None):
+        """Submit one phase-bound intent for a multi-phase skill. / 为多相位技能提交一个绑定相位的意图。"""
+        now = utcnow()
+        envelope = ControlCommandEnvelope(
+            key=IdempotencyKey(
+                mission_id=self.package.mission_id,
+                mission_version=self.package.mission_version,
+                step_id=node.task_id,
+                command_id=uuid.uuid4().hex,
+                robot_id=node.robot_id,
+                lease_epoch=self.epoch,
+            ),
+            command_seq=self.seq,
+            issued_at=now,
+            valid_until=now + timedelta(seconds=2),
+            intent_kind="skill",
+            payload={"skill_id": node.skill_id, "params": node.params, "phase": phase},
+        )
+        self.seq += 1
+        extra = {"capture_attempt": attempt} if attempt is not None else {}
+        self.event("command_submitted", envelope=envelope.model_dump(mode="json"), phase=phase, **extra)
+        return await self.send(envelope)
+
+    async def execute_phased(self, node):
+        """Approach until the registered route is verified, then capture with bounded retakes.
+
+        接近直到登记航线被证实，然后拍摄，补拍有上限。
+        """
+        self.node = node
+        self.transition(node, SkillInstanceState.PREPARING)
+        await self.pump()
+        cancelled_before_dispatch = self.states[node.task_id] == SkillInstanceState.CANCEL_REQUESTED
+        self.transition(
+            node, SkillInstanceState.RECOVERING if cancelled_before_dispatch else SkillInstanceState.RUNNING
+        )
+        verdict, execution = EffectVerdict.UNKNOWN, ExecutionStatus.UNKNOWN
+        approach = EffectVerifier(self.registry, node, phase="approach")
+        deadline = time.monotonic() + node.timeout_s
+        accepted = False if cancelled_before_dispatch else await self.send_phase(node, "approach")
+        approached = False
+        while accepted and time.monotonic() < deadline:
+            obs = await self.pump()
+            gate = self._gate(node, obs)
+            if gate == "wait":
+                await asyncio.sleep(0.1)
+                continue
+            if gate == "stop":
+                break
+            if approach.observe(obs, time.monotonic()) == EffectVerdict.VERIFIED:
+                approached = True
+                break
+            await asyncio.sleep(0.1)
+        captures, last_capture, seen = 0, 0.0, None
+        limit = int(node.params["max_captures"])
+        evidence = self.artifacts / f"evidence-{node.task_id}.json"
+        while approached and time.monotonic() < deadline:
+            retake = verdict == EffectVerdict.UNVERIFIED and time.monotonic() - last_capture >= 1
+            if captures < limit and (captures == 0 or retake):
+                captures += 1
+                last_capture = time.monotonic()
+                if not await self.send_phase(node, "capture", attempt=captures):
+                    break
+            obs = await self.pump()
+            gate = self._gate(node, obs)
+            if gate == "wait":
+                await asyncio.sleep(0.1)
+                continue
+            if gate == "stop":
+                break
+            if evidence.exists():
+                record = json.loads(evidence.read_text())
+                # Re-verify only when a new frame was persisted. / 只有持久化了新帧才重新验证。
+                if (record.get("sha256"), record.get("capture_timestamp")) != seen:
+                    seen = (record.get("sha256"), record.get("capture_timestamp"))
+                    verdict = verify_asset_image(record, self.artifacts, node, self.registry)
+            if verdict == EffectVerdict.VERIFIED:
+                execution = ExecutionStatus.SUCCEEDED
+                break
+            if verdict == EffectVerdict.REFUTED or (verdict == EffectVerdict.UNVERIFIED and captures >= limit):
+                execution = ExecutionStatus.FAILED
+                break
+            await asyncio.sleep(0.1)
+        await self._conclude(node, execution, verdict, approach.waypoint)
 
     async def run(self):
         await self.start()
@@ -378,7 +505,10 @@ class Executive:
                 break
             # Serial scheduling is a valid conflict-free subset of the DAG. / 串行调度是无资源冲突的 DAG 合法子集。
             node = ready[0]
-            await self.execute_node(node)
+            if self.registry.manifests[node.skill_id].intent_phases:
+                await self.execute_phased(node)
+            else:
+                await self.execute_node(node)
             pending.remove(node)
         result = {
             "mission_id": self.package.mission_id,

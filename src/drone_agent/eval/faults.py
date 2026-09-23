@@ -51,12 +51,25 @@ def install_injection(guardian, path):
             guardian.adapter.external_takeover = True
         await original_tick()
 
-    async def execute(node, permitted):
-        await original_execute(node, permitted)
+    async def execute(node, permitted, **kwargs):
+        await original_execute(node, permitted, **kwargs)
         fault = instruction()
         if fault.get("kind") == "command_timeout" and node.task_id == fault.get("step_id", "fly_route"):
             await asyncio.sleep(7)
 
+    degraded = {"count": 0}
+
+    def degrade(raw, frame):
+        # Flatten the first `count` captured frames to uniform grey: no signature colour, no edges.
+        # 把前 `count` 次拍摄的帧压成均匀灰色：没有特征颜色，也没有边缘。
+        fault = instruction()
+        if fault.get("kind") != "image_degraded" or degraded["count"] >= int(fault.get("count", 1)):
+            return raw
+        degraded["count"] += 1
+        guardian.record("fault_injected", injection={**fault, "applied": degraded["count"]}, boundary="sensor_frame")
+        return bytes([128]) * len(raw)
+
     guardian.adapter.snapshot = modified_snapshot
     guardian.adapter.execute = execute
+    guardian.adapter.frame_filter = degrade
     guardian.tick = tick

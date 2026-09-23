@@ -59,6 +59,9 @@ class Px4Adapter:
         self.command_log = []
         self.control_context = {}
         self.evidence = {}
+        # Simulation-only fault hook at the sensor boundary; None in every non-injected run.
+        # 仅供仿真的传感器边界故障钩子；非注入运行中恒为 None。
+        self.frame_filter = None
         self._system = None
 
     async def connect(self, address="udpin://0.0.0.0:14540"):
@@ -317,8 +320,18 @@ class Px4Adapter:
                     raise PermissionError("route authority changed")
                 await asyncio.sleep(0.05)
 
-    async def execute(self, node, permitted):
+    async def execute(self, node, permitted, phase=None):
         action, p = node.skill_id.rsplit(".", 1)[1], node.params
+        if node.skill_id == "skill.inspect.asset":
+            # Approach flies the asset's registered observation route; capture takes one real frame (D034).
+            # 接近相位飞该资产登记的观察航线；拍摄相位拍一帧真实影像（D034）。
+            if phase == "approach":
+                await self.route(self.registry.route(p["approach_route_id"]), p["speed_mps"], permitted)
+            elif phase == "capture":
+                self.evidence[node.task_id] = await self.capture(node, permitted)
+            else:
+                raise ValueError("undeclared inspection phase")
+            return
         if action == "takeoff":
             self.expect({"TAKEOFF", "HOLD"})
             await self._call(
@@ -354,6 +367,11 @@ class Px4Adapter:
         if not permitted():
             raise PermissionError("capture authority changed")
         raw = base64.b64decode(frame["rgb"], validate=True)
+        source = "gazebo_rgb_sensor"
+        if self.frame_filter is not None:
+            filtered = self.frame_filter(raw, frame)
+            if filtered != raw:
+                raw, source = filtered, "gazebo_rgb_sensor+injected_degradation"
         digest = hashlib.sha256(raw).hexdigest()
         relative = f"images/{digest}.rgb"
         path = self.artifacts / relative
@@ -369,7 +387,7 @@ class Px4Adapter:
             "sim_time": frame["sim_time"],
             "observation": observation.model_dump(mode="json"),
             "skill_instance": node.task_id,
-            "source": "gazebo_rgb_sensor",
+            "source": source,
         }
         evidence["contract"] = Evidence(
             evidence_id="image:" + digest,
