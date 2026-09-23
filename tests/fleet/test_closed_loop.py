@@ -191,6 +191,13 @@ async def test_operator_requests_bind_to_the_running_step_and_relay_one_at_a_tim
     executive.append("skill_state", {"mission_id": mission_id, "step_id": "takeoff", "previous": "accepted",
                                      "state": "running"})
     await loop.sync()
+    # Takeoff is not pausable in its manifest, so the guardian would refuse; the service does not offer it.
+    # 起飞在清单中不可暂停，guardian 会拒绝；服务不提供该操作。
+    assert loop.service.view(mission_id)["live"]["allowed_actions"] == ["cancel"]
+    with pytest.raises(ServiceError):
+        loop.service.operate(mission_id, "pause", requested_by="tailnet:operator@example.test",
+                             request_id="op-pause-0001")
+    loop.service._pausable = lambda *_: True
     assert loop.service.view(mission_id)["live"]["allowed_actions"] == ["pause", "cancel"]
     loop.service.operate(mission_id, "pause", requested_by="tailnet:operator@example.test", request_id="op-pause-0001")
     loop.service.operate(mission_id, "cancel", requested_by="tailnet:operator@example.test", request_id="op-cancel-001")

@@ -283,8 +283,21 @@ class MissionService:
                 state = (row["data"]["step_id"], row["data"]["state"])
         if state is None or state[0] in concluded:
             return None
+        allowed = ALLOWED_ACTIONS.get(state[1], ["cancel"])
+        if "pause" in allowed and not self._pausable(mission_id, version, state[0]):
+            # The guardian refuses to pause a skill its manifest does not declare pausable; do not offer it.
+            # guardian 拒绝暂停清单未声明可暂停的技能；不提供该操作。
+            allowed = [action for action in allowed if action != "pause"]
         return {"version": version, "lease_epoch": lease["lease_epoch"], "step_id": state[0], "state": state[1],
-                "allowed_actions": ALLOWED_ACTIONS.get(state[1], ["cancel"])}
+                "allowed_actions": allowed}
+
+    def _pausable(self, mission_id: str, version: int, step_id: str) -> bool:
+        """The same manifest rule the guardian applies; the aircraft still decides. / 与 guardian 相同的清单规则；仍由机载决定。"""
+        record = self.ledger.version(mission_id, version) or {}
+        nodes = (record.get("package") or {}).get("nodes", [])
+        skill = next((node["skill_id"] for node in nodes if node["task_id"] == step_id), None)
+        manifest = self.registry.manifests.get(skill) if skill else None
+        return bool(manifest and manifest.pause.pausable)
 
     def _verifications(self, mission_id: str, version: int, package: MissionPackage,
                        outcomes: dict[str, StepOutcome]) -> dict[tuple[int, str], EffectVerdict]:
