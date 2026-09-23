@@ -301,7 +301,7 @@ class Guardian:
         # Single-phase M1 skills keep the original adapter call. / 单相位的 M1 技能保持原有适配器调用。
         dispatch = self.adapter.execute(node, permitted, phase=phase) if phase else self.adapter.execute(node, permitted)
         self.dispatch_task = asyncio.create_task(dispatch)
-        receipt, reason = "unknown", "dispatch_interrupted"
+        receipt, reason, detail = "unknown", "dispatch_interrupted", None
         try:
             await asyncio.wait_for(
                 asyncio.shield(self.dispatch_task), self.registry.data["supervision"]["command_timeout_s"]
@@ -315,8 +315,11 @@ class Guardian:
         except asyncio.CancelledError:
             reason = "preempted_by_recovery"
         except Exception as error:
-            reason = "adapter_error:" + type(error).__name__
-        self.ledger.record("receipt", {"key": key, "receipt": receipt, "reason": reason})
+            # The reason stays a stable class name for recovery matching; the vendor result is evidence only.
+            # 原因保持稳定的类名以供恢复匹配；厂商返回的结果只作为证据记录。
+            reason, detail = "adapter_error:" + type(error).__name__, str(error)[:300]
+        self.ledger.record("receipt", {"key": key, "receipt": receipt, "reason": reason,
+                                       **({"detail": detail} if detail else {})})
         if receipt == "unknown" and self.recovery is None:
             await self.intervene(RecoveryTrigger.USER_CANCEL, reason)
         return EgressDecision(accepted=receipt == "accepted", reason=reason)

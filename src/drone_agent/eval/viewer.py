@@ -411,8 +411,11 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
                 entry["png"] = png_data_uri(raw, int(evidence["width"]), int(evidence["height"]))
             except (KeyError, ValueError, TypeError):
                 entry["png"] = None
-        if truth_rows and entry["sim_time"] is not None:
-            nearest = min(truth_rows, key=lambda r: abs(r["sim_time"] - entry["sim_time"]))
+        # Truth near the capture in wall time first: a restarted simulator repeats sim_time values.
+        # 先按墙钟取拍摄附近的真值：重启后的仿真器会重复 sim_time。
+        nearby = [r for r in truth_rows if entry["timestamp"] and abs(stamp(r["timestamp"]) - stamp(entry["timestamp"])) < 2]
+        if nearby and entry["sim_time"] is not None:
+            nearest = min(nearby, key=lambda r: abs(r["sim_time"] - entry["sim_time"]))
             entry["truth_at_capture"] = nearest["position"][:3]
             entry["truth_gap_s"] = round(abs(nearest["sim_time"] - entry["sim_time"]), 3)
             asset = (world.get("assets") or {}).get(entry["asset_id"]) if world.get("present") else None

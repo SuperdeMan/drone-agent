@@ -29,7 +29,7 @@ async def build_case(tmp_path, *, frames=(), expected=None):
     await loop.fly(loop.inbox_package(), epoch=1, frames=frames, truth=truth)
     missions = await loop.sync()
     if missions[mission_id]["current_version"] == 2:
-        await loop.fly(loop.inbox_package(), epoch=2, truth=truth)
+        await loop.fly(loop.inbox_package(), epoch=2, truth=truth, sim_restart=True)
         await loop.sync()
     (tmp_path / "input").mkdir()
     (tmp_path / "input/scenario.json").write_text(json.dumps({

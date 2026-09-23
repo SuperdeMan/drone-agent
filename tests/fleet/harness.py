@@ -83,7 +83,8 @@ class Loop:
     def inbox_package(self) -> MissionPackage:
         return MissionPackage.model_validate_json((self.root / "inbox/package.json").read_bytes())
 
-    async def fly(self, package: MissionPackage, *, epoch: int, frames=(), truth: list | None = None) -> dict:
+    async def fly(self, package: MissionPackage, *, epoch: int, frames=(), truth: list | None = None,
+                  sim_restart: bool = False) -> dict:
         """Fly `package` with a fresh guardian and executive in its own version directory.
 
         `truth`, when given, collects the fake's positions like the simulator's truth collector.
@@ -96,7 +97,8 @@ class Loop:
         reg = fast_registry()
         adapter = FlightFake(reg, artifacts, frames)
         if truth is not None:
-            start = truth[0]["mono"] if truth else time.monotonic()
+            # A battery swap reboots the simulator, so its clock starts again. / 换电重启仿真器，时钟重新开始。
+            start = time.monotonic() if sim_restart or not truth else truth[0]["mono"]
             adapter.sim_clock = lambda: time.monotonic() - start
             snapshot = adapter.snapshot
 

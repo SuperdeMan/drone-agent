@@ -316,7 +316,10 @@ class GrpcFleetClient:
 
         self.shared, self.fleet, rpc = _stubs()
         self.robot_id, self.timeout = robot_id, timeout_s
-        options = [("grpc.max_send_message_length", MAX_MESSAGE_BYTES)]
+        # Reconnect quickly after a service outage; gRPC's default backoff grows to two minutes.
+        # 服务停机后尽快重连；gRPC 默认退避会增长到两分钟。
+        options = [("grpc.max_send_message_length", MAX_MESSAGE_BYTES), ("grpc.initial_reconnect_backoff_ms", 500),
+                   ("grpc.min_reconnect_backoff_ms", 500), ("grpc.max_reconnect_backoff_ms", 5000)]
         if server_name:
             options.append(("grpc.ssl_target_name_override", server_name))
         credentials = grpc.ssl_channel_credentials(root_certificates=ca_pem, private_key=key_pem,

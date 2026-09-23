@@ -96,7 +96,9 @@ def true_effect(node, flight: Path, executive: list[dict], truth: list[dict], re
         evidence = json.loads(evidence_file.read_text())
         if verify_asset_image(evidence, flight, node, registry).value != "verified":
             return False
-        nearest = min(truth, key=lambda row: abs(row["sim_time"] - evidence["sim_time"]))
+        # Only this step's samples: a battery swap between versions restarts the simulator clock.
+        # 只取本步骤的样本：版本之间换电会重启仿真时钟。
+        nearest = min(samples, key=lambda row: abs(row["sim_time"] - evidence["sim_time"]))
         asset = registry.data["assets"][node.params["asset_id"]]
         return (abs(nearest["sim_time"] - evidence["sim_time"]) < 0.25
                 and math.dist(nearest["position"][:2], asset["position"][:2]) < registry.data["thresholds"]["above_asset_m"])

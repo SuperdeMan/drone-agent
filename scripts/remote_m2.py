@@ -181,6 +181,7 @@ def run_case(root, source, base, images, keys, sha, run_id, planner, scenario, s
         view = api("view", mission_id=mission_id)
         (case / "service-export/view.json").write_text(json.dumps(view, ensure_ascii=False, indent=2))
         (case / "service-export/robots.json").write_text(json.dumps(api("robots"), indent=2))
+        save_sitl_log(case, compose, "sitl.log")
         compose("stop", "-t", "5", "uplink", "mission-service", "collector")
         compose("stop", "-t", "10", "sitl")
         judged = compose("run", "-T", "--no-deps", "judge", timeout=120, check=False)
@@ -202,6 +203,33 @@ def run_case(root, source, base, images, keys, sha, run_id, planner, scenario, s
         return {"passed": False, "error": str(error), "scenario": scenario["id"], "seed": seed}
 
 
+def save_sitl_log(case, compose, name: str) -> None:
+    """Keep the PX4 console (arming denials, failsafes) as case evidence. / 把 PX4 控制台留作用例证据。"""
+    result = compose("logs", "--no-color", "--no-log-prefix", "sitl", timeout=60, check=False, quiet=True)
+    (case / name).write_bytes(result.stdout)
+
+
+def battery_swap(case, compose, wait, version: int) -> None:
+    """Ground crew between versions: land, disarm, swap the battery, which power-cycles the flight controller.
+
+    The authority state (epoch watermark, accepted versions) lives on the companion computer and survives;
+    a new version must still start grounded with a new epoch (D032).
+
+    版本之间的地勤操作：落地、上锁、换电池，飞控随之断电重启。控制权状态（代次水位、已接受版本）保存在
+    伴飞计算机上并保留；新版本仍须在地面以新代次开始（D032）。
+    """
+    save_sitl_log(case, compose, f"sitl-before-v{version}.log")
+    compose("stop", "-t", "10", "collector", "sitl")
+    (case / "sensor/latest.json").unlink(missing_ok=True)
+    compose("up", "-d", "--no-build", "--pull", "never", "--force-recreate", "sitl")
+    compose("up", "-d", "--no-build", "--pull", "never", "--force-recreate", "collector")
+    wait(lambda: (case / "sensor/latest.json").exists(), 100, "Gazebo RGB frame after the battery swap")
+    (case / f"ground-crew-v{version}.json").write_text(json.dumps({
+        "action": "battery_swap_power_cycle", "before_version": version,
+        "timestamp": HELPERS["datetime"].now(HELPERS["timezone"].utc).isoformat(),
+        "reason": "new mission version after landing; the flight controller reboots with a full battery"}))
+
+
 def fly_versions(case, compose, api, wait, service_up, mission_id, metadata, env) -> None:
     version = 1
     outage = metadata.get("outage") or {}
@@ -217,6 +245,8 @@ def fly_versions(case, compose, api, wait, service_up, mission_id, metadata, env
             wait(lambda: api("view", mission_id=mission_id)["versions"][0]["status"] == "delivered", 60,
                  "delivery acknowledgement")
             compose("stop", "-t", "5", "mission-service")
+        if version > 1:
+            battery_swap(case, compose, wait, version)
         flight = case / "aircraft" / mission_id / f"v{version}"
         flight.mkdir(parents=True)
         state = case / "robot/authority.json"
