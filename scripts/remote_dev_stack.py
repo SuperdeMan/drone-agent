@@ -354,10 +354,30 @@ def inspect_run(root: Path, request: dict) -> dict:
             "receipt": receipt, "cases": cases}
 
 
+def store_model_key(root: Path, request: dict) -> dict:
+    """Write the planner model key owner-only into this project's secrets; never echo it (M2 plan).
+
+    把规划模型 key 以仅属主权限写入本项目 secrets；从不回显（M2 计划）。
+    """
+    key = request.get("key")
+    if not isinstance(key, str) or not re.fullmatch(r"[A-Za-z0-9._\-]{20,400}", key):
+        raise ValueError("unexpected model key shape")
+    folder = root / "secrets" / "m2-model"
+    folder.mkdir(parents=True, exist_ok=True)
+    os.chmod(root / "secrets", 0o700)
+    os.chmod(folder, 0o700)
+    pending = folder / "minimax.key.pending"
+    descriptor = os.open(pending, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(descriptor, "w") as stream:
+        stream.write(key)
+    pending.replace(folder / "minimax.key")
+    return {"status": "stored", "path": str(folder / "minimax.key"), "mode": "0600"}
+
+
 def dispatch(request: dict) -> dict:
     action = request.get("action")
     if action not in {*READ_ONLY_ACTIONS, "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1", "m2",
-                       "live_start", "live_operate", "console_apply"}:
+                       "m2_key", "live_start", "live_operate", "console_apply"}:
         raise ValueError("unsupported cloud action")
     if action not in READ_ONLY_ACTIONS and not RUN_ID.fullmatch(request.get("run_id", "")):
         raise ValueError("invalid run identity")
@@ -407,6 +427,8 @@ def dispatch(request: dict) -> dict:
             import runpy
 
             return runpy.run_path(str(deployment / "source/scripts/remote_m1.py"))["run_m1"](root, deployment, request)
+        if action == "m2_key":
+            return store_model_key(root, request)
         if action == "m2":
             import runpy
 

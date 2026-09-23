@@ -416,6 +416,8 @@ def main() -> None:
     m1_parser.add_argument("--scenario", default="nominal")
     m1_parser.add_argument("--seeds", default="7,19,41")
     m1_parser.add_argument("--speed-factor", type=int, choices=[1, 2], default=1)
+    key_parser = commands.add_parser("m2-key", help="store MINIMAX_API_KEY from this environment in cloud secrets")
+    key_parser.add_argument("--apply", action="store_true")
     m2_parser = commands.add_parser("m2", help="run M2 end-to-end cases (natural language to report) in the cloud")
     m2_parser.add_argument("--scenario", default="all")
     m2_parser.add_argument("--seeds", default="7,19,41")
@@ -466,6 +468,16 @@ def main() -> None:
                     },
                     timeout=14400,
                 )
+            elif args.command == "m2-key":
+                # Read only from the process environment; never from a sibling project's .env (CLAUDE.md).
+                # 只从进程环境读取；绝不读取姊妹项目的 .env（CLAUDE.md）。
+                key = os.environ.get("MINIMAX_API_KEY", "")
+                if not key:
+                    raise ValueError("MINIMAX_API_KEY is not set in this environment")
+                if not args.apply:
+                    result = {"status": "plan", "target": "cloud", "writes": "secrets/m2-model/minimax.key (0600)"}
+                else:
+                    result = ssh(connection, {"action": "m2_key", "run_id": new_run_id(), "key": key})
             elif args.command == "m2":
                 result = ssh(
                     connection,
