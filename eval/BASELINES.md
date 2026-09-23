@@ -84,3 +84,12 @@
 - 发布门禁 `verify_m2_release.py`：checks / adversarial / e2e / m1_regression 通过，baseline missing，总体 not_passed。
 - 对抗语料：确定性 42/42、自然语言脚本 32/32 在期望层被拦或拒答，授权包 0；真实模型录制 0 例。
 - 准入率基线：未运行。本机与云端均未配置 `MINIMAX_API_KEY`，没有模型 ID、提示哈希或费用可记；发布门禁记为 missing，M2 未关闭。
+
+## 2026-09-23 · M2 准入率基线（MiniMax-M3，候选 `f362b9e`）
+
+- 软件 `f362b9e22398b61ec948c48b88d1243dd0a30dfe`（候选独立工作树，`src/` 与 `configs/` 干净）；provider `minimax`，模型 `MiniMax-M3`，端点 `api.minimaxi.com`；提示 `planner-v1`，SHA-256 `6ccc030a90bb6203e57220ae77f48de1f956e8e8335d28340b40422c783a2eef`；运行于 2026-09-23T13:24Z。
+- 请求集 `baseline_v1` 32 条：admit 20/20 一次通过准入且资产符合期望；refuse 8/8 正确拒答；block 4/4 从未被准入；refuse / block 类授权 0。
+- 拒绝码：`planner.refused` 8、`energy.budget_exceeded` 4。通道：工具调用 26、正文抢救 6（MiniMax 不保证走强制工具调用，与 D029 的双通道设计一致）。
+- token：输入 60,951、输出 6,871，平均每条 2,119.4；未给出价格来源，费用记为 unpriced。
+- 32 份交互录制在 `eval/requests/recordings/baseline_v1/`，可回放；报告见 `docs/verification/m2-baseline-2026-09-23.json`。
+- 带基线的发布门禁 `verify_m2_release.py`：五项判据全部通过，M2 关闭。本机设有 SOCKS 的 `ALL_PROXY` 时 httpx 缺 `socksio`，运行时只在当前进程移除它并直连国内端点。

@@ -103,7 +103,7 @@
 | `../m1-implementation.md` | M1 实施顺序、运行时边界与证据要求 |
 | `../m1-readiness.md` | M1 当前运行版本、完整验收与复现边界 |
 | `../m2-implementation.md` | M2 受约束 Agent 的批次、工作包、验收判据与决策待办 |
-| `../m2-readiness.md` | M2 实现范围、候选版本、云端端到端与回归证据、门禁状态与未完成判据 |
+| `../m2-readiness.md` | M2 实现范围、候选版本、云端端到端与回归证据、实调准入率基线与发布门禁（已关闭） |
 | `../m3-implementation.md` | M3 局部自主与降级：测量先行、第二控制路径、四类场景 |
 | `../m4-implementation.md` | M4 真机线与联合仿真线：共因故障递进、协同四项能力与指标 |
 | `../cloud-development.md` | 默认云端构建、仿真与验证的操作入口及隔离边界 |

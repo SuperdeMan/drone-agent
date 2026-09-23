@@ -1,6 +1,6 @@
 # M2 实现与验收记录
 
-**状态：实现完成，云端端到端与 M1 回归已在同一候选上验证；M2 尚未关闭。** 退出标准第 3 条（`MissionSpec` 一次通过准入率基线）必须用真实模型实调，本机与云端都没有配置 `MINIMAX_API_KEY`，发布门禁因此把该判据记为 `missing`。在同一候选上补跑实调基线、门禁全部通过之前，路线图不勾选 M2，`CLAUDE.md` 的当前阶段不改（WP-M2-20）。
+**状态：已关闭（2026-09-23）。** 候选 `f362b9e` 通过发布门禁，五项判据全部通过：云端检查、对抗语料、端到端、M1 完整回归，以及写入模型 key 后在同一候选上补跑的 MiniMax-M3 实调准入率基线。路线图已勾选 M2，`CLAUDE.md` 的当前阶段已更新（WP-M2-20）。首次门禁（基线缺失、`not_passed`）的结果保留作审计。
 
 ## 候选与入口
 
@@ -12,8 +12,9 @@
 | M2 端到端 | `m2-20260923T064842Z-c6b7c6e7`：6 个场景 × 7/19/41 = 18/18 通过（12 完成、6 合理不飞），在线 / 回放一致 18，错误成功报告 0，其他 30 个容器身份前后一致 |
 | M1 回归 | 11 批（每批 2 个场景 × 7/19/41，`m1-20260923T072427Z-9b27a690` 至 `m1-20260923T092349Z-de1be775`）合计 66/66 通过：18 完成、48 合理安全中止、错误成功 0，每批其他容器身份前后一致 |
 | 签名与证书 | 审批签名密钥 `ed25519:1e70aaeb377272d5`；CA / 服务 / 机器人证书 SHA-256 见回执，私钥只在云端项目 `secrets/`（0600） |
-| 规划器 | 脚本回答（`drone.planner.scripted/v1`，文件内注明为手写测试替身，规划记录中模型 ID 为 `scripted-fixture`）；不计入模型行为 |
-| 发布门禁 | [机器可读结果](verification/m2-2026-09-23.json)：checks / adversarial / e2e / m1_regression 通过，baseline missing，总体 `not_passed` |
+| 规划器 | 端到端与对抗语料：脚本回答（`drone.planner.scripted/v1`，文件内注明为手写测试替身，规划记录中模型 ID 为 `scripted-fixture`），不计入模型行为；准入率基线：MiniMax-M3 实调 |
+| 准入率基线 | [基线报告](verification/m2-baseline-2026-09-23.json)：MiniMax-M3、提示 `planner-v1`（SHA-256 `6ccc030a…`）、软件 `f362b9e`；32 条请求，admit 20/20 一次通过、refuse 8/8 正确拒答、block 4/4 从未被准入，refuse / block 类授权 0；32 条交互录制在 `eval/requests/recordings/baseline_v1/` |
+| 发布门禁 | [最终结果](verification/m2-2026-09-23-release.json)：checks / adversarial / e2e / m1_regression / baseline 全部通过，总体 `passed`；[首次结果](verification/m2-2026-09-23.json)（baseline missing，`not_passed`）保留 |
 
 机器可读证据：[部署与测试](verification/m2-2026-09-23-deployment.json)、[端到端回执](verification/m2-2026-09-23-e2e-receipt.json)、[M1 分批回执与批次日志](verification/m2-2026-09-23-m1-regression/)、[M1 首轮整批（未计入）](verification/m2-2026-09-23-m1-regression-run1-receipt.json)、[首轮完整批次（未计入）](verification/m2-2026-09-23-e2e-run1-receipt.json)。运行方法见 [云端开发指南](cloud-development.md) 的「M2 端到端验证」。
 
@@ -21,9 +22,9 @@
 
 | 门槛 | 本次证据 | 状态 |
 |---|---|---|
-| 对抗性规划测试全部被拦截 | 确定性语料 42 例（6 类，每类 ≥ 6）全部在期望层被拦，授权包 0；自然语言语料 32 例（6 类各 5 例 + 2 例应拒答）以脚本「被骗模型」回答全部在期望层被拦或拒答，授权包 0；端到端 `nl_adversarial_scope` 三个种子均在准入被拦、没有任何投递与飞行 | 通过（真实模型录制 0 例，实调路径待密钥） |
+| 对抗性规划测试全部被拦截 | 确定性语料 42 例（6 类，每类 ≥ 6）全部在期望层被拦，授权包 0；自然语言语料 32 例（6 类各 5 例 + 2 例应拒答）以脚本「被骗模型」回答全部在期望层被拦或拒答，授权包 0；端到端 `nl_adversarial_scope` 三个种子均在准入被拦、没有任何投递与飞行 | 通过（对抗语料的真实模型录制 0 例；实调行为见准入率基线的 refuse / block 类） |
 | `unknown` 不进入依赖步骤 | executive 门控不变；服务侧复核只降不升、不一致即 `unknown`；报告「已完成」只接受 `succeeded ∧ verified` 且服务复核一致；VLM 只产出带模型版本与置信度的 belief 备注。裁判逐例核对依赖派发与报告，端到端错误成功报告 0 | 通过 |
-| 准入率基线 | 32 条请求集（admit 20 / refuse 8 / block 4）与只在有密钥时运行的 `m2_baseline.py` 已就绪 | **缺失：未配置模型密钥** |
+| 准入率基线 | 32 条请求集（admit 20 / refuse 8 / block 4）经 MiniMax-M3 实调：admit 20/20 一次通过准入，refuse 8/8 拒答，block 4/4 从未被准入（拒绝码 `planner.refused` 8、`energy.budget_exceeded` 4）；通道 toolcall 26 / 正文抢救 6；token 输入 60,951、输出 6,871（每条约 2,119）；未给出价格来源，费用记为 unpriced | 通过 |
 | 签名与机载验签 | 未签名、不受信密钥、审批后改包、过期、错机器人五类：候选上由契约测试逐项钉住共享验签函数的拒绝码，guardian 进程另测未签名；executive 与 guardian 两个进程各自拒绝五类的逐进程测试在候选之后以纯测试提交补上（不改 `src/`，本地全量通过）；uplink 另行验签并拒绝回退；端到端每个版本的 guardian `package_verified` 与 executive `mission_accepted` 都记录服务签名密钥 ID，裁判逐版本核对 | 通过 |
 | 端到端仿真闭环 | 自然语言 → 编译准入 → 审批签名 → mTLS 上行 → 机载验签 → SITL 飞行（含 `skill.inspect.asset`）→ 服务复核 → 三列报告；18/18 通过，在线 / 回放一致，错误成功报告 0 | 通过（脚本规划回答） |
 
@@ -85,7 +86,7 @@
 
 ## 边界与诚实说明
 
-- **规划器**：本轮云端端到端全部使用 `m2_prepare` 生成的脚本回答（`drone.planner.scripted/v1`，文件内注明「hand-written test double, not model output」，规划记录中的模型 ID 为 `scripted-fixture`）。它验证的是服务、编译、准入、审批、签名、上行、机载复核、飞行、证据与报告这条链路，以及「被骗模型之后仍被拦住」；它不代表 MiniMax-M3 的规划质量，也不计入准入率基线。实调路径（`dev_stack.py m2-key --apply` 后 `m2 --planner live`、`m2_baseline.py`、`adversarial --mode live`）已实现并有无密钥时明确拒绝的测试，但没有真实运行记录。
+- **规划器**：本轮云端端到端全部使用 `m2_prepare` 生成的脚本回答（`drone.planner.scripted/v1`，文件内注明「hand-written test double, not model output」，规划记录中的模型 ID 为 `scripted-fixture`）。它验证的是服务、编译、准入、审批、签名、上行、机载复核、飞行、证据与报告这条链路，以及「被骗模型之后仍被拦住」；它不代表 MiniMax-M3 的规划质量，也不计入准入率基线。MiniMax-M3 的实调记录是本机运行的准入率基线。云端的实调路径在候选中其实不可用：任务服务只接入内部网络，连模型端点的域名都解析不了，而 `m2 --planner live` 从未运行过，所以直到常驻任务台首次实调才暴露（D036）。候选之后已加入只放行模型端点的出站代理，这不改变门禁判据，也没有运行云端实调端到端抽样。
 - **审批人**：端到端用例的人工审批由编排身份 `harness:m2-<run>-<case>` 完成，重试版本由 `policy:m2_approval@v1` 自动批准；二者都如实写入审批记录与签名陈述，不冒充人工操作者。控制台审批路径（tailnet 身份、`package_hash` 绑定、审批后改包机载拒收）由测试覆盖。
 - **地勤换电**：同一 SITL 会话中二次起飞既受我们自己的起飞前置条件约束（`energy_budget_feasible` 要求电量不低于最大消耗 + 余量），也曾触发 PX4 电池仿真停止发布后锁存的「Battery unhealthy」。编排在新任务版本前执行一次「落地上锁 → 换电（飞控断电重启）」，写入 `ground-crew-v<n>.json`；伴飞计算机上的代次水位与已接受版本不随之重置，新版本仍须在地面、以更高代次接管。
 - **控制台部署**：控制台 v0 与 A2A 已实现，可在本机任务台（`console.mission --local`）使用。常驻 Tailnet 入口（常驻任务服务、uplink 与按需飞行的仿真监管者）在候选之后按 D035 单独实现、部署与验收，见 [任务台指南](tailnet-desk.md) 与 [任务台验收记录](tailnet-desk-readiness.md)；它不属于本候选的门禁证据。
@@ -104,7 +105,7 @@ uv run python scripts/verify_m2_release.py --sha f362b9e22398b61ec948c48b88d1243
 
 门禁的输入哈希按字节计算，仓库按 LF 存储（`.gitattributes`）。首次运行门禁时，回执是 Windows 文本模式写出的 CRLF，记下的哈希无法从克隆复现。提交后发现这一点：证据已统一转为 LF，并在候选 `f362b9e` 的独立工作树里重跑门禁，五项判据与首次逐字相同，13 个输入哈希现在都等于仓库中的文件。候选之后的脚本已改为以 LF 写回执与报告，两个门禁都拒收 CRLF 输入；候选自身的脚本仍是旧行为，所以下面在候选上补跑时要先转换。
 
-补齐 M2 只差实调基线。`main` 已在候选之后前进（测试、文档与证据脚本的行尾修复，不改 `src/` 与 `configs/`），而 `m2_baseline.py` 以 `HEAD` 记录软件版本、门禁要求 `HEAD` 就是候选，所以两者都在候选的独立工作树里运行；录制与报告写回主仓库，保持工作树 `eval/` 干净：
+关闭 M2 的实调基线按以下步骤完成（2026-09-23）。`main` 已在候选之后前进，而 `m2_baseline.py` 以 `HEAD` 记录软件版本、门禁要求 `HEAD` 就是候选，所以两者都在候选的独立工作树里运行；录制与报告写回主仓库，保持工作树 `eval/` 干净。本机环境里设有 SOCKS 的 `ALL_PROXY`，httpx 需要未安装的 `socksio`；MiniMax 是国内端点，运行时只在当前进程移除 `ALL_PROXY`，并把 `api.minimaxi.com` 加入 `NO_PROXY` 以直连，不改系统设置。候选脚本写出的报告与 32 份录制都是 CRLF，按下面的命令转为 LF 后才运行门禁：
 
 ```powershell
 git worktree add --detach ../drone-agent-m2-close f362b9e22398b61ec948c48b88d1243dd0a30dfe
@@ -117,4 +118,4 @@ uv run python scripts/generate_proto.py
 uv run python scripts/verify_m2_release.py --sha f362b9e22398b61ec948c48b88d1243dd0a30dfe --deployment <主仓库>/docs/verification/m2-2026-09-23-deployment.json --e2e <主仓库>/docs/verification/m2-2026-09-23-e2e-receipt.json --m1 <m2-2026-09-23-m1-regression/ 中除 geofence+cancel_takeoff-try1 外的 11 个回执> --baseline <基线报告> --output <主仓库>/docs/verification/m2-<日期>.json
 ```
 
-门禁全部通过后，在主仓库提交基线报告、录制与门禁结果，追加 `eval/BASELINES.md`，再勾选路线图并更新 `CLAUDE.md` 当前阶段（WP-M2-20）。需要实调端到端抽样时，用 `dev_stack.py m2-key --apply` 与 `m2 --planner live`。实调产生模型费用；报告只在给出价格来源时计算费用。
+门禁全部通过（[最终结果](verification/m2-2026-09-23-release.json)，14 个输入哈希都等于仓库中的文件）后，提交了基线报告、录制与门禁结果，追加了 `eval/BASELINES.md`，勾选了路线图并更新了 `CLAUDE.md` 当前阶段（WP-M2-20）。实调产生模型费用；报告只在给出价格来源时计算费用。

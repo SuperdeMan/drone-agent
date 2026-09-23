@@ -8,13 +8,13 @@
 |---|---|---|---|---|
 | **M0（已完成）** | 领域边界与基础契约 | 2026-09-19 完成（原估约 3 周） | 独立仓库、规范、架构文档、六类契约、proto 草案、技能草案、注入矩阵、复用清单、未解锁环境冒烟 | 258 项测试通过；红线测试、通用/飞行边界与实际环境证据齐备 |
 | **M1（已完成）** | 无大模型的单机安全闭环 | 2026-09-20 完成（原估 6–8 周） | PX4 SITL + Gazebo；executive / guardian 双进程；五技能；恢复策略 v1；MCAP/ULog/事件与回放；独立裁判；v1 wire 冻结 | `eefe76e`：400 项测试、22 场景 × 3 种子 66/66 通过；错误成功报告 0；14 恢复边覆盖；[验收范围](m1-readiness.md) |
-| **M2** | 接入受约束 Agent | 2026-12 → 2027-01（约 6–8 周） | Provider 移植；Planner（结构化输出 `MissionSpec`）；Compiler / Admission / ApprovalRecord；有界重规划；Evidence Verifier（确定性 + VLM 业务判断）；任务控制台 v0；A2A 任务入口 | 对抗性规划测试（错误坐标 / 能力 / 参数 / 顺序、提示注入、扩大范围）全部被准入拦截；`unknown` 不进入依赖步骤；`MissionSpec` 一次通过准入率有基线 |
+| **M2（已完成）** | 接入受约束 Agent | 2026-09-23 完成（原估 6–8 周） | Provider 移植；Planner（结构化输出 `MissionSpec`）；Compiler / Admission / ApprovalRecord；有界重规划；Evidence Verifier（确定性 + VLM 业务判断）；任务控制台 v0；A2A 任务入口 | `f362b9e`：775 项测试；对抗语料 42/42 与 32/32 全拦、授权包 0；E2E 18/18 与 M1 66/66，错误成功报告 0；MiniMax-M3 准入率基线 20/20 一次通过、拒答 8/8、拦截 4/4；[验收范围](m2-readiness.md) |
 | **M3** | 局部自主与降级 | 2027-02 → 2027-04（约 8–12 周） | ROS 2 Jazzy 集成（uXRCE-DDS、px4_ros2 外部模式路径）；感知 / 定位健康 / 局部 ESDF / 短时域规划；CBF 约束过滤；能源可达性与恢复策略 v2；机载容器（arm64）与 Jetson-in-the-loop；Zenoh；机载小 VLM 事件检测；`AirspaceConstraintProvider` 桩 → 真实接口 | 观测过期、任务卡住、网络中断、计算过载四类场景行为可验证；安全监督周期 p99 达标；guardian 是否需重写为 C++/Rust 有测量结论 |
 | **M4** | 两条验证线并行 | 2027-04 → 2027-06（约 8–10 周） | **A**：单机受限真机（Pixhawk 6 级 + Jetson Orin NX 或 VOXL 2），UOM 报备，共因故障清单；**B**：一架 UAV + 一台 rover 的联合仿真（同一 Gazebo 世界，PX4 rover SITL），Coordinator 四项协同能力，交接协议，空间对齐，复核证据闭环 | A：RC 接管、飞控失效保护、伴飞计算机断电 / 串口拔出全部真机验证；B：交接成功率、重复执行数、任务丢失数、空间标注误差有基线，复核证据闭环通过 |
 | **M5** | 真实空地协同 | 2027-07 → 2027-09（约 8–12 周） | 明确授权与受控范围内的「巡检—发现—复核—报告」；Nav2 地面平台接入；报告三列（已完成 / 未完成 / 不确定） | 部分完成不被报告为全部完成；设备失联、退出、交接失败时正确收尾；三分类结果与仿真基线可比 |
 | **M6** | 模型与平台扩展 | 2027-Q4 起，持续 | VLA / 世界模型插件（影子 → 有限接管）；第二平台（DJI Cloud API）；多机调度（LLM 提议 + 优化器裁决）；数据飞轮；抽出 `agent-kernel`（触发器见 D001） | 相同任务与裁判下新增能力有可量化收益且无不可接受的安全 / 可靠性退化 |
 
-M1 提前于估算关闭；M2–M4 的窗口保持指示性，实际起点以前一阶段的 readiness 为准。三段的可执行拆解（批次、工作包、验收判据、决策待办）见 [M2 实施计划](m2-implementation.md)、[M3 实施计划](m3-implementation.md)、[M4 实施计划](m4-implementation.md)（D026）；每段动手前先补对应的 `decisions.md` 条目。
+M1、M2 提前于估算关闭；M3–M4 的窗口保持指示性，实际起点以前一阶段的 readiness 为准。三段的可执行拆解（批次、工作包、验收判据、决策待办）见 [M2 实施计划](m2-implementation.md)、[M3 实施计划](m3-implementation.md)、[M4 实施计划](m4-implementation.md)（D026）；每段动手前先补对应的 `decisions.md` 条目。
 
 ## M0 · 领域边界与基础契约（已完成，2026-09-19）
 
@@ -54,22 +54,22 @@ M0 已关闭：`ruff`、默认 importlib 模式下的 258 项测试、proto 编�
 
 补遗（2026-09-21）：人工核对入口。`scripts/dev_stack.py runs` / `fetch` 只读列出并拉取云端运行、核对摘要；`drone_agent.eval.viewer` 生成离线证据浏览器页面。它不改变 M1 结论，只让人能看；原则与扩展点见 [评测体系](architecture/08-evaluation.md) §7，操作见 [云端开发指南](cloud-development.md)。
 
-## M2 · 接入受约束 Agent
+## M2 · 接入受约束 Agent（已完成，2026-09-23）
 
 M1 人工体验补遗 D027 已增加固定任务的 [实时仿真入口](live-simulation.md)，部署与受影响场景验证见 [验收记录](live-console-readiness.md)。这不关闭 M2 的自然语言、审批、签名上行或完整控制台工作包。
 
 D028 将该入口常驻到云端，经现有 Tailscale 私网访问；使用与本批证据见 [Tailnet 指南](tailnet-console.md) 和 [验收记录](tailnet-console-readiness.md)，同样不替代 M2 的工作包。
 
-**当前状态（2026-09-23）**：20 个工作包已实现，候选 `f362b9e` 通过云端端到端与 M1 完整回归（见 [M2 验收记录](m2-readiness.md)）；实调准入率基线缺模型密钥尚未运行，门禁未全部通过，下列任务暂不勾选。
+**已关闭（2026-09-23）**：候选 `f362b9e` 通过 M2 发布门禁：云端检查、对抗语料、端到端、M1 完整回归与 MiniMax-M3 实调准入率基线全部通过，见 [M2 验收记录](m2-readiness.md) 与 [门禁结果](verification/m2-2026-09-23-release.json)。任务台随后按 D035 / D036 常驻 Tailnet 入口，见 [任务台验收记录](tailnet-desk-readiness.md)。
 
 拆解见 [M2 实施计划](m2-implementation.md)：四个批次、20 个工作包；批次 A / B 的确定性部分在本机完成，服务联调与飞行在云端。原任务清单（Provider 移植；Planner 结构化输出 `MissionSpec` 与拒答回退，默认模型按 2026-09-23 用户更正为 MiniMax-M3，沿用 car-agent 配置（D029）；MCP 只读工具；Compiler / Admission；ApprovalRecord 与控制台审批流；Evidence Verifier；有界重规划；A2A 入口；对抗性规划测试集）全部映射到下列工作包。
 
 任务：
 
-- [ ] 批次 A 规划层地基：Provider 移植与录制回放（WP-M2-01）；结构化 Issue 与 scope（WP-M2-02）；MCP 只读工具（WP-M2-03）；Compiler（WP-M2-04）；Admission（WP-M2-05）；`AirspaceConstraintProvider` 桩（WP-M2-06）；SITL 能耗估计（WP-M2-07）
-- [ ] 批次 B 模型接入：Planner 引擎（WP-M2-08）；自然语言对抗集（WP-M2-09）；有界重规划与审批策略（WP-M2-10）
-- [ ] 批次 C 服务与入口：签名与机器人身份（WP-M2-11）；mission-service 骨架（WP-M2-12）；Evidence Verifier 与三列报告（WP-M2-13）；`skill.inspect.asset`（WP-M2-14）；任务控制台 v0（WP-M2-15）；A2A 入口（WP-M2-16）；机载 uplink 进程（WP-M2-17）
-- [ ] 批次 D 准出：云端部署扩展（WP-M2-18）；E2E 场景集与裁判扩展（WP-M2-19）；准入率基线与发布门禁（WP-M2-20）
+- [x] 批次 A 规划层地基：Provider 移植与录制回放（WP-M2-01）；结构化 Issue 与 scope（WP-M2-02）；MCP 只读工具（WP-M2-03）；Compiler（WP-M2-04）；Admission（WP-M2-05）；`AirspaceConstraintProvider` 桩（WP-M2-06）；SITL 能耗估计（WP-M2-07）
+- [x] 批次 B 模型接入：Planner 引擎（WP-M2-08）；自然语言对抗集（WP-M2-09）；有界重规划与审批策略（WP-M2-10）
+- [x] 批次 C 服务与入口：签名与机器人身份（WP-M2-11）；mission-service 骨架（WP-M2-12）；Evidence Verifier 与三列报告（WP-M2-13）；`skill.inspect.asset`（WP-M2-14）；任务控制台 v0（WP-M2-15）；A2A 入口（WP-M2-16）；机载 uplink 进程（WP-M2-17）
+- [x] 批次 D 准出：云端部署扩展（WP-M2-18）；E2E 场景集与裁判扩展（WP-M2-19）；准入率基线与发布门禁（WP-M2-20）
 - [x] 决策待办：签名与机器人身份（D030）；受限上行网络与 executive 无网络边界（D031）；审批策略（D032）；另补 Provider 默认模型（D029）、控制台与 A2A 身份（D033）、落位补充（D034）
 
 退出标准见总览；额外要求：远程任务包有签名与机载验签；`drone.*.v1` 只增字段。
