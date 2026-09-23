@@ -336,3 +336,42 @@ def test_signature_colour_decides_the_evidence(tmp_path):
     fake.capture(node)
     record = json.loads((tmp_path / f"evidence-{node.task_id}.json").read_text())
     assert verify_asset_image(record, tmp_path, node, reg) == EffectVerdict.REFUTED
+
+
+def bad_packages():
+    """One package per rejection the exit criterion names. / 退出标准列出的每种拒绝各一个任务包。"""
+    unsigned = approve(compile_spec(spec(), compile_context()).package)
+    stranger = approve(compile_spec(spec(), compile_context()).package)
+    stranger.approval = SigningKey.generate().sign(stranger.approval)
+    tampered = signed_package()
+    tampered.nodes[1].params["max_captures"] = 9
+    expired = approve(compile_spec(spec(), compile_context()).package)
+    expired.approval = KEY.sign(expired.approval.model_copy(update={
+        "approved_at": utcnow() - timedelta(hours=2), "expires_at": utcnow() - timedelta(hours=1)}))
+    elsewhere = approve(compile_spec(spec(), compile_context()).package)
+    elsewhere.approval = KEY.sign(elsewhere.approval.model_copy(update={"allowed_robots": ["uav_02"]}))
+    return {"unsigned": (unsigned, "onboard.unsigned"), "untrusted_key": (stranger, "onboard.untrusted_signer"),
+            "tampered": (tampered, "onboard.statement_mismatch"), "expired": (expired, "onboard.package_unauthorized"),
+            "wrong_robot": (elsewhere, "onboard.package_unauthorized")}
+
+
+@pytest.mark.parametrize("case", ["unsigned", "untrusted_key", "tampered", "expired", "wrong_robot"])
+def test_executive_and_guardian_each_reject_a_bad_package(tmp_path, case):
+    package, code = bad_packages()[case]
+    reg = fast_registry()
+    guardian_journal = Journal(tmp_path / "guardian.jsonl")
+    journal, recorder = Journal(tmp_path / "executive.jsonl"), Recorder(tmp_path / "executive.mcap")
+    try:
+        with pytest.raises(SignatureRejected) as caught:
+            Guardian(adapter=FlightFake(reg, tmp_path), package=package, registry=reg, journal=guardian_journal,
+                     policy=RecoveryPolicy.from_yaml(POLICY), executive_id="executive-test", simulation=True,
+                     trust=TRUST)
+        assert caught.value.code == code
+        with pytest.raises(SignatureRejected) as caught:
+            Executive(client=None, registry=reg, package=package, journal=journal, recorder=recorder,
+                      artifacts=tmp_path, executive_id="executive-test", trust=TRUST)
+        assert caught.value.code == code
+    finally:
+        guardian_journal.close()
+        journal.close()
+        recorder.close()
