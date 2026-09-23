@@ -32,6 +32,7 @@ from urllib.parse import urlsplit
 
 from wsproto import ConnectionType, WSConnection
 from wsproto.events import AcceptConnection, CloseConnection, Ping, RejectConnection, Request, TextMessage
+from wsproto.utilities import LocalProtocolError
 
 ROOT = Path(__file__).resolve().parents[1]
 TERMINAL = ("completed", "incomplete", "declined", "delivery_rejected", "rejected", "refused", "planning_failed")
@@ -41,7 +42,7 @@ NEVER_FLIES = ("declined", "rejected", "refused", "planning_failed")
 class Client:
     """One hri.v0 WebSocket over TLS with the system trust store. / 使用系统信任库的一条 TLS hri.v0 WebSocket。"""
 
-    def __init__(self, origin: str, *, origin_header: str | None = None, extra_headers=()):
+    def __init__(self, origin: str, *, origin_header: str | None = None, extra_headers=(), expect_accept=True):
         url = urlsplit(origin)
         raw = socket.create_connection((url.hostname, url.port or 443), timeout=20)
         self.sock = ssl.create_default_context().wrap_socket(raw, server_hostname=url.hostname)
@@ -56,12 +57,16 @@ class Client:
             if time.monotonic() > deadline:
                 raise TimeoutError("WebSocket handshake")
             self.pump(2)
+        if self.rejected is not None and expect_accept:
+            # E.g. the page restarting behind Serve; the caller reconnects. / 例如页面在 Serve 后重启；调用方重连。
+            self.sock.close()
+            raise ConnectionError(f"WebSocket handshake rejected ({self.rejected})")
 
     def pump(self, timeout: float) -> None:
         self.sock.settimeout(timeout)
         try:
             data = self.sock.recv(1 << 16)
-        except TimeoutError:
+        except (TimeoutError, ssl.SSLWantReadError):
             return
         if not data:
             raise ConnectionError("connection closed")
@@ -146,7 +151,7 @@ def http_checks(origin: str) -> dict:
         status, _, body = fetch(origin, "/a2a", method="POST", body=message,
                                 headers={"Content-Type": "application/json", **extra})
         result[label] = {"status": status, "error": json.loads(body).get("error", {}).get("message")}
-    foreign = Client(origin, origin_header="https://attacker.invalid")
+    foreign = Client(origin, origin_header="https://attacker.invalid", expect_accept=False)
     result["cross_origin_websocket"] = {"accepted": foreign.accepted, "rejected_status": foreign.rejected}
     foreign.close()
     return result
@@ -172,8 +177,7 @@ def compact(view: dict, started: float) -> dict:
             "judge": (cloud.get("judge") or {}).get("passed")}
 
 
-def session(origin: str, args) -> tuple[dict, str | None]:
-    started = time.monotonic()
+def open_session(origin: str) -> tuple[Client, str | None, dict]:
     client = Client(origin)
     hello = client.next("hello", 30)
     login = (hello.get("identity") or "").removeprefix("tailnet:") or None
@@ -181,6 +185,25 @@ def session(origin: str, args) -> tuple[dict, str | None]:
                          "can_write": hello["can_write"], "planner": hello.get("planner")},
                "host_states": [client.next("host", 10)["status"]], "timeline": [], "errors": [], "sent": [],
                "reconnects": 0}
+    return client, login, receipt
+
+
+def reconnect(origin: str, mission_id: str, deadline: float) -> Client:
+    """Open a new session and watch the mission again, as the page does. / 像页面一样重开会话并重新订阅。"""
+    while time.monotonic() < deadline:
+        time.sleep(2)
+        try:
+            client = Client(origin)
+            client.send({"type": "watch", "mission_id": mission_id})
+            return client
+        except (ConnectionError, OSError, TimeoutError, ssl.SSLError, LocalProtocolError):
+            continue
+    raise TimeoutError("could not reconnect before the deadline")
+
+
+def session(origin: str, args) -> tuple[dict, str | None]:
+    started = time.monotonic()
+    client, login, receipt = open_session(origin)
     client.send({"type": "text", "rid": uuid.uuid4().hex[:16], "text": args.text, "volume_id": args.volume,
                  "asset_ids": args.asset or []})
     first = client.next(("mission", "error"), args.plan_timeout)
@@ -188,9 +211,21 @@ def session(origin: str, args) -> tuple[dict, str | None]:
         receipt["errors"].append(first)
         client.close()
         return receipt, login
-    view = first["view"]
-    mission_id = view["mission"]["mission_id"]
     receipt["planning_s"] = round(time.monotonic() - started, 1)
+    return follow(origin, client, first["view"], args, receipt, started), login
+
+
+def watch(origin: str, args) -> tuple[dict, str | None]:
+    started = time.monotonic()
+    client, login, receipt = open_session(origin)
+    client.send({"type": "watch", "mission_id": args.mission})
+    view = client.next("mission", 30)["view"]
+    return follow(origin, client, view, args, receipt, started), login
+
+
+def follow(origin: str, client: Client, view: dict, args, receipt: dict, started: float) -> dict:
+    """Follow one mission until it ends and its judge is published, acting as asked. / 跟随任务直到结束并有裁判结果。"""
+    mission_id = view["mission"]["mission_id"]
 
     def operate(action: str) -> None:
         request_id = f"op-{action}-{uuid.uuid4().hex[:12]}"
@@ -234,14 +269,8 @@ def session(origin: str, args) -> tuple[dict, str | None]:
         except TimeoutError:
             continue
         except (ConnectionError, OSError, ssl.SSLError):
-            # Reconnect and watch again, as the page does. / 像页面一样重连并重新订阅。
             receipt["reconnects"] += 1
-            time.sleep(2)
-            try:
-                client = Client(origin)
-                client.send({"type": "watch", "mission_id": mission_id})
-            except (ConnectionError, OSError, TimeoutError, ssl.SSLError):
-                continue
+            client = reconnect(origin, mission_id, deadline)
             continue
         if message["type"] == "mission" and message["view"]["mission"]["mission_id"] == mission_id:
             view = message["view"]
@@ -277,33 +306,37 @@ def session(origin: str, args) -> tuple[dict, str | None]:
                      for e in view.get("evidence", [])],
         "issues": [i["code"] for i in view["issues"]], "facts": view["facts"], "cloud": view.get("cloud"),
     }
-    return receipt, login
+    return receipt
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("http", "session", "spoof"):
+    for name in ("http", "session", "watch", "spoof"):
         command = commands.add_parser(name)
         command.add_argument("--origin", required=True, help="https://<node>.<tailnet>.ts.net:8448")
         command.add_argument("--output", type=Path)
-    run = commands.choices["session"]
+    run, follow_existing = commands.choices["session"], commands.choices["watch"]
     run.add_argument("--text", required=True)
     run.add_argument("--volume", default="campus_training")
     run.add_argument("--asset", action="append")
-    run.add_argument("--approve", action="store_true")
-    run.add_argument("--pause-step")
-    run.add_argument("--pause-s", type=float, default=6)
-    run.add_argument("--cancel-step")
     run.add_argument("--plan-timeout", type=float, default=300)
-    run.add_argument("--timeout", type=float, default=1500)
-    run.add_argument("--media-dir")
+    follow_existing.add_argument("--mission", required=True)
+    for command in (run, follow_existing):
+        command.add_argument("--approve", action="store_true")
+        command.add_argument("--pause-step")
+        command.add_argument("--pause-s", type=float, default=6)
+        command.add_argument("--cancel-step")
+        command.add_argument("--timeout", type=float, default=1500)
+        command.add_argument("--media-dir")
     args = parser.parse_args()
     login = None
     if args.command == "http":
         result = http_checks(args.origin)
     elif args.command == "spoof":
         result, login = spoof(args.origin)
+    elif args.command == "watch":
+        result, login = watch(args.origin, args)
     else:
         result, login = session(args.origin, args)
     result = redact({"schema_version": "0.1.0", "probe": args.command, **result}, args.origin, login)
