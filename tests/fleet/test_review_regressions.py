@@ -118,6 +118,49 @@ async def test_identical_pixels_in_two_missions_keep_two_independent_evidence_re
         assert loop.ledger.evidence(mission_id)[0]["media_path"]
 
 
+@pytest.mark.parametrize("cancel_source", ["onboard", "service", "pause_only"])
+async def test_cancel_intent_blocks_retry_even_when_step_outcome_is_unknown(tmp_path, cancel_source):
+    from datetime import timedelta
+
+    from drone_agent.contracts import ExecutionStatus, MissionAction, OperatorRequest, StepOutcome, utcnow
+    from drone_agent.runtime.ledger import Journal
+
+    loop = build_loop(tmp_path)
+    mission_id = (await approved(loop))["mission"]["mission_id"]
+    await loop.sync()
+    package = loop.inbox_package()
+    directory = tmp_path / "aircraft" / mission_id / "v1"
+    guardian, executive = Journal(directory / "guardian.jsonl"), Journal(directory / "executive.jsonl")
+    try:
+        guardian.append("lease", {"lease_epoch": 1})
+        executive.append("mission_accepted", {"mission_id": mission_id, "package_hash": package.package_hash})
+        if cancel_source != "service":
+            executive.append("operator_request", {"accepted": True, "step_id": "inspect_asset_red",
+                                                   "action": "cancel" if cancel_source == "onboard" else "pause"})
+        else:
+            request = OperatorRequest(request_id="op-cancel-unknown", robot_id="uav_01", mission_id=mission_id,
+                                      mission_version=1, lease_epoch=1, step_id="inspect_asset_red",
+                                      action=MissionAction.CANCEL, valid_until=utcnow()+timedelta(seconds=15),
+                                      requested_by="tailnet:operator@example.test")
+            loop.ledger.queue_delivery("uav_01", "operator_request", mission_id, 1, request)
+        outcome = StepOutcome(mission_id=mission_id, mission_version=1, robot_id="uav_01",
+                              step_id="inspect_asset_red", execution_status=ExecutionStatus.UNKNOWN)
+        executive.append("step_outcome", {"outcome": outcome.model_dump(mode="json")})
+        executive.append("mission_result", {"completed": False})
+    finally:
+        guardian.close()
+        executive.close()
+    await loop.sync()
+    view = loop.service.view(mission_id)
+    if cancel_source == "pause_only":
+        assert view["mission"]["replans"] == 1
+    else:
+        assert view["mission"]["status"] == "incomplete"
+        assert view["mission"]["replans"] == 0 and len(view["versions"]) == 1
+        assert "replan.cancelled_by_operator" in [i["code"] for i in view["issues"]]
+        assert not view["report"]["all_targets_completed"]
+
+
 @pytest.mark.parametrize("field", ["row_timestamp", "sha256"])
 async def test_invalid_forwarded_row_is_rejected_before_persistence(tmp_path, field):
     from drone_agent.fleet.events import journal_row_to_event
