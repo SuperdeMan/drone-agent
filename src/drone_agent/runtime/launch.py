@@ -59,6 +59,25 @@ def load_policy(root: Path, reference: str) -> RecoveryPolicy:
     return policy
 
 
+async def wait_for_egress(endpoint, seconds: float) -> bool:
+    """Wait until the egress node is registered, compatible and linked to PX4, as the live capability requires (D039).
+
+    The guardian validates an external-mode package against its live capabilities when it is built, so this wait comes
+    first.
+
+    等待出口节点已注册、兼容且与 PX4 连通，这正是实时能力的要求（D039）。guardian 构建时按实时能力校验外部模式任务包，
+    因此先做这一步等待。
+    """
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        status = endpoint.fresh("egress_status", 0.5)
+        if (status is not None and status.external_nav_state is not None and status.compatibility_ok
+                and status.fmu_link_ok):
+            return True
+        await asyncio.sleep(0.2)
+    return False
+
+
 async def wait_for_external(guardian, seconds: float) -> dict:
     """Wait until the external mode's dependencies deliver before serving an external-mode mission.
 
@@ -122,6 +141,10 @@ async def main_async(args):
             endpoints = [egress, autonomy]
             for endpoint in endpoints:
                 await endpoint.start()
+        external_package = egress is not None and any(node.skill_id in EXTERNAL_SKILLS for node in package.nodes)
+        deadline = time.monotonic() + args.egress_wait_s
+        if external_package:
+            await wait_for_egress(egress, args.egress_wait_s)
         guardian = Guardian(
             adapter=adapter,
             package=package,
@@ -140,8 +163,9 @@ async def main_async(args):
             from drone_agent.eval.faults import install_injection
 
             install_injection(guardian, args.fault)
-        if guardian.external is not None and any(node.skill_id in EXTERNAL_SKILLS for node in package.nodes):
-            ready = await wait_for_external(guardian, args.egress_wait_s)
+        if external_package:
+            # The same bounded wait continues for the local autonomy (D048). / 同一有界等待继续覆盖本地自主层（D048）。
+            ready = await wait_for_external(guardian, max(0.0, deadline - time.monotonic()))
             journal.append("external_ready", {"mission_id": package.mission_id, **ready,
                                               "links": {e.role.value: e.counters.__dict__ for e in endpoints}})
         socket_dir = Path(args.endpoint.removeprefix("unix:")).parent
