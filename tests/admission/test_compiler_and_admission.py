@@ -146,7 +146,12 @@ def test_airspace_modes():
     unknown = status.model_copy(update={"filing_status": "unknown"})
     assert codes(airspace_issues("v", {"airspace_mode": "real"}, unknown)) == ["airspace.unknown"]
     filed = AirspaceStatus(**{**status.model_dump(), "filing_status": "filed"})
-    assert airspace_issues("v", {"airspace_mode": "real"}, filed) == []
+    # M3 (WP-M3-19): a bare "filed" is no longer enough; the filing must match the volume, aircraft and Remote ID.
+    # M3（WP-M3-19）：仅有 "filed" 不再足够；申请必须与体积、航空器及 Remote ID 相符。
+    assert codes(airspace_issues("v", {"airspace_mode": "real"}, filed)) == [
+        "airspace.filing_scope", "airspace.registration_mismatch", "airspace.remote_id_inactive"]
+    complete = filed.model_copy(update={"approved_volume_id": "v", "registration_id": "UAS-1", "remote_id_active": True})
+    assert airspace_issues("v", {"airspace_mode": "real"}, complete, registration_id="UAS-1") == []
 
 
 def test_request_scope_bounds_volume_and_assets():

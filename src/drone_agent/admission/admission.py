@@ -42,6 +42,9 @@ class AdmissionContext:
     airspace: AirspaceConstraintProvider
     now: datetime
     request: MissionRequest | None = None
+    # M3 (WP-M3-19): the aircraft's real-name registration; SITL has none, so real airspace fails closed.
+    # M3（WP-M3-19）：航空器实名登记号；SITL 没有，因此真实空域 fail closed。
+    registration_id: str | None = None
 
 
 def _inside(bounds: dict, point) -> bool:
@@ -316,7 +319,9 @@ def admit(package: MissionPackage, ctx: AdmissionContext, *, spec: MissionSpec |
     volume_id = package.spatial_scope.approved_volume_id
     status = ctx.airspace.query(volume_id, now=ctx.now)
     volume = ctx.registry.data.get("volumes", {}).get(volume_id)
-    checks.add("airspace", airspace_issues(volume_id, volume, status), status.filing_status)
+    window = (package.temporal_window.not_before, package.temporal_window.not_after)
+    checks.add("airspace", airspace_issues(volume_id, volume, status, window=window,
+                                           registration_id=ctx.registration_id), status.filing_status)
     ack = [n.task_id for n in package.nodes if n.allow_unverified_from]
     acknowledged = bool(ctx.request and ctx.request.unverified_ack_by
                         and ctx.request.trust_level is TrustLevel.FIRST_PARTY)

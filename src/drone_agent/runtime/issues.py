@@ -69,6 +69,7 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "planner.tool_failure": IssueLayer.PLANNER,
     # Compiler / 编译层
     "compile.unknown_skill": IssueLayer.COMPILER,
+    "compile.no_approach_for_capability": IssueLayer.COMPILER,
     "compile.framework_skill_misplaced": IssueLayer.COMPILER,
     "compile.invalid_order": IssueLayer.COMPILER,
     "compile.invalid_dag": IssueLayer.COMPILER,
@@ -100,6 +101,11 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "airspace.mode_undeclared": IssueLayer.ADMISSION,
     "airspace.not_filed": IssueLayer.ADMISSION,
     "airspace.unknown": IssueLayer.ADMISSION,
+    # M3 (WP-M3-19): real-mode filing details. / M3（WP-M3-19）：真实模式的申请细节。
+    "airspace.filing_scope": IssueLayer.ADMISSION,
+    "airspace.filing_window": IssueLayer.ADMISSION,
+    "airspace.registration_mismatch": IssueLayer.ADMISSION,
+    "airspace.remote_id_inactive": IssueLayer.ADMISSION,
     "resource.conflict": IssueLayer.ADMISSION,
     "approval.unverified_edge_requires_human": IssueLayer.ADMISSION,
     "policy.recovery_mismatch": IssueLayer.ADMISSION,
