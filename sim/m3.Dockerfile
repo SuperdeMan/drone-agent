@@ -55,11 +55,10 @@ FROM ros2base AS aircraft3
 COPY --from=checks /opt/drone-venv /opt/drone-venv
 COPY --from=checks /workspace /workspace
 WORKDIR /workspace
-ENV PATH=/opt/drone-venv/bin:${PATH}
-RUN python3 scripts/generate_proto.py
-ENV PYTHONPATH=/workspace/src:/workspace/gen
-# ROS-side bindings with the system protoc 3.21, matching the system protobuf runtime (D039).
-# ROS 侧绑定使用系统 protoc 3.21，与系统 protobuf 运行时一致（D039）。
+# ROS-side bindings with the system protoc 3.21, matching the system protobuf runtime (D039). The ROS build runs
+# before the venv joins PATH: ament's CMake must find the system python3 that carries catkin_pkg.
+# ROS 侧绑定使用系统 protoc 3.21，与系统 protobuf 运行时一致（D039）。ROS 构建在 venv 进入 PATH 之前运行：
+# ament 的 CMake 必须找到带 catkin_pkg 的系统 python3。
 RUN mkdir -p /opt/da_ros2/gen \
  && /usr/bin/protoc --python_out=/opt/da_ros2/gen -I/workspace/proto -I/usr/include \
       /workspace/proto/drone/autonomy/v1/autonomy.proto
@@ -68,6 +67,9 @@ RUN source /opt/ros/jazzy/setup.bash && source /opt/px4_ros2_ws/install/setup.ba
       --build-base /opt/da_ros2/build --install-base /opt/da_ros2/install \
       --cmake-args -DCMAKE_BUILD_TYPE=Release -DDA_PROTO_ROOT=/workspace/proto \
  && rm -rf /opt/da_ros2/build
+ENV PATH=/opt/drone-venv/bin:${PATH}
+RUN python3 scripts/generate_proto.py
+ENV PYTHONPATH=/workspace/src:/workspace/gen
 LABEL org.drone-agent.role=aircraft-m3
 ENTRYPOINT []
 CMD ["python3", "-m", "drone_agent.runtime.launch", "guardian"]
