@@ -85,7 +85,7 @@ class ExternalControl:
         self.progress: deque[tuple[float, float]] = deque()
         self.no_path_since: float | None = None
         self.slow_segments = 0
-        self.last_segment_seq = -1
+        self.last_segment_seq = self.latency_seq = -1
         self.started = 0.0
         self.counters = {"authorized": 0, "cbf_modified": 0, "cbf_rejected": 0, "hold_authorizations": 0,
                          "segments_used": 0, "segments_refused": 0}
@@ -225,7 +225,7 @@ class ExternalControl:
         )
         self.entering, self.active = True, False
         self.progress.clear()
-        self.no_path_since, self.slow_segments, self.last_segment_seq = None, 0, -1
+        self.no_path_since, self.slow_segments, self.last_segment_seq, self.latency_seq = None, 0, -1, -1
         self.nav_state = status.external_nav_state
         self.watchdog_base, self.hold_since = status.watchdog_exits, None
         guardian.record("external_start", step_id=node.task_id, task_id=self.task.task_id, nav_state=self.nav_state,
@@ -377,7 +377,10 @@ class ExternalControl:
         if result.modified:
             self.counters["cbf_modified"] += 1
         self.counters["segments_used"] += 1
-        if await self.authorize(result.target, result.speed_mps, hold=False):
+        if await self.authorize(result.target, result.speed_mps, hold=False) and segment.segment_seq != self.latency_seq:
+            # D040 intent latency: a segment's creation to its first authorized setpoint; later reuses within its
+            # validity are not new intents. / D040 意图延迟：片段生成到其首个授权设定值；有效期内的复用不是新意图。
+            self.latency_seq = segment.segment_seq
             self.latency_ms.append((utcnow() - segment.created_at).total_seconds() * 1000)
         return []
 

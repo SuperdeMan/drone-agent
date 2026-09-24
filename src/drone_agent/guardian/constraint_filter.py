@@ -6,9 +6,11 @@ the command must satisfy `n·u >= -alpha·h` and `|u| <= v_max`. Constraints com
 faces of the registered geofence (trusted), registered obstacles inflated by their radius (trusted) and the
 nearby points of a fresh local map (belief, inflated by its stated uncertainty). The projection is solved by
 Hildreth's dual coordinate ascent; the result is then checked, and the straight segment to the resulting
-target is sampled so that an interrupted stream leaves the aircraft at a safe point. Anything infeasible —
-already inside the unsafe set, conflicting constraints, a segment that cannot be made safe — is rejected,
-never passed through. Pure Python: its cost is part of the supervision period.
+target is sampled so that an interrupted stream leaves the aircraft at a safe point. Converging onto a boundary
+leaves tracking and rounding errors of centimetres: a position up to `boundary_tolerance_m` inside the inflated
+set is still filtered, and the barrier condition (`n·u >= alpha·|h|`) then demands an outward command. Anything
+infeasible — deeper inside the unsafe set, conflicting constraints, a segment that cannot be made safe — is
+rejected, never passed through. Pure Python: its cost is part of the supervision period.
 
 外部模式下每个目标在授权前都经过控制屏障函数过滤（D042）。
 
@@ -16,8 +18,9 @@ guardian 把规划节点给出的下一个点视为短时域内的期望速度�
 `h(x) >= 0` 及其外法向 `n`，指令必须满足 `n·u >= -alpha·h` 且 `|u| <= v_max`。约束来自三处：登记围栏的六个面
 （可信）、按半径膨胀的登记障碍（可信）、新鲜局部地图的邻近点（信念，按其声明的不确定性膨胀）。投影用
 Hildreth 对偶坐标上升求解；求解后再逐项核对，并对通往结果目标的直线段采样，保证设定值流中断时飞行器停在
-安全点。任何不可行——已在不安全集合内、约束冲突、无法使线段安全——都拒绝，绝不放行。纯 Python 实现：其
-耗时计入监督周期。
+安全点。收敛到边界时会留下厘米级的跟踪与舍入误差：位于膨胀集合内 `boundary_tolerance_m` 以内的位置仍照常过滤，
+屏障条件（`n·u >= alpha·|h|`）随即要求向外的指令。任何不可行——更深地进入不安全集合、约束冲突、无法使线段
+安全——都拒绝，绝不放行。纯 Python 实现：其耗时计入监督周期。
 """
 
 from __future__ import annotations
@@ -72,6 +75,7 @@ class FilterSettings:
     neighbour_radius_m: float = 6.0
     max_neighbours: int = 48
     segment_samples: int = 8
+    boundary_tolerance_m: float = 0.25
     tolerance: float = 1e-6
     iterations: int = 200
 
@@ -208,7 +212,7 @@ def filter_target(
 
     here = constraints_at(position)
     min_h = min((c.h for c in here), default=math.inf)
-    if min_h < -settings.tolerance:
+    if min_h < -settings.boundary_tolerance_m:
         worst = min(here, key=lambda c: c.h)
         return FilterResult(False, "inside_unsafe_set:" + worst.source, min_h=min_h, constraints=len(here))
     desired = _scale(_sub(target, position), 1.0 / settings.horizon_s)
@@ -219,13 +223,15 @@ def filter_target(
     violated = [c.source for c in here if _dot(c.normal, u) < -settings.alpha * c.h - 1e-4]
     if violated:
         return FilterResult(False, "infeasible:" + violated[0], min_h=min_h, constraints=len(here))
-    # Shrink the step until the straight segment to the target is clear at every sample.
-    # 缩短步长，直到通往目标的直线段在每个采样点都满足约束。
+    # Shrink the step until the straight segment to the target is clear at every sample; from just inside the
+    # boundary the segment may not go deeper than the aircraft already is.
+    # 缩短步长，直到通往目标的直线段在每个采样点都满足约束；从边界内侧出发时，线段不得比飞行器当前更深。
+    floor = min(0.0, min_h) - settings.tolerance
     step = _scale(u, settings.horizon_s)
     for _ in range(6):
         candidate = _add(position, step)
         samples = [_add(position, _scale(step, k / settings.segment_samples)) for k in range(1, settings.segment_samples + 1)]
-        if all(c.h >= -settings.tolerance for sample in samples for c in constraints_at(sample)):
+        if all(c.h >= floor for sample in samples for c in constraints_at(sample)):
             binding = [c.source for c in here if abs(_dot(c.normal, u) + settings.alpha * c.h) < 1e-3]
             modified = _norm(_sub(u, desired)) > 1e-3
             return FilterResult(

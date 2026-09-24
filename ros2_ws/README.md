@@ -10,8 +10,9 @@
 | `da_localization` | Python | PX4 估计器输出 → `LocalizationReport`（GNSS / 视觉 / 本地位置健康） | guardian 自主层套接字 |
 | `da_local_nav` | Python（numpy） | 深度 → 体素地图 → 邻近障碍集合；局部任务 → A* 短时域候选片段（包含计划中的局部地图与局部规划两部分） | guardian 自主层套接字 |
 | `da_perception` | Python（numpy） | 下视 RGB 颜色特征检测 → 带协方差的 `BeliefFact` | executive 信念套接字 |
+| `da_edge_inference` | Python（numpy + ONNX Runtime） | 下视 RGB → CLIP 零样本场景类别 → 模型来源的候选 `BeliefFact`（最多 1 Hz、丢帧不排队；提示嵌入在镜像构建时计算，D044） | executive 信念套接字 |
 | `da_common` | Python | 帧客户端、PX4 话题版本与坐标转换 | — |
 
-构建：`da_egress_ext` 与 `px4_msgs`、`px4_ros2_cpp` 一起用 colcon 在 `sim/m3.Dockerfile` 中构建，proto 用系统 `protoc` 生成。Python 节点是普通模块，由 `ros2_ws/run_node.sh` 以 `python3 -m <包>.node` 启动。纯逻辑（`health.py`、`geometry.py`、`planner.py`、`detector.py`）不导入 ROS，由仓库 `tests/ros2_ws/` 在 uv 环境中测试。
+构建：`da_egress_ext` 与 `px4_msgs`、`px4_ros2_cpp` 一起用 colcon 在 `sim/m3.Dockerfile` 中构建，proto 用系统 `protoc` 生成。Python 节点是普通模块，由 `ros2_ws/run_node.sh` 以 `python3 -m <包>.node` 启动。纯逻辑（`health.py`、`geometry.py`、`planner.py`、`detector.py`、`clip.py`）不导入 ROS，由仓库 `tests/ros2_ws/` 在 uv 环境中测试。
 
 纪律：节点只提交候选与报告，从不直接写飞控（出口节点除外，且只转发 guardian 授权）；不订阅 Gazebo 话题、不读取真值；仿真专用故障只从 `/fault/autonomy.json` 读取并记录在各自的证据日志中。

@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from drone_agent.admission.models import MissionRequest, RequestChannel
-from drone_agent.contracts import MissionPackage, RecoveryPolicy, utcnow
+from drone_agent.contracts import MissionPackage, RecoveryPolicy, SkillInstanceState, utcnow
 from drone_agent.fleet.ledger import BusinessLedger
 from drone_agent.fleet.service import MissionService
 from drone_agent.fleet.transport import FleetHub, LocalFleetClient
@@ -84,13 +84,14 @@ class Loop:
         return MissionPackage.model_validate_json((self.root / "inbox/package.json").read_bytes())
 
     async def fly(self, package: MissionPackage, *, epoch: int, frames=(), truth: list | None = None,
-                  sim_restart: bool = False) -> dict:
+                  sim_restart: bool = False, belief=None) -> dict:
         """Fly `package` with a fresh guardian and executive in its own version directory.
 
-        `truth`, when given, collects the fake's positions like the simulator's truth collector.
+        `truth`, when given, collects the fake's positions like the simulator's truth collector; `belief`, when
+        given, reaches the executive's belief link as the inspection starts running.
 
         以新的 guardian 与 executive 在独立版本目录中执行 `package`。给出 `truth` 时，像仿真真值采集器一样
-        收集替身的位置。
+        收集替身的位置；给出 `belief` 时，在巡检开始运行时经信念链路交给 executive。
         """
         artifacts = self.root / "aircraft" / package.mission_id / f"v{package.mission_version}"
         artifacts.mkdir(parents=True)
@@ -120,6 +121,15 @@ class Loop:
             executive = Executive(client=Client(guardian, adapter), registry=reg, package=package, journal=journal,
                                   recorder=recorder, artifacts=artifacts, executive_id="executive-test", epoch=epoch,
                                   trust=self.trust, mailbox=self.root / "mailbox/operator.json")
+            if belief is not None:
+                transition = executive.transition
+
+                def deliver(node, target):
+                    transition(node, target)
+                    if target is SkillInstanceState.RUNNING and node.skill_id == "skill.inspect.asset":
+                        executive.accept_fact(belief)
+
+                executive.transition = deliver
             await executive.run()
             if guardian.recovery_task:
                 await guardian.recovery_task

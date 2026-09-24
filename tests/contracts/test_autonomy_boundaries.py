@@ -5,11 +5,13 @@
 - The egress node forwards guardian authorizations only: it never defers failsafes, registers a mode executor, arms,
   takes off, lands or selects any mode other than the fixed Hold of its watchdog.
 - Shadow-stage outputs are never forwarded: the guardian refuses segments whose `may_execute` is false.
+- The event detector can only send model-sourced belief facts to the executive (D044).
 - The fleet protocol can never carry an authorized setpoint.
 
 M3 自主层红线的可执行源码检查（D014、D039、D041）：ROS 2 节点从不导入 drone_agent 包，只经 drone.autonomy.v1 帧交互；
 自主层节点无法触及仿真真值；出口节点只转发 guardian 授权，从不延期失效保护、注册模式执行器、解锁、起飞、降落或选择
-看门狗固定 Hold 之外的模式；影子阶段的输出从不被转发；车队协议永远无法携带授权设定值。
+看门狗固定 Hold 之外的模式；影子阶段的输出从不被转发；事件检测只能向 executive 发送模型来源的信念事实（D044）；
+车队协议永远无法携带授权设定值。
 """
 
 import re
@@ -55,6 +57,17 @@ def test_the_egress_node_only_forwards_and_can_only_ask_for_hold():
     assert "kCommandSetMode = 176" in code and "command.param2 = 4.f" in code and "command.param3 = 3.f" in code
     assert "preventArming(true)" in code
     assert not FORBIDDEN_TERMS.search(source)
+
+
+def test_the_event_detector_can_only_send_candidate_facts():
+    # D044: its only output is a belief fact to the executive; no flight-controller topic, no guardian socket.
+    # D044：唯一输出是发给 executive 的信念事实；没有飞控话题，也没有 guardian 套接字。
+    code = "\n".join(p.read_text(encoding="utf-8") for p in sorted((WS / "da_edge_inference").rglob("*.py")))
+    assert "belief_fact" in code and '"/run/belief/belief.sock"' in code
+    for banned in ("authorized_setpoint", "trajectory_segment", "local_task", "obstacle_set", "localization_report",
+                   "egress_status", "px4_msgs", "create_publisher", "/fmu/", "autonomy.sock", "egress.sock"):
+        assert banned not in code, banned
+    assert '"source": "model"' in code
 
 
 def test_ros_sources_keep_the_terminology_discipline():

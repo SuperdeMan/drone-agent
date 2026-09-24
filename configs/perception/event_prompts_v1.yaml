@@ -1,0 +1,47 @@
+# Event-relevance prompt set of the onboard CLIP event detector (WP-M3-15, D041, D044).
+# Prompt embeddings are computed once at image build time (ros2_ws/src/da_edge_inference/build_prompts.py); at run
+# time only the vision encoder runs. Every class is a candidate label, never a verdict: `relevant` marks classes worth
+# an operator's attention, and `replan_trigger` classes may only raise the bounded replan of D032 / D044 (a human
+# approves any resulting version). Changing a prompt, class or pin is a new prompt-set version.
+#
+# 机载 CLIP 事件检测的事件相关性提示集（WP-M3-15，D041，D044）。
+# 提示嵌入在镜像构建时计算一次（ros2_ws/src/da_edge_inference/build_prompts.py）；运行时只跑视觉编码器。每个类别都只是
+# 候选标签而不是判定：`relevant` 标出值得操作员关注的类别，`replan_trigger` 类别只能发起 D032 / D044 的有界重规划
+# （由此产生的版本须人工批准）。改动提示、类别或固定值即为新的提示集版本。
+schema_version: 0.1.0
+prompt_set: event_prompts_v1
+model:
+  repo: Xenova/clip-vit-base-patch32
+  revision: d15189d7028b43f1d3e65039190477f6af591c2a
+  vision: {file: onnx/vision_model_quantized.onnx, sha256: 583fd1110a514667812fee7d684952aaf82a99b959760c8d7dca7e0ab9839299}
+  text: {file: onnx/text_model.onnx, sha256: 3f6571f5bad13a97c469c1622e1cfc4d9aef78b79fdbfcff804ca357bfada8cc}
+  vocab: {file: vocab.json, sha256: 5047b556ce86ccaf6aa22b3ffccfc52d391ea4accdab9c2f2407da5b742d4363}
+  merges: {file: merges.txt, sha256: 9fd691f7c8039210e0fced15865466c65820d09b63988b0174bfe25de299051a}
+runtime:
+  fact_validity_s: 2.0
+  trigger_probability: 0.6
+classes:
+  marker_green:
+    relevant: true
+    replan_trigger: false
+    prompts: ["an aerial photo of a bright green square on a grey floor", "a top-down view of a green panel on grey ground"]
+  marker_red:
+    relevant: true
+    replan_trigger: false
+    prompts: ["an aerial photo of a bright red square on a grey floor", "a top-down view of a red panel on grey ground"]
+  marker_blue:
+    relevant: true
+    replan_trigger: false
+    prompts: ["an aerial photo of a bright blue square on a grey floor", "a top-down view of a blue panel on grey ground"]
+  empty_ground:
+    relevant: false
+    replan_trigger: false
+    prompts: ["an aerial photo of an empty grey floor", "a top-down view of plain grey ground"]
+  person:
+    relevant: true
+    replan_trigger: true
+    prompts: ["an aerial photo of a person standing on the ground"]
+  smoke_or_fire:
+    relevant: true
+    replan_trigger: true
+    prompts: ["an aerial photo of smoke or fire on the ground"]

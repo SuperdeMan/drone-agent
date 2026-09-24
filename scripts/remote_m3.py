@@ -26,10 +26,43 @@ import time
 from pathlib import Path
 
 HELPERS = runpy.run_path(str(Path(__file__).with_name("remote_dev_stack.py")))
-SERVICES = ("executive", "guardian", "autonomy", "egress", "xrce-agent", "relay", "collector")
+SERVICES = ("executive", "guardian", "autonomy", "egress", "edge", "xrce-agent", "relay", "collector")
 FOLDERS = ("input", "aircraft", "truth", "sensor", "ipc", "ipc-egress", "ipc-autonomy", "ipc-belief", "egress",
-           "autonomy", "judge", "ulog")
+           "autonomy", "edge", "judge", "ulog")
 AUTONOMY_FAULTS = {"map_freeze", "planner_freeze", "planner_stall", "planner_ignore_obstacles"}
+
+
+def cgroup_dir(container_id: str) -> Path | None:
+    for candidate in (Path(f"/sys/fs/cgroup/system.slice/docker-{container_id}.scope"),
+                      Path(f"/sys/fs/cgroup/docker/{container_id}")):
+        if (candidate / "cpu.stat").is_file():
+            return candidate
+    return None
+
+
+def sample_resources(path: Path, groups: dict) -> None:
+    """One cgroup sample per container plus host load and CPU pressure (D040 receipts); file reads only.
+
+    每个容器一条 cgroup 采样，另加主机负载与 CPU 压力（D040 回执）；只读文件。
+    """
+    now, rows = time.time(), []
+    for service, directory in groups.items():
+        try:
+            stat = dict(line.split() for line in (directory / "cpu.stat").read_text().splitlines())
+            memory = int((directory / "memory.current").read_text())
+        except (OSError, ValueError):
+            continue
+        rows.append({"wall": now, "service": service, "usage_usec": int(stat["usage_usec"]),
+                     "nr_periods": int(stat.get("nr_periods", 0)), "nr_throttled": int(stat.get("nr_throttled", 0)),
+                     "throttled_usec": int(stat.get("throttled_usec", 0)), "memory_bytes": memory})
+    try:
+        pressure = Path("/proc/pressure/cpu").read_text().splitlines()[0].split()[1]
+        rows.append({"wall": now, "service": "_host", "load1": float(Path("/proc/loadavg").read_text().split()[0]),
+                     "cpu_some_avg10": float(pressure.split("=")[1])})
+    except (OSError, ValueError, IndexError):
+        pass
+    with path.open("a") as output:
+        output.writelines(json.dumps(row) + "\n" for row in rows)
 
 
 def injection_due(scenario, state) -> bool:
@@ -99,7 +132,8 @@ def run_m3(root: Path, deployment: Path, request: dict):
                 (run / folder).mkdir(parents=True)
             env = dict(os.environ, DRONE_M3_RUN=str(run), DRONE_SOURCE_SHA=sha, DRONE_M3_SPEED="1",
                        DRONE_M3_SIM_IMAGE=images["sim3"], DRONE_M3_GROUND_IMAGE=images["ground"],
-                       DRONE_M3_AIRCRAFT_IMAGE=images["aircraft3"])
+                       DRONE_M3_AIRCRAFT_IMAGE=images["aircraft3"],
+                       DRONE_EDGE_PERIOD_S=str(float(scenario.get("edge_period_s", 1.0))))
             prefix = ["docker", "compose", "-p", "drone-agent-cloud", "-f", str(source / "sim/compose.m3.yaml")]
 
             def compose(*args, timeout=180, check=True):
@@ -137,7 +171,7 @@ def run_m3(root: Path, deployment: Path, request: dict):
                     time.sleep(0.2)
                 compose("up", "-d", "--no-build", "--pull", "never", "relay", "xrce-agent")
                 if scenario.get("nodes", True):
-                    compose("up", "-d", "--no-build", "--pull", "never", "egress", "autonomy")
+                    compose("up", "-d", "--no-build", "--pull", "never", "egress", "autonomy", "edge")
                 compose("up", "-d", "--no-build", "--pull", "never", "guardian")
                 deadline = time.monotonic() + 150
                 while not (run / "ipc/guardian.sock").exists():
@@ -145,11 +179,22 @@ def run_m3(root: Path, deployment: Path, request: dict):
                         raise RuntimeError("guardian did not become ready")
                     time.sleep(0.2)
                 compose("up", "-d", "--no-build", "--pull", "never", "executive")
+                groups = {}
+                for service in ("sitl", *SERVICES):
+                    found = subprocess.run(["docker", "inspect", "-f", "{{.Id}}", f"drone-agent-cloud-{service}-1"],
+                                           capture_output=True, text=True, timeout=30)
+                    directory = cgroup_dir(found.stdout.strip()) if found.returncode == 0 else None
+                    if directory is not None:
+                        groups[service] = directory
+                next_sample = 0.0
                 injected = cleanup = False
                 injection_delay = random.Random(seed).uniform(0.5, 2.0)
                 due_since = None
                 deadline = time.monotonic() + 480
                 while time.monotonic() < deadline:
+                    if time.monotonic() >= next_sample:
+                        sample_resources(run / "resources.jsonl", groups)
+                        next_sample = time.monotonic() + 1.0
                     state = status()
                     if state is None:
                         time.sleep(0.1)
@@ -172,6 +217,8 @@ def run_m3(root: Path, deployment: Path, request: dict):
                                 compose("kill", "xrce-agent")
                             elif kind == "egress_stop":
                                 compose("kill", "egress")
+                            elif kind == "edge_kill":
+                                compose("kill", "edge")
                             elif kind == "cpu_hog":
                                 for _ in range(3):
                                     compose("exec", "-T", "-d", "autonomy", "/usr/bin/python3", "-c", "while True: pass")

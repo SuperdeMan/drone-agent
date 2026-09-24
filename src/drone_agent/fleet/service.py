@@ -26,7 +26,7 @@ from pathlib import Path
 
 from drone_agent.admission.admission import AdmissionContext
 from drone_agent.admission.airspace import SimulatedAirspaceProvider
-from drone_agent.admission.compiler import CompileContext
+from drone_agent.admission.compiler import FRAMEWORK, CompileContext
 from drone_agent.admission.models import MissionRequest
 from drone_agent.admission.pipeline import evaluate
 from drone_agent.contracts import (
@@ -49,7 +49,14 @@ from drone_agent.fleet.report import build_report
 from drone_agent.fleet.transport import FleetHub
 from drone_agent.fleet.verifier import accept_fact, business_judgment, verify
 from drone_agent.mission.registry import Registry
-from drone_agent.planner.replan import ApprovalPolicy, auto_approval, classify, propose_retry, triggers
+from drone_agent.planner.replan import (
+    ApprovalPolicy,
+    ReplanTrigger,
+    auto_approval,
+    classify,
+    propose_retry,
+    triggers,
+)
 from drone_agent.runtime.issues import ISSUE_CODES, Issue, issue
 from drone_agent.runtime.signing import SigningKey
 
@@ -205,10 +212,14 @@ class MissionService:
     def decline(self, mission_id: str, version: int, *, approver: str, reason: str = "") -> dict:
         if not approver or approver.startswith(("a2a:", "policy:")):
             raise ServiceError("approval.identity_missing", "an identified operator must decline")
-        self._awaiting(mission_id, version)
+        _, record = self._awaiting(mission_id, version)
+        found = (record.get("decision") or {}).get("triggers") or []
+        # Declining a re-run proposed only by candidate events leaves the completed mission completed (D044).
+        # 拒绝仅由候选事件提议的重做时，已完成的任务仍为已完成（D044）。
+        restored = bool(found) and all(t.get("kind") == "candidate_event" for t in found)
         self.ledger.update_version(mission_id, version, status="declined",
-                                   decision={"declined_by": approver, "reason": reason[:300]})
-        self.ledger.update_mission(mission_id, status="declined")
+                                   decision={"declined_by": approver, "reason": reason[:300], "triggers": found})
+        self.ledger.update_mission(mission_id, status="completed" if restored else "declined")
         return self.view(mission_id)
 
     def _approved(self, mission_id: str, version: int, package: MissionPackage, signed: ApprovalRecord) -> None:
@@ -416,6 +427,11 @@ class MissionService:
         if record["status"] != "finished":
             return
         if completed:
+            candidates = self._candidate_events(mission_id, version, record)
+            if candidates and mission["status"] not in ("completed", "incomplete"):
+                # Every target is done, but an onboard model raised a candidate event: a human decides (D044).
+                # 全部目标已完成，但机载模型发起了候选事件：由人决定（D044）。
+                return self._replan(mission, record, outcomes[version], extra=candidates)
             if mission["status"] != "completed":
                 self.ledger.update_mission(mission_id, status="completed")
             return
@@ -425,7 +441,26 @@ class MissionService:
             return
         self._replan(mission, record, outcomes[version])
 
-    def _replan(self, mission: dict, record: dict, outcomes: dict[str, StepOutcome]) -> None:
+    def _candidate_events(self, mission_id: str, version: int, record: dict) -> list[ReplanTrigger]:
+        """Content steps an onboard model flagged with a replan trigger, once each (D044).
+
+        机载模型以重规划触发标记的内容步骤，每步一次（D044）。
+        """
+        package = MissionPackage.model_validate(record["package"])
+        content = {node.task_id for node in package.nodes if node.skill_id not in FRAMEWORK}
+        found: dict[str, ReplanTrigger] = {}
+        for row in self._journals(mission_id, version).get("executive", []):
+            data = row["data"]
+            step = data.get("step_id")
+            if row["kind"] == "belief_fact" and data.get("replan_trigger") and step in content and step not in found:
+                value = (data.get("fact") or {}).get("value") or {}
+                label = value.get("label", "") if isinstance(value, dict) else ""
+                found[step] = ReplanTrigger(step_id=step, kind="candidate_event",
+                                            detail=f"{data.get('producer', '')}:{label}"[:200])
+        return list(found.values())
+
+    def _replan(self, mission: dict, record: dict, outcomes: dict[str, StepOutcome],
+                extra: list[ReplanTrigger] | None = None) -> None:
         """Propose, compile, admit and classify a retry version (D032). / 提议、编译、准入并分类重试版本（D032）。"""
         mission_id, version = mission["mission_id"], record["version"]
 
@@ -451,7 +486,7 @@ class MissionService:
             return incomplete([issue("replan.limit_exceeded", f"{mission['replans']} replans used")])
         package = MissionPackage.model_validate(record["package"])
         base_approval = ApprovalRecord.model_validate(record["approval"])
-        found = triggers(package, outcomes)
+        found = triggers(package, outcomes) + list(extra or [])
         now = self.clock()
         proposal = propose_retry(MissionSpec.model_validate(record["spec"]), package, found, self.policy,
                                  new_version=version + 1, now=now, not_after_limit=base_approval.expires_at,

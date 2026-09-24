@@ -16,6 +16,8 @@ cbf_blocks_unsafe_planner: {reason: progress_stalled, behavior: hold, follow_up:
 ext_dds_link_lost: {reason: autonomy_unavailable, behavior: hold, follow_up: rtl, edge: fi.m3.autonomy_unavailable, external: true}
 ext_egress_lost: {reason: autonomy_unavailable, behavior: hold, follow_up: rtl, edge: fi.m3.autonomy_unavailable, external: true}
 ext_compute_overload: {reason: compute_overloaded, behavior: hold, follow_up: rtl, edge: fi.m3.compute_overloaded, external: true}
+# Killing the event detector must not change the flight (D044). / 杀掉事件检测不得改变飞行（D044）。
+edge_killed: {external: true, edge_killed: true}
 gnss_lost_visual_ok: {reason: localization_degraded, behavior: hold, follow_up: land_here, edge: fi.m3.localization.gnss_lost_visual_ok, external: true}
 energy_rtl: {reason: energy_low, behavior: rtl, edge: fi.m3.energy.rtl_reachable, external: true}
 energy_land_at: {reason: energy_low, behavior: land_at, land_at_site: site_b, edge: fi.m3.energy.land_at, external: true}

@@ -6,9 +6,11 @@ framework, scope, recovery policy and budget. Any proposal — deterministic or 
 then classified against configs/approval_policy.yaml: scope expansion, added unverified edges, a
 changed recovery policy or exceeding the per-mission cap are rejected outright; any other change goes
 to a human; only verbatim retries of eligible nodes are approved automatically, and the automatic
-approval never outlives the human approval of the base version. Switching the aircraft to the new
-version happens only after the previous version is finished and grounded; that gate lives in the
-mission service and, independently, in the guardian's refusal to grant a new epoch in the air.
+approval never outlives the human approval of the base version. A candidate event raised by an onboard
+model may propose a verbatim re-run of a completed step; such a version always goes to a human (D044).
+Switching the aircraft to the new version happens only after the previous version is finished and
+grounded; that gate lives in the mission service and, independently, in the guardian's refusal to grant
+a new epoch in the air.
 
 有界重规划与新任务版本的审批策略（WP-M2-10，D032）。
 
@@ -16,6 +18,7 @@ mission service and, independently, in the guardian's refusal to grant a new epo
 内原样重试它们（技能、版本与参数不变）。任何提议——确定性的或来自规划器的——都按
 configs/approval_policy.yaml 分类：扩范围、新增未证实边、改变恢复策略或超出每任务上限直接拒绝；其他
 改动交给人工；只有符合条件节点的原样重试可以自动批准，而且自动批准的有效期不超过基础版本的人工审批。
+机载模型发起的候选事件可以提议原样重做已完成的步骤，这类版本一律交给人工（D044）。
 飞行器切换到新版本只在上一版本结束并落地之后；这一闸门在任务服务中，同时独立地体现在 guardian 拒绝
 在空中授予新代次。
 """
@@ -29,7 +32,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from drone_agent.admission.compiler import FRAMEWORK
 from drone_agent.contracts import (
@@ -72,12 +75,20 @@ class ApprovalPolicy(ContractModel):
     def eligible_outcomes(self) -> set[str]:
         return set(self.auto_approve.get("retry_unfinished_nodes", {}).get("eligible_outcomes", []))
 
+    @model_validator(mode="after")
+    def _model_candidates_never_auto_approve(self) -> ApprovalPolicy:
+        # A candidate event comes from an onboard model; it may only lead to a version a human approves (D044).
+        # 候选事件来自机载模型；它只能引出由人工批准的版本（D044）。
+        if "candidate_event" in self.eligible_outcomes:
+            raise ValueError("candidate_event can never be eligible for automatic approval")
+        return self
+
 
 class ReplanTrigger(ContractModel):
     """Why a node needs another attempt. / 某节点需要重试的原因。"""
 
     step_id: str
-    kind: Literal["failed", "unverified", "refuted", "unknown", "not_run", "cancelled"]
+    kind: Literal["failed", "unverified", "refuted", "unknown", "not_run", "cancelled", "candidate_event"]
     detail: str = ""
 
 
@@ -125,6 +136,9 @@ def propose_retry(base: MissionSpec, package: MissionPackage, found: list[Replan
     确定性提议：在基础框架内原样重试符合条件的未完成节点。
     """
     eligible = [t.step_id for t in found if t.kind in policy.eligible_outcomes]
+    # Candidate events propose a verbatim re-run too; classify() sends every such version to a human (D044).
+    # 候选事件同样提议原样重做；classify() 把这类版本一律交给人工（D044）。
+    eligible += [t.step_id for t in found if t.kind == "candidate_event" and t.step_id not in eligible]
     if not eligible:
         return None
     nodes = {n.task_id: n for n in package.nodes}

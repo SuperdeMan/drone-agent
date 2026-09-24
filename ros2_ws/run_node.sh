@@ -16,9 +16,13 @@ node="$1"
 shift
 case "$node" in
   egress) exec /opt/da_ros2/install/da_egress_ext/lib/da_egress_ext/egress_node --ros-args "$@" ;;
-  localization|local_nav|perception) ;;
+  localization|local_nav|perception|edge_inference) ;;
   *) echo "unknown node $node" >&2; exit 2 ;;
 esac
 src=/workspace/ros2_ws/src
-export PYTHONPATH="/opt/da_ros2/gen:${src}/da_common:${src}/da_localization:${src}/da_local_nav:${src}/da_perception:${PYTHONPATH}"
+export PYTHONPATH="/opt/da_ros2/gen:${src}/da_common:${src}/da_localization:${src}/da_local_nav:${src}/da_perception:${src}/da_edge_inference:${PYTHONPATH}"
+if [ "$node" = edge_inference ]; then
+  # ONNX Runtime for the system Python lives beside the pinned model (D044). / 系统 Python 的 ONNX Runtime 与固定模型放在一起（D044）。
+  export PYTHONPATH="/opt/da_edge/pydeps:${PYTHONPATH}"
+fi
 exec /usr/bin/python3 -m "da_${node}.node" "$@"

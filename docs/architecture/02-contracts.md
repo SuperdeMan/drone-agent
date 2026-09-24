@@ -225,7 +225,7 @@ M3 不改 `drone.contracts.v1`、`drone.control.v1` 与 `drone.fleet.v1` 已冻�
 | `LocalizationReport` | 定位健康节点 → guardian | GNSS 与视觉定位健康、EKF 融合标志与位置标准差；过期视为未知，未知不满足任何「健康」守卫。报告自身新鲜但其 PX4 输入过期（`px4_status_age_s` 超限，即 DDS 链路丢失）时同样视为没有报告，不能解读为 GNSS 失效 |
 | `AuthorizedSetpoint` | guardian → 出口节点 | 唯一能让设定值到达飞控的消息：机器人、任务版本、步骤、`lease_epoch`、单调 `command_seq`、`issued_at`、`ttl_ms`（≤ 500）、NED 目标与限速 |
 | `EgressStatus` | 出口节点 → guardian | 注册状态、外部模式 nav_state、是否激活、PX4 链路与消息兼容性、各类拒绝与看门狗计数。PX4 链路以 `vehicle_status` 判定：PX4 变化即发、否则每 500 ms 发布，连续 1 s 收不到才算丢失 |
-| `BeliefFact` | 感知 / 事件检测 → executive | 封装一条 `WorldFact`；`sim_truth` 来源、带位置却缺协方差、模型来源缺模型版本的一律拒收 |
+| `BeliefFact` | 感知 / 事件检测 → executive | 封装一条 `WorldFact`；`sim_truth` 来源、带位置却缺协方差、模型来源缺模型版本的一律拒收。`replan_trigger` 只在候选事实上保留，executive 记入账本并附当时步骤；任务服务在版本结束后把它转成 `candidate_event` 重规划触发器，所得版本一律需人工批准（D044） |
 
 **外部模式能力**：`CapabilityDescriptor.control_modes` 中的 `external_mode` 由适配器按出口节点实时状态声明（已注册、状态新鲜、兼容性检查通过），不是静态配置；缺席时需要它的技能不能编译或准入。
 

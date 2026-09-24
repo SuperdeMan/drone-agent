@@ -18,7 +18,7 @@
 - `src/drone_agent/` — 单包多子模块。**模块随里程碑创建，不预建空模块。** 已有 `contracts`(M0)、`runtime`(日志/IPC/MCAP；M2 加签名、机器人状态、机载 `uplink`)、`guardian`(监督/恢复/出口；M3 加外部模式控制、CBF 过滤与能源可达性)、`adapters`(PX4)、`mission`(执行/登记表/验证)、`eval`(裁判/场景/注入/对抗语料/M2 与 M3 裁判)、`console`(D027 的 M1 固定仿真入口；M2 的 hri.v0 任务台与 A2A 网关)、`providers`/`planner`/`admission`(M2)、`fleet`(M2：业务账本、目录、mTLS 传输、证据复核与报告、直通协调器、任务服务与本机 API；M4：协调器四项能力与交接)、`autonomy`(M3：`drone.autonomy.v1` 领域模型、帧编解码与按角色划分的本地套接字)。机载代码（`mission`/`guardian`/`adapters`/`runtime` 的机载模块与 `uplink`）不得导入 `providers`/`planner`/`admission`，契约测试钉住传递导入图。
 - `ros2_ws/` — M3 的 ROS 2 Jazzy 节点（D014、D039）：`src/da_egress_ext`（C++，px4_ros2 外部模式出口节点）、`da_localization`、`da_local_nav`、`da_perception`、`da_common`（系统 Python），以及 `run_node.sh`。节点不导入 `drone_agent`，只经 `proto/drone/autonomy/v1` 的本地套接字帧交互；纯逻辑的测试在 `tests/ros2_ws/`，契约测试钉住「不触真值、出口只转发」。
 - `proto/` — 进程间契约（executive ↔ guardian；车队协议）与共享消息；M0 骨架，M1 冻结，包名 `drone.<service>.v1`。字段清单与共享 proto 由 `scripts/generate_contract_fields.py` 导出；禁止旧字段重编号。
-- `configs/` — `platforms/`（版本锁定与目标能力描述）、`skills/`（技能草案）、`recovery_policies/`（恢复策略图）、`scenarios/`（注入矩阵与后续评测场景）、`planner_tools.yaml`（规划层工具白名单，只读）。草案中的场景名不代表已验证。
+- `configs/` — `platforms/`（版本锁定与目标能力描述）、`skills/`（技能草案）、`recovery_policies/`（恢复策略图）、`scenarios/`（注入矩阵与后续评测场景）、`perception/`（M3 事件检测的版本化提示集与模型固定值，D044）、`planner_tools.yaml`（规划层工具白名单，只读）。草案中的场景名不代表已验证。
 - `tests/` — 镜像 `src/`；`tests/contracts/` 是契约测试，`tests/fault_injection/`（M1）是故障注入测试；`tests/admission/` 与 `tests/planner/`（M2）承载对抗性规划测试，语料版本化在 `eval/adversarial/`。
 - `eval/` — 版本化评测任务、`adversarial/`（M2 起的对抗性规划语料）与 `BASELINES.md`（只增不改，负结果照记）。
 - `sim/` — M0 开发 compose 与只读冒烟；M1 扩展完整仿真。Windows 先用 `scripts/stage_sim.py` 暂存到 ASCII 目录，版本与 digest 固定，见 `sim/README.md`。

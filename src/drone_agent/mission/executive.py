@@ -110,8 +110,10 @@ class Executive:
         threshold = self.registry.data.get("perception", {}).get("candidate_confidence", 0.8)
         candidate = fact.source is FactSource.MODEL or fact.confidence < threshold
         self.fact_counts["accepted"] += 1
+        # The step in progress lets the mission service attribute a replan trigger (D044). / 当时的步骤让任务服务能归属重规划触发（D044）。
         self.event("belief_fact", producer=message.producer_id, fact=fact.model_dump(mode="json"), candidate=candidate,
-                   replan_trigger=bool(message.replan_trigger and candidate), latency_ms=message.latency_ms)
+                   replan_trigger=bool(message.replan_trigger and candidate), latency_ms=message.latency_ms,
+                   step_id=self.node.task_id if self.node else None)
 
     def reject_fact(self, producer, reason) -> None:
         self.fact_counts["rejected"] += 1

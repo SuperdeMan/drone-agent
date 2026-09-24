@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[2] / "ros2_ws" / "src"
-for package in ("da_common", "da_localization", "da_local_nav", "da_perception"):
+for package in ("da_common", "da_localization", "da_local_nav", "da_perception", "da_edge_inference"):
     path = str(SRC / package)
     if path not in sys.path:
         sys.path.insert(0, path)

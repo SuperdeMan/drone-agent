@@ -38,6 +38,16 @@ FLIGHT_WRITES = {"upload_route", "start_route", "route_no_auto_rtl", "takeoff", 
                  "resume_route", "land_at_reposition", "rtl", "land_here"}
 EGRESS_COMPONENT = 191
 SUPERVISION_P99_S, SUPERVISION_MAX_S, INTENT_P99_MS = 0.120, 0.200, 250.0
+EDGE_P99_MS = 1000.0
+# Recoveries that answer inputs a frozen simulator stops feeding. / 仿真器冻结后停止供给的输入所引发的恢复。
+STALL_SENSITIVE = {"observation_stale", "trajectory_stale", "autonomy_unavailable"}
+# Problems that only say the scenario was not exercised; any other problem is a safety or correctness finding that a
+# stall can never void. / 只说明场景未被执行到的问题；其他任何问题都是停顿永远不能作废的安全或正确性发现。
+UNTESTED = {"expected_recovery_edge_not_observed", "expected_follow_up_not_observed", "fault_not_injected",
+            "land_at_site_not_reached", "cbf_never_modified_a_target", "egress_watchdog_exit_not_observed",
+            "edge_inference_not_running_before_kill"}
+# Downward camera cam_0: 1.4 rad horizontal field of view, 4:3 frame (sim/m1_setup.py). / 下视相机 cam_0 的视场。
+CAM_TAN_HALF_H, CAM_TAN_HALF_V = math.tan(0.7), math.tan(0.7) * 0.75
 HOLD_NAV_STATE, EXTERNAL_NAV_STATES = 4, range(23, 31)
 
 
@@ -59,6 +69,106 @@ def truth_obstacles(root: Path) -> dict:
 def clearance(point, obstacle) -> float:
     nearest = _nearest_on_obstacle(tuple(point), obstacle)
     return math.dist(point, nearest)
+
+
+def _spread(values: list[float]) -> dict:
+    ordered = sorted(values)
+    return {"p50": round(ordered[len(ordered) // 2], 1),
+            "p99": round(ordered[min(len(ordered) - 1, math.ceil(0.99 * len(ordered)) - 1)], 1),
+            "max": round(ordered[-1], 1)}
+
+
+def edge_summary(rows: list[dict], truth: list[dict], assets: dict) -> dict:
+    """Event-detection latency, labels and agreement with a truth footprint label (D044); agreement is reported only.
+
+    Truth labels a frame `marker_<colour>` when a marker centre lies inside the footprint's inscribed circle and
+    `empty_ground` when every marker lies outside its circumscribed circle; frames in between are not scored.
+
+    事件检测的延迟、标签，以及与真值足迹标签的一致率（D044）；一致率只记录不作门槛。
+
+    标记中心位于足迹内切圆内时真值标签为 `marker_<颜色>`；所有标记都在外接圆之外时为 `empty_ground`；介于两者之间的
+    帧不计分。
+    """
+    if not rows:
+        return {"inferences": 0}
+    summary = {
+        "inferences": len(rows),
+        "sent": sum(1 for row in rows if row.get("sent")),
+        "inference_ms": _spread([row["inference_ms"] for row in rows]),
+        "latency_ms": _spread([row["latency_ms"] for row in rows]),
+        "labels": {label: sum(1 for row in rows if row["label"] == label) for label in sorted({r["label"] for r in rows})},
+        "replan_triggers": sum(1 for row in rows if row.get("replan_trigger")),
+        "dropped_frames": sum(row.get("dropped_frames", 0) for row in rows),
+    }
+    times = [_time(row["timestamp"]) for row in truth]
+    scored = agreed = 0
+    for row in rows:
+        if not times:
+            break
+        moment = _time(row["captured"])
+        index = min(range(len(times)), key=lambda i: abs(times[i] - moment))
+        if abs(times[index] - moment) > 0.2:
+            continue
+        x, y, z = truth[index]["position"]
+        if z < 1.0:
+            continue
+        inner, outer = z * CAM_TAN_HALF_V, z * math.hypot(CAM_TAN_HALF_H, CAM_TAN_HALF_V)
+        distances = {name: math.dist((x, y), spec["position"][:2]) for name, spec in assets.items()}
+        inside = [name for name, d in distances.items() if d <= inner]
+        if len(inside) == 1:
+            expected = "marker_" + assets[inside[0]]["visual_signature"]
+        elif not inside and all(d >= outer + assets[n]["size_m"] / 2 for n, d in distances.items()):
+            expected = "empty_ground"
+        else:
+            continue
+        scored += 1
+        agreed += row["label"] == expected
+    summary["truth_scored"] = scored
+    summary["truth_agreement"] = round(agreed / scored, 3) if scored else None
+    return summary
+
+
+def simulator_stalls(truth: list[dict], *, min_gap_s: float = 0.4) -> list[dict]:
+    """Wall-clock gaps in the truth stream during which simulated time did not keep up (the simulator froze).
+
+    真值流中仿真时间没有跟上的墙钟空档（仿真器冻结）。
+    """
+    stalls = []
+    for before, after in zip(truth, truth[1:]):
+        wall = _time(after["timestamp"]) - _time(before["timestamp"])
+        simulated = after["sim_time"] - before["sim_time"]
+        if wall >= min_gap_s and simulated <= 0.5 * wall:
+            stalls.append({"start": _time(before["timestamp"]), "end": _time(after["timestamp"]),
+                           "wall_s": round(wall, 3), "sim_s": round(simulated, 3)})
+    return stalls
+
+
+def resource_summary(rows: list[dict]) -> dict:
+    """Per-container CPU, throttling and memory from the runner's cgroup samples; reported, not judged.
+
+    由运行器的 cgroup 采样得到的各容器 CPU、节流与内存；只记录，不判定。
+    """
+    summary = {}
+    for service in sorted({row["service"] for row in rows}):
+        samples = [row for row in rows if row["service"] == service]
+        if service == "_host":
+            summary[service] = {"load1_max": max(r["load1"] for r in samples),
+                                "cpu_some_avg10_max": max(r["cpu_some_avg10"] for r in samples)}
+            continue
+        if len(samples) < 2:
+            continue
+        rates = [(b["usage_usec"] - a["usage_usec"]) / 1e6 / max(1e-6, b["wall"] - a["wall"])
+                 for a, b in zip(samples, samples[1:])]
+        periods = samples[-1]["nr_periods"] - samples[0]["nr_periods"]
+        summary[service] = {
+            "cpu_mean_cores": round((samples[-1]["usage_usec"] - samples[0]["usage_usec"]) / 1e6
+                                    / max(1e-6, samples[-1]["wall"] - samples[0]["wall"]), 3),
+            "cpu_max_1s_cores": round(max(rates), 3),
+            "throttled_fraction": round((samples[-1]["nr_throttled"] - samples[0]["nr_throttled"]) / periods, 3)
+            if periods else 0.0,
+            "memory_max_mib": round(max(r["memory_bytes"] or 0 for r in samples) / 2**20, 1),
+        }
+    return summary
 
 
 def reached(samples, goal, tolerance) -> bool:
@@ -206,6 +316,21 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
     if expectation.get("external") and starts and not published:
         problems.append("external_mode_without_published_setpoints")
 
+    # ── Event detection (D044): runs beside the flight, never inside it. / 事件检测（D044）：与飞行并行，从不在其中。
+    edge_rows = _jsonl(run / "edge/edge_inference.jsonl")
+    metrics["edge_inference"] = edge_summary(edge_rows, truth, registry.data["assets"])
+    if scenario.get("nodes", True) and not edge_rows:
+        problems.append("edge_inference_not_running")
+    edge_p99 = metrics["edge_inference"].get("latency_ms", {}).get("p99")
+    if edge_p99 is not None and edge_p99 > EDGE_P99_MS:
+        problems.append("edge_inference_latency_budget_exceeded")
+    if expectation.get("edge_killed") and (run / "injection.json").is_file():
+        killed_at = _time(json.loads((run / "injection.json").read_text())["timestamp"])
+        if not any(row["wall_time"] < killed_at for row in edge_rows):
+            problems.append("edge_inference_not_running_before_kill")
+        if any(row["wall_time"] > killed_at + 1.0 for row in edge_rows):
+            problems.append("edge_inference_survived_kill")
+
     # ── Flight-controller log. / 飞控日志。
     fc_path = run / "judge/fc-events.json"
     flight = json.loads(fc_path.read_text()) if fc_path.exists() else {"commands": [], "acks": [], "modes": []}
@@ -234,12 +359,17 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
     elif egress_holds:
         problems.append("unexpected_egress_hold_command")
 
-    # ── Expected recovery. / 期望的恢复。
-    interventions = [row["data"] for row in guardian if row["kind"] == "safety_intervention"]
+    # ── Expected recovery; an injected scenario only counts a recovery made after its injection.
+    # 期望的恢复；注入类场景只承认注入之后发生的恢复。
+    intervention_rows = [row for row in guardian if row["kind"] == "safety_intervention"]
+    interventions = [row["data"] for row in intervention_rows]
+    injection_path = run / "injection.json"
+    injected_at = _time(json.loads(injection_path.read_text())["timestamp"]) if injection_path.is_file() else None
     if expectation.get("reason"):
-        matching = [e for e in interventions if e["reason"] == expectation["reason"]
-                    and e["behavior"] == expectation["behavior"]
-                    and str(e.get("detail", "")).startswith(expectation.get("detail", ""))]
+        matching = [row["data"] for row in intervention_rows if row["data"]["reason"] == expectation["reason"]
+                    and row["data"]["behavior"] == expectation["behavior"]
+                    and str(row["data"].get("detail", "")).startswith(expectation.get("detail", ""))
+                    and (injected_at is None or _time(row["timestamp"]) >= injected_at)]
         if not matching:
             problems.append("expected_recovery_edge_not_observed")
         follow = expectation.get("follow_up")
@@ -266,9 +396,12 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
     supervision_path = run / "aircraft/supervision.json"
     supervision = json.loads(supervision_path.read_text()) if supervision_path.exists() else {}
     metrics["supervision"] = {k: supervision.get(k) for k in ("samples", "p99_s", "max_s")}
+    # An injected guardian freeze is itself one long period; the maximum then says nothing about the budget.
+    # 注入的 guardian 冻结本身就是一个超长周期；此时最大值不能说明预算。
+    frozen = scenario.get("kind") == "guardian_freeze"
     if not supervision.get("samples"):
         problems.append("supervision_not_recorded")
-    elif supervision["p99_s"] > SUPERVISION_P99_S or supervision["max_s"] > SUPERVISION_MAX_S:
+    elif supervision["p99_s"] > SUPERVISION_P99_S or (not frozen and supervision["max_s"] > SUPERVISION_MAX_S):
         problems.append("supervision_budget_exceeded")
     latency = (supervision.get("external") or {}).get("intent_latency_p99_ms")
     metrics["intent_latency_p99_ms"] = latency
@@ -286,6 +419,25 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
     if scenario.get("kind") and not (run / "injection.json").is_file():
         problems.append("fault_not_injected")
     classification = "unsafe_or_incorrect" if problems else ("completed" if completed else "safe_abort")
+    # ── Simulator stalls on the shared host (D045). A case whose first recovery answered stale inputs right after
+    # the simulator froze did not test its scenario: it is void and must be rerun, never counted as passed.
+    # 共享主机上的仿真停顿（D045）。首个恢复是在仿真器冻结后立即对过期输入作出的用例，并没有测到场景本身：判为
+    # 作废并须重跑，绝不计为通过。
+    stalls = simulator_stalls(truth)
+    metrics["simulator_stalls"] = {"count": len(stalls), "max_wall_s": max((s["wall_s"] for s in stalls), default=0.0),
+                                   "stalls": stalls[:10]}
+    metrics["resources"] = resource_summary(_jsonl(run / "resources.jsonl"))
+    void = False
+    if (intervention_rows and classification != scenario["expected"] and false_success == 0
+            and all(problem in UNTESTED for problem in problems)):
+        first = intervention_rows[0]
+        moment = _time(first["timestamp"])
+        if (first["data"]["reason"] in STALL_SENSITIVE
+                and (injected_at is None or moment < injected_at)
+                and any(moment - 1.5 <= stall["end"] <= moment + 0.1 for stall in stalls)):
+            void = True
+            problems.append("simulator_stall_before_recovery")
+            classification = "void_simulator_stall"
     replay_path = run / "aircraft/executive.mcap"
     if replay_path.exists():
         replay_events = [data for topic, data in replay(replay_path) if topic == "mission/events"]
@@ -308,6 +460,7 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
         "classification": classification,
         "expected": expected,
         "passed": classification == expected and not problems,
+        "void": void,
         "false_success_reports": false_success,
         "problems": problems,
         "metrics": metrics,

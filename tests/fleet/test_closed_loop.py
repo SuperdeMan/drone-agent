@@ -80,6 +80,62 @@ async def test_unverified_inspection_is_retried_as_a_policy_approved_version_aft
     assert columns[(1, "inspect_asset_red")] == "uncertain" and columns[(2, "inspect_asset_red")] == "completed"
 
 
+def candidate_event(label="smoke_or_fire", probability=0.83):
+    from datetime import timedelta
+
+    from drone_agent.autonomy.messages import BeliefFact
+    from drone_agent.contracts import utcnow
+
+    now = utcnow()
+    return BeliefFact(producer_id="da_edge_inference", latency_ms=210.0, replan_trigger=True, fact={
+        "fact_id": "edge-1", "subject": "uav_01.cam_0", "predicate": "scene_event",
+        "value": {"label": label, "relevant": True, "prompt_set": "event_prompts_v1"},
+        "timestamp": now.isoformat(), "valid_until": (now + timedelta(seconds=2)).isoformat(), "source": "model",
+        "source_version": "clip-vit-b32-q8@d15189d+event_prompts_v1", "confidence": probability,
+        "world_kind": "belief"})
+
+
+async def test_a_candidate_event_can_only_propose_a_rerun_that_a_human_approves(tmp_path):
+    # D044: all targets verified, but the onboard model raised a replan trigger during the inspection.
+    # D044：全部目标已核实，但机载模型在巡检中发起了重规划触发。
+    loop = build_loop(tmp_path)
+    mission_id = (await approved(loop))["mission"]["mission_id"]
+    await loop.sync()
+    result = await loop.fly(loop.inbox_package(), epoch=1, belief=candidate_event())
+    assert result["completed"]
+    rows = [json.loads(line) for line in (tmp_path / "aircraft" / mission_id / "v1/executive.jsonl").read_text()
+            .splitlines()]
+    fact = next(r["data"] for r in rows if r["kind"] == "belief_fact")
+    assert fact["candidate"] and fact["replan_trigger"] and fact["step_id"] == "inspect_asset_red"
+    missions = await loop.sync()
+    assert loop.ledger.report(mission_id)["all_targets_completed"]
+    v2 = loop.ledger.version(mission_id, 2)
+    assert v2["origin"] == "replan" and v2["decision"]["classification"] == "requires_human"
+    assert [t["kind"] for t in v2["decision"]["triggers"]] == ["candidate_event"]
+    assert (missions[mission_id]["status"], v2["status"], v2["approval"]) == ("awaiting_approval", "awaiting_approval",
+                                                                               None)
+    assert [n.task_id for n in loop.inbox_package().nodes] == ["takeoff", "inspect_asset_red", "return_home", "land"]
+    assert loop.inbox_package().mission_version == 1  # nothing new was delivered / 没有投递新版本
+    view = loop.service.decline(mission_id, 2, approver="tailnet:operator@example.test", reason="false alarm")
+    assert view["mission"]["status"] == "completed"
+    await loop.sync()
+    assert loop.ledger.mission(mission_id)["status"] == "completed" and loop.ledger.version(mission_id, 3) is None
+
+
+def test_an_approval_policy_can_never_auto_approve_candidate_events():
+    from pathlib import Path
+
+    import yaml
+
+    from drone_agent.planner.replan import ApprovalPolicy
+
+    data = yaml.safe_load((Path(__file__).resolve().parents[2] / "configs/approval_policy.yaml").read_text(
+        encoding="utf-8"))
+    data["auto_approve"]["retry_unfinished_nodes"]["eligible_outcomes"].append("candidate_event")
+    with pytest.raises(ValueError, match="candidate_event"):
+        ApprovalPolicy.model_validate(data)
+
+
 async def test_an_operator_cancel_is_never_overridden_by_an_automatic_retry(tmp_path):
     from datetime import timedelta
 
