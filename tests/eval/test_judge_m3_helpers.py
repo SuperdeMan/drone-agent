@@ -5,7 +5,7 @@ M3 裁判的证据辅助函数：仿真停顿、资源回执与事件检测汇�
 
 from datetime import datetime, timedelta, timezone
 
-from drone_agent.eval.judge_m3 import edge_summary, resource_summary, simulator_stalls
+from drone_agent.eval.judge_m3 import edge_summary, resource_summary, simulator_stalls, stall_voids
 
 START = datetime(2026, 9, 24, 9, 53, 35, tzinfo=timezone.utc)
 
@@ -62,3 +62,32 @@ def test_edge_summary_scores_only_unambiguous_frames_against_truth():
     assert summary["latency_ms"] == {"p50": 210.0, "p99": 950.0, "max": 950.0}
     assert summary["labels"] == {"marker_green": 1, "marker_red": 2} and summary["dropped_frames"] == 12
     assert edge_summary([], truth, assets) == {"inferences": 0}
+
+
+def intervention(wall_s, reason):
+    return {"timestamp": (START + timedelta(seconds=wall_s)).isoformat(), "data": {"reason": reason}}
+
+
+def test_only_a_freshness_recovery_during_or_right_after_a_stall_is_void():
+    stall = [{"start": START.timestamp() + 10.0, "end": START.timestamp() + 10.6}]
+    common = {"injected_at": None, "expected_reason": None, "problems": [], "false_success": 0}
+    # During the freeze, and 1 s after it: void. / 冻结期间及恢复后 1 秒：作废。
+    assert stall_voids([intervention(10.5, "observation_stale")], stall, **common)
+    assert stall_voids([intervention(11.6, "autonomy_unavailable")], stall, **common)
+    # Too late, not a freshness recovery, or a safety finding: never void. / 太晚、非新鲜度恢复或安全发现：绝不作废。
+    assert not stall_voids([intervention(12.5, "observation_stale")], stall, **common)
+    assert not stall_voids([intervention(10.5, "energy_low")], stall, **common)
+    assert not stall_voids([intervention(10.5, "observation_stale")], stall,
+                           **{**common, "problems": ["truth_clearance_violation:wall_a"]})
+    assert not stall_voids([intervention(10.5, "observation_stale")], stall, **{**common, "false_success": 1})
+
+
+def test_after_an_injection_the_scenarios_own_recovery_is_never_voided():
+    stall = [{"start": START.timestamp() + 10.0, "end": START.timestamp() + 10.6}]
+    injected = START.timestamp() + 5.0
+    kwargs = {"injected_at": injected, "problems": ["expected_follow_up_not_observed"], "false_success": 0}
+    assert not stall_voids([intervention(10.5, "observation_stale")], stall, expected_reason="observation_stale",
+                           **kwargs)
+    # The event detector's kill expects no recovery at all: a stall-made abort afterwards is void.
+    # 杀掉事件检测不期望任何恢复：之后由停顿造成的中止作废。
+    assert stall_voids([intervention(10.5, "observation_stale")], stall, expected_reason=None, **kwargs)

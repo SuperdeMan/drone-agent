@@ -143,6 +143,27 @@ def simulator_stalls(truth: list[dict], *, min_gap_s: float = 0.4) -> list[dict]
     return stalls
 
 
+def stall_voids(interventions: list[dict], stalls: list[dict], *, injected_at: float | None,
+                expected_reason: str | None, problems: list[str], false_success: int) -> bool:
+    """Whether a missed expectation is void because a simulator stall caused the first recovery (D045).
+
+    Only when every problem merely says the scenario was not exercised, nothing reported false success, and the first
+    recovery answered stale inputs while the simulator was frozen or within 1.5 s after it resumed. After an injection,
+    a recovery with the scenario's own expected reason may be the injected fault's effect and is never voided.
+
+    未达期望是否因仿真停顿引发了首个恢复而作废（D045）。仅当所有问题都只说明场景未被执行、没有虚报成功，且首个恢复
+    是在仿真器冻结期间或恢复后 1.5 s 内对过期输入作出的。注入之后以场景期望原因出现的恢复可能就是注入故障的效果，
+    绝不作废。
+    """
+    if not interventions or false_success or not all(problem in UNTESTED for problem in problems):
+        return False
+    first = interventions[0]
+    moment, reason = _time(first["timestamp"]), first["data"]["reason"]
+    own_effect = injected_at is not None and moment >= injected_at and reason == expected_reason
+    return (reason in STALL_SENSITIVE and not own_effect
+            and any(stall["start"] <= moment <= stall["end"] + 1.5 for stall in stalls))
+
+
 def resource_summary(rows: list[dict]) -> dict:
     """Per-container CPU, throttling and memory from the runner's cgroup samples; reported, not judged.
 
@@ -419,25 +440,21 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
     if scenario.get("kind") and not (run / "injection.json").is_file():
         problems.append("fault_not_injected")
     classification = "unsafe_or_incorrect" if problems else ("completed" if completed else "safe_abort")
-    # ── Simulator stalls on the shared host (D045). A case whose first recovery answered stale inputs right after
-    # the simulator froze did not test its scenario: it is void and must be rerun, never counted as passed.
-    # 共享主机上的仿真停顿（D045）。首个恢复是在仿真器冻结后立即对过期输入作出的用例，并没有测到场景本身：判为
-    # 作废并须重跑，绝不计为通过。
+    # ── Simulator stalls on the shared host (D045). A case whose first recovery answered stale inputs while the
+    # simulator was frozen or within 1.5 s after it resumed did not test its scenario: it is void and must be rerun,
+    # never counted as passed.
+    # 共享主机上的仿真停顿（D045）。首个恢复是在仿真器冻结期间或恢复后 1.5 s 内对过期输入作出的用例，并没有测到
+    # 场景本身：判为作废并须重跑，绝不计为通过。
     stalls = simulator_stalls(truth)
     metrics["simulator_stalls"] = {"count": len(stalls), "max_wall_s": max((s["wall_s"] for s in stalls), default=0.0),
                                    "stalls": stalls[:10]}
     metrics["resources"] = resource_summary(_jsonl(run / "resources.jsonl"))
-    void = False
-    if (intervention_rows and classification != scenario["expected"] and false_success == 0
-            and all(problem in UNTESTED for problem in problems)):
-        first = intervention_rows[0]
-        moment = _time(first["timestamp"])
-        if (first["data"]["reason"] in STALL_SENSITIVE
-                and (injected_at is None or moment < injected_at)
-                and any(moment - 1.5 <= stall["end"] <= moment + 0.1 for stall in stalls)):
-            void = True
-            problems.append("simulator_stall_before_recovery")
-            classification = "void_simulator_stall"
+    void = classification != scenario["expected"] and stall_voids(
+        intervention_rows, stalls, injected_at=injected_at, expected_reason=expectation.get("reason"),
+        problems=problems, false_success=false_success)
+    if void:
+        problems.append("simulator_stall_before_recovery")
+        classification = "void_simulator_stall"
     replay_path = run / "aircraft/executive.mcap"
     if replay_path.exists():
         replay_events = [data for topic, data in replay(replay_path) if topic == "mission/events"]

@@ -65,6 +65,26 @@ def sample_resources(path: Path, groups: dict) -> None:
         output.writelines(json.dumps(row) + "\n" for row in rows)
 
 
+def host_load() -> tuple[float, float]:
+    """Host 1-minute load and 10-second CPU pressure (share of time some task waited). / 主机负载与 CPU 压力。"""
+    pressure = Path("/proc/pressure/cpu").read_text().splitlines()[0].split()[1]
+    return float(Path("/proc/loadavg").read_text().split()[0]), float(pressure.split("=")[1])
+
+
+def quiet_gate(max_wait_s: float = 600, *, load1: float = 3.5, pressure: float = 15.0) -> dict:
+    """Wait for a quiet window on the shared host before a case (D045); the wait is recorded, never hidden.
+
+    用例开始前在共享主机上等待安静窗口（D045）；等待情况如实记录，从不隐藏。
+    """
+    start = time.monotonic()
+    while True:
+        current = host_load()
+        if (current[0] < load1 and current[1] < pressure) or time.monotonic() - start >= max_wait_s:
+            return {"waited_s": round(time.monotonic() - start, 1), "load1": current[0], "cpu_some_avg10": current[1],
+                    "quiet": current[0] < load1 and current[1] < pressure}
+        time.sleep(5)
+
+
 def injection_due(scenario, state) -> bool:
     if state.get("active_step") != scenario.get("inject_at"):
         return False
@@ -157,6 +177,8 @@ def run_m3(root: Path, deployment: Path, request: dict):
                     return None
 
             frozen_at = None
+            gate = quiet_gate()
+            write_json(run / "quiet-gate.json", gate)
             try:
                 HELPERS["run"](["docker", "run", "--rm", "--network", "none", "-v", f"{run / 'input'}:/input",
                                 images["ground"], "python3", "-m", "drone_agent.eval.m3_prepare", "--output", "/input",
@@ -279,6 +301,7 @@ def run_m3(root: Path, deployment: Path, request: dict):
                         "^python3 -m drone_agent.runtime.launch guardian", check=False)
                 compose("stop", "-t", "5", *SERVICES, check=False)
                 compose("stop", "-t", "10", "sitl", check=False)
+            result["quiet_gate"] = gate
             results.append(result)
             write_json(base / "progress.json", {"source_sha": sha, "results": results, "artifact_directory": str(base)})
             if not result["passed"] and not request.get("keep_going"):
