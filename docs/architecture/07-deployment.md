@@ -99,6 +99,8 @@ M2 用例的落位（`sim/compose.m2.yaml`、`scripts/remote_m2.py`）：`secret
 
 M2 任务台常驻入口（D035，`sim/compose.desk.yaml`、`scripts/remote_desk.py`、`scripts/desk_supervisor.py`）：Tailscale Serve 独立 HTTPS `8448` → 宿主 `127.0.0.1:8769`，D028 的 `8447` 不变。常驻容器 `desk`（网页，只读根、属主 UID、无 capabilities、独立 `desk_ingress` 网络，只读挂载 API 套接字与监管者公开状态）、`desk-service`（任务服务，内部 `desk_uplink` 与 `desk_model` 网络，状态在 `~/drone-agent/desk/service/`；只能经 `desk-model-proxy` 出站到允许列表中的模型端点，D036）、`desk-model-proxy`（CONNECT 允许列表代理，唯一接入可出站 `desk_egress` 网络的常驻容器）、`desk-uplink`（机载 uplink，机器人目录 `~/drone-agent/desk/robot/`）；信任根在 `secrets/desk/`，与端到端用例分开。飞行容器 `desk-sitl`、`desk-collector`、`desk-guardian`、`desk-executive`、`desk-judge` 属于 profile `flight`，只由专用 systemd unit `drone-agent-desk-supervisor.service` 在持有项目锁时启停：每个版本全新启动 SITL 并预热，飞行期间暂停 M0 空闲 SITL，结束后恢复；任务终态后在独立用例目录运行 `judge_m2`（在线与回放），结果进入公开状态目录。激活只安装本项目 unit、`desk*` 容器与 `8448` 映射，前后核对其他容器与 Serve 映射。
 
+M3-SITL（D038、D039，`sim/compose.m3.yaml`、`sim/m3.Dockerfile`、`scripts/remote_m3.py`）：同一工作区按需启动一个用例。`ros2base` 镜像只依赖固定输入（PX4 v1.17.0 源码中的消息 + `px4_msgs` release/1.17 打包文件 + `px4_ros2_cpp` release/1.17，归档摘要构建时核对），跨版本复用；`aircraft3` 在其上加入该版本的 venv 与源码、出口节点与系统 protoc 生成的 ROS 侧绑定；`sim3` 在 M2 仿真镜像上加入 M3 世界、深度相机与仿真机架。拓扑：仿真器、真值采集、相机转接、XRCE agent 与 guardian 共享仿真器网络命名空间（MAVLink、DDS 客户端、Gazebo 回环，`GZ_IP=127.0.0.1`）；出口节点与自主层节点各自在内部仿真网络上、只经 DDS 接触 PX4；executive 无网络；出口、自主层、信念三个角色套接字分目录挂载。配额见 D038；验收回执与云端产物位于 `artifacts/<deployment_id>/m3-<run_id>/`。M3-JIL 与 arm64 镜像尚未构建或验证。
+
 应用源码只从指定 Git commit 导出；控制脚本、Compose 和锁定依赖分别记录哈希，不能把控制面草案伪称为应用 release。首次复用 M0 已验证的镜像，经 SSH 上传并校验归档哈希、文件系统层与运行配置；后续验证镜像在服务器构建。秘密不进入快照，SSH 连接参数从进程环境读取，不复制 car-agent `.env`。操作、目录与结果边界见[云端开发指南](../cloud-development.md)。
 
 ## 5. 数据记录

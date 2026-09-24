@@ -489,3 +489,104 @@ D024 的实施已完成并通过完整 SITL 验收，状态转为生效；D025 �
 **验收**：新增回归用例先复现问题；本机 lint / 全量测试、同版本云端检查、M2 端到端场景和受影响的 M1 场景、统一入口真实 HTTPS 与浏览器验收。分别记录准确 SHA、脚本/实调规划、裁判与回放，不继承历史全量门禁。
 
 **重估触发器**：希望把 M1 固定任务也改成 M2 签名模板，或需要并发飞行、跨任务队列取消、真机时另立决策；本轮只合并使用入口，不改机载控制权与模型边界。
+
+## D038 · M3 算力与拓扑：SITL 线留在共享云主机，Jetson-in-the-loop 线待硬件（M3 决策待办②）
+
+**日期**：2026-09-24 · **状态**：生效
+
+**实测背景**：共享云主机 4 vCPU（Xeon Platinum 8255C，含 AVX-512）/ 7.7 GiB（开工时约 4.8 GiB 可用）/ 38 GiB 可用磁盘，无 GPU，同机常驻约 30 个其他项目容器，平时负载 1–2.5；binfmt 只注册了 `python3.12`，没有 qemu，不能原地构建 arm64。固定基础镜像 `px4io/px4-dev-ros2@sha256:558f…` 已带 ROS 2 Jazzy `ros-base`、`/usr/local/bin/MicroXRCEAgent` 与 colcon；PX4 v1.17.0 SITL 已编进 `uxrce_dds_client`，启动脚本默认连 `127.0.0.1:8888`。云主机能访问 `codeload.github.com`、`hf-mirror.com`、清华 PyPI / Ubuntu / ROS 镜像，不能访问 `packages.ros.org` 与 `huggingface.co`。本机为 Intel Core Ultra 5 125H / 32 GiB / Intel Arc 核显，没有 NVIDIA GPU。项目内没有 Jetson。
+
+**决策**：
+
+- M3 验收拆成两条线，分别留证：**M3-SITL**（云端 amd64：第二控制路径、自主层、CPU 推理、四类场景、监督周期与意图延迟测量）与 **M3-JIL**（Jetson-in-the-loop：同一 Dockerfile 的 arm64 镜像在 Jetson 上运行机载侧进程）。两条线都通过才关闭 M3。M3-SITL 通过后可作为 M4-B 联合仿真的前置；M4-A 真机仍要求 M3-JIL 通过。
+- D023 的云端默认不变：M3-SITL 的仿真、ROS 2 自主层与推理都在现有共享云主机上按容器配额运行，不开 GPU 云实例。控制路径不含推理；事件检测在 CPU 上用 ONNX Runtime 运行，按 D040 的预算实测，不达标才重估 GPU。
+- 容器配额是上限而不是预留：SITL 1.5 CPU / 2 GiB、真值采集 0.3、guardian 0.6、executive 0.4、XRCE agent 0.25、传感器转接 0.25、出口节点 0.25、自主层 0.6、边缘推理 0.5 CPU。深度相机 64×48 @ 5 Hz、下视 RGB 保持 160×120 @ 5 Hz、局部规划 5 Hz、事件检测 ≤ 1 Hz。计算过载注入只在被注入容器自己的配额内施加，不向共享主机外溢；构建限 `-j2`。回归沿用「小批 + 安静窗口」。
+- M3-JIL 拓扑（待硬件）：推荐 Jetson Orin NX 16 GB 开发套件，备选 Orin Nano Super 8 GB，JetPack 6.x（L4T 36.x）。SITL + Gazebo 放在与 Jetson 同一局域网的工作站，机载侧（XRCE agent、guardian、executive、出口节点、自主层、边缘推理）在 Jetson 上，飞控链路走独立网段以模拟真机串口 / 以太网。这需要在工作站启动真栈，会在 JIL 线上偏离 D023，届时单独确认并在本条补记；采购、接入网络与本机真栈都需要用户操作。
+- arm64：机载镜像用构建参数选择基础镜像，amd64 用现有固定基础，arm64 用 L4T 上的 ROS 2 Jazzy 基础。在 Jetson 上原生构建验证；或经用户批准，在云主机注册 qemu binfmt 后交叉构建（系统配置变更，按红线另批）。未验证前只算「构建定义就绪」，不写成已构建。
+
+**理由**：M3-SITL 的判据（单一出口、CBF、四类场景、周期 p99）不需要 GPU，也不需要 arm64；把硬件依赖集中到 JIL 线，能让可验证的部分先完成且证据不混淆。「arm64 镜像能跑」不等于真机就绪，「SITL 通过」也不等于 JIL 通过。
+
+**替代方案**：GPU 云实例（否：M3-SITL 用不上，还要新费用与新凭据）；把 M3-SITL 搬到本机 WSL2（否：违背 D023 的用户要求，也脱离既有部署、隔离与回执流程）；等 Jetson 到位再开始整个 M3（否：大部分工作与硬件无关）。
+
+**重估触发器**：M3-SITL 在配额内实测监督周期或推理延迟不达标；共享主机负载使批次反复作废；Jetson 到货；需要机载运行生成式 VLM（≥ 1B）。
+
+## D039 · 外部模式出口节点是 guardian 出口的延伸；`drone.autonomy.v1` 本地自主层协议（M3 决策待办①）
+
+**日期**：2026-09-24 · **状态**：生效
+
+**PX4 v1.17.0 源码核实**（`src/modules/commander`）：外部模式经 `register_ext_component_request` 注册后获得 `NAVIGATION_STATE_EXTERNAL1..8`（custom mode：main 4 / sub 11–18）。PX4 每 300 ms 发一次 `arming_check_request`；模式连续漏答超过 3 次即标为 unresponsive，置 `mode_req_other` → 该模式不能运行 → failsafe 回退（`checkModeFallback` 最终落到 RTL）。注销正在使用的模式时，用户意图改为 `AUTO_LOITER`（Hold）。多旋翼 `GotoControl` 的 goto 设定值 500 ms 超时，超时后位置控制器改用失效保护设定值（水平速度归零并以降落速度下降）。因此「停止发布」本身不会让 PX4 退出外部模式，只会在 500 ms 后进入下降；出口节点必须主动退出，不能靠重发旧设定值维持回路。
+
+**决策**：
+
+- 出口节点 `ros2_ws/src/da_egress_ext`（C++，基于 `px4_ros2_cpp` release/1.17 固定提交）只注册一个外部模式 `DroneAgent Local`：不替换任何内部模式、`preventArming(true)`、不注册模式执行器、从不调用 `deferFailsafes`（源码扫描契约测试 + 裁判读取 ULog 的 `config_overrides`）。它没有任务语义，只做两件事：有新鲜授权就把设定值转发给 PX4；授权过期就停。
+- 设定值只接受来自 guardian 的 `AuthorizedSetpoint`：带机器人、任务版本、步骤、`lease_epoch`、`command_seq`、`issued_at` 与 `ttl_ms`（guardian 取 300 ms，节点硬上限 500 ms）。低于已见最高代次的一律拒绝；同代次序号必须递增；按节点单调时钟计算的剩余有效期与按墙钟计算的年龄都要在 TTL 内；数值必须有限且在速度上限内。设定值类型固定为多旋翼 goto（NED 位置 + 水平 / 垂直限速），不暴露速度、姿态、推力或执行器接口。
+- 只在模式被 PX4 激活时发布（`updateSetpoint`，20 Hz），并且只发布仍在 TTL 内的最新授权。授权在模式激活期间失效时，当周期立即停止发布，并发出唯一允许的一条命令 `DO_SET_MODE → AUTO_LOITER`（PX4 Hold），记录 `watchdog_exit`；1 s 后仍未离开外部模式，就在 arming check 中报告不可运行，交给 PX4 原生失效保护。节点不能解锁、起飞、降落或切换到其他模式。节点崩溃或 DDS 断开时，由 PX4 自己按 unresponsive 回退。
+- 模式切换由 guardian 决定：guardian 先下发「原地悬停」授权，再经 MAVLink `DO_SET_MODE`（custom mode 取节点上报且经范围校验的 nav_state）进入外部模式，并以 `CURRENT_MODE` 确认；外部模式期间的期望模式集合是 `{EXTERNALk, HOLD}`。正常退出与任何恢复都是先停止授权，再经 MAVLink 下发 hold / rtl / 降落。
+- 两条链路互斥：MAVLink 的航线、起飞、降落等飞行写入只在外部模式之外；DDS 设定值只在外部模式激活且授权新鲜时发布；两者的交接点只有上述模式切换。guardian 记录每条 MAVLink 写入与每条授权，节点记录每次发布、拒绝与看门狗动作；裁判用 ULog 的 `vehicle_status` 与 `vehicle_command` 核对互斥与模式迁移。
+- 能力协商：只有节点已注册、最近 500 ms 内有状态、PX4 消息兼容性检查通过时，适配器才在实际能力中声明 `external_mode`；否则缺席，编译器改用航线版本或拒绝。
+- `drone.autonomy.v1`（`proto/drone/autonomy/v1/autonomy.proto`）只用于本机进程之间，不进入车队协议：`LocalTask`（guardian → 规划节点：目标、范围、限速、截止时间）、`TrajectorySegment`（规划节点 → guardian：候选轨迹片段、来源与实现阶段、`valid_until`、状态）、`ObstacleSet`（局部地图 → guardian：邻近障碍点与不确定性）、`LocalizationReport`（定位健康节点 → guardian）、`AuthorizedSetpoint`（guardian → 出口节点）、`EgressStatus`（出口节点 → guardian）、`BeliefFact`（感知 / 边缘推理 → executive）。传输为私有 Unix 流套接字上 4 字节大端长度前缀的 `AutonomyFrame`，单帧上限 64 KiB；按角色分目录（出口、自主层、信念各一个套接字，只挂载给对应容器），连接时检查 `SO_PEERCRED` 的 UID。ROS 2 一侧用系统 protoc 3.21 生成的绑定（与系统 protobuf 4.21 同版本），本包用 grpcio-tools 生成的绑定；线路格式一致。M3-SITL 验收前为草案，通过后写入 wire 锁。
+- 自主层节点与学习型插件只提交候选；影子阶段的输出只进记录，不连 guardian 的套接字。真值不进入自主层：Gazebo 传输限于仿真网络命名空间的回环，只有固定清单内的相机话题被转成 ROS 2 图像；自主层容器不挂载真值目录。
+
+**理由**：PX4 的外部模式本身有注册、健康检查与原生回退，比直接发 Offboard 设定值更符合「飞控优先」；用 PX4 自己的 Hold 作为授权过期后的唯一动作，既不重发旧设定值，也不在注销 / 重新注册上引入空窗。按角色拆分套接字，使规划节点无法冒充出口节点提交设定值。
+
+**替代方案**：Offboard 话题直发（否：没有模式注册与健康检查，失效行为依赖 `COM_OBL_RC_ACT`）；授权过期只停止发布（否：500 ms 后 PX4 进入下降，且外部模式不退出）；授权过期即注销模式（否：注销后要重新注册，而阻塞式注册不能在回调里完成，能力会出现空窗）；guardian 直接加入 ROS 2（否：违背 D014）；gRPC over UDS（否：C++ 与系统 Python 两侧都要引入 gRPC，长度前缀帧足够）。
+
+**重估触发器**：px4_ros2 或 PX4 升级改变注册 / 健康检查语义；需要速度或姿态级接口；真机串口 / 以太网链路（M4-A）；第二台机器人。
+
+## D040 · 安全监督周期与意图延迟预算；测量方法（M3 决策待办③，数值部分）
+
+**日期**：2026-09-24 · **状态**：生效（guardian 语言结论在测量完成后补记于本条）
+
+**决策**：
+
+- guardian 监督周期 10 Hz。每个 M3 场景在其自身负载下报告周期分布：p99 ≤ 120 ms、最大 ≤ 200 ms（M1 空载参照 p99 102.9 ms）。guardian 自检：最近 2 s 窗口内超过 20% 的周期大于 150 ms，或任一周期大于 250 ms，即视为自身健康退化，触发 `compute_overloaded`。
+- 意图延迟：规划片段生成（`created_at`）到出口节点发布对应设定值，p99 ≤ 250 ms；guardian 转发的授权 TTL 300 ms；规划片段 `valid_until` 为生成后 400 ms；局部地图 `ObstacleSet` 有效期 500 ms；定位健康报告有效期 500 ms；出口节点状态 5 Hz、500 ms 视为失联。
+- 事件检测：单帧推理 p99 ≤ 1 s，非阻塞，控制路径不依赖其输出。
+- 测量方法：SITL 上三档负载（空载 = M1 同款任务；感知满载 = 深度 + 局部规划 + 定位健康；推理满载 = 再加事件检测连续推理）× 两种隔离（guardian 独立 cgroup 配额；guardian 与自主层同一 cgroup 共享配额）。每档 3 个种子，报告周期、意图延迟、推理延迟分布与 CPU / 内存占用。计算过载场景把 CPU 竞争进程放在自主层容器内，验证 guardian 周期不因之越过预算。JIL 线用同一方法在 Jetson 上重测。
+- guardian 语言结论（D003 触发器）只依据上述测量：SITL 与 JIL 都满足预算则维持 Python；任一线不满足，先看 CPU 隔离能否恢复预算，仍不满足才按 D003 用 C++/Rust 重写（`drone.control.v1` 接口不变，先冻结接口测试）。M3-SITL 的结论先补记；JIL 数据到位后再补记一次。
+
+**理由**：预算要在最坏负载下测，否则 10 Hz 只是空载性质；把「guardian 自身退化」定义为可观测的周期统计，才能成为恢复策略的触发条件。
+
+**替代方案**：只测空载（否：不能回答 D003）；用平均周期（否：尾延迟才是安全相关量）。
+
+**重估触发器**：任一场景越过预算；JIL 数据与 SITL 差异显著；guardian 增加新的周期性工作。
+
+## D041 · 仿真传感器与感知 / 事件检测模型（M3 决策待办④）
+
+**日期**：2026-09-24 · **状态**：生效
+
+**决策**：
+
+- 机体：M3 仿真用 PX4 的 `x500_vision` 机体（外部视觉里程计由 Gazebo 里程计插件加噪声模拟），在其上保留 M1 的下视 RGB `cam_0`，另加前视深度相机 `depth_0`（64×48、5 Hz、水平视场 1.5 rad、量程 0.3–12 m）。PX4 v1.17 的 `4005_gz_x500_vision` 不开启视觉融合（`EKF2_EV_CTRL` 默认 0），M3 仿真镜像另设机架文件，只额外设置 `EKF2_EV_CTRL`（水平位置 + 三维速度）与仿真专用的 `SYS_FAILURE_EN`（供 PX4 自带 `failure gps off` 注入 GNSS 失效），不改动任何失效保护参数。仿真视觉里程计与仿真 GNSS 属同一类传感器模型；agent 只看到 PX4 估计器的输出与相机图像，看不到 Gazebo 位姿。
+- 世界：M3 场景 `m3_campus_v3` 在 M2 世界上增加登记的静态障碍（墙体与立柱）、北侧资产 `asset_green` 与备用降落点 `site_b`；航线版本保留绕障的预验证航线，供外部模式不可用时回退。
+- 局部几何：深度 → 占据栅格 → ESDF（`scipy.ndimage` 欧氏距离变换）→ 规划评分与给 guardian 的邻近障碍点，全部确定性，不含学习模型。
+- 资产检测：仿真世界里的资产是颜色标记，COCO 类检测器在这里没有信号。M3-SITL 用确定性的颜色特征 + 深度测距检测，输出带协方差（由深度噪声、位姿不确定性与时间对齐误差合成）、置信度与有效期的 `WorldFact(belief)`；缺协方差即拒绝入图。YOLO 级学习检测器在 M4-A 有真实相机数据后选型，不在 SITL 里用假信号代替。
+- 事件检测（WP-M3-15）：CLIP ViT-B/32 级对比式视觉语言模型的视觉编码器 ONNX（量化版），ONNX Runtime CPU；文本提示的嵌入在构建时预先计算，运行时只跑视觉编码器，对固定提示集做零样本「事件相关性」分类，输出 `WorldFact(candidate, source=model)`，带模型文件 SHA-256。模型文件经 `hf-mirror.com` 按固定哈希下载。它不是生成式 VLM；≤ 8B 生成式 VLM 的机载评估放在 M3-JIL（TensorRT）。
+
+**理由**：感知在 M3 的安全相关用途是局部几何（避障与 CBF），它必须确定、可复算；学习模型的价值与负载由事件检测承担，并且只产生候选事实。用真实但不相关的检测器制造输出，只会产生无法评测的数字。
+
+**替代方案**：在 SITL 中跑 COCO YOLO（否：没有对应目标，输出无意义）；引入 `ros_gz_bridge` 及 Gazebo vendor 包（否：镜像多出数百 MB，只为转两路图像；改用系统 Python 已有的 gz-transport 与 rclpy 写一个固定清单的转接节点）；生成式 VLM 在云 CPU 上运行（否：达不到 1 s 预算）。
+
+**重估触发器**：M4-A 真实相机数据到位；事件检测延迟或准确率不达标；需要双目或激光雷达。
+
+## D042 · M3 安全语义增量：恢复策略 v2、CBF 约束过滤、能源可达性、任务卡住与计算过载
+
+**日期**：2026-09-24 · **状态**：生效
+
+**决策**：
+
+- 策略按任务包的 `recovery_policy_ref` 加载：M1 / M2 场景仍是 `multirotor_m1@v1`（`mission_upload` 模式的生产策略，上下文计算方式不变）；M3 场景为 `multirotor_m3@v2`（`configs/recovery_policies/multirotor_m3_v2.yaml`）。v2 在 v1 的基础上新增上下文键 `control_mode`、`visual_localization_ok`、`nearest_site_reachable`，并新增触发条件 `trajectory_stale`（外部模式下没有有效规划片段）、`progress_stalled`、`compute_overloaded`、`autonomy_unavailable`。
+- v2 的新边：外部模式下观测过期或轨迹过期 → hold，10 s 后 rtl；`progress_stalled` → hold，10 s 后 rtl；`compute_overloaded` → hold，10 s 后 rtl；`autonomy_unavailable` → hold，10 s 后 rtl；GNSS 失效但视觉定位可用 → hold，10 s 后原地降落（没有全局位置时 PX4 不能执行 RTL）；低电且返航不可达、备用降落点可达 → `land_at(site)`。继承自 v1 的边内容不变；`mission_upload` 上下文下 v2 与 v1 的选边结果相同（单元测试钉住）。
+- 恢复动作先于一切：任何干预先停止出口授权，再下发 MAVLink 恢复命令。
+- 观测新鲜（外部模式）：飞控位姿之外，还要求局部地图 `ObstacleSet` 新鲜；地图过期视同观测过期。轨迹新鲜：最新规划片段未过 `valid_until`，且属于当前任务、代次与坐标系。
+- 任务卡住：guardian 独立判定，不依赖规划节点自报——外部模式下 10 s 内到目标的直线距离减少不足 0.5 m（已在目标容差内除外），或规划节点连续 3 s 报告无路可走。新鲜但不前进的片段因此不能掩盖卡住（MAVSDK 自动重发陷阱在自主层的对应物）。
+- 计算过载：guardian 自身周期统计越限（D040），或规划片段自报周期越限（连续两个周期超过预算 1.25 倍）。只有收到带越限标记的新鲜片段才算过载；完全收不到片段是轨迹过期，两者不混淆。
+- 自主层不可用：外部模式下出口节点状态或定位健康报告失联，或出口节点报告 PX4 链路丢失。
+- CBF 约束过滤（`guardian/constraint_filter.py`）：对每条授权前的目标，以离散时间控制屏障函数把期望速度投影到安全集合：约束包括登记围栏的六个面、登记障碍（按半径膨胀）与新鲜局部地图的邻近障碍点，条件 `n·u ≥ -α·h`、`|u| ≤ v_max`；不可行（已在不安全集合内或约束冲突）即拒绝并触发 `trajectory_stale` 的恢复路径，不发布任何设定值。M1 的包络硬检查与围栏前瞻保留为下界。过滤耗时计入监督周期。
+- 能源可达性（`guardian/energy.py`，仅 v2）：按本次飞行实测的放电率（滑动窗口拟合，缺样本时用技能清单的保守上界）、到 home 与各降落点的距离、限速、风（未知即按场景登记的阵风上限）与余量，给出 `rtl_reachable` / `nearest_site_reachable` 及其区间；任一输入未知，对应项为假（保守边）。
+
+**理由**：外部模式带来了 v1 不存在的失效方式——设定值链路本身卡住、自主层算力不足、局部地图过期——它们必须有各自可注入、可复现的触发条件；M1 已验证的 `mission_upload` 语义不能被新模型悄悄改变，所以按策略版本分开计算上下文。
+
+**替代方案**：把新触发条件并入 v1（否：改变已验证 M1 边的上下文）；由规划节点自报是否卡住（否：被卡住的一方不能证明自己没卡住）；CBF 只用登记障碍（否：看不到未登记障碍）；CBF 只用局部地图（否：地图过期时没有下界）。
+
+**验收**：v2 每条新边至少一个注入场景 × 3 个种子，并生成绑定边内容哈希、场景、软件版本与证据的记录；继承边的记录来自同一版本上的 M1 完整回归；`unverified_edges()` 为空才能称 v2 已验证。

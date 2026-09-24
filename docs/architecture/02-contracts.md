@@ -210,3 +210,25 @@ M2 只对 `drone.*.v1` 追加字段、消息、枚举值与 RPC；领域载荷 `
 机载影像的字节摘要不等于采集身份：不同任务 / 版本 / 步骤可以得到相同图像。uplink 上报时以机器人、任务、版本及完整原始证据契约的规范摘要生成全局证据 ID；字节摘要继续用于媒体去重和完整性核验。上传进度按该证据身份保存，不能仅按像素摘要忽略新的采集元数据。
 
 统一入口 `/fixed/` 复用 M1 HTTP 协议，根路径复用 M2 hri.v0；没有新增跨到机器人的协议、控制意图或审批捷径。
+
+## 11. M3 增量（D038–D042，实施中）
+
+M3 不改 `drone.contracts.v1`、`drone.control.v1` 与 `drone.fleet.v1` 已冻结的字段号、枚举与签名；新增内容只追加。
+
+**本地自主层协议 `drone.autonomy.v1`（D039）**：只在同一台机器的进程之间使用，不进入车队协议，也不经过任何网络。传输为私有 Unix 流套接字上 4 字节大端长度前缀的 `AutonomyFrame`，单帧上限 64 KiB，按角色分套接字并检查对端 UID。M3-SITL 验收前为草案。
+
+| 消息 | 方向 | 语义与接收检查 |
+|---|---|---|
+| `LocalTask` | guardian → 规划节点 | 「做什么、在哪个范围、多长时间」：绑定任务版本、步骤、代次与唯一 `task_id`；目标取自登记表的局部目标点，范围为批准体积，限速不超过技能参数；`active=false` 撤回任务 |
+| `TrajectorySegment` | 规划节点 → guardian | 候选轨迹片段：`task_id`、代次、坐标系与地图版本必须与当前任务一致；`valid_until` 为生成后 400 ms；带来源、实现类型与学习阶段；状态为 `ok / reached / no_path / overloaded`。片段只是候选，guardian 过滤后才可能转发 |
+| `ObstacleSet` | 局部地图 → guardian | 邻近障碍点、膨胀半径、位置标准差、置信度与 `valid_until`（500 ms）；缺不确定性即拒收 |
+| `LocalizationReport` | 定位健康节点 → guardian | GNSS 与视觉定位健康、EKF 融合标志与位置标准差；过期视为未知，未知不满足任何「健康」守卫 |
+| `AuthorizedSetpoint` | guardian → 出口节点 | 唯一能让设定值到达飞控的消息：机器人、任务版本、步骤、`lease_epoch`、单调 `command_seq`、`issued_at`、`ttl_ms`（≤ 500）、NED 目标与限速 |
+| `EgressStatus` | 出口节点 → guardian | 注册状态、外部模式 nav_state、是否激活、PX4 链路与消息兼容性、各类拒绝与看门狗计数 |
+| `BeliefFact` | 感知 / 事件检测 → executive | 封装一条 `WorldFact`；`sim_truth` 来源、带位置却缺协方差、模型来源缺模型版本的一律拒收 |
+
+**外部模式能力**：`CapabilityDescriptor.control_modes` 中的 `external_mode` 由适配器按出口节点实时状态声明（已注册、状态新鲜、兼容性检查通过），不是静态配置；缺席时需要它的技能不能编译或准入。
+
+**新增技能**：`skill.flight.goto_local`（需要 `external_mode`）经局部规划飞到登记表中的局部目标点，完成判据为新鲜位姿在容差内保持；参数只引用登记的目标点，不接受任意坐标。编译器在机器人声明 `external_mode` 且资产登记了局部观察点时，把资产巡检展开为 `goto_local + capture_image`；否则展开为 M2 的航线版 `skill.inspect.asset`；两者都没有就拒绝。
+
+**恢复策略**：`RecoveryTrigger` 已有 `trajectory_stale`，另追加 `progress_stalled`、`compute_overloaded`、`autonomy_unavailable`（只追加枚举值）。策略按任务包的 `recovery_policy_ref` 加载，M3 场景为 `multirotor_m3@v2`。
