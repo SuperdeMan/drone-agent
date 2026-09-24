@@ -61,6 +61,21 @@ async def test_replanned_case_needs_both_versions_and_one_replan(tmp_path):
     assert result["flown_versions"] == [1, 2] and result["report_targets"] == {"asset_red": "completed"}
 
 
+@pytest.mark.parametrize("action", ["cancel", "pause"])
+async def test_physical_success_cannot_override_an_operator_cancel(tmp_path, action):
+    await build_case(tmp_path, frames=[None, None, None],
+                     expected={"status": "completed", "versions": 2, "replans": 1, "classification": "completed"})
+    assert judge_case(tmp_path, ROOT)["passed"]
+    path = tmp_path / "service-export/view.json"
+    view = json.loads(path.read_text())
+    view["operations"].append({"version": 1, "action": action, "request_id": "operator-before-retry"})
+    path.write_text(json.dumps(view))
+    for replay in (False, True):
+        result = judge_case(tmp_path, ROOT, use_replay=replay)
+        assert result["passed"] is (action == "pause")
+        assert ("v1:flight_after_operator_cancel" in result["problems"]) is (action == "cancel")
+
+
 async def test_a_report_the_truth_does_not_support_is_a_false_success(tmp_path):
     await build_case(tmp_path)
     rows = [json.loads(line) for line in (tmp_path / "truth/truth.jsonl").read_text().splitlines()]

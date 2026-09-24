@@ -118,11 +118,16 @@ def judge_case(case: Path, root: Path, *, use_replay: bool = False) -> dict:
     if view is None:
         problems.append("service_export_missing")
     truly_done: set[str] = set()
+    cancelled_versions = {operation["version"] for operation in (view or {}).get("operations", [])
+                          if operation.get("action") == "cancel"}
     onboard: dict[int, dict[str, StepOutcome]] = {}
     for mission_id, version, flight in flown:
         package = MissionPackage.model_validate_json((case / "inbox/history" / f"{mission_id}-v{version}.json").read_bytes())
         guardian = read_log(flight / "guardian.jsonl")
         executive = _replayed(flight / "executive.mcap") if use_replay else read_log(flight / "executive.jsonl")
+        if any(row["kind"] == "operator_request" and row["data"].get("accepted") is True
+               and row["data"].get("action") == "cancel" for row in executive):
+            cancelled_versions.add(version)
         verified = [r for r in guardian if r["kind"] == "package_verified"]
         accepted = [r for r in executive if r["kind"] == "mission_accepted"]
         signer = ready.get("signer_key_id")
@@ -168,6 +173,9 @@ def judge_case(case: Path, root: Path, *, use_replay: bool = False) -> dict:
                 seen = (mirror or {}).get("journals", {}).get(name)
                 if seen != {"rows": len(rows), "chain": "ok"}:
                     problems.append(f"v{version}:service_mirror_incomplete:{name}")
+    for cancelled_version in sorted(cancelled_versions):
+        if any(version > cancelled_version for _, version, _ in flown):
+            problems.append(f"v{cancelled_version}:flight_after_operator_cancel")
     if truth and flown:
         if any(not registry.inside(row["position"]) for row in truth):
             problems.append("truth_geofence_violation")
