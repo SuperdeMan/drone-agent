@@ -434,6 +434,10 @@ def main() -> None:
     m3_parser.add_argument("--seeds", default="7,19,41")
     m3_parser.add_argument("--keep-going", action="store_true",
                            help="run every selected case even after a failure (diagnosis and measurement batches)")
+    m3_parser.add_argument("--edge", choices=["on", "off"], default="on", help="event detector (D040 load tiers)")
+    m3_parser.add_argument("--edge-period", type=float, help="event detector period in seconds; 0 = back to back")
+    m3_parser.add_argument("--isolation", choices=["separate", "shared"], default="separate",
+                           help="guardian on its own quota, or sharing one pinned core with the autonomy layer")
     deploy_parser = commands.add_parser("deploy")
     source = deploy_parser.add_mutually_exclusive_group()
     source.add_argument("--sha", default="HEAD")
@@ -494,6 +498,9 @@ def main() -> None:
                         "scenario": args.scenario,
                         "seeds": [int(seed) for seed in args.seeds.split(",")],
                         "keep_going": args.keep_going,
+                        "edge": args.edge == "on",
+                        "edge_period_s": args.edge_period,
+                        "isolation": args.isolation,
                     },
                     timeout=21600,
                 )

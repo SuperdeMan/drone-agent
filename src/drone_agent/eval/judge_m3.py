@@ -340,7 +340,11 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
     # ── Event detection (D044): runs beside the flight, never inside it. / 事件检测（D044）：与飞行并行，从不在其中。
     edge_rows = _jsonl(run / "edge/edge_inference.jsonl")
     metrics["edge_inference"] = edge_summary(edge_rows, truth, registry.data["assets"])
-    if scenario.get("nodes", True) and not edge_rows:
+    # A measurement tier may run without the detector (D040); the runner records that choice. / 测量档位可以不运行
+    # 事件检测（D040）；运行器记录该选择。
+    measure = json.loads((run / "measure.json").read_text()) if (run / "measure.json").is_file() else {}
+    metrics["measure"] = measure
+    if scenario.get("nodes", True) and measure.get("edge", True) and not edge_rows:
         problems.append("edge_inference_not_running")
     edge_p99 = metrics["edge_inference"].get("latency_ms", {}).get("p99")
     if edge_p99 is not None and edge_p99 > EDGE_P99_MS:

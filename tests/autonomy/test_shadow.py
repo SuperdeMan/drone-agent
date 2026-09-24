@@ -81,3 +81,15 @@ def test_replay_evaluates_recorded_planner_segments(tmp_path):
     report = replay(tmp_path, SCENE, GoalDirectBaseline())
     assert report["cycles"] == 3 and report["executed"] == 0
     assert report["envelope_violations"] >= 1
+
+
+def test_the_judge_scores_shadow_proposals_against_truth_and_executes_none(tmp_path):
+    from drone_agent.eval.shadow_m3 import shadow_report
+
+    test_replay_evaluates_recorded_planner_segments(tmp_path)
+    report = shadow_report(tmp_path, ROOT)
+    # The blind baseline's carrot from y = 12.5 ends 0.3 m from the wall face; the planner's detour stays clear.
+    # 无视障碍的基线从 y = 12.5 出发的目标点距墙面仅 0.3 米；规划器的绕行保持净距。
+    assert report["cycles"] == 3 and report["judge_approved"] == 2
+    assert report["judge_approval_rate"] == 0.667 and report["deterministic_judge_approval_rate"] == 1.0
+    assert report["executed"] == 0

@@ -144,17 +144,30 @@ def run_m3(root: Path, deployment: Path, request: dict):
             raise ValueError("unknown M3 scenario in selection")
     if not scenarios or not request["seeds"]:
         raise ValueError("unknown or empty M3 scenario selection")
+    # D040 measurement tiers: the event detector off, at its 1 Hz default or back to back, and the guardian either
+    # on its own quota or sharing one pinned core with the autonomy layer. / D040 测量档位：事件检测关闭、默认 1 Hz 或
+    # 连续推理；guardian 使用独立配额或与自主层共享一个绑定核心。
+    measure = {"edge": bool(request.get("edge", True)), "edge_period_s": request.get("edge_period_s"),
+               "isolation": request.get("isolation", "separate")}
+    if measure["isolation"] not in ("separate", "shared"):
+        raise ValueError("isolation must be separate or shared")
     results = []
     for scenario in scenarios:
         for seed in request["seeds"]:
             run = base / f"{scenario['id']}-{seed}"
             for folder in FOLDERS:
                 (run / folder).mkdir(parents=True)
+            period = measure["edge_period_s"] if measure["edge_period_s"] is not None else scenario.get("edge_period_s", 1.0)
             env = dict(os.environ, DRONE_M3_RUN=str(run), DRONE_SOURCE_SHA=sha, DRONE_M3_SPEED="1",
                        DRONE_M3_SIM_IMAGE=images["sim3"], DRONE_M3_GROUND_IMAGE=images["ground"],
-                       DRONE_M3_AIRCRAFT_IMAGE=images["aircraft3"],
-                       DRONE_EDGE_PERIOD_S=str(float(scenario.get("edge_period_s", 1.0))))
+                       DRONE_M3_AIRCRAFT_IMAGE=images["aircraft3"], DRONE_EDGE_PERIOD_S=str(float(period)))
             prefix = ["docker", "compose", "-p", "drone-agent-cloud", "-f", str(source / "sim/compose.m3.yaml")]
+            (run / "measure.json").write_text(json.dumps({**measure, "edge_period_s": float(period)}))
+            if measure["isolation"] == "shared":
+                override = run / "compose.shared-cpu.yaml"
+                override.write_text(json.dumps({"services": {name: {"cpuset": "3"}
+                                                             for name in ("guardian", "autonomy", "edge")}}))
+                prefix += ["-f", str(override)]
 
             def compose(*args, timeout=180, check=True):
                 result = subprocess.run([*prefix, *args], env=env, capture_output=True, timeout=timeout)
@@ -193,7 +206,8 @@ def run_m3(root: Path, deployment: Path, request: dict):
                     time.sleep(0.2)
                 compose("up", "-d", "--no-build", "--pull", "never", "relay", "xrce-agent")
                 if scenario.get("nodes", True):
-                    compose("up", "-d", "--no-build", "--pull", "never", "egress", "autonomy", "edge")
+                    compose("up", "-d", "--no-build", "--pull", "never", "egress", "autonomy",
+                            *(("edge",) if measure["edge"] else ()))
                 compose("up", "-d", "--no-build", "--pull", "never", "guardian")
                 deadline = time.monotonic() + 150
                 while not (run / "ipc/guardian.sock").exists():
@@ -294,6 +308,14 @@ def run_m3(root: Path, deployment: Path, request: dict):
                 result["replay_agrees"] = all(result.get(key) == replay_result.get(key)
                                               for key in ("classification", "false_success_reports", "problems"))
                 result["passed"] = bool(result.get("passed")) and replayed.returncode == 0 and result["replay_agrees"]
+                if scenario.get("nodes", True):
+                    # The shadow report is archived beside the result, never inside it (08-evaluation §6).
+                    # 影子报告存放在结果旁边，从不写进结果（08-evaluation §6）。
+                    shadow = compose("run", "-T", "--rm", "--no-deps", "judge", "python3", "-m",
+                                     "drone_agent.eval.shadow_m3", "/run", "--output", "/output/shadow.json",
+                                     timeout=180, check=False)
+                    result["shadow_report"] = {"path": "judge/shadow.json", "exit_code": shadow.returncode}
+                result["measure"] = json.loads((run / "measure.json").read_text())
             except Exception as error:
                 result = {"passed": False, "error": str(error), "scenario": scenario["id"], "seed": seed}
                 compose("logs", "--no-color", "--tail", "200", check=False)
