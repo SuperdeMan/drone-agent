@@ -1,0 +1,108 @@
+{
+  "status": "verified",
+  "source_sha": "e8edf2831c6f152d62e70f74312d9d8b0e1076fb",
+  "control_sha256": "6d9f3c9911b4068c424cb6dbd19c133286a45caed9adddb02160a05c953da139",
+  "deployment_id": "20260924T040445Z-4693ad39",
+  "origin": "https://<tailnet-host>:8448",
+  "listener": "127.0.0.1:8769",
+  "images": {
+    "sim": "drone-agent-m2-sim:e8edf2831c6f152d62e70f74312d9d8b0e1076fb-6d9f3c9911b4",
+    "aircraft": "drone-agent-m1-aircraft:e8edf2831c6f152d62e70f74312d9d8b0e1076fb-6d9f3c9911b4",
+    "ground": "drone-agent-m1-ground:e8edf2831c6f152d62e70f74312d9d8b0e1076fb-6d9f3c9911b4"
+  },
+  "planner": "live",
+  "signer_key_id": "ed25519:6563c47cfafa2a22",
+  "certificate_fingerprints": {
+    "ca": "c0e1bca164a5817a5aa477738aa5a340a24da6e3722f2ed9a57c3341792af2e5",
+    "service": "fcac24effa0c96900d7a9b48ca2dbfbb94f28c29d094f0944aa33d5b94d1a206",
+    "robot": "74f38d4714bbcc1ac0653581c1ef3b1b59a7b13b3cf00b3faaa37dd24bbd1a3e"
+  },
+  "planner_label": "live:minimax/MiniMax-M3",
+  "health": {
+    "ok": true,
+    "result": {
+      "status": "ready",
+      "signer_key_id": "ed25519:6563c47cfafa2a22",
+      "robot_id": "uav_01",
+      "planner": "live:minimax/MiniMax-M3",
+      "source_sha": "e8edf2831c6f152d62e70f74312d9d8b0e1076fb"
+    },
+    "console_source_sha": "e8edf2831c6f152d62e70f74312d9d8b0e1076fb",
+    "fixed": {
+      "status": "ready",
+      "mode": "tailnet",
+      "console_source_sha": "e8edf2831c6f152d62e70f74312d9d8b0e1076fb",
+      "runtime_source_sha": "e8edf2831c6f152d62e70f74312d9d8b0e1076fb"
+    },
+    "supervisor": {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "e8edf2831c6f152d62e70f74312d9d8b0e1076fb",
+      "updated_at": "2026-09-24T04:08:42.947012+00:00"
+    },
+    "modes": [
+      "mission",
+      "fixed"
+    ]
+  },
+  "funnel": false,
+  "containers": {
+    "desk-model-proxy": {
+      "container_id": "dc8e875f4d86fe754ca72b3f2c77bb752d875a3b0b7878c497c901de037ea328",
+      "image_id": "sha256:2790565e5766df0859550152261d80f52dc19724d51e7b20d683d3ba99ba49bd",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_egress",
+        "drone-agent-cloud_desk_model"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-service": {
+      "container_id": "6273bdbee87dab439afb7f8939931b090697fbada2e22742cbb0ec9676d066f3",
+      "image_id": "sha256:2790565e5766df0859550152261d80f52dc19724d51e7b20d683d3ba99ba49bd",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_model",
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-uplink": {
+      "container_id": "0a50e0bfbef01aefea8c4d39dc1e6e4dec9a11526846ceba3950d50b49ca2668",
+      "image_id": "sha256:d20e450b153e5734314cb3da024b7d503aaeae02b1ff578328fde5c542ad25b9",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk": {
+      "container_id": "c7d028f119a197f6057de50531f5625ae1b4657c318807f63a4c91982d0bac94",
+      "image_id": "sha256:2790565e5766df0859550152261d80f52dc19724d51e7b20d683d3ba99ba49bd",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_ingress"
+      ],
+      "read_only": true,
+      "docker_access": false
+    }
+  },
+  "other_serve_before_sha256": "349f04197a2a7e4747c39ec22a20f21bd45708ae3c2d9f8a12dd0164fe16b28b",
+  "other_serve_after_sha256": "349f04197a2a7e4747c39ec22a20f21bd45708ae3c2d9f8a12dd0164fe16b28b",
+  "other_containers_before": {
+    "count": 30,
+    "sha256": "612a417c25ae782ac7cb6efc374aa664afbe70e45fa6532a82d8592575d1adfa"
+  },
+  "other_containers_after": {
+    "count": 30,
+    "sha256": "612a417c25ae782ac7cb6efc374aa664afbe70e45fa6532a82d8592575d1adfa"
+  },
+  "supervisor_unit_sha256": "231247a100787acd2df9b85bf756c0d2bd4d110c5698b376e6bfddbef71e0209"
+}

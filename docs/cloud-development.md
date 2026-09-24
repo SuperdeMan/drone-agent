@@ -18,6 +18,8 @@ D028 将网页常驻到云端，使用仅绑定宿主 `127.0.0.1:8768` 的受限
 
 配置依据：[Compose 资源属性](https://docs.docker.com/reference/compose-file/services/#cpus)、[内部网络](https://docs.docker.com/reference/compose-file/networks/#internal)。验收还会读取实际容器设置，确认配置已经生效。
 
+D037 将常驻使用入口统一到 `8448`：主页为 M2，`/fixed/` 为 M1。升级顺序是 `deploy --apply` → `console-cloud --apply` → `desk-cloud --apply`，最后用 `desk-cloud --status` 核对同版本健康；使用与新增挂载见 [飞行台指南](tailnet-desk.md)，评审证据见 [2026-09-24 记录](m2-review-2026-09-24.md)。
+
 ## 连接参数
 
 连接参数来自进程环境，不写入仓库、部署清单或 `.env`：

@@ -81,6 +81,7 @@ Recorded results below belong to their **exact revisions and scopes**; they are 
 | [M2 release gate](docs/m2-readiness.md) | `f362b9e` | 775 tests; 18/18 end-to-end cases; 66/66 M1 regression; 42 deterministic and 32 scripted adversarial cases blocked or refused; zero false success reports and matching flight replay. |
 | [Live planner baseline](docs/verification/m2-baseline-2026-09-23.json) | `f362b9e` | MiniMax-M3: 20/20 plannable requests admitted on the first attempt, 8/8 expected refusals, 4/4 required blocks. |
 | [Resident desk with live planning](docs/tailnet-desk-readiness.md) | `74984f9` | Chinese and English requests planned, approved, flown and independently verified; a privacy-intrusive request refused. |
+| [M2 review and unified desk](docs/m2-review-2026-09-24.md) | `e8edf28` | 833 Linux checks and 18/18 M2 E2E cases passed; evidence handling, post-cancellation retries and judge coverage fixed. Live-model and interactive checks are listed separately. |
 
 The M2 end-to-end and natural-language adversarial runs used **labelled scripted planner answers** to test the execution chain and its boundaries. Live model behavior is documented separately in the baseline and resident-desk records. The [machine-readable release result](docs/verification/m2-2026-09-23-release.json) links the M2 evidence together.
 

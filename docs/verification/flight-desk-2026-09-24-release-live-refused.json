@@ -1,0 +1,87 @@
+{
+  "schema_version": "0.1.0",
+  "probe": "session",
+  "hello": {
+    "identity_scheme": "tailnet",
+    "can_write": true,
+    "planner": "live:minimax/MiniMax-M3"
+  },
+  "host_states": [
+    {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "58b3cdc58df2042e70d9991c3fb49f3bd2c05c9a",
+      "updated_at": "2026-09-24T03:13:18.981052+00:00"
+    }
+  ],
+  "timeline": [
+    {
+      "t": 2.9,
+      "status": "refused",
+      "versions": [
+        [
+          1,
+          "refused"
+        ]
+      ],
+      "live": null,
+      "cloud": [],
+      "judge": null
+    }
+  ],
+  "errors": [],
+  "sent": [],
+  "reconnects": 0,
+  "planning_s": 2.9,
+  "duration_s": 2.9,
+  "media": [],
+  "mission": {
+    "mission_id": "m-9ce6a2e22ee3",
+    "status": "refused",
+    "replans": 0,
+    "request": {
+      "text": "?????????????????????",
+      "channel": "console",
+      "requested_by": "tailnet:<operator>",
+      "approved_volume_id": "campus_training",
+      "asset_ids": []
+    },
+    "versions": [
+      {
+        "version": 1,
+        "status": "refused",
+        "origin": "console",
+        "package_hash": null,
+        "planner": {
+          "status": "refused",
+          "provider_id": "minimax",
+          "model_id": "MiniMax-M3",
+          "prompt_version": "planner-v1",
+          "input_hash": "7850afa34434a350f4750b43955c9f3a424234fbbecf42cf4604c3a30920f383",
+          "decline_reason": "Operator request is empty/unintelligible (only question marks); no inspection target can be determined.",
+          "notes": "Request contained no actionable content; declined pending clarification.",
+          "attempts": 1,
+          "channels": [
+            "salvage"
+          ]
+        },
+        "admission": null,
+        "approval": null,
+        "journals": {},
+        "decision": null
+      }
+    ],
+    "operations": [],
+    "report": null,
+    "evidence": [],
+    "issues": [
+      "planner.refused"
+    ],
+    "facts": [],
+    "cloud": null
+  }
+}
