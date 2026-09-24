@@ -346,9 +346,12 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
     metrics["measure"] = measure
     if scenario.get("nodes", True) and measure.get("edge", True) and not edge_rows:
         problems.append("edge_inference_not_running")
-    edge_p99 = metrics["edge_inference"].get("latency_ms", {}).get("p99")
+    # D040 budgets the single-frame inference; the frame-to-fact latency also carries the frame's wait, which a frozen
+    # simulator inflates, and is only reported. / D040 的预算对象是单帧推理；帧到事实延迟还包含帧的等待时间（仿真冻结
+    # 会拉长它），只作报告。
+    edge_p99 = metrics["edge_inference"].get("inference_ms", {}).get("p99")
     if edge_p99 is not None and edge_p99 > EDGE_P99_MS:
-        problems.append("edge_inference_latency_budget_exceeded")
+        problems.append("edge_inference_budget_exceeded")
     if expectation.get("edge_killed") and (run / "injection.json").is_file():
         killed_at = _time(json.loads((run / "injection.json").read_text())["timestamp"])
         if not any(row["wall_time"] < killed_at for row in edge_rows):

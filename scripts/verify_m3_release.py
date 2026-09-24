@@ -12,7 +12,7 @@ Criteria, all bound to the same full commit (the tested revision):
   m2_regression — the full M2 end-to-end suite passes on this revision over gRPC (the service and uplink changed)
   m2_zenoh      — the nominal and service-outage M2 cases pass over the Zenoh FleetTransport on every seed (D046)
   measurement   — the D040 tiers (idle, perception, inference) with the guardian on its own quota meet the supervision
-                  (p99 ≤ 120 ms, max ≤ 200 ms), intent (p99 ≤ 250 ms) and event-detection (p99 ≤ 1 s) budgets on
+                  (p99 ≤ 120 ms, max ≤ 200 ms), intent (p99 ≤ 250 ms) and single-frame inference (p99 ≤ 1 s) budgets on
                   every seed; the shared-core tiers are reported for the D003 language conclusion, not gated
   recovery_edges— every edge of multirotor_m3@v2 carries a validation record bound to its content and this revision
   jil           — Jetson-in-the-loop evidence; pending until hardware exists, so M3 itself cannot close yet
@@ -179,7 +179,7 @@ def measurement(receipts: list[dict], sha: str) -> dict:
     for (tier, isolation), cell in sorted(cells.items()):
         metrics = [row.get("metrics") or {} for row in cell]
         supervision = [m.get("supervision") or {} for m in metrics]
-        edge = [((m.get("edge_inference") or {}).get("latency_ms") or {}).get("p99") for m in metrics]
+        edge = [((m.get("edge_inference") or {}).get("inference_ms") or {}).get("p99") for m in metrics]
         entry = {
             "seeds": sorted(row.get("seed") for row in cell),
             "supervision_p99_s": max((s.get("p99_s") or 0) for s in supervision),

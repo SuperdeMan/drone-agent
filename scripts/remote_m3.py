@@ -92,8 +92,14 @@ def injection_due(scenario, state) -> bool:
     if when == "external_active":
         external = state.get("external") or {}
         return bool(external.get("active")) and not state.get("command_pending", False)
-    if when == "capture_phase":
-        return state.get("phase") == "inspect" and bool((state.get("external") or {}).get("active"))
+    if when == "near_goal":
+        # Close to the approach goal while the external mode still flies: far from home, near the spare site.
+        # 外部模式仍在飞行且接近目标：远离起降点、靠近备用降落点。
+        position = (((state.get("observation") or {}).get("pose") or {}).get("position")) or {}
+        if not bool((state.get("external") or {}).get("active")) or "x" not in position:
+            return False
+        near = scenario["near"]
+        return ((position["x"] - near[0]) ** 2 + (position["y"] - near[1]) ** 2) ** 0.5 <= scenario["within_m"]
     return False
 
 
@@ -256,8 +262,12 @@ def run_m3(root: Path, deployment: Path, request: dict):
                             elif kind == "edge_kill":
                                 compose("kill", "edge")
                             elif kind == "gnss_off":
+                                # PX4 v1.17's gz bridge ignores `failure gps`; the simulated receiver loses its fix
+                                # below four satellites (D045). / v1.17 的 gz 桥不处理 `failure gps`；仿真接收机在少于
+                                # 四颗卫星时失去定位（D045）。
                                 compose("exec", "-T", "sitl",
-                                        "/opt/PX4-Autopilot/build/px4_sitl_default/bin/px4-failure", "gps", "off")
+                                        "/opt/PX4-Autopilot/build/px4_sitl_default/bin/px4-param", "set", "SIM_GPS_USED",
+                                        "0")
                             else:
                                 raise ValueError(f"unknown M3 injection {kind}")
                             write_json(run / "injection.json", {

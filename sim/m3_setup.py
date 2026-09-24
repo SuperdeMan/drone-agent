@@ -106,10 +106,9 @@ def setup_airframe():
     marker = "# drone-agent M3 simulation parameters"
     if marker not in text:
         text += (
-            f"\n{marker} (D041): vision fusion, failure injection switch, slower simulated battery.\n"
+            f"\n{marker} (D041, D045): vision fusion and a slower simulated battery.\n"
             "param set-default EKF2_EV_CTRL 5\n"
             "param set-default EKF2_EV_NOISE_MD 1\n"
-            "param set-default SYS_FAILURE_EN 1\n"
             "param set-default SIM_BAT_DRAIN 500\n"
         )
         path.write_text(text)

@@ -63,7 +63,7 @@ def test_missing_cases_shadow_reports_or_resource_samples_fail():
 def tier(scenario, seed, *, edge=True, period=1.0, isolation="separate", p99=0.101, max_s=0.11, edge_p99=400.0):
     return row(scenario, seed, measure={"edge": edge, "edge_period_s": period, "isolation": isolation},
                metrics={"supervision": {"p99_s": p99, "max_s": max_s}, "intent_latency_p99_ms": 180.0,
-                        "edge_inference": {"latency_ms": {"p99": edge_p99}},
+                        "edge_inference": {"inference_ms": {"p99": edge_p99}},
                         "resources": {"guardian": {"cpu_mean_cores": 0.1, "throttled_fraction": 0.0}}})
 
 
