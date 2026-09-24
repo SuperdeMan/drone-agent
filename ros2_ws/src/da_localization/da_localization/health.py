@@ -2,12 +2,16 @@
 
 GNSS is healthy only with a fresh 3D fix that the estimator is actually fusing; visual localization is healthy only
 while the estimator fuses external-vision position and the local position is valid. Stale inputs are unhealthy,
-never assumed healthy. The guardian decides what to do with the report; this module only reports.
+never assumed healthy. Freshness follows each topic's PX4 publication: EKF2 publishes `estimator_status_flags` on
+every change and otherwise at 1 Hz, so a flag is fresh for 1.5 s; the local position streams at tens of hertz. The
+guardian decides what to do with the report; this module only reports.
 
 基于 PX4 估计器输出的定位健康（WP-M3-08）；纯逻辑，不导入 ROS。
 
 只有新鲜的三维定位且估计器确实在融合时 GNSS 才健康；只有估计器融合外部视觉位置且本地位置有效时视觉定位才健康。
-过期输入视为不健康，绝不假定健康。guardian 决定如何处置报告；本模块只负责报告。
+过期输入视为不健康，绝不假定健康。新鲜度按各话题在 PX4 中的发布方式：EKF2 在每次变化时、否则以 1 Hz 发布
+`estimator_status_flags`，因此标志的新鲜期为 1.5 s；本地位置以数十赫兹持续发布。guardian 决定如何处置报告；本模块
+只负责报告。
 """
 
 from __future__ import annotations
@@ -54,9 +58,9 @@ def fresh(stamp: float | None, now: float, limit: float) -> bool:
     return stamp is not None and 0 <= now - stamp <= limit
 
 
-def assess(inputs: Inputs, now: float, *, max_age_s: float = 0.5, max_gps_age_s: float = 1.0,
-           max_eph_m: float = 3.0) -> Report:
-    flags_fresh = fresh(inputs.flags_time, now, max_age_s)
+def assess(inputs: Inputs, now: float, *, max_age_s: float = 0.5, max_flags_age_s: float = 1.5,
+           max_gps_age_s: float = 1.0, max_eph_m: float = 3.0) -> Report:
+    flags_fresh = fresh(inputs.flags_time, now, max_flags_age_s)
     local_fresh = fresh(inputs.local_time, now, max_age_s)
     gps_fresh = fresh(inputs.gps_time, now, max_gps_age_s)
     gnss_fused = flags_fresh and inputs.fusing_gps

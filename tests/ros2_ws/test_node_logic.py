@@ -57,6 +57,10 @@ def test_localization_health_never_assumes_health_from_stale_inputs():
     stale, now = inputs(flags_time=time.monotonic() - 5)
     report = assess(stale, now)
     assert not report.gnss_ok and not report.visual_ok and not report.ev_position_fused
+    # EKF2 republishes unchanged flags only once per second; a 0.8 s old flag set is still current.
+    # EKF2 只在每秒一次重发未变化的标志；0.8 s 前的标志仍是当前值。
+    between, now = inputs(flags_time=time.monotonic() - 0.8)
+    assert assess(between, now).gnss_ok and assess(between, now).visual_ok
     no_vision, now = inputs(fusing_ev_pos=False)
     assert assess(no_vision, now).visual_ok is False
     drifting, now = inputs(eph_m=6.0)

@@ -110,10 +110,21 @@ class ExternalControl:
         return bool(status and status.external_nav_state is not None and status.compatibility_ok and status.fmu_link_ok)
 
     def localization(self) -> LocalizationReport | None:
+        """A fresh report whose own PX4 inputs are fresh; anything else counts as no report (02-contracts §11).
+
+        A report built from stale PX4 inputs (the DDS link is gone) says nothing about GNSS, so it must not read as
+        a GNSS loss.
+
+        自身新鲜且其 PX4 输入也新鲜的报告；其他情况都视为没有报告（02-contracts §11）。
+
+        由过期 PX4 输入生成的报告（DDS 链路已断）不能说明 GNSS 状况，因此不能被解读为 GNSS 失效。
+        """
         if self.autonomy is None:
             return None
         report = self.autonomy.fresh("localization_report", self.settings["localization_timeout_s"])
         if report is None or report.robot_id != self.guardian.registry.capability.robot_id:
+            return None
+        if report.px4_status_age_s > self.settings["localization_input_max_age_s"]:
             return None
         return report if report.stamp <= utcnow() < report.valid_until else None
 

@@ -222,7 +222,7 @@ M3 不改 `drone.contracts.v1`、`drone.control.v1` 与 `drone.fleet.v1` 已冻�
 | `LocalTask` | guardian → 规划节点 | 「做什么、在哪个范围、多长时间」：绑定任务版本、步骤、代次与唯一 `task_id`；目标取自登记表的局部目标点，范围为批准体积，限速不超过技能参数；`active=false` 撤回任务 |
 | `TrajectorySegment` | 规划节点 → guardian | 候选轨迹片段：`task_id`、代次、坐标系与地图版本必须与当前任务一致；`valid_until` 为生成后 400 ms；带来源、实现类型与学习阶段；状态为 `ok / reached / no_path / overloaded`。片段只是候选，guardian 过滤后才可能转发 |
 | `ObstacleSet` | 局部地图 → guardian | 邻近障碍点、膨胀半径、位置标准差、置信度与 `valid_until`（500 ms）；缺不确定性即拒收 |
-| `LocalizationReport` | 定位健康节点 → guardian | GNSS 与视觉定位健康、EKF 融合标志与位置标准差；过期视为未知，未知不满足任何「健康」守卫 |
+| `LocalizationReport` | 定位健康节点 → guardian | GNSS 与视觉定位健康、EKF 融合标志与位置标准差；过期视为未知，未知不满足任何「健康」守卫。报告自身新鲜但其 PX4 输入过期（`px4_status_age_s` 超限，即 DDS 链路丢失）时同样视为没有报告，不能解读为 GNSS 失效 |
 | `AuthorizedSetpoint` | guardian → 出口节点 | 唯一能让设定值到达飞控的消息：机器人、任务版本、步骤、`lease_epoch`、单调 `command_seq`、`issued_at`、`ttl_ms`（≤ 500）、NED 目标与限速 |
 | `EgressStatus` | 出口节点 → guardian | 注册状态、外部模式 nav_state、是否激活、PX4 链路与消息兼容性、各类拒绝与看门狗计数 |
 | `BeliefFact` | 感知 / 事件检测 → executive | 封装一条 `WorldFact`；`sim_truth` 来源、带位置却缺协方差、模型来源缺模型版本的一律拒收 |

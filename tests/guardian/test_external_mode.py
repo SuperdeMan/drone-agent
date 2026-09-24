@@ -192,6 +192,19 @@ async def test_gnss_loss_with_visual_localization_holds_then_lands(m3):
     assert m3.guardian.recovery.target is RecoveryBehavior.HOLD and m3.guardian.recovery.then is RecoveryBehavior.LAND_HERE
 
 
+async def test_a_report_built_from_stale_px4_inputs_is_no_report_not_a_gnss_loss(m3):
+    # The DDS link is gone: the node still reports, but its "not fused" flags are unknowns, not a GNSS loss.
+    # DDS 链路已断：节点仍在报告，但其「未融合」标志是未知量，而不是 GNSS 失效。
+    m3.autonomy.put("localization_report", localization(gnss_ok=False, gnss_position_fused=False, visual_ok=False,
+                                                        ev_position_fused=False, px4_status_age_s=3.0))
+    assert m3.guardian.external.localization() is None
+    m3.beat()
+    m3.guardian.active_step = m3.node("inspect_green")
+    await m3.guardian.tick()
+    await m3.settle()
+    assert not [r for r in m3.journal.rows if r["kind"] == "safety_intervention"]
+
+
 async def test_low_energy_far_from_home_lands_at_the_reachable_site(m3):
     m3.guardian.active_step = m3.node("inspect_green")
     m3.adapter.position = [0.0, 28.0, 4.0]
