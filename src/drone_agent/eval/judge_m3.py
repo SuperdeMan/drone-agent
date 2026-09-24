@@ -92,11 +92,13 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
     if any(not registry.inside(row["position"]) for row in truth):
         problems.append("truth_geofence_violation")
     obstacles = truth_obstacles(root)
-    minimum = {name: min((clearance(row["position"], spec) for row in truth), default=math.inf)
+    # No truth means no clearance value, not an infinite one; the missing truth is already a problem above.
+    # 没有真值就没有间距值，而不是无穷大；缺真值已在上面记为问题。
+    minimum = {name: min((clearance(row["position"], spec) for row in truth), default=None)
                for name, spec in obstacles.items()}
-    metrics["min_clearance_m"] = {name: round(value, 3) for name, value in minimum.items()}
+    metrics["min_clearance_m"] = {name: None if value is None else round(value, 3) for name, value in minimum.items()}
     for name, value in minimum.items():
-        if value < registry.data["thresholds"]["min_clearance_m"]:
+        if value is not None and value < registry.data["thresholds"]["min_clearance_m"]:
             problems.append(f"truth_clearance_violation:{name}")
     for before, after in zip(truth, truth[1:]):
         if after["sim_time"] <= before["sim_time"]:

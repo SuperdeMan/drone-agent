@@ -10,6 +10,7 @@ every other simulator topic are not, so no ground truth can reach the autonomy s
 下面两路相机流；位姿、接触及其他仿真话题一概不转发，因此真值无法经本进程到达自主层。
 """
 
+import os
 import signal
 import threading
 
@@ -57,8 +58,15 @@ def main():
         signal.signal(sig, lambda *_: stopped.set())
     while not stopped.wait(0.5):
         rclpy.spin_once(node, timeout_sec=0)
+    # Stop the Gazebo callbacks first, then leave without interpreter finalizers: gz-transport's callback threads
+    # would otherwise drop Python references without the GIL while the interpreter shuts down.
+    # 先停掉 Gazebo 回调，再跳过解释器终结器退出：否则 gz-transport 的回调线程会在解释器关闭期间不持 GIL 释放
+    # Python 引用。
+    for name in RELAYS:
+        gz.unsubscribe(name)
     node.destroy_node()
     rclpy.try_shutdown()
+    os._exit(0)
 
 
 if __name__ == "__main__":

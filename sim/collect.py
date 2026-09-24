@@ -5,6 +5,7 @@ Gazebo 传感器转接与独立真值采集；永不连接 MAVLink。
 
 import base64
 import json
+import os
 import signal
 import threading
 import time
@@ -16,6 +17,8 @@ from gz.msgs10.pose_v_pb2 import Pose_V
 from gz.transport13 import Node, SubscribeOptions
 
 sensor, truth = Path("/sensor"), Path("/truth")
+# The Gazebo entity to record; M3 flies PX4's x500_vision (D041). / 要记录的 Gazebo 实体；M3 飞 PX4 的 x500_vision（D041）。
+MODEL = os.environ.get("DRONE_TRUTH_MODEL", "x500_0")
 sensor.mkdir(exist_ok=True)
 truth.mkdir(exist_ok=True)
 node = Node()
@@ -46,7 +49,7 @@ def image_callback(msg):
 
 def pose_callback(msg):
     for pose in msg.pose:
-        if pose.name == "x500_0":
+        if pose.name == MODEL:
             row = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "sim_time": timestamp(msg.header),

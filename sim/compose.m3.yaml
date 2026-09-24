@@ -43,6 +43,7 @@ services:
     environment:
       PYTHONPATH: /usr/lib/python3/dist-packages
       GZ_IP: 127.0.0.1
+      DRONE_TRUTH_MODEL: x500_vision_0
     command: [/usr/bin/python3, /workspace/sim/collect.py]
     volumes:
       - ${DRONE_M3_RUN:?}/sensor:/sensor
