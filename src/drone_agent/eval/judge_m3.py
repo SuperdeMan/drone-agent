@@ -45,7 +45,7 @@ STALL_SENSITIVE = {"observation_stale", "trajectory_stale", "autonomy_unavailabl
 # stall can never void. / 只说明场景未被执行到的问题；其他任何问题都是停顿永远不能作废的安全或正确性发现。
 UNTESTED = {"expected_recovery_edge_not_observed", "expected_follow_up_not_observed", "fault_not_injected",
             "land_at_site_not_reached", "cbf_never_modified_a_target", "egress_watchdog_exit_not_observed",
-            "edge_inference_not_running_before_kill"}
+            "edge_inference_not_running_before_kill", "external_mode_never_active"}
 # Downward camera cam_0: 1.4 rad horizontal field of view, 4:3 frame (sim/m1_setup.py). / 下视相机 cam_0 的视场。
 CAM_TAN_HALF_H, CAM_TAN_HALF_V = math.tan(0.7), math.tan(0.7) * 0.75
 HOLD_NAV_STATE, EXTERNAL_NAV_STATES = 4, range(23, 31)

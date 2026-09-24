@@ -128,13 +128,6 @@ class LocalNavNode(Node):
         task = self.task
         if task is None or fault == "planner_freeze":
             return
-        if fault == "planner_overload":
-            # The planner's own work outgrows its period while its outputs stay fresh: burn CPU inside the cycle,
-            # within the autonomy container's quota (D042, D045). / 规划自身的计算超出周期而输出保持新鲜：在周期内
-            # 消耗 CPU，仍在自主层容器配额之内（D042，D045）。
-            end = now + OVERLOAD_CYCLE_S
-            while time.monotonic() < end:
-                pass
         goal = (task.goal.x, task.goal.y, task.goal.z)
         if fault == "planner_stall":
             # Fresh segments that never move: the guardian must detect the stall itself (D042).
@@ -165,6 +158,13 @@ class LocalNavNode(Node):
                     compute_ms=round(compute_ms, 2), period_ms=round(period_ms, 2), position=position,
                     target=points[1][1] if len(points) > 1 else points[0][1], voxels=len(self.map.voxels),
                     notes=notes)
+        if fault == "planner_overload":
+            # The planner's own work outgrows its period while its outputs stay fresh: after publishing, burn CPU until
+            # the cycle has lasted 300 ms, within the autonomy container's quota (D042, D045). / 规划自身的计算超出
+            # 周期而输出保持新鲜：发布之后消耗 CPU，直到本周期持续 300 ms，仍在自主层容器配额之内（D042，D045）。
+            end = now + OVERLOAD_CYCLE_S
+            while time.monotonic() < end:
+                pass
 
     def publish_obstacles(self, position):
         frame = pb.AutonomyFrame()

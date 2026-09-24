@@ -8,7 +8,7 @@ M1 已通过 [2026-09-20 完整验收](m1-readiness.md)，原里程碑运行版�
 
 ## 当前部署范围
 
-M0 未解锁冒烟继续作为部署前置；M1 另有 sim/aircraft/ground 三镜像、executive/guardian 双进程和独立裁判。M2 在同一工作区增加 `sim2` 仿真镜像（多一个蓝色资产）、ground 镜像中的 mission-service、aircraft 镜像中的 uplink，以及项目 `secrets/` 下的签名密钥与 mTLS 证书；端到端用例按需启停，不常驻。真机的 guardian、控制出口与飞控连接仍在设备侧，云端只验证模拟飞控。
+M0 未解锁冒烟继续作为部署前置；M1 另有 sim/aircraft/ground 三镜像、executive/guardian 双进程和独立裁判。M2 在同一工作区增加 `sim2` 仿真镜像（多一个蓝色资产）、ground 镜像中的 mission-service、aircraft 镜像中的 uplink，以及项目 `secrets/` 下的签名密钥与 mTLS 证书；端到端用例按需启停，不常驻。M3（D038）再增加 `m3-aircraft`（ROS 2 Jazzy、外部模式出口节点、事件检测）与 `m3-sim`（x500_vision、深度相机、M3 世界）两个镜像，用例按需启停；M3 SITL 上限 2.0 CPU / 2 GiB（D045），自主层 0.6、出口节点 0.25、事件检测 0.5 CPU。真机的 guardian、控制出口与飞控连接仍在设备侧，云端只验证模拟飞控。
 
 工作区使用 SSH 用户的 `~/drone-agent/`，不放入 car-agent 目录。Docker project 为 `drone-agent-cloud`；SITL 限 1.5 CPU / 2 GiB，契约测试限 1 CPU / 1 GiB。仿真网络为内部桥接，测试容器无网络，二者不发布宿主端口。SSH 用于部署与管理。
 
@@ -116,6 +116,28 @@ uv run python scripts/m2_baseline.py --output docs/verification/m2-baseline-<日
 常驻任务台（D035）：`dev_stack.py desk-cloud` 只读计划，`--apply` 构建当前部署版本的 M2 镜像、在 `secrets/desk/` 生成任务台自己的信任根、启动 `desk` / `desk-service` / `desk-uplink` 并安装仿真监管者 unit，新增 Serve `8448` 映射；`--status` 返回入口与监管者状态。批准的任务由监管者持项目锁飞行，所以任务台飞行与部署、M1 / M2 批次及 D028 运行互斥，排队时页面显示「等待云端工作区」。使用与边界见 [任务台指南](tailnet-desk.md)。
 
 本机任务台 `uv run python -m drone_agent.console.mission --local` 在 <http://127.0.0.1:8769> 提供 hri.v0 控制台和进程内任务服务：提交、规划、准入、审批与签名都在本机完成，没有机器人连接，不起飞（D023）；有 `MINIMAX_API_KEY` 时实调规划，否则只回答 M2 场景集中的请求原文，页面标明所用规划器。M2 是否关闭只看 `scripts/verify_m2_release.py`：在同一 commit 上核对云端检查、对抗语料、E2E、M1 完整回归与实调基线，缺证据的判据记为 missing。
+
+## M3-SITL 验证
+
+部署已提交版本后运行（会在云端仿真中解锁 / 起飞，并启动外部模式出口节点与自主层）：
+
+```powershell
+uv run python scripts/dev_stack.py m3 --scenario ext_inspect --seeds 7
+uv run python scripts/dev_stack.py m3 --scenario ext_inspect,ext_goto --seeds 7,19,41 --keep-going
+uv run python scripts/dev_stack.py m3 --scenario ext_inspect,route_fallback --seeds 7,19,41 --edge off --keep-going
+uv run python scripts/dev_stack.py m3 --scenario ext_inspect --seeds 7,19,41 --edge-period 0 --isolation shared
+```
+
+场景集为 `configs/scenarios/m3_suite.yaml`（16 个场景，覆盖观测过期、任务卡住、网络中断、计算过载四类与定位、能源、事件检测的辅助场景），逐场景期望见 `m3_expectations.yaml`。首次运行按版本构建四个镜像：`drone-agent-m1-ground`、`drone-agent-m2-sim`、`drone-agent-m3-aircraft`（ROS 2 Jazzy、`px4_msgs` / `px4_ros2_cpp` 固定版本、出口节点、事件检测的 ONNX Runtime 与 CLIP 视觉编码器）与 `drone-agent-m3-sim`（x500_vision、前视深度相机、M3 世界）；ROS 2 基础层、事件检测运行时与提示嵌入层只依赖固定输入，跨版本复用。每个用例依次：等主机安静窗口（CPU 压力与负载降下来，最多 10 分钟，等待情况写入回执）→ 启动 SITL 与真值采集 → 相机转接与 XRCE agent → 出口节点、自主层与事件检测 → guardian → executive；飞行中按场景在声明的边界注入故障；结束后在线与 MCAP 回放各跑一次 `eval/judge_m3.py`，外部模式用例再生成单独归档的影子报告 `judge/shadow.json`。
+
+- `--keep-going`：失败后继续跑完所选用例（诊断与测量批次）；默认首个失败即停。
+- `--edge off` / `--edge-period 0` / `--isolation shared`：D040 的测量档位（关闭事件检测；连续推理；guardian 与自主层、事件检测绑定到同一核心）。档位写入每个用例的 `measure.json` 与回执。
+- 回执 `suite.json` / `progress.json` 的每个用例另记：资源采样汇总（各容器 CPU、节流、内存与主机 CPU 压力，原始数据在 `resources.jsonl`）、仿真停顿列表、事件检测延迟与真值一致率、外部模式计数、安静窗口等待与 Mesa 着色器缓存条目数。
+- 仿真停顿：共享主机上 llvmpipe 首次编译着色器或 CPU 争用会让 Gazebo 整体冻结；项目工作区 `cache/mesa-shaders-m3/` 持久化着色器缓存，冷缓存运行可能出现一次性停顿。由停顿引发的新鲜度恢复被裁判判为 `void_simulator_stall`，必须同版本同种子重跑，不计通过也不计系统失败（D045）。
+
+产物位于 `artifacts/<deployment_id>/m3-<run_id>/<scenario>-<seed>/`：`input/`（任务包、场景、注入文件）、`aircraft/`（guardian / executive 账本与 MCAP、影像、状态与监督统计）、`egress/`（出口节点证据）、`autonomy/`（规划、感知证据）、`edge/`（事件检测逐帧记录）、`truth/`、`ulog/`、`judge/`（裁判结果、回放结果、影子报告、飞控事件）、`resources.jsonl`、`measure.json`、`quiet-gate.json`。M3-SITL 是否通过只看 `scripts/verify_m3_release.py`：同一 commit 上的云端检查、对抗语料、M3 场景集、M1 与 M2 回归、M2 的 Zenoh 子集、D040 测量与 v2 恢复边绑定；M3-JIL 缺硬件时记为 missing，M3 本身不能关闭。
+
+M2 的 Zenoh 传输（D046）：`dev_stack.py m2 --scenario nl_inspect_red,service_outage --seeds 7,19,41 --transport zenoh` 在同一 M2 编排与裁判下让服务与 uplink 走 Zenoh（TLS + mTLS + 按证书名的访问控制）；默认 `--transport grpc` 不变。
 
 ## 查看与人工核对结果
 

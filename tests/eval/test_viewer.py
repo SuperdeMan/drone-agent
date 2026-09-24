@@ -261,3 +261,35 @@ def test_page_is_self_contained():
     template = viewer.TEMPLATE.read_text(encoding="utf-8")
     assert "http://" not in template and "https://" not in template
     assert "__DATA__" in template and "__VIEWER_VERSION__" in template
+
+
+def test_m3_sections_are_shown_and_the_shadow_report_stays_apart(tmp_path):
+    case = make_case(tmp_path, "ext_inspect-7")
+    wall = utcnow().timestamp()
+    for folder in ("egress", "autonomy", "edge"):
+        (case / folder).mkdir()
+    (case / "egress/egress.jsonl").write_text("\n".join(json.dumps(row) for row in (
+        {"event": "registered", "nav_state": 23, "wall_time": wall + 1},
+        {"event": "published", "wall_time": wall + 2}, {"event": "published", "wall_time": wall + 2.05})) + "\n")
+    (case / "autonomy/local_nav.jsonl").write_text(json.dumps(
+        {"event": "segment", "seq": 0, "status": "ok", "cycle_ms": 200.1, "compute_ms": 4.2, "voxels": 12,
+         "wall_time": wall + 2}) + "\n")
+    (case / "edge/edge_inference.jsonl").write_text(json.dumps(
+        {"captured": utcnow().isoformat(), "label": "marker_green", "probability": 0.93, "inference_ms": 180.0,
+         "latency_ms": 260.0, "replan_trigger": False, "sent": True, "wall_time": wall + 3}) + "\n")
+    result = json.loads((case / "judge/result.json").read_text(encoding="utf-8"))
+    result["metrics"] = {"resources": {"sitl": {"cpu_mean_cores": 1.2, "cpu_max_1s_cores": 1.4,
+                                                "throttled_fraction": 0.0, "memory_max_mib": 700.0},
+                                       "_host": {"load1_max": 4.0, "cpu_some_avg10_max": 30.0}},
+                         "simulator_stalls": {"count": 1, "stalls": [{"start": wall + 5, "end": wall + 5.6,
+                                                                      "wall_s": 0.6, "sim_s": 0.05}]}}
+    (case / "judge/result.json").write_text(json.dumps(result), encoding="utf-8")
+    (case / "judge/shadow.json").write_text(json.dumps({"policy": {"learned_stage": "shadow"}, "cycles": 3,
+                                                        "judge_approval_rate": 0.667, "executed": 0}))
+    record = page_data(viewer.build_page([case], root=ROOT, output=tmp_path / "page.html"))["cases"][0]
+    tables = {t["id"]: t for t in record["tables"]}
+    assert {"egress", "segments", "edge", "resources", "stalls", "shadow"} <= set(tables)
+    assert tables["egress"]["rows"][-1][1] == "published" and "2" in tables["egress"]["rows"][-1][2]
+    assert "不参与" in tables["shadow"]["title"] and ["executed", 0] in tables["shadow"]["rows"]
+    assert [row[0] for row in tables["resources"]["rows"]] == ["sitl"]
+    assert record["world"]["present"]

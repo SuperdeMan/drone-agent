@@ -503,6 +503,7 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
         })
 
     tables += _service_tables(service_view)
+    tables += _m3_tables(run, t0, judge)
 
     files = []
     for path in sorted(run.rglob("*")):
@@ -522,6 +523,73 @@ def load_run(run: Path, root: Path, *, expected: dict | None = None, scene: Path
         },
         "integrity": integrity, "tables": tables, "files": files, "absent": absent, "notes": notes,
     }
+
+
+def _lines(path: Path) -> list[dict]:
+    """Plain JSON-lines evidence (not hash-chained). / 普通 JSON 行证据（非哈希链）。"""
+    if not path.is_file():
+        return []
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            rows.append(json.loads(line))
+        except ValueError:
+            continue
+    return rows
+
+
+def _m3_tables(run: Path, t0: float, judge: dict | None) -> list[dict]:
+    """M3 sections (D039–D046): egress node, planner segments, event detection, resources, simulator stalls, and the
+    shadow report as its own table that never takes part in a verdict.
+
+    M3 部分（D039–D046）：出口节点、规划片段、事件检测、资源、仿真停顿，以及单独成表、从不参与判定的影子报告。
+    """
+    tables = []
+    egress = _lines(run / "egress/egress.jsonl")
+    if egress:
+        published = sum(1 for row in egress if row.get("event") == "published")
+        rows = [[round(row["wall_time"] - t0, 3), row.get("event"),
+                 json.dumps({k: v for k, v in row.items() if k not in ("wall_time", "event")}, ensure_ascii=False)]
+                for row in egress if row.get("event") != "published"]
+        rows.append([None, "published", f"{published} 条授权设定值 / authorized setpoints"])
+        tables.append({"id": "egress", "title": "外部模式出口节点（只转发 guardian 授权）/ external-mode egress",
+                       "columns": ["t", "event", "detail"], "rows": rows})
+    segments = [row for row in _lines(run / "autonomy/local_nav.jsonl") if row.get("event") == "segment"]
+    if segments:
+        tables.append({"id": "segments", "title": "局部规划片段（候选，经 CBF 过滤后才授权）/ planner segments",
+                       "columns": ["t", "seq", "status", "cycle_ms", "compute_ms", "voxels"],
+                       "rows": [[round(row["wall_time"] - t0, 3), row.get("seq"), row.get("status"), row.get("cycle_ms"),
+                                 row.get("compute_ms"), row.get("voxels")] for row in segments]})
+    edge = _lines(run / "edge/edge_inference.jsonl")
+    if edge:
+        tables.append({"id": "edge", "title": "事件检测（只产生候选事实）/ event detection",
+                       "columns": ["t", "label", "probability", "inference_ms", "latency_ms", "replan_trigger", "sent"],
+                       "rows": [[round(stamp(row["captured"]) - t0, 3), row.get("label"), row.get("probability"),
+                                 row.get("inference_ms"), row.get("latency_ms"), row.get("replan_trigger"), row.get("sent")]
+                                for row in edge if isinstance(row.get("captured"), str)]})
+    metrics = (judge or {}).get("metrics") or {}
+    resources = metrics.get("resources") or {}
+    if resources:
+        tables.append({"id": "resources", "title": "资源采样（cgroup，只记录）/ resources",
+                       "columns": ["service", "cpu_mean_cores", "cpu_max_1s_cores", "throttled_fraction", "memory_max_mib"],
+                       "rows": [[name, *(value.get(k) for k in ("cpu_mean_cores", "cpu_max_1s_cores", "throttled_fraction",
+                                                                "memory_max_mib"))]
+                                for name, value in sorted(resources.items()) if name != "_host"]})
+    stalls = (metrics.get("simulator_stalls") or {}).get("stalls") or []
+    if stalls:
+        tables.append({"id": "stalls", "title": "仿真停顿（墙钟空档中仿真时间未推进，D045）/ simulator stalls",
+                       "columns": ["t", "wall_s", "sim_s"],
+                       "rows": [[round(stall["start"] - t0, 3), stall["wall_s"], stall["sim_s"]] for stall in stalls]})
+    shadow = read_json(run / "judge/shadow.json")
+    if shadow:
+        keys = ("cycles", "envelope_violations", "envelope_violation_rate", "cbf_rejections", "judge_approval_rate",
+                "deterministic_judge_approval_rate", "executed")
+        tables.append({"id": "shadow", "title": "影子报告（独立归档，不参与任何判定）/ shadow report, never judged",
+                       "columns": ["field", "value"],
+                       "rows": [["policy", json.dumps(shadow.get("policy"), ensure_ascii=False)],
+                                ["deviation_m", json.dumps(shadow.get("deviation_m"), ensure_ascii=False)],
+                                *[[key, shadow.get(key)] for key in keys]]})
+    return tables
 
 
 FAILED_VERSION_STATES = frozenset({"rejected", "refused", "declined", "delivery_rejected", "planning_failed"})
@@ -646,6 +714,10 @@ def build_page(cases: list[Path], *, root: Path, output: Path, receipt: dict | N
     for case in cases:
         if (case / "service-export").is_dir():
             records += load_m2_case(case, root, expected=expected.get(case.name))
+        elif (case / "egress").is_dir() or (case / "autonomy").is_dir():
+            from drone_agent.mission.registry import M3_SCENE
+
+            records.append(load_run(case, root, expected=expected.get(case.name), scene=scene or root / M3_SCENE))
         else:
             records.append(load_run(case, root, expected=expected.get(case.name), scene=scene))
     payload = {

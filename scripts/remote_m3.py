@@ -170,7 +170,9 @@ def run_m3(root: Path, deployment: Path, request: dict):
                        DRONE_M3_SIM_IMAGE=images["sim3"], DRONE_M3_GROUND_IMAGE=images["ground"],
                        DRONE_M3_AIRCRAFT_IMAGE=images["aircraft3"], DRONE_EDGE_PERIOD_S=str(float(period)),
                        DRONE_M3_SHADER_CACHE=str(shader_cache))
-            cached_before = sum(1 for path in shader_cache.rglob("*") if path.is_file())
+            # The container writes the cache as root; its top-level entries still show how warm it is.
+            # 容器以 root 写入缓存；顶层条目数仍能反映缓存的冷热。
+            cached_before = sum(1 for _ in shader_cache.iterdir())
             prefix = ["docker", "compose", "-p", "drone-agent-cloud", "-f", str(source / "sim/compose.m3.yaml")]
             (run / "measure.json").write_text(json.dumps({**measure, "edge_period_s": float(period)}))
             if measure["isolation"] == "shared":
@@ -337,8 +339,7 @@ def run_m3(root: Path, deployment: Path, request: dict):
             result["quiet_gate"] = gate
             # A cold cache compiles shaders mid-flight (D045); the receipt says which kind of run this was.
             # 冷缓存会在飞行中编译着色器（D045）；回执说明本次运行属于哪一种。
-            result["shader_cache_files"] = {"before": cached_before,
-                                            "after": sum(1 for path in shader_cache.rglob("*") if path.is_file())}
+            result["shader_cache_entries"] = {"before": cached_before, "after": sum(1 for _ in shader_cache.iterdir())}
             results.append(result)
             write_json(base / "progress.json", {"source_sha": sha, "results": results, "artifact_directory": str(base)})
             if not result["passed"] and not request.get("keep_going"):
