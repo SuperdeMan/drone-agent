@@ -164,9 +164,13 @@ def run_m3(root: Path, deployment: Path, request: dict):
             for folder in FOLDERS:
                 (run / folder).mkdir(parents=True)
             period = measure["edge_period_s"] if measure["edge_period_s"] is not None else scenario.get("edge_period_s", 1.0)
+            shader_cache = root / "cache" / "mesa-shaders-m3"
+            shader_cache.mkdir(parents=True, exist_ok=True)
             env = dict(os.environ, DRONE_M3_RUN=str(run), DRONE_SOURCE_SHA=sha, DRONE_M3_SPEED="1",
                        DRONE_M3_SIM_IMAGE=images["sim3"], DRONE_M3_GROUND_IMAGE=images["ground"],
-                       DRONE_M3_AIRCRAFT_IMAGE=images["aircraft3"], DRONE_EDGE_PERIOD_S=str(float(period)))
+                       DRONE_M3_AIRCRAFT_IMAGE=images["aircraft3"], DRONE_EDGE_PERIOD_S=str(float(period)),
+                       DRONE_M3_SHADER_CACHE=str(shader_cache))
+            cached_before = sum(1 for path in shader_cache.rglob("*") if path.is_file())
             prefix = ["docker", "compose", "-p", "drone-agent-cloud", "-f", str(source / "sim/compose.m3.yaml")]
             (run / "measure.json").write_text(json.dumps({**measure, "edge_period_s": float(period)}))
             if measure["isolation"] == "shared":
@@ -331,6 +335,10 @@ def run_m3(root: Path, deployment: Path, request: dict):
                 compose("stop", "-t", "5", *SERVICES, check=False)
                 compose("stop", "-t", "10", "sitl", check=False)
             result["quiet_gate"] = gate
+            # A cold cache compiles shaders mid-flight (D045); the receipt says which kind of run this was.
+            # 冷缓存会在飞行中编译着色器（D045）；回执说明本次运行属于哪一种。
+            result["shader_cache_files"] = {"before": cached_before,
+                                            "after": sum(1 for path in shader_cache.rglob("*") if path.is_file())}
             results.append(result)
             write_json(base / "progress.json", {"source_sha": sha, "results": results, "artifact_directory": str(base)})
             if not result["passed"] and not request.get("keep_going"):

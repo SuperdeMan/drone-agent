@@ -32,6 +32,11 @@ services:
       GZ_IP: 127.0.0.1
     volumes:
       - ${DRONE_M3_RUN:?}/ulog:/opt/PX4-Autopilot/build/px4_sitl_default/rootfs/log
+      # D045: Mesa's llvmpipe compiles a shader on first use inside the render thread, which Gazebo's sensor system
+      # waits for; a persistent shader cache keeps that one-off compile from freezing a later flight. Rendering
+      # time only, never behaviour. / D045：llvmpipe 首次使用着色器时在渲染线程内编译，Gazebo 传感器系统会等待；
+      # 持久化着色器缓存避免这种一次性编译冻结后续飞行。只影响渲染耗时，从不影响行为。
+      - ${DRONE_M3_SHADER_CACHE:?}:/root/.cache/mesa_shader_cache
     networks: [simulation]
   collector:
     image: ${DRONE_M3_GROUND_IMAGE:?}

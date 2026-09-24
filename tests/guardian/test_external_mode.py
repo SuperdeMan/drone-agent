@@ -216,6 +216,26 @@ async def test_gnss_loss_with_visual_localization_holds_then_lands(m3):
     assert m3.guardian.recovery.target is RecoveryBehavior.HOLD and m3.guardian.recovery.then is RecoveryBehavior.LAND_HERE
 
 
+async def test_the_executive_ending_during_a_recovery_never_hands_the_recovery_away(m3):
+    # SITL: GNSS lost, the guardian held; the executive then ended its aborted mission while the flight controller's
+    # global position was already unhealthy, and the unmatched heartbeat loss handed control to the flight controller.
+    # SITL：GNSS 丢失后 guardian 已 hold；executive 随后结束已中止的任务，此时飞控全局位置已不健康，未匹配的心跳丢失
+    # 把控制交还了飞控。
+    m3.autonomy.put("localization_report", localization(gnss_ok=False, gnss_position_fused=False))
+    m3.beat()
+    m3.guardian.active_step = m3.node("inspect_green")
+    await m3.guardian.tick()
+    await m3.settle()
+    assert m3.guardian.recovery.target is RecoveryBehavior.HOLD
+    m3.adapter.healthy = False
+    m3.guardian.last_progress -= 5  # the executive is gone / executive 已退出
+    await m3.guardian.tick()
+    await m3.settle()
+    assert not m3.guardian.taken_over and m3.guardian.recovery.then is RecoveryBehavior.LAND_HERE
+    assert [r["data"]["reason"] for r in m3.journal.rows if r["kind"] == "safety_intervention"] == [
+        "localization_degraded"]
+
+
 async def test_a_report_built_from_stale_px4_inputs_is_no_report_not_a_gnss_loss(m3):
     # The DDS link is gone: the node still reports, but its "not fused" flags are unknowns, not a GNSS loss.
     # DDS 链路已断：节点仍在报告，但其「未融合」标志是未知量，而不是 GNSS 失效。

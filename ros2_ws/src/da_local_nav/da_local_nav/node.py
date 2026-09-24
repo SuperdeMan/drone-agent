@@ -33,9 +33,11 @@ from da_local_nav.geometry import VoxelMap, depth_to_enu
 from da_local_nav.planner import LocalPlanner
 
 VERSION = "0.1.0"
-# Simulation-only planner overload: extra CPU per cycle, beyond the 250 ms overload threshold (D045).
-# 仅供仿真的规划过载：每周期额外消耗的 CPU，超过 250 ms 的过载阈值（D045）。
-OVERLOAD_BURN_S = 0.32
+# Simulation-only planner overload: each cycle is filled with CPU work up to 300 ms, above the 250 ms overload
+# threshold and below the 400 ms segment validity, so the segments stay fresh but late (D042, D045).
+# 仅供仿真的规划过载：每个周期用 CPU 计算补足到 300 ms，高于 250 ms 的过载阈值、低于 400 ms 的片段有效期，使片段
+# 保持新鲜但越限（D042，D045）。
+OVERLOAD_CYCLE_S = 0.30
 STATUS = {"ok": pb.SEGMENT_STATUS_OK, "reached": pb.SEGMENT_STATUS_REACHED, "no_path": pb.SEGMENT_STATUS_NO_PATH,
           "overloaded": pb.SEGMENT_STATUS_OVERLOADED}
 
@@ -130,7 +132,7 @@ class LocalNavNode(Node):
             # The planner's own work outgrows its period while its outputs stay fresh: burn CPU inside the cycle,
             # within the autonomy container's quota (D042, D045). / 规划自身的计算超出周期而输出保持新鲜：在周期内
             # 消耗 CPU，仍在自主层容器配额之内（D042，D045）。
-            end = time.monotonic() + OVERLOAD_BURN_S
+            end = now + OVERLOAD_CYCLE_S
             while time.monotonic() < end:
                 pass
         goal = (task.goal.x, task.goal.y, task.goal.z)
@@ -154,7 +156,7 @@ class LocalNavNode(Node):
                                      points=self.map.points())
             plan_status, points, compute_ms, notes = plan.status, plan.points, plan.cycle_ms, plan.notes
             if fault == "planner_overload":
-                notes = {**notes, "fault": "planner_overload", "burn_ms": OVERLOAD_BURN_S * 1000}
+                notes = {**notes, "fault": "planner_overload", "cycle_target_ms": OVERLOAD_CYCLE_S * 1000}
         cycle_ms = max(compute_ms, period_ms)
         if cycle_ms > self.budget_ms * self.overload_factor:
             plan_status = "overloaded" if plan_status == "ok" else plan_status

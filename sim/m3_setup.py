@@ -4,15 +4,15 @@ Adds, inside the simulation image only: a forward depth camera and odometry nois
 keeps M1's downward RGB camera through its include of `x500`); the registered wall and pillar, the green asset and
 the backup landing pad of `m3_campus_v3`; and one UNREGISTERED crate that the aircraft can only learn about through
 its depth camera (its geometry is written to the judge's truth file, never to the registry). The `x500_vision`
-airframe copy that SITL actually loads gets three simulation parameters: external-vision fusion, PX4's failure
-injection switch and a slower simulated battery. No failsafe parameter is changed.
+airframe copy that SITL actually loads gets external-vision fusion (with its noise mode) and a slower simulated
+battery. No failsafe parameter is changed; GNSS loss is injected at the simulated receiver (D045).
 
 在 M2 镜像之上构建 M3 仿真世界；M1、M2 的镜像与世界保持不变（D041）。
 
 只在仿真镜像内增加：PX4 `x500_vision` 机体（经 include `x500` 保留 M1 的下视 RGB 相机）上的前视深度相机与里程计噪声；
 `m3_campus_v3` 登记的墙体、立柱、绿色资产与备用降落点；以及一个**未登记**的箱体，飞行器只能经深度相机感知它（其
-几何只写入裁判真值文件，从不写入登记表）。SITL 实际加载的 `x500_vision` 机架副本增加三个仿真参数：外部视觉融合、
-PX4 故障注入开关与更慢的仿真电池。不改动任何失效保护参数。
+几何只写入裁判真值文件，从不写入登记表）。SITL 实际加载的 `x500_vision` 机架副本增加外部视觉融合（含其噪声模式）
+与更慢的仿真电池。不改动任何失效保护参数；GNSS 失效在仿真接收机处注入（D045）。
 """
 
 import json

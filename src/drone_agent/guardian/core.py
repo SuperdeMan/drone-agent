@@ -500,6 +500,13 @@ class Guardian:
         if obs.fc_failsafe or self.adapter.external_takeover:
             await self.relinquish("fc_failsafe_active" if obs.fc_failsafe else "external_mode_takeover")
             return
+        if (trigger is RecoveryTrigger.EXECUTIVE_HEARTBEAT_LOST and self.recovery is not None
+                and self.recovery.trigger is not RecoveryTrigger.USER_PAUSE):
+            # A recovery that ends the mission belongs to the guardian alone; the executive ending its aborted mission
+            # is not a new fault, even where no heartbeat edge would match (D045). A pause expects the executive back,
+            # so losing it there stays a fault (M1). / 结束任务的恢复只属于 guardian；executive 结束已中止的任务不是
+            # 新故障，即使没有匹配的心跳边也是如此（D045）。暂停期待 executive 回来，此时丢失它仍是故障（M1）。
+            return
         edge = self.policy.select(trigger, self.context(obs))
         if edge is None or edge.target == RecoveryBehavior.HANDOVER_TO_FC_FAILSAFE:
             await self.relinquish(reason or trigger.value)

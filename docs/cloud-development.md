@@ -161,7 +161,8 @@ uv run python scripts/dev_stack.py deploy --sha HEAD --apply
 │  ├─ control/               # Compose、验证 Dockerfile、锁定依赖
 │  └─ manifest.json
 ├─ secrets/                  # 0700；m2/ 签名密钥、trust、CA 与 mTLS 证书，m2-model/ 实调 key（均 0600）
-└─ artifacts/<run_id>/       # 构建日志、冒烟 JSON、JUnit、部署回执；m1-*/ 与 m2-*/ 为飞行批次
+├─ cache/mesa-shaders-m3/    # M3 SITL 共享的 Mesa 着色器缓存（D045）；只影响渲染耗时，可随时删除重建
+└─ artifacts/<run_id>/       # 构建日志、冒烟 JSON、JUnit、部署回执；m1-*/、m2-*/、m3-*/ 为飞行批次
 ```
 
 同一项目的变更使用独立 `flock` 串行化，不占用 car-agent 发布锁。重任务开始前检查共享服务器余量；当前部署要求至少 3 GiB 可用内存、8 GiB 可用磁盘。归档、旧部署、停止的测试容器和证据不自动清理；不改系统设置、安全组、Tailscale、systemd、CI/CD 或数据库 schema。
