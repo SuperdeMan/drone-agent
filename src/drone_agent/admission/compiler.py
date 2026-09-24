@@ -13,6 +13,16 @@ the DAG deterministically and computes the package hash. Same input, same packag
 的框架节点，并按场景默认值补齐缺失的（takeoff → 内容 → return_home → land）；把巡检目标展开为
 `skill.inspect.asset` 节点；补齐规格未写的登记表绑定参数（从不覆盖规格已给的值，绑定是否正确由
 准入核对）；确定性地排序 DAG 并计算任务包哈希。同一输入得到同一哈希。
+
+M3 (D039, WP-M3-12): given the selected robot's live control modes, the compiler lowers an asset inspection to
+`skill.inspect.asset_local` (obstacle-aware approach in the external mode) when the robot offers `external_mode` and
+the asset registers an observation goal, and otherwise to the route-based `skill.inspect.asset`; with neither it
+rejects. The return leg uses the inspected asset's registered return route when it has one. Without live modes the
+M2 behaviour is unchanged.
+
+M3（D039，WP-M3-12）：编译器依据选定机器人的实时控制模式，在机器人提供 `external_mode` 且资产登记了观察点时，把资产
+巡检下沉为 `skill.inspect.asset_local`（外部模式下的避障接近），否则下沉为航线版 `skill.inspect.asset`；两者都不可行
+即拒绝。返航段在被巡检资产登记了返航航线时使用该航线。没有实时模式时保持 M2 行为不变。
 """
 
 from __future__ import annotations
@@ -20,7 +30,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from drone_agent.admission.models import CompileResult
-from drone_agent.contracts import GoalType, MissionPackage, MissionSpec, PackageNode, TaskNode
+from drone_agent.contracts import ControlMode, GoalType, MissionPackage, MissionSpec, PackageNode, TaskNode
 from drone_agent.mission.registry import Registry
 from drone_agent.runtime.issues import Issue, issue
 
@@ -28,6 +38,7 @@ TAKEOFF = "skill.flight.takeoff"
 RETURN_HOME = "skill.flight.return_home"
 LAND = "skill.flight.land"
 INSPECT = "skill.inspect.asset"
+INSPECT_LOCAL = "skill.inspect.asset_local"
 FLY_ROUTE = "skill.flight.fly_route"
 CAPTURE = "skill.flight.capture_image"
 FRAMEWORK = (TAKEOFF, RETURN_HOME, LAND)
@@ -40,6 +51,9 @@ class CompileContext:
 
     registry: Registry
     robot_id: str
+    # M3: the robot's live control modes; None keeps the M2 (mission_upload only) behaviour.
+    # M3：机器人的实时控制模式；None 保持 M2（仅 mission_upload）行为。
+    control_modes: frozenset[ControlMode] | None = None
 
 
 def ancestors(tasks: dict[str, TaskNode], task_id: str) -> set[str]:
@@ -68,7 +82,7 @@ def complete_params(task: TaskNode, registry: Registry) -> tuple[dict, list[Issu
         params.setdefault("return_route_id", defaults.get("return_route_id"))
     elif task.skill_id == LAND:
         params.setdefault("landing_site_id", defaults.get("landing_site_id"))
-    elif task.skill_id in (INSPECT, CAPTURE):
+    elif task.skill_id in (INSPECT, INSPECT_LOCAL, CAPTURE):
         asset_id = params.get("asset_id")
         if not isinstance(asset_id, str) or not asset_id:
             return params, [issue("compile.params_invalid", "an inspection needs an asset_id", affected=[task.task_id])]
@@ -80,6 +94,10 @@ def complete_params(task: TaskNode, registry: Registry) -> tuple[dict, list[Issu
         params.setdefault("quality_profile_ref", f"{registry.registry_id}.image")
         if task.skill_id == INSPECT:
             params.setdefault("approach_route_id", asset.get("observation_route"))
+            params.setdefault("speed_mps", defaults.get("approach_speed_mps"))
+            params.setdefault("max_captures", defaults.get("max_captures"))
+        if task.skill_id == INSPECT_LOCAL:
+            params.setdefault("approach_goal_id", asset.get("observation_goal"))
             params.setdefault("speed_mps", defaults.get("approach_speed_mps"))
             params.setdefault("max_captures", defaults.get("max_captures"))
     elif task.skill_id == FLY_ROUTE:
@@ -95,6 +113,21 @@ def complete_params(task: TaskNode, registry: Registry) -> tuple[dict, list[Issu
         return params, [issue("compile.params_invalid", f"scene defaults missing for {missing}",
                               affected=[task.task_id, *missing])]
     return params, []
+
+
+def lower_inspection(task: TaskNode, ctx: CompileContext) -> tuple[TaskNode, list[Issue]]:
+    """Choose the inspection skill the robot can actually fly (M3, D039). / 选择机器人实际能飞的巡检技能（M3，D039）。"""
+    if task.skill_id != INSPECT or ctx.control_modes is None:
+        return task, []
+    asset = ctx.registry.data["assets"].get(task.params.get("asset_id"), {})
+    offered = ControlMode.EXTERNAL_MODE in ctx.control_modes and INSPECT_LOCAL in ctx.registry.manifests
+    if offered and asset.get("observation_goal") and "approach_route_id" not in task.params:
+        return task.model_copy(update={"skill_id": INSPECT_LOCAL}), []
+    if asset.get("observation_route") and ControlMode.MISSION_UPLOAD in ctx.control_modes:
+        return task, []
+    return task, [issue("compile.no_approach_for_capability",
+                        f"no registered approach for {task.params.get('asset_id')} under {sorted(ctx.control_modes)}",
+                        affected=[task.task_id])]
 
 
 def _unique(existing: set[str], preferred: str) -> str:
@@ -222,7 +255,20 @@ def compile_spec(spec: MissionSpec, ctx: CompileContext) -> CompileResult:
     ordered = [takeoff, *_topological([t for t in content if t.task_id in content_ids], {takeoff.task_id}), ret, land]
 
     issues, nodes = [], []
+    lowered = []
     for task in ordered:
+        task, found = lower_inspection(task, ctx)
+        issues.extend(found)
+        lowered.append(task)
+    ordered = lowered
+    last_asset = next((t.params.get("asset_id") for t in reversed(ordered)
+                       if t.skill_id in (INSPECT, INSPECT_LOCAL, CAPTURE)), None)
+    return_route = registry.data["assets"].get(last_asset, {}).get("return_route") if last_asset else None
+    for task in ordered:
+        if task.skill_id == RETURN_HOME and return_route and "return_route_id" not in task.params:
+            # The inspected asset's registered return route, e.g. a detour around a wall (M3).
+            # 被巡检资产登记的返航航线，例如绕过墙体（M3）。
+            task = task.model_copy(update={"params": {**task.params, "return_route_id": return_route}})
         params, found = complete_params(task, registry)
         issues.extend(found)
         manifest = manifests[task.skill_id]
