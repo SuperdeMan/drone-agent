@@ -590,3 +590,15 @@ D024 的实施已完成并通过完整 SITL 验收，状态转为生效；D025 �
 **替代方案**：把新触发条件并入 v1（否：改变已验证 M1 边的上下文）；由规划节点自报是否卡住（否：被卡住的一方不能证明自己没卡住）；CBF 只用登记障碍（否：看不到未登记障碍）；CBF 只用局部地图（否：地图过期时没有下界）。
 
 **验收**：v2 每条新边至少一个注入场景 × 3 个种子，并生成绑定边内容哈希、场景、软件版本与证据的记录；继承边的记录来自同一版本上的 M1 完整回归；`unverified_edges()` 为空才能称 v2 已验证。
+
+## D043 · D008 重估：M3 维持 ROS 2 Jazzy，改写切换到 Lyrical 的条件（WP-M3-05）
+
+**日期**：2026-09-24 · **状态**：生效
+
+**结论**：D008 的切换条件（`px4_msgs`、Nav2、BehaviorTree.ROS2、`rmw_zenoh` 均有稳定发布）不满足，M3 维持 Jazzy + PX4 v1.17.0 + Gazebo Harmonic。四项中只有 Nav2 与 `rmw_zenoh` 在 Lyrical 有正式二进制；`px4_msgs` 与 BehaviorTree.ROS2 在 Jazzy 上同样只有源码，原条件照字面永远无法满足。真正的阻塞在 D008 未列的 PX4 侧：Lyrical 使用 Fast DDS 3.6，需要 Micro-XRCE-DDS-Agent 3.x 与 PX4 的 `UXRCE_DDS_CLIENT_USE_DDS_V3`，该选项在 v1.17.0 中不存在，只在 v1.18.0-rc1 出现；Lyrical 的 Tier 1 平台是 Ubuntu 26.04，而 PX4 开发环境尚不支持 26.04；`px4-ros2-interface-lib` 没有任何分支带 Lyrical CI。纪要与证据链接见 [ROS 2 Lyrical 评估](research/ros2-lyrical-2026-09.md)。
+
+**改写后的切换条件**（全部满足才另立切换条目）：PX4 正式版文档支持 Lyrical（含 uXRCE-DDS v3 client）且 `px4_ros2` 在该版本线有 Lyrical CI；Nav2 与 `rmw_zenoh` 有 Lyrical 二进制；本项目实际使用的源码依赖在 Lyrical 上 CI 通过；PX4 SITL 在 Lyrical 目标平台上的部署方案通过 M1 回归。BehaviorTree.ROS2 若项目最终不直接依赖，则从条件中删去。Gazebo 换代（Jetty）会改变 M1 回归基线，须单独评测，不夹带在 ROS 切换中。
+
+**本项目实测**：上游 `release/1.17` 的 CI 不覆盖 Jazzy；本项目已在固定基础镜像上构建 `px4_msgs`（消息取自 PX4 v1.17.0）与 `px4_ros2_cpp` release/1.17，并用 v1.17.0 SITL 核实消息兼容性检查通过、外部模式注册为 nav_state 23。
+
+**重估触发器**：PX4 v1.18 或更高正式版把 Lyrical 列为支持平台；`px4_ros2` 合并 Lyrical CI；`px4_msgs` 在 Lyrical rosdistro 发布；2026-10 季度技术雷达；最迟 2028-04 启动迁移评估（Jazzy 与 Harmonic 于 2029-05 EOL）。
