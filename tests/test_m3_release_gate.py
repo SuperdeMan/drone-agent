@@ -4,15 +4,23 @@ M3-SITL 门禁绝不让重跑掩盖发现、对作废用例计数，并对 D040 
 """
 
 import runpy
-import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 GATE = runpy.run_path(str(ROOT / "scripts/verify_m3_release.py"))
-SHA = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-SUITE = GATE["suite_at"](SHA, "configs/scenarios/m3_suite.yaml")
+SHA = "c" * 40
+SUITE = yaml.safe_load((ROOT / "configs/scenarios/m3_suite.yaml").read_text(encoding="utf-8"))
+
+
+@pytest.fixture(autouse=True)
+def working_tree_suites(monkeypatch):
+    # The checks image has no .git (sources come from `git archive`); read the suites from the working tree.
+    # 检查镜像里没有 .git（源码来自 `git archive`）；从工作区读取场景集。
+    monkeypatch.setitem(GATE["m3_suite"].__globals__, "suite_at",
+                        lambda sha, path: yaml.safe_load((ROOT / path).read_text(encoding="utf-8")))
 
 
 def row(scenario, seed, **overrides):
