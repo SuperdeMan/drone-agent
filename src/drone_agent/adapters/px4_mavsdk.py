@@ -63,7 +63,7 @@ class Px4Adapter:
             # Every camera-dependent skill disappears with the camera. / 相机缺席时所有依赖相机的技能一并缺席。
             self.capabilities.skills = [
                 s for s in self.capabilities.skills
-                if s.skill_id not in {"skill.flight.capture_image", "skill.inspect.asset"}
+                if s.skill_id not in {"skill.flight.capture_image", "skill.inspect.asset", "skill.inspect.asset_local"}
             ]
             self.capabilities.sensors = [s for s in self.capabilities.sensors if s.sensor_id != "cam_0"]
         self.command_log = []
@@ -336,10 +336,12 @@ class Px4Adapter:
 
     async def execute(self, node, permitted, phase=None):
         action, p = node.skill_id.rsplit(".", 1)[1], node.params
-        if node.skill_id == "skill.inspect.asset":
-            # Approach flies the asset's registered observation route; capture takes one real frame (D034).
-            # 接近相位飞该资产登记的观察航线；拍摄相位拍一帧真实影像（D034）。
-            if phase == "approach":
+        if node.skill_id in {"skill.inspect.asset", "skill.inspect.asset_local"}:
+            # Approach flies the asset's registered observation route; the local variant approaches in external mode
+            # through the guardian and never here. Capture takes one real frame either way (D034, D039).
+            # 接近相位飞该资产登记的观察航线；本地变体经 guardian 在外部模式中接近，从不经过这里。两者的拍摄相位都拍
+            # 一帧真实影像（D034，D039）。
+            if phase == "approach" and node.skill_id == "skill.inspect.asset":
                 await self.route(self.registry.route(p["approach_route_id"]), p["speed_mps"], permitted)
             elif phase == "capture":
                 self.evidence[node.task_id] = await self.capture(node, permitted)

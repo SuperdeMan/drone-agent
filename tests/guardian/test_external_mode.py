@@ -31,6 +31,30 @@ def test_an_external_package_is_refused_while_the_egress_node_is_down(tmp_path):
         Runtime(tmp_path, egress_up=False)
 
 
+async def test_the_adapter_captures_for_the_local_inspection_but_never_flies_its_approach(m3, tmp_path):
+    # The first M3 SITL case reached the asset and then had its capture refused as an unsupported skill.
+    # 首个 M3 SITL 用例飞到了资产上方，拍摄却因「不支持的技能」被拒。
+    from drone_agent.adapters.px4_mavsdk import Px4Adapter
+
+    adapter = Px4Adapter(m3.registry, tmp_path, tmp_path / "sensor.json")
+    calls = []
+
+    async def capture(node, permitted):
+        calls.append(("capture", node.task_id))
+        return {"media_ref": "images/x.rgb"}
+
+    async def route(*args):
+        calls.append(("route",))
+
+    adapter.capture, adapter.route = capture, route
+    node = m3.node("inspect_green")
+    assert node.skill_id == "skill.inspect.asset_local"
+    await adapter.execute(node, lambda: True, phase="capture")
+    with pytest.raises(ValueError, match="phase"):
+        await adapter.execute(node, lambda: True, phase="approach")
+    assert calls == [("capture", "inspect_green")] and adapter.evidence["inspect_green"]["media_ref"]
+
+
 def test_the_live_capability_offers_external_mode_only_with_a_healthy_egress(m3):
     assert "external_mode" in m3.guardian.live_capabilities().control_modes
     m3.egress.put("egress_status", egress_status(compatibility_ok=False))
