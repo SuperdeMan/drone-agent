@@ -94,7 +94,7 @@ M3 计划新增 ROS 2 autonomy 节点与 edge-inference 服务，评估 guardian
 | 范围 | 当前实现 | 后续路线 |
 |---|---|---|
 | executive ↔ guardian | 本地 gRPC over UDS + local credentials，不经过网络 | 保持本地控制边界 |
-| uplink ↔ mission-service | 主动拨出 mTLS gRPC；车队协议传任务包、操作请求、事件、媒体与状态 | M3 评估 Zenoh；其他厂商传输按平台接入 |
+| uplink ↔ mission-service | 主动拨出 mTLS gRPC（默认）或 Zenoh（TLS + mTLS + 按证书名的访问控制，D046）；两者承载同一套车队协议报文：任务包、操作请求、事件、媒体与状态 | 其他厂商传输按平台接入 |
 | 任务台 ↔ mission-service | hri.v0 WebSocket → 服务 API；常驻部署使用私有 UDS | 按入口权限扩展 |
 | 飞控 | MAVLink 2 / MAVSDK 3.17.4，`mission_upload` 路径 | M3 引入 uXRCE-DDS / px4_ros2 外部模式 |
 | autonomy 内部 / 跨机器人 | 尚未实现 | ROS 2 独立域；跨机器人走 Zenoh 或车队协议，DDS 发现不跨无线链路 |

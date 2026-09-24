@@ -19,7 +19,7 @@
 | `LLMProvider` | MiniMax-M3 默认规划；OpenAI 兼容 HTTP、函数调用 + JSON 抢救、录制回放（D029） | 其他厂商按固定模型基线验证，不能转借 MiniMax 的实调结果 |
 | `PlannerTool`（MCP） | 引擎经最小 stdio MCP 子集读取登记表、资产、历史与场景记录；模型只提交草案 | 接入真实天气、空域等数据源，保留只读工具边界 |
 | `ConstraintProvider` | 围栏、能源门控、SITL 能耗上界；空域仿真桩拒绝真实模式 | M3 真实空域接口定义与能源可达性，真机报备按 M4-A 验证 |
-| `FleetTransport` | M2 mTLS gRPC 拉取任务、上传事件 / 媒体 / 状态 | Zenoh（M3）、其他厂商传输；不破坏 wire 兼容与授权语义 |
+| `FleetTransport` | M2 mTLS gRPC 拉取任务、上传事件 / 媒体 / 状态；M3 Zenoh（同一报文，D046） | 其他厂商传输；不破坏 wire 兼容与授权语义 |
 | `Storage` | fsync JSONL 哈希链、MCAP、ULog；M2 SQLite 业务账本与媒体文件 | 对象存储 / 时序库按需引入，本地写路径不依赖云端 |
 | `Judge` | M1 / M2 独立真值裁判与回放 | M3–M5 新场景、多机器人和真机日志裁判；与被测运行时隔离 |
 

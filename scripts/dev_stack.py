@@ -427,6 +427,8 @@ def main() -> None:
     m2_parser.add_argument("--seeds", default="7,19,41")
     m2_parser.add_argument("--planner", choices=["scripted", "live"], default="scripted",
                            help="scripted fixtures are labelled test doubles; live needs the model key in cloud secrets")
+    m2_parser.add_argument("--transport", choices=["grpc", "zenoh"], default="grpc",
+                           help="FleetTransport between the mission service and the uplink (D046)")
     m3_parser = commands.add_parser("m3", help="run M3-SITL scenarios (external mode, autonomy, recovery v2) in the cloud")
     m3_parser.add_argument("--scenario", default="ext_inspect", help="all, class:<name> or comma-separated ids")
     m3_parser.add_argument("--seeds", default="7,19,41")
@@ -514,6 +516,7 @@ def main() -> None:
                         "scenario": args.scenario,
                         "seeds": [int(seed) for seed in args.seeds.split(",")],
                         "planner": args.planner,
+                        "transport": args.transport,
                     },
                     timeout=14400,
                 )

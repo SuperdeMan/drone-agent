@@ -328,9 +328,15 @@ async def main_async(args) -> None:
     from drone_agent.mission.registry import Registry
 
     registry = Registry(args.root, scene=args.scene)
-    client = GrpcFleetClient(args.service, args.robot_id, cert_pem=(args.tls / "robot.crt").read_bytes(),
-                             key_pem=(args.tls / "robot.key").read_bytes(), ca_pem=(args.tls / "ca.crt").read_bytes(),
-                             server_name=args.server_name)
+    credentials = {"cert_pem": (args.tls / "robot.crt").read_bytes(), "key_pem": (args.tls / "robot.key").read_bytes(),
+                   "ca_pem": (args.tls / "ca.crt").read_bytes()}
+    if args.transport == "zenoh":
+        # D046: `--service` is a Zenoh TLS endpoint such as tls/mission-service:7447. / `--service` 为 Zenoh TLS 端点。
+        from drone_agent.fleet.transport_zenoh import ZenohFleetClient
+
+        client = ZenohFleetClient(args.service, args.robot_id, **credentials)
+    else:
+        client = GrpcFleetClient(args.service, args.robot_id, server_name=args.server_name, **credentials)
     uplink = Uplink(client, robot_id=args.robot_id, trust=TrustStore.load(args.trust),
                     capability=registry.capability, inbox=args.inbox, mailbox=args.mailbox, aircraft=args.aircraft,
                     state_path=args.state / "uplink-state.json")
@@ -351,6 +357,7 @@ def main() -> None:
     parser.add_argument("--robot-id", default="uav_01")
     parser.add_argument("--service", default="mission-service:8450")
     parser.add_argument("--server-name", default="mission-service")
+    parser.add_argument("--transport", choices=["grpc", "zenoh"], default="grpc")
     parser.add_argument("--tls", type=Path, default=Path("/tls"))
     parser.add_argument("--trust", type=Path, default=Path("/trust/trust.json"))
     parser.add_argument("--inbox", type=Path, default=Path("/inbox"))

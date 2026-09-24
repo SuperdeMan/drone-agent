@@ -113,10 +113,20 @@ async def main_async(args) -> None:
                              approval_policy=ApprovalPolicy.from_yaml(args.root / "configs/approval_policy.yaml"),
                              planner=planner, robot_id=args.robot_id)
     tls = args.tls
-    fleet, port = await serve_fleet(hub, args.listen, cert_pem=(tls / "service.crt").read_bytes(),
-                                    key_pem=(tls / "service.key").read_bytes(), ca_pem=(tls / "ca.crt").read_bytes())
+    credentials = {"cert_pem": (tls / "service.crt").read_bytes(), "key_pem": (tls / "service.key").read_bytes(),
+                   "ca_pem": (tls / "ca.crt").read_bytes()}
+    if args.transport == "zenoh":
+        # D046: the same hub behind a Zenoh endpoint; the robot's certificate name is its ACL subject.
+        # D046：同一个 hub 挂在 Zenoh 端点后；机器人证书名即其访问控制主体。
+        from drone_agent.fleet.transport_zenoh import serve_fleet_zenoh
+
+        fleet = await serve_fleet_zenoh(hub, args.zenoh_listen, robots=(args.robot_id,), **credentials)
+        port = args.zenoh_listen
+    else:
+        fleet, port = await serve_fleet(hub, args.listen, **credentials)
     api = await serve_api(service, args.api)
-    ready = {"fleet_port": port, "api": str(args.api), "signer_key_id": service.key.key_id, "planner": label,
+    ready = {"fleet_port": port, "transport": args.transport, "api": str(args.api),
+             "signer_key_id": service.key.key_id, "planner": label,
              "robot_id": args.robot_id, "registry_hash": registry.sha256,
              "source_sha": os.environ.get("DRONE_SOURCE_SHA", "uncommitted")}
     (args.state / "ready.json").write_bytes(canonical(ready))
@@ -129,7 +139,7 @@ async def main_async(args) -> None:
         await service.run(stop)
     finally:
         api.close()
-        await fleet.stop(2)
+        await (fleet.stop() if args.transport == "zenoh" else fleet.stop(2))
         ledger.close()
 
 
@@ -141,6 +151,8 @@ def main() -> None:
     parser.add_argument("--signing-key", type=Path, default=Path("/secrets/approval-signing.key"))
     parser.add_argument("--tls", type=Path, default=Path("/tls"))
     parser.add_argument("--listen", default="0.0.0.0:8450")
+    parser.add_argument("--transport", choices=["grpc", "zenoh"], default="grpc")
+    parser.add_argument("--zenoh-listen", default="tls/0.0.0.0:7447")
     parser.add_argument("--api", type=Path, default=Path("/run/mission/api.sock"))
     parser.add_argument("--robot-id", default="uav_01")
     parser.add_argument("--planner", choices=["auto", "live", "scripted", "none"], default="live")

@@ -83,6 +83,10 @@ def run_m2(root: Path, deployment: Path, request: dict) -> dict:
     planner = request.get("planner", "scripted")
     if planner not in ("scripted", "live"):
         raise ValueError("planner must be scripted or live")
+    # D046: the same suite over the Zenoh FleetTransport; gRPC stays the default. / 同一场景集走 Zenoh；默认仍为 gRPC。
+    transport = request.get("transport", "grpc")
+    if transport not in ("grpc", "zenoh"):
+        raise ValueError("transport must be grpc or zenoh")
     if planner == "live" and not (model / "minimax.key").is_file():
         raise ValueError("live planning needs the model key in the project secrets; none is configured")
     suite = json.loads(HELPERS["run"](["docker", "run", "--rm", "--network", "none", images["ground"], "python3", "-m",
@@ -98,7 +102,9 @@ def run_m2(root: Path, deployment: Path, request: dict) -> dict:
     results = []
     for scenario in scenarios:
         for seed in request["seeds"]:
-            result = run_case(root, source, base, images, keys, sha, request["run_id"], planner, scenario, seed)
+            result = run_case(root, source, base, images, keys, sha, request["run_id"], planner, scenario, seed,
+                              transport=transport)
+            result["transport"] = transport
             results.append(result)
             (base / "progress.json").write_text(json.dumps({"source_sha": sha, "results": results,
                                                            "artifact_directory": str(base)}))
@@ -112,6 +118,7 @@ def run_m2(root: Path, deployment: Path, request: dict) -> dict:
     summary = {
         "status": "passed" if results and all(r["passed"] for r in results) and before == after else "failed",
         "source_sha": sha, "deployment_id": deployment.name, "artifact_directory": str(base), "planner": planner,
+        "transport": transport,
         "signer_key_id": keys["signer_key_id"], "certificate_fingerprints": keys["fingerprints"],
         "results": results, "other_containers_before": before, "other_containers_after": after,
         "images": {role: HELPERS["inspect_image"](image)["Id"] for role, image in images.items()},
@@ -120,7 +127,7 @@ def run_m2(root: Path, deployment: Path, request: dict) -> dict:
     return summary
 
 
-def run_case(root, source, base, images, keys, sha, run_id, planner, scenario, seed) -> dict:
+def run_case(root, source, base, images, keys, sha, run_id, planner, scenario, seed, transport="grpc") -> dict:
     case = base / f"{scenario['id']}-{seed}"
     for folder in FOLDERS:
         (case / folder).mkdir(parents=True)
@@ -129,7 +136,8 @@ def run_case(root, source, base, images, keys, sha, run_id, planner, scenario, s
                DRONE_M2_MODEL=str(root / "secrets" / "m2-model"), DRONE_M2_PLANNER=planner,
                DRONE_M2_SIM_IMAGE=images["sim"], DRONE_M2_AIRCRAFT_IMAGE=images["aircraft"],
                DRONE_M2_GROUND_IMAGE=images["ground"], DRONE_M2_PACKAGE="none.json", DRONE_M2_VERSION="0",
-               DRONE_M2_EPOCH="0", DRONE_M2_FLIGHT=str(case / "idle-flight"))
+               DRONE_M2_EPOCH="0", DRONE_M2_FLIGHT=str(case / "idle-flight"), DRONE_M2_TRANSPORT=transport,
+               DRONE_M2_FLEET_TARGET="tls/mission-service:7447" if transport == "zenoh" else "mission-service:8450")
     prefix = ["docker", "compose", "-p", "drone-agent-cloud", "-f", str(source / "sim/compose.m2.yaml")]
     actor = f"harness:m2-{run_id}-{scenario['id']}-{seed}"
 

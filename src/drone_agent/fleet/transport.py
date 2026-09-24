@@ -238,6 +238,39 @@ def peer_robot_id(context) -> str | None:
     return robots.pop() if len(robots) == 1 else None
 
 
+def encode_batch(fleet, batch: dict):
+    """A hub delivery batch as `DeliveryBatch`; shared by every transport. / hub 投递批次编码为 `DeliveryBatch`；各传输共用。"""
+    from drone_agent.runtime.wire import encode
+
+    reply = fleet.DeliveryBatch(schema_version="0.1.0", cursor=batch["cursor"])
+    for item in batch["items"]:
+        message = reply.items.add(schema_version="0.1.0", delivery_id=item["delivery_id"], cursor=item["cursor"])
+        message.kind = fleet.DeliveryKind.Value("DELIVERY_KIND_" + item["kind"].upper())
+        if item["package"] is not None:
+            encode(item["package"], message.package)
+        if item["operation"] is not None:
+            encode(item["operation"], message.operation)
+        message.issued_at.FromDatetime(datetime.fromisoformat(item["issued_at"]))
+    return reply
+
+
+def decode_batch(fleet, reply) -> dict:
+    """`DeliveryBatch` back into the uplink's batch shape. / `DeliveryBatch` 还原为 uplink 使用的批次结构。"""
+    from drone_agent.runtime.wire import decode
+
+    items = []
+    for message in reply.items:
+        kind = fleet.DeliveryKind.Name(message.kind).removeprefix("DELIVERY_KIND_").lower()
+        items.append({
+            "delivery_id": message.delivery_id, "cursor": message.cursor, "kind": kind,
+            "package": MissionPackage.model_validate(decode(message.package)) if message.HasField("package") else None,
+            "operation": OperatorRequest.model_validate(decode(message.operation))
+            if message.HasField("operation") else None,
+            "issued_at": message.issued_at.ToDatetime(tzinfo=timezone.utc).isoformat(),
+        })
+    return {"items": items, "cursor": reply.cursor}
+
+
 def _receipt(fleet, receipt: Receipt):
     from google.protobuf.timestamp_pb2 import Timestamp
 
@@ -251,7 +284,7 @@ async def serve_fleet(hub: FleetHub, address: str, *, cert_pem: bytes, key_pem: 
     """Start the mTLS gRPC endpoint; client certificates are mandatory. / 启动 mTLS gRPC 端点；客户端证书必需。"""
     import grpc
 
-    from drone_agent.runtime.wire import decode, encode
+    from drone_agent.runtime.wire import decode
 
     shared, fleet, rpc = _stubs()
 
@@ -292,17 +325,7 @@ async def serve_fleet(hub: FleetHub, address: str, *, cert_pem: bytes, key_pem: 
             batch = hub.fetch_deliveries(robot_id, request.robot_id, request.after_cursor, request.max_items or 10)
             if batch.get("refused"):
                 await context.abort(grpc.StatusCode.PERMISSION_DENIED, batch["refused"])
-            reply = fleet.DeliveryBatch(schema_version="0.1.0", cursor=batch["cursor"])
-            for item in batch["items"]:
-                message = reply.items.add(schema_version="0.1.0", delivery_id=item["delivery_id"],
-                                          cursor=item["cursor"])
-                message.kind = fleet.DeliveryKind.Value("DELIVERY_KIND_" + item["kind"].upper())
-                if item["package"] is not None:
-                    encode(item["package"], message.package)
-                if item["operation"] is not None:
-                    encode(item["operation"], message.operation)
-                message.issued_at.FromDatetime(datetime.fromisoformat(item["issued_at"]))
-            return reply
+            return encode_batch(fleet, batch)
 
         async def AcknowledgeDelivery(self, request, context):
             robot_id = await self._robot(context)
@@ -373,23 +396,10 @@ class GrpcFleetClient:
             encode(capability, self.shared.CapabilityDescriptor()), timeout=self.timeout))
 
     async def fetch_deliveries(self, after_cursor: int, max_items: int = 10) -> dict:
-        from drone_agent.runtime.wire import decode
-
         reply = await self.stub.FetchDeliveries(self.fleet.DeliveryRequest(
             schema_version="0.1.0", robot_id=self.robot_id, after_cursor=after_cursor, max_items=max_items),
             timeout=self.timeout)
-        items = []
-        for message in reply.items:
-            kind = self.fleet.DeliveryKind.Name(message.kind).removeprefix("DELIVERY_KIND_").lower()
-            items.append({
-                "delivery_id": message.delivery_id, "cursor": message.cursor, "kind": kind,
-                "package": MissionPackage.model_validate(decode(message.package))
-                if message.HasField("package") else None,
-                "operation": OperatorRequest.model_validate(decode(message.operation))
-                if message.HasField("operation") else None,
-                "issued_at": message.issued_at.ToDatetime(tzinfo=timezone.utc).isoformat(),
-            })
-        return {"items": items, "cursor": reply.cursor}
+        return decode_batch(self.fleet, reply)
 
     async def acknowledge(self, delivery_id: str, accepted: bool, reason: str = "") -> Receipt:
         return self._receipt(await self.stub.AcknowledgeDelivery(self.fleet.DeliveryAck(

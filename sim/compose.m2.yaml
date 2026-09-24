@@ -60,7 +60,8 @@ services:
     command: [python3, -m, drone_agent.fleet.main, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
               --planner, "${DRONE_M2_PLANNER:?}", --fixtures, /input/planner-fixtures.json, --state, /state,
               --tls, /tls, --signing-key, /secrets/approval-signing.key, --api, /run/mission/api.sock,
-              --listen, "0.0.0.0:8450"]
+              --listen, "0.0.0.0:8450", --transport, "${DRONE_M2_TRANSPORT:-grpc}",
+              --zenoh-listen, "tls/0.0.0.0:7447"]
     volumes:
       - ${DRONE_M2_RUN:?}/input:/input:ro
       - ${DRONE_M2_RUN:?}/service:/state
@@ -99,7 +100,8 @@ services:
     environment:
       PYTHONDONTWRITEBYTECODE: "1"
     command: [python3, -m, drone_agent.runtime.uplink, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
-              --service, "mission-service:8450", --server-name, mission-service, --tls, /tls,
+              --transport, "${DRONE_M2_TRANSPORT:-grpc}", --service, "${DRONE_M2_FLEET_TARGET:-mission-service:8450}",
+              --server-name, mission-service, --tls, /tls,
               --trust, /trust/trust.json, --inbox, /inbox, --mailbox, /mailbox, --aircraft, /aircraft,
               --state, /uplink]
     volumes:

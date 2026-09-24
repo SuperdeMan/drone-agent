@@ -10,6 +10,10 @@ dependencies = [
     # M2 (D030): Ed25519 approval signatures verified onboard; mTLS certificates for the uplink.
     # M2（D030）：机载验证 Ed25519 审批签名；uplink 的 mTLS 证书。
     "cryptography>=46",
+    # M3 (D046): the Zenoh FleetTransport beside the M2 gRPC one; pinned because the ACL and TLS config keys
+    # are version-specific. / M3（D046）：与 M2 gRPC 并列的 Zenoh FleetTransport；ACL 与 TLS 配置键随版本变化，
+    # 故精确固定。
+    "eclipse-zenoh==1.9.0",
     "grpcio>=1.66",
     "jsonschema>=4.23,<5",
     "mcap>=1.2,<2",

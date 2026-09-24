@@ -18,8 +18,9 @@ def test_m2_failure_stops_new_cases_and_restores_idle(tmp_path, monkeypatch):
     monkeypatch.setitem(space, "build_images", lambda *_: images)
     monkeypatch.setitem(space, "provision", lambda *_: {"signer_key_id": "test", "fingerprints": {}})
 
-    def case(*args):
+    def case(*args, **options):
         calls.append((args[-2]["id"], args[-1]))
+        assert options == {"transport": "grpc"}
         return {"passed": len(calls) == 1, "scenario": args[-2]["id"], "seed": args[-1]}
 
     monkeypatch.setitem(space, "run_case", case)
