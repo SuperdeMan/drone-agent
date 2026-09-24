@@ -5,14 +5,14 @@ seed starts a fresh simulator, the truth collector, the camera relay, the XRCE a
 (unless the scenario runs without them), the guardian and the executive; injects the scenario's fault at its declared
 boundary when the flight reaches the stated condition; lets the simulation operator land a surrendered flight; stops
 everything; extracts the ULog; and runs the independent judge online and from the MCAP replay. The first failing case
-stops the batch. The idle M0 simulator is restored afterwards and foreign containers are compared before and after.
+stops the batch unless the request keeps going (diagnosis and measurement batches). The idle M0 simulator is restored afterwards and foreign containers are compared before and after.
 
 在本项目云端工作区运行 M3-SITL 场景（WP-M3-20，D038）。
 
 为已部署版本构建 M3 镜像（ROS 2 基础镜像跨版本缓存）；每个场景 × 种子都启动全新的仿真器、真值采集、相机转接、
 XRCE agent、出口与自主层节点（场景不需要时不启动）、guardian 与 executive；飞行到达规定条件时在声明的边界注入
 故障；由仿真操作员降落已交出控制权的飞行；全部停止后提取 ULog，并在线与从 MCAP 回放各运行一次独立裁判。首个失败
-用例即停止本批。结束后恢复 M0 空闲仿真器，并比较前后的其他容器。
+用例即停止本批，除非请求要求继续（诊断与测量批次）。结束后恢复 M0 空闲仿真器，并比较前后的其他容器。
 """
 
 from __future__ import annotations
@@ -234,9 +234,9 @@ def run_m3(root: Path, deployment: Path, request: dict):
                 compose("stop", "-t", "10", "sitl", check=False)
             results.append(result)
             write_json(base / "progress.json", {"source_sha": sha, "results": results, "artifact_directory": str(base)})
-            if not result["passed"]:
+            if not result["passed"] and not request.get("keep_going"):
                 break
-        if results and not results[-1]["passed"]:
+        if results and not results[-1]["passed"] and not request.get("keep_going"):
             break
     # Restore the idle, unarmed M0 simulator. / 恢复空闲、未解锁的 M0 仿真器。
     HELPERS["compose"](root, deployment, ["up", "-d", "--no-build", "--pull", "never", "--force-recreate", "sitl"])

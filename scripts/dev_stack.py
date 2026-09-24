@@ -430,6 +430,8 @@ def main() -> None:
     m3_parser = commands.add_parser("m3", help="run M3-SITL scenarios (external mode, autonomy, recovery v2) in the cloud")
     m3_parser.add_argument("--scenario", default="ext_inspect", help="all, class:<name> or comma-separated ids")
     m3_parser.add_argument("--seeds", default="7,19,41")
+    m3_parser.add_argument("--keep-going", action="store_true",
+                           help="run every selected case even after a failure (diagnosis and measurement batches)")
     deploy_parser = commands.add_parser("deploy")
     source = deploy_parser.add_mutually_exclusive_group()
     source.add_argument("--sha", default="HEAD")
@@ -489,6 +491,7 @@ def main() -> None:
                         "run_id": new_run_id(),
                         "scenario": args.scenario,
                         "seeds": [int(seed) for seed in args.seeds.split(",")],
+                        "keep_going": args.keep_going,
                     },
                     timeout=21600,
                 )
