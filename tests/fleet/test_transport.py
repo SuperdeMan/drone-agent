@@ -35,8 +35,11 @@ def stubs(tmp_path_factory):
 
 
 def row(seq: int = 0) -> dict:
-    return {"seq": seq, "previous": "0" * 64, "timestamp": utcnow().isoformat(), "monotonic_ns": 1,
-            "kind": "skill_state", "data": {"step_id": "takeoff", "state": "running"}, "sha256": "a" * 64}
+    from drone_agent.runtime.ledger import content_hash
+
+    value = {"seq": seq, "previous": "0" * 64, "timestamp": utcnow().isoformat(), "monotonic_ns": 1,
+             "kind": "skill_state", "data": {"step_id": "takeoff", "state": "running"}}
+    return {**value, "sha256": content_hash(value)}
 
 
 async def mission(loop) -> str:

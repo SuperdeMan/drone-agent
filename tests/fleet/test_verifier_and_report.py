@@ -72,6 +72,15 @@ def test_disagreement_becomes_unknown_and_the_service_never_raises_a_verdict():
     assert not raised.agrees and raised.final_verdict is EffectVerdict.UNKNOWN
 
 
+def test_capture_coordinates_cannot_be_reinterpreted_in_another_frame_or_map():
+    red = image("red")
+    for frame in (Frame(frame_id="another_frame", map_version="campus_v2"),
+                  Frame(frame_id="map_enu", map_version="another_map")):
+        item = evidence(red)
+        item.captured_pose.frame = frame
+        assert check(item, red) is EffectVerdict.REFUTED
+
+
 def outcome(step, status=ExecutionStatus.SUCCEEDED, verdict=EffectVerdict.VERIFIED, version=1):
     return StepOutcome(mission_id=PACKAGE.mission_id, mission_version=version, step_id=step, robot_id="uav_01",
                        execution_status=status, effect_verdict=verdict)

@@ -54,7 +54,7 @@ uv run python scripts/dev_stack.py status
 uv run python scripts/dev_stack.py desk-cloud --status
 ```
 
-In the resident desk, approved missions fly in PX4/Gazebo and produce evidence reports and independent judge results. See the [mission desk guide](docs/tailnet-desk.md) for deployment and access, or the [fixed M1 console](docs/live-simulation.md) for the earlier simulation entry.
+The unified cloud flight desk provides **M2 natural-language missions** and **M1 fixed inspections** at one origin. Approved M2 missions fly in PX4/Gazebo and produce evidence reports; M1 retains live tracks, camera frames, pause/resume and cancellation. The two modes fly sequentially; switching pages never cancels a flight. See the [flight desk guide](docs/tailnet-desk.md) and the [M2 review and validation record](docs/m2-review-2026-09-24.md).
 
 PX4 SITL and Gazebo run on Linux; use an ASCII repository path for native components. The [simulation guide](sim/README.md) also documents the explicit local fallback.
 

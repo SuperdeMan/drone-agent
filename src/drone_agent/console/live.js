@@ -5,6 +5,7 @@ const lifecycle={preparing:"准备中",running:"执行中",verifying:"确认效�
 const phaseNames={preparing:"准备环境",running:"执行中",judging:"安全收尾 / 裁判",finished:"本次已结束",failed:"本次未通过",interrupted:"后台状态待核对"};
 let view=null,connected=false,busy=false,lastResponse=0,photoMode="live",exportRun=null,lastEventKey="",lastJob=null,mutationAt=0;
 const nonce=document.querySelector('meta[name="console-nonce"]').content;
+const base=document.querySelector('meta[name="console-base"]')?.content||"";
 const project=p=>[350+(p[0]-p[1])*43,375-(p[0]+p[1])*20-p[2]*42];
 const xy=p=>project(p).map(v=>v.toFixed(2)).join(",");
 const valid=p=>Array.isArray(p)&&p.length===3&&p.every(Number.isFinite);
@@ -14,7 +15,7 @@ function newRunId(){return new Date().toISOString().replace(/[-:]/g,"").slice(0,
 async function api(path,body){
  const options={cache:"no-store",signal:AbortSignal.timeout(30000)};
  if(body){options.method="POST";options.headers={"Content-Type":"application/json","X-Console-Nonce":nonce};options.body=JSON.stringify(body);}
- const response=await fetch(path,options);const value=await response.json();
+ const response=await fetch(base+path,options);const value=await response.json();
  if(!response.ok)throw new Error(value.error||"请求未确认");return value;
 }
 function controls(){
@@ -128,7 +129,7 @@ byId('cameraCapture').onclick=()=>{photoMode='capture';if(view)render();};
 async function updateExport(){
  if(!exportRun)return;
  const exported=await api('/api/evidence?run='+encodeURIComponent(exportRun));
- if(exported.status==='ready'){byId('evidence').textContent='证据已核对';byId('evidenceLink').href=exported.url;byId('evidenceLink').hidden=false;}
+ if(exported.status==='ready'){byId('evidence').textContent='证据已核对';byId('evidenceLink').href=base+exported.url;byId('evidenceLink').hidden=false;}
  if(exported.status==='failed'){notice('证据拉取失败：'+exported.reason);byId('evidence').textContent='重新拉取完整证据';exportRun=null;controls();}
 }
 byId('evidence').onclick=async()=>{

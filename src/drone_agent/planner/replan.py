@@ -183,8 +183,8 @@ def classify(base: MissionPackage, proposed: MissionPackage, found: list[ReplanT
     retried = []
     for node in proposed.nodes:
         original = by_id.get(node.task_id)
-        same = original is not None and (original.skill_id, original.skill_version, original.params) == (
-            node.skill_id, node.skill_version, node.params)
+        bindings = ("skill_id", "skill_version", "params", "robot_id", "resources", "timeout_s", "completion_evidence")
+        same = original is not None and all(getattr(original, field) == getattr(node, field) for field in bindings)
         if node.skill_id in FRAMEWORK:
             if not same:
                 human.append(issue("replan.requires_human", f"framework node {node.task_id} changed",

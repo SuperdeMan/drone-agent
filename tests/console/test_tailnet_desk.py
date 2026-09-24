@@ -33,7 +33,11 @@ def test_page_is_loopback_only_read_only_and_holds_no_secret_or_control_path():
     assert web["ports"] == ["127.0.0.1:8769:8769"] and web["networks"] == ["desk_ingress"]
     assert web["read_only"] is True and web["cap_drop"] == ["ALL"] and web["security_opt"] == ["no-new-privileges:true"]
     assert web["user"] == "${DRONE_DESK_UID:?}:${DRONE_DESK_GID:?}" and web["restart"] == "unless-stopped"
-    assert web["volumes"] == ["${DRONE_DESK_ROOT:?}/api:/api:ro", "${DRONE_DESK_ROOT:?}/supervisor/public:/supervisor:ro"]
+    assert web["volumes"] == ["${DRONE_DESK_ROOT:?}/api:/api:ro", "${DRONE_DESK_ROOT:?}/supervisor/public:/supervisor:ro",
+                              "${DRONE_DESK_WORKSPACE:?}/console/ipc:/fixed/broker:ro",
+                              "${DRONE_DESK_WORKSPACE:?}/artifacts:/fixed/records:ro",
+                              "${DRONE_DESK_WORKSPACE:?}/releases:/fixed/releases:ro",
+                              "${DRONE_DESK_ROOT:?}/fixed-pages:/fixed/outputs"]
     assert "--tailnet" in web["command"] and "--a2a-clients" not in web["command"]
 
 
@@ -134,7 +138,11 @@ def test_container_verification_reads_actual_publication_mounts_and_user(tmp_pat
 
     def container(service):
         web = service == "desk"
-        mounts = {"desk": [("/api", desk.base / "api", False), ("/supervisor", desk.public, False)],
+        mounts = {"desk": [("/api", desk.base / "api", False), ("/supervisor", desk.public, False),
+                            ("/fixed/broker", desk.root / "console/ipc", False),
+                            ("/fixed/records", desk.root / "artifacts", False),
+                            ("/fixed/releases", desk.root / "releases", False),
+                            ("/fixed/outputs", desk.base / "fixed-pages", True)],
                   "desk-model-proxy": []}.get(service, [("/state", desk.service, True)])
         value = {
             "Id": service, "Image": "sha256:test", "State": {"Running": True},

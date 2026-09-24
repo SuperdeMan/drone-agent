@@ -1,8 +1,8 @@
-# M2 任务台 · Tailnet 常驻入口
+# 云端飞行台 · M1 / M2 统一入口
 
 D035 把 M2 任务台常驻到云端。在已接入 tailnet 的设备上打开入口，用自然语言提交巡检任务，查看规划、准入与任务包，批准后由云端仿真飞行，最后得到三列报告、机载相机证据与独立裁判结果。飞行只在仿真中进行；任何一步都不直达飞控。
 
-D028 的 M1 固定任务入口（`8447`）保持不变，见 [Tailnet 控制台指南](tailnet-console.md)。
+D037 将两种模式放进同一个 `8448` 入口：主页是 M2 自然语言任务，顶部“固定巡检 · M1”进入 `/fixed/`，包含实时轨迹、相机、暂停 / 恢复 / 取消和完整证据。切换页面只切换视图，不启动或取消任务。两种模式共享项目锁，依次飞行。D028 的旧 `8447` 仍作为兼容入口，见 [Tailnet 控制台指南](tailnet-console.md)。
 
 ## 访问
 
@@ -31,6 +31,7 @@ uv run python scripts/dev_stack.py desk-cloud --status
 
 ```powershell
 uv run python scripts/dev_stack.py deploy --sha HEAD --apply --artifacts D:/drone-agent-cloud
+uv run python scripts/dev_stack.py console-cloud --apply # 先使 M1 代理与当前部署版本一致
 uv run python scripts/dev_stack.py m2-key --apply      # 可选：把本机环境的 MINIMAX_API_KEY 写入云端 secrets
 uv run python scripts/dev_stack.py desk-cloud           # 只读计划
 uv run python scripts/dev_stack.py desk-cloud --apply
@@ -53,6 +54,10 @@ uv run python scripts/dev_stack.py desk-cloud --status
 机器人目录 `~/drone-agent/desk/robot/`（inbox、信箱、代次水位、各版本飞行产物）跨任务持久，代次单调递增。每架次的仿真侧记录（真值、传感器、ULog、PX4 控制台）在 `~/drone-agent/desk/flights/<任务>-v<版本>/`，裁判用例在 `~/drone-agent/desk/judge/`。
 
 ## 核对
+
+统一入口的固定模式使用 `scripts/desk_probe.py fixed --origin <origin> --mode nominal|pause|cancel --seed 7`。它经 `/fixed/` 的真实 HTTPS 协议运行，记录操作接受结果、独立裁判和证据页面，并在飞行中读取 M2 主页核对切换不换任务。统一入口健康检查要求网页、M2 服务与 M1 运行时版本一致。
+
+页面额外只读挂载 D028 的代理 socket、运行目录、源码版本目录，证据 HTML 写入 `desk/fixed-pages/`。没有身份的设备不能在固定模式写操作。M2 报告在影像未复核或账本缺口未补齐时显示“证据同步中”与“不确定”。
 
 验收经真实 Tailnet HTTPS 进行，使用 `scripts/desk_probe.py`（在 tailnet 设备上运行）：
 

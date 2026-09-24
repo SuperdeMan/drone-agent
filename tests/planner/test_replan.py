@@ -109,6 +109,16 @@ def test_parameter_change_goes_to_a_human():
     assert decision.classification == "requires_human" and codes(decision.issues) == ["replan.requires_human"]
 
 
+@pytest.mark.parametrize("field,value", [("completion_evidence", []), ("timeout_s", 1), ("resources", [])])
+def test_execution_or_evidence_binding_change_requires_human(field, value):
+    base_spec, package = base()
+    found = triggers(package, aborted_after_unverified_inspection())
+    _, proposed = retry_package(base_spec, package, found)
+    setattr(proposed.nodes[1], field, value)
+    decision = classify(package, proposed, found, POLICY, replans_so_far=0, base_approval=package.approval)
+    assert decision.classification == "requires_human"
+
+
 def test_retrying_a_completed_node_goes_to_a_human():
     base_spec, package = base()
     completed = {n.task_id: outcome(n.task_id) for n in package.nodes}

@@ -87,7 +87,9 @@ class MissionService:
         self.catalog = Catalog(ledger, static=self.registry.capability)
         self.coordinator = PassthroughCoordinator(robot_id, self.catalog)
         self.defaults = self.registry.data.get("mission_defaults", {})
-        self.dirty: set[str] = set()
+        # Reconcile persisted input even when the uplink already acknowledged every item before a restart.
+        # 重启后复核持久化输入，即使 uplink 已在重启前确认了每条上传。
+        self.dirty: set[str] = {m["mission_id"] for m in ledger.missions(-1) if m["current_version"] > 0}
         self.status_changed = False
         hub.listeners.append(self._ingested)
 
@@ -216,7 +218,10 @@ class MissionService:
         self._deliver_ready(mission_id)
 
     def _finished_at(self, mission_id: str, version: int) -> datetime | None:
-        rows = self._journals(mission_id, version).get("executive", [])
+        journals = self._journals(mission_id, version)
+        if not self._intact(journals):
+            return None
+        rows = journals.get("executive", [])
         return next((datetime.fromisoformat(r["timestamp"]) for r in rows if r["kind"] == "mission_result"), None)
 
     def _deliver_ready(self, mission_id: str) -> bool:
@@ -272,6 +277,8 @@ class MissionService:
 
     def _live(self, mission_id: str, version: int) -> dict | None:
         rows = self._journals(mission_id, version)
+        if not self._intact(rows):
+            return None
         executive = rows.get("executive", [])
         lease = next((r["data"] for r in reversed(rows.get("guardian", [])) if r["kind"] == "lease"), None)
         if lease is None or any(r["kind"] == "mission_result" for r in executive):
@@ -290,6 +297,11 @@ class MissionService:
             allowed = [action for action in allowed if action != "pause"]
         return {"version": version, "lease_epoch": lease["lease_epoch"], "step_id": state[0], "state": state[1],
                 "allowed_actions": allowed}
+
+    @staticmethod
+    def _intact(journals: dict[str, list[dict]]) -> bool:
+        """Both authoritative journals must be contiguous and checked. / 两本权威账本都必须连续且通过检查。"""
+        return all(journals.get(name) and verify_chain(journals[name])[0] for name in ("executive", "guardian"))
 
     def _pausable(self, mission_id: str, version: int, step_id: str) -> bool:
         """The same manifest rule the guardian applies; the aircraft still decides. / 与 guardian 相同的清单规则；仍由机载决定。"""
@@ -310,7 +322,9 @@ class MissionService:
             if step not in latest or evidence.time_window.timestamp > latest[step][0].time_window.timestamp:
                 latest[step] = (evidence, row)
         stored = {r["evidence_id"]: r["body"] for r in self.ledger.verifications(mission_id)}
-        verdicts = {}
+        # Image success needs a positive service recheck, even before metadata arrives. / 影像元数据未到也不能缺省成功。
+        verdicts = {(version, node.task_id): EffectVerdict.UNKNOWN for node in package.nodes
+                    if "image" in node.completion_evidence}
         for step, (evidence, row) in latest.items():
             outcome = outcomes.get(step)
             result = verify(evidence, self.hub.media(row["media_path"]), row["width"], row["height"], package,
@@ -344,11 +358,23 @@ class MissionService:
                 self.ledger.record_issue(issue(reason if reason in ISSUE_CODES else "service.transport_error", reason,
                                                mission_id=mission_id), mission_id=mission_id)
         packages, outcomes, verdicts = {}, {}, {}
+        syncing = False
         for record in self.ledger.versions(mission_id):
             if record["status"] not in DELIVERED:
                 continue
             version = record["version"]
-            executive = self._journals(mission_id, version).get("executive", [])
+            journals = self._journals(mission_id, version)
+            executive = journals.get("executive", [])
+            package = MissionPackage.model_validate(record["package"])
+            if record["status"] != "delivery_rejected" and journals and not self._intact(journals):
+                # Never make decisions from a partial or corrupt mirror. / 不从部分或损坏的镜像作出决定。
+                packages[version] = package
+                outcomes[version] = {node.task_id: StepOutcome(
+                    mission_id=mission_id, mission_version=version, step_id=node.task_id, robot_id=node.robot_id,
+                    execution_status=ExecutionStatus.UNKNOWN, effect_verdict=EffectVerdict.UNKNOWN)
+                    for node in package.nodes}
+                syncing = True
+                continue
             status = record["status"]
             if status in ("queued", "delivered") and any(r["kind"] == "mission_accepted" for r in executive):
                 status = "running"
@@ -358,9 +384,12 @@ class MissionService:
                 self.ledger.update_version(mission_id, version, status=status)
             if status == "delivery_rejected":
                 continue
-            package = MissionPackage.model_validate(record["package"])
             packages[version], outcomes[version] = package, outcomes_from_rows(executive)
             verdicts.update(self._verifications(mission_id, version, package, outcomes[version]))
+            verified_steps = {row["step_id"] for row in self.ledger.evidence(mission_id, version) if row["media_path"]}
+            syncing |= any("image" in node.completion_evidence and node.task_id not in verified_steps
+                           and outcomes[version].get(node.task_id) is not None
+                           and outcomes[version][node.task_id].counts_as_completed for node in package.nodes)
         report = None
         if packages:
             report = build_report(mission_id, packages, outcomes, verdicts, self.ledger.facts(mission_id))
@@ -369,8 +398,11 @@ class MissionService:
             if previous is None or {k: v for k, v in previous.items() if k != "generated_at"} != {
                     k: v for k, v in body.items() if k != "generated_at"}:
                 self.ledger.record_report(mission_id, report)
-        self._advance(self._mission(mission_id), bool(report and report.all_targets_completed), outcomes)
-        self._deliver_ready(mission_id)
+        if syncing:
+            self.ledger.update_mission(mission_id, status="verifying")
+        else:
+            self._advance(self._mission(mission_id), bool(report and report.all_targets_completed), outcomes)
+            self._deliver_ready(mission_id)
         return self.view(mission_id)
 
     def _advance(self, mission: dict, completed: bool, outcomes: dict[int, dict[str, StepOutcome]]) -> None:
@@ -381,10 +413,15 @@ class MissionService:
         if record["status"] in ("queued", "delivered", "running", "delivery_rejected"):
             self.ledger.update_mission(mission_id, status=record["status"])
             return
-        if record["status"] != "finished" or mission["status"] in ("completed", "incomplete"):
+        if record["status"] != "finished":
             return
         if completed:
-            self.ledger.update_mission(mission_id, status="completed")
+            if mission["status"] != "completed":
+                self.ledger.update_mission(mission_id, status="completed")
+            return
+        if mission["status"] in ("completed", "incomplete"):
+            if mission["status"] == "completed":
+                self.ledger.update_mission(mission_id, status="incomplete")
             return
         self._replan(mission, record, outcomes[version])
 

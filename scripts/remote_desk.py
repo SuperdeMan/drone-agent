@@ -165,7 +165,11 @@ def inspect_desk(desk, source_sha: str) -> dict:
             ports = {"8769/tcp": [{"HostIp": "127.0.0.1", "HostPort": "8769"}]}
             if host.get("PortBindings") != ports or details["NetworkSettings"].get("Ports") != ports:
                 raise ValueError("desk public binding differs")
-            if mounts != {"/api": (str(desk.base / "api"), False), "/supervisor": (str(desk.public), False)}:
+            if mounts != {"/api": (str(desk.base / "api"), False), "/supervisor": (str(desk.public), False),
+                          "/fixed/broker": (str(desk.root / "console/ipc"), False),
+                          "/fixed/records": (str(desk.root / "artifacts"), False),
+                          "/fixed/releases": (str(desk.root / "releases"), False),
+                          "/fixed/outputs": (str(desk.base / "fixed-pages"), True)}:
                 raise ValueError("desk mounts differ from the approved scope")
             if (config.get("Labels") or {}).get("io.drone-agent.source-sha") != source_sha:
                 raise ValueError("desk container revision differs")
@@ -208,6 +212,9 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
     import pwd
 
     value = plan(root, deployment)
+    console = read_json(root / "console/current.json") or {}
+    if console.get("source_sha") != value["source_sha"] or not (root / "console/ipc/broker.sock").exists():
+        raise ValueError("activate console-cloud on this deployment before the unified desk")
     command(["sudo", "-n", "true"])
     desk = SUPERVISOR["Desk"](root)
     old = read_json(desk.base / "current.json")

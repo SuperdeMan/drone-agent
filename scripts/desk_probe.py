@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import socket
 import ssl
 import time
@@ -27,6 +28,7 @@ import urllib.error
 import urllib.request
 import uuid
 from collections import deque
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -132,7 +134,8 @@ def http_checks(origin: str) -> dict:
     result = {}
     status, headers, body = fetch(origin, "/")
     csp = {k.lower(): v for k, v in headers.items()}.get("content-security-policy", "")
-    result["page"] = {"status": status, "desk_page": b"MISSION DESK" in body,
+    result["page"] = {"status": status, "desk_page": b"FLIGHT DESK" in body,
+                      "fixed_navigation": b'href="/fixed/"' in body,
                       "csp_names_socket_origin": f"wss://{urlsplit(origin).netloc}" in csp}
     status, _, body = fetch(origin, "/mission.js")
     local = (ROOT / "src/drone_agent/console/mission.js").read_bytes()
@@ -144,6 +147,16 @@ def http_checks(origin: str) -> dict:
                         "planner": service.get("planner"), "signer_key_id": service.get("signer_key_id"),
                         "console_source_sha": health.get("console_source_sha"), "service_source_sha": service.get("source_sha"),
                         "supervisor_state": (health.get("supervisor") or {}).get("state")}
+    result["health"]["fixed_source_sha"] = (health.get("fixed") or {}).get("runtime_source_sha")
+    status, _, body = fetch(origin, "/fixed/")
+    result["fixed_page"] = {"status": status, "mounted_script": b'src="/fixed/live.js"' in body,
+                            "same_origin_navigation": b'href="/"' in body}
+    status, _, body = fetch(origin, "/fixed/live.js")
+    local = (ROOT / "src/drone_agent/console/live.js").read_bytes()
+    result["fixed_script"] = {"status": status, "matches_checkout": hashlib.sha256(body).digest()
+                              == hashlib.sha256(local).digest()}
+    status, _, body = fetch(origin, "/fixed/api/state")
+    result["fixed_state"] = {"status": status, "source_sha": json.loads(body).get("source_sha")}
     status, _, body = fetch(origin, "/.well-known/agent-card.json")
     result["agent_card"] = {"status": status, "skills": [s["id"] for s in json.loads(body).get("skills", [])]}
     message = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "message/send", "params": {}}).encode()
@@ -309,13 +322,87 @@ def follow(origin: str, client: Client, view: dict, args, receipt: dict, started
     return receipt
 
 
+def fixed_session(origin: str, args) -> dict:
+    """Exercise the mounted M1 page protocol and record its independent result. / 验证挂载的 M1 页面协议并记录独立结果。"""
+    status, _, body = fetch(origin, "/fixed/")
+    nonce = re.search(rb'<meta name="console-nonce" content="([^"]+)">', body)
+    if status != 200 or nonce is None:
+        raise RuntimeError("fixed console page unavailable")
+    security = {"Origin": origin, "Content-Type": "application/json", "X-Console-Nonce": nonce[1].decode()}
+
+    def write(path, value):
+        status, _, data = fetch(origin, "/fixed" + path, method="POST", body=json.dumps(value).encode(), headers=security)
+        if status != 202:
+            raise RuntimeError(f"fixed request rejected ({status}): {data[:200]!r}")
+        return json.loads(data)
+
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-") + uuid.uuid4().hex[:8]
+    started = write("/api/start", {"run_id": run_id, "seed": args.seed})
+    receipt = {"mode": args.mode, "run_id": run_id, "seed": args.seed, "start": started, "operations": []}
+    # Visiting the other mode is read-only and must leave this same run active. / 访问另一模式只读，必须保留同一运行。
+    receipt["mode_switch_http"] = fetch(origin, "/")[0]
+    deadline = time.monotonic() + args.timeout
+    sent, accepted, paused_at = set(), set(), None
+    while time.monotonic() < deadline:
+        status, _, raw = fetch(origin, "/fixed/api/state")
+        if status != 200:
+            raise RuntimeError(f"fixed state unavailable ({status})")
+        view = json.loads(raw)
+        if (view.get("job") or {}).get("run_id") != run_id:
+            raise RuntimeError("another run replaced the requested flight")
+        operation = view.get("operation")
+        if operation and operation["status"] in ("accepted", "rejected") and operation not in receipt["operations"]:
+            receipt["operations"].append(operation)
+            if operation["status"] == "accepted":
+                accepted.add(operation["action"])
+        if view["job"].get("completion"):
+            receipt["final"] = {key: view.get(key) for key in ("source_sha", "deployment_id", "job", "mission_result")}
+            break
+        action, step = None, view.get("step") or {}
+        allowed = view.get("allowed_actions", [])
+        if step.get("step_id") == "fly_route":
+            if args.mode == "cancel" and "cancel" not in sent and "cancel" in allowed:
+                action = "cancel"
+            if args.mode == "pause" and "pause" not in sent and "pause" in allowed:
+                action = "pause"
+        if "pause" in accepted and "resume" in allowed:
+            paused_at = paused_at or time.monotonic()
+            if time.monotonic() - paused_at >= 3 and "resume" not in sent:
+                action = "resume"
+        if action:
+            write("/api/operate", {"run_id": run_id, "request_id": uuid.uuid4().hex, "operation": action,
+                                    "mission_id": step["mission_id"], "step_id": step["step_id"]})
+            sent.add(action)
+        time.sleep(1)
+    if "final" not in receipt:
+        raise TimeoutError(f"fixed run {run_id} still pending; reconcile before retrying")
+    required = {"pause", "resume"} if args.mode == "pause" else {"cancel"} if args.mode == "cancel" else set()
+    receipt["requested_operations_observed"] = required <= accepted
+    write("/api/evidence", {"run_id": run_id})
+    for _ in range(60):
+        _, _, raw = fetch(origin, "/fixed/api/evidence?run=" + run_id)
+        result = json.loads(raw)
+        if result["status"] in ("ready", "failed"):
+            receipt["evidence"] = result
+            if result["status"] == "ready":
+                status, _, page = fetch(origin, "/fixed" + result["url"])
+                receipt["evidence_page"] = {"status": status, "sha256": hashlib.sha256(page).hexdigest()}
+            break
+        time.sleep(1)
+    return receipt
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("http", "session", "watch", "spoof"):
+    for name in ("http", "session", "watch", "spoof", "fixed"):
         command = commands.add_parser(name)
         command.add_argument("--origin", required=True, help="https://<node>.<tailnet>.ts.net:8448")
         command.add_argument("--output", type=Path)
+    fixed = commands.choices["fixed"]
+    fixed.add_argument("--mode", choices=("nominal", "pause", "cancel"), default="nominal")
+    fixed.add_argument("--seed", type=int, choices=(7, 19, 41), default=7)
+    fixed.add_argument("--timeout", type=float, default=1200)
     run, follow_existing = commands.choices["session"], commands.choices["watch"]
     run.add_argument("--text", required=True)
     run.add_argument("--volume", default="campus_training")
@@ -333,6 +420,8 @@ def main() -> None:
     login = None
     if args.command == "http":
         result = http_checks(args.origin)
+    elif args.command == "fixed":
+        result = fixed_session(args.origin, args)
     elif args.command == "spoof":
         result, login = spoof(args.origin)
     elif args.command == "watch":

@@ -26,7 +26,9 @@ function setup() {
  const idle={source_sha:'a'.repeat(40),job:null,allowed_actions:[],fresh:false};
  let next=idle;
  const context=vm.createContext({
-  document:{getElementById:id=>{assert(nodes.has(id),id);return nodes.get(id);},querySelector:()=>new Element(),createElement:()=>new Element()},
+  document:{getElementById:id=>{assert(nodes.has(id),id);return nodes.get(id);},querySelector:selector=>{
+   const element=new Element();if(selector.includes('console-base'))element.content='';return element;
+  },createElement:()=>new Element()},
   crypto,AbortSignal,console,Date,setInterval:()=>{},setTimeout:()=>{},
   fetch:async(url,options)=>{requests.push([url,options]);return {ok:true,json:async()=>structuredClone(next)};},
  });

@@ -85,6 +85,10 @@ def recheck(evidence: Evidence, media: bytes | None, width: int | None, height: 
     if pose is None or covariance is None or any(not math.isfinite(v) for v in covariance):
         checks["pose"] = "missing pose or covariance"
         return EffectVerdict.UNKNOWN, checks
+    if package.spatial_scope is None or pose.frame != package.spatial_scope.frame:
+        checks["frame"] = "capture frame or map version differs from the approved package"
+        return EffectVerdict.REFUTED, checks
+    checks["frame"] = "ok"
     threshold = registry.data["thresholds"]["image"]
     window = evidence.time_window
     if window.valid_until is None or not 0 <= (window.valid_until - window.timestamp).total_seconds() <= threshold["max_age_s"]:

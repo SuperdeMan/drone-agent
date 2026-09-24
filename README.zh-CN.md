@@ -54,7 +54,7 @@ uv run python scripts/dev_stack.py status
 uv run python scripts/dev_stack.py desk-cloud --status
 ```
 
-在常驻任务台批准任务后，系统在 PX4/Gazebo 中飞行，产出证据报告和独立裁判结果。部署与访问方式见[任务台指南](docs/tailnet-desk.md)；较早的仿真入口见 [M1 固定任务控制台](docs/live-simulation.md)。
+统一云端飞行台在同一入口提供 **M2 自然语言任务**与 **M1 固定巡检**。M2 审批后在 PX4/Gazebo 中飞行并生成证据报告；M1 保留实时轨迹、相机、暂停 / 恢复与取消。两种模式依次飞行，切换页面不取消任务。部署与访问见[飞行台指南](docs/tailnet-desk.md)，本轮评审与验证见 [M2 评审记录](docs/m2-review-2026-09-24.md)。
 
 PX4 SITL 与 Gazebo 在 Linux 中运行，原生组件使用 ASCII 仓库路径。[仿真指南](sim/README.md)另有显式启用本地仿真的操作方法。
 

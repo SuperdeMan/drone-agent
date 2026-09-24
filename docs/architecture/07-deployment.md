@@ -10,7 +10,7 @@
 | M1 场景批次 | 固定任务、故障注入、裁判与回放 | [compose.m1.yaml](../../sim/compose.m1.yaml) |
 | M2 场景批次 | 规划到报告的端到端验证，脚本 / 实调规划分开记录 | [compose.m2.yaml](../../sim/compose.m2.yaml) |
 | M1 常驻控制台 | 固定仿真任务；Tailnet HTTPS `8447` → 回环 `8768` | [控制台指南](../tailnet-console.md) |
-| M2 常驻任务台 | 自然语言、审批与仿真飞行；Tailnet HTTPS `8448` → 回环 `8769` | [compose.desk.yaml](../../sim/compose.desk.yaml) · [任务台指南](../tailnet-desk.md) |
+| 统一云端飞行台（D037） | `8448` → 回环 `8769`；`/` 为 M2 自然语言任务，`/fixed/` 为 M1 固定巡检；网页复用两条受限通道 | [compose.desk.yaml](../../sim/compose.desk.yaml) · [任务台指南](../tailnet-desk.md) |
 | 本机 M2 任务台 | 规划、准入与签名，没有机器人连接 | [快速体验](../../README.zh-CN.md#本机体验) |
 
 下文保留容器、硬件和数据平台的完整路线；涉及后续阶段的组件不是当前部署清单。准确运行版本通过 `scripts/dev_stack.py status` 与对应入口状态查询；已归档结果见[M2 验收](../m2-readiness.md)和[任务台验收](../tailnet-desk-readiness.md)。

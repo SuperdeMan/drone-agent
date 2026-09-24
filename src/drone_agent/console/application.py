@@ -60,13 +60,31 @@ def json_response(status: int, value: dict) -> Response:
     return Response(status, json.dumps(value, ensure_ascii=False).encode())
 
 
+def desk_navigation(active: str) -> str:
+    """Same-origin navigation; changing modes never starts or cancels a flight. / 同源导航；切换不启停飞行。"""
+    style = ('<style>.desk-nav{display:flex;gap:24px;padding:0 4vw;border-bottom:1px solid #cbd0c1;'
+             'align-items:center;flex-wrap:wrap}.desk-nav a{padding:16px 0;color:#6b786b;text-decoration:none;'
+             'font-size:13px;border-bottom:3px solid transparent}.desk-nav a[aria-current="page"]{'
+             'color:#315b3e;border-color:#315b3e;font-weight:600}.desk-nav span{margin-left:auto;'
+             'font-size:11px;color:#6b786b}.desk-nav a:focus-visible{outline:3px solid #af6c2b}'
+             '@media(max-width:720px){.desk-nav span{width:100%;margin:0 0 10px}}</style>')
+    links = ''.join(f'<a href="{url}"' + (' aria-current="page"' if key == active else '') + f'>{label}</a>'
+                    for key, url, label in (("mission", "/", "自然语言任务 · M2"),
+                                             ("fixed", "/fixed/", "固定巡检 · M1")))
+    return style + '<nav class="desk-nav" aria-label="飞行模式">' + links + \
+        '<span>云端仿真 · 两种模式依次飞行 · 切换页面不取消任务</span></nav>'
+
+
 class ConsoleApplication:
-    def __init__(self, bridge, origin: str, *, tailnet: bool = False, health=None):
+    def __init__(self, bridge, origin: str, *, tailnet: bool = False, health=None, base_path: str = ""):
         self.bridge = bridge
         self.origin = validate_origin(origin, tailnet=tailnet)
         self.nonce = secrets.token_urlsafe(32)
         self.tailnet = tailnet
         self.health = health or (lambda: {"status": "ready", "mode": "local_ssh_bridge"})
+        if base_path not in ("", "/fixed"):
+            raise ValueError("unsupported console mount")
+        self.base_path = base_path
 
     def authorized(self, method: str, headers: list[tuple[str, str]]) -> Response | None:
         values = {}
@@ -117,6 +135,8 @@ class ConsoleApplication:
         url = urlsplit(path)
         if url.path == "/":
             page = TEMPLATE.read_text(encoding="utf-8").replace("__NONCE__", self.nonce)
+            page = page.replace("__BASE__", self.base_path).replace(
+                "__NAV__", desk_navigation("fixed") if self.base_path else "")
             return Response(200, page.encode(), "text/html; charset=utf-8")
         if url.path == "/live.js":
             return Response(200, TEMPLATE.with_suffix(".js").read_bytes(), "text/javascript; charset=utf-8")

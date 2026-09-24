@@ -36,6 +36,7 @@ from drone_agent.contracts import (
     utcnow,
 )
 from drone_agent.fleet.pki import robot_id_from_uri
+from drone_agent.runtime.ledger import content_hash
 
 if TYPE_CHECKING:
     from drone_agent.fleet.ledger import BusinessLedger
@@ -79,7 +80,18 @@ class FleetHub:
         refused = self._bound(robot_id, event.robot_id, event.mission_id)
         if refused:
             return refused
-        if not {"journal", "seq", "sha256", "previous", "kind", "data"} <= set(event.data):
+        from drone_agent.fleet.events import event_id, event_to_row
+
+        try:
+            row = event_to_row(event)
+            valid = (event.data["journal"] in ("executive", "guardian")
+                     and type(row["seq"]) is int and row["seq"] >= 0
+                     and content_hash({k: v for k, v in row.items() if k != "sha256"}) == row["sha256"]
+                     and event.event_id == event_id(robot_id, event.mission_id, event.mission_version,
+                                                    event.data["journal"], row))
+        except (KeyError, ValueError, TypeError):
+            valid = False
+        if not valid:
             return Receipt(False, "service.invalid_request", event.event_id)
         inserted = self.ledger.record_event(robot_id, event)
         if inserted:
@@ -92,7 +104,8 @@ class FleetHub:
         refused = self._bound(robot_id, evidence.robot_id, evidence.mission_id)
         if refused:
             return refused
-        self.ledger.record_evidence(robot_id, evidence)
+        if not self.ledger.record_evidence(robot_id, evidence):
+            return Receipt(False, "service.invalid_request", evidence.evidence_id)
         self._notify(robot_id, "evidence", evidence.mission_id)
         return Receipt(True, "", evidence.evidence_id)
 

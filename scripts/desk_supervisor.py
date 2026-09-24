@@ -95,7 +95,8 @@ class Desk:
     def folders(self) -> list[Path]:
         return [self.base, self.history, self.mailbox, self.uplink, self.aircraft, self.state, self.ipc, self.flights,
                 self.cases, self.idle / "aircraft", self.idle / "case", self.public / "missions",
-                self.supervisor / "docker-client", self.base / "deployments", self.service, self.api.parent]
+                self.supervisor / "docker-client", self.base / "deployments", self.base / "fixed-pages",
+                self.service, self.api.parent]
 
 
 class Stack:
@@ -110,6 +111,7 @@ class Stack:
     def env(self, **flight) -> dict:
         values = {
             "DRONE_DESK_ROOT": str(self.desk.base), "DRONE_DESK_SECRETS": str(self.desk.secrets),
+            "DRONE_DESK_WORKSPACE": str(self.desk.root),
             "DRONE_DESK_MODEL": str(self.desk.model), "DRONE_DESK_SHA": self.record["source_sha"],
             "DRONE_DESK_ORIGIN": self.record["origin"], "DRONE_DESK_UID": str(self.record["uid"]),
             "DRONE_DESK_GID": str(self.record["gid"]), "DRONE_DESK_GROUND_IMAGE": self.record["images"]["ground"],

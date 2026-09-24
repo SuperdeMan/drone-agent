@@ -3,7 +3,7 @@
 // hri.v0 任务控制台客户端。来自模型或机器人的每个值在显示前都经过转义。
 const byId = id => document.getElementById(id);
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
-const STATUS = {planning: "规划中", awaiting_approval: "待审批", approving: "策略审批中", approved: "已批准·待投递", queued: "已排队投递",
+const STATUS = {planning: "规划中", verifying: "证据同步中", awaiting_approval: "待审批", approving: "策略审批中", approved: "已批准·待投递", queued: "已排队投递",
   delivered: "机载已接收", delivery_rejected: "机载拒收", running: "执行中", finished: "本版本结束", completed: "已完成",
   incomplete: "未完成", refused: "模型拒答", rejected: "准入拒绝", declined: "已驳回", planning_failed: "规划失败"};
 const TONE = {completed: "ok", delivered: "ok", running: "ok", awaiting_approval: "warn", incomplete: "warn", approved: "warn",
@@ -21,13 +21,21 @@ let socket = null, hello = null, current = null, selected = null, retry = 500, p
 
 function notice(text) { byId("notice").textContent = text || ""; byId("notice").hidden = !text; }
 function chip(status) { return `<span class="chip ${TONE[status] || ""}">${esc(STATUS[status] || status)}</span>`; }
-function send(message) { if (socket && socket.readyState === 1) socket.send(JSON.stringify(message)); }
+function send(message) {
+  if (socket && socket.readyState === 1) socket.send(JSON.stringify(message));
+  else notice("连接中断，请等待状态重新同步后操作。");
+}
 function rid() { return crypto.randomUUID().replace(/-/g, "").slice(0, 16); }
 
 function connect() {
   socket = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws/session");
   socket.onopen = () => { retry = 500; if (current) send({type: "watch", mission_id: current.mission.mission_id}); };
-  socket.onclose = () => { byId("who").className = "who"; byId("whoText").textContent = "连接中断，重连中"; setTimeout(connect, retry = Math.min(retry * 2, 8000)); };
+  socket.onclose = () => {
+    hello = null; byId("submit").disabled = true;
+    if (current) render();
+    byId("who").className = "who"; byId("whoText").textContent = "连接中断，历史状态仅供查看";
+    setTimeout(connect, retry = Math.min(retry * 2, 8000));
+  };
   socket.onmessage = event => {
     const message = JSON.parse(event.data);
     if (message.type === "hello") onHello(message);
@@ -86,6 +94,11 @@ function version() {
 
 function render() {
   const view = current, v = version(), m = view.mission;
+  if (!v) {
+    byId("detail").innerHTML = `<h2>${esc(view.request.text)}</h2>${chip(m.status)}<p>等待规划结果。</p>`;
+    renderReport(); renderEvidence(); renderIssues();
+    return;
+  }
   const writable = hello?.can_write;
   let html = `<div class="eyebrow">任务 ${esc(m.mission_id)} · ${esc(view.request.channel)} · ${esc(view.request.requested_by)}</div>
     <h2>${esc(v?.spec?.goal || view.request.text)}</h2><p>原始请求：${esc(view.request.text)}</p><div>${chip(m.status)}</div>

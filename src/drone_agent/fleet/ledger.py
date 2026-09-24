@@ -272,11 +272,17 @@ class BusinessLedger:
         return [{**row, "body": _load(row["body"])} for row in rows]
 
     def record_evidence(self, robot_id: str, evidence, *, media_path: str | None = None, media_type: str | None = None,
-                        width: int | None = None, height: int | None = None) -> None:
-        self._exec("INSERT OR REPLACE INTO evidence VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                   (evidence.evidence_id, robot_id, evidence.mission_id or "", evidence.mission_version or 0,
-                    evidence.produced_by_skill_instance, evidence.sha256, media_path, media_type, width, height,
-                    _dump(evidence), _now()))
+                        width: int | None = None, height: int | None = None) -> bool:
+        """Preserve uploaded media on retries; reject conflicting identities. / 重试保留已上传媒体，拒绝身份冲突。"""
+        with self._lock:
+            known = self._one("SELECT robot_id, body FROM evidence WHERE evidence_id=?", (evidence.evidence_id,))
+            if known is not None:
+                return known["robot_id"] == robot_id and known["body"] == _dump(evidence)
+            self._exec("INSERT INTO evidence VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                       (evidence.evidence_id, robot_id, evidence.mission_id or "", evidence.mission_version or 0,
+                        evidence.produced_by_skill_instance, evidence.sha256, media_path, media_type, width, height,
+                        _dump(evidence), _now()))
+            return True
 
     def attach_media(self, evidence_id: str, media_path: str, media_type: str, width: int, height: int) -> bool:
         cursor = self._exec("UPDATE evidence SET media_path=?, media_type=?, width=?, height=? WHERE evidence_id=?",

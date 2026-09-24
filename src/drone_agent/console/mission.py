@@ -50,7 +50,7 @@ from urllib.parse import urlsplit
 
 import yaml
 
-from drone_agent.console.application import CSP, Response, json_response, validate_origin
+from drone_agent.console.application import CSP, Response, desk_navigation, json_response, validate_origin
 from drone_agent.contracts.mission import FORBIDDEN_PARAM_KEYS
 from drone_agent.runtime.permission import ACTUATION_PREFIXES
 
@@ -62,7 +62,7 @@ MISSION_ID = re.compile(r"^m-[0-9a-f]{12}$")
 PROTOCOL = "hri.v0"
 A2A_FORBIDDEN_KEYS = FORBIDDEN_PARAM_KEYS | {"approval", "approve", "approver", "package_hash", "signature",
                                              "operate", "operator_request", "lease"}
-A2A_STATES = {"planning": "submitted", "awaiting_approval": "submitted", "approved": "submitted",
+A2A_STATES = {"planning": "submitted", "verifying": "working", "awaiting_approval": "submitted", "approved": "submitted",
               "queued": "submitted", "approving": "working", "delivered": "working", "running": "working",
               "completed": "completed", "incomplete": "failed", "planning_failed": "failed", "refused": "rejected",
               "rejected": "rejected", "declined": "rejected", "delivery_rejected": "rejected"}
@@ -230,6 +230,7 @@ class Session:
 
 
 class MissionConsole:
+    fixed = False
     def __init__(self, api, origin: str, *, tailnet: bool, scope: dict, local_user: str | None = None,
                  clients: dict[str, str] | None = None, poll_s: float = 1.0, supervisor: Path | None = None,
                  source_sha: str | None = None):
@@ -316,7 +317,8 @@ class MissionConsole:
                 if not event.get("more_body"):
                     break
         if method == "GET" and path == "/":
-            return await self.respond(send, Response(200, PAGE.read_bytes(), "text/html; charset=utf-8",
+            page = PAGE.read_text(encoding="utf-8").replace("__NAV__", desk_navigation("mission") if self.fixed else "")
+            return await self.respond(send, Response(200, page.encode(), "text/html; charset=utf-8",
                                                      csp=self.csp))
         if method == "GET" and path == "/mission.js":
             return await self.respond(send, Response(200, PAGE.with_suffix(".js").read_bytes(),
@@ -512,6 +514,7 @@ def main() -> None:
     parser.add_argument("--a2a-clients", type=Path, help="JSON file with client ids and token SHA-256 values")
     parser.add_argument("--supervisor", type=Path, help="read-only public records of the simulation supervisor (D035)")
     parser.add_argument("--source-sha", help="committed revision this page was deployed from, shown by /health")
+    parser.add_argument("--fixed-root", type=Path, help="D037 mounts for the existing fixed-flight broker and evidence")
     parser.add_argument("--port", type=int, default=8769)
     parser.add_argument("--host", default="127.0.0.1")
     args = parser.parse_args()
@@ -532,6 +535,10 @@ def main() -> None:
                              local_user=None if args.tailnet else getpass.getuser(),
                              clients=a2a_clients(args.a2a_clients), supervisor=args.supervisor,
                              source_sha=args.source_sha)
+    if args.fixed_root:
+        from drone_agent.console.unified import unified_console
+
+        console = unified_console(console, args.fixed_root)
     uvicorn.run(console, host=args.host, port=args.port, workers=1, lifespan="off", proxy_headers=False,
                 access_log=False, limit_concurrency=32, timeout_keep_alive=5, timeout_graceful_shutdown=10,
                 server_header=False, ws="wsproto", ws_max_size=MAX_FRAME, http="h11")
