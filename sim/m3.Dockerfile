@@ -78,18 +78,37 @@ ARG ORT_SHA256_ARM64
 # ONNX Runtime without its optional tool dependencies (inference needs only numpy, which the system Python has), and
 # the vision encoder of the pinned CLIP revision. / 不带可选工具依赖的 ONNX Runtime（推理只需系统 Python 自带的
 # numpy），以及固定 CLIP 版本的视觉编码器。
-RUN case "${TARGETARCH:-amd64}" in       amd64) wheel="${ORT_WHEEL_AMD64}"; digest="${ORT_SHA256_AMD64}" ;;       arm64) wheel="${ORT_WHEEL_ARM64}"; digest="${ORT_SHA256_ARM64}" ;;       *) echo "unsupported architecture ${TARGETARCH}" >&2; exit 1 ;;     esac  && curl -fsSL -m 300 -o /tmp/ort.whl "https://pypi.tuna.tsinghua.edu.cn/packages/${wheel}"  && echo "${digest}  /tmp/ort.whl" | sha256sum -c -  && mkdir -p /opt/da_edge/pydeps /opt/da_edge/model  && /usr/bin/python3 -m zipfile -e /tmp/ort.whl /opt/da_edge/pydeps  && rm /tmp/ort.whl  && curl -fsSL -m 900 -o /opt/da_edge/model/vision_model_quantized.onnx       "https://hf-mirror.com/Xenova/clip-vit-base-patch32/resolve/${CLIP_REVISION}/onnx/vision_model_quantized.onnx"  && echo "${CLIP_VISION_SHA256}  /opt/da_edge/model/vision_model_quantized.onnx" | sha256sum -c -
+RUN case "${TARGETARCH:-amd64}" in \
+      amd64) wheel="${ORT_WHEEL_AMD64}"; digest="${ORT_SHA256_AMD64}" ;; \
+      arm64) wheel="${ORT_WHEEL_ARM64}"; digest="${ORT_SHA256_ARM64}" ;; \
+      *) echo "unsupported architecture ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+ && curl -fsSL -m 300 -o /tmp/ort.whl "https://pypi.tuna.tsinghua.edu.cn/packages/${wheel}" \
+ && echo "${digest}  /tmp/ort.whl" | sha256sum -c - \
+ && mkdir -p /opt/da_edge/pydeps /opt/da_edge/model \
+ && /usr/bin/python3 -m zipfile -e /tmp/ort.whl /opt/da_edge/pydeps \
+ && rm /tmp/ort.whl \
+ && curl -fsSL -m 900 -o /opt/da_edge/model/vision_model_quantized.onnx \
+      "https://hf-mirror.com/Xenova/clip-vit-base-patch32/resolve/${CLIP_REVISION}/onnx/vision_model_quantized.onnx" \
+ && echo "${CLIP_VISION_SHA256}  /opt/da_edge/model/vision_model_quantized.onnx" | sha256sum -c -
 
 FROM edgeruntime AS edgeprompts
 ARG CLIP_REVISION
 ARG CLIP_TEXT_SHA256
 ARG CLIP_VOCAB_SHA256
 ARG CLIP_MERGES_SHA256
-RUN mkdir -p /tmp/clip && cd /tmp/clip  && base="https://hf-mirror.com/Xenova/clip-vit-base-patch32/resolve/${CLIP_REVISION}"  && curl -fsSL -m 900 -o text_model.onnx "${base}/onnx/text_model.onnx"  && curl -fsSL -m 120 -o vocab.json "${base}/vocab.json"  && curl -fsSL -m 120 -o merges.txt "${base}/merges.txt"  && printf '%s  %s
-' "${CLIP_TEXT_SHA256}" text_model.onnx "${CLIP_VOCAB_SHA256}" vocab.json       "${CLIP_MERGES_SHA256}" merges.txt | sha256sum -c -
+RUN mkdir -p /tmp/clip && cd /tmp/clip \
+ && base="https://hf-mirror.com/Xenova/clip-vit-base-patch32/resolve/${CLIP_REVISION}" \
+ && curl -fsSL -m 900 -o text_model.onnx "${base}/onnx/text_model.onnx" \
+ && curl -fsSL -m 120 -o vocab.json "${base}/vocab.json" \
+ && curl -fsSL -m 120 -o merges.txt "${base}/merges.txt" \
+ && echo "${CLIP_TEXT_SHA256}  text_model.onnx" | sha256sum -c - \
+ && echo "${CLIP_VOCAB_SHA256}  vocab.json" | sha256sum -c - \
+ && echo "${CLIP_MERGES_SHA256}  merges.txt" | sha256sum -c -
 COPY --from=checks /workspace/configs/perception /tmp/prompts
 COPY --from=checks /workspace/ros2_ws/src/da_edge_inference /tmp/src
-RUN PYTHONPATH=/opt/da_edge/pydeps:/tmp/src /usr/bin/python3 -m da_edge_inference.build_prompts       --config /tmp/prompts/event_prompts_v1.yaml --model-dir /tmp/clip --output /opt/da_edge/prompts.json
+RUN PYTHONPATH=/opt/da_edge/pydeps:/tmp/src /usr/bin/python3 -m da_edge_inference.build_prompts \
+      --config /tmp/prompts/event_prompts_v1.yaml --model-dir /tmp/clip --output /opt/da_edge/prompts.json
 
 FROM edgeruntime AS aircraft3
 COPY --from=checks /opt/drone-venv /opt/drone-venv
