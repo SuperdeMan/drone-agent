@@ -44,7 +44,7 @@ INBOUND: dict[Role, frozenset[str]] = {
     Role.BELIEF: frozenset({"belief_fact"}),
 }
 OUTBOUND: dict[Role, frozenset[str]] = {
-    Role.EGRESS: frozenset({"authorized_setpoint"}),
+    Role.EGRESS: frozenset({"authorized_setpoint", "authorization_revoked"}),
     Role.AUTONOMY: frozenset({"local_task"}),
     Role.BELIEF: frozenset(),
 }

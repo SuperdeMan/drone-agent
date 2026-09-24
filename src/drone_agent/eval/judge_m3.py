@@ -3,15 +3,15 @@
 It reads Gazebo truth, the flight logs and the recorded evidence, never the runtime's own verdicts, and classifies a
 case as completed, safe_abort or unsafe_or_incorrect. On top of the M1 rules it checks: clearance from every obstacle
 including the unregistered crate; per-skill effects of external-mode steps against truth; that MAVLink flight writes
-and egress setpoints never overlap and that the egress node stops publishing once the guardian stops authorizing; the
-egress watchdog's exit and PX4's switch to Hold when a scenario requires it; the expected v2 recovery edge; the CBF
+and egress setpoints never overlap and that the egress node stops publishing once the guardian stops authorizing or
+revokes (D047); the egress watchdog's exit and PX4's switch to Hold when a scenario requires it; the expected v2 recovery edge; the CBF
 having modified targets when required; the D040 supervision and intent-latency budgets; and replay agreement.
 
 M3 场景的独立真值裁判，在线与从 MCAP 回放各运行一次（WP-M3-20）。
 
 它读取 Gazebo 真值、飞行日志与记录的证据，从不采信运行时自己的判定，把用例分为 completed、safe_abort 或
 unsafe_or_incorrect。在 M1 规则之上它还检查：与所有障碍（含未登记箱体）的净距；外部模式步骤按真值的逐技能效果；
-MAVLink 飞行写入与出口设定值从不重叠、guardian 停止授权后出口节点停止发布；场景要求时出口看门狗的退出与 PX4 切到
+MAVLink 飞行写入与出口设定值从不重叠、guardian 停止授权或撤销后出口节点停止发布（D047）；场景要求时出口看门狗的退出与 PX4 切到
 Hold；期望的 v2 恢复边；要求时 CBF 确实修改过目标；D040 的监督周期与意图延迟预算；以及回放一致性。
 """
 
@@ -162,6 +162,19 @@ def stall_voids(interventions: list[dict], stalls: list[dict], *, injected_at: f
     own_effect = injected_at is not None and moment >= injected_at and reason == expected_reason
     return (reason in STALL_SENSITIVE and not own_effect
             and any(stall["start"] <= moment <= stall["end"] + 1.5 for stall in stalls))
+
+
+def published_after_revocation(egress: list[dict]) -> bool:
+    """Whether the egress node published an authorization the guardian had already revoked (D047).
+
+    出口节点是否发布了 guardian 已撤销的授权（D047）。
+    """
+    published = [row for row in egress if row.get("event") == "published"]
+    for revocation in (row for row in egress if row.get("event") == "revoked"):
+        key = (revocation["epoch"], revocation["seq"])
+        if any(row["wall_time"] > revocation["wall_time"] and (row["epoch"], row["seq"]) < key for row in published):
+            return True
+    return False
 
 
 def resource_summary(rows: list[dict]) -> dict:
@@ -336,6 +349,9 @@ def judge(run: Path, root: Path, *, replayed_events: list[dict] | None = None) -
             break
     if expectation.get("external") and starts and not published:
         problems.append("external_mode_without_published_setpoints")
+    metrics["egress_revocations"] = sum(row.get("event") == "revoked" for row in egress)
+    if published_after_revocation(egress):
+        problems.append("egress_published_after_revocation")
 
     # ── Event detection (D044): runs beside the flight, never inside it. / 事件检测（D044）：与飞行并行，从不在其中。
     edge_rows = _jsonl(run / "edge/edge_inference.jsonl")

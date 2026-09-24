@@ -146,6 +146,18 @@ message AuthorizedSetpoint {
   optional double max_vertical_speed_mps = 12;
 }
 
+// guardian -> egress node: the guardian ends its authorization itself and commands the flight controller over
+// MAVLink, so the node stops at once and must not switch any mode (D047).
+// guardian -> 出口节点：guardian 自己结束授权并经 MAVLink 指挥飞控，节点立即停止且不得切换任何模式（D047）。
+message AuthorizationRevoked {
+  optional string schema_version = 1;
+  optional string robot_id = 2;
+  optional int64 lease_epoch = 3;
+  optional int64 command_seq = 4;
+  google.protobuf.Timestamp issued_at = 5;
+  optional string reason = 6;
+}
+
 // egress node -> guardian. / 出口节点 -> guardian。
 message EgressStatus {
   optional string schema_version = 1;
@@ -168,6 +180,7 @@ message EgressStatus {
   optional bool armed = 18;
   optional int64 hold_commands = 19;
   optional int64 cant_run_reports = 20;
+  optional int64 revocations = 21;
 }
 
 // perception / event detection -> executive: one belief or candidate fact. / 感知 / 事件检测 -> executive：一条信念或候选事实。
@@ -189,5 +202,6 @@ message AutonomyFrame {
     AuthorizedSetpoint authorized_setpoint = 5;
     EgressStatus egress_status = 6;
     BeliefFact belief_fact = 7;
+    AuthorizationRevoked authorization_revoked = 8;
   }
 }

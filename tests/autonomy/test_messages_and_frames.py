@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from drone_agent.autonomy.frames import FrameError, pack, unpack
 from drone_agent.autonomy.messages import (
+    AuthorizationRevoked,
     AuthorizedSetpoint,
     BeliefFact,
     EgressStatus,
@@ -126,3 +127,14 @@ def test_frames_round_trip_and_reject_malformed_bodies():
         unpack(b"")
     with pytest.raises(TypeError):
         pack(Vector3(x=0, y=0, z=0))
+
+
+def test_a_revocation_round_trips_and_needs_a_reason():
+    # D047: the guardian says it ends the authorization itself; the node must never have to guess why it lapsed.
+    # D047：guardian 明说由它自己结束授权；节点不必猜测授权为何过期。
+    revocation = AuthorizationRevoked(robot_id="uav_01", lease_epoch=1, command_seq=7, issued_at=utcnow(),
+                                      reason="intervention:trajectory_stale")
+    kind, restored = unpack(pack(revocation)[4:])
+    assert kind == "authorization_revoked" and restored == revocation
+    with pytest.raises(ValidationError):
+        AuthorizationRevoked(robot_id="uav_01", lease_epoch=1, command_seq=7, issued_at=utcnow(), reason="")

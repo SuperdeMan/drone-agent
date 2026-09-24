@@ -31,6 +31,7 @@ from collections import deque
 from datetime import timedelta
 
 from drone_agent.autonomy.messages import (
+    AuthorizationRevoked,
     AuthorizedSetpoint,
     EgressStatus,
     LocalizationReport,
@@ -88,7 +89,7 @@ class ExternalControl:
         self.last_segment_seq = self.latency_seq = -1
         self.started = 0.0
         self.counters = {"authorized": 0, "cbf_modified": 0, "cbf_rejected": 0, "hold_authorizations": 0,
-                         "segments_used": 0, "segments_refused": 0}
+                         "segments_used": 0, "segments_refused": 0, "revocations": 0}
         self.latency_ms: list[float] = []
         self.last_reason = ""
         self.watchdog_base = 0
@@ -181,12 +182,49 @@ class ExternalControl:
         self.log("autonomy/authorization", {**setpoint.model_dump(mode="json"), "hold": hold, "written": written})
         return bool(written)
 
+    async def revoke(self, reason: str) -> bool:
+        """Tell the egress node that the guardian itself ends the authorization and commands PX4 next (D047).
+
+        Without it the node would only see its authorization lapse and, judging the mode from DDS notices that may
+        lag the guardian's MAVLink command, could switch PX4 back to Hold out of a landing or a return.
+
+        告知出口节点：guardian 自己结束授权，接下来由它指挥 PX4（D047）。
+
+        否则节点只会看到授权过期，并依据可能滞后于 guardian MAVLink 命令的 DDS 通知判断模式，可能把 PX4 从降落或返航
+        切回 Hold。
+        """
+        if self.egress is None:
+            return False
+        seq = self._next_seq()
+        revocation = AuthorizationRevoked(
+            robot_id=self.guardian.registry.capability.robot_id,
+            lease_epoch=max(self.epoch, 0),
+            command_seq=seq,
+            issued_at=utcnow(),
+            reason=reason[:120] or "unspecified",
+        )
+        try:
+            written = await self.egress.send(revocation)
+        except Exception:  # noqa: BLE001 - a lost revocation leaves the node's own watchdog in place / 撤销丢失时节点自身的看门狗仍在
+            written = 0
+        if written:
+            self.counters["revocations"] += 1
+        self.log("autonomy/revocation", {**revocation.model_dump(mode="json"), "written": written})
+        return bool(written)
+
     # ── lifecycle / 生命周期 ──
 
     async def start(self, node, phase, permitted) -> None:
-        """Publish the task, enter the external mode behind a hold authorization, confirm it; raise on failure.
+        """Publish the task, wait for its first valid segment, enter the external mode behind a hold authorization.
 
-        发布任务，在悬停授权保护下进入外部模式并确认；失败即抛出异常。
+        The mode is requested only once the new task has a valid segment, so an active external mode always has a
+        trajectory (D047); PX4 keeps its own Hold while the planner catches up. Any failure withdraws the task and
+        revokes the authorization before raising.
+
+        发布任务，等到它的首个有效片段，再在悬停授权保护下进入外部模式。
+
+        新任务拿到有效片段后才请求模式，因此外部模式一旦激活总有轨迹（D047）；规划节点跟上之前 PX4 保持自己的 Hold。
+        任何失败都先撤回任务并撤销授权，再抛出异常。
         """
         guardian, adapter = self.guardian, self.guardian.adapter
         status = self.egress_status()
@@ -232,35 +270,51 @@ class ExternalControl:
                         goal=self.goal, epoch=lease.lease_epoch)
         await self.autonomy.send(self.task)
         if not await self.authorize(point, 0.1, hold=True):
-            self.entering = False
+            await self.stop("start_failed:hold_authorization_refused")
             raise PermissionError("egress node did not accept the hold authorization")
+        # Each renewal follows the permission check with no await in between, so a recovery that revoked meanwhile
+        # always holds the higher sequence number. / 每次续发都紧跟许可检查、中间没有 await，因此期间发生的恢复所作
+        # 撤销总是持有更高的序号。
+        deadline = self.clock() + self.settings["first_segment_timeout_s"]
+        while self.segment() is None:
+            await asyncio.sleep(0.1)
+            here = coordinates(adapter.snapshot())
+            if self.clock() >= deadline or here is None or not permitted():
+                await self.stop("start_failed:no_first_segment")
+                raise PermissionError("no trajectory segment for the new task")
+            await self.authorize(here, 0.1, hold=True)
+        guardian.record("external_first_segment", step_id=node.task_id, task_id=self.task.task_id,
+                        segment_seq=self.segment().segment_seq)
         await adapter.request_external_mode(self.nav_state, permitted)
         deadline = self.clock() + self.settings["mode_confirm_timeout_s"]
         wanted = adapter.external_mode_name(self.nav_state)
         while self.clock() < deadline:
             current = adapter.snapshot()
+            here = coordinates(current)
+            if here is None or not permitted():
+                # A recovery or takeover that arrived meanwhile owns the flight; the mode never counts as ours.
+                # 期间到来的恢复或接管拥有飞行；该模式永不算作我们的。
+                break
             if current.flight_mode == wanted:
                 self.entering, self.active = False, True
                 self.started = self.clock()
                 guardian.record("external_active", step_id=node.task_id, nav_state=self.nav_state)
                 return
-            here = coordinates(current)
-            if here is None or not permitted():
-                break
             await self.authorize(here, 0.1, hold=True)
             await asyncio.sleep(0.1)
-        self.entering = False
+        await self.stop("start_failed:mode_not_confirmed")
         raise TimeoutError("external mode was not confirmed")
 
     async def stop(self, reason: str) -> None:
-        """End the authorization stream and withdraw the task; the caller then commands PX4 over MAVLink.
+        """Revoke the authorization and withdraw the task; the caller then commands PX4 over MAVLink.
 
-        结束授权流并撤回任务；随后由调用方经 MAVLink 指挥 PX4。
+        撤销授权并撤回任务；随后由调用方经 MAVLink 指挥 PX4。
         """
         if not (self.active or self.entering) or self.task is None:
             return
         self.active = self.entering = False
         self.last_reason = reason
+        await self.revoke(reason)
         withdrawn = self.task.model_copy(update={"active": False, "issued_at": utcnow()})
         try:
             await self.autonomy.send(LocalTask.model_validate(withdrawn.model_dump()))

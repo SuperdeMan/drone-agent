@@ -1,11 +1,18 @@
-"""The M3 judge's evidence helpers: simulator stalls, resource receipts and event-detection summaries (D040, D044, D045).
+"""The M3 judge's evidence helpers: simulator stalls, resource receipts, event-detection summaries and revocations
+(D040, D044, D045, D047).
 
-M3 裁判的证据辅助函数：仿真停顿、资源回执与事件检测汇总（D040、D044、D045）。
+M3 裁判的证据辅助函数：仿真停顿、资源回执、事件检测汇总与撤销（D040、D044、D045、D047）。
 """
 
 from datetime import datetime, timedelta, timezone
 
-from drone_agent.eval.judge_m3 import edge_summary, resource_summary, simulator_stalls, stall_voids
+from drone_agent.eval.judge_m3 import (
+    edge_summary,
+    published_after_revocation,
+    resource_summary,
+    simulator_stalls,
+    stall_voids,
+)
 
 START = datetime(2026, 9, 24, 9, 53, 35, tzinfo=timezone.utc)
 
@@ -91,3 +98,14 @@ def test_after_an_injection_the_scenarios_own_recovery_is_never_voided():
     # The event detector's kill expects no recovery at all: a stall-made abort afterwards is void.
     # 杀掉事件检测不期望任何恢复：之后由停顿造成的中止作废。
     assert stall_voids([intervention(10.5, "observation_stale")], stall, expected_reason=None, **kwargs)
+
+
+def test_publishing_a_revoked_authorization_is_a_finding_but_a_newer_one_is_not():
+    # D047: after the guardian's revocation only a newer authorization may be published. / D047：guardian 撤销之后只能
+    # 发布更新的授权。
+    egress = [{"event": "published", "epoch": 1, "seq": 10, "wall_time": 1.0},
+              {"event": "revoked", "epoch": 1, "seq": 11, "wall_time": 1.1, "reason": "step_handover"},
+              {"event": "published", "epoch": 1, "seq": 12, "wall_time": 2.0}]
+    assert not published_after_revocation(egress)
+    egress.append({"event": "published", "epoch": 1, "seq": 10, "wall_time": 1.15})
+    assert published_after_revocation(egress)

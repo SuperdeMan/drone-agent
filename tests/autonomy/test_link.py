@@ -10,7 +10,7 @@ import pytest
 
 from drone_agent.autonomy.frames import pack, read_frame, stub
 from drone_agent.autonomy.link import LocalEndpoint, Role
-from drone_agent.autonomy.messages import AuthorizedSetpoint, LocalTask, Vector3
+from drone_agent.autonomy.messages import AuthorizationRevoked, AuthorizedSetpoint, LocalTask, Vector3
 from drone_agent.contracts import utcnow
 from tests.autonomy.test_messages_and_frames import segment
 
@@ -88,13 +88,17 @@ async def test_invalid_messages_are_dropped_and_malformed_frames_disconnect():
     await server.close()
 
 
-async def test_egress_role_only_sends_authorized_setpoints():
+async def test_egress_role_only_sends_authorizations_and_revocations():
     server = await endpoint(Role.EGRESS)
     reader, writer = await asyncio.open_connection("127.0.0.1", server.port)
     await settle(lambda: server.connected)
     assert await server.send(setpoint(3)) == 1
     kind, received = await read_frame(reader)
     assert kind == "authorized_setpoint" and received.command_seq == 3
+    assert await server.send(AuthorizationRevoked(robot_id="uav_01", lease_epoch=1, command_seq=4, issued_at=utcnow(),
+                                                  reason="step_handover")) == 1
+    kind, received = await read_frame(reader)
+    assert kind == "authorization_revoked" and received.command_seq == 4
     with pytest.raises(ValueError):
         await server.send(task())
     writer.close()

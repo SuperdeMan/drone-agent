@@ -15,6 +15,7 @@ from drone_agent.autonomy.messages import (
     EgressStatus,
     Implementation,
     LocalizationReport,
+    LocalTask,
     ObstacleSet,
     SegmentStatus,
     TrajectoryPoint,
@@ -47,6 +48,7 @@ class Endpoint:
         self.latest: dict[str, Received] = {}
         self.sent: list = []
         self.accepting = True
+        self.on_send = None
 
     def put(self, kind, model, age=0.0):
         self.latest[kind] = Received(model, time.monotonic() - age)
@@ -61,6 +63,8 @@ class Endpoint:
         if not self.accepting:
             return 0
         self.sent.append(model)
+        if self.on_send is not None:
+            self.on_send(model)
         return 1
 
 
@@ -167,6 +171,9 @@ class Runtime:
             self.egress.put("egress_status", egress_status())
         self.autonomy.put("localization_report", localization())
         self.autonomy.put("obstacle_set", obstacles())
+        # A planner that answers each new local task with a first segment at once (D047). / 对每个新局部任务立即
+        # 给出首个片段的规划节点（D047）。
+        self.autonomy.on_send = self.plan
         self.journal = Journal(tmp_path / "guardian.jsonl")
         self.log = []
         self.guardian = Guardian(
@@ -194,6 +201,10 @@ class Runtime:
             "heartbeat_seq": self.seq, "progress_seq": self.seq, "timestamp": now,
             "valid_until": now + timedelta(seconds=1), "skill_instance_id": "x", "skill_state": "running",
         })
+
+    def plan(self, model):
+        if isinstance(model, LocalTask) and model.active:
+            self.autonomy.put("trajectory_segment", segment(model.task_id))
 
     def refresh(self):
         self.egress.put("egress_status", egress_status(mode_active=self.adapter.mode.startswith("EXTERNAL")))

@@ -235,6 +235,24 @@ class AuthorizedSetpoint(ContractModel):
     max_vertical_speed_mps: float = Field(gt=0, le=3)
 
 
+class AuthorizationRevoked(ContractModel):
+    """The guardian ends its authorization itself and commands PX4 over MAVLink (guardian -> egress node, D047).
+
+    It shares the authorizations' sequence space. The node drops its authorization, stops publishing and switches no
+    mode, because its own view of the mode may lag the guardian's command.
+
+    guardian 自己结束授权并经 MAVLink 指挥 PX4（guardian -> 出口节点，D047）。
+
+    它与授权共用序号空间。节点丢弃授权、停止发布且不切换任何模式，因为它看到的模式状态可能滞后于 guardian 的命令。
+    """
+
+    robot_id: str = Field(min_length=1)
+    lease_epoch: int = Field(ge=0)
+    command_seq: int = Field(ge=0)
+    issued_at: AwareDatetime
+    reason: str = Field(min_length=1, max_length=120)
+
+
 class EgressStatus(ContractModel):
     """What the egress node reports about its registration, link and counters.
 
@@ -260,6 +278,7 @@ class EgressStatus(ContractModel):
     armed: bool = False
     hold_commands: int = Field(ge=0, default=0)
     cant_run_reports: int = Field(ge=0, default=0)
+    revocations: int = Field(ge=0, default=0)
 
     @property
     def external_nav_state(self) -> int | None:
@@ -300,4 +319,5 @@ MODELS: dict[str, type[ContractModel]] = {
     "authorized_setpoint": AuthorizedSetpoint,
     "egress_status": EgressStatus,
     "belief_fact": BeliefFact,
+    "authorization_revoked": AuthorizationRevoked,
 }

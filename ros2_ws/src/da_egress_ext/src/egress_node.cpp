@@ -4,24 +4,30 @@
 // active it forwards the newest guardian authorization as a multicopter goto setpoint, and only while that
 // authorization is within its time-to-live. When the authorization lapses during an active mode it stops
 // publishing in the same cycle and sends the only command it may send, "switch to PX4 Hold"; if PX4 is still in the
-// mode a second later it reports the mode as unable to run so PX4's own failsafe takes over. It never re-sends a
-// stale setpoint, never arms, takes off, lands or selects another mode, never registers a mode executor and never
-// requests failsafe deferral. Authorizations arrive over a private Unix socket from the guardian as length-prefixed
-// drone.autonomy.v1 frames; lower epochs, non-increasing sequences, expired or malformed authorizations are refused.
+// mode a second later it reports the mode as unable to run so PX4's own failsafe takes over. When the guardian
+// revokes the authorization itself (D047) it is commanding PX4 over MAVLink, and this node's view of the mode may lag
+// that command: the node then stops publishing and switches nothing, and only reports the mode unable to run if it
+// still sees it active a second later. A newer authorization ends the revocation. It never re-sends a stale setpoint,
+// never arms, takes off, lands or selects another mode, never registers a mode executor and never requests failsafe
+// deferral. Authorizations and revocations arrive over a private Unix socket from the guardian as length-prefixed
+// drone.autonomy.v1 frames; lower epochs, non-increasing sequences, expired or malformed frames are refused.
 //
 // da_egress_ext：guardian 控制出口在 ROS 2 一侧的物理延伸（D039）。
 //
 // 它只注册一个 PX4 外部模式（"DroneAgent Local"），没有任务语义：模式激活期间，把 guardian 最新的授权作为多旋翼 goto
 // 设定值转发，且仅在该授权的存活时间内。模式激活期间授权失效时，当周期停止发布，并发出它唯一允许的命令「切到 PX4
-// Hold」；1 秒后 PX4 仍在该模式，就报告该模式不可运行，交给 PX4 自身的失效保护。它从不重发过期设定值，从不解锁、
-// 起飞、降落或选择其他模式，从不注册模式执行器，也从不请求失效保护延期。授权经私有 Unix 套接字以带长度前缀的
-// drone.autonomy.v1 帧从 guardian 到达；低代次、序号不递增、过期或格式错误的授权一律拒收。
+// Hold」；1 秒后 PX4 仍在该模式，就报告该模式不可运行，交给 PX4 自身的失效保护。guardian 自己撤销授权时（D047），
+// 它正经 MAVLink 指挥 PX4，而本节点看到的模式可能滞后于该命令：节点只停止发布、不切换任何模式，1 秒后仍见激活才报告
+// 该模式不可运行。更新的授权结束撤销状态。它从不重发过期设定值，从不解锁、起飞、降落或选择其他模式，从不注册模式
+// 执行器，也从不请求失效保护延期。授权与撤销经私有 Unix 套接字以带长度前缀的 drone.autonomy.v1 帧从 guardian 到达；
+// 低代次、序号不递增、过期或格式错误的帧一律拒收。
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -119,6 +125,9 @@ struct Shared
   int64_t watchdog_exits{0};
   int64_t hold_commands{0};
   int64_t cant_run_reports{0};
+  int64_t revocations{0};
+  bool revoked{false};
+  SteadyClock::time_point revoked_at{};
   std::string last_watchdog_reason;
   bool registered{false};
   bool compatibility_ok{false};
@@ -206,18 +215,43 @@ public:
   }
 
 private:
-  // Authorization lapsed while active: stop in this cycle, ask PX4 for Hold once, escalate after a second.
-  // 激活期间授权失效：本周期停止，向 PX4 请求一次 Hold，一秒后升级。
+  // Report the mode unable to run once; PX4 then decides from its own current mode. / 报告该模式不可运行（仅一次）；
+  // 随后由 PX4 按自身当前模式决定。
+  void report_cant_run(const char * reason)
+  {
+    {
+      std::lock_guard<std::mutex> lock(shared_.mutex);
+      if (shared_.cant_run) {
+        return;
+      }
+      shared_.cant_run = true;
+      ++shared_.cant_run_reports;
+    }
+    log_.write({{"event", "cant_run_reported"}, {"reason", reason}});
+  }
+
+  // No authorization while active. Revoked: the guardian is commanding PX4 itself, so switch nothing and escalate
+  // only a second later (D047). Lapsed: stop in this cycle, ask PX4 for Hold once, escalate after a second.
+  // 激活期间没有授权。已撤销：guardian 正亲自指挥 PX4，因此不切换任何模式，一秒后才升级（D047）。已过期：本周期
+  // 停止，向 PX4 请求一次 Hold，一秒后升级。
   void lapse(SteadyClock::time_point now)
   {
+    bool revoked = false;
+    SteadyClock::time_point revoked_at{};
+    {
+      std::lock_guard<std::mutex> lock(shared_.mutex);
+      revoked = shared_.revoked;
+      revoked_at = shared_.revoked_at;
+    }
+    if (revoked) {
+      if (now - revoked_at > std::chrono::seconds(1)) {
+        report_cant_run("revoked_mode_still_active");
+      }
+      return;
+    }
     if (lapse_handled_) {
       if (now - lapse_time_ > std::chrono::seconds(1)) {
-        std::lock_guard<std::mutex> lock(shared_.mutex);
-        if (!shared_.cant_run) {
-          shared_.cant_run = true;
-          ++shared_.cant_run_reports;
-          log_.write({{"event", "cant_run_reported"}});
-        }
+        report_cant_run("authorization_lapsed");
       }
       return;
     }
@@ -354,12 +388,19 @@ private:
           break;
         }
         pb::AutonomyFrame frame;
-        if (!frame.ParseFromString(body) || !frame.has_authorized_setpoint()) {
-          // The guardian only ever sends authorizations here. / guardian 在这里只会发送授权。
+        if (!frame.ParseFromString(body)) {
+          log_.write({{"event", "protocol_error"}, {"reason", "unparseable_frame"}});
+          break;
+        }
+        if (frame.has_authorized_setpoint()) {
+          accept(frame.authorized_setpoint());
+        } else if (frame.has_authorization_revoked()) {
+          revoke(frame.authorization_revoked());
+        } else {
+          // The guardian only ever sends authorizations and revocations here. / guardian 在这里只会发送授权与撤销。
           log_.write({{"event", "protocol_error"}, {"reason", "unexpected_frame"}});
           break;
         }
-        accept(frame.authorized_setpoint());
       }
       close_socket();
       log_.write({{"event", "guardian_disconnected"}});
@@ -422,6 +463,8 @@ private:
         shared_.authorization = Authorization{
           Eigen::Vector3f(static_cast<float>(p.x()), static_cast<float>(p.y()), static_cast<float>(p.z())),
           max_h, max_v, epoch, seq, receipt + remaining};
+        // A newer authorization ends a revocation. / 更新的授权结束撤销状态。
+        shared_.revoked = false;
         if (!shared_.mode_active) {
           // A fresh authorization while inactive clears an earlier escalation. / 未激活时收到新鲜授权即清除先前的升级。
           shared_.cant_run = false;
@@ -430,6 +473,45 @@ private:
       }
     }
     log_.write({{"event", "rejected"}, {"reason", "stale_epoch_or_sequence"}, {"epoch", epoch}, {"seq", seq}});
+  }
+
+  // The guardian ends the authorization itself (D047): drop it at once; the mode is the guardian's to change.
+  // guardian 自己结束授权（D047）：立即丢弃授权；模式由 guardian 切换。
+  void revoke(const pb::AuthorizationRevoked & message)
+  {
+    const int64_t epoch = message.has_lease_epoch() ? message.lease_epoch() : -1;
+    const int64_t seq = message.has_command_seq() ? message.command_seq() : -1;
+    const bool complete = message.has_schema_version() && message.schema_version() == kSchemaVersion &&
+      message.has_robot_id() && message.robot_id() == robot_id_ && message.has_lease_epoch() &&
+      message.has_command_seq() && message.has_issued_at() && message.has_reason() && !message.reason().empty();
+    if (!complete) {
+      reject(&Shared::rejected_other, "incomplete_or_foreign_revocation", epoch, seq);
+      return;
+    }
+    const double issued = message.issued_at().seconds() + message.issued_at().nanos() * 1e-9;
+    const double age_ms = (wall_seconds() - issued) * 1000.0;
+    if (age_ms > max_ttl_ms_ || age_ms < -50.0) {
+      reject(&Shared::rejected_stale, "expired_or_future_revocation", epoch, seq);
+      return;
+    }
+    {
+      std::lock_guard<std::mutex> lock(shared_.mutex);
+      if (epoch < shared_.highest_epoch) {
+        ++shared_.rejected_epoch;
+      } else if (epoch == shared_.highest_epoch && seq <= shared_.last_seq) {
+        ++shared_.rejected_seq;
+      } else {
+        shared_.highest_epoch = std::max(shared_.highest_epoch, epoch);
+        shared_.last_seq = seq;
+        shared_.authorization.reset();
+        shared_.revoked = true;
+        shared_.revoked_at = SteadyClock::now();
+        ++shared_.revocations;
+        log_.write({{"event", "revoked"}, {"reason", message.reason()}, {"epoch", epoch}, {"seq", seq}});
+        return;
+      }
+    }
+    log_.write({{"event", "rejected"}, {"reason", "stale_revocation"}, {"epoch", epoch}, {"seq", seq}});
   }
 
   std::string path_;
@@ -525,6 +607,7 @@ int main(int argc, char * argv[])
       status->set_armed(shared.armed);
       status->set_hold_commands(shared.hold_commands);
       status->set_cant_run_reports(shared.cant_run_reports);
+      status->set_revocations(shared.revocations);
       lock.unlock();  // Never write to the socket while holding the shared state. / 持有共享状态时从不写套接字。
       link.send(frame);
     });

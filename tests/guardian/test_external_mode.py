@@ -3,11 +3,12 @@
 guardian 把外部模式当作自己的出口来驱动，并把其失效转为 v2 恢复（D039、D042）。
 """
 
+import asyncio
 import time
 
 import pytest
 
-from drone_agent.autonomy.messages import AuthorizedSetpoint, LocalTask, SegmentStatus
+from drone_agent.autonomy.messages import AuthorizationRevoked, AuthorizedSetpoint, LocalTask, SegmentStatus
 from drone_agent.contracts import RecoveryBehavior, RecoveryTrigger
 from tests.guardian.m3 import Runtime, egress_status, localization, obstacles, segment
 
@@ -90,7 +91,8 @@ async def test_a_fresh_candidate_is_filtered_and_authorized_with_monotonic_seque
 @pytest.mark.parametrize(
     ("setup", "trigger", "detail"),
     [
-        (lambda m, t: None, RecoveryTrigger.TRAJECTORY_STALE, "no_valid_segment"),
+        (lambda m, t: m.autonomy.latest.pop("trajectory_segment"), RecoveryTrigger.TRAJECTORY_STALE,
+         "no_valid_segment"),
         (lambda m, t: m.autonomy.put("trajectory_segment", segment("another.task", target=(0, 1, 4))),
          RecoveryTrigger.TRAJECTORY_STALE, "no_valid_segment"),
         (lambda m, t: m.autonomy.put("obstacle_set", obstacles(), age=5.0),
@@ -115,6 +117,14 @@ async def test_external_failures_end_authorization_before_the_mavlink_recovery(m
     setup(m3, task.task_id)
     m3.beat()
     before = len(m3.egress.sent)
+    revoked_before_recovery = []
+    recover = m3.adapter.recover
+
+    async def recorded(behavior, permitted, site=None):
+        revoked_before_recovery.append(isinstance(m3.egress.sent[-1], AuthorizationRevoked))
+        await recover(behavior, permitted, site)
+
+    m3.adapter.recover = recorded
     await m3.guardian.tick()
     await m3.settle()
     intervention = next(r["data"] for r in m3.journal.rows if r["kind"] == "safety_intervention")
@@ -122,7 +132,14 @@ async def test_external_failures_end_authorization_before_the_mavlink_recovery(m
     assert intervention["context"]["control_mode"] == "external_mode"
     kinds = m3.kinds()
     assert kinds.index("external_stop") < kinds.index("safety_intervention") < kinds.index("recovery_intent")
-    assert not m3.guardian.external.active and len(m3.egress.sent) == before
+    # D047: the only egress message after the failure is the revocation, sent before the MAVLink recovery, in the
+    # authorizations' sequence space. / D047：失效之后发给出口节点的唯一消息是撤销，在 MAVLink 恢复之前发出，与授权
+    # 共用序号空间。
+    assert not m3.guardian.external.active and len(m3.egress.sent) == before + 1
+    revocation = m3.egress.sent[-1]
+    assert isinstance(revocation, AuthorizationRevoked) and revocation.reason == "intervention:" + trigger.value
+    assert revocation.command_seq > max(a.command_seq for a in m3.egress.sent[:-1])
+    assert revoked_before_recovery == [True]
     assert m3.adapter.writes[-1][:2] == ("recover", "hold")
     withdrawn = [t for t in m3.autonomy.sent if isinstance(t, LocalTask) and not t.active]
     assert withdrawn and withdrawn[-1].task_id == task.task_id
@@ -203,6 +220,77 @@ async def test_a_new_step_first_ends_the_external_stream_with_a_mavlink_hold(m3)
     hold = writes.index(("recover", "hold", None))
     assert writes.index(("execute", "return_home", None)) > hold
     assert "external_stop" in m3.kinds() and not m3.guardian.external.active
+    revocations = [m for m in m3.egress.sent if isinstance(m, AuthorizationRevoked)]
+    assert [r.reason for r in revocations] == ["step_handover"]
+
+
+async def test_the_mode_is_requested_only_once_the_new_task_has_a_segment(m3):
+    # SITL: after a step handover the next mode switch took 106 ms, before the 5 Hz planner's first segment for the
+    # new task, and the first supervision tick found no valid segment (D047). / SITL：步骤交接后下一次模式切换只用了
+    # 106 ms，早于 5 Hz 规划节点给新任务的首个片段，第一个监督周期就找不到有效片段（D047）。
+    loop = asyncio.get_running_loop()
+
+    def slow_planner(model):
+        if isinstance(model, LocalTask) and model.active:
+            loop.call_later(0.25, lambda: m3.autonomy.put("trajectory_segment", segment(model.task_id)))
+
+    m3.autonomy.on_send = slow_planner
+    had_segment = []
+    request = m3.adapter.request_external_mode
+
+    async def recorded(nav_state, permitted):
+        had_segment.append(m3.guardian.external.segment() is not None)
+        await request(nav_state, permitted)
+
+    m3.adapter.request_external_mode = recorded
+    await enter(m3)
+    assert had_segment == [True]
+    kinds = m3.kinds()
+    assert kinds.index("external_first_segment") < kinds.index("external_active")
+    # The hold authorization is renewed every 100 ms while waiting. / 等待期间每 100 ms 续发悬停授权。
+    assert len([a for a in m3.egress.sent if isinstance(a, AuthorizedSetpoint)]) >= 3
+
+
+async def test_a_recovery_while_entering_never_leaves_the_mode_counted_as_ours(m3):
+    # Review for D047: the entering loops can wake while a recovery is still sending its revocation; they must neither
+    # count a late mode switch as their own activation nor authorize again. / D047 评审：进入循环可能在恢复仍在发送撤销
+    # 时醒来；它们既不能把迟到的模式切换算作自己的激活，也不能再次授权。
+    m3.adapter.switch_mode = False
+    send = m3.egress.send
+
+    async def slow_revocation(model):
+        if isinstance(model, AuthorizationRevoked):
+            m3.adapter.mode = "EXTERNAL1"  # PX4's switch lands just now / PX4 的切换恰在此时到达
+            await asyncio.sleep(0.25)  # the entering loop wakes meanwhile / 进入循环在此期间醒来
+        return await send(model)
+
+    m3.egress.send = slow_revocation
+    submitted = asyncio.create_task(m3.submit("inspect_green", "approach"))
+    while not any(write[0] == "external_mode" for write in m3.adapter.writes):
+        await asyncio.sleep(0.01)
+    await m3.guardian.intervene(RecoveryTrigger.USER_CANCEL, "operator_cancel")
+    decision = await submitted
+    await m3.settle()
+    assert not decision.accepted and not m3.guardian.external.active
+    assert "external_active" not in m3.kinds()
+    revoked_at = next(i for i, m in enumerate(m3.egress.sent) if isinstance(m, AuthorizationRevoked))
+    assert m3.egress.sent[revoked_at].reason == "intervention:user_cancel"
+    assert not [m for m in m3.egress.sent[revoked_at:] if isinstance(m, AuthorizedSetpoint)]
+
+
+async def test_without_a_first_segment_the_external_mode_is_never_requested(m3):
+    m3.autonomy.on_send = None
+    m3.guardian.external.settings["first_segment_timeout_s"] = 0.3
+    decision = await m3.submit("inspect_green", "approach")
+    await m3.settle()
+    assert not decision.accepted and decision.reason == "adapter_error:PermissionError"
+    assert not any(write[0] == "external_mode" for write in m3.adapter.writes)
+    assert not m3.guardian.external.active and not m3.guardian.external.entering
+    stop = next(r["data"] for r in m3.journal.rows if r["kind"] == "external_stop")
+    assert stop["reason"] == "start_failed:no_first_segment"
+    assert isinstance(next(m for m in m3.egress.sent if isinstance(m, AuthorizationRevoked)), AuthorizationRevoked)
+    withdrawn = [t for t in m3.autonomy.sent if isinstance(t, LocalTask) and not t.active]
+    assert len(withdrawn) == 1
 
 
 async def test_gnss_loss_with_visual_localization_holds_then_lands(m3):
