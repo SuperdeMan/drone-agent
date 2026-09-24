@@ -236,7 +236,12 @@ class Uplink:
             key = f"{mission_id}/v{version}/{path.name}"
             try:
                 record = json.loads(path.read_text(encoding="utf-8"))
-                if self.state["evidence"].get(key) == record["sha256"]:
+                body = {**record["contract"], "mission_id": mission_id,
+                        "mission_version": version, "robot_id": self.robot_id}
+                # Pixels may be identical across flights; capture identity includes its context and metadata.
+                # 不同飞行的像素可能相同；采集身份包含上下文与元数据。
+                identity = hashlib.sha256(canonical(body)).hexdigest()
+                if self.state["evidence"].get(key) == identity:
                     continue
                 media = (directory / record["media_ref"]).resolve()
                 data = media.read_bytes() if media.is_relative_to(directory.resolve()) else b""
@@ -245,8 +250,7 @@ class Uplink:
             if hashlib.sha256(data).hexdigest() != record["sha256"]:
                 self.note("evidence_digest_mismatch", key=key)
                 continue
-            contract = Evidence.model_validate({**record["contract"], "mission_id": mission_id,
-                                                "mission_version": version, "robot_id": self.robot_id})
+            contract = Evidence.model_validate({**body, "evidence_id": "capture:" + identity})
             receipt = await self.client.publish_evidence(contract)
             if receipt.accepted:
                 receipt = await self.client.publish_media({
@@ -254,7 +258,7 @@ class Uplink:
                     "evidence_id": contract.evidence_id, "sha256": record["sha256"], "media_type": RAW_RGB,
                     "width": record["width"], "height": record["height"], "data": data})
             if receipt.accepted:
-                self.state["evidence"][key] = record["sha256"]
+                self.state["evidence"][key] = identity
                 self._save()
             else:
                 self.note("evidence_refused", key=key, reason=receipt.reason)

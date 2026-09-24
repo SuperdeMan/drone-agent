@@ -98,6 +98,26 @@ async def test_restart_reconciles_uploaded_inputs_without_waiting_for_new_events
         await task
 
 
+async def test_identical_pixels_in_two_missions_keep_two_independent_evidence_records(tmp_path):
+    from tests.fleet.harness import request
+
+    loop, first = await flown(tmp_path)
+    await loop.sync()
+    view = await loop.service.submit(request(key="idem-second-image"))
+    second = view["mission"]["mission_id"]
+    loop.service.approve(second, 1, approver="tailnet:operator@example.test",
+                         package_hash=view["versions"][0]["package_hash"])
+    await loop.sync()
+    assert (await loop.fly(loop.inbox_package(), epoch=2))["completed"]
+    await loop.sync()
+    a, b = loop.ledger.evidence(first)[0], loop.ledger.evidence(second)[0]
+    assert a["sha256"] == b["sha256"]
+    assert a["evidence_id"] != b["evidence_id"]
+    for mission_id in (first, second):
+        assert loop.ledger.mission(mission_id)["status"] == "completed"
+        assert loop.ledger.evidence(mission_id)[0]["media_path"]
+
+
 @pytest.mark.parametrize("field", ["row_timestamp", "sha256"])
 async def test_invalid_forwarded_row_is_rejected_before_persistence(tmp_path, field):
     from drone_agent.fleet.events import journal_row_to_event
