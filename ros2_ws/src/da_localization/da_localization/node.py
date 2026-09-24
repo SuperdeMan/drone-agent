@@ -68,6 +68,7 @@ class LocalizationNode(Node):
             body.position_std_m = result.position_std_m
         body.source_version = VERSION
         body.px4_status_age_s = min(result.px4_status_age_s, 1e6)
+        body.estimator_flags_age_s = min(result.estimator_flags_age_s, 1e6)
         self.link.send(frame)
 
 

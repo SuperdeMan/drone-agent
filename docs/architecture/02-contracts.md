@@ -222,7 +222,7 @@ M3 不改 `drone.contracts.v1`、`drone.control.v1` 与 `drone.fleet.v1` 已冻�
 | `LocalTask` | guardian → 规划节点 | 「做什么、在哪个范围、多长时间」：绑定任务版本、步骤、代次与唯一 `task_id`；目标取自登记表的局部目标点，范围为批准体积，限速不超过技能参数；`active=false` 撤回任务 |
 | `TrajectorySegment` | 规划节点 → guardian | 候选轨迹片段：`task_id`、代次、坐标系与地图版本必须与当前任务一致；`valid_until` 为生成后 400 ms；带来源、实现类型与学习阶段；状态为 `ok / reached / no_path / overloaded`。片段只是候选，guardian 过滤后才可能转发 |
 | `ObstacleSet` | 局部地图 → guardian | 邻近障碍点、膨胀半径、位置标准差、置信度与 `valid_until`（500 ms）；缺不确定性即拒收 |
-| `LocalizationReport` | 定位健康节点 → guardian | GNSS 与视觉定位健康、EKF 融合标志与位置标准差；过期视为未知，未知不满足任何「健康」守卫。`px4_status_age_s` 是所有输入话题中最新一条 PX4 消息的年龄；报告自身新鲜但该年龄超过 0.3 s（DDS 链路丢失）时同样视为没有报告，不能解读为 GNSS 失效 |
+| `LocalizationReport` | 定位健康节点 → guardian | GNSS 与视觉定位健康、EKF 融合标志与位置标准差；过期视为未知，未知不满足任何「健康」守卫。`px4_status_age_s` 是所有输入话题中最新一条 PX4 消息的年龄，四个输入话题都至少到过一次之前为 1e6；报告自身新鲜但该年龄超过 0.3 s（DDS 链路丢失或尚未建立）时同样视为没有报告，不能解读为 GNSS 失效。`estimator_flags_age_s` 是最新估计器标志的年龄（从未收到为 1e6），超过 1.5 s 时报告无法说明融合状态，同样视为没有报告（D048） |
 | `AuthorizedSetpoint` | guardian → 出口节点 | 唯一能让设定值到达飞控的消息：机器人、任务版本、步骤、`lease_epoch`、单调 `command_seq`、`issued_at`、`ttl_ms`（≤ 500）、NED 目标与限速 |
 | `AuthorizationRevoked` | guardian → 出口节点 | guardian 结束外部控制并自己经 MAVLink 指挥 PX4（D047）：机器人、`lease_epoch`、与授权同一序号空间的 `command_seq`、`issued_at`（≤ 500 ms）、原因。节点丢弃当前授权、停止发布，撤销状态下不发任何命令，1 s 后仍见模式激活只在 arming check 中报告不可运行；更高序号的新授权清除撤销 |
 | `EgressStatus` | 出口节点 → guardian | 注册状态、外部模式 nav_state、是否激活、PX4 链路与消息兼容性、各类拒绝、看门狗与撤销计数。PX4 链路以 `vehicle_status` 判定：PX4 变化即发、否则每 500 ms 发布，连续 1 s 收不到才算丢失 |

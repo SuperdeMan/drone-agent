@@ -111,14 +111,16 @@ class ExternalControl:
         return bool(status and status.external_nav_state is not None and status.compatibility_ok and status.fmu_link_ok)
 
     def localization(self) -> LocalizationReport | None:
-        """A fresh report whose own PX4 inputs are fresh; anything else counts as no report (02-contracts §11).
+        """A fresh report whose own PX4 inputs and estimator flags are fresh; anything else counts as no report.
 
-        A report built from stale PX4 inputs (the DDS link is gone) says nothing about GNSS, so it must not read as
-        a GNSS loss.
+        A report built from stale PX4 inputs (the DDS link is gone or not yet up) says nothing about GNSS, so it must
+        not read as a GNSS loss (D045); nor may one whose estimator flags are stale or never arrived, since unknown
+        fusion is not lost fusion (D048). See 02-contracts §11.
 
-        自身新鲜且其 PX4 输入也新鲜的报告；其他情况都视为没有报告（02-contracts §11）。
+        自身新鲜、其 PX4 输入与估计器标志也新鲜的报告；其他情况都视为没有报告。
 
-        由过期 PX4 输入生成的报告（DDS 链路已断）不能说明 GNSS 状况，因此不能被解读为 GNSS 失效。
+        由过期 PX4 输入生成的报告（DDS 链路已断或尚未建立）不能说明 GNSS 状况，因此不能被解读为 GNSS 失效（D045）；
+        估计器标志过期或从未到达的报告同样如此，因为融合状态未知不等于融合丢失（D048）。见 02-contracts §11。
         """
         if self.autonomy is None:
             return None
@@ -126,6 +128,8 @@ class ExternalControl:
         if report is None or report.robot_id != self.guardian.registry.capability.robot_id:
             return None
         if report.px4_status_age_s > self.settings["localization_input_max_age_s"]:
+            return None
+        if report.estimator_flags_age_s > self.settings["localization_flags_max_age_s"]:
             return None
         return report if report.stamp <= utcnow() < report.valid_until else None
 

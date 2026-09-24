@@ -80,6 +80,19 @@ def test_a_lost_link_ages_the_whole_report_while_a_lost_gnss_does_not():
     assert assess(drifting, now).visual_ok is False
 
 
+def test_a_link_still_coming_up_and_unknown_flags_prove_nothing():
+    # D048: until every input topic has arrived once the input age is unknown, and the flags report their own age.
+    # D048：全部输入话题到过一次之前输入年龄未知，估计器标志另报自身年龄。
+    starting, now = inputs(flags_time=None, fusing_gps=False, fusing_ev_pos=False)
+    report = assess(starting, now)
+    assert report.px4_status_age_s == 1e6 and report.estimator_flags_age_s == 1e6 and not report.gnss_ok
+    flags_late, now = inputs(flags_time=time.monotonic() - 2.0)
+    report = assess(flags_late, now)
+    assert report.px4_status_age_s < 0.1 and report.estimator_flags_age_s >= 2.0 and not report.gnss_ok
+    current, now = inputs(flags_time=time.monotonic() - 0.8)
+    assert 0.79 < assess(current, now).estimator_flags_age_s < 1.0
+
+
 def test_depth_projects_forward_and_follows_yaw():
     depth = np.full((48, 64), 5.0, dtype=np.float32)
     level = depth_to_enu(depth, 1.5, (0.0, 0.0, -4.0), LEVEL)

@@ -134,7 +134,8 @@ def localization(**overrides):
     now = utcnow()
     values = dict(robot_id="uav_01", stamp=now, valid_until=now + timedelta(milliseconds=500), gnss_ok=True,
                   gnss_fix_type=3, gnss_satellites=12, visual_ok=True, ev_position_fused=True,
-                  gnss_position_fused=True, local_position_ok=True, source_version="0.1.0", px4_status_age_s=0.05)
+                  gnss_position_fused=True, local_position_ok=True, source_version="0.1.0", px4_status_age_s=0.05,
+                  estimator_flags_age_s=0.4)
     values.update(overrides)
     return LocalizationReport(**values)
 

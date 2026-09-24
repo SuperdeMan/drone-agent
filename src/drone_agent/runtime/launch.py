@@ -59,14 +59,23 @@ def load_policy(root: Path, reference: str) -> RecoveryPolicy:
     return policy
 
 
-async def wait_for_egress(endpoint, seconds: float) -> bool:
-    deadline = time.monotonic() + seconds
-    while time.monotonic() < deadline:
-        status = endpoint.fresh("egress_status", 0.5)
-        if status is not None and status.external_nav_state is not None and status.compatibility_ok:
-            return True
+async def wait_for_external(guardian, seconds: float) -> dict:
+    """Wait until the external mode's dependencies deliver before serving an external-mode mission.
+
+    That is the egress node registered, compatible and linked to PX4 (D039), and the local autonomy fresh with an
+    informative localization report (D048). The outcome is journaled; on timeout the guardian still starts, and the
+    checks at the start of each external step stay the safety net.
+
+    在为外部模式任务提供服务之前，等待外部模式的依赖开始交付：出口节点已注册、兼容且与 PX4 连通（D039），本地自主层
+    新鲜且定位报告有结论（D048）。结果写入账本；超时后 guardian 仍会启动，每个外部步骤开始时的检查依旧兜底。
+    """
+    start = time.monotonic()
+    while True:
+        egress, autonomy = guardian.external.available(), guardian.external.autonomy_fresh()
+        if (egress and autonomy) or time.monotonic() - start >= seconds:
+            return {"ready": egress and autonomy, "egress": egress, "autonomy": autonomy,
+                    "waited_s": round(time.monotonic() - start, 2)}
         await asyncio.sleep(0.2)
-    return False
 
 
 async def main_async(args):
@@ -113,10 +122,6 @@ async def main_async(args):
             endpoints = [egress, autonomy]
             for endpoint in endpoints:
                 await endpoint.start()
-            if any(node.skill_id in EXTERNAL_SKILLS for node in package.nodes):
-                ready = await wait_for_egress(egress, args.egress_wait_s)
-                journal.append("egress_wait", {"mission_id": package.mission_id, "ready": ready,
-                                               "counters": egress.counters.__dict__})
         guardian = Guardian(
             adapter=adapter,
             package=package,
@@ -135,6 +140,10 @@ async def main_async(args):
             from drone_agent.eval.faults import install_injection
 
             install_injection(guardian, args.fault)
+        if guardian.external is not None and any(node.skill_id in EXTERNAL_SKILLS for node in package.nodes):
+            ready = await wait_for_external(guardian, args.egress_wait_s)
+            journal.append("external_ready", {"mission_id": package.mission_id, **ready,
+                                              "links": {e.role.value: e.counters.__dict__ for e in endpoints}})
         socket_dir = Path(args.endpoint.removeprefix("unix:")).parent
         socket_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         os.chmod(socket_dir, 0o700)
@@ -267,7 +276,8 @@ def main():
     parser.add_argument("--autonomy-socket", type=Path, default=Path("/run/autonomy/autonomy.sock"),
                         help="autonomy-node socket served by the guardian under policy v2 (M3)")
     parser.add_argument("--egress-wait-s", type=float, default=60.0,
-                        help="bounded wait for the egress node before validating an external-mode package (M3)")
+                        help="bounded wait for the egress node and the local autonomy before serving an "
+                             "external-mode package (M3, D048)")
     parser.add_argument("--belief-socket", type=Path, help="belief-fact socket served by the executive (M3)")
     args = parser.parse_args()
     if args.fault and not args.simulation:

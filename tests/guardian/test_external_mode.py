@@ -337,6 +337,47 @@ async def test_a_report_built_from_stale_px4_inputs_is_no_report_not_a_gnss_loss
     assert not [r for r in m3.journal.rows if r["kind"] == "safety_intervention"]
 
 
+async def test_a_report_without_fresh_estimator_flags_is_no_report_not_a_gnss_loss(m3):
+    # SITL (D048): the XRCE link came up only at takeoff; the first report had fresh GNSS and local position but no
+    # estimator flags yet, so "not fused" was unknown, and the guardian handed the takeoff to the flight controller.
+    # SITL（D048）：XRCE 链路直到起飞才建立；第一份报告的 GNSS 与本地位置已新鲜，估计器标志却还没到，「未融合」其实
+    # 未知，guardian 却把起飞交还给了飞控。
+    unknown = localization(gnss_ok=False, gnss_position_fused=False, visual_ok=False, ev_position_fused=False,
+                           px4_status_age_s=0.02, estimator_flags_age_s=1e6)
+    m3.autonomy.put("localization_report", unknown)
+    assert m3.guardian.external.localization() is None
+    m3.beat()
+    m3.guardian.active_step = m3.node("takeoff")
+    await m3.guardian.tick()
+    await m3.settle()
+    assert not [r for r in m3.journal.rows if r["kind"] == "safety_intervention"]
+    # Fresh flags that really say GNSS is not fused are a GNSS loss. / 新鲜标志确实表明 GNSS 未融合时才是 GNSS 失效。
+    m3.autonomy.put("localization_report", unknown.model_copy(update={"estimator_flags_age_s": 0.3,
+                                                                      "visual_ok": True, "ev_position_fused": True}))
+    assert m3.guardian.external.localization() is not None
+
+
+async def test_an_external_mission_is_served_only_once_its_dependencies_deliver(m3):
+    # D048: the guardian had accepted the lease and taken off before the localization node had any PX4 data.
+    # D048：定位节点还没有任何 PX4 数据时，guardian 就已接受租约并起飞。
+    from drone_agent.runtime.launch import wait_for_external
+
+    m3.refresh()
+    m3.autonomy.put("localization_report", localization(estimator_flags_age_s=1e6))
+    waiting = asyncio.create_task(wait_for_external(m3.guardian, 3.0))
+    await asyncio.sleep(0.3)
+    assert not waiting.done()
+    m3.refresh()
+    result = await waiting
+    assert result["ready"] and result["egress"] and result["autonomy"] and result["waited_s"] >= 0.3
+    # A dependency that never delivers is journaled as not ready after the bounded wait. / 始终未交付的依赖在有界
+    # 等待后记为未就绪。
+    m3.refresh()
+    m3.autonomy.put("localization_report", localization(px4_status_age_s=1e6))
+    result = await wait_for_external(m3.guardian, 0.2)
+    assert (result["ready"], result["egress"], result["autonomy"]) == (False, True, False)
+
+
 async def test_low_energy_far_from_home_lands_at_the_reachable_site(m3):
     m3.guardian.active_step = m3.node("inspect_green")
     m3.adapter.position = [0.0, 28.0, 4.0]

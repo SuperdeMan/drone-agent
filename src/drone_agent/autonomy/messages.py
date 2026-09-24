@@ -201,8 +201,11 @@ class LocalizationReport(ContractModel):
     local_position_ok: bool
     position_std_m: float | None = None
     source_version: str = Field(min_length=1)
-    px4_status_age_s: float = Field(ge=0, description="age of the newest PX4 message on any input topic (D045) / "
-                                                     "所有输入话题中最新一条 PX4 消息的年龄（D045）")
+    px4_status_age_s: float = Field(ge=0, description="age of the newest PX4 message on any input topic, 1e6 until "
+                                                     "every input topic has arrived once (D045, D048) / 所有输入话题中"
+                                                     "最新一条 PX4 消息的年龄，全部输入话题到过一次之前为 1e6（D045、D048）")
+    estimator_flags_age_s: float = Field(ge=0, description="age of the newest estimator flags, 1e6 if never received "
+                                                          "(D048) / 最新估计器标志的年龄，从未收到为 1e6（D048）")
 
     @model_validator(mode="after")
     def _consistent(self) -> LocalizationReport:
