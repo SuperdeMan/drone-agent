@@ -27,6 +27,14 @@ from drone_agent.runtime.recording import Recorder
 from drone_agent.runtime.signing import TrustStore
 
 
+async def stop_guardian_tasks(server, tasks):
+    """Quiesce observations before RPC shutdown can outlive telemetry. / 先停止观测发布，避免 RPC 停机等待超出遥测寿命。"""
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+    await server.stop(1)
+
+
 async def main_async(args):
     registry = Registry(args.root, scene=args.scene)
     package = MissionPackage.model_validate_json(args.package.read_bytes())
@@ -107,10 +115,7 @@ async def main_async(args):
             for task in done:
                 task.result()
         finally:
-            await server.stop(1)
-            for task in tasks:
-                task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
+            await stop_guardian_tasks(server, tasks)
             (args.artifacts / "adapter-commands.json").write_bytes(canonical(adapter.command_log))
             periods = sorted(guardian.periods)
             (args.artifacts / "supervision.json").write_bytes(

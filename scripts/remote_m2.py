@@ -102,6 +102,10 @@ def run_m2(root: Path, deployment: Path, request: dict) -> dict:
             results.append(result)
             (base / "progress.json").write_text(json.dumps({"source_sha": sha, "results": results,
                                                            "artifact_directory": str(base)}))
+            if not result.get("passed"):
+                break
+        if results and not results[-1].get("passed"):
+            break
     # Restore the idle, unarmed M0 service entry. / 恢复空闲、未解锁的 M0 服务入口。
     HELPERS["compose"](root, deployment, ["up", "-d", "--no-build", "--pull", "never", "sitl"])
     after = HELPERS["foreign_identity"]()
