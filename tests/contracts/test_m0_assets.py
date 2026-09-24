@@ -9,6 +9,7 @@ import yaml
 
 from drone_agent.contracts import (
     CapabilityDescriptor,
+    ControlMode,
     RecoveryPolicy,
     RecoveryTrigger,
     SkillManifest,
@@ -22,8 +23,9 @@ def load_yaml(path):
     return yaml.safe_load((ROOT / path).read_text(encoding="utf-8"))
 
 
-# The five M1 skills keep their M1 thresholds; the M2 inspection skill references the M2 scene (D034).
-# 五个 M1 技能保持 M1 阈值；M2 巡检技能引用 M2 场景（D034）。
+# The five M1 skills keep their M1 thresholds; the M2 inspection skill references the M2 scene (D034); the M3
+# external-mode skills reference the M3 scene (D039).
+# 五个 M1 技能保持 M1 阈值；M2 巡检技能引用 M2 场景（D034）；M3 外部模式技能引用 M3 场景（D039）。
 SCENE_OF_SKILL = {
     "skill.flight.takeoff": "m1_campus_v1",
     "skill.flight.fly_route": "m1_campus_v1",
@@ -31,17 +33,28 @@ SCENE_OF_SKILL = {
     "skill.flight.return_home": "m1_campus_v1",
     "skill.flight.land": "m1_campus_v1",
     "skill.inspect.asset": "m2_campus_v2",
+    "skill.flight.goto_local": "m3_campus_v3",
+    "skill.inspect.asset_local": "m3_campus_v3",
 }
 
 
 def test_skill_manifests_match_target_platform():
-    platform = CapabilityDescriptor.model_validate(load_yaml("configs/platforms/px4_sitl_multirotor.yaml")["capability"])
+    platform_file = load_yaml("configs/platforms/px4_sitl_multirotor.yaml")
+    platform = CapabilityDescriptor.model_validate(platform_file["capability"])
+    # Optional modes exist only while a companion process is healthy; they are never in the static capability (D039).
+    # 可选模式只在伴飞进程健康时存在，从不写进静态能力（D039）。
+    optional = {ControlMode(mode) for mode in platform_file.get("optional_control_modes", [])}
+    assert not optional & platform.control_modes
+    offered = platform.model_copy(update={"control_modes": platform.control_modes | optional})
     manifests = [SkillManifest.model_validate(load_yaml(path)) for path in sorted((ROOT / "configs/skills").glob("*.yaml"))]
     assert {m.skill_id: m.version for m in manifests} == {s.skill_id: s.version for s in platform.skills}
     assert {m.skill_id for m in manifests} == set(SCENE_OF_SKILL)
     for manifest in manifests:
         assert platform.embodiment in manifest.embodiments
-        assert not platform.missing_for(skills=[manifest.skill_id], control_modes=manifest.required_control_modes)
+        assert not offered.missing_for(skills=[manifest.skill_id], control_modes=manifest.required_control_modes)
+        if manifest.required_control_modes & optional:
+            # Without the live optional mode the static platform must not satisfy the skill. / 没有在线可选模式时静态平台不得满足该技能。
+            assert platform.missing_for(skills=[manifest.skill_id], control_modes=manifest.required_control_modes)
         assert manifest.preconditions and manifest.invariants and manifest.completion_evidence and manifest.failure_modes
         assert manifest.params_schema["additionalProperties"] is False
         assert set(manifest.params_schema["required"]) <= set(manifest.params_schema["properties"])
@@ -60,9 +73,16 @@ def test_skill_manifests_match_target_platform():
         # 多相位技能为每个相位声明前置条件，且不能为空。
         assert all(phase.preconditions for phase in manifest.intent_phases)
     motion = [m for m in manifests if m.skill_id != "skill.flight.capture_image"]
+    local_inspect = next(m for m in manifests if m.skill_id == "skill.inspect.asset_local")
+    assert [p.phase for p in local_inspect.intent_phases] == ["approach", "capture"]
+    assert {ControlMode.EXTERNAL_MODE} == local_inspect.required_control_modes
     for index, first in enumerate(motion):
         for second in motion[index + 1:]:
-            assert find_resource_conflicts(first.resources, second.resources) == ["uav_01.motion"]
+            # Motion is exclusive across every motion skill; two camera-claiming skills also share the camera.
+            # 所有运动技能之间运动资源互斥；两个都占用相机的技能还共享相机冲突。
+            shared = {c.resource_id for c in first.resources} & {c.resource_id for c in second.resources}
+            assert find_resource_conflicts(first.resources, second.resources) == sorted(shared)
+            assert "uav_01.motion" in shared
     inspect = next(m for m in manifests if m.skill_id == "skill.inspect.asset")
     assert [p.phase for p in inspect.intent_phases] == ["approach", "capture"]
     assert {c.resource_id for c in inspect.resources} == {"uav_01.motion", "uav_01.camera"}

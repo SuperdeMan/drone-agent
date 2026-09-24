@@ -1,0 +1,193 @@
+syntax = "proto3";
+package drone.autonomy.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Local autonomy IPC between processes on one aircraft (D039). Frames travel on private Unix stream sockets as a
+// 4-byte big-endian length followed by one serialized AutonomyFrame (at most 64 KiB); they never cross a network
+// and never reach the fleet protocol. Draft until M3-SITL acceptance, then frozen like drone.*.v1.
+// Every message is re-validated by the receiver's domain model; decoding is not authorization.
+//
+// 同一架飞行器上进程之间的本地自主层 IPC（D039）。帧在私有 Unix 流套接字上传输：4 字节大端长度后接一个序列化的
+// AutonomyFrame（最大 64 KiB）；永不跨网络，也不进入车队协议。M3-SITL 验收前为草案，之后与 drone.*.v1 一样冻结。
+// 接收方都要用领域模型重新校验每条消息；能解码不等于获得授权。
+// The ROS 2 side compiles this file with the system protoc 3.21; keep to proto3 features it supports.
+// ROS 2 一侧用系统 protoc 3.21 编译本文件；只使用它支持的 proto3 特性。
+
+message Vector3 {
+  optional string schema_version = 1;
+  optional double x = 2;
+  optional double y = 3;
+  optional double z = 4;
+}
+
+// guardian -> local planner: what to do, where, until when. / guardian -> 局部规划节点：做什么、在哪、到何时。
+message LocalTask {
+  optional string schema_version = 1;
+  optional string robot_id = 2;
+  optional string mission_id = 3;
+  optional int64 mission_version = 4;
+  optional string step_id = 5;
+  optional int64 lease_epoch = 6;
+  optional string task_id = 7;
+  optional string frame_id = 8;
+  optional string map_version = 9;
+  Vector3 goal = 10;
+  optional double goal_tolerance_m = 11;
+  optional double max_speed_mps = 12;
+  Vector3 scope_min = 13;
+  Vector3 scope_max = 14;
+  google.protobuf.Timestamp issued_at = 15;
+  google.protobuf.Timestamp deadline = 16;
+  optional bool active = 17;
+}
+
+enum SegmentStatus {
+  SEGMENT_STATUS_UNSPECIFIED = 0;
+  SEGMENT_STATUS_OK = 1;
+  SEGMENT_STATUS_REACHED = 2;
+  SEGMENT_STATUS_NO_PATH = 3;
+  SEGMENT_STATUS_OVERLOADED = 4;
+}
+
+enum Implementation {
+  IMPLEMENTATION_UNSPECIFIED = 0;
+  IMPLEMENTATION_DETERMINISTIC = 1;
+  IMPLEMENTATION_LEARNED = 2;
+}
+
+enum LearnedStage {
+  LEARNED_STAGE_UNSPECIFIED = 0;
+  LEARNED_STAGE_SHADOW = 1;
+  LEARNED_STAGE_LIMITED = 2;
+  LEARNED_STAGE_FULL = 3;
+}
+
+message TrajectoryPoint {
+  optional string schema_version = 1;
+  optional double t_offset_s = 2;
+  Vector3 position = 3;
+}
+
+// local planner -> guardian: a candidate only; the guardian filters before anything is forwarded.
+// 局部规划节点 -> guardian：只是候选；guardian 过滤后才可能转发。
+message TrajectorySegment {
+  optional string schema_version = 1;
+  optional string robot_id = 2;
+  optional string task_id = 3;
+  optional int64 lease_epoch = 4;
+  optional int64 segment_seq = 5;
+  optional string source_id = 6;
+  optional string source_version = 7;
+  optional Implementation implementation = 8;
+  optional LearnedStage learned_stage = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp valid_until = 11;
+  optional string frame_id = 12;
+  optional string map_version = 13;
+  repeated TrajectoryPoint points = 14;
+  optional double max_speed_mps = 15;
+  optional SegmentStatus status = 16;
+  optional double cycle_ms = 17;
+  optional double min_clearance_m = 18;
+}
+
+// local map -> guardian: nearby occupied points with their uncertainty. / 局部地图 -> guardian：邻近占据点及其不确定性。
+message ObstacleSet {
+  optional string schema_version = 1;
+  optional string robot_id = 2;
+  optional string frame_id = 3;
+  optional string map_version = 4;
+  google.protobuf.Timestamp stamp = 5;
+  google.protobuf.Timestamp valid_until = 6;
+  optional string source_id = 7;
+  optional string source_version = 8;
+  repeated Vector3 points = 9;
+  optional double point_radius_m = 10;
+  optional double position_std_m = 11;
+  optional double confidence = 12;
+  optional int64 map_seq = 13;
+  optional double coverage_radius_m = 14;
+}
+
+// localization-health node -> guardian. / 定位健康节点 -> guardian。
+message LocalizationReport {
+  optional string schema_version = 1;
+  optional string robot_id = 2;
+  google.protobuf.Timestamp stamp = 3;
+  google.protobuf.Timestamp valid_until = 4;
+  optional bool gnss_ok = 5;
+  optional int64 gnss_fix_type = 6;
+  optional int64 gnss_satellites = 7;
+  optional double gnss_eph_m = 8;
+  optional bool visual_ok = 9;
+  optional bool ev_position_fused = 10;
+  optional bool gnss_position_fused = 11;
+  optional bool local_position_ok = 12;
+  optional double position_std_m = 13;
+  optional string source_version = 14;
+  optional double px4_status_age_s = 15;
+}
+
+// guardian -> egress node: the only message that lets a setpoint reach the flight controller.
+// guardian -> 出口节点：唯一能让设定值到达飞控的消息。
+message AuthorizedSetpoint {
+  optional string schema_version = 1;
+  optional string robot_id = 2;
+  optional string mission_id = 3;
+  optional int64 mission_version = 4;
+  optional string step_id = 5;
+  optional int64 lease_epoch = 6;
+  optional int64 command_seq = 7;
+  google.protobuf.Timestamp issued_at = 8;
+  optional int64 ttl_ms = 9;
+  Vector3 position_ned = 10;
+  optional double max_horizontal_speed_mps = 11;
+  optional double max_vertical_speed_mps = 12;
+}
+
+// egress node -> guardian. / 出口节点 -> guardian。
+message EgressStatus {
+  optional string schema_version = 1;
+  optional string robot_id = 2;
+  google.protobuf.Timestamp stamp = 3;
+  optional string node_version = 4;
+  optional bool registered = 5;
+  optional int64 mode_nav_state = 6;
+  optional bool mode_active = 7;
+  optional bool fmu_link_ok = 8;
+  optional bool compatibility_ok = 9;
+  optional int64 highest_epoch = 10;
+  optional int64 last_forwarded_seq = 11;
+  optional int64 forwarded_setpoints = 12;
+  optional int64 rejected_stale = 13;
+  optional int64 rejected_epoch = 14;
+  optional int64 rejected_seq = 15;
+  optional int64 watchdog_exits = 16;
+  optional string last_watchdog_reason = 17;
+  optional bool armed = 18;
+  optional int64 hold_commands = 19;
+  optional int64 cant_run_reports = 20;
+}
+
+// perception / event detection -> executive: one belief or candidate fact. / 感知 / 事件检测 -> executive：一条信念或候选事实。
+message BeliefFact {
+  optional string schema_version = 1;
+  optional string producer_id = 2;
+  // UTF-8 JSON of a drone.contracts WorldFact; validate after decoding. / drone.contracts WorldFact 的 UTF-8 JSON；解码后校验。
+  optional bytes fact = 3;
+  optional double latency_ms = 4;
+  optional bool replan_trigger = 5;
+}
+
+message AutonomyFrame {
+  oneof body {
+    LocalTask local_task = 1;
+    TrajectorySegment trajectory_segment = 2;
+    ObstacleSet obstacle_set = 3;
+    LocalizationReport localization_report = 4;
+    AuthorizedSetpoint authorized_setpoint = 5;
+    EgressStatus egress_status = 6;
+    BeliefFact belief_fact = 7;
+  }
+}

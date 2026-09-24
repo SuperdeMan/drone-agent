@@ -1,0 +1,44 @@
+# M3-SITL scenario suite (WP-M3-20, D038–D042). Every scenario flies the m3_campus_v3 world under recovery policy
+# multirotor_m3@v2 on the shared cloud host. `class` maps a scenario to one of the four M3 exit classes (observation
+# stale, mission stuck, network interruption, compute overload) or to a supporting check. Injections are made at a
+# stated boundary (autonomy node input, container/process, PX4 failure command, guardian runtime input) and every
+# injection is recorded; none changes a flight-controller failsafe. `nodes: false` starts no egress node, so the
+# external mode is genuinely unavailable.
+#
+# M3-SITL 场景集（WP-M3-20，D038–D042）。每个场景都在共享云主机上、恢复策略 multirotor_m3@v2 下飞 m3_campus_v3 世界。
+# `class` 把场景归入 M3 四类退出场景之一（观测过期、任务卡住、网络中断、计算过载）或辅助检查。注入都在声明的边界上
+# 进行（自主层节点输入、容器 / 进程、PX4 故障命令、guardian 运行时输入）并全部留证；不改动任何飞控失效保护。
+# `nodes: false` 不启动出口节点，外部模式确实不可用。
+schema_version: "0.1.0"
+suite_id: m3_campus_v3
+seeds: [7, 19, 41]
+speed_factor: 1
+randomization: [cruise_speed_mps, injection_delay_s]
+scenarios:
+  - {id: ext_inspect, class: nominal, shape: inspect_external, expected: completed}
+  - {id: ext_goto, class: nominal, shape: goto_external, expected: completed}
+  - {id: route_fallback, class: nominal, shape: inspect_route, expected: completed, nodes: false}
+  - {id: ext_observation_stale, class: observation_stale, shape: inspect_external, expected: safe_abort,
+     inject_at: inspect_green, when: external_active, kind: map_freeze, boundary: autonomy_node_input}
+  - {id: ext_trajectory_stale, class: observation_stale, shape: inspect_external, expected: safe_abort,
+     inject_at: inspect_green, when: external_active, kind: planner_freeze, boundary: autonomy_node_input}
+  - {id: egress_watchdog, class: observation_stale, shape: inspect_external, expected: safe_abort,
+     inject_at: inspect_green, when: external_active, kind: guardian_freeze, boundary: guardian_process}
+  - {id: ext_progress_stalled, class: mission_stuck, shape: inspect_external, expected: safe_abort,
+     inject_at: inspect_green, when: external_active, kind: planner_stall, boundary: autonomy_node_input}
+  - {id: cbf_blocks_unsafe_planner, class: mission_stuck, shape: inspect_external, expected: safe_abort,
+     inject_at: inspect_green, when: external_active, kind: planner_ignore_obstacles, boundary: autonomy_node_input}
+  - {id: ext_dds_link_lost, class: network_interruption, shape: inspect_external, expected: safe_abort,
+     inject_at: inspect_green, when: external_active, kind: xrce_agent_stop, boundary: dds_link}
+  - {id: ext_egress_lost, class: network_interruption, shape: inspect_external, expected: safe_abort,
+     inject_at: inspect_green, when: external_active, kind: egress_stop, boundary: egress_process}
+  - {id: ext_compute_overload, class: compute_overload, shape: inspect_external, expected: safe_abort,
+     inject_at: inspect_green, when: external_active, kind: cpu_hog, boundary: autonomy_container_cpu}
+  - {id: gnss_lost_visual_ok, class: localization, shape: inspect_external, expected: safe_abort,
+     inject_at: inspect_green, when: external_active, kind: gnss_off, boundary: px4_failure_command}
+  - {id: energy_rtl, class: energy, shape: inspect_external, expected: safe_abort,
+     inject_at: inspect_green, when: capture_phase, kind: battery, battery: 0.32, boundary: runtime_input}
+  - {id: energy_land_at, class: energy, shape: inspect_external, expected: safe_abort,
+     inject_at: inspect_green, when: capture_phase, kind: battery, battery: 0.29, boundary: runtime_input}
+  - {id: energy_land_here, class: energy, shape: inspect_external, expected: safe_abort,
+     inject_at: inspect_green, when: capture_phase, kind: battery, battery: 0.25, boundary: runtime_input}

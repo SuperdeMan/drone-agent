@@ -1,6 +1,15 @@
-"""PX4 mission-mode adapter; no Offboard or raw flight-control interface.
+"""PX4 adapter over MAVSDK: mission mode, recovery commands and the entry into the external mode.
 
-PX4 任务模式适配器；不提供 Offboard 或原始飞控接口。
+There is no Offboard, raw setpoint or kill interface. M3 (D039) adds one fixed MAVLink command that asks PX4 to
+enter the external mode registered by the egress node (the setpoints themselves travel over uXRCE-DDS from that
+node, never through here), the mode names of the external nav states and the `land_at` recovery (reposition,
+then land). The guardian, not the adapter, decides whether `external_mode` is currently offered.
+
+基于 MAVSDK 的 PX4 适配器：任务模式、恢复命令与进入外部模式。
+
+不提供 Offboard、原始设定值或 kill 接口。M3（D039）增加一条固定的 MAVLink 命令，请求 PX4 进入出口节点注册的
+外部模式（设定值本身经 uXRCE-DDS 由该节点发送，从不经过这里）；增加外部 nav 状态的模式名与 `land_at` 恢复（先重定位
+再降落）。当前是否提供 `external_mode` 由 guardian 而不是适配器决定。
 """
 
 from __future__ import annotations
@@ -47,6 +56,7 @@ class Px4Adapter:
             RecoveryBehavior.HOLD,
             RecoveryBehavior.RTL,
             RecoveryBehavior.LAND_HERE,
+            RecoveryBehavior.LAND_AT,
             RecoveryBehavior.HANDOVER_TO_FC_FAILSAFE,
         }
         if not self.camera_available:
@@ -154,6 +164,10 @@ class Px4Adapter:
     @staticmethod
     def px4_mode(custom):
         main, sub = (int(custom) >> 16) & 255, (int(custom) >> 24) & 255
+        if main == 4 and 11 <= sub <= 18:
+            # PX4 external modes 1..8 (nav states 23..30), registered by ROS 2 components (D039).
+            # PX4 外部模式 1..8（nav 状态 23..30），由 ROS 2 组件注册（D039）。
+            return f"EXTERNAL{sub - 10}"
         if main == 4:
             return {
                 1: "READY",
@@ -403,8 +417,32 @@ class Px4Adapter:
         durable_artifact(self.artifacts / f"evidence-{node.task_id}.json", canonical(evidence))
         return evidence
 
-    async def recover(self, behavior, permitted):
-        if behavior == RecoveryBehavior.HOLD:
+    async def recover(self, behavior, permitted, site=None):
+        if behavior == RecoveryBehavior.LAND_AT:
+            # Reposition over the registered site at the current height; the guardian lands once above it.
+            # 在当前高度重定位到登记降落点上方；到达后由 guardian 降落。
+            if site is None or "home" not in self.values:
+                raise ValueError("land_at needs a registered site and a home reference")
+            origin = self.values["home"]
+            here = self.snapshot()
+            height = here.pose.position.z if here.pose else None
+            if height is None:
+                raise ValueError("land_at needs a fresh height")
+            latitude = origin.latitude_deg + math.degrees(site[1] / 6378137)
+            longitude = origin.longitude_deg + math.degrees(
+                site[0] / (6378137 * math.cos(math.radians(origin.latitude_deg)))
+            )
+            self.expect({"HOLD", "LAND", "READY"})
+            await self._call(
+                "land_at_reposition",
+                self._system.action.goto_location,
+                permitted,
+                latitude,
+                longitude,
+                origin.absolute_altitude_m + height,
+                float("nan"),
+            )
+        elif behavior == RecoveryBehavior.HOLD:
             self.expect({"HOLD"})
             await self._call("hold", self._system.action.hold, permitted)
         elif behavior == RecoveryBehavior.RTL:
@@ -415,6 +453,41 @@ class Px4Adapter:
             await self._call("land_here", self._system.action.land, permitted)
         elif behavior != RecoveryBehavior.HANDOVER_TO_FC_FAILSAFE:
             raise ValueError("unsupported recovery behavior")
+
+    @staticmethod
+    def external_mode_name(nav_state: int) -> str:
+        if not 23 <= int(nav_state) <= 30:
+            raise ValueError("not a PX4 external nav state")
+        return f"EXTERNAL{int(nav_state) - 22}"
+
+    async def request_external_mode(self, nav_state, permitted):
+        """One fixed DO_SET_MODE into the registered external nav state; setpoints never pass through here.
+
+        一条固定的 DO_SET_MODE，进入已注册的外部 nav 状态；设定值从不经过这里。
+        """
+        from mavsdk.mavlink_direct import MavlinkMessage
+
+        name = self.external_mode_name(nav_state)
+        fields = {
+            "target_system": 1,
+            "target_component": 1,
+            "command": 176,
+            "confirmation": 0,
+            "param1": 1,
+            "param2": 4,
+            "param3": int(nav_state) - 23 + 11,
+            "param4": 0,
+            "param5": 0,
+            "param6": 0,
+            "param7": 0,
+        }
+        self.expect({name, "HOLD"})
+        await self._call(
+            "external_mode",
+            self._system.mavlink_direct.send_message,
+            permitted,
+            MavlinkMessage("COMMAND_LONG", 245, 190, 1, 1, json.dumps(fields)),
+        )
 
     async def resume(self, permitted):
         self.expect({"MISSION", "HOLD"})

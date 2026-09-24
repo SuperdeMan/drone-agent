@@ -10,6 +10,13 @@ capture intents run with at most `max_captures` attempts; running out of attempt
 M2 在签名模式下增加验签（D030），并为 `skill.inspect.asset` 等多相位技能增加相位化流程（D034）：接近
 意图执行到登记航线被证实为止，然后执行拍摄意图，最多 `max_captures` 次；次数用尽即以 `unverified`
 结束，绝不记为成功。单相位的 M1 技能保持原流程。
+
+M3 (D041): the executive keeps the BeliefWorld journal. Facts from perception and event detection arrive on a
+role-bound local socket; truth, expired, foreign-frame and uncertainty-free positioned facts are refused, model
+outputs and low-confidence facts are marked candidate, and nothing in the control path reads them.
+
+M3（D041）：executive 维护 BeliefWorld 账本。感知与事件检测的事实经按角色划分的本地套接字到达；真值、过期、坐标系
+不符与缺不确定性的定位事实一律拒收，模型输出与低置信度事实标为候选，控制路径从不读取它们。
 """
 
 from __future__ import annotations
@@ -21,11 +28,13 @@ import uuid
 from datetime import datetime, timedelta
 
 import grpc
+from pydantic import ValidationError
 
 from drone_agent.contracts import (
     ControlCommandEnvelope,
     EffectVerdict,
     ExecutionStatus,
+    FactSource,
     IdempotencyKey,
     MissionAction,
     MissionOperation,
@@ -67,6 +76,50 @@ class Executive:
         # A restarted executive never silently re-runs an accepted mission. / executive 重启后不静默重跑已接受任务。
         if journal.rows:
             raise ValueError("existing mission journal requires reconciliation")
+        self.fact_times: dict[tuple, float] = {}
+        self.fact_counts = {"accepted": 0, "rate_limited": 0, "rejected": 0}
+        self.reject_times: dict[str, float] = {}
+
+    def accept_fact(self, message) -> None:
+        """Journal one belief fact (M3, D041); the control path never reads the BeliefWorld journal.
+
+        记录一条信念事实（M3，D041）；控制路径从不读取 BeliefWorld 账本。
+        """
+        try:
+            fact = message.world_fact()
+        except (ValidationError, ValueError) as error:
+            self.reject_fact(message.producer_id, "invalid:" + type(error).__name__)
+            return
+        frame, now = self.registry.data["frame"], utcnow()
+        if fact.frame is not None and (fact.frame.frame_id, fact.frame.map_version) != (
+            frame["frame_id"],
+            frame["map_version"],
+        ):
+            self.reject_fact(message.producer_id, "frame_or_map_mismatch")
+            return
+        if fact.valid_until is None or fact.valid_until <= now or fact.timestamp > now + timedelta(seconds=1):
+            self.reject_fact(message.producer_id, "expired_or_future")
+            return
+        key = (message.producer_id, fact.subject, fact.predicate)
+        last = self.fact_times.get(key)
+        if last is not None and time.monotonic() - last < 1.0:
+            # At most one journal row per producer, subject and predicate per second. / 每个来源、主语与谓词每秒至多一行。
+            self.fact_counts["rate_limited"] += 1
+            return
+        self.fact_times[key] = time.monotonic()
+        threshold = self.registry.data.get("perception", {}).get("candidate_confidence", 0.8)
+        candidate = fact.source is FactSource.MODEL or fact.confidence < threshold
+        self.fact_counts["accepted"] += 1
+        self.event("belief_fact", producer=message.producer_id, fact=fact.model_dump(mode="json"), candidate=candidate,
+                   replan_trigger=bool(message.replan_trigger and candidate), latency_ms=message.latency_ms)
+
+    def reject_fact(self, producer, reason) -> None:
+        self.fact_counts["rejected"] += 1
+        last = self.reject_times.get(reason)
+        if last is None or time.monotonic() - last >= 1.0:
+            self.reject_times[reason] = time.monotonic()
+            self.event("belief_fact_rejected", producer=producer, reason=reason,
+                       rejected_total=self.fact_counts["rejected"])
 
     def event(self, kind, **data):
         row = self.journal.append(kind, {"mission_id": self.package.mission_id, **data})

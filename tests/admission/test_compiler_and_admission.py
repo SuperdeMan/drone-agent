@@ -84,7 +84,7 @@ def test_planner_chosen_recovery_policy_is_rejected():
 
 
 def test_unknown_skill_and_unknown_asset_are_compile_failures():
-    result = compile_spec(spec(tasks=[TaskNode(task_id="t", skill_id="skill.flight.goto_local")]), compile_context())
+    result = compile_spec(spec(tasks=[TaskNode(task_id="t", skill_id="skill.flight.orbit_point")]), compile_context())
     assert codes(result.issues) == ["compile.unknown_skill"]
     result = compile_spec(spec(tasks=[inspect_task("asset_green")]), compile_context())
     assert codes(result.issues) == ["compile.unknown_asset"]

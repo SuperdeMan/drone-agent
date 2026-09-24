@@ -1,0 +1,162 @@
+# M3-SITL case topology (D038, D039). One case at a time on the shared host; quotas are ceilings, not reservations.
+# Only the guardian, the XRCE agent, the truth collector and the camera relay share the simulator's network namespace
+# (MAVLink, DDS client and Gazebo loopback). The egress node and the autonomy nodes have their own namespaces on the
+# internal simulation network and reach PX4 only through DDS; Gazebo transport stays on the simulator's loopback
+# (GZ_IP), so no autonomy process can subscribe to simulator truth. The executive has no network. Role sockets live in
+# separate host directories, each mounted only into its two endpoints.
+#
+# M3-SITL 用例拓扑（D038、D039）。共享主机上一次只运行一个用例；配额是上限而非预留。只有 guardian、XRCE agent、真值
+# 采集与相机转接共享仿真器的网络命名空间（MAVLink、DDS 客户端与 Gazebo 回环）。出口节点与自主层节点在内部仿真网络上
+# 有各自的命名空间，只经 DDS 接触 PX4；Gazebo 传输限于仿真器回环（GZ_IP），自主层进程无法订阅仿真真值。executive 没有
+# 网络。角色套接字位于不同的宿主目录，各自只挂载给它的两个端点。
+name: drone-agent-cloud
+x-ros: &ros
+  FASTDDS_BUILTIN_TRANSPORTS: UDPv4
+  ROS_DOMAIN_ID: "0"
+  DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+services:
+  sitl:
+    image: ${DRONE_M3_SIM_IMAGE:?}
+    pull_policy: never
+    init: true
+    stdin_open: true
+    tty: true
+    cpus: 1.5
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 512
+    environment:
+      PX4_SIM_SPEED_FACTOR: ${DRONE_M3_SPEED:-1}
+      GZ_IP: 127.0.0.1
+    volumes:
+      - ${DRONE_M3_RUN:?}/ulog:/opt/PX4-Autopilot/build/px4_sitl_default/rootfs/log
+    networks: [simulation]
+  collector:
+    image: ${DRONE_M3_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.3
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    network_mode: service:sitl
+    environment:
+      PYTHONPATH: /usr/lib/python3/dist-packages
+      GZ_IP: 127.0.0.1
+    command: [/usr/bin/python3, /workspace/sim/collect.py]
+    volumes:
+      - ${DRONE_M3_RUN:?}/sensor:/sensor
+      - ${DRONE_M3_RUN:?}/truth:/truth
+  relay:
+    image: ${DRONE_M3_SIM_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.25
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    network_mode: service:sitl
+    entrypoint: []
+    environment:
+      <<: *ros
+      GZ_IP: 127.0.0.1
+      PYTHONPATH: /usr/lib/python3/dist-packages
+    command: [bash, -c, "source /opt/ros/jazzy/setup.bash && exec /usr/bin/python3 /workspace/sim/sensor_relay.py"]
+  xrce-agent:
+    image: ${DRONE_M3_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.25
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    network_mode: service:sitl
+    environment: *ros
+    command: [/usr/local/bin/MicroXRCEAgent, udp4, -p, "8888"]
+  guardian:
+    image: ${DRONE_M3_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.6
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    network_mode: service:sitl
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+    command: [python3, -m, drone_agent.runtime.launch, guardian, --simulation, --fault, /input/fault.json,
+              --scene, /workspace/configs/scenarios/m3_campus_v3.yaml, --egress-socket, /run/egress/egress.sock,
+              --autonomy-socket, /run/autonomy/autonomy.sock, --egress-wait-s, "90"]
+    volumes:
+      - ${DRONE_M3_RUN:?}/input:/input:ro
+      - ${DRONE_M3_RUN:?}/sensor:/sensor:ro
+      - ${DRONE_M3_RUN:?}/aircraft:/artifacts
+      - ${DRONE_M3_RUN:?}/ipc:/run/drone
+      - ${DRONE_M3_RUN:?}/ipc-egress:/run/egress
+      - ${DRONE_M3_RUN:?}/ipc-autonomy:/run/autonomy
+  executive:
+    image: ${DRONE_M3_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.4
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 64
+    network_mode: none
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+    command: [python3, -m, drone_agent.runtime.launch, executive, --scene,
+              /workspace/configs/scenarios/m3_campus_v3.yaml, --belief-socket, /run/belief/belief.sock]
+    volumes:
+      - ${DRONE_M3_RUN:?}/input:/input:ro
+      - ${DRONE_M3_RUN:?}/aircraft:/artifacts
+      - ${DRONE_M3_RUN:?}/ipc:/run/drone
+      - ${DRONE_M3_RUN:?}/ipc-belief:/run/belief
+  egress:
+    image: ${DRONE_M3_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.25
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    environment: *ros
+    command: [bash, /workspace/ros2_ws/run_node.sh, egress, -p, "socket:=/run/egress/egress.sock",
+              -p, "evidence_log:=/artifacts/egress.jsonl"]
+    volumes:
+      - ${DRONE_M3_RUN:?}/ipc-egress:/run/egress
+      - ${DRONE_M3_RUN:?}/egress:/artifacts
+    networks: [simulation]
+  autonomy:
+    image: ${DRONE_M3_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.6
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 128
+    environment: *ros
+    # Three node processes; the container stops when any of them exits. / 三个节点进程；任一退出容器即停止。
+    command: [bash, -c, "bash /workspace/ros2_ws/run_node.sh localization & bash /workspace/ros2_ws/run_node.sh local_nav
+              & bash /workspace/ros2_ws/run_node.sh perception & wait -n"]
+    volumes:
+      - ${DRONE_M3_RUN:?}/ipc-autonomy:/run/autonomy
+      - ${DRONE_M3_RUN:?}/ipc-belief:/run/belief
+      - ${DRONE_M3_RUN:?}/input:/fault:ro
+      - ${DRONE_M3_RUN:?}/autonomy:/artifacts
+    networks: [simulation]
+  judge:
+    image: ${DRONE_M3_GROUND_IMAGE:?}
+    pull_policy: never
+    cpus: 0.5
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 64
+    network_mode: none
+    command: [python3, -m, drone_agent.eval.judge_m3, /run]
+    volumes:
+      - ${DRONE_M3_RUN:?}:/run:ro
+      - ${DRONE_M3_RUN:?}/judge:/output
+networks:
+  simulation:
+    internal: true

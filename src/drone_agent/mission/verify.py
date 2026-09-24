@@ -1,10 +1,12 @@
 """Deterministic physical-effect predicates; missing evidence is unknown.
 
 M2 adds the inspection skill's approach phase (a registered observation route) and image checks keyed to
-the asset's registered visual signature; the M1 red-marker check is unchanged.
+the asset's registered visual signature; the M1 red-marker check is unchanged. M3 adds goal-based checks for the
+external-mode skills: the fresh pose must stay within the registered goal tolerance for the hold duration.
 
 确定性物理效果谓词；缺少证据为 unknown。M2 增加巡检技能的接近相位（登记的观察航线）以及按资产登记的
-视觉特征判定的影像检查；M1 的红色标记检查保持不变。
+视觉特征判定的影像检查；M1 的红色标记检查保持不变。M3 为外部模式技能增加按目标点的检查：新鲜位姿须在登记目标
+容差内保持规定时长。
 """
 
 import hashlib
@@ -16,6 +18,7 @@ from drone_agent.contracts import EffectVerdict, Evidence, FlightObservation, ut
 from drone_agent.mission.registry import coordinates, distance
 
 INSPECT = "skill.inspect.asset"
+INSPECT_LOCAL = "skill.inspect.asset_local"
 
 
 class EffectVerifier:
@@ -26,6 +29,9 @@ class EffectVerifier:
             # Only the approach is judged from telemetry; the capture is judged from its evidence file.
             # 只有接近相位按遥测判定；拍摄相位按证据文件判定。
             self.action = "approach" if phase == "approach" else "capture_image"
+        elif node.skill_id == INSPECT_LOCAL:
+            # The approach is judged against the registered observation goal (M3). / 接近相位按登记观察点判定（M3）。
+            self.action = "approach_local" if phase == "approach" else "capture_image"
         self.since = None
         self.last_sample = -1
         self.waypoint = 0
@@ -50,6 +56,9 @@ class EffectVerifier:
             if self.waypoint < len(route) and distance(point, route[self.waypoint]) <= threshold["tolerance_m"]:
                 self.waypoint += 1
             matched = self.waypoint == len(route) and distance(point, route[-1]) <= threshold["tolerance_m"]
+        elif self.action in {"goto_local", "approach_local"}:
+            goal = self.registry.local_goal(params.get("goal_id", params.get("approach_goal_id")))
+            matched = distance(point, goal) <= threshold["tolerance_m"]
         elif self.action == "land":
             site = data["landing_sites"][params["landing_site_id"]]
             matched = (

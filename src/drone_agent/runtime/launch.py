@@ -8,6 +8,15 @@ robot's epoch watermark and accepted versions across mission versions. `--scene`
 
 M1 读取本地可信任务包。M2（D030）增加 `--trust`：任务包必须带有由只读信任文件中的密钥签署的审批，
 由每个进程独立验签；`--robot-state` 跨任务版本保存机器人的代次水位与已接受版本；`--scene` 选择登记表，`--operator-mailbox` 从 uplink 的信箱读取操作请求。
+
+M3 (D039, D042): the recovery policy is loaded from the package's own reference, never from a fixed file. Under
+policy v2 the guardian serves the role-bound egress and autonomy sockets and, when the package contains
+external-mode skills, waits a bounded time for the egress node before it validates the package against its live
+capability; the executive serves the belief socket. Autonomy traffic is recorded to MCAP, not to the fsync'd journal.
+
+M3（D039、D042）：恢复策略按任务包自己的引用加载，不再读固定文件。策略 v2 下 guardian 提供按角色划分的出口与自主层
+套接字；任务包含外部模式技能时，先有界等待出口节点，再按实时能力校验任务包；executive 提供信念套接字。自主层流量
+写入 MCAP，而不是逐行 fsync 的账本。
 """
 
 from __future__ import annotations
@@ -20,6 +29,7 @@ import time
 from pathlib import Path
 
 from drone_agent.contracts import MissionPackage, RecoveryPolicy
+from drone_agent.guardian.external import EXTERNAL_SKILLS
 from drone_agent.mission.registry import Registry
 from drone_agent.runtime.ipc import GuardianClient, serve
 from drone_agent.runtime.ledger import Journal, canonical
@@ -33,6 +43,30 @@ async def stop_guardian_tasks(server, tasks):
         task.cancel()
     await asyncio.gather(*tasks, return_exceptions=True)
     await server.stop(1)
+
+
+def load_policy(root: Path, reference: str) -> RecoveryPolicy:
+    """The recovery policy a package names, e.g. multirotor_m3@v2 -> multirotor_m3_v2.yaml.
+
+    任务包指定的恢复策略，例如 multirotor_m3@v2 -> multirotor_m3_v2.yaml。
+    """
+    policy_id, _, version = reference.partition("@")
+    if not policy_id.replace("_", "").isalnum() or not version.isalnum():
+        raise ValueError("malformed recovery policy reference")
+    policy = RecoveryPolicy.from_yaml(root / "configs/recovery_policies" / f"{policy_id}_{version}.yaml")
+    if (policy.policy_id, policy.version) != (policy_id, version):
+        raise ValueError("recovery policy file does not match its reference")
+    return policy
+
+
+async def wait_for_egress(endpoint, seconds: float) -> bool:
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        status = endpoint.fresh("egress_status", 0.5)
+        if status is not None and status.external_nav_state is not None and status.compatibility_ok:
+            return True
+        await asyncio.sleep(0.2)
+    return False
 
 
 async def main_async(args):
@@ -65,16 +99,37 @@ async def main_async(args):
             from drone_agent.runtime.robot_state import RobotAuthorityState
 
             robot_state = RobotAuthorityState(args.robot_state, registry.capability.robot_id)
+        policy = load_policy(args.root, package.recovery_policy_ref)
+        endpoints = []
+        egress = autonomy = None
+        if policy.version == "v2":
+            from drone_agent.autonomy.link import LocalEndpoint, Role
+
+            def recorded(kind, model):
+                recorder.write("autonomy/" + kind, model.model_dump(mode="json"))
+
+            egress = LocalEndpoint(Role.EGRESS, args.egress_socket, on_message=recorded)
+            autonomy = LocalEndpoint(Role.AUTONOMY, args.autonomy_socket, on_message=recorded)
+            endpoints = [egress, autonomy]
+            for endpoint in endpoints:
+                await endpoint.start()
+            if any(node.skill_id in EXTERNAL_SKILLS for node in package.nodes):
+                ready = await wait_for_egress(egress, args.egress_wait_s)
+                journal.append("egress_wait", {"mission_id": package.mission_id, "ready": ready,
+                                               "counters": egress.counters.__dict__})
         guardian = Guardian(
             adapter=adapter,
             package=package,
             registry=registry,
             journal=journal,
-            policy=RecoveryPolicy.from_yaml(args.root / "configs/recovery_policies/multirotor_m1_v1.yaml"),
+            policy=policy,
             executive_id=executive_id,
             simulation=args.simulation,
             trust=trust,
             robot_state=robot_state,
+            egress=egress,
+            autonomy=autonomy,
+            log=recorder.write,
         )
         if args.fault:
             from drone_agent.eval.faults import install_injection
@@ -102,6 +157,16 @@ async def main_async(args):
                     "command_pending": bool(guardian.dispatch_task and not guardian.dispatch_task.done()),
                     "monotonic": time.monotonic(),
                 }
+                if guardian.external is not None:
+                    status["external"] = {
+                        "active": guardian.external.active,
+                        "entering": guardian.external.entering,
+                        "nav_state": guardian.external.nav_state,
+                        "available": guardian.external.available(),
+                        "counters": dict(guardian.external.counters),
+                    }
+                    status["energy"] = {k: v for k, v in (guardian.energy_context or {}).items()
+                                        if isinstance(v, (bool, int, float, str)) or v is None}
                 temporary = args.artifacts / "status.pending.json"
                 temporary.write_bytes(canonical(status))
                 temporary.replace(args.artifacts / "status.json")
@@ -118,15 +183,19 @@ async def main_async(args):
             await stop_guardian_tasks(server, tasks)
             (args.artifacts / "adapter-commands.json").write_bytes(canonical(adapter.command_log))
             periods = sorted(guardian.periods)
-            (args.artifacts / "supervision.json").write_bytes(
-                canonical(
-                    {
-                        "samples": len(periods),
-                        "p99_s": periods[min(int(len(periods) * 0.99), len(periods) - 1)] if periods else None,
-                        "max_s": max(periods, default=0),
-                    }
-                )
-            )
+            summary = {
+                "samples": len(periods),
+                "p99_s": periods[min(int(len(periods) * 0.99), len(periods) - 1)] if periods else None,
+                "max_s": max(periods, default=0),
+            }
+            if guardian.external is not None:
+                summary["external"] = {"counters": dict(guardian.external.counters),
+                                       "intent_latency_p99_ms": guardian.external.latency_p99(),
+                                       "intent_latency_samples": len(guardian.external.latency_ms)}
+                summary["links"] = {endpoint.role.value: endpoint.counters.__dict__ for endpoint in endpoints}
+            (args.artifacts / "supervision.json").write_bytes(canonical(summary))
+            for endpoint in endpoints:
+                await endpoint.close()
             recorder.close()
             journal.close()
             await adapter.close()
@@ -149,7 +218,25 @@ async def main_async(args):
                 trust=trust,
                 mailbox=args.operator_mailbox,
             )
-            await executive.run()
+            belief = None
+            if args.belief_socket:
+                from drone_agent.autonomy.link import LocalEndpoint, Role
+
+                belief = LocalEndpoint(
+                    Role.BELIEF,
+                    args.belief_socket,
+                    on_message=lambda kind, message: executive.accept_fact(message),
+                    on_reject=lambda kind, reason: executive.reject_fact(kind, reason),
+                )
+                await belief.start()
+            try:
+                await executive.run()
+            finally:
+                if belief is not None:
+                    await belief.close()
+                    (args.artifacts / "belief.json").write_bytes(
+                        canonical({"counts": executive.fact_counts, "link": belief.counters.__dict__})
+                    )
         except Exception as error:
             row = journal.append("executive_error", {"type": type(error).__name__, "reason": str(error)})
             recorder.write("mission/events", row)
@@ -175,6 +262,13 @@ def main():
     parser.add_argument("--trust", type=Path, help="read-only trust file; requires signed approvals (M2)")
     parser.add_argument("--robot-state", type=Path, help="robot-level authority state file (guardian, M2)")
     parser.add_argument("--operator-mailbox", type=Path, help="operator mailbox written by the uplink (executive, M2)")
+    parser.add_argument("--egress-socket", type=Path, default=Path("/run/egress/egress.sock"),
+                        help="egress-node socket served by the guardian under policy v2 (M3)")
+    parser.add_argument("--autonomy-socket", type=Path, default=Path("/run/autonomy/autonomy.sock"),
+                        help="autonomy-node socket served by the guardian under policy v2 (M3)")
+    parser.add_argument("--egress-wait-s", type=float, default=60.0,
+                        help="bounded wait for the egress node before validating an external-mode package (M3)")
+    parser.add_argument("--belief-socket", type=Path, help="belief-fact socket served by the executive (M3)")
     args = parser.parse_args()
     if args.fault and not args.simulation:
         parser.error("fault injection requires an explicit simulation process")

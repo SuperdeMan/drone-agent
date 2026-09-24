@@ -20,11 +20,21 @@ from pathlib import Path
 import jsonschema
 import yaml
 
-from drone_agent.contracts import CapabilityDescriptor, FlightObservation, MissionPackage, SkillManifest, utcnow
+from drone_agent.contracts import (
+    CapabilityDescriptor,
+    ControlMode,
+    FlightObservation,
+    MissionPackage,
+    SkillManifest,
+    utcnow,
+)
 from drone_agent.runtime.ledger import content_hash
 
 M1_SCENE = "configs/scenarios/m1_campus_v1.yaml"
 M2_SCENE = "configs/scenarios/m2_campus_v2.yaml"
+M3_SCENE = "configs/scenarios/m3_campus_v3.yaml"
+GOTO_LOCAL = "skill.flight.goto_local"
+INSPECT_LOCAL = "skill.inspect.asset_local"
 
 
 def distance(a, b):
@@ -63,11 +73,11 @@ class Registry:
         for path in (root / "configs/skills").glob("*.yaml"):
             manifest = SkillManifest.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
             self.manifests[manifest.skill_id] = manifest
-        self.capability = CapabilityDescriptor.model_validate(
-            yaml.safe_load((root / "configs/platforms/px4_sitl_multirotor.yaml").read_text(encoding="utf-8"))[
-                "capability"
-            ]
-        )
+        platform = yaml.safe_load((root / "configs/platforms/px4_sitl_multirotor.yaml").read_text(encoding="utf-8"))
+        self.capability = CapabilityDescriptor.model_validate(platform["capability"])
+        # Modes a healthy companion process can add at run time (D039); never part of the static capability.
+        # 伴飞进程健康时可在运行时加入的模式（D039）；从不属于静态能力。
+        self.optional_control_modes = {ControlMode(mode) for mode in platform.get("optional_control_modes", [])}
 
     def inside(self, point):
         return len(point) == 3 and all(
@@ -80,6 +90,38 @@ class Registry:
         if not points or not all(self.inside(point) for point in points):
             raise ValueError("route outside approved volume")
         return points
+
+    def task_scope(self):
+        """The external-mode scope: the approved volume clipped to the registered flight band (M3).
+
+        外部模式范围：批准体积按登记的飞行高度带裁剪（M3）。
+        """
+        bounds, band = self.data["bounds"], self.data["autonomy"]["flight_altitude_band_m"]
+        low = [bounds["x"][0], bounds["y"][0], max(bounds["z"][0], band[0])]
+        high = [bounds["x"][1], bounds["y"][1], min(bounds["z"][1], band[1])]
+        return low, high
+
+    def local_goal(self, goal_id):
+        """A registered local goal inside the external-mode scope; anything else is an error (M3).
+
+        位于外部模式范围内的登记局部目标；其他情况一律报错（M3）。
+        """
+        goal = self.data.get("local_goals", {}).get(goal_id)
+        if goal is None or len(goal) != 3:
+            raise ValueError("unregistered local goal")
+        low, high = self.task_scope()
+        if not self.inside(goal) or any(not lo <= v <= hi for lo, v, hi in zip(low, goal, high, strict=True)):
+            raise ValueError("local goal outside the external-mode scope")
+        return goal
+
+    def _goal_ok(self, goal_id):
+        if goal_id is None:
+            return False
+        try:
+            self.local_goal(goal_id)
+        except (ValueError, KeyError):
+            return False
+        return True
 
     def remaining_energy_upper(self, package: MissionPackage, task_id: str) -> float | None:
         """Conservative energy for `task_id` and everything after it; None if any estimate is missing.
@@ -108,7 +150,32 @@ class Registry:
         if distance(final[:2], asset["position"][:2]) > self.data["thresholds"]["above_asset_m"]:
             raise ValueError("observation route does not end above the asset")
 
-    def validate_package(self, package: MissionPackage, *, camera_available=True):
+    def _validate_inspect_local(self, node, *, camera_available):
+        p = node.params
+        asset = self.data["assets"].get(p["asset_id"])
+        if asset is None or not camera_available:
+            raise ValueError("camera or asset unavailable")
+        if p["approach_goal_id"] != asset.get("observation_goal") or p["camera_id"] != asset.get("camera_id"):
+            raise ValueError("inspection is not bound to the asset's registered goal and camera")
+        if p["quality_profile_ref"] != f"{self.registry_id}.image":
+            raise ValueError("quality profile belongs to another registry")
+        goal = self.local_goal(p["approach_goal_id"])
+        if distance(goal[:2], asset["position"][:2]) > self.data["thresholds"]["above_asset_m"]:
+            raise ValueError("observation goal is not above the asset")
+
+    def validate_package(self, package: MissionPackage, *, camera_available=True, control_modes=None):
+        """Re-check an approved package against this registry; `control_modes` are the live ones when known.
+
+        Without live modes (the executive) the check allows the platform's optional modes, because only the
+        guardian, which owns the adapter, can tell whether they are live; the guardian passes its live set.
+
+        按本登记表复核已批准任务包；已知时 `control_modes` 为实时模式。executive 不知道实时模式，因此允许平台的
+        可选模式——只有持有适配器的 guardian 能判断它们是否在线；guardian 传入实时集合。
+        """
+        modes = set(control_modes) if control_modes is not None else (
+            self.capability.control_modes | self.optional_control_modes
+        )
+        offered = self.capability.model_copy(update={"control_modes": modes})
         if not package.is_authorized(robot_id=self.capability.robot_id, now=utcnow()):
             raise ValueError("package not authorized")
         if package.spatial_scope.approved_volume_id != self.data["approved_volume_id"]:
@@ -123,7 +190,7 @@ class Registry:
                 raise ValueError("robot or skill version mismatch")
             if node.resources != manifest.resources or not 0 < node.timeout_s <= manifest.timeout_s:
                 raise ValueError("resource or timeout mismatch")
-            if self.capability.missing_for(skills=[node.skill_id], control_modes=manifest.required_control_modes):
+            if offered.missing_for(skills=[node.skill_id], control_modes=manifest.required_control_modes):
                 raise ValueError("unsupported capability")
             jsonschema.Draft202012Validator(manifest.params_schema).validate(node.params)
             action = node.skill_id.rsplit(".", 1)[1]
@@ -147,8 +214,14 @@ class Registry:
                     raise ValueError("camera or asset unavailable")
             if node.skill_id == "skill.inspect.asset":
                 self._validate_inspect(node, camera_available=camera_available)
+            if node.skill_id == GOTO_LOCAL:
+                self.local_goal(p["goal_id"])
+                if {k: p[k] for k in ("frame_id", "map_version")} != self.data["frame"]:
+                    raise ValueError("goal frame mismatch")
+            if node.skill_id == INSPECT_LOCAL:
+                self._validate_inspect_local(node, camera_available=camera_available)
 
-    def predicates(self, node, observation, package, *, lease_valid, heartbeat_ok, camera_available):
+    def predicates(self, node, observation, package, *, lease_valid, heartbeat_ok, camera_available, overrides=None):
         now, point = utcnow(), coordinates(observation)
         fresh = observation.timestamp <= now < observation.valid_until and point is not None
         energy = observation.battery_fraction
@@ -196,7 +269,22 @@ class Registry:
             # 本步骤及其所有后继加上余量；缺估计即未知，按假处理。
             "energy_remaining_plan_feasible": energy is not None and remaining is not None
             and energy >= remaining + package.energy_budget.reserve_fraction,
+            # M3 external-mode predicates (D039). Liveness facts come only from the guardian's overrides; without
+            # them they are false. / M3 外部模式谓词（D039）。在线性事实只来自 guardian 的覆盖值；没有即为假。
+            "local_goal_resolved_and_in_scope": self._goal_ok(node.params.get("goal_id")),
+            "approach_goal_resolved_and_in_scope": bool(
+                node.params.get("approach_goal_id") is not None
+                and asset.get("observation_goal") == node.params.get("approach_goal_id")
+                and self._goal_ok(node.params.get("approach_goal_id"))
+            ),
+            "external_mode_available": False,
+            "local_autonomy_fresh": False,
         }
+        # The guardian may only supply facts it owns (liveness, v2 energy); unknown keys are ignored.
+        # guardian 只能提供它掌握的事实（在线性、v2 能源）；未知键忽略。
+        for key, value in (overrides or {}).items():
+            if key in state:
+                state[key] = bool(value)
         return state
 
     def required_predicates(self, node, phase: str | None = None) -> list[str]:

@@ -5,19 +5,33 @@ survives mission versions (D030), and binds each intent of a multi-phase skill t
 preconditions are checked separately (D034). Without a trust store the M1 local-trust behaviour is
 unchanged.
 
+M3 (D039–D042) adds, only for packages under recovery policy v2: validation against the live capability (the
+external mode exists only while the egress node is healthy), the external-mode controller for goto and approach
+intents with CBF filtering and short-lived authorizations, the v2 recovery context (control mode, visual
+localization, energy reachability) and the v2 triggers (stale local map or trajectory, stalled progress, compute
+overload including the guardian's own period, unavailable autonomy, GNSS loss). Every intervention ends the
+authorization stream before the MAVLink recovery command. Policy v1 missions keep the M1/M2 behaviour.
+
 绑定任务的控制出口，具备持久化回执与抢占式恢复。
 
 M2 仅在签名模式下增加机载验签与跨任务版本保留的机器人级代次水位（D030），并把多相位技能的每个意图
 绑定到声明的相位、分别检查其前置条件（D034）。没有信任存储时，M1 本地信任行为不变。
+
+M3（D039–D042）只对恢复策略 v2 的任务包增加：按实时能力校验（外部模式只在出口节点健康时存在）；goto 与接近意图的
+外部模式控制器，带 CBF 过滤与短时授权；v2 恢复上下文（控制模式、视觉定位、能源可达性）；v2 触发条件（局部地图或
+轨迹过期、进展停滞、计算过载（含 guardian 自身周期）、自主层不可用、GNSS 丢失）。每次干预都先结束授权流，再发
+MAVLink 恢复命令。策略 v1 的任务保持 M1/M2 行为。
 """
 
 from __future__ import annotations
 
 import asyncio
 import time
+from collections import deque
 
 from drone_agent.contracts import (
     ControlCommandEnvelope,
+    ControlMode,
     EgressDecision,
     EgressGate,
     MissionAction,
@@ -28,6 +42,8 @@ from drone_agent.contracts import (
     TaskLease,
     utcnow,
 )
+from drone_agent.guardian.energy import EnergyModel, EnergySettings
+from drone_agent.guardian.external import ExternalControl, external_phase
 from drone_agent.mission.registry import coordinates
 from drone_agent.runtime.ledger import CommandLedger, content_hash
 from drone_agent.runtime.signing import verify_package
@@ -49,7 +65,7 @@ def flight_phase(node, intent_phase=None):
 class Guardian:
     def __init__(
         self, *, adapter, package, registry, journal, policy: RecoveryPolicy, executive_id: str, simulation=False,
-        trust=None, robot_state=None,
+        trust=None, robot_state=None, egress=None, autonomy=None, log=None,
     ):
         # Signed mode (M2): verify before trusting any package content. / 签名模式（M2）：信任任何任务包内容之前先验签。
         self.signer_key_id = (
@@ -83,6 +99,14 @@ class Guardian:
         self.lease_deadline = 0.0
         self.uplink_ok = True
         self.authorized_to_continue = True
+        # M3 (D042): policy v2 features; None/empty under v1. / M3（D042）：策略 v2 功能；v1 下为空。
+        self.v2 = policy.version == "v2"
+        self.external = ExternalControl(self, egress=egress, autonomy=autonomy, log=log) if self.v2 else None
+        self.energy = EnergyModel(EnergySettings.from_registry(registry.data)) if self.v2 else None
+        self.recent_periods: deque[tuple[float, float]] = deque()
+        self.recovery_site = None
+        self.land_at_landing = False
+        self.energy_context: dict = {}
         for row in reversed(journal.rows):
             if row["kind"] == "intent":
                 prior_key = row["data"]["envelope"]["key"]
@@ -96,7 +120,9 @@ class Guardian:
                     raise ValueError("persisted command is absent from the approved package")
                 self.phase = flight_phase(self.active_step, row["data"]["envelope"]["payload"].get("phase"))
                 break
-        self.registry.validate_package(package, camera_available=adapter.camera_available)
+        self.registry.validate_package(
+            package, camera_available=adapter.camera_available, control_modes=self.live_capabilities().control_modes
+        )
         if self.policy.validate_against(adapter.capabilities):
             raise ValueError("recovery policy exceeds actual adapter capabilities")
         self.robot_state = robot_state
@@ -110,6 +136,35 @@ class Guardian:
 
     def record(self, kind, **data):
         return self.journal.append(kind, {"mission_id": self.package.mission_id, **data})
+
+    def live_capabilities(self):
+        """The adapter capability with `external_mode` only while the egress node is healthy (D039).
+
+        适配器能力；只有出口节点健康时才含 `external_mode`（D039）。
+        """
+        caps = self.adapter.capabilities.model_copy(deep=True)
+        if self.external is not None and self.external.available():
+            caps.control_modes = caps.control_modes | {ControlMode.EXTERNAL_MODE}
+        return caps
+
+    def predicate_overrides(self, obs):
+        """Facts only the guardian owns: external-mode liveness and, under v2, the energy reachability.
+
+        只有 guardian 掌握的事实：外部模式在线性，以及 v2 下的能源可达性。
+        """
+        if not self.v2:
+            return None
+        overrides = {
+            "external_mode_available": self.external.available(),
+            "local_autonomy_fresh": self.external.autonomy_fresh(),
+        }
+        context = self.energy_context or {}
+        if context:
+            # v2 replaces the static plan sum with in-flight reachability (D042). / v2 用飞行中可达性取代静态求和（D042）。
+            overrides["energy_remaining_plan_feasible"] = bool(context.get("rtl_reachable")) and not context.get(
+                "return_due"
+            )
+        return overrides
 
     def install_lease(self, lease: TaskLease):
         lease = TaskLease.model_validate(lease.model_dump())
@@ -253,6 +308,12 @@ class Guardian:
             return self.reject(envelope, problem)
         if not {r.resource_id for r in node.resources} <= set(lease.resources):
             return self.reject(envelope, "resource_outside_lease")
+        if self.external is not None and (self.external.active or self.external.entering) and not (
+            node is self.external.node and not external_phase(node, phase)
+        ):
+            # A new step ends the external stream first: stop authorizing, then PX4 Hold over MAVLink (D039).
+            # 新步骤先结束外部模式：停止授权，再经 MAVLink 让 PX4 悬停（D039）。
+            await self.end_external("step_handover")
         obs = self.adapter.snapshot()
         try:
             self.registry.require_preconditions(
@@ -263,6 +324,7 @@ class Guardian:
                 lease_valid=lease.is_valid_at(utcnow()),
                 heartbeat_ok=self.heartbeat_healthy(),
                 camera_available=self.adapter.camera_available,
+                overrides=self.predicate_overrides(obs),
             )
         except ValueError as error:
             return self.reject(envelope, str(error))
@@ -288,18 +350,27 @@ class Guardian:
                 or self.adapter.external_takeover
             ):
                 return False
+            snapshot = self.adapter.snapshot()
             predicates = self.registry.predicates(
                 node,
-                self.adapter.snapshot(),
+                snapshot,
                 self.package,
                 lease_valid=self.lease_valid(),
                 heartbeat_ok=self.heartbeat_healthy(),
                 camera_available=self.adapter.camera_available,
+                overrides=self.predicate_overrides(snapshot),
             )
             return all(predicates.get(name, False) for name in self.registry.manifests[node.skill_id].invariants)
 
-        # Single-phase M1 skills keep the original adapter call. / 单相位的 M1 技能保持原有适配器调用。
-        dispatch = self.adapter.execute(node, permitted, phase=phase) if phase else self.adapter.execute(node, permitted)
+        if self.external is not None and external_phase(node, phase):
+            # External-mode intents enter the registered mode behind a hold authorization (D039).
+            # 外部模式意图在悬停授权保护下进入已注册模式（D039）。
+            dispatch = self.external.start(node, phase, permitted)
+        elif phase:
+            dispatch = self.adapter.execute(node, permitted, phase=phase)
+        else:
+            # Single-phase M1 skills keep the original adapter call. / 单相位的 M1 技能保持原有适配器调用。
+            dispatch = self.adapter.execute(node, permitted)
         self.dispatch_task = asyncio.create_task(dispatch)
         receipt, reason, detail = "unknown", "dispatch_interrupted", None
         try:
@@ -324,7 +395,26 @@ class Guardian:
             await self.intervene(RecoveryTrigger.USER_CANCEL, reason)
         return EgressDecision(accepted=receipt == "accepted", reason=reason)
 
+    async def end_external(self, reason):
+        """End external control for a handover: stop authorizing, then hold over MAVLink and confirm.
+
+        为交接结束外部控制：停止授权，再经 MAVLink 悬停并确认。
+        """
+        if self.external is None or not (self.external.active or self.external.entering):
+            return
+        await self.external.stop(reason)
+        try:
+            await asyncio.wait_for(self.adapter.recover(RecoveryBehavior.HOLD, lambda: not self.taken_over), 5)
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline and self.adapter.snapshot().flight_mode != "HOLD":
+                await asyncio.sleep(0.1)
+        except Exception as error:  # noqa: BLE001 - an unknown handover outcome is a recovery, not a success / 交接结果未知即恢复
+            self.record("external_handover_unknown", reason=type(error).__name__)
+            await self.intervene(RecoveryTrigger.USER_CANCEL, "external_handover_unknown")
+
     def context(self, obs):
+        if self.v2:
+            return self.context_v2(obs)
         battery = obs.battery_fraction
         return {
             "flight_phase": self.phase,
@@ -338,11 +428,61 @@ class Guardian:
             "authorized_to_continue": self.authorized_to_continue,
         }
 
+    def context_v2(self, obs):
+        """v2 context (D042): control mode, visual localization when reported, energy reachability.
+
+        v2 上下文（D042）：控制模式、有报告时的视觉定位、能源可达性。
+        """
+        context = {
+            "flight_phase": self.phase,
+            "localization_healthy": obs.localization_healthy,
+            "authorized_to_continue": self.authorized_to_continue,
+            "control_mode": "external_mode" if self.external.active or self.external.entering else "mission_upload",
+        }
+        report = self.external.localization()
+        if report is not None:
+            # A missing report leaves the key absent, so the visual-ok edge cannot match on unknown data.
+            # 没有报告时该键缺席，视觉可用边不会在未知数据上匹配。
+            context["visual_localization_ok"] = report.visual_ok
+        energy = self.energy_context or {}
+        context["rtl_reachable"] = bool(obs.home_healthy and obs.localization_healthy and energy.get("rtl_reachable"))
+        context["nearest_site_reachable"] = bool(obs.localization_healthy and energy.get("nearest_site_reachable"))
+        return context
+
+    def update_energy(self, obs):
+        if self.energy is None:
+            return
+        self.energy.observe(time.monotonic(), obs.battery_fraction)
+        sites = {
+            name: site["position"]
+            for name, site in self.registry.data["landing_sites"].items()
+            if site.get("reserved_for") == self.registry.capability.robot_id and name != "home_pad"
+        }
+        home = self.registry.data["landing_sites"]["home_pad"]["position"]
+        self.energy_context = self.energy.context(
+            coordinates(obs), obs.battery_fraction, self.package.energy_budget.reserve_fraction, home, sites
+        )
+
+    def own_overload(self, now):
+        """The guardian's own period statistics exceed the D040 budget. / guardian 自身周期统计越过 D040 预算。"""
+        limits = self.registry.data["autonomy"]["guardian_overload"]
+        while self.recent_periods and now - self.recent_periods[0][0] > limits["window_s"]:
+            self.recent_periods.popleft()
+        periods = [value for _, value in self.recent_periods]
+        if len(periods) < 5:
+            return None
+        slow = sum(value > limits["slow_period_s"] for value in periods) / len(periods)
+        if max(periods) > limits["max_period_s"] or slow > limits["slow_fraction"]:
+            return f"guardian_period_max={max(periods) * 1000:.0f}ms_slow={slow:.2f}"
+        return None
+
     async def relinquish(self, reason):
         if self.taken_over:
             return
         self.taken_over, self.safety, self.reason = True, SafetyVerdict.ABORT, reason
         self.generation += 1
+        if self.external is not None:
+            await self.external.stop("relinquish:" + reason)
         self.gate.revoke()
         self.ledger.record("revoked", {"reason": reason})
         if self.dispatch_task:
@@ -353,7 +493,7 @@ class Guardian:
             await asyncio.gather(self.recovery_task, return_exceptions=True)
         self.record("safety_intervention", reason=reason, behavior="handover_to_fc_failsafe")
 
-    async def intervene(self, trigger, reason=None):
+    async def intervene(self, trigger, reason=None, detail=None):
         if self.taken_over:
             return
         obs = self.adapter.snapshot()
@@ -374,16 +514,31 @@ class Guardian:
                 return
         if self.recovery is not None and priority.get(trigger, 3) <= priority.get(self.recovery.trigger, 3):
             return
+        context = self.context(obs)
         self.generation += 1
         self.recovery, self.recovery_started, self.recovery_followed = edge, time.monotonic(), False
         self.safety = SafetyVerdict.HOLD if edge.target == RecoveryBehavior.HOLD else SafetyVerdict.RECOVER
         self.reason = reason or trigger.value
+        if self.external is not None:
+            # The authorization stream ends before any MAVLink recovery command (D039). / 任何 MAVLink 恢复命令之前先结束授权流（D039）。
+            await self.external.stop("intervention:" + trigger.value)
+        self.recovery_site = None
+        self.land_at_landing = False
+        if edge.target == RecoveryBehavior.LAND_AT:
+            name = (self.energy_context or {}).get("nearest_site")
+            self.recovery_site = self.registry.data["landing_sites"].get(name, {}).get("position") if name else None
+        extra = {"detail": detail} if detail else {}
+        if self.v2:
+            extra["context"] = {k: v for k, v in context.items() if isinstance(v, (bool, str))}
+            if self.recovery_site is not None:
+                extra["site"] = self.recovery_site
         self.record(
             "safety_intervention",
             reason=self.reason,
             behavior=edge.target.value,
             edge_hash=edge.validation_hash(),
             epoch=self.ledger.highest_epoch,
+            **extra,
         )
         if self.dispatch_task and not self.dispatch_task.done():
             self.dispatch_task.cancel()
@@ -408,17 +563,17 @@ class Guardian:
             command_seq=len(self.journal.rows),
         )
         try:
-            await asyncio.wait_for(
-                self.adapter.recover(
-                    behavior,
-                    lambda: (
-                        not self.taken_over
-                        and not self.adapter.external_takeover
-                        and not self.adapter.snapshot().fc_failsafe
-                    ),
-                ),
-                5,
+            permitted = lambda: (  # noqa: E731
+                not self.taken_over
+                and not self.adapter.external_takeover
+                and not self.adapter.snapshot().fc_failsafe
             )
+            if behavior == RecoveryBehavior.LAND_AT:
+                if self.recovery_site is None:
+                    raise ValueError("land_at without a reachable registered site")
+                await asyncio.wait_for(self.adapter.recover(behavior, permitted, site=self.recovery_site), 5)
+            else:
+                await asyncio.wait_for(self.adapter.recover(behavior, permitted), 5)
             self.record("recovery_receipt", behavior=behavior.value, status="accepted")
         except Exception as error:
             self.record("recovery_receipt", behavior=behavior.value, status="unknown", reason=type(error).__name__)
@@ -498,6 +653,7 @@ class Guardian:
         now = time.monotonic()
         if self.last_tick is not None:
             self.periods.append(now - self.last_tick)
+            self.recent_periods.append((now, now - self.last_tick))
         self.last_tick = now
         obs = self.adapter.snapshot()
         if self.taken_over or self.ledger.highest_epoch < 0:
@@ -518,6 +674,23 @@ class Guardian:
                 self.record("recovered_to", state="landed_disarmed")
                 self.reason = "landed_disarmed"
             return
+        self.update_energy(obs)
+        if (
+            self.recovery is not None
+            and self.recovery.target == RecoveryBehavior.LAND_AT
+            and not self.recovery_followed
+            and not self.land_at_landing
+            and self.recovery_site is not None
+        ):
+            point = coordinates(obs)
+            site = next(
+                (s for s in self.registry.data["landing_sites"].values() if s["position"] == self.recovery_site), None
+            )
+            if point and site and ((point[0] - site["position"][0]) ** 2 + (point[1] - site["position"][1]) ** 2) ** 0.5 <= site["radius_m"] / 2:
+                # Above the registered site: complete land_at with a native landing. / 到达登记降落点上方：以原生降落完成 land_at。
+                self.land_at_landing = True
+                self.record("land_at_site_reached", site=self.recovery_site)
+                self.recovery_task = asyncio.create_task(self._recover(RecoveryBehavior.LAND_HERE))
         if self.active_step is None:
             return
         if not self.package.is_authorized(robot_id=self.registry.capability.robot_id, now=utcnow()):
@@ -535,11 +708,38 @@ class Guardian:
             checks.append(RecoveryTrigger.LEASE_EXPIRED)
         if not self.uplink_ok and not self.authorized_to_continue:
             checks.append(RecoveryTrigger.UPLINK_LOST)
+        details = {}
+        if self.v2:
+            report = self.external.localization()
+            if (
+                report is not None
+                and not report.gnss_ok
+                and RecoveryTrigger.LOCALIZATION_DEGRADED not in checks
+                and RecoveryTrigger.OBSERVATION_STALE not in checks
+            ):
+                # v2: GNSS loss degrades localization even while the estimator copes on vision (D042).
+                # v2：即使估计器靠视觉维持，GNSS 丢失也属于定位退化（D042）。
+                checks.append(RecoveryTrigger.LOCALIZATION_DEGRADED)
+                details[RecoveryTrigger.LOCALIZATION_DEGRADED] = "gnss_lost"
+            overload = self.own_overload(now)
+            if overload:
+                checks.append(RecoveryTrigger.COMPUTE_OVERLOADED)
+                details[RecoveryTrigger.COMPUTE_OVERLOADED] = overload
+            if self.external.active and RecoveryTrigger.OBSERVATION_STALE not in checks:
+                for trigger, detail in await self.external.tick(obs):
+                    if trigger is None:
+                        self.adapter.external_takeover = True
+                        await self.relinquish("external_mode_takeover")
+                        return
+                    checks.append(trigger)
+                    details[trigger] = detail
         energy = obs.battery_fraction
+        return_due = bool(self.v2 and (self.energy_context or {}).get("return_due"))
         if (
             energy is None
             or energy
             <= self.package.energy_budget.reserve_fraction + self.registry.data["supervision"]["return_margin_fraction"]
+            or return_due
         ):
             checks.insert(0, RecoveryTrigger.ENERGY_LOW)
         elif (
@@ -563,7 +763,7 @@ class Guardian:
             if not self.registry.inside(point) or not self.registry.inside(predicted):
                 checks.insert(0, RecoveryTrigger.GEOFENCE_PREDICTED_BREACH)
         for trigger in checks:
-            await self.intervene(trigger)
+            await self.intervene(trigger, detail=details.get(trigger))
 
     async def supervise(self):
         deadline = time.monotonic()

@@ -16,6 +16,15 @@ versions:
   ros2: jazzy # M3; evaluate lyrical per D008 / M3 引入；按 D008 评估切换 lyrical
   ubuntu: "24.04"
   python: "3.12"
+  # M3 (D039): external-mode interface, pinned by commit and verified by archive digest at build time.
+  # M3（D039）：外部模式接口，按提交固定，构建时核对归档摘要。
+  px4_ros2_cpp: {repo: Auterion/px4-ros2-interface-lib, branch: release/1.17, commit: 4a3370f084ac6f1ef001a4afa2b007845ffd0837, archive_sha256: 8cf06afdef7ef6e83c24c179728b9d78a7b4b6117ef317f2828f0b165f58d54a}
+  px4_msgs: {packaging_repo: PX4/px4_msgs, packaging_commit: 86d8239e962f6939e05c3737784f60c02fa884db, archive_sha256: 36d2f2ea48f5a367976acb070ee9da0ef4cd18e9e210ed91a4bafc23ad8893e6, messages_from: px4_commit}
+  micro_xrce_dds_agent: build_image
+# Control modes the platform can offer when its companion process is healthy. They are never part of the static
+# capability: the adapter adds them to the live CapabilityDescriptor only while the egress node is registered (D039).
+# 伴飞进程健康时平台可提供的控制模式。它们从不写进静态能力：只有出口节点已注册时，适配器才把它们加进实时能力描述（D039）。
+optional_control_modes: [external_mode]
 capability:
   robot_id: uav_01
   embodiment: aerial_multirotor
@@ -28,6 +37,9 @@ capability:
     - { skill_id: skill.flight.return_home, version: "0.1.0" }
     - { skill_id: skill.flight.land, version: "0.1.0" }
     - { skill_id: skill.inspect.asset, version: "0.1.0" } # M2 (D034) / M2（D034）
+    # M3 (D039): usable only while external_mode is live. / M3（D039）：只有 external_mode 在线时可用。
+    - { skill_id: skill.flight.goto_local, version: "0.1.0" }
+    - { skill_id: skill.inspect.asset_local, version: "0.1.0" }
   sensors:
     - { sensor_id: gnss_0, kind: gnss, frame_id: uav_01/base_link, nominal_accuracy: { position_m: 1.5 } }
     - { sensor_id: cam_0, kind: rgb_camera, frame_id: uav_01/cam_0 }

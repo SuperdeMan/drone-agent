@@ -1,0 +1,71 @@
+# skill.inspect.asset_local (WP-M3-12, D039): the M2 asset inspection with an obstacle-aware approach. `approach`
+# flies to the asset's registered local observation goal through the local planner in the PX4 external mode;
+# `capture` is the same camera phase as skill.inspect.asset. The compiler chooses this skill only when the robot
+# declares `external_mode` and the asset registers an observation goal; otherwise it keeps the route-based
+# skill.inspect.asset. Bounded retakes; no frame meeting the criteria ends the step `unverified`, never succeeded.
+#
+# skill.inspect.asset_local（WP-M3-12，D039）：带避障接近的 M2 资产巡检。`approach` 在 PX4 外部模式下经局部规划飞到
+# 资产登记的局部观察点；`capture` 与 skill.inspect.asset 的拍摄相位相同。只有机器人声明 `external_mode` 且资产登记了
+# 观察点时编译器才选它，否则保留航线版 skill.inspect.asset。补拍有上限；没有影像满足判据即以 `unverified` 结束。
+schema_version: "0.1.0"
+skill_id: skill.inspect.asset_local
+version: "0.1.0"
+description: "Approach a registered asset around obstacles via the local planner in the PX4 external mode, then capture and verify with bounded retakes. / 在 PX4 外部模式下经局部规划绕障接近登记资产，再拍摄并验证，补拍有上限。"
+embodiments: [aerial_multirotor]
+required_control_modes: [external_mode]
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: [asset_id, approach_goal_id, camera_id, quality_profile_ref, speed_mps, max_captures]
+  properties:
+    asset_id: {type: string, minLength: 1}
+    approach_goal_id: {type: string, minLength: 1}
+    camera_id: {type: string, enum: [cam_0]}
+    quality_profile_ref: {type: string, pattern: "^[a-z][a-z0-9_]*\\.image$"}
+    speed_mps: {type: number, exclusiveMinimum: 0, maximum: 2.5, unit: m/s}
+    max_captures: {type: integer, minimum: 1, maximum: 3}
+preconditions: [package_authorized, airborne, localization_healthy, approach_goal_resolved_and_in_scope, asset_resolved, external_mode_available, local_autonomy_fresh, energy_remaining_plan_feasible, motion_lease_valid, camera_lease_valid]
+invariants: [inside_approved_volume, observation_fresh, lease_valid, executive_heartbeat_ok, energy_above_reserve, fc_failsafe_inactive]
+intent_phases:
+  - phase: approach
+    preconditions: [package_authorized, airborne, localization_healthy, approach_goal_resolved_and_in_scope, asset_resolved, external_mode_available, local_autonomy_fresh, energy_remaining_plan_feasible, motion_lease_valid]
+  - phase: capture
+    preconditions: [package_authorized, camera_available, asset_resolved, observation_pose_valid, above_asset, camera_lease_valid]
+resources:
+  - {resource_id: uav_01.motion, mode: exclusive}
+  - {resource_id: uav_01.camera, mode: exclusive}
+progress_schema:
+  type: object
+  additionalProperties: false
+  required: [phase, attempts]
+  properties:
+    phase: {type: string, enum: [approaching, observing, capturing, verifying]}
+    attempts: {type: integer, minimum: 0, maximum: 3}
+cancel:
+  cancel_safe_states: [before_approach, observing]
+  cancel_procedure: "Stop authorizing setpoints and stop new captures; keep partial evidence marked unverified; flight recovery stays with guardian. / 停止授权设定值并停止新拍摄；部分证据保留并标为未证实；飞行恢复仍由 guardian 负责。"
+pause: {pausable: false}
+completion_evidence:
+  - evidence_type: image
+    criteria: {predicate: asset_image_verified, threshold_ref: m3_campus_v3.image, target_id_match: true, sha256_required: true, pose_covariance_required: true, fresh_time_window_required: true, max_distance_to_asset_m: 2}
+failure_modes:
+  - {code: approach_stalled, description: "No progress toward the observation goal / 未向观察点推进", recovery_hint: guardian_policy}
+  - {code: approach_timeout, description: "Observation point not confirmed in time / 未及时确认到达观察点", recovery_hint: outcome_unknown_then_policy}
+  - {code: image_quality_failed, description: "No capture met the evidence criteria within max_captures / 补拍上限内没有影像满足证据判据", recovery_hint: unverified_then_replan_or_report}
+timeout_s: 180
+estimated_duration_s: 45
+implementation: {kind: deterministic}
+# Equated to skill.inspect.asset (same approach-and-capture composition from M1 runs under the default SITL battery
+# at M1 scale). Missions under policy v2 decide energy in flight with the reachability model (D042).
+# 等同于 skill.inspect.asset（在默认 SITL 电池、M1 尺度下由 M1 运行组合的接近 + 拍摄）。v2 策略下的任务在飞行中用
+# 可达性模型判断能源（D042）。
+estimated_energy_fraction: 0.2024
+energy_estimate:
+  basis: sim_only
+  mean_fraction: 0.1301
+  upper_fraction: 0.2024
+  samples: 21
+  method: "Equated to skill.inspect.asset at M1 scale under the default SITL battery (docs/verification/m2-energy-estimates-2026-09-23.json); v2 missions use the in-flight reachability model (D042)"
+  source_revision: eefe76e7c579200b998f9af0a0e29bc8358a1af7
+  source_runs: [m1-20260919T171218Z-db465377]

@@ -1,0 +1,124 @@
+# M3 policy (D042) for missions whose package names multirotor_m3@v2 (scene m3_campus_v3). Edges inherited
+# from multirotor_m1@v1 keep their exact content; edges whose context is new in M3 (external mode, visual
+# localization, energy reachability) carry fi.m3.* scenarios and need M3 injection records. Order matters:
+# the first matching edge wins, so specific guards precede general ones. Experimental SITL policy; physical
+# validation is recorded separately and never embedded here.
+#
+# M3 策略（D042），用于任务包引用 multirotor_m3@v2 的任务（场景 m3_campus_v3）。继承自 multirotor_m1@v1 的边内容
+# 完全不变；上下文在 M3 中新出现的边（外部模式、视觉定位、能源可达性）使用 fi.m3.* 场景，需要 M3 注入记录。
+# 顺序有意义：首个匹配的边生效，具体守卫在前、一般守卫在后。实验性 SITL 策略；物理验证单独留证，不嵌入本文件。
+schema_version: "0.1.0"
+policy_id: multirotor_m3
+version: v2
+embodiment: aerial_multirotor
+nodes: [hold, rtl, land_here, land_at, handover_to_fc_failsafe]
+resume_conditions: [observation_fresh, lease_valid, executive_heartbeat_ok, explicit_resume, unchanged_authority]
+edges:
+  - trigger: executive_heartbeat_lost
+    guard: {flight_phase: takeoff}
+    target: land_here
+    fault_injection_scenario: fi.heartbeat.takeoff
+  - trigger: executive_heartbeat_lost
+    guard: {localization_healthy: true}
+    target: hold
+    then: rtl
+    after_s: 10
+    fault_injection_scenario: fi.heartbeat.cruise
+  - trigger: observation_stale
+    guard: {control_mode: external_mode}
+    target: hold
+    then: rtl
+    after_s: 10
+    fault_injection_scenario: fi.m3.observation_stale.external
+  - trigger: observation_stale
+    guard: {}
+    target: hold
+    then: rtl
+    after_s: 10
+    fault_injection_scenario: fi.observation.stale
+  - trigger: trajectory_stale
+    guard: {control_mode: external_mode}
+    target: hold
+    then: rtl
+    after_s: 10
+    fault_injection_scenario: fi.m3.trajectory_stale.external
+  - trigger: progress_stalled
+    guard: {}
+    target: hold
+    then: rtl
+    after_s: 10
+    fault_injection_scenario: fi.m3.progress_stalled
+  - trigger: compute_overloaded
+    guard: {}
+    target: hold
+    then: rtl
+    after_s: 10
+    fault_injection_scenario: fi.m3.compute_overloaded
+  - trigger: autonomy_unavailable
+    guard: {}
+    target: hold
+    then: rtl
+    after_s: 10
+    fault_injection_scenario: fi.m3.autonomy_unavailable
+  - trigger: lease_expired
+    guard: {}
+    target: hold
+    then: rtl
+    after_s: 30
+    fault_injection_scenario: fi.lease.expired
+  - trigger: energy_low
+    guard: {rtl_reachable: true}
+    target: rtl
+    fault_injection_scenario: fi.m3.energy.rtl_reachable
+  - trigger: energy_low
+    guard: {rtl_reachable: false, nearest_site_reachable: true}
+    target: land_at
+    fault_injection_scenario: fi.m3.energy.land_at
+  - trigger: energy_low
+    guard: {rtl_reachable: false}
+    target: land_here
+    fault_injection_scenario: fi.m3.energy.land_here
+  - trigger: geofence_predicted_breach
+    guard: {}
+    target: hold
+    then: rtl
+    after_s: 10
+    fault_injection_scenario: fi.geofence.approach
+  - trigger: localization_degraded
+    guard: {visual_localization_ok: true}
+    target: hold
+    then: land_here
+    after_s: 10
+    fault_injection_scenario: fi.m3.localization.gnss_lost_visual_ok
+  - trigger: localization_degraded
+    guard: {}
+    target: handover_to_fc_failsafe
+    fault_injection_scenario: fi.localization.lost
+  - trigger: uplink_lost
+    guard: {authorized_to_continue: false}
+    target: hold
+    then: rtl
+    after_s: 15
+    fault_injection_scenario: fi.uplink.lost
+  - trigger: fc_failsafe_active
+    guard: {}
+    target: handover_to_fc_failsafe
+    fault_injection_scenario: fi.fc.failsafe
+  - trigger: user_pause
+    guard: {flight_phase: [cruise, hover, inspect]}
+    target: hold
+    then: rtl
+    after_s: 120
+    fault_injection_scenario: fi.pause.timeout
+  - trigger: user_cancel
+    guard: {flight_phase: takeoff}
+    target: land_here
+    fault_injection_scenario: fi.cancel.takeoff
+  - trigger: user_cancel
+    guard: {flight_phase: landing}
+    target: land_here
+    fault_injection_scenario: fi.cancel.landing
+  - trigger: user_cancel
+    guard: {}
+    target: rtl
+    fault_injection_scenario: fi.cancel.cruise

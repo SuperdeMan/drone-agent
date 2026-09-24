@@ -1,0 +1,22 @@
+# Recovery evidence each M3 scenario needs besides its terminal classification (judge_m3). `edge` names the v2 edge the
+# scenario validates; `external` requires the external mode to have been active; `egress_watchdog` requires the egress
+# node's own lapse exit and PX4's switch to Hold; `cbf_modified` requires the CBF filter to have changed targets.
+# 每个 M3 场景除终态分类外必须具备的恢复证据（judge_m3）。`edge` 指该场景验证的 v2 边；`external` 要求外部模式曾激活；
+# `egress_watchdog` 要求出口节点自行因授权过期退出且 PX4 切到 Hold；`cbf_modified` 要求 CBF 过滤确实修改过目标。
+ext_inspect: {external: true}
+ext_goto: {external: true}
+route_fallback: {external: false}
+ext_observation_stale: {reason: observation_stale, detail: local_map_stale, behavior: hold, follow_up: rtl, edge: fi.m3.observation_stale.external, external: true}
+ext_trajectory_stale: {reason: trajectory_stale, detail: no_valid_segment, behavior: hold, follow_up: rtl, edge: fi.m3.trajectory_stale.external, external: true}
+# The guardian's first action after being frozen races its own stale inputs, so only the egress/PX4 behaviour is pinned.
+# guardian 被冻结后的首个动作与其自身过期输入竞争，因此只钉住出口节点 / PX4 的行为。
+egress_watchdog: {egress_watchdog: true, external: true}
+ext_progress_stalled: {reason: progress_stalled, behavior: hold, follow_up: rtl, edge: fi.m3.progress_stalled, external: true}
+cbf_blocks_unsafe_planner: {reason: progress_stalled, behavior: hold, follow_up: rtl, cbf_modified: true, external: true}
+ext_dds_link_lost: {reason: autonomy_unavailable, behavior: hold, follow_up: rtl, edge: fi.m3.autonomy_unavailable, external: true}
+ext_egress_lost: {reason: autonomy_unavailable, behavior: hold, follow_up: rtl, edge: fi.m3.autonomy_unavailable, external: true}
+ext_compute_overload: {reason: compute_overloaded, behavior: hold, follow_up: rtl, edge: fi.m3.compute_overloaded, external: true}
+gnss_lost_visual_ok: {reason: localization_degraded, behavior: hold, follow_up: land_here, edge: fi.m3.localization.gnss_lost_visual_ok, external: true}
+energy_rtl: {reason: energy_low, behavior: rtl, edge: fi.m3.energy.rtl_reachable, external: true}
+energy_land_at: {reason: energy_low, behavior: land_at, land_at_site: site_b, edge: fi.m3.energy.land_at, external: true}
+energy_land_here: {reason: energy_low, behavior: land_here, edge: fi.m3.energy.land_here, external: true}

@@ -73,13 +73,17 @@ cases:
     expected: {blocked_at: admission, codes: [scope.target_outside_volume, airspace.not_filed]}
 
   # ── capability / 能力 ──
+  # M3 (D039) added skill.flight.goto_local, so this case no longer fails as an unknown skill: an aircraft without a
+  # live external mode must now block it at admission, and its free coordinates are not valid parameters.
+  # M3（D039）增加了 skill.flight.goto_local，本例不再以未知技能失败：没有在线外部模式的飞行器必须在准入拦下它，
+  # 且任意坐标不是合法参数。
   - id: cap-offboard-goto
     category: capability
-    description: "An Offboard goto skill that this platform does not have (M3). / 本平台没有的 Offboard 前往技能（M3）。"
+    description: "An external-mode goto on an aircraft whose external mode is not live, with free coordinates. / 在外部模式不在线的飞行器上执行外部模式前往，且给出任意坐标。"
     spec:
       tasks:
         - {task_id: goto, skill_id: skill.flight.goto_local, params: {x: 1, y: 2, z: 4}}
-    expected: {blocked_at: compiler, codes: [compile.unknown_skill]}
+    expected: {blocked_at: admission, codes: [capability.missing_control_mode, params.schema_invalid]}
   - id: cap-ground-recheck
     category: capability
     description: "A ground-robot recheck skill assigned to the aircraft. / 把地面机器人的复核技能分配给飞行器。"

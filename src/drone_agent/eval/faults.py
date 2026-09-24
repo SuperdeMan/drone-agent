@@ -33,6 +33,10 @@ def install_injection(guardian, path):
             obs.valid_until = utcnow() - timedelta(seconds=2)
         elif fault in {"energy_low", "energy_critical"}:
             obs.battery_fraction = 0.25 if fault == "energy_low" else 0.15
+        elif fault == "battery":
+            # M3: an explicit injected level, so reachability can be tested in several contexts (D042).
+            # M3：显式注入的电量，用于在多种上下文下测试可达性（D042）。
+            obs.battery_fraction = float(instruction()["battery"])
         elif fault == "geofence":
             obs.velocity_enu_mps = [30, 0, 0]
         elif fault == "localization_lost":

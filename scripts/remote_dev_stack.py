@@ -378,7 +378,7 @@ def store_model_key(root: Path, request: dict) -> dict:
 def dispatch(request: dict) -> dict:
     action = request.get("action")
     if action not in {*READ_ONLY_ACTIONS, "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1", "m2",
-                       "m2_key", "live_start", "live_operate", "console_apply", "desk_apply"}:
+                       "m3", "m2_key", "live_start", "live_operate", "console_apply", "desk_apply"}:
         raise ValueError("unsupported cloud action")
     if action not in READ_ONLY_ACTIONS and not RUN_ID.fullmatch(request.get("run_id", "")):
         raise ValueError("invalid run identity")
@@ -444,6 +444,13 @@ def dispatch(request: dict) -> dict:
             return runpy.run_path(str(deployment / "source/scripts/remote_m1.py"))["run_m1"](root, deployment, request)
         if action == "m2_key":
             return store_model_key(root, request)
+        if action == "m3":
+            import runpy
+
+            script = deployment / "source/scripts/remote_m3.py"
+            if not script.is_file():
+                raise ValueError("deploy a version with the M3 runner first")
+            return runpy.run_path(str(script))["run_m3"](root, deployment, request)
         if action == "m2":
             import runpy
 

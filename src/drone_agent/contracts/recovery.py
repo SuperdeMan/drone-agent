@@ -40,6 +40,10 @@ class RecoveryTrigger(StrEnum):
     FC_FAILSAFE_ACTIVE = "fc_failsafe_active"
     USER_PAUSE = "user_pause"
     USER_CANCEL = "user_cancel"
+    # M3 (D042): appended; the order is wire-significant. / M3（D042）：追加；顺序影响 wire 编号。
+    PROGRESS_STALLED = "progress_stalled"
+    COMPUTE_OVERLOADED = "compute_overloaded"
+    AUTONOMY_UNAVAILABLE = "autonomy_unavailable"
 
 
 class RecoveryValidation(ContractModel):

@@ -1,0 +1,65 @@
+# skill.flight.goto_local (WP-M3-12, D039): fly to a registered local goal through the local planner in the PX4
+# external mode. The executive states what and where (a registered goal, a speed cap, a timeout); the local planner
+# decides how; the guardian filters every target through the CBF and authorizes it for 300 ms at a time. The goal is
+# a registry reference, never free coordinates. Needs `external_mode`, which the adapter declares only while the
+# egress node is registered and healthy; without it the skill cannot be admitted and the compiler uses a route.
+#
+# skill.flight.goto_local（WP-M3-12，D039）：在 PX4 外部模式下经局部规划飞到登记的局部目标点。executive 给出做什么
+# 与去哪（登记目标、限速、超时）；局部规划决定怎么飞；guardian 用 CBF 过滤每个目标，每次授权 300 ms。目标是登记表
+# 引用，不接受任意坐标。需要 `external_mode`：只有出口节点已注册且健康时适配器才声明它；否则技能不能准入，编译器改用航线。
+schema_version: "0.1.0"
+skill_id: skill.flight.goto_local
+version: "0.1.0"
+description: "Fly to a registered local goal via the local planner in the PX4 external mode; every setpoint is guardian-filtered. / 经局部规划在 PX4 外部模式下飞到登记的局部目标点；每个设定值都经 guardian 过滤。"
+embodiments: [aerial_multirotor]
+required_control_modes: [external_mode]
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: [goal_id, frame_id, map_version, speed_mps]
+  properties:
+    goal_id: {type: string, minLength: 1}
+    frame_id: {type: string, minLength: 1}
+    map_version: {type: string, minLength: 1}
+    speed_mps: {type: number, exclusiveMinimum: 0, maximum: 2.5, unit: m/s}
+preconditions: [package_authorized, airborne, localization_healthy, local_goal_resolved_and_in_scope, external_mode_available, local_autonomy_fresh, energy_remaining_plan_feasible, motion_lease_valid]
+invariants: [inside_approved_volume, observation_fresh, lease_valid, executive_heartbeat_ok, energy_above_reserve, fc_failsafe_inactive]
+resources:
+  - {resource_id: uav_01.motion, mode: exclusive}
+progress_schema:
+  type: object
+  additionalProperties: false
+  required: [goal_id, distance_m]
+  properties:
+    goal_id: {type: string}
+    distance_m: {type: number, minimum: 0}
+cancel:
+  cancel_safe_states: [holding]
+  cancel_procedure: "Stop authorizing setpoints, then guardian recovery; the egress node exits the external mode on its own if authorization lapses. / 停止授权设定值，再由 guardian 恢复；授权过期时出口节点自行退出外部模式。"
+pause: {pausable: false}
+completion_evidence:
+  - evidence_type: telemetry
+    criteria: {predicate: local_goal_reached, threshold_ref: m3_campus_v3.goto_local, fresh_pose_required: true}
+failure_modes:
+  - {code: progress_stalled, description: "No progress toward the goal / 未向目标推进", recovery_hint: guardian_policy}
+  - {code: trajectory_stale, description: "No valid planner segment / 没有有效规划片段", recovery_hint: guardian_policy}
+  - {code: cbf_rejected, description: "No safe target exists / 不存在安全目标", recovery_hint: guardian_policy}
+  - {code: external_mode_lost, description: "External mode left or egress unavailable / 离开外部模式或出口不可用", recovery_hint: guardian_policy}
+timeout_s: 120
+estimated_duration_s: 40
+implementation: {kind: deterministic}
+# Equated to skill.flight.fly_route (the same registered-point transit, fitted on M1 runs under the default SITL
+# battery at M1 scale). Missions under policy v2 decide energy in flight with the reachability model (D042); this
+# scalar serves only v1-style admission and never claims M3 geometry or real-aircraft use.
+# 等同于 skill.flight.fly_route（同类登记点转场，在默认 SITL 电池、M1 尺度下由 M1 运行拟合）。v2 策略下的任务在飞行中
+# 用可达性模型判断能源（D042）；此标量只服务 v1 式准入，不宣称适用于 M3 几何或真机。
+estimated_energy_fraction: 0.1984
+energy_estimate:
+  basis: sim_only
+  mean_fraction: 0.1268
+  upper_fraction: 0.1984
+  samples: 21
+  method: "Equated to skill.flight.fly_route at M1 scale under the default SITL battery (docs/verification/m2-energy-estimates-2026-09-23.json); v2 missions use the in-flight reachability model (D042)"
+  source_revision: eefe76e7c579200b998f9af0a0e29bc8358a1af7
+  source_runs: [m1-20260919T171218Z-db465377]

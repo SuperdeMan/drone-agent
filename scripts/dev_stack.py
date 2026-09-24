@@ -427,6 +427,9 @@ def main() -> None:
     m2_parser.add_argument("--seeds", default="7,19,41")
     m2_parser.add_argument("--planner", choices=["scripted", "live"], default="scripted",
                            help="scripted fixtures are labelled test doubles; live needs the model key in cloud secrets")
+    m3_parser = commands.add_parser("m3", help="run M3-SITL scenarios (external mode, autonomy, recovery v2) in the cloud")
+    m3_parser.add_argument("--scenario", default="ext_inspect", help="all, class:<name> or comma-separated ids")
+    m3_parser.add_argument("--seeds", default="7,19,41")
     deploy_parser = commands.add_parser("deploy")
     source = deploy_parser.add_mutually_exclusive_group()
     source.add_argument("--sha", default="HEAD")
@@ -477,6 +480,17 @@ def main() -> None:
                         "speed_factor": args.speed_factor,
                     },
                     timeout=14400,
+                )
+            elif args.command == "m3":
+                result = ssh(
+                    connection,
+                    {
+                        "action": "m3",
+                        "run_id": new_run_id(),
+                        "scenario": args.scenario,
+                        "seeds": [int(seed) for seed in args.seeds.split(",")],
+                    },
+                    timeout=21600,
                 )
             elif args.command == "m2-key":
                 # Read only from the process environment; never from a sibling project's .env (CLAUDE.md).
