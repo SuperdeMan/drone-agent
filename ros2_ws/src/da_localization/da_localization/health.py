@@ -4,14 +4,17 @@ GNSS is healthy only with a fresh 3D fix that the estimator is actually fusing; 
 while the estimator fuses external-vision position and the local position is valid. Stale inputs are unhealthy,
 never assumed healthy. Freshness follows each topic's PX4 publication: EKF2 publishes `estimator_status_flags` on
 every change and otherwise at 1 Hz, so a flag is fresh for 1.5 s; the local position streams at tens of hertz. The
-guardian decides what to do with the report; this module only reports.
+report's PX4 input age is the age of the newest message on any input topic: it grows only when the whole DDS link is
+gone, and it passes the guardian's limit before any single topic could be judged stale, so a lost link can never read
+as a lost GNSS. The guardian decides what to do with the report; this module only reports.
 
 基于 PX4 估计器输出的定位健康（WP-M3-08）；纯逻辑，不导入 ROS。
 
 只有新鲜的三维定位且估计器确实在融合时 GNSS 才健康；只有估计器融合外部视觉位置且本地位置有效时视觉定位才健康。
 过期输入视为不健康，绝不假定健康。新鲜度按各话题在 PX4 中的发布方式：EKF2 在每次变化时、否则以 1 Hz 发布
-`estimator_status_flags`，因此标志的新鲜期为 1.5 s；本地位置以数十赫兹持续发布。guardian 决定如何处置报告；本模块
-只负责报告。
+`estimator_status_flags`，因此标志的新鲜期为 1.5 s；本地位置以数十赫兹持续发布。报告中的 PX4 输入年龄是所有输入
+话题中最新一条消息的年龄：只有整条 DDS 链路丢失时它才会增长，并且在任何单一话题可能被判过期之前就越过 guardian 的
+限值，因此链路丢失永远不会被读成 GNSS 失效。guardian 决定如何处置报告；本模块只负责报告。
 """
 
 from __future__ import annotations
@@ -67,6 +70,8 @@ def assess(inputs: Inputs, now: float, *, max_age_s: float = 0.5, max_flags_age_
     ev_fused = flags_fresh and inputs.fusing_ev_pos
     local_ok = local_fresh and inputs.xy_valid and inputs.z_valid
     eph_ok = inputs.eph_m is not None and inputs.eph_m <= max_eph_m
+    times = [stamp for stamp in (inputs.gps_time, inputs.flags_time, inputs.local_time, inputs.status_time)
+             if stamp is not None]
     return Report(
         gnss_ok=bool(gps_fresh and inputs.gps_fix_type >= GPS_FIX_3D and gnss_fused),
         gnss_fix_type=inputs.gps_fix_type if gps_fresh else 0,
@@ -77,5 +82,5 @@ def assess(inputs: Inputs, now: float, *, max_age_s: float = 0.5, max_flags_age_
         gnss_position_fused=gnss_fused,
         local_position_ok=local_ok,
         position_std_m=inputs.eph_m if local_fresh else None,
-        px4_status_age_s=max(0.0, now - inputs.status_time) if inputs.status_time is not None else 1e6,
+        px4_status_age_s=max(0.0, now - max(times)) if times else 1e6,
     )

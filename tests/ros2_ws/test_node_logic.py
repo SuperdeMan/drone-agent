@@ -61,6 +61,19 @@ def test_localization_health_never_assumes_health_from_stale_inputs():
     # EKF2 只在每秒一次重发未变化的标志；0.8 s 前的标志仍是当前值。
     between, now = inputs(flags_time=time.monotonic() - 0.8)
     assert assess(between, now).gnss_ok and assess(between, now).visual_ok
+
+
+def test_a_lost_link_ages_the_whole_report_while_a_lost_gnss_does_not():
+    # DDS link gone: every input is 1.2 s old, so the report says so before any GNSS verdict could mislead.
+    # DDS 链路断开：所有输入都已 1.2 秒，报告在任何 GNSS 判定可能误导之前就表明了这一点。
+    old = time.monotonic() - 1.2
+    link_lost, now = inputs(gps_time=old, flags_time=old, local_time=old, status_time=old)
+    assert assess(link_lost, now).px4_status_age_s >= 1.2
+    # GNSS gone but the estimator still streams: a fresh report of a real GNSS loss.
+    # GNSS 丢失而估计器仍在发布：一份关于真实 GNSS 失效的新鲜报告。
+    gnss_lost, now = inputs(gps_time=time.monotonic() - 2.0)
+    report = assess(gnss_lost, now)
+    assert report.px4_status_age_s < 0.1 and not report.gnss_ok and report.visual_ok
     no_vision, now = inputs(fusing_ev_pos=False)
     assert assess(no_vision, now).visual_ok is False
     drifting, now = inputs(eph_m=6.0)

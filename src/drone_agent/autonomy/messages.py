@@ -201,7 +201,8 @@ class LocalizationReport(ContractModel):
     local_position_ok: bool
     position_std_m: float | None = None
     source_version: str = Field(min_length=1)
-    px4_status_age_s: float = Field(ge=0)
+    px4_status_age_s: float = Field(ge=0, description="age of the newest PX4 message on any input topic (D045) / "
+                                                     "所有输入话题中最新一条 PX4 消息的年龄（D045）")
 
     @model_validator(mode="after")
     def _consistent(self) -> LocalizationReport:

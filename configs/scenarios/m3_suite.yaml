@@ -33,7 +33,7 @@ scenarios:
   - {id: ext_egress_lost, class: network_interruption, shape: inspect_external, expected: safe_abort,
      inject_at: inspect_green, when: external_active, kind: egress_stop, boundary: egress_process}
   - {id: ext_compute_overload, class: compute_overload, shape: inspect_external, expected: safe_abort,
-     inject_at: inspect_green, when: external_active, kind: cpu_hog, boundary: autonomy_container_cpu}
+     inject_at: inspect_green, when: external_active, kind: planner_overload, boundary: autonomy_node_compute}
   - {id: edge_killed, class: edge_inference, shape: inspect_external, expected: completed,
      inject_at: inspect_green, when: external_active, kind: edge_kill, boundary: edge_inference_process}
   - {id: gnss_lost_visual_ok, class: localization, shape: inspect_external, expected: safe_abort,

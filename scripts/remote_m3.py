@@ -29,7 +29,7 @@ HELPERS = runpy.run_path(str(Path(__file__).with_name("remote_dev_stack.py")))
 SERVICES = ("executive", "guardian", "autonomy", "egress", "edge", "xrce-agent", "relay", "collector")
 FOLDERS = ("input", "aircraft", "truth", "sensor", "ipc", "ipc-egress", "ipc-autonomy", "ipc-belief", "egress",
            "autonomy", "edge", "judge", "ulog")
-AUTONOMY_FAULTS = {"map_freeze", "planner_freeze", "planner_stall", "planner_ignore_obstacles"}
+AUTONOMY_FAULTS = {"map_freeze", "planner_freeze", "planner_stall", "planner_ignore_obstacles", "planner_overload"}
 
 
 def cgroup_dir(container_id: str) -> Path | None:
@@ -255,9 +255,6 @@ def run_m3(root: Path, deployment: Path, request: dict):
                                 compose("kill", "egress")
                             elif kind == "edge_kill":
                                 compose("kill", "edge")
-                            elif kind == "cpu_hog":
-                                for _ in range(3):
-                                    compose("exec", "-T", "-d", "autonomy", "/usr/bin/python3", "-c", "while True: pass")
                             elif kind == "gnss_off":
                                 compose("exec", "-T", "sitl",
                                         "/opt/PX4-Autopilot/build/px4_sitl_default/bin/px4-failure", "gps", "off")
