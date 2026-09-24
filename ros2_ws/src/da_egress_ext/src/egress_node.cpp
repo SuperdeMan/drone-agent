@@ -508,8 +508,10 @@ int main(int argc, char * argv[])
       status->set_registered(shared.registered);
       status->set_mode_nav_state(shared.nav_state);
       status->set_mode_active(shared.mode_active);
+      // PX4 publishes vehicle_status on change and otherwise every 500 ms, so the link counts as lost only after
+      // two missed periods. / PX4 在变化时、否则每 500 ms 发布 vehicle_status，因此连续错过两个周期才算链路丢失。
       status->set_fmu_link_ok(
-        da::SteadyClock::now() - shared.last_px4_status < std::chrono::milliseconds(500));
+        da::SteadyClock::now() - shared.last_px4_status < std::chrono::milliseconds(1000));
       status->set_compatibility_ok(shared.compatibility_ok);
       status->set_highest_epoch(shared.highest_epoch);
       status->set_last_forwarded_seq(shared.last_forwarded_seq);
