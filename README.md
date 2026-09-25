@@ -9,9 +9,9 @@
 [![M3 simulation line passed](https://img.shields.io/badge/M3--SITL-passed-0F766E)](docs/m3-readiness.md)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue)](LICENSE)
 
-A safety-constrained mission runtime for drones, designed to grow into air-ground robotics. It turns inspection requests into typed missions, checks their boundaries, binds approval to the exact task, and reports what the evidence supports.
+A drone inspection operations platform in development, built on a safety-constrained mission runtime. The implemented single-drone simulation stack provides typed missions, admission and approval, local execution and evidence-based reports. Virtual docks, durable workflows, fleet scheduling and finding-to-reinspection workflows are the next product milestones.
 
-> **Current scope:** M2 completed on **2026-09-23** for a single drone in **PX4 SITL + Gazebo** (software-in-the-loop simulation). On **2026-09-25** the simulation line of M3 (local autonomy through a guarded PX4 external mode) passed its release gate; M3 closes only after Jetson-in-the-loop validation. Hardware flights and air-ground handoff are [planned milestones](docs/roadmap.md).
+> **Current scope:** M2 completed on **2026-09-23** for a single drone in **PX4 SITL + Gazebo** (software-in-the-loop simulation). On **2026-09-25** the simulation line of M3 (local autonomy through a guarded PX4 external mode) passed its release gate; M3 closes only after Jetson-in-the-loop validation. H1 carries the pending JIL work; the original combined M3 gate remains not passed. P0 documentation is updated, while runtime provenance and product gates still need implementation. P1–P5 software operations can proceed independently of hardware; hardware and air-ground work follow the [H/X milestones](docs/roadmap.md).
 
 [Try locally](#try-locally) · [Design](#design) · [Validation](#validation) · [Documentation](#documentation) · [Roadmap](#roadmap)
 
@@ -109,6 +109,7 @@ Read [CLAUDE.md](CLAUDE.md) before contributing ([AGENTS.md](AGENTS.md) is the c
 | Message semantics and runtime assurance | [Contracts](docs/architecture/02-contracts.md) · [Safety](docs/architecture/03-safety.md) · [Wire protocol](proto/README.md) |
 | Cloud simulation and the mission desk | [Cloud development](docs/cloud-development.md) · [Mission desk](docs/tailnet-desk.md) |
 | Review flight evidence and replay | [Evaluation](docs/architecture/08-evaluation.md) · [Fetch and view a run](docs/cloud-development.md#查看与人工核对结果) |
+| Operations design and next work | [Operations architecture](docs/architecture/09-operations.md) · [Implementation tasks](docs/operations-implementation.md) · [P1 detailed plan](docs/p1-implementation.md) |
 | Design rationale and reuse | [Decisions](docs/decisions.md) · [Sibling-project reuse](docs/reuse-from-embodied-agent.md) |
 
 ## Roadmap
@@ -117,10 +118,13 @@ Read [CLAUDE.md](CLAUDE.md) before contributing ([AGENTS.md](AGENTS.md) is the c
 |---|---|---|
 | M0–M2 | Contracts, single-drone runtime, constrained agent and evidence loop | Complete in simulation |
 | M3 | Local autonomy, perception, localization and degradation handling | Simulation line passed; Jetson-in-the-loop pending |
-| M4 | Restricted hardware validation and UAV–rover joint simulation | Planned |
-| M5–M6 | Real air-ground collaboration, more platforms and model plugins | Planned |
+| P0 | Capability inventory, runtime provenance and product gates | Documentation updated; implementation pending |
+| P1–P2 | Resources, virtual docks and durable business workflows | Next product work; not implemented |
+| P3–P5 | Fleet scheduling, multimodal business loop and platform v0.1 | Planned; includes two-drone SITL and 72 h system endurance |
+| H1–H3 | JIL, bench / restricted flights and field operations | Separate hardware validation track |
+| X1–X3 | Air-ground collaboration, vendor hardware and model / kernel research | Conditional extensions |
 
-See the [full roadmap and exit criteria](docs/roadmap.md). Local autonomy is validated in simulation only; cross-robot handoff and DJI / ArduPilot support are outside the current implementation. Airspace admission has a real interface with a recorded UOM backend and rejects real-mode missions without a filing; energy estimates are for simulation only.
+See the [full roadmap and exit criteria](docs/roadmap.md). Local autonomy is validated in simulation only; cross-robot handoff and DJI / ArduPilot support are outside the current implementation. Airspace admission has an interface definition with a recorded UOM backend and rejects real-mode missions without a filing; energy estimates are for simulation only.
 
 ## License
 

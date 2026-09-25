@@ -2,7 +2,7 @@
 
 [返回架构总览](00-overview.md) · [平台能力声明](../../configs/platforms/px4_sitl_multirotor.yaml) · [路线图](../roadmap.md)
 
-当前范围为 M2 的单机 PX4 仿真；“后续方向”不表示已有适配器、同名模块或经过验证的能力。
+当前范围为 M2 + M3-SITL 的单机 PX4 仿真；“后续方向”不表示已有适配器、同名模块或经过验证的能力。
 
 ## 1. 插件点清单
 
@@ -10,29 +10,32 @@
 
 | 扩展点 | 当前实现 | 后续方向与进入条件 |
 |---|---|---|
-| `PlatformAdapter` | [PX4 / MAVSDK 3.17.4](../../src/drone_agent/adapters/px4_mavsdk.py)，仅 `mission_upload` | px4_ros2 外部模式（M3）；PX4 rover（M4-B）、Nav2（M4-B 后续 / M5 首批）；其他厂商待接入。逐平台核验模式、失效保护与能力声明 |
+| `PlatformAdapter` | [PX4 / MAVSDK 3.17.4](../../src/drone_agent/adapters/px4_mavsdk.py)，mission_upload；M3 外部模式出口已在 SITL 验证 | PX4 rover / Nav2（X1），ArduPilot 等逐平台核验；厂商托管机场另走高层任务网关 |
 | `Skill` | 起飞、登记航线、拍照、返航、降落（M1）及两相位资产巡检（M2） | 搜索、地面复核等；清单、取消 / 暂停与完成证据必须可验证 |
-| `LocalPlanner` / `LocalPolicy` | 未实现 | M3 确定性局部规划与学习策略影子框架；有限接管按后续阶段单独验收 |
-| `WorldPredictor` | 未实现 | 研究插件；预测事实只用于候选评估，不能满足前置条件 |
-| `PerceptionProvider` | 当前采集相机影像并做确定性质量检查，尚无通用检测器 | M3 感知 / 定位 / 机载事件检测；输出须符合世界事实契约 |
+| `LocalPlanner` / `LocalPolicy` | M3 深度局部地图、确定性短时域规划及影子框架 | 学习策略有限接管归 X3，单独验收 |
+| `WorldPredictor` | Protocol 接口已定义，预测器实现未提供 | 研究插件；预测事实只用于候选评估，不能满足前置条件 |
+| `PerceptionProvider` | M3 色标检测、定位健康、深度几何与 CLIP 候选事件；无通用缺陷检测器 | P4 行业分析与 H1 机载生成式 VLM 分开评测 |
 | `EvidenceVerifier` | 机载检查与服务端复核；M2 提供可选 VLM 业务备注入口 | 扩充业务判断；VLM 始终不能改变 `effect_verdict` 或决定安全动作 |
 | `LLMProvider` | MiniMax-M3 默认规划；OpenAI 兼容 HTTP、函数调用 + JSON 抢救、录制回放（D029） | 其他厂商按固定模型基线验证，不能转借 MiniMax 的实调结果 |
 | `PlannerTool`（MCP） | 引擎经最小 stdio MCP 子集读取登记表、资产、历史与场景记录；模型只提交草案 | 接入真实天气、空域等数据源，保留只读工具边界 |
-| `ConstraintProvider` | 围栏、能源门控、SITL 能耗上界；空域仿真桩拒绝真实模式 | M3 真实空域接口定义与能源可达性，真机报备按 M4-A 验证 |
+| `ConstraintProvider` | 围栏、SITL 能耗、M3 能源可达性；空域接口和录制 UOM 后端 | live 空域接入与真机报备按 H2 验证，录制回执不代表真实授权 |
 | `FleetTransport` | M2 mTLS gRPC 拉取任务、上传事件 / 媒体 / 状态；M3 Zenoh（同一报文，D046） | 其他厂商传输；不破坏 wire 兼容与授权语义 |
 | `Storage` | fsync JSONL 哈希链、MCAP、ULog；M2 SQLite 业务账本与媒体文件 | 对象存储 / 时序库按需引入，本地写路径不依赖云端 |
-| `Judge` | M1 / M2 独立真值裁判与回放 | M3–M5 新场景、多机器人和真机日志裁判；与被测运行时隔离 |
+| `Judge` | M1/M2/M3-SITL 独立真值裁判与回放 | P 系列分层裁判、X1 多机器人、H 线硬件裁判；与被测运行时隔离 |
+| `DockBackend` / `WorkflowActivity`（设计） | 未实现 | P1 状态与动作结果、P2 白名单活动；不可触达飞控 |
+| `AnalysisProvider` / `WorkOrderConnector`（设计） | 可选 VLM 备注，不含业务工单 | P4 通用质量 + 行业插件；P2 先用模拟工单 |
+| `VendorMissionGateway`（设计） | 未实现 | P5 的 S3 协议模拟、X2/H 线真实接入；责任边界见下文 |
 
 ## 2. 厂商扩展 = 能力协商
 
-当前实际能力以 [CapabilityDescriptor 配置](../../configs/platforms/px4_sitl_multirotor.yaml)和适配器运行时报告为准；当前唯一启用的控制模式为 `mission_upload`。飞控 SDK 支持某接口，不代表本项目已经启用该能力。
+当前实际能力以 [CapabilityDescriptor 配置](../../configs/platforms/px4_sitl_multirotor.yaml)和适配器运行时报告为准；M2 配置启用 mission_upload；M3 仅在出口节点就绪、状态新鲜且兼容性通过时动态声明 external_mode。飞控 SDK 支持某接口，不代表本项目已经启用该能力。
 
 | 平台 / 路径 | 本项目状态 | 能力映射边界 |
 |---|---|---|
 | PX4 / MAVSDK | 已实现，单架多旋翼 SITL | `mission_upload` + 六个技能；相机缺席时适配器撤下依赖相机的技能 |
-| PX4 / px4_ros2 | M3 计划 | 外部模式 / 局部控制路径须单独接入并验证，当前不声明 `offboard_*` 或 `external_mode` |
-| PX4 rover / Nav2 | M4-B / M5 计划 | 地面导航与复核技能分别适配；不能据二维导航能力声明三维避障 |
-| DJI Cloud API / ArduPilot | 后续平台方向 | 按目标厂商、机型和实际 SDK 接口建立能力映射，不复用当前 PX4 的验证结果 |
+| PX4 / px4_ros2 | M3-SITL 已验证 | 动态 external_mode，guardian 过滤与短时授权；不因此开放 offboard_* 或真机 |
+| PX4 rover / Nav2 | X1 / H3 计划 | 地面导航与复核技能分别适配；不能据二维导航能力声明三维避障 |
+| DJI Cloud API / ArduPilot | P5 S3 / X2 后续平台方向 | DJI 高层任务网关与自有飞控适配分开；按设备 / 固件建立能力与安全责任档案，不复用 PX4 验证 |
 | 固定翼 / VTOL | 尚未适配 | 是否可悬停及恢复行为由本体能力明确声明 |
 
 `control_modes` 只能使用[契约枚举](../../src/drone_agent/contracts/common.py)；相机、云台、直播、Dock 等应按技能或载荷能力表达，不能写成不存在的控制模式。缺能力时当前 Compiler / Admission 拒绝；针对未来平台的替代技能编译须随适配器实现与验证。
@@ -51,7 +54,8 @@
 ### 3.2 VLM 验证与事件检测
 
 - 云端 / 地面：Evidence Verifier 的业务判断（疑似异常、进度）。
-- 机载（M3 起）：≤ 8B 级 VLM 做事件相关性分类（CoMuRoS 模式），只产生 `WorldFact(candidate)` 与重规划触发，不产生控制。
+- 机载（M3-SITL）：CLIP 视觉编码器对固定提示做事件分类，只产候选与需人工批准的重规划触发；H1 再评估生成式小 VLM。
+- P4 事后分析优先：通用质量核验与行业分析插件分开，原始证据和分析版本绑定；主动复拍只提出新任务需求，重新准入与审批。
 
 ### 3.3 学习型局部技能与世界模型
 
@@ -66,10 +70,17 @@
 
 ## 5. 从单机到多机
 
-- M1–M3：单机，Coordinator 退化为直通。
-- M4-B：一架 UAV + 一台 rover，Coordinator 实现四项协同能力。
-- M6：多机调度：分配器从「规则」升级为「LLM 提议 + 优化器裁决」；时空资源预约扩展到空域走廊；控制权模型不变。
+- 当前 M1–M3-SITL：单机直通。P1 先独立站点 / 机场与可派遣判断。
+- P3：多站多 UAV，硬约束先行、确定性排序、唯一任务所有权与时空预约。
+- X1：复用 P3，增加 UAV + rover 的空间对齐、可通行性与交接。
+- 复杂优化、LLM 提议与蜂群能力不在初版 P3 范围；新增算法必须和规则基线比较，不能跳过硬约束。
 
 ## 6. 通用内核（agent-kernel）的抽出条件
 
 当机械臂（`embodied-agent`）与无人机（本项目）都通过同一份契约测试（`tests/contracts/`）后，把以下内容抽为版本化包：契约模型、Provider、技能注册与检索、规划输出校验、事件与证据模型、评测三分类。内核不依赖 PX4、MuJoCo、机械臂驱动或车辆 VAL。
+
+## 7. 厂商托管任务的安全责任（D053，设计）
+
+自有 PX4 路径由本项目 guardian 仲裁控制；厂商托管机场可能只开放航线任务、状态查询与取消 / 返航请求，本项目不能假设获得其飞控连接。统一的是业务请求、授权、能力、任务结果和证据，具体厂商任务包由受控网关生成，不能伪造同等底层控制能力。
+
+能力档案记录协议与固件版本、任务种类、取消确认粒度、日志 / 遥测可见范围、相机 / 云台 / Dock 动作与跨机场能力，以及本地安全职责由谁承担。未知状态不映射为完成。P5 的协议模拟仅证明网关消息逻辑，真实兼容与机械动作必须在对应设备上另验。

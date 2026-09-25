@@ -15,7 +15,7 @@
 
 | 来源模块 | 判定 | 目标位置（里程碑） | 改造要点 |
 |---|---|---|---|
-| `embodied-agent/src/embodied/providers/llm.py`、`runtime.py`（BaseProvider、build_provider、LLMRuntime 目录、限流 / 健康 / 超时） | **A** | `src/drone_agent/providers/`（M2） | 默认模型改 `claude-opus-5`（adaptive thinking，处理 `refusal`）；保留 env 切换；去掉 MuJoCo 相关 |
+| `embodied-agent/src/embodied/providers/llm.py`、`runtime.py`（BaseProvider、build_provider、LLMRuntime 目录、限流 / 健康 / 超时） | **A** | `src/drone_agent/providers/`（M2） | 已按 D029 改为 MiniMax-M3，工具调用 + JSON 抢救，保留拒答与 env 切换；去掉 MuJoCo 相关 |
 | `providers/audio.py`（ASR / TTS / 流式桥） | A | `providers/`（M2，按需） | 语音只提交任务请求；声纹不参与授权（继承座舱红线） |
 | `providers/policy.py`、`perception.py`（ONNX 策略、感知 provider 骨架） | B | `autonomy/` 插件接口（M3） | 输出改为带协方差与置信度的 `WorldFact`；策略输出改为候选轨迹片段 |
 | `skills/manifest.py`、`registry.py`（SkillManifest、ParamSpec、Termination / Recovery / Safety、require_confirm 门在注册表） | **B** | `contracts/skill.py`（M0 已重定义）、`mission/skills/`（M1） | 扩为 SkillManifest v2：持续约束、资源独占、取消 / 暂停语义、完成证据、学习型实现的影子状态；`require_confirm` 门保留在执行出口以下 |
@@ -34,7 +34,7 @@
 | `proto/embodiedrpc/{control,safety}/v1` | C | `proto/drone/control/v1`（M1） | 参考 `InvokeSkill` 流式事件与 `Heartbeat / EStop` 形状；重定义为 `ControlIntent`、`Lease`、`SafetyVerdict` |
 | `hri/server.py` + `console/`（hri.v0 WS 协议、push-to-talk、confirm_request 后台任务） | A | `console/`（M2） | 协议原样；`confirm_request` 语义扩为审批 `MissionSpec` 版本；地图 / 任务 / 控制权 / 飞行状态呈现重做 |
 | `eval/tasks/*.yaml`（eval.task/v1 不可变任务 + 裁判谓词 + 阈值）、`eval/BASELINES.md` | **A** | `eval/`（M1） | 裁判改读 Gazebo 真值；结果改三分类 |
-| `data_engine/`（采集、录制、LeRobot 转换） | C | `runtime/recording/`（M1）、派生导出（M6） | 原始层改 MCAP + ULog + 事件流；LeRobot 只做派生视图 |
+| `data_engine/`（采集、录制、LeRobot 转换） | C | `runtime/recording/`（M1）、业务派生索引（P4/P5）；训练导出（X3） | 原始层改 MCAP + ULog + 事件流；LeRobot 只做派生视图 |
 | `docs/reuse-from-car-agent.md` §4 迁移规矩、`tests/test_no_forbidden_terms.py` | A | 本文 §4、`tests/contracts/test_no_forbidden_terms.py`（M0） | 词表换成机械臂 + 座舱语义 |
 | `car-agent/runtime/issues.py`（跨服务结构化 Issue：代码、严重度、范围、受控恢复动作） | A | `runtime/issues.py`（M2） | 客户端只执行受控 recovery kind 的思想原样；代码集换为飞行域 |
 | `car-agent/runtime/contract_version.py`（一处字面量、两端共用） | A | `contracts/version.py`（M0，已内建 `schema_version`） | — |
@@ -48,10 +48,10 @@
 
 | 阶段 | 迁移项 | 完成判据 |
 |---|---|---|
-| P0（M0） | 术语纪律测试；迁移规矩 | `tests/contracts/test_no_forbidden_terms.py` 绿 |
-| P1（M1） | `runtime/obs`、`runtime/grpcio`、`cognition/verify.py` 三态、eval 任务格式与基线账本、hri.v0 协议文档 | 每项带测试；文件头标注来源 commit；`uv run pytest -q` 绿 |
-| P2（M2） | Provider 族、scopes / permission、hri server、`runtime/issues.py`、PlannerEngine 骨架 | 同上；Planner 输出通过 `MissionSpec` schema 校验；对抗性测试绿 |
-| P3（M3+） | policy / perception provider 骨架 | 输出带协方差与置信度 |
+| M0 | 术语纪律测试；迁移规矩 | `tests/contracts/test_no_forbidden_terms.py` 绿 |
+| M1 | `runtime/obs`、`runtime/grpcio`、`cognition/verify.py` 三态、eval 任务格式与基线账本、hri.v0 协议文档 | 每项带测试；文件头标注来源 commit；`uv run pytest -q` 绿 |
+| M2 | Provider 族、scopes / permission、hri server、`runtime/issues.py`、PlannerEngine 骨架 | 同上；Planner 输出通过 `MissionSpec` schema 校验；对抗性测试绿 |
+| M3 / H1 / X3 | policy / perception provider 骨架 | 输出带协方差与置信度 |
 
 ### 执行记录
 
@@ -67,3 +67,7 @@
 4. **概念改名彻底**：机械臂与座舱术语不得残留（契约测试扫描）。
 5. **能不搬就不搬**：清单外模块想搬时，先在 `decisions.md` 记一条再动手。
 6. **语义不随代码一起搬**：`OK` / `halt` / `cancel` 这类词在源仓库的含义不自动成立；每个迁入的状态或动作都要对照 `02-contracts.md` 与 `03-safety.md` 重新定义。
+
+## 5. 运营路线补充（D049）
+
+本页旧迁移分期统一使用 M 编号，避免与 P0–P5 产品里程碑重名。P 线优先扩展本仓已有 fleet、console、Provider 与证据链，不新建跨仓运行依赖；复制新的工作流 / RAG / 工单代码仍须先按本页规矩核对来源与语义。公共内核继续按 D001 双场景契约验证触发，平台范围扩大本身不触发抽库。

@@ -2,12 +2,13 @@
 
 [返回架构总览](00-overview.md) · [云端开发](../cloud-development.md) · [任务台使用](../tailnet-desk.md)
 
-**当前是云端 amd64 仿真 / 验证部署。** M2 任务服务、签名上行与任务台已实现；arm64、ROS 2 自主层、Jetson-in-the-loop 和真机均为后续阶段。
+**当前是云端 amd64 仿真 / 验证部署。** M2 任务服务、签名上行与任务台及 M3-SITL ROS 2 自主层已实现；arm64 / Jetson-in-the-loop 归 H1，真机归 H2，P 系列运营服务尚未部署。
 
 | 当前入口 | 用途 | 配置 / 指南 |
 |---|---|---|
 | M0 空闲 SITL 与检查镜像 | 环境冒烟、源码与契约检查 | [compose.cloud.yaml](../../sim/compose.cloud.yaml) |
 | M1 场景批次 | 固定任务、故障注入、裁判与回放 | [compose.m1.yaml](../../sim/compose.m1.yaml) |
+| M3 局部自主批次 | `dev_stack.py m3`；ROS 2 自主层与外部模式，按需运行 | [compose.m3.yaml](../../sim/compose.m3.yaml) · [M3 记录](../m3-readiness.md) |
 | M2 场景批次 | 规划到报告的端到端验证，脚本 / 实调规划分开记录 | [compose.m2.yaml](../../sim/compose.m2.yaml) |
 | M1 常驻控制台 | 固定仿真任务；Tailnet HTTPS `8447` → 回环 `8768` | [控制台指南](../tailnet-console.md) |
 | 统一云端飞行台（D037） | `8448` → 回环 `8769`；`/` 为 M2 自然语言任务，`/fixed/` 为 M1 固定巡检；网页复用两条受限通道 | [compose.desk.yaml](../../sim/compose.desk.yaml) · [任务台指南](../tailnet-desk.md) |
@@ -24,23 +25,23 @@
 
 MuJoCo 继续承担 `embodied-agent` 的机械臂基线，不用于飞控集成验证。
 
-空地联合仿真（M4-B）：同一 Gazebo 世界内 PX4 SITL 多旋翼 + PX4 rover SITL（v1.17 rover 模式 / Ackermann SIH），避免早期跨仿真器时空同步。
+空地联合仿真（X1，原 M4-B，P3 后）：同一 Gazebo 世界内 PX4 SITL 多旋翼 + PX4 rover SITL（v1.17 rover 模式 / Ackermann SIH），避免早期跨仿真器时空同步。
 
-仿真时钟：当前场景倍率与墙钟 / 仿真时钟边界见 [M1 验收](../m1-readiness.md)及具体场景配置。M3 接入 ROS 2 后再统一节点的 `/clock` 或等价时钟机制；不能把参考项目的加速上限当成本项目已验证倍率。
+仿真时钟：当前场景倍率与墙钟 / 仿真时钟边界见 [M1 验收](../m1-readiness.md)及具体场景配置。M3 已有按墙钟统计的监督 / TTL 以及独立仿真时钟停顿审计；H1 和多机新增拓扑继续记录时钟偏差；不能把参考项目的加速上限当成本项目已验证倍率。
 
 ## 2. 容器与镜像
 
-**目标形态**借鉴 aerial-autonomy-stack 的三镜像分工；表内的 ArduPilot、ROS 2 自主层、arm64 和推理服务按后续阶段接入：
+**目标形态**借鉴 aerial-autonomy-stack 的三镜像分工；表内的 ArduPilot、arm64 / TensorRT 尚未验收；ROS 2 与 CPU CLIP 已在 M3-SITL 落地：
 
 | 镜像 | 架构 | 内容 |
 |---|---|---|
 | `sim-image` | amd64 | Gazebo、PX4/ArduPilot SITL、世界与机体模型、rover 模型 |
 | `ground-image` | amd64 | mission-service、console、QGroundControl（调试）、MAVLink 路由、评测裁判、数据平台 |
-| `aircraft-image` | **amd64 + arm64（Jetson JetPack 6 / L4T 36）** | executive、guardian、autonomy（ROS 2）、edge-inference（ONNX Runtime：amd64 CUDA / arm64 TensorRT FP16） |
+| `aircraft-image` | amd64 已验；arm64（Jetson）待 H1 | executive、guardian、ROS 2、CLIP ONNX Runtime CPU；TensorRT / 生成式机载 VLM 待 H1 |
 
-M3 目标是让同一份 `aircraft-image` Dockerfile 覆盖工作站仿真与机载部署，再引入 Jetson-in-the-loop 拓扑和对应自动化验证。当前实际构建入口为 [m1.Dockerfile](../../sim/m1.Dockerfile) 与上表的 Compose 文件。
+M3 实际构建入口为 [m3.Dockerfile](../../sim/m3.Dockerfile)，ROS 2 基础层跨版本缓存；arm64 构建分支已有定义但尚未运行，H1 接入 JIL 后验证。M1/M2 继续使用 [m1.Dockerfile](../../sim/m1.Dockerfile)。
 
-以上为完整路线：M1 已实现 amd64 的 sim/aircraft/ground 分工与云端 Compose；arm64、Jetson-in-the-loop 和 ROS 2 自主层仍按 M3 引入，不将当前 amd64 仿真镜像宣称为机载镜像。
+以上为完整路线：M1 已实现 amd64 的 sim/aircraft/ground 分工与云端 Compose；ROS 2 自主层已在 amd64 验证，arm64 与 Jetson-in-the-loop 仍待 H1，不将当前 amd64 仿真镜像宣称为机载镜像。
 
 目标网络分为仿真侧与机器人上行侧；当前实际网络、挂载与权限以各 Compose 文件为准，跨机器人无线 / mesh 的 comms-in-the-loop 尚未实现。
 
@@ -49,9 +50,9 @@ M3 目标是让同一份 `aircraft-image` Dockerfile 覆盖工作站仿真与机
 | 阶段 | 计算 | 飞控 | 说明 |
 |---|---|---|---|
 | M1–M2 | 工作站容器 | PX4 SITL | 无硬件 |
-| M3 | Jetson Orin Nano Super / Orin NX（Jetson-in-the-loop） | PX4 SITL | 验证算力、延迟预算、TensorRT 推理 |
-| M4-A | Jetson Orin NX 或 ModalAI VOXL 2（PX4 一体） | PX4 v1.17 真机（Pixhawk 6 级） | 受限真机；RC 接管；共因故障测试 |
-| M5+ | 同上；地面机器人 Jetson Orin / Thor | PX4 + Nav2 平台 | 空地协同真机 |
+| H1（原 M3-JIL） | Jetson Orin Nano Super / Orin NX（Jetson-in-the-loop） | PX4 SITL | 验证算力、延迟预算、TensorRT 推理 |
+| H2（原 M4-A） | Jetson Orin NX 或 ModalAI VOXL 2（PX4 一体） | PX4 v1.17 真机（Pixhawk 6 级） | 受限真机；RC 接管；共因故障测试 |
+| H3 / X1 | 同上；地面机器人 Jetson Orin / Thor | PX4 + Nav2 平台 | 空地协同真机 |
 
 机载推理预算（M3 定义并测量）：控制路径不含任何模型推理；事件检测 VLM 延迟 ≤ 1 s、非阻塞；安全监督周期 ≥ 10 Hz，尾延迟（p99）有上限并进入评测。
 
@@ -61,19 +62,19 @@ M3 目标是让同一份 `aircraft-image` Dockerfile 覆盖工作站仿真与机
 |---|---|---|
 | OS | Ubuntu 24.04 | — |
 | Python | 3.12 | — |
-| ROS 2（M3 计划） | Jazzy Jalisco；当前尚无自主层 ROS 2 节点 | M3 按 D008 评估新版本，须验证 px4_msgs、Nav2、BehaviorTree.ROS2 与 rmw_zenoh 的兼容组合 |
+| ROS 2 | Jazzy Jalisco；M3-SITL 已有节点 | D043 维持 Jazzy；PX4、XRCE、px4_ros2 与目标平台组合验证后再升级 |
 | Gazebo | Harmonic（Jazzy 配对） | 随 ROS 2 升级到 Jetty |
 | PX4 | v1.17.x（锁定小版本） | 不跟随 main |
 | MAVSDK-Python | 精确锁定 `3.17.4`（gRPC 封装 + `mavsdk_server`，D025） | 原生绑定或 `mavsdk-grpc` 迁移单独验证 |
-| RMW（后续计划） | Fast DDS（机器人内）；Zenoh（跨机器人） | 随 M3 中间件验证 |
-| Nav2（M4-B 后续 / M5 首批） | 计划采用 ROS 2 对应版本，当前未接入 | 随 ROS 2 与地面平台验证 |
+| 中间件 | ROS 2 / Fast DDS（机器人内）；mTLS gRPC 或 Zenoh FleetTransport（上行） | M3 Zenoh 子集已验；跨机器人调度另验 |
+| Nav2（X1 / H3） | 计划采用 ROS 2 对应版本，当前未接入 | 随 ROS 2 与地面平台验证 |
 | LLM Provider | MiniMax-M3，OpenAI 兼容 HTTP（`httpx`），配置沿用 car-agent（D029） | 模型或工具调用率变化时按 D029 重估 |
 
 版本组合锁定在 `configs/platforms/*.yaml` 与容器基础镜像标签中；任何变更走 ADR。
 
 ### M0 开发冒烟交付
 
-以下是 M0 交付时的历史范围：提前创建 `proto/`、`scripts/`、`sim/`，保存五个基础技能草案与故障注入矩阵。当前已有 M1/M2 运行时、六个技能和对应场景集；不能把历史草案说明当作现有能力清单。
+以下是 M0 交付时的历史范围：提前创建 `proto/`、`scripts/`、`sim/`，保存五个基础技能草案与故障注入矩阵。当前已有 M1/M2 航线技能与 M3 局部自主技能、对应场景集；不能把历史草案说明当作现有能力清单。
 
 `sim/compose.yaml` 先提供独立的 PX4 SITL + Gazebo 服务；不预建没有实现的 ground/aircraft 服务。2026-09-19 实查官方预编译仓库缺少 v1.17.0 标签，因此用固定 digest 的官方 Jazzy 开发镜像构建 v1.17.0 源码（D022）。启动使用 headless `gz_x500`；冒烟只验证容器平台、PX4 版本、Gazebo 世界/时钟与遥测，不解锁、不起飞、不改变飞控参数。后续 M1 扩展成上述三镜像拓扑。
 
@@ -87,9 +88,9 @@ Windows 开发通过已安装的 Docker Desktop Linux 后端运行；构建、�
 |---|---|---|
 | 契约验证、PX4/Gazebo 仿真、测试产物 | 云端工作区与独立容器 | 当前可部署 |
 | Planner、Compiler/Admission、Catalog、业务账本、控制台、证据归档 | 任务服务与入口容器 | M2 已实现，常驻任务台按 D035/D036 部署 |
-| executive、guardian、uplink、飞控适配器 | 当前与模拟飞控在同一云主机；后续真机留在设备侧 | M1/M2 已实现；autonomy 按 M3 引入，真机按 M4-A 验证 |
+| executive、guardian、uplink、飞控适配器 | 当前与模拟飞控在同一云主机；后续真机留在设备侧 | M1/M2/M3-SITL 已实现；真机按 H2 验证 |
 
-服务器上使用 SSH 用户家目录下的 `drone-agent/`，Compose project 固定 `drone-agent-cloud`，独立网络和产物目录。SITL 上限为 1.5 CPU / 2 GiB，验证容器上限为 1 CPU / 1 GiB；不发布宿主端口。部署不改变现有 car-agent 容器、数据、配置与服务入口。
+服务器上使用 SSH 用户家目录下的 `drone-agent/`，Compose project 固定 `drone-agent-cloud`，独立网络和产物目录。M0/M1/M2 SITL 上限为 1.5 CPU / 2 GiB（M3 按 D045 为 2.0 CPU），验证容器上限为 1 CPU / 1 GiB；不发布宿主端口。部署不改变现有 car-agent 容器、数据、配置与服务入口。
 
 D028 对网页入口增加明确例外：`sim/compose.console.yaml` 的网页容器只发布 `127.0.0.1:8768`，由现有 Tailscale Serve 的独立 HTTPS `8447` 端口代理，不向公网监听、不启用 Funnel。网页使用受限 ASGI 容器；同机专用 systemd 任务代理经私有 UDS 接收固定请求。原 SITL、executive、guardian 与验证容器的网络和资源限制不变。入口安装及回退只能调整本项目服务与新 Serve 映射，保持 car-agent 的 443/8443–8446 映射原样。
 
@@ -105,7 +106,7 @@ M3-SITL（D038、D039，`sim/compose.m3.yaml`、`sim/m3.Dockerfile`、`scripts/r
 
 ## 5. 数据记录
 
-- 当前原始层：MCAP（自定义消息）、ULog（PX4）、任务事件流（JSONL）及服务侧 SQLite 业务账本；按任务 / 版本与时间核对关联。ROS 2 传感器记录随 M3 接入。
+- 当前原始层：MCAP（自定义消息）、ULog（PX4）、任务事件流（JSONL）及服务侧 SQLite 业务账本；按任务 / 版本与时间核对关联。M3 的自主层、出口和推理记录另随场景归档，传感器来源与真值隔离。
 - 每次任务关联：任务与审批版本、模型 / 策略 / 软件 / 飞控配置版本、坐标变换与地图版本、动作与控制模式、安全干预、任务结果、原始影像与遥测证据。
 - 后续派生层：LeRobot 等训练格式按需增加导出器；当前未提供此导出能力，不为统一模型输入强制重采样原始数据。
 - 回放：任何任务可离线重放事件流并重新运行裁判。
@@ -122,3 +123,13 @@ M3-SITL（D038、D039，`sim/compose.m3.yaml`、`sim/m3.Dockerfile`、`scripts/r
 - M2 的远程任务入口增加签名、机载验签与机器人 ↔ mission-service 双向 TLS（D030）；M3 的 Zenoh 入口只监听 TLS、强制客户端证书，并以证书通用名的访问控制把每台机器人限定在自己的键空间（D046）。
 - 密钥不进代码与镜像；通过运行时挂载。
 - 认知链路攻击（提示注入进入 Planner 工具返回）：工具返回视为数据，不作为指令；任何来自工具的「扩大范围」建议都必须经准入。
+
+## 8. P 系列部署增量（D049–D053，待实现）
+
+继续扩展现有 `fleet/`、`console/` 与 ground 镜像；轻量控制面和 S0 状态模拟可常驻，S1 物理仿真按需，S2 分析按队列 / 并发 / 费用上限运行。P1 不移除现有 stack.lock，也不把增加资源列表当成支持并发飞行。
+
+P3 先测 2 台同世界 SITL 的容量，隔离每机身份、端口、证书、代次水位、inbox 与运行目录；10/30/100 逻辑节点的 S0 压测单独进行。资源不足时提出具体拓扑并留缺项，不自动扩容、不挪用其他项目配额。H1 仍需设备与单独 JIL 拓扑，不作为 P1/P2 的前置。
+
+S0/S3 运行环境不接真实设备、真实凭据或生产队列；S2 素材回放不触发飞行。RunProvenance 绑定受信后端、媒体与模型来源，不由网页传入的标签决定。四层定义与可证明范围见 [roadmap](../roadmap.md)。
+
+运营持久化优先评估 SQLite 与现有媒体文件机制；具体 schema / 迁移、备份与失败恢复方案须先完成并按项目红线批准后实施。新服务命令、网络、配置与回执只在相应工作包实现后补入 [云端操作指南](../cloud-development.md)，本节不是可直接执行的部署步骤。

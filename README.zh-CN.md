@@ -9,9 +9,9 @@
 [![M3 simulation line passed](https://img.shields.io/badge/M3--SITL-passed-0F766E)](docs/m3-readiness.md)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue)](LICENSE)
 
-面向无人机、逐步扩展到空地异构机器人的安全约束任务运行时。它把巡检请求转成类型化任务，检查执行边界，将审批绑定到确切任务，并按证据报告实际结果。
+建设无人机巡检运营平台，以安全约束任务运行时为底座。当前已实现单机仿真中的类型化任务、准入审批、本地执行和证据报告；下一步增加虚拟机场、持久工作流、多站调度，以及发现—工单—复检业务闭环。
 
-> **当前范围：** M2 已于 **2026-09-23** 完成，验证对象是 **PX4 SITL + Gazebo**（软件在环仿真）中的单架无人机。**2026-09-25** M3 的仿真线（经 guardian 约束的 PX4 外部模式局部自主）通过发布门禁；M3 要在 Jetson-in-the-loop 验证后才关闭。真机飞行和空地任务交接属于[后续里程碑](docs/roadmap.md)。
+> **当前范围：** M2 已于 **2026-09-23** 完成，验证对象是 **PX4 SITL + Gazebo**（软件在环仿真）中的单架无人机。**2026-09-25** M3 的仿真线（经 guardian 约束的 PX4 外部模式局部自主）通过发布门禁；M3 要在 Jetson-in-the-loop 验证后才关闭。H1 承接尚未完成的 JIL，原 M3 总门禁仍未通过。P0 的文档部分已更新，运行来源与门禁代码待实现；P1–P5 软件运营主线可独立于硬件推进，真机与空地协同按 [H/X 里程碑](docs/roadmap.md)验证。
 
 [本机体验](#本机体验) · [设计](#设计) · [验证记录](#验证记录) · [文档导航](#文档导航) · [路线图](#路线图)
 
@@ -109,6 +109,7 @@ uv run python scripts/generate_proto.py
 | 消息语义与运行时保障 | [契约](docs/architecture/02-contracts.md) · [安全体系](docs/architecture/03-safety.md) · [Wire 协议](proto/README.md) |
 | 云端仿真与任务台 | [云端开发](docs/cloud-development.md) · [任务台](docs/tailnet-desk.md) |
 | 查看飞行证据与回放 | [评测体系](docs/architecture/08-evaluation.md) · [拉取与查看运行](docs/cloud-development.md#查看与人工核对结果) |
+| 运营层与下一批工作 | [运营架构](docs/architecture/09-operations.md) · [实施任务](docs/operations-implementation.md) · [P1 详细方案](docs/p1-implementation.md) |
 | 设计理由与复用来源 | [决策记录](docs/decisions.md) · [姊妹项目复用](docs/reuse-from-embodied-agent.md) |
 
 ## 路线图
@@ -117,10 +118,13 @@ uv run python scripts/generate_proto.py
 |---|---|---|
 | M0–M2 | 契约、单机运行时、受约束 Agent 与证据闭环 | 已完成仿真验证 |
 | M3 | 局部自主、感知、定位与降级处理 | 仿真线已通过；Jetson-in-the-loop 待硬件 |
-| M4 | 受限真机验证、UAV 与 rover 联合仿真 | 规划中 |
-| M5–M6 | 真实空地协同、更多平台与模型插件 | 规划中 |
+| P0 | 能力盘点、运行来源与产品门禁 | 文档部分完成；代码待实施 |
+| P1–P2 | 资源与虚拟机场、持久业务工作流 | 下一产品工作；待实施 |
+| P3–P5 | 多站调度、多模态业务闭环、平台 v0.1 | 规划中；含两机 SITL 与 72 h 系统长稳 |
+| H1–H3 | JIL、台架与受限真机、现场运营 | 独立硬件验证线 |
+| X1–X3 | 空地协同、厂商真实接入、模型与内核研究 | 条件满足后扩展 |
 
-详见[完整路线图与退出标准](docs/roadmap.md)。局部自主只在仿真中验证；跨机器人交接及 DJI / ArduPilot 适配尚未实现。空域准入已有真实接口与录制的 UOM 后端，真实模式没有报备的任务会被拒绝；能耗估计仅用于仿真。
+详见[完整路线图与退出标准](docs/roadmap.md)。局部自主只在仿真中验证；跨机器人交接及 DJI / ArduPilot 适配尚未实现。空域准入已有接口定义与录制的 UOM 后端，真实模式没有报备的任务会被拒绝；能耗估计仅用于仿真。
 
 ## 许可证
 

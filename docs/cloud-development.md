@@ -199,3 +199,11 @@ uv run python scripts/dev_stack.py deploy --sha HEAD --apply
 应用测试结果只属于回执中的 `source_sha`；本地新增云端工具测试不计入该应用 commit 的云端测试数字。M0 历史证据保持原样，云端验证单独记录。
 
 验证镜像使用 pip 支持的 [独立 Python 环境管理](https://pip.pypa.io/en/stable/topics/python-option/)，不为测试而改变 ROS 的依赖版本。
+
+## P 系列开发准备（2026-09-25，D049–D053）
+
+当前可运行入口仍是本页的 M1/M2/M3 与常驻任务台。P0–P5 新工作见[实施任务](operations-implementation.md)和[P1 详细方案](p1-implementation.md)，对应 `verify_p*_release.py`、机场模拟器及运营 API 尚未实现，不能直接执行计划中的脚本名。
+
+P1/P2 联调复用现有云端单机 mission_upload 与项目锁，不需要 Jetson。P3 在新方案下测量两机同世界容量后再扩展编排；S0 的 10/30/100 逻辑节点规模与 S1 物理实例数分别记录。保持 guardian 独立配额、项目隔离与按需 SITL，不自动改动其他项目或系统配置。
+
+H1 承接 M3-JIL。原 `verify_m3_release.py` 的总门禁仍会因 JIL 缺席而 `not_passed`；P 系列未来门禁单列所需软件能力与硬件缺项，不覆盖历史结果。运营存储 schema / 迁移的具体方案先完成审查并按项目红线获批，再实施。

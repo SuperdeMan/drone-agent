@@ -4,7 +4,7 @@
 
 > 契约是本项目扩展性的来源。代码实现见 [contracts](../../src/drone_agent/contracts/)（Pydantic v2），契约测试见 [tests/contracts](../../tests/contracts/)。本文定义语义；字段以代码为准，两者冲突时先改本文再改代码。
 
-阅读边界：本页同时定义当前运行时与后续扩展所需的领域对象；存在消息或字段不代表对应执行能力已实现。M2 的具体接收行为见第 10 节；多机器人交接、Offboard 与局部自主的执行仍属后续阶段。
+阅读边界：本页同时定义当前运行时与后续扩展所需的领域对象；存在消息或字段不代表对应执行能力已实现。M2 的接收行为见第 10 节，M3-SITL 局部自主与外部模式见第 11 节；多机器人交接待 P3/X1。第 12 节的运营对象尚未实现。
 
 ## 0. 通用规则
 
@@ -36,7 +36,7 @@
 
 ## 2. MissionSpec（任务规格）与 MissionPackage（已编译任务包）
 
-解决的问题：把自然语言变成可验证、可执行的任务；LLM 的输出永远停在这一层。
+解决的问题：把自然语言变成可验证、可执行的任务；LLM 只产出类型化草案。运营流程的 WorkflowSpec 另见第 12 节，不能获得控制权限。
 
 `MissionSpec`（Planner 输出，人可读，可审批）：
 
@@ -76,7 +76,7 @@ M0 接收边界补充：任务包必须保留 `spatial_scope`、`temporal_window
 | `completion_evidence` | 完成所需证据类型与判据（目标 ID 匹配、影像质量阈值引用、观测位姿有效、时间有效） |
 | `failure_modes` | 已知失败模式与恢复提示 |
 | `timeouts`, `estimates` | 超时；预计时长与能耗 |
-| `implementation` | `deterministic / learned(shadow|limited|full)`；学习型实现必须声明影子运行状态 |
+| `implementation` | `deterministic / learned(shadow / limited / full)`；学习型实现必须声明影子运行状态 |
 
 技能实例生命周期：
 
@@ -230,6 +230,22 @@ M3 不改 `drone.contracts.v1`、`drone.control.v1` 与 `drone.fleet.v1` 已冻�
 
 **外部模式能力**：`CapabilityDescriptor.control_modes` 中的 `external_mode` 由适配器按出口节点实时状态声明（已注册、状态新鲜、兼容性检查通过），不是静态配置；缺席时需要它的技能不能编译或准入。
 
-**新增技能**：`skill.flight.goto_local`（需要 `external_mode`）经局部规划飞到登记表中的局部目标点，完成判据为新鲜位姿在容差内保持；参数只引用登记的目标点，不接受任意坐标。编译器在机器人声明 `external_mode` 且资产登记了局部观察点时，把资产巡检展开为 `goto_local + capture_image`；否则展开为 M2 的航线版 `skill.inspect.asset`；两者都没有就拒绝。
+**新增技能**：`skill.flight.goto_local`（需要 `external_mode`）经局部规划飞到登记表中的局部目标点，完成判据为新鲜位姿在容差内保持；参数只引用登记的目标点，不接受任意坐标。编译器在机器人声明 `external_mode` 且资产登记了局部观察点时，将资产巡检选择为 `skill.inspect.asset_local`（局部接近 + 拍摄相位）；显式指定航线参数时仍走 M2 航线版 `skill.inspect.asset`。没有局部能力时只有登记航线与 mission_upload 能力同时存在才回退，否则拒绝。实际选择见 [compiler.lower_inspection](../../src/drone_agent/admission/compiler.py)。
 
 **恢复策略**：`RecoveryTrigger` 已有 `trajectory_stale`，另追加 `progress_stalled`、`compute_overloaded`、`autonomy_unavailable`（只追加枚举值）。策略按任务包的 `recovery_policy_ref` 加载，M3 场景为 `multirotor_m3@v2`。
+
+## 12. P 系列运营契约增量（D049–D053，设计）
+
+字段与生命周期设计见 [运营层 §2–7](09-operations.md)。本节是与既有契约的连接规则；P0/P1 还没有新增对应 Python 模型、SQL 表或 wire 消息。
+
+| 连接 | 约束 |
+|---|---|
+| WorkflowRun → MissionRequest | 固定项目、流程 / 节点身份与幂等键；一个业务活动可等待多版本飞行，但通信重试不得创建新 mission |
+| ResourceReservation → MissionPackage | 云端预约不等于 TaskLease；资源 / 机器人绑定改变需重新编译、准入和审批；投递前重查状态 |
+| TaskAssignment → TaskLease | 云端 assignment_epoch 与机器人 lease_epoch 独立；只有机载现有授权路径能产生控制权 |
+| RunProvenance → 证据 / 报告 | 执行、影像、规划、分析各自来源，受信后端生成；聚合保留子记录；旧数据缺失不得补成 live |
+| InspectionFinding / ReviewRecord → 业务报告 | 疑似和人工确认是业务状态，不能修改 execution_status / effect_verdict / safety_verdict |
+| WorkOrder → Reinspection | 维修反馈只进入待复检；新证据才能支撑闭环，证据未知不关单 |
+| VendorMissionGateway → 厂商接口 | 后续独立高层任务契约、能力与责任档案；不假设厂商接受 PX4 包或部署本项目 guardian |
+
+新增服务侧对象统一带 schema_version，项目权限由服务端校验。P0/P1 的运营元数据留在云端；跨到机载的任何新增执行绑定必须另行定义兼容字段、进入哈希 / 签名边界并跑 wire 检查，不能藏入自由 JSON 绕过冻结。

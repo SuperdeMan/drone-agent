@@ -4,7 +4,7 @@
 
 这些文件定义传输边界。M1 guardian 本地服务和 M2 签名任务上行已实现并完成各自的仿真验收，见 [M1 记录](../docs/m1-readiness.md)与 [M2 记录](../docs/m2-readiness.md)。`drone.*.v1` 的字段号、枚举和 RPC 签名锁定于 [v1-wire-lock.json](v1-wire-lock.json)，破坏性变更必须使用新的 wire 主版本。
 
-当前车队传输由独立 uplink 经 mTLS gRPC 拉取已签名任务包与操作者请求，上传事件、证据媒体、能力和状态。服务端不经此协议发送控制意图；多机器人交接消息已保留在契约中，但交接执行属于 M4-B。
+当前车队传输由独立 uplink 经 mTLS gRPC 拉取已签名任务包与操作者请求，上传事件、证据媒体、能力和状态。服务端不经此协议发送控制意图；多机器人交接消息已保留在契约中，但通用任务所有权按 P3 实现、空地交接按 X1 扩展（D049），均未实现。
 
 | 文件 | 内容 |
 |---|---|
@@ -31,3 +31,7 @@ uv run pytest tests/contracts/test_proto_contracts.py -q
 M1 本地服务使用私有 UDS + gRPC local credentials，并绑定启动时的可信任务包与 executive 身份；账本持久化代次/对账，wire 编解码保留存在性并重新校验领域模型。`HandoffReply.accepted` 只表示愿意接收，不能当作所有权已转移，也不代表已有交接执行器。M2 已实现 Ed25519 审批签名、机载独立验签与 mTLS 证书身份；M1 本地信任模式的哈希检查仍不等于数字签名。
 
 wire 命名空间与领域载荷版本分开：本发行包的领域 `schema_version` 为 `0.1.0`，本地运行时拒绝缺版本或不支持的载荷版本；冻结的 v1 线路布局禁止重编号，允许兼容增字段。不可把 protobuf 能解码等同于任务获得授权。
+
+## 运营契约的落位（设计）
+
+P0–P5 的 Project、Site/Dock、WorkflowSpec/Run、RunProvenance 与发现 / 工单对象先作为服务侧版本化契约，详见 [运营架构](../docs/architecture/09-operations.md)。本次未增加 proto 消息或改动 wire 锁。跨到机载的新执行语义必须明确签名 / 哈希绑定并走兼容增字段与契约检查，不能借服务侧 JSON 绕过 frozen v1。
