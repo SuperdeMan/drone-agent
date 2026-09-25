@@ -74,7 +74,19 @@ def test_live_label_without_a_completed_independent_flight_cannot_close_p0():
     assert GATE["live_sources"]([{"mission": mission}], SHA)["status"] == "failed"
 
 
-def test_historical_sitl_pass_never_closes_hardware_or_future_products():
+def test_historical_sitl_pass_never_closes_hardware_or_future_products(monkeypatch, tmp_path):
+    # Checks images are git archives without .git; inject only the Git read boundary, not the gate decision.
+    # 检查镜像来自 git archive，没有 .git；只替换 Git 读取边界，不替换门禁判定。
+    original = (ROOT / GATE["M3_PATH"]).read_bytes()
+
+    def git_output(command, **_kwargs):
+        if command[1] == "show":
+            assert command[2] == f"{GATE['BASELINE']}:{GATE['M3_PATH']}"
+            return original
+        assert command[1] == "rev-parse"
+        return command[2].ljust(40, "0").encode()
+
+    monkeypatch.setattr(GATE["historical_boundaries"].__globals__["subprocess"], "check_output", git_output)
     history = GATE["historical_boundaries"]()
     assert history["status"] == "passed" and history["m3_sitl"] == "passed"
     assert history["m3_combined"] == "not_passed" and history["jil"] == "missing"
@@ -84,6 +96,11 @@ def test_historical_sitl_pass_never_closes_hardware_or_future_products():
     assert stages["P0"]["software_validation"] == "not_passed"
     assert stages["M3"]["status"] == "not_passed" and stages["H1"]["status"] == "missing"
     assert stages["P1"]["status"] == "planned" and stages["P5"]["software_validation"] == "missing"
+    altered = tmp_path / GATE["M3_PATH"]
+    altered.parent.mkdir(parents=True)
+    altered.write_bytes(original + b"\n")
+    monkeypatch.setitem(GATE["historical_boundaries"].__globals__, "ROOT", tmp_path)
+    assert GATE["historical_boundaries"]()["status"] == "failed"
 
 
 def test_projection_hash_does_not_include_its_own_digest():

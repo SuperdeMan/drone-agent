@@ -202,7 +202,7 @@ uv run python scripts/dev_stack.py deploy --sha HEAD --apply
 
 ## P 系列开发准备（2026-09-25，D049–D053）
 
-当前可运行入口仍是本页的 M1/M2/M3 与常驻任务台。P0–P5 新工作见[实施任务](operations-implementation.md)和[P1 详细方案](p1-implementation.md)，对应 `verify_p*_release.py`、机场模拟器及运营 API 尚未实现，不能直接执行计划中的脚本名。
+当前可运行入口仍是本页的 M1/M2/M3 与常驻任务台。P0–P5 新工作见[实施任务](operations-implementation.md)和[P1 详细方案](p1-implementation.md)，P0 已有 `verify_p0_release.py`，用法与证据见 [P0 记录](p0-readiness.md)；其余 `verify_p*_release.py`、机场模拟器及运营 API 仍未实现，不能直接执行计划中的脚本名。
 
 P1/P2 联调复用现有云端单机 mission_upload 与项目锁，不需要 Jetson。P3 在新方案下测量两机同世界容量后再扩展编排；S0 的 10/30/100 逻辑节点规模与 S1 物理实例数分别记录。保持 guardian 独立配额、项目隔离与按需 SITL，不自动改动其他项目或系统配置。
 

@@ -2,7 +2,7 @@
 
 [架构入口](00-overview.md) · [契约](02-contracts.md) · [安全](03-safety.md) · [路线图](../roadmap.md) · [实施任务](../operations-implementation.md)
 
-**状态：2026-09-25 设计基线，P0–P5 待实现部分。** 本页对象、API 名称和新增文件位置均为设计，不能据此推断代码已存在。已有底座是 M2 任务服务与 M3-SITL；具体差距见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。决策为 D049–D053。
+**状态：2026-09-25 设计基线；P0 来源与门禁已有实现候选，验收见 [P0 记录](../p0-readiness.md)；P1–P5 仍待实施。** 除明确列出的 P0 来源代码，本页对象、API 名称和新增文件位置均为设计。已有底座是 M2 任务服务与 M3-SITL；具体差距见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。决策为 D049–D053。
 
 ## 1. 产品闭环与执行边界
 
@@ -43,7 +43,7 @@ flowchart TB
 | `DockStatus` | 通信、舱盖、占用、补能、环境、维护六个独立维度；各字段来源与新鲜度 | 后端观测，服务只保留投影 / P1 |
 | `DispatchEligibility` | 输入快照摘要、资源 / 能力版本、`eligible/blocked/unknown`、原因码、有效期 | 确定性判定 / P1；不替代 Admission |
 | `ResourceReservation` | 持有者、资源、窗口、空间界限、状态、证据引用 | 服务事务 / P1 起降位最小子集，P3 完整时空预约 |
-| `RunProvenance` | 执行 / 影像 / 规划 / 分析来源、软件与场景哈希、数据和模型版本 | 受信运行入口生成的不可变记录 / P0 |
+| `RunProvenance` | 执行 / 影像 / 规划 / 分析来源、软件与场景哈希、数据和模型版本 | 受信运行入口生成，已有实现候选 / P0 |
 | `WorkflowSpec` | 不可变版本、项目范围、触发器、白名单节点、条件、预算、超时与审批要求 | 业务定义 / P2 |
 | `WorkflowRun` / `ActivityAttempt` | 固定定义版本、状态版本、触发身份、节点结果、等待条件、取消代次、子任务绑定 | 持久业务运行账本 / P2 |
 | `DispatchDecision` / `TaskAssignment` | 约束输入、候选排除原因、排序、唯一所有者与分配代次 | Coordinator / P3 |
@@ -130,7 +130,7 @@ RAG 查说明书、SOP、规范和历史线索；电量、天气、空域、占�
 |---|---|---|
 | 执行后端 | `logical_sim/px4_sitl/vendor_protocol_sim/real_device/none` | 来自受信部署与执行器注册，客户端不能改写 |
 | 影像来源 | `sim_render/recorded_real/live_sensor/test_fixture/none` | 按每份证据标注，混合来源不得在聚合时压成一种 |
-| 规划 / 分析来源 | 各自为 `live_model/recorded_model/scripted/deterministic/not_run/unknown` | 二者独立，缺 key 写 not_run；回放不能算实调 |
+| 规划 / 分析来源 | 各自为 `live_model/recorded_model/scripted/deterministic/not_run/unknown` | 二者独立，缺 key 写 not_run；回放 / 缓存不能算实调；脚本的缓存仍为 scripted |
 | 版本 | 源码 SHA、dirty 摘要、运行 ID、场景 / 平台 / 模型 / 提示 / 数据 / 裁判摘要 | 门禁只接受不可变候选；未知版本明确拒绝计为通过 |
 
 来源绑定到子任务、每份证据和分析作业，流程聚合引用它们的清单。只在云端加显示标签不足以隔离后端：S0/S3 运行环境不挂真实设备、真实证书或生产任务队列；后端选择由服务配置及授权决定。历史回执保留原样，缺项显示 `legacy_unknown`，不回填为 live。
@@ -158,10 +158,18 @@ S0 验证逻辑与规模，S1 验证 PX4 软件飞控与执行链，S2 验证授
 | `fleet/workflow_models.py`、`fleet/workflow.py`、`fleet/workflow_store.py` | 服务侧契约、持久状态机、inbox/outbox 与定时 |
 | `fleet/coordinator.py`、`fleet/reservation.py` | 多候选分配、唯一所有权、时空预约与对账 |
 | `fleet/analysis.py`、`fleet/findings.py`、`fleet/work_orders.py` | 分析、发现、复核及工单生命周期 |
-| `fleet/provenance.py`、`fleet/vendor_gateway.py` | 来源记录与后续厂商任务适配 |
+| `fleet/provenance.py`（P0 已实现）、`fleet/vendor_gateway.py`（后续） | 来源记录与后续厂商任务适配 |
 | `console/`、`eval/`、`configs/`、`scripts/` | 运营页面、分层模拟与裁判、版本化模板及验证入口 |
 
 继续单仓库、模块化 Python 服务。飞行权威账本留在机载；地面新增运营持久化优先评估 SQLite，媒体保留文件与哈希索引。数据库迁移方案须先列出现有 schema、目标、升级 / 失败恢复和备份验证，再按项目红线获得批准后执行；本次文档设计不执行迁移。新增表也属于 schema 变更，不以“独立运营库”绕过该约束。
 
 轻量服务常驻，SITL 按需，影像分析有队列 / 并发 / 费用上限。P3 先测共享主机两机容量，资源不足记录阻塞并提出具体拓扑，不缩小门禁冒充多机完成，也不自动修改其他项目配额。不预建上述空模块，不引入 Kubernetes / 多数据库；当持久计时、跨天版本迁移和多 worker 故障处理成本超过自建方案时，再评估 Temporal。
 
+
+## 10. P0 当前来源接口（D054）
+
+`fleet/provenance.py` 的 SourceContext 由进程入口创建；生产 CLI 当前只接受 `--execution-backend none|px4_sitl`，逻辑后端供隔离测试使用，真实设备与厂商后端不在 P0 可选范围。每个任务版本创建时在同一写入中保存 RunHeader 与规划记录，后续采集 / 分析只追加密封记录。RunProvenance 是这些记录的冻结投影，具有可复算 SHA-256；随迟到证据产生新投影不等于修改原记录。
+
+服务 `view` 的每个版本有 `provenance`，每份 evidence 有独立来源；report.provenance 与 A2A summary.provenance 保留逐版本清单。现有 API 不接受来源或后端参数。任务台增加只读来源展示，证据浏览器增加 provenance 表。历史行无 RunHeader 时保持 legacy_unknown，不按当前部署补填。
+
+当前贯穿 M2 服务链与本机无设备模式；M1/M3 的历史回执保留原有来源记录，能力清单明确对应旧 SHA。VLM 的可选分析通路有独立来源测试；没有实际分析时为 not_run，不能把规划实调当成 VLM 业务验证。数据库 schema v1、控制授权与机载 wire 不变。
