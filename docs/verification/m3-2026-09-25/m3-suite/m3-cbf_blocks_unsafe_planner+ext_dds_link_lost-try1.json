@@ -1,0 +1,1256 @@
+{
+  "status": "passed",
+  "milestone": "M3",
+  "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+  "deployment_id": "20260924T164104Z-9fcf8617",
+  "artifact_directory": "/home/ubuntu/drone-agent/artifacts/20260924T164104Z-9fcf8617/m3-20260925T073224Z-9990c5b2",
+  "results": [
+    {
+      "artifacts": {
+        "aircraft/adapter-commands.json": "4a34209519220db46a1664c25d9ef8c84d4026841bb80db5ce6a95bc16363ad7",
+        "aircraft/belief.json": "89eefe5fc9463c756a20a137d0148947a8e98e680eaa9cef6c14b6db01957ef5",
+        "aircraft/capabilities.json": "07b364511201f5b76ba69b74aedef643d6a0720bbc70355f313d15e1f63d1a22",
+        "aircraft/executive-identity.json": "5032474a8926ccea057363fcccbeea71e6910243c19029c1e18cdbedb33ad1ef",
+        "aircraft/executive.jsonl": "aeeba20a6d90b48347dfb33e78b60dae5c0e7821d93202703346a35f82a86f33",
+        "aircraft/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft/executive.mcap": "a23d864737e8b5444321065b2ede382bd59003bcecf1aac36d4681ae123462ad",
+        "aircraft/guardian-identity.json": "0da93f087f784bd5d20b749f446e2d996df011f1992f4d391e27ca0982a11b43",
+        "aircraft/guardian.jsonl": "6c216e961accde868554fa5b0fe209df2e7794a4aaf2536263cb29c10fde646a",
+        "aircraft/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft/guardian.mcap": "c032d1746723b185009fc11d766f2b01f5c3d565ed027127997dda1ecfdd3c3b",
+        "aircraft/result.json": "db0eb1e48991bec53437e057e7d34e5529e0fe5bd7524d375f2cb12dbc04b1d6",
+        "aircraft/status.json": "bf1d931678dde2909f4e422cec1dc5b348236b590c0ed3b4626c2ba9c483e36a",
+        "aircraft/supervision.json": "bb291156edb14259e13fbad93011783387e5ab97ecb960b7a38fe480bace8488",
+        "autonomy/local_nav.jsonl": "10e0af5021605430cb8afc8b2ce55afe83eec4bde7cb694d0ebe91c35f654428",
+        "autonomy/perception.jsonl": "22e020c58da5155406d34d217a155fcea2f9fdafcc1912c5b87cf238be5b5557",
+        "edge/edge_inference.jsonl": "a86ece3f03324d26bc42485d46b85426bc56a07f793591f12fd2e7196ca553d0",
+        "egress/egress.jsonl": "7f650c31e3cca23ff71715f74e095a8d98ffe2f417112a22693fe4e97e4a31d1",
+        "injection.json": "e6ebc499dab41cb3d646cac64f9890be952cbc9e1d9515fc60eedfba5ac2918b",
+        "input/autonomy.json": "7e8a6e7b06b39ef152e66c17bcd1dd92ff7e5020c5f47822c9c4185c8d76492d",
+        "input/package.json": "38ceac71a400a94bda1f0048e19a0c3cbbbcdc8ed3da32387f59db0e31659d0d",
+        "input/scenario.json": "f1ff3738c367a90a186a3dafd498174e17538481266335ca011a160c560592d0",
+        "measure.json": "18bc84aab94308be23f4f15992c6996233bce1c3b071df495e83700f9cd9da12",
+        "quiet-gate.json": "9c148258c0e312ef2e4319ab3be0604838cf00e36a9e6d539ce74e9c13b9f34a",
+        "resources.jsonl": "52c1abff35a2294e7e820c07aebebc54d30084c605f3da17dcfb233fb3fe5f98",
+        "sensor/latest.json": "001d2f0a9652d80697ed8a9b057b05ca36eff66cab4e92bad4f8381b370136ae",
+        "truth/truth.jsonl": "b23d8a4c579b523bf8663baf1013b74bf74db28346c7de360c68347909ad90aa",
+        "ulog/2026-09-25/07_33_18.ulg": "2f3e93b4e65213f2c37862232096543c1ff198183084d5af46d4e91a624615dd"
+      },
+      "class": "mission_stuck",
+      "classification": "safe_abort",
+      "expected": "safe_abort",
+      "false_success_reports": 0,
+      "measured_sim_speed": 0.9605170585906251,
+      "metrics": {
+        "edge_inference": {
+          "dropped_frames": 375,
+          "inference_ms": {
+            "max": 227.8,
+            "p50": 195.2,
+            "p99": 227.8
+          },
+          "inferences": 96,
+          "labels": {
+            "empty_ground": 43,
+            "marker_blue": 13,
+            "marker_green": 5,
+            "marker_red": 35
+          },
+          "latency_ms": {
+            "max": 397.8,
+            "p50": 280.0,
+            "p99": 397.8
+          },
+          "replan_triggers": 0,
+          "sent": 33,
+          "truth_agreement": 0.439,
+          "truth_scored": 41
+        },
+        "egress_published": 437,
+        "egress_revocations": 1,
+        "external_activations": 1,
+        "external_counters": {
+          "authorized": 221,
+          "cbf_modified": 109,
+          "cbf_rejected": 0,
+          "hold_authorizations": 5,
+          "revocations": 1,
+          "segments_refused": 0,
+          "segments_used": 216
+        },
+        "intent_latency_p99_ms": 70.19300000000001,
+        "measure": {
+          "edge": true,
+          "edge_period_s": 1.0,
+          "isolation": "separate"
+        },
+        "min_clearance_m": {
+          "crate_x": 5.522,
+          "pillar_a": 5.655,
+          "wall_a": 0.948
+        },
+        "px4_external_nav_state_seen": true,
+        "resources": {
+          "_host": {
+            "cpu_some_avg10_max": 56.38,
+            "load1_max": 6.87
+          },
+          "autonomy": {
+            "cpu_max_1s_cores": 0.349,
+            "cpu_mean_cores": 0.26,
+            "memory_max_mib": 151.7,
+            "throttled_fraction": 0.0
+          },
+          "collector": {
+            "cpu_max_1s_cores": 0.106,
+            "cpu_mean_cores": 0.088,
+            "memory_max_mib": 12.3,
+            "throttled_fraction": 0.0
+          },
+          "edge": {
+            "cpu_max_1s_cores": 0.134,
+            "cpu_mean_cores": 0.11,
+            "memory_max_mib": 239.0,
+            "throttled_fraction": 0.256
+          },
+          "egress": {
+            "cpu_max_1s_cores": 0.011,
+            "cpu_mean_cores": 0.004,
+            "memory_max_mib": 12.8,
+            "throttled_fraction": 0.0
+          },
+          "executive": {
+            "cpu_max_1s_cores": 0.405,
+            "cpu_mean_cores": 0.032,
+            "memory_max_mib": 36.1,
+            "throttled_fraction": 0.036
+          },
+          "guardian": {
+            "cpu_max_1s_cores": 0.198,
+            "cpu_mean_cores": 0.097,
+            "memory_max_mib": 53.3,
+            "throttled_fraction": 0.0
+          },
+          "relay": {
+            "cpu_max_1s_cores": 0.097,
+            "cpu_mean_cores": 0.078,
+            "memory_max_mib": 45.4,
+            "throttled_fraction": 0.0
+          },
+          "sitl": {
+            "cpu_max_1s_cores": 1.501,
+            "cpu_mean_cores": 1.275,
+            "memory_max_mib": 640.3,
+            "throttled_fraction": 0.0
+          },
+          "xrce-agent": {
+            "cpu_max_1s_cores": 0.046,
+            "cpu_mean_cores": 0.032,
+            "memory_max_mib": 13.8,
+            "throttled_fraction": 0.0
+          }
+        },
+        "simulator_stalls": {
+          "count": 2,
+          "max_wall_s": 1.774,
+          "stalls": [
+            {
+              "end": 1790321595.005954,
+              "sim_s": 0.008,
+              "start": 1790321594.492116,
+              "wall_s": 0.514
+            },
+            {
+              "end": 1790321596.779631,
+              "sim_s": 0.004,
+              "start": 1790321595.005954,
+              "wall_s": 1.774
+            }
+          ]
+        },
+        "supervision": {
+          "max_s": 0.10361433494836092,
+          "p99_s": 0.10172726912423968,
+          "samples": 944
+        }
+      },
+      "milestone": "M3",
+      "passed": true,
+      "problems": [],
+      "recovery_reasons": [
+        "progress_stalled"
+      ],
+      "registry_hash": "530bdefe8fe9f37337bb47f6553fd7edb440b14e6f362b80a326ebdeaa2ccacd",
+      "requested_speed_factor": 1,
+      "scenario": "cbf_blocks_unsafe_planner",
+      "schema_version": "0.1.0",
+      "seed": 7,
+      "sim_duration_s": 105.972,
+      "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+      "truth_samples": 1833,
+      "validated_edge": null,
+      "void": false,
+      "judge_exit_code": 0,
+      "replay_agrees": true,
+      "shadow_report": {
+        "path": "judge/shadow.json",
+        "exit_code": 0
+      },
+      "measure": {
+        "edge": true,
+        "edge_period_s": 1.0,
+        "isolation": "separate"
+      },
+      "quiet_gate": {
+        "waited_s": 35.0,
+        "load1": 3.47,
+        "cpu_some_avg10": 9.92,
+        "quiet": true
+      },
+      "shader_cache_entries": {
+        "before": 42,
+        "after": 42
+      }
+    },
+    {
+      "artifacts": {
+        "aircraft/adapter-commands.json": "6fec8ab819067b2fcfdee0184ab2928d6f044fdf43fddb8274c1515a01b0a6a9",
+        "aircraft/belief.json": "2e0e29e6265acd458a1ac4c271cdacd18704c1fa0e7ab8c9a0a9e79c8ec0bdc7",
+        "aircraft/capabilities.json": "949b2de701e00ebdcf0d27ec2d6897b27aa47f404caca1059c5c758d01f518de",
+        "aircraft/executive-identity.json": "c54199ee1c03ba3ed431e68c67ae212f7632d233ea0b44b8dbf20dbcc821a766",
+        "aircraft/executive.jsonl": "635b4057b1bea90f0e414332271d7e89f0c9ef350136480114bf0196e97dc981",
+        "aircraft/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft/executive.mcap": "ac54741a6b915aad3699df24793e1c92d58f65c50a385828e2385c9030f0446d",
+        "aircraft/guardian-identity.json": "fe5306634618c99bdd8a8b97439354e74cc577de03b14852b638e4ea1ae4f4fc",
+        "aircraft/guardian.jsonl": "0fbd8c7a5c8d5b446f922acb40fe61725534f2a641dd64ecefd968b14a0cdfd7",
+        "aircraft/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft/guardian.mcap": "24c608d999bc0c113ec5cf7ba513dd84803c4b34b22e91f3cf095372308b35f6",
+        "aircraft/result.json": "6900f267f316f7b4ffb25b8b74ed904e976de9f25318acecb423f88d356bdaaa",
+        "aircraft/status.json": "15dd26eea245ecf2c6dca7b40944a57d2155d6eafe604e07157eda1f67bb47f8",
+        "aircraft/supervision.json": "3bd19fec47d837e79d006937f15585bf04a6a1f9c438ffd6c7710ddce4a5f236",
+        "autonomy/local_nav.jsonl": "5fb05ae17813fb13be518b2c9f57213256ab5c0b4a1e39f8e9fcfc3040bf6f8e",
+        "autonomy/perception.jsonl": "1ea8bdde04476c7a54f8c279534ccbb441cbbd6fb0c028847234ef6826a1cf14",
+        "edge/edge_inference.jsonl": "fdd642d68ab37e25d5afd67fe00ab14756d40c4e298f92cb8bd2bed6fc816937",
+        "egress/egress.jsonl": "457ff5c7bfb58905ece9ea29d2340c8f78f08444bc771d6954dc1c0aefa4366e",
+        "injection.json": "fa60f9ff0bea03ce15db805318038d2df6235c8a2c20c999b8730d550cdbbbe8",
+        "input/autonomy.json": "f509c525f586a5abd7caecc4bb605aaae53acd2bbf47035c150f0b6f8eb3d42f",
+        "input/package.json": "1cd0adb7824900c1278e1864922a2ab21d3ec9f83ddfff6c3291eaefd0631d46",
+        "input/scenario.json": "dc31b12e5422714458d93ba7bebe22ac16efed0ccd1e670fd162a4a2aabf4e6f",
+        "measure.json": "18bc84aab94308be23f4f15992c6996233bce1c3b071df495e83700f9cd9da12",
+        "quiet-gate.json": "d0ba50d7055a7c60df5b99ce1ced961fe967366075d27b4dad3aa8e98ec5047a",
+        "resources.jsonl": "905c7bf0358e4710c0b2f5d6f22ffe67727c11b8eeaa63f2465f1bde3cc28e20",
+        "sensor/latest.json": "bb1f3e5e15108b5ca7085e05e8c439fb32e3d2c160497a416c4f15222b020b76",
+        "truth/truth.jsonl": "142b7d8f6a3da07ab8be92bb1c435a9b940c84680a31d3dbcfed440be266612c",
+        "ulog/2026-09-25/07_35_52.ulg": "af2215bb5266d78fa34a95b45adc377c7d9caf7f13176ffa358b34a819a62bd7"
+      },
+      "class": "mission_stuck",
+      "classification": "safe_abort",
+      "expected": "safe_abort",
+      "false_success_reports": 0,
+      "measured_sim_speed": 0.9640998414496942,
+      "metrics": {
+        "edge_inference": {
+          "dropped_frames": 391,
+          "inference_ms": {
+            "max": 251.1,
+            "p50": 162.2,
+            "p99": 242.2
+          },
+          "inferences": 100,
+          "labels": {
+            "empty_ground": 46,
+            "marker_blue": 9,
+            "marker_green": 6,
+            "marker_red": 39
+          },
+          "latency_ms": {
+            "max": 454.8,
+            "p50": 268.4,
+            "p99": 446.7
+          },
+          "replan_triggers": 0,
+          "sent": 31,
+          "truth_agreement": 0.415,
+          "truth_scored": 41
+        },
+        "egress_published": 415,
+        "egress_revocations": 1,
+        "external_activations": 1,
+        "external_counters": {
+          "authorized": 209,
+          "cbf_modified": 110,
+          "cbf_rejected": 0,
+          "hold_authorizations": 4,
+          "revocations": 1,
+          "segments_refused": 0,
+          "segments_used": 205
+        },
+        "intent_latency_p99_ms": 51.177,
+        "measure": {
+          "edge": true,
+          "edge_period_s": 1.0,
+          "isolation": "separate"
+        },
+        "min_clearance_m": {
+          "crate_x": 5.483,
+          "pillar_a": 5.675,
+          "wall_a": 0.933
+        },
+        "px4_external_nav_state_seen": true,
+        "resources": {
+          "_host": {
+            "cpu_some_avg10_max": 53.35,
+            "load1_max": 5.39
+          },
+          "autonomy": {
+            "cpu_max_1s_cores": 0.311,
+            "cpu_mean_cores": 0.27,
+            "memory_max_mib": 151.6,
+            "throttled_fraction": 0.0
+          },
+          "collector": {
+            "cpu_max_1s_cores": 0.095,
+            "cpu_mean_cores": 0.086,
+            "memory_max_mib": 12.3,
+            "throttled_fraction": 0.0
+          },
+          "edge": {
+            "cpu_max_1s_cores": 0.14,
+            "cpu_mean_cores": 0.11,
+            "memory_max_mib": 246.5,
+            "throttled_fraction": 0.145
+          },
+          "egress": {
+            "cpu_max_1s_cores": 0.009,
+            "cpu_mean_cores": 0.004,
+            "memory_max_mib": 12.9,
+            "throttled_fraction": 0.0
+          },
+          "executive": {
+            "cpu_max_1s_cores": 0.398,
+            "cpu_mean_cores": 0.034,
+            "memory_max_mib": 36.4,
+            "throttled_fraction": 0.043
+          },
+          "guardian": {
+            "cpu_max_1s_cores": 0.228,
+            "cpu_mean_cores": 0.088,
+            "memory_max_mib": 53.7,
+            "throttled_fraction": 0.0
+          },
+          "relay": {
+            "cpu_max_1s_cores": 0.087,
+            "cpu_mean_cores": 0.078,
+            "memory_max_mib": 45.1,
+            "throttled_fraction": 0.0
+          },
+          "sitl": {
+            "cpu_max_1s_cores": 1.391,
+            "cpu_mean_cores": 1.271,
+            "memory_max_mib": 644.5,
+            "throttled_fraction": 0.003
+          },
+          "xrce-agent": {
+            "cpu_max_1s_cores": 0.044,
+            "cpu_mean_cores": 0.033,
+            "memory_max_mib": 13.8,
+            "throttled_fraction": 0.0
+          }
+        },
+        "simulator_stalls": {
+          "count": 2,
+          "max_wall_s": 1.231,
+          "stalls": [
+            {
+              "end": 1790321749.722794,
+              "sim_s": 0.008,
+              "start": 1790321749.301151,
+              "wall_s": 0.422
+            },
+            {
+              "end": 1790321750.954174,
+              "sim_s": 0.004,
+              "start": 1790321749.722794,
+              "wall_s": 1.231
+            }
+          ]
+        },
+        "supervision": {
+          "max_s": 0.11104039801284671,
+          "p99_s": 0.1018095132894814,
+          "samples": 941
+        }
+      },
+      "milestone": "M3",
+      "passed": true,
+      "problems": [],
+      "recovery_reasons": [
+        "progress_stalled"
+      ],
+      "registry_hash": "530bdefe8fe9f37337bb47f6553fd7edb440b14e6f362b80a326ebdeaa2ccacd",
+      "requested_speed_factor": 1,
+      "scenario": "cbf_blocks_unsafe_planner",
+      "schema_version": "0.1.0",
+      "seed": 19,
+      "sim_duration_s": 107.996,
+      "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+      "truth_samples": 1875,
+      "validated_edge": null,
+      "void": false,
+      "judge_exit_code": 0,
+      "replay_agrees": true,
+      "shadow_report": {
+        "path": "judge/shadow.json",
+        "exit_code": 0
+      },
+      "measure": {
+        "edge": true,
+        "edge_period_s": 1.0,
+        "isolation": "separate"
+      },
+      "quiet_gate": {
+        "waited_s": 20.0,
+        "load1": 3.39,
+        "cpu_some_avg10": 5.43,
+        "quiet": true
+      },
+      "shader_cache_entries": {
+        "before": 42,
+        "after": 42
+      }
+    },
+    {
+      "artifacts": {
+        "aircraft/adapter-commands.json": "33f441049fe9a5dcbe81d7e999eb309e5051846cbeb341c95085103218463765",
+        "aircraft/belief.json": "911f5b6bf1bbee736618c618b3f4caa5210cc479e9f96241008dbeaaebcaffca",
+        "aircraft/capabilities.json": "9278c746eed212fe29fb45ab5fd7a51603fe736beee864ec587fee4acdbc19cb",
+        "aircraft/executive-identity.json": "114e040512d62dd5d8900d1354af5151f64c19f9cc83702c9d219b7b061b38d3",
+        "aircraft/executive.jsonl": "86cd76184e3b2d49a8f25d4b0c2cb1e12112d29e311bbe47c2ccf1f8b444bfd3",
+        "aircraft/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft/executive.mcap": "8d6718e75b7d9f258716616fa545b1d74d169e3fc9d66096527b709920fb4154",
+        "aircraft/guardian-identity.json": "b584beb1040d2bf9e2a8b8e12b669100aa31a3d39bbcb6e3148eb9fc50ee7bfe",
+        "aircraft/guardian.jsonl": "215d728826e8baecde093ca915f1670c7be030b0b4760a28d468921d1cfa5be6",
+        "aircraft/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft/guardian.mcap": "27b584957fbf315c1be8147c8e01a049d46b999d98a6227f1e5170db9fdd3342",
+        "aircraft/result.json": "5baea8ef2e0ee4518d4adac68bafe6e794f9e9da7c6e94f3a69ccd960171e8ad",
+        "aircraft/status.json": "a7c063db6d9343b74b4b40a82fcef7868bf31bbe18af206f309bf60cc24173e7",
+        "aircraft/supervision.json": "e97b65d90bb4cf7876d70feba0a1f8486fecae96453a12df00c2e5c4d7c281db",
+        "autonomy/local_nav.jsonl": "56d19638220796b4965e0642524c448d851febd208f1657336bae7798900e977",
+        "autonomy/perception.jsonl": "161edcc2879031d1dc345dda87dda961fda9e46013cca4b6aafeebd1e3e86299",
+        "edge/edge_inference.jsonl": "e048ac5e7a0fed23d87b05164417479cfb350ce98f838408c005d5952a0fb6a4",
+        "egress/egress.jsonl": "93f2feeca368dd4308862be307dcf42ff285fc31cee9fbd45d449519626b4b1c",
+        "injection.json": "7c59ef5d27e2066bf869d624e9489b7702b5f17b9f22fdef72af58a71d8f09a7",
+        "input/autonomy.json": "f42c3c82080b5b8c816bef31e39699cfed003e05a2ce67e3c238eab2e8492768",
+        "input/package.json": "bcbf47f980293c289b87180c4e885805d88097d822d119e4eff960ebf9567ef0",
+        "input/scenario.json": "aa003ce5d11d66b1d3f7a21c541ec5fb2af12caec5a810361f62a1efba261b38",
+        "measure.json": "18bc84aab94308be23f4f15992c6996233bce1c3b071df495e83700f9cd9da12",
+        "quiet-gate.json": "d2a0572c2aa8b54c12714e3507f5c48844a60a140aff9526dfbc3872b0e68cae",
+        "resources.jsonl": "00d7f52d1ab02cc463c3bb4733f41c94d11ade61834d37759e9615d99bf103e5",
+        "sensor/latest.json": "d732ae69c4a65f98364587338064b45384bc71bec4ced0757277653800d1fdfd",
+        "truth/truth.jsonl": "6927fe70015657eb03b4d07d983b9ccdc60990216fe065abd15fafa2f3123740",
+        "ulog/2026-09-25/07_38_34.ulg": "7b22914bc6c4653bc8f7d47cca5db63941d40f61e6ed5715b5c62c7446fb49f0"
+      },
+      "class": "mission_stuck",
+      "classification": "safe_abort",
+      "expected": "safe_abort",
+      "false_success_reports": 0,
+      "measured_sim_speed": 0.9631898086711049,
+      "metrics": {
+        "edge_inference": {
+          "dropped_frames": 379,
+          "inference_ms": {
+            "max": 230.6,
+            "p50": 197.4,
+            "p99": 230.6
+          },
+          "inferences": 97,
+          "labels": {
+            "empty_ground": 43,
+            "marker_blue": 11,
+            "marker_green": 4,
+            "marker_red": 38,
+            "person": 1
+          },
+          "latency_ms": {
+            "max": 454.1,
+            "p50": 299.0,
+            "p99": 454.1
+          },
+          "replan_triggers": 1,
+          "sent": 32,
+          "truth_agreement": 0.439,
+          "truth_scored": 41
+        },
+        "egress_published": 434,
+        "egress_revocations": 1,
+        "external_activations": 1,
+        "external_counters": {
+          "authorized": 219,
+          "cbf_modified": 109,
+          "cbf_rejected": 0,
+          "hold_authorizations": 5,
+          "revocations": 1,
+          "segments_refused": 0,
+          "segments_used": 214
+        },
+        "intent_latency_p99_ms": 66.827,
+        "measure": {
+          "edge": true,
+          "edge_period_s": 1.0,
+          "isolation": "separate"
+        },
+        "min_clearance_m": {
+          "crate_x": 5.492,
+          "pillar_a": 5.7,
+          "wall_a": 0.941
+        },
+        "px4_external_nav_state_seen": true,
+        "resources": {
+          "_host": {
+            "cpu_some_avg10_max": 55.87,
+            "load1_max": 5.97
+          },
+          "autonomy": {
+            "cpu_max_1s_cores": 0.32,
+            "cpu_mean_cores": 0.264,
+            "memory_max_mib": 151.8,
+            "throttled_fraction": 0.0
+          },
+          "collector": {
+            "cpu_max_1s_cores": 0.103,
+            "cpu_mean_cores": 0.089,
+            "memory_max_mib": 12.3,
+            "throttled_fraction": 0.0
+          },
+          "edge": {
+            "cpu_max_1s_cores": 0.138,
+            "cpu_mean_cores": 0.112,
+            "memory_max_mib": 240.0,
+            "throttled_fraction": 0.241
+          },
+          "egress": {
+            "cpu_max_1s_cores": 0.009,
+            "cpu_mean_cores": 0.004,
+            "memory_max_mib": 12.8,
+            "throttled_fraction": 0.0
+          },
+          "executive": {
+            "cpu_max_1s_cores": 0.415,
+            "cpu_mean_cores": 0.034,
+            "memory_max_mib": 36.1,
+            "throttled_fraction": 0.039
+          },
+          "guardian": {
+            "cpu_max_1s_cores": 0.197,
+            "cpu_mean_cores": 0.086,
+            "memory_max_mib": 53.7,
+            "throttled_fraction": 0.0
+          },
+          "relay": {
+            "cpu_max_1s_cores": 0.093,
+            "cpu_mean_cores": 0.079,
+            "memory_max_mib": 45.1,
+            "throttled_fraction": 0.0
+          },
+          "sitl": {
+            "cpu_max_1s_cores": 1.463,
+            "cpu_mean_cores": 1.272,
+            "memory_max_mib": 644.7,
+            "throttled_fraction": 0.001
+          },
+          "xrce-agent": {
+            "cpu_max_1s_cores": 0.048,
+            "cpu_mean_cores": 0.033,
+            "memory_max_mib": 13.8,
+            "throttled_fraction": 0.0
+          }
+        },
+        "simulator_stalls": {
+          "count": 2,
+          "max_wall_s": 1.361,
+          "stalls": [
+            {
+              "end": 1790321910.966863,
+              "sim_s": 0.008,
+              "start": 1790321910.483065,
+              "wall_s": 0.484
+            },
+            {
+              "end": 1790321912.328326,
+              "sim_s": 0.004,
+              "start": 1790321910.966863,
+              "wall_s": 1.361
+            }
+          ]
+        },
+        "supervision": {
+          "max_s": 0.11156036891043186,
+          "p99_s": 0.10262150410562754,
+          "samples": 948
+        }
+      },
+      "milestone": "M3",
+      "passed": true,
+      "problems": [],
+      "recovery_reasons": [
+        "progress_stalled"
+      ],
+      "registry_hash": "530bdefe8fe9f37337bb47f6553fd7edb440b14e6f362b80a326ebdeaa2ccacd",
+      "requested_speed_factor": 1,
+      "scenario": "cbf_blocks_unsafe_planner",
+      "schema_version": "0.1.0",
+      "seed": 41,
+      "sim_duration_s": 106.10000000000001,
+      "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+      "truth_samples": 1842,
+      "validated_edge": null,
+      "void": false,
+      "judge_exit_code": 0,
+      "replay_agrees": true,
+      "shadow_report": {
+        "path": "judge/shadow.json",
+        "exit_code": 0
+      },
+      "measure": {
+        "edge": true,
+        "edge_period_s": 1.0,
+        "isolation": "separate"
+      },
+      "quiet_gate": {
+        "waited_s": 25.0,
+        "load1": 3.42,
+        "cpu_some_avg10": 4.44,
+        "quiet": true
+      },
+      "shader_cache_entries": {
+        "before": 42,
+        "after": 42
+      }
+    },
+    {
+      "artifacts": {
+        "aircraft/adapter-commands.json": "8d1d857778f006e13d5be0f4df85f00377f130e03099e302c0743ac8b29a6b44",
+        "aircraft/belief.json": "c6259b26e5589e0326575e2226046aef4f5c04e848d43ab0503903d0bd7e322b",
+        "aircraft/capabilities.json": "28f435142a7d3f8adc3a0bffc7e79af42510f530e083f787134d2e444c0f7598",
+        "aircraft/executive-identity.json": "2e81b5ffc4fdc4933281d611d471425033b6efde1fa830ae63c4e7a864c6542d",
+        "aircraft/executive.jsonl": "469b8125dba706cc3fc5e36e36dd746f37d0c57495f82fa5c6c962b7d571ee70",
+        "aircraft/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft/executive.mcap": "8c0f197532ae8895a45a5008e1c52810e3b6fbecafeb36eb42df208da5e4cde4",
+        "aircraft/guardian-identity.json": "6948196b782ba3042afe27d3fbf6a28aeede4c9b5c8e79ee5323574a76980039",
+        "aircraft/guardian.jsonl": "69b24b6e6d2dc0d036cf8475e07a11a37d2f463880308c3e78b16b54676344a4",
+        "aircraft/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft/guardian.mcap": "977898bc2f4426d20174fb9286ad2831ddd1a3b2e6da8b9ae88baf0be4a0ac1f",
+        "aircraft/result.json": "e6b6083eea98b93ce9bbe84dc8b5447276aa16f1f189a9357168af78afa77da3",
+        "aircraft/status.json": "ae3d13f65a586caa5883f7211d088c267d3198598aa73699f67b72c02dd0e616",
+        "aircraft/supervision.json": "accc1be36bed5585a3c3f89e3197403103e6a52384f94cf622814cf44ac99dcd",
+        "autonomy/local_nav.jsonl": "88ee42994e9cac17227eb7fe38a84de3c312fd9577e8b06f4cf98ef2c27e60f0",
+        "autonomy/perception.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "edge/edge_inference.jsonl": "4878f0481ca64efbbca661bf349aba04be21c7ac9b391ff6fab4449d2d049be6",
+        "egress/egress.jsonl": "2f88e809e72c547c2e93e2b5c90bf2a1bb82f5c9ffa629194898cf336275a0ba",
+        "injection.json": "795fc0026b1af0cbea33dd6d7a5bb1e236fcb992fc9d49cd2c4637d7cbe318f1",
+        "input/package.json": "43c3c75e930b1494aa64a1e9c7958f3fd1cfcaa1aff464555e562947a306b246",
+        "input/scenario.json": "983bdd9970cc56e0016d4f4bba7ef2a5bbcc5d732f1016137198c27e4c4d5d0b",
+        "measure.json": "18bc84aab94308be23f4f15992c6996233bce1c3b071df495e83700f9cd9da12",
+        "quiet-gate.json": "3177eecc34a404dc777381444c6ab10b1739386df7a8029040733782f534a29b",
+        "resources.jsonl": "d8e84c8ebb41af968d959f5b574a1a2a2a0d5f24b33202b5896414f4f9c32a95",
+        "sensor/latest.json": "67582d43278b1fa02feb3fd6e2bdabe1aba4f4726e39f53cd809b4d882a4dd7b",
+        "truth/truth.jsonl": "8f4cdcbfe9d0b95bd981c21274ede98259597df8d2d02f872f3f9763103f84d5",
+        "ulog/2026-09-25/07_41_13.ulg": "10290927c016e70ccccf8a8b0800e9a00de792dd117a80c1eefff3d4a705aec1"
+      },
+      "class": "network_interruption",
+      "classification": "safe_abort",
+      "expected": "safe_abort",
+      "false_success_reports": 0,
+      "measured_sim_speed": 0.941156296455543,
+      "metrics": {
+        "edge_inference": {
+          "dropped_frames": 173,
+          "inference_ms": {
+            "max": 252.9,
+            "p50": 188.0,
+            "p99": 252.9
+          },
+          "inferences": 45,
+          "labels": {
+            "empty_ground": 44,
+            "marker_red": 1
+          },
+          "latency_ms": {
+            "max": 438.9,
+            "p50": 280.2,
+            "p99": 438.9
+          },
+          "replan_triggers": 0,
+          "sent": 13,
+          "truth_agreement": 1.0,
+          "truth_scored": 11
+        },
+        "egress_published": 35,
+        "egress_revocations": 1,
+        "external_activations": 1,
+        "external_counters": {
+          "authorized": 22,
+          "cbf_modified": 0,
+          "cbf_rejected": 0,
+          "hold_authorizations": 4,
+          "revocations": 1,
+          "segments_refused": 0,
+          "segments_used": 18
+        },
+        "intent_latency_p99_ms": 131.145,
+        "measure": {
+          "edge": true,
+          "edge_period_s": 1.0,
+          "isolation": "separate"
+        },
+        "min_clearance_m": {
+          "crate_x": 16.776,
+          "pillar_a": 13.647,
+          "wall_a": 12.465
+        },
+        "px4_external_nav_state_seen": true,
+        "resources": {
+          "_host": {
+            "cpu_some_avg10_max": 52.56,
+            "load1_max": 7.09
+          },
+          "autonomy": {
+            "cpu_max_1s_cores": 0.29,
+            "cpu_mean_cores": 0.113,
+            "memory_max_mib": 151.6,
+            "throttled_fraction": 0.0
+          },
+          "collector": {
+            "cpu_max_1s_cores": 0.098,
+            "cpu_mean_cores": 0.086,
+            "memory_max_mib": 11.9,
+            "throttled_fraction": 0.0
+          },
+          "edge": {
+            "cpu_max_1s_cores": 0.13,
+            "cpu_mean_cores": 0.11,
+            "memory_max_mib": 243.9,
+            "throttled_fraction": 0.238
+          },
+          "egress": {
+            "cpu_max_1s_cores": 0.007,
+            "cpu_mean_cores": 0.003,
+            "memory_max_mib": 12.8,
+            "throttled_fraction": 0.0
+          },
+          "executive": {
+            "cpu_max_1s_cores": 0.402,
+            "cpu_mean_cores": 0.056,
+            "memory_max_mib": 35.8,
+            "throttled_fraction": 0.099
+          },
+          "guardian": {
+            "cpu_max_1s_cores": 0.112,
+            "cpu_mean_cores": 0.092,
+            "memory_max_mib": 50.4,
+            "throttled_fraction": 0.0
+          },
+          "relay": {
+            "cpu_max_1s_cores": 0.085,
+            "cpu_mean_cores": 0.077,
+            "memory_max_mib": 45.2,
+            "throttled_fraction": 0.0
+          },
+          "sitl": {
+            "cpu_max_1s_cores": 1.445,
+            "cpu_mean_cores": 1.259,
+            "memory_max_mib": 625.6,
+            "throttled_fraction": 0.0
+          },
+          "xrce-agent": {
+            "cpu_max_1s_cores": 0.048,
+            "cpu_mean_cores": 0.035,
+            "memory_max_mib": 13.6,
+            "throttled_fraction": 0.0
+          }
+        },
+        "simulator_stalls": {
+          "count": 2,
+          "max_wall_s": 1.308,
+          "stalls": [
+            {
+              "end": 1790322070.692519,
+              "sim_s": 0.008,
+              "start": 1790322070.251394,
+              "wall_s": 0.441
+            },
+            {
+              "end": 1790322072.000311,
+              "sim_s": 0.004,
+              "start": 1790322070.692519,
+              "wall_s": 1.308
+            }
+          ]
+        },
+        "supervision": {
+          "max_s": 0.10231701610609889,
+          "p99_s": 0.101930839009583,
+          "samples": 406
+        }
+      },
+      "milestone": "M3",
+      "passed": true,
+      "problems": [],
+      "recovery_reasons": [
+        "autonomy_unavailable"
+      ],
+      "registry_hash": "530bdefe8fe9f37337bb47f6553fd7edb440b14e6f362b80a326ebdeaa2ccacd",
+      "requested_speed_factor": 1,
+      "scenario": "ext_dds_link_lost",
+      "schema_version": "0.1.0",
+      "seed": 7,
+      "sim_duration_s": 55.016,
+      "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+      "truth_samples": 962,
+      "validated_edge": "fi.m3.autonomy_unavailable",
+      "void": false,
+      "judge_exit_code": 0,
+      "replay_agrees": true,
+      "shadow_report": {
+        "path": "judge/shadow.json",
+        "exit_code": 0
+      },
+      "measure": {
+        "edge": true,
+        "edge_period_s": 1.0,
+        "isolation": "separate"
+      },
+      "quiet_gate": {
+        "waited_s": 25.0,
+        "load1": 3.23,
+        "cpu_some_avg10": 4.55,
+        "quiet": true
+      },
+      "shader_cache_entries": {
+        "before": 42,
+        "after": 42
+      }
+    },
+    {
+      "artifacts": {
+        "aircraft/adapter-commands.json": "98b792a1c7ac4f9ef9e3bf64fe8bf34e5db440d5a1fe485aa7993b4280cd2eb0",
+        "aircraft/belief.json": "b690596f90d77356d78780bae17f32d9990a21a6f56c56fd0db37879b3cbbad0",
+        "aircraft/capabilities.json": "7e0ff1fdeea622b90d8d4907211cc07bb4d167d4e8aef9077a5c8d0d8baa13f8",
+        "aircraft/executive-identity.json": "85128cc8c081ac34b65df6f83af77964b86bfe7fa7b10e4aa1de5c21cd185f20",
+        "aircraft/executive.jsonl": "749e58664090273d646ccd94f8dc4ce6c447359c19f84e0061185af30099b71e",
+        "aircraft/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft/executive.mcap": "db7f141a6ac258dc52a313fea9326db960f502f1bf4c9551f5affa3c6c4a0606",
+        "aircraft/guardian-identity.json": "7f95f9c2c27ac1d598b438a2c2973f9e7a236ffc8a1d6201dfe3fc1f0615905e",
+        "aircraft/guardian.jsonl": "af029774d9e418004deac884542c9fe5fcf6c004e7d09386fc5790d00ec1015f",
+        "aircraft/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft/guardian.mcap": "ac270506abd87029a9f848c4bf56d43dd0e22e5cf34e6ec2f6c8aaf73dd453dd",
+        "aircraft/result.json": "3a2599014d7334e400ca12d3c5f2397142781b806a9d80fb8fea9f5165919694",
+        "aircraft/status.json": "75c9a6262ef89ec9c6bd19ecffefe66ebf990df86ea3b5a548262310f8273a07",
+        "aircraft/supervision.json": "b59629105cc5297eee01a2b20d6fe2ed75787090f8a71c4feff805b3c9683c1b",
+        "autonomy/local_nav.jsonl": "172d5c66ed3e130079ab2fbc70b45cb7b160ca74d88bb91541d906fe7417f4ae",
+        "autonomy/perception.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "edge/edge_inference.jsonl": "5b7ec8b284d8be35a0597358110484fb45ae4935f9b694667a523e12a51c6f9d",
+        "egress/egress.jsonl": "672d04ab6e89803ad11ec797501930d883727e8f768fee0ab13444802ff7b872",
+        "injection.json": "dd8c77e0704148a86f8e484a06387c2f33d206f8217f54303fedffffdb0ed9bc",
+        "input/package.json": "fb48027555e98b79e260ba5cc3069a6dbe0747c24b644b8229282c3382e598de",
+        "input/scenario.json": "05cbfb84b8e23bb15158765449a45eedad432efc70126e3dc347c59273b2216b",
+        "measure.json": "18bc84aab94308be23f4f15992c6996233bce1c3b071df495e83700f9cd9da12",
+        "quiet-gate.json": "909840c0de23e5d1b78424dc4cd494397136bbfdfc900fb30e8cbab9538f6f9e",
+        "resources.jsonl": "746898b7fb3e100c8b4dceee1007fb40d8d0093a695aa968da8f99bea0a8a999",
+        "sensor/latest.json": "5fafdbfafdf8286e86e71eec0485119a7857b36d0a6a0c3c933d7b6d5df112dc",
+        "truth/truth.jsonl": "a3eb16c9d18cb8729aaaac50179e1b8d89d9e85e9ff2fc7e0a39ec2e8f2f88ae",
+        "ulog/2026-09-25/07_43_05.ulg": "159bc534f8df645a170112d801ce765c85a3d4ec938a6f17a1005083542b1855"
+      },
+      "class": "network_interruption",
+      "classification": "safe_abort",
+      "expected": "safe_abort",
+      "false_success_reports": 0,
+      "measured_sim_speed": 0.9395081131939161,
+      "metrics": {
+        "edge_inference": {
+          "dropped_frames": 170,
+          "inference_ms": {
+            "max": 199.7,
+            "p50": 155.2,
+            "p99": 199.7
+          },
+          "inferences": 44,
+          "labels": {
+            "empty_ground": 44
+          },
+          "latency_ms": {
+            "max": 402.2,
+            "p50": 214.3,
+            "p99": 402.2
+          },
+          "replan_triggers": 0,
+          "sent": 14,
+          "truth_agreement": 1.0,
+          "truth_scored": 11
+        },
+        "egress_published": 37,
+        "egress_revocations": 0,
+        "external_activations": 1,
+        "external_counters": {
+          "authorized": 28,
+          "cbf_modified": 0,
+          "cbf_rejected": 0,
+          "hold_authorizations": 4,
+          "revocations": 1,
+          "segments_refused": 0,
+          "segments_used": 24
+        },
+        "intent_latency_p99_ms": 77.232,
+        "measure": {
+          "edge": true,
+          "edge_period_s": 1.0,
+          "isolation": "separate"
+        },
+        "min_clearance_m": {
+          "crate_x": 15.847,
+          "pillar_a": 12.883,
+          "wall_a": 11.545
+        },
+        "px4_external_nav_state_seen": true,
+        "resources": {
+          "_host": {
+            "cpu_some_avg10_max": 56.67,
+            "load1_max": 5.34
+          },
+          "autonomy": {
+            "cpu_max_1s_cores": 0.284,
+            "cpu_mean_cores": 0.11,
+            "memory_max_mib": 152.5,
+            "throttled_fraction": 0.0
+          },
+          "collector": {
+            "cpu_max_1s_cores": 0.093,
+            "cpu_mean_cores": 0.087,
+            "memory_max_mib": 12.0,
+            "throttled_fraction": 0.0
+          },
+          "edge": {
+            "cpu_max_1s_cores": 0.137,
+            "cpu_mean_cores": 0.107,
+            "memory_max_mib": 241.0,
+            "throttled_fraction": 0.11
+          },
+          "egress": {
+            "cpu_max_1s_cores": 0.007,
+            "cpu_mean_cores": 0.003,
+            "memory_max_mib": 12.5,
+            "throttled_fraction": 0.0
+          },
+          "executive": {
+            "cpu_max_1s_cores": 0.413,
+            "cpu_mean_cores": 0.054,
+            "memory_max_mib": 36.1,
+            "throttled_fraction": 0.099
+          },
+          "guardian": {
+            "cpu_max_1s_cores": 0.099,
+            "cpu_mean_cores": 0.077,
+            "memory_max_mib": 50.4,
+            "throttled_fraction": 0.0
+          },
+          "relay": {
+            "cpu_max_1s_cores": 0.084,
+            "cpu_mean_cores": 0.077,
+            "memory_max_mib": 45.4,
+            "throttled_fraction": 0.0
+          },
+          "sitl": {
+            "cpu_max_1s_cores": 1.333,
+            "cpu_mean_cores": 1.239,
+            "memory_max_mib": 627.4,
+            "throttled_fraction": 0.0
+          },
+          "xrce-agent": {
+            "cpu_max_1s_cores": 0.042,
+            "cpu_mean_cores": 0.032,
+            "memory_max_mib": 13.6,
+            "throttled_fraction": 0.0
+          }
+        },
+        "simulator_stalls": {
+          "count": 2,
+          "max_wall_s": 1.467,
+          "stalls": [
+            {
+              "end": 1790322181.765888,
+              "sim_s": 0.008,
+              "start": 1790322181.290693,
+              "wall_s": 0.475
+            },
+            {
+              "end": 1790322183.232837,
+              "sim_s": 0.004,
+              "start": 1790322181.765888,
+              "wall_s": 1.467
+            }
+          ]
+        },
+        "supervision": {
+          "max_s": 0.10205654194578528,
+          "p99_s": 0.10174266202375293,
+          "samples": 416
+        }
+      },
+      "milestone": "M3",
+      "passed": true,
+      "problems": [],
+      "recovery_reasons": [
+        "autonomy_unavailable"
+      ],
+      "registry_hash": "530bdefe8fe9f37337bb47f6553fd7edb440b14e6f362b80a326ebdeaa2ccacd",
+      "requested_speed_factor": 1,
+      "scenario": "ext_dds_link_lost",
+      "schema_version": "0.1.0",
+      "seed": 19,
+      "sim_duration_s": 54.32,
+      "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+      "truth_samples": 950,
+      "validated_edge": "fi.m3.autonomy_unavailable",
+      "void": false,
+      "judge_exit_code": 0,
+      "replay_agrees": true,
+      "shadow_report": {
+        "path": "judge/shadow.json",
+        "exit_code": 0
+      },
+      "measure": {
+        "edge": true,
+        "edge_period_s": 1.0,
+        "isolation": "separate"
+      },
+      "quiet_gate": {
+        "waited_s": 30.0,
+        "load1": 3.35,
+        "cpu_some_avg10": 3.78,
+        "quiet": true
+      },
+      "shader_cache_entries": {
+        "before": 42,
+        "after": 42
+      }
+    },
+    {
+      "artifacts": {
+        "aircraft/adapter-commands.json": "a4cd40d7c631ae4ad0a7c7a29f1ca4f72cdd2563b45dfdbe4e7ad83e3b939fc8",
+        "aircraft/belief.json": "59ee327f8b655e124aca5b0178499021e143f5db45656d14249157a15e0072ad",
+        "aircraft/capabilities.json": "5b5aba3b996d200b393f45093644ffb75265cc16e3161c631f3fe9739e0a15f8",
+        "aircraft/executive-identity.json": "e221f8aaca33ae380235993b17bfde5a8fc2508de90d8e5b35f7bd54abdffefa",
+        "aircraft/executive.jsonl": "f02ea16bcae2590cdac12b37ac760bb531ff44b4867d98b7f5cb5f09b947d943",
+        "aircraft/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft/executive.mcap": "16cfaad6c138eeb04298a62a9f6b91a0bd37fb6f9ab2d5f735842408f145d396",
+        "aircraft/guardian-identity.json": "681209b48fef3f0c9934f45c15733df68acfe0a188be42a665303ff9302f8d6f",
+        "aircraft/guardian.jsonl": "37bf025997a738a692d7a4b622014c4c89750c4e8fcb61573c557198d162da00",
+        "aircraft/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft/guardian.mcap": "2c6429a14cf795ee58429015896e2ae733ef3f35a94be81f41ba07696e03bd9a",
+        "aircraft/result.json": "309c19c64a5d469d42af7ce8fcc23dc46cd831d8332ce90fa665e7192d8b2341",
+        "aircraft/status.json": "f4dbfdd7f60299059c457f4d464dbabbf28efc0c63e7e1e5dcdc03aacb6964f1",
+        "aircraft/supervision.json": "d4784c022b773b903c45d9a15f2432c594eabf9f1eeee4d75ef4520a15861964",
+        "autonomy/local_nav.jsonl": "d45331ec18c215d7bc03535c5023bdc918199dbf36105a6ded6bdc6ecec8e48f",
+        "autonomy/perception.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "edge/edge_inference.jsonl": "a30f766a7d77713bed0aed1f5b1d23f49566f6415ba400faf8d56b4f16f7153c",
+        "egress/egress.jsonl": "b2b4ba6903928630358a5a205ca4e07ddff6a8d624dc8decd7e0cb14e12e401b",
+        "injection.json": "38afc715a9c135c704a9dc0c44c5f8ff03dab314443208fbb66bd1f2999fca54",
+        "input/package.json": "7a2982b959d0efdab2978dbc56af4bd59e2a1c04268c2818103c744319a360b2",
+        "input/scenario.json": "551a339d19280bcc69f4704b6f3aac7cfe255d4189d65bd4e7214d2251bc70ff",
+        "measure.json": "18bc84aab94308be23f4f15992c6996233bce1c3b071df495e83700f9cd9da12",
+        "quiet-gate.json": "d6c0499e76406d78b5de92e223772fe947b62bc493819098ed5ec9bfb621a716",
+        "resources.jsonl": "3480fabff927dd7af45daff7d9564cc72c547cad1929a3c469e17c8e38ba4c3b",
+        "sensor/latest.json": "3a3fe99c933614ea94e0a0792c0948e036082674fc3cbcbd45fa030a66978f80",
+        "truth/truth.jsonl": "0758a0cf568c47166965a87a035f1df5ab485a1bf92ed03e6868e509fc2a9abf",
+        "ulog/2026-09-25/07_44_51.ulg": "6fcb7094379b44ba9f436b7399780dffc504f815b0ae17e5aeb3ebecd1e1ed34"
+      },
+      "class": "network_interruption",
+      "classification": "safe_abort",
+      "expected": "safe_abort",
+      "false_success_reports": 0,
+      "measured_sim_speed": 0.9316579010402589,
+      "metrics": {
+        "edge_inference": {
+          "dropped_frames": 169,
+          "inference_ms": {
+            "max": 207.9,
+            "p50": 174.9,
+            "p99": 207.9
+          },
+          "inferences": 44,
+          "labels": {
+            "empty_ground": 43,
+            "marker_red": 1
+          },
+          "latency_ms": {
+            "max": 476.8,
+            "p50": 255.3,
+            "p99": 476.8
+          },
+          "replan_triggers": 0,
+          "sent": 12,
+          "truth_agreement": 1.0,
+          "truth_scored": 10
+        },
+        "egress_published": 37,
+        "egress_revocations": 0,
+        "external_activations": 1,
+        "external_counters": {
+          "authorized": 22,
+          "cbf_modified": 0,
+          "cbf_rejected": 0,
+          "hold_authorizations": 4,
+          "revocations": 1,
+          "segments_refused": 0,
+          "segments_used": 18
+        },
+        "intent_latency_p99_ms": 90.424,
+        "measure": {
+          "edge": true,
+          "edge_period_s": 1.0,
+          "isolation": "separate"
+        },
+        "min_clearance_m": {
+          "crate_x": 16.716,
+          "pillar_a": 13.593,
+          "wall_a": 12.405
+        },
+        "px4_external_nav_state_seen": true,
+        "resources": {
+          "_host": {
+            "cpu_some_avg10_max": 58.46,
+            "load1_max": 8.77
+          },
+          "autonomy": {
+            "cpu_max_1s_cores": 0.312,
+            "cpu_mean_cores": 0.117,
+            "memory_max_mib": 151.6,
+            "throttled_fraction": 0.0
+          },
+          "collector": {
+            "cpu_max_1s_cores": 0.094,
+            "cpu_mean_cores": 0.087,
+            "memory_max_mib": 12.2,
+            "throttled_fraction": 0.0
+          },
+          "edge": {
+            "cpu_max_1s_cores": 0.126,
+            "cpu_mean_cores": 0.11,
+            "memory_max_mib": 232.8,
+            "throttled_fraction": 0.247
+          },
+          "egress": {
+            "cpu_max_1s_cores": 0.008,
+            "cpu_mean_cores": 0.003,
+            "memory_max_mib": 12.8,
+            "throttled_fraction": 0.0
+          },
+          "executive": {
+            "cpu_max_1s_cores": 0.401,
+            "cpu_mean_cores": 0.058,
+            "memory_max_mib": 35.8,
+            "throttled_fraction": 0.099
+          },
+          "guardian": {
+            "cpu_max_1s_cores": 0.096,
+            "cpu_mean_cores": 0.073,
+            "memory_max_mib": 50.1,
+            "throttled_fraction": 0.0
+          },
+          "relay": {
+            "cpu_max_1s_cores": 0.084,
+            "cpu_mean_cores": 0.078,
+            "memory_max_mib": 45.1,
+            "throttled_fraction": 0.0
+          },
+          "sitl": {
+            "cpu_max_1s_cores": 1.341,
+            "cpu_mean_cores": 1.241,
+            "memory_max_mib": 620.8,
+            "throttled_fraction": 0.003
+          },
+          "xrce-agent": {
+            "cpu_max_1s_cores": 0.034,
+            "cpu_mean_cores": 0.031,
+            "memory_max_mib": 13.6,
+            "throttled_fraction": 0.0
+          }
+        },
+        "simulator_stalls": {
+          "count": 2,
+          "max_wall_s": 1.37,
+          "stalls": [
+            {
+              "end": 1790322287.443815,
+              "sim_s": 0.008,
+              "start": 1790322287.002476,
+              "wall_s": 0.441
+            },
+            {
+              "end": 1790322288.814083,
+              "sim_s": 0.004,
+              "start": 1790322287.443815,
+              "wall_s": 1.37
+            }
+          ]
+        },
+        "supervision": {
+          "max_s": 0.10236193286255002,
+          "p99_s": 0.10195955773815513,
+          "samples": 399
+        }
+      },
+      "milestone": "M3",
+      "passed": true,
+      "problems": [],
+      "recovery_reasons": [
+        "autonomy_unavailable"
+      ],
+      "registry_hash": "530bdefe8fe9f37337bb47f6553fd7edb440b14e6f362b80a326ebdeaa2ccacd",
+      "requested_speed_factor": 1,
+      "scenario": "ext_dds_link_lost",
+      "schema_version": "0.1.0",
+      "seed": 41,
+      "sim_duration_s": 52.108000000000004,
+      "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+      "truth_samples": 913,
+      "validated_edge": "fi.m3.autonomy_unavailable",
+      "void": false,
+      "judge_exit_code": 0,
+      "replay_agrees": true,
+      "shadow_report": {
+        "path": "judge/shadow.json",
+        "exit_code": 0
+      },
+      "measure": {
+        "edge": true,
+        "edge_period_s": 1.0,
+        "isolation": "separate"
+      },
+      "quiet_gate": {
+        "waited_s": 25.0,
+        "load1": 3.3,
+        "cpu_some_avg10": 3.8,
+        "quiet": true
+      },
+      "shader_cache_entries": {
+        "before": 42,
+        "after": 42
+      }
+    }
+  ],
+  "other_containers_before": {
+    "count": 30,
+    "sha256": "1b43d21c74d0f7d11df57bae33d983d324c06f11391b33bba76755942ba6e57c"
+  },
+  "other_containers_after": {
+    "count": 30,
+    "sha256": "1b43d21c74d0f7d11df57bae33d983d324c06f11391b33bba76755942ba6e57c"
+  },
+  "images": {
+    "ground": "sha256:6d2565b7cf4f674f3465cb987ee89b24af79738557c3bbbd4e665d8ccd086a2d",
+    "sim2": "sha256:bbb3f26884fb3e0ba0250cbc2c3d23f192fdee219e0a86887943a8eaf747a113",
+    "aircraft3": "sha256:7e44c4feb15128db8bd1418bc402bfd3f81a25d7d67de82f375c67d0e5a1f92f",
+    "sim3": "sha256:77f2c512033370b6f363eafcb5e20e2337bffc89c717c426b29dd23a5b492c5b"
+  }
+}

@@ -1,0 +1,19 @@
+=== 14:40:31 m3 <receipts>/m3-suite ext_inspect,route_fallback ext_goto,ext_compute_overload ext_observation_stale,ext_trajectory_stale egress_watchdog,ext_progress_stalled cbf_blocks_unsafe_planner,ext_dds_link_lost ext_egress_lost,edge_killed gnss_lost_visual_ok,energy_rtl energy_land_at,energy_land_here
+14:40:38 run m3 ext_inspect,route_fallback seeds 7,19,41 (attempt 1)
+14:56:49 status=passed isolation=True [('ext_inspect', 7, True, False, 'completed', None), ('ext_inspect', 19, True, False, 'completed', None), ('ext_inspect', 41, True, False, 'completed', None), ('route_fallback', 7, True, False, 'completed', None), ('route_fallback', 19, True, False, 'completed', None), ('route_fallback', 41, True, False, 'completed', None)]
+14:56:54 run m3 ext_goto,ext_compute_overload seeds 7,19,41 (attempt 1)
+15:09:10 status=passed isolation=True [('ext_goto', 7, True, False, 'completed', None), ('ext_goto', 19, True, False, 'completed', None), ('ext_goto', 41, True, False, 'completed', None), ('ext_compute_overload', 7, True, False, 'safe_abort', None), ('ext_compute_overload', 19, True, False, 'safe_abort', None), ('ext_compute_overload', 41, True, False, 'safe_abort', None)]
+15:09:17 run m3 ext_observation_stale,ext_trajectory_stale seeds 7,19,41 (attempt 1)
+15:22:31 status=failed isolation=False [('ext_observation_stale', 7, True, False, 'safe_abort', None), ('ext_observation_stale', 19, True, False, 'safe_abort', None), ('ext_observation_stale', 41, True, False, 'safe_abort', None), ('ext_trajectory_stale', 7, True, False, 'safe_abort', None), ('ext_trajectory_stale', 19, True, False, 'safe_abort', None), ('ext_trajectory_stale', 41, True, False, 'safe_abort', None)]
+15:22:31 isolation criterion broken by another tenant; rerunning the batch
+15:22:38 car-agent released 193 s ago; waiting
+15:23:46 car-agent released 261 s ago; waiting
+15:24:53 car-agent released 329 s ago; waiting
+15:26:02 run m3 ext_observation_stale,ext_trajectory_stale seeds 7,19,41 (attempt 2)
+15:35:46 status=passed isolation=True [('ext_observation_stale', 7, True, False, 'safe_abort', None), ('ext_observation_stale', 19, True, False, 'safe_abort', None), ('ext_observation_stale', 41, True, False, 'safe_abort', None), ('ext_trajectory_stale', 7, True, False, 'safe_abort', None), ('ext_trajectory_stale', 19, True, False, 'safe_abort', None), ('ext_trajectory_stale', 41, True, False, 'safe_abort', None)]
+15:35:53 run m3 egress_watchdog,ext_progress_stalled seeds 7,19,41 (attempt 1)
+15:48:57 status=passed isolation=True [('egress_watchdog', 7, True, False, 'safe_abort', None), ('egress_watchdog', 19, True, False, 'safe_abort', None), ('egress_watchdog', 41, True, False, 'safe_abort', None), ('ext_progress_stalled', 7, True, False, 'safe_abort', None), ('ext_progress_stalled', 19, True, False, 'safe_abort', None), ('ext_progress_stalled', 41, True, False, 'safe_abort', None)]
+15:49:04 run m3 cbf_blocks_unsafe_planner,ext_dds_link_lost seeds 7,19,41 (attempt 1)
+16:02:25 status=failed isolation=False [('cbf_blocks_unsafe_planner', 7, True, False, 'safe_abort', None), ('cbf_blocks_unsafe_planner', 19, True, False, 'safe_abort', None), ('cbf_blocks_unsafe_planner', 41, True, False, 'safe_abort', None), ('ext_dds_link_lost', 7, False, False, 'unsafe_or_incorrect', ['external_mode_never_active', 'expected_recovery_edge_not_observed', 'expected_follow_up_not_observed', 'fault_not_injected']), ('ext_dds_link_lost', 19, True, False, 'safe_abort', None), ('ext_dds_link_lost', 41, True, False, 'safe_abort', None)]
+16:02:25 isolation criterion broken by another tenant; rerunning the batch
+16:02:33 run m3 cbf_blocks_unsafe_planner,ext_dds_link_lost seeds 7,19,41 (attempt 2)

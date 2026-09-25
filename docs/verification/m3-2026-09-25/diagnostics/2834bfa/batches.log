@@ -1,0 +1,15 @@
+=== 13:49:14 m3 <receipts>/m3-suite ext_goto,ext_observation_stale ext_trajectory_stale,egress_watchdog ext_progress_stalled,cbf_blocks_unsafe_planner ext_dds_link_lost,ext_egress_lost edge_killed,gnss_lost_visual_ok energy_rtl,energy_land_at energy_land_here
+13:49:48 run m3 ext_goto,ext_observation_stale seeds 7,19,41 (attempt 1)
+14:05:46 status=failed isolation=True [('ext_goto', 7, False, False, 'unsafe_or_incorrect', ['unexpected_egress_hold_command']), ('ext_goto', 19, True, False, 'completed', None), ('ext_goto', 41, True, False, 'completed', None), ('ext_observation_stale', 7, True, False, 'safe_abort', None), ('ext_observation_stale', 19, True, False, 'safe_abort', None), ('ext_observation_stale', 41, True, False, 'safe_abort', None)]
+14:05:46 non-void failure; stopping for a fix
+=== exit 1 14:05:47
+=== 14:05:47 m3 <receipts>/m3-measure ext_inspect --extra --edge off
+14:06:23 run m3 ext_inspect seeds 7,19,41 (attempt 1)
+14:24:33 status=failed isolation=False [('ext_inspect', 7, True, False, 'completed', None), ('ext_inspect', 19, True, False, 'completed', None), ('ext_inspect', 41, True, False, 'completed', None)]
+14:24:33 isolation criterion broken by another tenant; rerunning the batch
+14:24:39 car-agent released 209 s ago; waiting
+14:25:45 car-agent released 275 s ago; waiting
+14:26:52 car-agent released 342 s ago; waiting
+14:27:58 run m3 ext_inspect seeds 7,19,41 (attempt 2)
+14:35:17 status=passed isolation=True [('ext_inspect', 7, True, False, 'completed', None), ('ext_inspect', 19, True, False, 'completed', None), ('ext_inspect', 41, True, False, 'completed', None)]
+14:35:17 all batches done

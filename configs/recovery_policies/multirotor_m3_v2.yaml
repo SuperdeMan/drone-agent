@@ -18,107 +18,128 @@ edges:
     guard: {flight_phase: takeoff}
     target: land_here
     fault_injection_scenario: fi.heartbeat.takeoff
+    validation: {"edge_hash": "6d07edfc1b68b59c212bd7dcf13259c108daecfa1411bc1a01589f3397990615", "evidence_ref": "m1_regression:m1-heartbeat_takeoff+heartbeat_cruise-try1.json#seeds=7,19,41", "scenario_id": "fi.heartbeat.takeoff", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: executive_heartbeat_lost
     guard: {localization_healthy: true}
     target: hold
     then: rtl
     after_s: 10
     fault_injection_scenario: fi.heartbeat.cruise
+    validation: {"edge_hash": "30c9c43099a141c3212f1fa34638be5b8b67711c4e21faa60b6cb5b78c12dad0", "evidence_ref": "m1_regression:m1-heartbeat_takeoff+heartbeat_cruise-try1.json#seeds=7,19,41", "scenario_id": "fi.heartbeat.cruise", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: observation_stale
     guard: {control_mode: external_mode}
     target: hold
     then: rtl
     after_s: 10
     fault_injection_scenario: fi.m3.observation_stale.external
+    validation: {"edge_hash": "13ec78124ab4fb0775dead1bdf13c587dad0eef2e5066308a546d668b85b88c1", "evidence_ref": "m3_suite:m3-ext_observation_stale+ext_trajectory_stale-try1.json#seeds=7,19,41", "scenario_id": "fi.m3.observation_stale.external", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: observation_stale
     guard: {}
     target: hold
     then: rtl
     after_s: 10
     fault_injection_scenario: fi.observation.stale
+    validation: {"edge_hash": "50fa99b356b73e3656e1fa5e1c003fa878b8a34eb51ec14ec716395c716c211c", "evidence_ref": "m1_regression:m1-observation_stale+lease_expired-try1.json#seeds=7,19,41", "scenario_id": "fi.observation.stale", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: trajectory_stale
     guard: {control_mode: external_mode}
     target: hold
     then: rtl
     after_s: 10
     fault_injection_scenario: fi.m3.trajectory_stale.external
+    validation: {"edge_hash": "35cf7daaf79bd9203e6a51ff902e9b9480b5afde594158452b2f07763d112fc4", "evidence_ref": "m3_suite:m3-ext_observation_stale+ext_trajectory_stale-try1.json#seeds=7,19,41", "scenario_id": "fi.m3.trajectory_stale.external", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: progress_stalled
     guard: {}
     target: hold
     then: rtl
     after_s: 10
     fault_injection_scenario: fi.m3.progress_stalled
+    validation: {"edge_hash": "5a3dcdbd4e4256911b5866a981a506d653db85090f222a5b3732d16bfe03ed2d", "evidence_ref": "m3_suite:m3-egress_watchdog+ext_progress_stalled-try1.json#seeds=7,19,41", "scenario_id": "fi.m3.progress_stalled", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: compute_overloaded
     guard: {}
     target: hold
     then: rtl
     after_s: 10
     fault_injection_scenario: fi.m3.compute_overloaded
+    validation: {"edge_hash": "c23f767790fc29250db81a74f3f1ccc6dca66d9f566da59d637aa31d39f05d92", "evidence_ref": "m3_suite:m3-ext_goto+ext_compute_overload-try2.json#seeds=7,19,41", "scenario_id": "fi.m3.compute_overloaded", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: autonomy_unavailable
     guard: {}
     target: hold
     then: rtl
     after_s: 10
     fault_injection_scenario: fi.m3.autonomy_unavailable
+    validation: {"edge_hash": "ccfed704e4ff3285760d608738dc5baa88a77e69a90f728735f72e712b025106", "evidence_ref": "m3_suite:m3-ext_egress_lost+edge_killed-try2.json#seeds=7,19,41", "scenario_id": "fi.m3.autonomy_unavailable", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: lease_expired
     guard: {}
     target: hold
     then: rtl
     after_s: 30
     fault_injection_scenario: fi.lease.expired
+    validation: {"edge_hash": "de16f5cc1befef5922572f36fc070222951f994a3d4b05c97634f9570de23f56", "evidence_ref": "m1_regression:m1-observation_stale+lease_expired-try1.json#seeds=7,19,41", "scenario_id": "fi.lease.expired", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: energy_low
     guard: {rtl_reachable: true}
     target: rtl
     fault_injection_scenario: fi.m3.energy.rtl_reachable
+    validation: {"edge_hash": "9cc6df6ae3779e6c9ed94247001068b4c56b73521a6df2167497631af39129bb", "evidence_ref": "m3_suite:m3-gnss_lost_visual_ok+energy_rtl-try1.json#seeds=7,19,41", "scenario_id": "fi.m3.energy.rtl_reachable", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: energy_low
     guard: {rtl_reachable: false, nearest_site_reachable: true}
     target: land_at
     fault_injection_scenario: fi.m3.energy.land_at
+    validation: {"edge_hash": "65d00dec26d18c80e5e19e5fcd3eacea2a76070f10596b731dbce2ca36ebbdb2", "evidence_ref": "m3_suite:m3-energy_land_at+energy_land_here-try1.json#seeds=7,19,41", "scenario_id": "fi.m3.energy.land_at", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: energy_low
     guard: {rtl_reachable: false}
     target: land_here
     fault_injection_scenario: fi.m3.energy.land_here
+    validation: {"edge_hash": "8ffa97c7bbdf2e90425304296e6b0843f5d82565b04fd7122ccdd5a4fe702f11", "evidence_ref": "m3_suite:m3-energy_land_at+energy_land_here-try1.json#seeds=7,19,41", "scenario_id": "fi.m3.energy.land_here", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: geofence_predicted_breach
     guard: {}
     target: hold
     then: rtl
     after_s: 10
     fault_injection_scenario: fi.geofence.approach
+    validation: {"edge_hash": "a5b5083ceef01d4103f73cf0deace32074b4555613619b2a391b3ec691244b4d", "evidence_ref": "m1_regression:m1-geofence+cancel_takeoff-try1.json#seeds=7,19,41", "scenario_id": "fi.geofence.approach", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: localization_degraded
     guard: {visual_localization_ok: true}
     target: hold
     then: land_here
     after_s: 10
     fault_injection_scenario: fi.m3.localization.gnss_lost_visual_ok
+    validation: {"edge_hash": "823fb9e3917093d38a9d7784ff2f551b72b5317d7b4ee9f73776c4a0990d4d27", "evidence_ref": "m3_suite:m3-gnss_lost_visual_ok+energy_rtl-try1.json#seeds=7,19,41", "scenario_id": "fi.m3.localization.gnss_lost_visual_ok", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: localization_degraded
     guard: {}
     target: handover_to_fc_failsafe
     fault_injection_scenario: fi.localization.lost
+    validation: {"edge_hash": "269e73891c08f9fdf61915e5703f55f31480ab99c61ee22aaa8f596e685736d9", "evidence_ref": "m1_regression:m1-fc_failsafe+localization_lost-try1.json#seeds=7,19,41", "scenario_id": "fi.localization.lost", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: uplink_lost
     guard: {authorized_to_continue: false}
     target: hold
     then: rtl
     after_s: 15
     fault_injection_scenario: fi.uplink.lost
+    validation: {"edge_hash": "684d79e954352dd4575ca7a0464ae8af99b056541a783e15e683267e162203ea", "evidence_ref": "m1_regression:m1-uplink_lost+mode_takeover-try1.json#seeds=7,19,41", "scenario_id": "fi.uplink.lost", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: fc_failsafe_active
     guard: {}
     target: handover_to_fc_failsafe
     fault_injection_scenario: fi.fc.failsafe
+    validation: {"edge_hash": "7b76b02a51e7bf10da6d4ee8a39c1b71a19237c37b61b21229b1d4fef5e73b26", "evidence_ref": "m1_regression:m1-fc_failsafe+localization_lost-try1.json#seeds=7,19,41", "scenario_id": "fi.fc.failsafe", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: user_pause
     guard: {flight_phase: [cruise, hover, inspect]}
     target: hold
     then: rtl
     after_s: 120
     fault_injection_scenario: fi.pause.timeout
+    validation: {"edge_hash": "1b0a28776e6d652047aeb38990aad0be92a62ff85cc83f83fb3418cf3d96b4fe", "evidence_ref": "m1_regression:m1-pause_resume+pause_timeout-try1.json#seeds=7,19,41", "scenario_id": "fi.pause.timeout", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: user_cancel
     guard: {flight_phase: takeoff}
     target: land_here
     fault_injection_scenario: fi.cancel.takeoff
+    validation: {"edge_hash": "e1a940a4a32201773739cd6a658dd5daba9b35c39ee4b07048593ff743d2d452", "evidence_ref": "m1_regression:m1-geofence+cancel_takeoff-try1.json#seeds=7,19,41", "scenario_id": "fi.cancel.takeoff", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: user_cancel
     guard: {flight_phase: landing}
     target: land_here
     fault_injection_scenario: fi.cancel.landing
+    validation: {"edge_hash": "621826aae5c0262bc296d4a477c0538a9d39168c29e900e5b19273b8166ad067", "evidence_ref": "m1_regression:m1-cancel_cruise+cancel_landing-try1.json#seeds=7,19,41", "scenario_id": "fi.cancel.landing", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}
   - trigger: user_cancel
     guard: {}
     target: rtl
     fault_injection_scenario: fi.cancel.cruise
+    validation: {"edge_hash": "5b70fdf9a78d6acb4933cc28ec9dfbe3dcc6c341ec8ced1894eb31ac8b328979", "evidence_ref": "m1_regression:m1-cancel_cruise+cancel_landing-try1.json#seeds=7,19,41", "scenario_id": "fi.cancel.cruise", "software_revision": "75382dca07509726f4274078ce11e7e8cee064e6", "tested_at": "2026-09-24T16:41:04+00:00"}

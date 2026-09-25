@@ -118,3 +118,39 @@
 - MiniMax-M3 实调：红 / 蓝请求均单版本完成、重规划 0、裁判 / 回放通过；取消已接受后仅保留 v1、重规划 0、结果保持未知且安全收尾；隐私请求拒答、不飞。4 份 recorded 交互，输入 7,484 / 输出 823 token，费用 unpriced。
 - 新裁判复判旧取消后重飞任务，明确以 `v1:flight_after_operator_cancel` 拒收；原始旧裁判结果保留。最终未解锁冒烟通过，M1 / M2 同版本 ready，监管者 idle、队列空。
 - 总索引 `docs/verification/flight-desk-2026-09-24-summary.json`，详细范围见 `docs/m2-review-2026-09-24.md`。浏览器控制连接失败，未计入截图 / 点击级视觉验收。
+
+## 2026-09-24 · M3-SITL 首轮实飞与修正（负结果）
+
+每一轮都是云端真实飞行中暴露的问题，按根因修正，没有放宽 guardian 的安全阈值；完整产物保留于云端 `~/drone-agent/artifacts/<deployment_id>/<run_id>/`，决策见 D045–D048，逐轮说明见 [M3 验收记录](../docs/m3-readiness.md)。
+
+| 软件 SHA | 云端运行 ID | 结果与定位 |
+|---|---|---|
+| `c6513de84cb529f35c6d6dfd8a103700a9f154de` | `m3-20260924T084056Z-a8016c0d` | aircraft3 镜像构建失败：`No module named 'catkin_pkg'`。根因：venv 的 python3 先于系统 python3 进入 PATH，ament 的 CMake 用错解释器。修正：`022f0fe`：ROS 构建先于 venv 进入 PATH |
+| `03bf1058e2016d24280a18edc6cc8ef2934c5c1f` | `m3-20260924T091050Z-b0e74182` | 起飞瞬间 `localization_degraded` 交还飞控；裁判以 `inf` 序列化崩溃。根因：定位节点按 0.5 s 判估计器标志新鲜，而 EKF2 在无变化时 1 Hz 重发，一半时间被读成「未融合」；真值采集器按 M1 实体名 `x500_0` 过滤，M3 是 `x500_vision_0`，真值为空。修正：`8b97f74`：标志 1.5 s 新鲜；guardian 只采信 PX4 输入新鲜的报告。`f68d671`：采集实体名可配置，缺真值不给间距值 |
+| `f68d67102e99245fb79a571c9204524a976ade73` | `m3-20260924T092819Z-dab04075` | 外部模式接近中 `autonomy_unavailable`（`egress_unavailable`）。根因：出口节点按 500 ms 判 PX4 链路，而 `vehicle_status` 无变化时每 500 ms 发布，抖动即误判。修正：`4ca1923`：连续 1 s 收不到才算丢失 |
+| `430b1b706ab1f42d45fef1c632afa46ab9ede95c` | `m3-20260924T093853Z-79b637eb` | 飞到资产上方后拍摄被拒：`unsupported skill`；`ext_goto`、`route_fallback` 通过。根因：适配器的执行分派只认 M1 的巡检技能。修正：`2e995db`：本地巡检的拍摄相位走同一拍摄路径，接近相位仍只由 guardian 飞 |
+| `2e995dba4a10ab8ca389c71b81320569e66ea48d` | `m3-20260924T095109Z-1418f1e8` | `ext_inspect` 返航途中 `observation_stale`；`ext_trajectory_stale` 意图延迟超标；`egress_watchdog` 监督周期最大值超标；`cbf_blocks_unsafe_planner` 以 `trajectory_stale` 收尾。根因：仿真冻结 0.55 s；有效期内复用旧片段被计入意图延迟；注入的 3 s 冻结本身计入最大周期；CBF 把收敛到边界的 0.2 mm 越界当作「已在不安全集合内」。修正：`ab552bd`：意图延迟只计首次授权、冻结注入只查 p99、CBF 0.25 m 边界容差（向外推回）、仿真停顿作废规则与资源采样、SITL 上限 2.0 CPU |
+| `ab552bd753f847ea693a8ae0d1308d9ebc141958` | `m3-20260924T101938Z-5b199b76` | aircraft3 构建失败：Dockerfile 解析错误。根因：经 Bash heredoc 生成的续行与 `\n` 被吃掉。修正：`23f4cc8`：恢复续行 |
+| `23f4cc8ca34b0f3dea7829448449e82acbf447c2` | `m3-20260924T102424Z-f493d717` | 三项口径修正全部生效（轨迹过期、出口看门狗、CBF 均通过）；`ext_inspect` 与 `edge_killed` 返航时停顿但未被判作废。根因：作废规则只看停顿结束后的窗口，而 guardian 在冻结期间就已判定过期；注入之后的恢复一律不作废，挡住了本不期望任何恢复的杀进程场景。修正：`40640a2`：窗口覆盖停顿期间；只保护注入之后以场景期望原因出现的恢复 |
+| `bc98b1ac5ad35fba81f6d2749c04584edd352c55` | `m3-20260924T105649Z-cf65881c` | `ext_dds_link_lost` 以 `localization_degraded` 交还飞控；`ext_compute_overload` 以心跳丢失收尾；`gnss_lost_visual_ok` 注入命令失败；三个能源场景未注入；`energy_land_here` 事件检测延迟 1001 ms。根因：GPS 过 1 s 先判过期而 2 Hz 的状态仍「新鲜」，断链被读成 GNSS 失效；CPU 竞争进程与三个节点平分配额，无法只让规划越限；PX4 v1.17 的 gz 桥不处理 `failure gps`；拍摄相位短于注入延迟；那一帧推理 155 ms，延迟来自冻结期间取到的旧帧。修正：`52d2c1b`：报告按任一话题最新消息计年龄、guardian 0.3 s；规划自身过载。`4d61190`：`SIM_GPS_USED=0` 仿真接收机失锁；能源场景接近目标 4 m 内注入；事件检测按单帧推理耗时判预算 |
+| `2fc9464296793336309f629ea9dd4bccd20b1e1a` | `m3-20260924T123438Z-84edb27e` | `ext_dds_link_lost` 与三个能源场景通过；`ext_compute_overload` 以 `trajectory_stale` 收尾；`gnss_lost_visual_ok` hold 中途被交还飞控。根因：忙算放在发布片段之前，第一个过载周期片段间隔 500 ms 超过有效期；任务中止后 executive 退出，定位不健康时心跳丢失无匹配边而直接交还飞控。修正：`deb0e85`：结束任务的恢复归 guardian 独有（暂停除外）。`2834bfa`：先发布再补足周期 |
+| `2fc9464296793336309f629ea9dd4bccd20b1e1a` | 同上（线程级采样） | 返航交接后 Gazebo 稳定冻结约 0.5 s。根因：冻结期间 Gazebo 进程中单一线程满载、内存 +9 MB、llvmpipe 光栅化线程空闲；Mesa 25.2 在容器内写着色器磁盘缓存——相机首次看到新视野时 llvmpipe 在渲染线程内 JIT 编译着色器，gz-sim 传感器系统等待渲染完成；每个用例都是空缓存的新容器。修正：`deb0e85`：M3 SITL 挂载持久化 Mesa 着色器缓存 |
+| `deb0e85d5d8b4a7cad2d9b76bdcac9c9bba6bc4f` | `m3-20260924T130233Z-90ae18ee` | 冷缓存的 `ext_inspect-7` 在外部模式前被停顿打断；热缓存的 `ext_inspect-19` 完成；GNSS ×2、杀进程 ×2 通过；规划过载 ×2 仍为 `trajectory_stale`。根因：同上一行的过载顺序问题；「外部模式从未激活」不在作废规则的「未执行」集合。修正：`2834bfa`：候选 |
+| `c782412707d69e1997e1f13d89e3011233518aaa` | `m2-20260924T104935Z-65787caa` | Zenoh 下 M2 `nl_inspect_red`、`service_outage`（种子 7）通过。根因：—。修正：作为 Zenoh 首次端到端证据，门禁计数取候选上的三种子运行 |
+
+## 2026-09-24–25 · M3-SITL 门禁批次中的发现
+
+- `2834bfa3b89fc9c0c3f991c83b199d6bbe836c3c`：门禁批次 `m3-20260924T134948Z-e333d092` 中 `ext_goto-7` 被判不安全或不正确（`unexpected_egress_hold_command`）：新步骤进入外部模式 52 ms 就因「无有效片段」悬停，出口节点随后因 DDS 模式通知滞后约 0.2 s 发出多余的 Hold。同批其余 5 例通过。修正为 D047（`af9a16f`）。旧候选上另有 `ext_inspect` 感知满载测量档 3/3 通过（`m3-20260924T142758Z-e3aa41ed`，首轮 `m3-20260924T140623Z-b40790c1` 隔离失效），只作诊断。
+- `af9a16fc76f45ea075bb7a79762ceb5889fdf89c`：批次 `m3-20260924T154904Z-708287a6` 中 `ext_dds_link_lost-7` 起飞 0.64 s 被交还飞控：共享主机 CPU 压力约 58%，XRCE 链路直到起飞才把 PX4 数据送到定位节点，估计器标志尚未到达，「未知」被写成「未融合」。同批隔离失效；同版本重跑 `m3-20260924T160233Z-407abd90` 6/6 通过。修正为 D048（`8c58d01`）。该候选此前各批的通过用例只作诊断。
+- `8c58d0142bb5dee2b5ca7f9c6a5dc32cd243c5be`：为 D048 调整启动顺序时把出口节点等待挪到 guardian 构建之后，批次 `m3-20260924T162300Z-599d2318` 的三例 `ext_inspect` 以 `guardian did not become ready` 失败（`unsupported capability`），`route_fallback` 三例不受影响。修正为 `75382dc`，并补上复现该崩溃的启动器测试。
+- 原始回执见 `docs/verification/m3-2026-09-25/diagnostics/`；这些候选的结果都不转借给 `75382dc`。
+
+## 2026-09-25 · M3-SITL 候选（`75382dc`）
+
+- 软件 `75382dca07509726f4274078ce11e7e8cee064e6`，部署 `20260924T164104Z-9fcf8617`，Linux 983/983（0 失败 / 错误 / 跳过）。
+- M3 场景集 16 个场景 × 7 / 19 / 41 = 48/48 通过：12 完成、36 合理安全中止；作废 0、错误成功报告 0、在线 / 回放一致 48。逐例监督周期 p99 ≤ 106.6 ms，最大值（不含注入 guardian 冻结的 `egress_watchdog`）≤ 132.2 ms；意图延迟 p99 ≤ 175.3 ms；事件检测单帧推理 p99 ≤ 286.6 ms。事件检测与真值的一致率 0.78（943 帧，只记录）；SITL 世界中不存在的触发类出现 9 次，其中 1 次成为重规划触发（误报）。
+- D040 测量：guardian 独立配额的空载 / 感知满载 / 推理满载三档 p99 ≤ 102.5 ms、最大 ≤ 105.3 ms；与自主层、事件检测绑到同一核心时，推理满载档 p99 112.9 ms、最大 193.3 ms（只报告，结论见 D040 补记）。
+- 回归：M2 gRPC 18/18（12 完成、6 合理不飞），Zenoh 子集 6/6，M1 66/66（18 完成、48 合理安全中止），错误成功报告均为 0。
+- 影子运行 45 份报告、3340 个周期，执行 0；真值认可率 94.0%，包络违反率 11.6%（去掉故意注入不安全规划的场景后为 7.4%）。
+- 恢复策略 `multirotor_m3@v2` 的 21 条边全部绑定到本版本。
+- 不计入门禁的回执：5 批因其他租户重建容器、隔离判据不成立（功能全部通过）；M1 `stale_epoch+expired_intent` 首轮中 `expired_intent-41` 起飞后仿真整体冻结 0.51 s（仿真时间只前进 0.044 s），guardian 按原阈值以观测过期悬停后返航，探针所在的航线步骤没有开始，M1 裁判判不通过；M1 没有作废规则，同版本整批重跑通过。原始回执在 `docs/verification/m3-2026-09-25/not-counted/`。

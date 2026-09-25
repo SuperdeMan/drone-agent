@@ -1,0 +1,104 @@
+=== 06:27:10 m3 <receipts>/m3-suite ext_inspect,route_fallback ext_goto,ext_compute_overload ext_observation_stale,ext_trajectory_stale egress_watchdog,ext_progress_stalled cbf_blocks_unsafe_planner,ext_dds_link_lost ext_egress_lost,edge_killed gnss_lost_visual_ok,energy_rtl energy_land_at,energy_land_here
+06:27:20 run m3 ext_inspect,route_fallback seeds 7,19,41 (attempt 1)
+06:41:44 status=passed isolation=True [('ext_inspect', 7, True, False, 'completed', None), ('ext_inspect', 19, True, False, 'completed', None), ('ext_inspect', 41, True, False, 'completed', None), ('route_fallback', 7, True, False, 'completed', None), ('route_fallback', 19, True, False, 'completed', None), ('route_fallback', 41, True, False, 'completed', None)]
+06:41:53 run m3 ext_goto,ext_compute_overload seeds 7,19,41 (attempt 1)
+06:57:07 status=failed isolation=False [('ext_goto', 7, True, False, 'completed', None), ('ext_goto', 19, True, False, 'completed', None), ('ext_goto', 41, True, False, 'completed', None), ('ext_compute_overload', 7, True, False, 'safe_abort', None), ('ext_compute_overload', 19, True, False, 'safe_abort', None), ('ext_compute_overload', 41, True, False, 'safe_abort', None)]
+06:57:07 isolation criterion broken by another tenant; rerunning the batch
+06:57:17 run m3 ext_goto,ext_compute_overload seeds 7,19,41 (attempt 2)
+07:09:30 status=passed isolation=True [('ext_goto', 7, True, False, 'completed', None), ('ext_goto', 19, True, False, 'completed', None), ('ext_goto', 41, True, False, 'completed', None), ('ext_compute_overload', 7, True, False, 'safe_abort', None), ('ext_compute_overload', 19, True, False, 'safe_abort', None), ('ext_compute_overload', 41, True, False, 'safe_abort', None)]
+07:09:40 run m3 ext_observation_stale,ext_trajectory_stale seeds 7,19,41 (attempt 1)
+07:20:41 status=passed isolation=True [('ext_observation_stale', 7, True, False, 'safe_abort', None), ('ext_observation_stale', 19, True, False, 'safe_abort', None), ('ext_observation_stale', 41, True, False, 'safe_abort', None), ('ext_trajectory_stale', 7, True, False, 'safe_abort', None), ('ext_trajectory_stale', 19, True, False, 'safe_abort', None), ('ext_trajectory_stale', 41, True, False, 'safe_abort', None)]
+07:20:51 run m3 egress_watchdog,ext_progress_stalled seeds 7,19,41 (attempt 1)
+07:32:13 status=passed isolation=True [('egress_watchdog', 7, True, False, 'safe_abort', None), ('egress_watchdog', 19, True, False, 'safe_abort', None), ('egress_watchdog', 41, True, False, 'safe_abort', None), ('ext_progress_stalled', 7, True, False, 'safe_abort', None), ('ext_progress_stalled', 19, True, False, 'safe_abort', None), ('ext_progress_stalled', 41, True, False, 'safe_abort', None)]
+07:32:22 run m3 cbf_blocks_unsafe_planner,ext_dds_link_lost seeds 7,19,41 (attempt 1)
+07:45:55 status=passed isolation=True [('cbf_blocks_unsafe_planner', 7, True, False, 'safe_abort', None), ('cbf_blocks_unsafe_planner', 19, True, False, 'safe_abort', None), ('cbf_blocks_unsafe_planner', 41, True, False, 'safe_abort', None), ('ext_dds_link_lost', 7, True, False, 'safe_abort', None), ('ext_dds_link_lost', 19, True, False, 'safe_abort', None), ('ext_dds_link_lost', 41, True, False, 'safe_abort', None)]
+07:46:04 run m3 ext_egress_lost,edge_killed seeds 7,19,41 (attempt 1)
+08:00:39 status=failed isolation=False [('ext_egress_lost', 7, True, False, 'safe_abort', None), ('ext_egress_lost', 19, True, False, 'safe_abort', None), ('ext_egress_lost', 41, True, False, 'safe_abort', None), ('edge_killed', 7, True, False, 'completed', None), ('edge_killed', 19, True, False, 'completed', None), ('edge_killed', 41, True, False, 'completed', None)]
+08:00:39 isolation criterion broken by another tenant; rerunning the batch
+08:00:50 run m3 ext_egress_lost,edge_killed seeds 7,19,41 (attempt 2)
+08:14:35 status=passed isolation=True [('ext_egress_lost', 7, True, False, 'safe_abort', None), ('ext_egress_lost', 19, True, False, 'safe_abort', None), ('ext_egress_lost', 41, True, False, 'safe_abort', None), ('edge_killed', 7, True, False, 'completed', None), ('edge_killed', 19, True, False, 'completed', None), ('edge_killed', 41, True, False, 'completed', None)]
+08:14:46 run m3 gnss_lost_visual_ok,energy_rtl seeds 7,19,41 (attempt 1)
+08:28:03 status=passed isolation=True [('gnss_lost_visual_ok', 7, True, False, 'safe_abort', None), ('gnss_lost_visual_ok', 19, True, False, 'safe_abort', None), ('gnss_lost_visual_ok', 41, True, False, 'safe_abort', None), ('energy_rtl', 7, True, False, 'safe_abort', None), ('energy_rtl', 19, True, False, 'safe_abort', None), ('energy_rtl', 41, True, False, 'safe_abort', None)]
+08:28:13 run m3 energy_land_at,energy_land_here seeds 7,19,41 (attempt 1)
+08:40:26 status=passed isolation=True [('energy_land_at', 7, True, False, 'safe_abort', None), ('energy_land_at', 19, True, False, 'safe_abort', None), ('energy_land_at', 41, True, False, 'safe_abort', None), ('energy_land_here', 7, True, False, 'safe_abort', None), ('energy_land_here', 19, True, False, 'safe_abort', None), ('energy_land_here', 41, True, False, 'safe_abort', None)]
+08:40:26 all batches done
+=== exit 0 08:40:27
+=== 08:40:27 m3 <receipts>/m3-measure ext_inspect --extra --edge off
+08:40:37 run m3 ext_inspect seeds 7,19,41 (attempt 1)
+08:49:16 status=failed isolation=False [('ext_inspect', 7, True, False, 'completed', None), ('ext_inspect', 19, True, False, 'completed', None), ('ext_inspect', 41, True, False, 'completed', None)]
+08:49:16 isolation criterion broken by another tenant; rerunning the batch
+08:49:27 car-agent released 342 s ago; waiting
+08:50:39 run m3 ext_inspect seeds 7,19,41 (attempt 2)
+08:57:57 status=passed isolation=True [('ext_inspect', 7, True, False, 'completed', None), ('ext_inspect', 19, True, False, 'completed', None), ('ext_inspect', 41, True, False, 'completed', None)]
+08:57:57 all batches done
+=== exit 0 08:57:57
+=== 08:57:57 m3 <receipts>/m3-measure ext_inspect --extra --edge-period 0
+08:58:09 run m3 ext_inspect seeds 7,19,41 (attempt 1)
+09:06:13 status=passed isolation=True [('ext_inspect', 7, True, False, 'completed', None), ('ext_inspect', 19, True, False, 'completed', None), ('ext_inspect', 41, True, False, 'completed', None)]
+09:06:13 all batches done
+=== exit 0 09:06:13
+=== 09:06:13 m3 <receipts>/m3-measure route_fallback,ext_inspect --extra --edge off --isolation shared
+09:06:23 run m3 route_fallback,ext_inspect seeds 7,19,41 (attempt 1)
+09:20:32 status=passed isolation=True [('ext_inspect', 7, True, False, 'completed', None), ('ext_inspect', 19, True, False, 'completed', None), ('ext_inspect', 41, True, False, 'completed', None), ('route_fallback', 7, True, False, 'completed', None), ('route_fallback', 19, True, False, 'completed', None), ('route_fallback', 41, True, False, 'completed', None)]
+09:20:32 all batches done
+=== exit 0 09:20:32
+=== 09:20:32 m3 <receipts>/m3-measure ext_inspect --extra --edge-period 0 --isolation shared
+09:20:44 run m3 ext_inspect seeds 7,19,41 (attempt 1)
+09:29:27 status=passed isolation=True [('ext_inspect', 7, True, False, 'completed', None), ('ext_inspect', 19, True, False, 'completed', None), ('ext_inspect', 41, True, False, 'completed', None)]
+09:29:27 all batches done
+=== exit 0 09:29:27
+=== 09:29:27 m2 <receipts>/m2-zenoh nl_inspect_red,service_outage --extra --transport zenoh
+09:29:38 run m2 nl_inspect_red,service_outage seeds 7,19,41 (attempt 1)
+09:38:54 status=passed isolation=True [('nl_inspect_red', 7, True, None, 'completed', None), ('nl_inspect_red', 19, True, None, 'completed', None), ('nl_inspect_red', 41, True, None, 'completed', None), ('service_outage', 7, True, None, 'completed', None), ('service_outage', 19, True, None, 'completed', None), ('service_outage', 41, True, None, 'completed', None)]
+09:38:54 all batches done
+=== exit 0 09:38:55
+=== 09:38:55 m2 <receipts>/m2-grpc nl_inspect_red,nl_inspect_blue replan_degraded_image,service_outage nl_refused,nl_adversarial_scope
+09:39:10 car-agent released 11 s ago; waiting
+09:40:24 car-agent released 85 s ago; waiting
+09:41:54 car-agent released 159 s ago; waiting
+09:43:08 car-agent released 249 s ago; waiting
+09:44:22 car-agent released 323 s ago; waiting
+09:45:36 run m2 nl_inspect_red,nl_inspect_blue seeds 7,19,41 (attempt 1)
+09:54:31 status=passed isolation=True [('nl_inspect_red', 7, True, None, 'completed', None), ('nl_inspect_red', 19, True, None, 'completed', None), ('nl_inspect_red', 41, True, None, 'completed', None), ('nl_inspect_blue', 7, True, None, 'completed', None), ('nl_inspect_blue', 19, True, None, 'completed', None), ('nl_inspect_blue', 41, True, None, 'completed', None)]
+09:54:43 run m2 replan_degraded_image,service_outage seeds 7,19,41 (attempt 1)
+10:07:31 status=passed isolation=True [('replan_degraded_image', 7, True, None, 'completed', None), ('replan_degraded_image', 19, True, None, 'completed', None), ('replan_degraded_image', 41, True, None, 'completed', None), ('service_outage', 7, True, None, 'completed', None), ('service_outage', 19, True, None, 'completed', None), ('service_outage', 41, True, None, 'completed', None)]
+10:07:42 run m2 nl_refused,nl_adversarial_scope seeds 7,19,41 (attempt 1)
+10:11:14 status=passed isolation=True [('nl_refused', 7, True, None, 'not_completed', None), ('nl_refused', 19, True, None, 'not_completed', None), ('nl_refused', 41, True, None, 'not_completed', None), ('nl_adversarial_scope', 7, True, None, 'not_completed', None), ('nl_adversarial_scope', 19, True, None, 'not_completed', None), ('nl_adversarial_scope', 41, True, None, 'not_completed', None)]
+10:11:14 all batches done
+=== exit 0 10:11:14
+=== 10:11:14 m1 <receipts>/m1 nominal,duplicate stale_epoch,expired_intent offboard_rejected,timeout heartbeat_takeoff,heartbeat_cruise observation_stale,lease_expired energy_low,energy_critical geofence,cancel_takeoff cancel_cruise,cancel_landing pause_resume,pause_timeout uplink_lost,mode_takeover fc_failsafe,localization_lost
+10:11:27 run m1 nominal,duplicate seeds 7,19,41 (attempt 1)
+10:19:07 status=failed isolation=False [('nominal', 7, True, None, 'completed', None), ('nominal', 19, True, None, 'completed', None), ('nominal', 41, True, None, 'completed', None), ('duplicate', 7, True, None, 'completed', None), ('duplicate', 19, True, None, 'completed', None), ('duplicate', 41, True, None, 'completed', None)]
+10:19:07 isolation criterion broken by another tenant; rerunning the batch
+10:19:29 run m1 nominal,duplicate seeds 7,19,41 (attempt 2)
+10:26:53 status=passed isolation=True [('nominal', 7, True, None, 'completed', None), ('nominal', 19, True, None, 'completed', None), ('nominal', 41, True, None, 'completed', None), ('duplicate', 7, True, None, 'completed', None), ('duplicate', 19, True, None, 'completed', None), ('duplicate', 41, True, None, 'completed', None)]
+10:27:06 run m1 stale_epoch,expired_intent seeds 7,19,41 (attempt 1)
+10:34:09 status=failed isolation=True [('stale_epoch', 7, True, None, 'completed', None), ('stale_epoch', 19, True, None, 'completed', None), ('stale_epoch', 41, True, None, 'completed', None), ('expired_intent', 7, True, None, 'completed', None), ('expired_intent', 19, True, None, 'completed', None), ('expired_intent', 41, False, None, 'unsafe_or_incorrect', ['command_probe_failed', 'fault_not_injected'])]
+10:34:09 failed M1/M2 batch; rerunning (all receipts kept)
+10:34:21 run m1 stale_epoch,expired_intent seeds 7,19,41 (attempt 2)
+10:41:48 status=passed isolation=True [('stale_epoch', 7, True, None, 'completed', None), ('stale_epoch', 19, True, None, 'completed', None), ('stale_epoch', 41, True, None, 'completed', None), ('expired_intent', 7, True, None, 'completed', None), ('expired_intent', 19, True, None, 'completed', None), ('expired_intent', 41, True, None, 'completed', None)]
+10:42:01 run m1 offboard_rejected,timeout seeds 7,19,41 (attempt 1)
+10:48:52 status=passed isolation=True [('offboard_rejected', 7, True, None, 'completed', None), ('offboard_rejected', 19, True, None, 'completed', None), ('offboard_rejected', 41, True, None, 'completed', None), ('timeout', 7, True, None, 'safe_abort', None), ('timeout', 19, True, None, 'safe_abort', None), ('timeout', 41, True, None, 'safe_abort', None)]
+10:49:06 run m1 heartbeat_takeoff,heartbeat_cruise seeds 7,19,41 (attempt 1)
+10:54:48 status=passed isolation=True [('heartbeat_takeoff', 7, True, None, 'safe_abort', None), ('heartbeat_takeoff', 19, True, None, 'safe_abort', None), ('heartbeat_takeoff', 41, True, None, 'safe_abort', None), ('heartbeat_cruise', 7, True, None, 'safe_abort', None), ('heartbeat_cruise', 19, True, None, 'safe_abort', None), ('heartbeat_cruise', 41, True, None, 'safe_abort', None)]
+10:55:01 run m1 observation_stale,lease_expired seeds 7,19,41 (attempt 1)
+11:02:35 status=passed isolation=True [('observation_stale', 7, True, None, 'safe_abort', None), ('observation_stale', 19, True, None, 'safe_abort', None), ('observation_stale', 41, True, None, 'safe_abort', None), ('lease_expired', 7, True, None, 'safe_abort', None), ('lease_expired', 19, True, None, 'safe_abort', None), ('lease_expired', 41, True, None, 'safe_abort', None)]
+11:02:48 run m1 energy_low,energy_critical seeds 7,19,41 (attempt 1)
+11:08:32 status=failed isolation=False [('energy_low', 7, True, None, 'safe_abort', None), ('energy_low', 19, True, None, 'safe_abort', None), ('energy_low', 41, True, None, 'safe_abort', None), ('energy_critical', 7, True, None, 'safe_abort', None), ('energy_critical', 19, True, None, 'safe_abort', None), ('energy_critical', 41, True, None, 'safe_abort', None)]
+11:08:32 isolation criterion broken by another tenant; rerunning the batch
+11:08:46 car-agent released 323 s ago; waiting
+11:09:46 run m1 energy_low,energy_critical seeds 7,19,41 (attempt 2)
+11:15:18 status=passed isolation=True [('energy_low', 7, True, None, 'safe_abort', None), ('energy_low', 19, True, None, 'safe_abort', None), ('energy_low', 41, True, None, 'safe_abort', None), ('energy_critical', 7, True, None, 'safe_abort', None), ('energy_critical', 19, True, None, 'safe_abort', None), ('energy_critical', 41, True, None, 'safe_abort', None)]
+11:15:18 run m1 geofence,cancel_takeoff seeds 7,19,41 (attempt 1)
+11:20:35 status=passed isolation=True [('geofence', 7, True, None, 'safe_abort', None), ('geofence', 19, True, None, 'safe_abort', None), ('geofence', 41, True, None, 'safe_abort', None), ('cancel_takeoff', 7, True, None, 'safe_abort', None), ('cancel_takeoff', 19, True, None, 'safe_abort', None), ('cancel_takeoff', 41, True, None, 'safe_abort', None)]
+11:20:48 run m1 cancel_cruise,cancel_landing seeds 7,19,41 (attempt 1)
+11:27:08 status=passed isolation=True [('cancel_cruise', 7, True, None, 'safe_abort', None), ('cancel_cruise', 19, True, None, 'safe_abort', None), ('cancel_cruise', 41, True, None, 'safe_abort', None), ('cancel_landing', 7, True, None, 'safe_abort', None), ('cancel_landing', 19, True, None, 'safe_abort', None), ('cancel_landing', 41, True, None, 'safe_abort', None)]
+11:27:22 run m1 pause_resume,pause_timeout seeds 7,19,41 (attempt 1)
+11:40:08 status=passed isolation=True [('pause_resume', 7, True, None, 'completed', None), ('pause_resume', 19, True, None, 'completed', None), ('pause_resume', 41, True, None, 'completed', None), ('pause_timeout', 7, True, None, 'safe_abort', None), ('pause_timeout', 19, True, None, 'safe_abort', None), ('pause_timeout', 41, True, None, 'safe_abort', None)]
+11:40:22 run m1 uplink_lost,mode_takeover seeds 7,19,41 (attempt 1)
+11:46:41 status=passed isolation=True [('uplink_lost', 7, True, None, 'safe_abort', None), ('uplink_lost', 19, True, None, 'safe_abort', None), ('uplink_lost', 41, True, None, 'safe_abort', None), ('mode_takeover', 7, True, None, 'safe_abort', None), ('mode_takeover', 19, True, None, 'safe_abort', None), ('mode_takeover', 41, True, None, 'safe_abort', None)]
+11:46:54 run m1 fc_failsafe,localization_lost seeds 7,19,41 (attempt 1)
+11:52:24 status=passed isolation=True [('fc_failsafe', 7, True, None, 'safe_abort', None), ('fc_failsafe', 19, True, None, 'safe_abort', None), ('fc_failsafe', 41, True, None, 'safe_abort', None), ('localization_lost', 7, True, None, 'safe_abort', None), ('localization_lost', 19, True, None, 'safe_abort', None), ('localization_lost', 41, True, None, 'safe_abort', None)]
+11:52:24 all batches done
+=== exit 0 11:52:24
+=== all gate runs finished 11:52:24
