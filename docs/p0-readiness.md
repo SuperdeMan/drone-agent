@@ -1,45 +1,78 @@
 # P0 实现与验收记录
 
-[路线图](roadmap.md) · [P0 工作包](operations-implementation.md) · [来源实现](../src/drone_agent/fleet/provenance.py) · [发布门禁](../scripts/verify_p0_release.py)
+[路线图](roadmap.md) · [工作包](operations-implementation.md) · [来源实现](../src/drone_agent/fleet/provenance.py) · [发布门禁](../scripts/verify_p0_release.py)
 
-**状态：候选 `271c5ac`，云端检查已通过，飞行与任务台验证进行中；P0 尚未关闭。** 本页对应 D054 的来源贯穿与独立产品门禁，不改变历史 M0–M3 的验收结论。
+**P0 已完成（2026-09-25，软件 / SITL 范围）。** 候选 `de597d0` 的七项门禁全部通过；运行来源贯穿任务版本、采集、分析记录、报告、任务台与离线证据页。P1–P5 尚未实现；原 M3 仍因 JIL 缺席而未关闭。
 
-## 实现范围
+## 版本与门禁
 
-- 受信运行入口绑定执行后端、运行 ID、准确源码 / 脏代码摘要、场景、平台和登记表摘要；网页与 A2A 不能指定这些字段。
-- 规划按实际 Provider 实现区分脚本、录制、缓存、实调与未运行；不凭模型名称推断。确定性重试单独记录。
-- 来源保存在既有 `versions.decision.run_provenance`，单条记录只能追加、不能覆盖；重启、驳回与迟到证据不会把旧任务标成当前部署。SQLite schema v1 与冻结 wire 均不改。
-- 每份影像绑定采集身份、媒体摘要与来源；分析尝试独立记录，包括失败 / 拒判；版本、三列报告、任务台与离线证据页展示同一投影。来源标签不参与飞行授权或三元判定。
-- 旧任务未保存来源时显示 `legacy_unknown`；不补造旧运行信息。P0 当前贯穿本机无设备模式及 M2 服务 / SITL 链，S0 用测试夹具验证契约；S2 数据导入与 S3 厂商网关仍属于后续里程碑。
+| 项目 | 准确记录 |
+|---|---|
+| 被测 / 部署源码 | `de597d0eb7430260285e0965dc07f7f904ab5e70` |
+| 云端部署 | `20260925T151620Z-a8010bf5`；[部署回执](verification/p0-2026-09-25-r2/deployment.json) |
+| 控制面摘要 | `4cbadb08c989aebfec297340f0e302753b22e2ddd348a46712975a8b3d65996a` |
+| P0 总门禁 | [release.json](verification/p0-2026-09-25-r2/release.json)：`status=passed`，七项均 passed；含能力清单和 26 份输入摘要 |
+| 常驻入口 | [控制台](verification/p0-2026-09-25-r2/resident-console-activation.json)与[任务台](verification/p0-2026-09-25-r2/resident-desk-activation.json)均为同一候选；入口已脱敏 |
+| 入口验证 | [HTTPS / WebSocket 检查](verification/p0-2026-09-25-r2/http-probe.json)：页面与脚本匹配、三条健康版本一致、A2A 无效身份 401、跨源连接 403 |
 
-## 本地检查
+后续只增加证据和文档的提交不改变被测源码；不能把这份结果改称其他代码 SHA 的完整验收。
 
-Windows 完整测试：995 项，994 通过、1 项按既有规则跳过（Unix socket 的 Linux 检查）；失败和错误均为 0。ruff、任务台 JavaScript 语法、字段清单与 v1 wire 冻结检查通过。字段清单为 54 个模型 / 371 个字段 / 16 个枚举；本次未新增机载契约。
+## 已实现工作包
 
-新增 11 项测试覆盖：脚本冒充实调、请求注入后端、来源冻结与重启、驳回保留、历史缺项、混合媒体、缓存 / 录制区别、报告三元状态不变，以及来源 / 门禁缺失、混版本、篡改和硬件状态分离。完整云端检查还必须补齐 Linux 下的 socket 验证。
+- **WP-P0-01/02**：能力与来源核对、新架构 / 路线、原 41 个 M3/M4 工作包的去向、D049–D054。
+- **WP-P0-03**：受信入口构造 SourceContext；每版本固定 RunHeader 与 ModelUse；每份采集有 EvidenceOrigin，每次分析有 AnalysisOrigin；RunProvenance 输出可复算的冻结投影。
+- **WP-P0-04**：独立 P0 门禁、能力清单、当前候选与历史 / 硬件结果分离、来源 / 版本 / 输入哈希检查。
 
-## 发布门禁
+来源保存在现有 `versions.decision.run_provenance`，SQLite schema v1 与机载 wire 均不改。记录只能追加，驳回和重启不覆盖旧来源；历史缺项显示 `legacy_unknown`。客户端不能选择执行后端或伪造来源；生产 CLI 当前只提供 none 与 px4_sitl，逻辑后端仅用于隔离测试。
 
-| 判据 | 必需证据 | 当前状态 |
+规划来源按 Provider 实现与调用记录区分脚本、录制 / 缓存、实调、确定性与未运行，不按模型名称猜测。影像逐份绑定采集身份和媒体摘要，分析来源与规划独立；来源不参与审批、飞控或三元结果判定。
+
+## 检查结果
+
+| 判据 | 实际结果 |
+|---|---|
+| scope | 相对审阅基线的变更属于 P0；guardian、executive、适配器、wire 与恢复配置未改 |
+| checks | Linux **1000 项通过，0 失败 / 错误 / 跳过**；部署前后其他 30 个容器身份一致 |
+| adversarial | 确定性 42/42、脚本自然语言 32/32，全拦或拒答，授权包 0；真实模型对抗录制 0 条，32 条未录制，不冒充实调对抗结果 |
+| e2e | **6 场景 × 3 种子 = 18/18**；12 完成、6 合理拒绝且不飞；错误成功 0，在线 / 回放一致 |
+| source_views | 18 份视图、21 个任务版本、21 份采集；文件摘要与独立裁判一致；来源投影、配置、报告与版本全部匹配 |
+| live_sources | MiniMax-M3 两次实调：正常任务单版本完成；取消任务单版本安全收尾；均重规划 0、错误成功 0、裁判 / 回放一致；权威 flight.json 与任务、版本、epoch、状态、起止时间和 SHA 一致 |
+| historical_boundaries | 原 M3-SITL passed、总状态 not_passed、JIL missing；历史回执字节不变，不作为本候选成绩 |
+
+Windows 本地完整检查为 1000 项：999 通过，1 项按既有规则跳过（Unix socket，由 Linux 全量覆盖）。ruff、任务台 JS 语法、字段清单与 wire 冻结检查通过；字段清单仍为 54 个模型 / 371 个字段 / 16 个枚举。新增 16 项来源 / 门禁测试覆盖重启、冻结、脚本冒充、录制 / 缓存、混合媒体、来源篡改、缺项、错版本与实际飞行回执形状。
+
+本次未改控制执行路径，因此没有重跑完整 M1 66 组或 M3 48 组飞行矩阵；它们仍只属于各自历史 SHA。P0 的新软件 / 集成保证由上述当前候选证据支持。
+
+## 运行清单
+
+| 批次 | 云端运行 | 结果 / 回执 |
 |---|---|---|
-| scope | 从审阅基线到候选的变更限于 P0；控制执行、适配器、wire 和恢复配置不变 | 待候选固定 |
-| checks | 同候选云端完整检查、0 失败 / 错误 / 跳过、项目隔离 | 995 项通过；[部署回执](verification/p0-2026-09-25/deployment.json) |
-| adversarial | 确定性 / 脚本规划对抗集、授权包 0 | 待门禁执行 |
-| e2e | M2 全部 6 场景 × 3 种子、独立裁判与回放 | 待执行 |
-| source_views | 每个 E2E 导出视图与裁判保存的文件摘要匹配；来源投影、配置、报告一致 | 待执行 |
-| live_sources | 真实 Tailnet HTTPS 实调规划、批准、飞行、影像、裁判；来源按准确候选核对 | 待执行 |
-| historical_boundaries | 原 M3-SITL passed、M3 总 not_passed、JIL missing；旧回执字节不变 | 待门禁核对 |
+| 红 / 蓝资产 | `m2-20260925T152115Z-9127db45` | 6/6；[回执](verification/p0-2026-09-25-r2/e2e/m2-nominal.json) |
+| 影像降质 / 服务中断 | `m2-20260925T153119Z-90af7703` | 6/6；[回执](verification/p0-2026-09-25-r2/e2e/m2-recovery-outage.json) |
+| 拒答 / 越界范围 | `m2-20260925T154502Z-7682c6d0` | 6/6；[回执](verification/p0-2026-09-25-r2/e2e/m2-refused-scope.json) |
+| 实调正常 | `m-bbf8917d0baa` | completed，v1，replans=0；[探针](verification/p0-2026-09-25-r2/live-nominal.json) |
+| 实调取消 | `m-3e7f55c7552c` | incomplete，v1，replans=0；取消已转入机载，裁判确认安全收尾；[探针](verification/p0-2026-09-25-r2/live-cancel.json) |
 
-最终门禁 JSON 同时输出 `capabilities`：P0 当前候选、M1/M2/M3 的准确历史 SHA、H 线缺项及 P1–P5/X 线计划分开。缺任一必需证据即 `not_passed`，不能用历史成绩补齐。
+实调模型为 `minimax/MiniMax-M3`，提示版本 `planner-v1`，提示摘要 `6ccc030a90bb6203e57220ae77f48de1f956e8e8335d28340b40422c783a2eef`。实调探针是来源与链路验收，不是新一轮大规模模型准入率基线。
 
-## 复现入口
+原始视图保存在 [source-views](verification/p0-2026-09-25-r2/source-views/)，实际飞行版本回执保存在 [live-flights](verification/p0-2026-09-25-r2/live-flights/)。大文件仍在云端 artifacts 与本机 fetch 目录，摘要在批次回执；门禁可从仓库小型证据复算。
 
-先在同一已提交候选上运行 `dev_stack.py deploy --sha <SHA> --apply`，再分批执行完整 M2 场景。`fetch` 拉取和校验各运行，把接受批次的 `service-export/view.json` 按 `<scenario>-<seed>.json` 原字节保存在独立来源目录；不重排 JSON 或改写摘要。
+## 开发负记录与边界
 
-按 D037 顺序激活同部署的 `console-cloud --apply` 与 `desk-cloud --apply`，经 `desk_probe.py http/session` 获取真实入口与实调任务证据。另外读取监管者 `desk/flights/<mission>-v<N>/flight.json` 的原字节回执，核对其源码、任务 / 版本、epoch、状态与公开摘要一致。页面摘要本身没有 source_sha，不能向其补造此字段。源码、场景和 Provider 的记录不一致时先修正再重验，不混用不同候选。
+| 版本 / 运行 | 发现 | 处理与计数 |
+|---|---|---|
+| `eb1ddce` 首轮云端检查 | 新测试假设存在 .git；归档镜像没有 Git 历史，995 项中 1 项失败 | 修正测试读取边界，保持判据；[负记录](verification/p0-2026-09-25/diagnostics/eb1ddce-cloud-checks.json)，不计最终门禁 |
+| `271c5ac` 首轮红标记 | 457 ms 墙钟内仿真仅前进 4 ms，触发 observation_stale 与额外重试；裁判因版本数不符判失败，虚报 0 | 保留[诊断](verification/p0-2026-09-25/diagnostics/271c5ac-simulator-stall.json)，不改安全阈值；没有将该记录改判通过 |
+| `271c5ac` 首次 live 门禁 | 正常 / 取消链和来源审计通过，但门禁错误要求公开飞行摘要提供 source_sha | 改读真实 flight.json 并补正反例；[诊断](verification/p0-2026-09-25/diagnostics/271c5ac-live-gate-shape.json)。旧候选全部结果仅作开发记录；最终候选另跑完整验证 |
+
+P0 当前贯穿本机无设备模式和 M2 服务 / SITL 链；S0 用隔离夹具验证来源契约。可选 VLM 分析通路有独立来源测试，常驻本轮未启用 VLM 分析，记录为 not_run；不把规划实调当成视觉识别验收。S2 导入、S3 网关、资源 / 工作流及硬件仍是后续工作。入口覆盖 HTTPS/API/WebSocket 与 JS 语法，没有新增浏览器截图视觉验收。
+
+## 复现
+
+在候选或只增加文档 / 证据的后代提交上运行；输入保持原字节，尤其不要重排 source-views 与 flight.json：
 
 ```powershell
-uv run python scripts/verify_p0_release.py --sha <完整候选SHA> --deployment <部署回执> --e2e <M2回执列表> --views-dir <来源视图目录> --live-probe <实调探针回执> --live-flights-dir <监管者飞行回执目录> --output <P0门禁结果>
+uv run python scripts/verify_p0_release.py --sha de597d0eb7430260285e0965dc07f7f904ab5e70 --deployment docs/verification/p0-2026-09-25-r2/deployment.json --e2e docs/verification/p0-2026-09-25-r2/e2e/m2-nominal.json docs/verification/p0-2026-09-25-r2/e2e/m2-recovery-outage.json docs/verification/p0-2026-09-25-r2/e2e/m2-refused-scope.json --views-dir docs/verification/p0-2026-09-25-r2/source-views --live-probe docs/verification/p0-2026-09-25-r2/live-nominal.json docs/verification/p0-2026-09-25-r2/live-cancel.json --live-flights-dir docs/verification/p0-2026-09-25-r2/live-flights --output outputs/p0-release-recheck.json
 ```
 
-本次不启用真实设备，不更改数据库 schema，也不把 P0 软件通过视为 H1/JIL 或原 M3 组合门禁通过。硬件与后续产品工作仍按路线图单独准出。
+门禁只有全部必需项通过才返回 passed。下一阶段按 [P1 方案](p1-implementation.md)从资源契约与可审查的持久化设计开始；P0 不替代 H1/JIL，也不授权数据库迁移或真实设备。

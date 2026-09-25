@@ -2,7 +2,7 @@
 
 [架构入口](00-overview.md) · [契约](02-contracts.md) · [安全](03-safety.md) · [路线图](../roadmap.md) · [实施任务](../operations-implementation.md)
 
-**状态：2026-09-25 设计基线；P0 来源与门禁已有实现候选，验收见 [P0 记录](../p0-readiness.md)；P1–P5 仍待实施。** 除明确列出的 P0 来源代码，本页对象、API 名称和新增文件位置均为设计。已有底座是 M2 任务服务与 M3-SITL；具体差距见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。决策为 D049–D053。
+**状态：2026-09-25 设计基线；P0 来源与门禁已完成（`de597d0`），验收见 [P0 记录](../p0-readiness.md)；P1–P5 仍待实施。** 除明确列出的 P0 来源代码，本页对象、API 名称和新增文件位置均为设计。已有底座是 M2 任务服务与 M3-SITL；具体差距见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。决策为 D049–D054。
 
 ## 1. 产品闭环与执行边界
 
@@ -43,7 +43,7 @@ flowchart TB
 | `DockStatus` | 通信、舱盖、占用、补能、环境、维护六个独立维度；各字段来源与新鲜度 | 后端观测，服务只保留投影 / P1 |
 | `DispatchEligibility` | 输入快照摘要、资源 / 能力版本、`eligible/blocked/unknown`、原因码、有效期 | 确定性判定 / P1；不替代 Admission |
 | `ResourceReservation` | 持有者、资源、窗口、空间界限、状态、证据引用 | 服务事务 / P1 起降位最小子集，P3 完整时空预约 |
-| `RunProvenance` | 执行 / 影像 / 规划 / 分析来源、软件与场景哈希、数据和模型版本 | 受信运行入口生成，已有实现候选 / P0 |
+| `RunProvenance` | 执行 / 影像 / 规划 / 分析来源、软件与场景哈希、数据和模型版本 | 受信运行入口生成，已通过软件准出 / P0 |
 | `WorkflowSpec` | 不可变版本、项目范围、触发器、白名单节点、条件、预算、超时与审批要求 | 业务定义 / P2 |
 | `WorkflowRun` / `ActivityAttempt` | 固定定义版本、状态版本、触发身份、节点结果、等待条件、取消代次、子任务绑定 | 持久业务运行账本 / P2 |
 | `DispatchDecision` / `TaskAssignment` | 约束输入、候选排除原因、排序、唯一所有者与分配代次 | Coordinator / P3 |

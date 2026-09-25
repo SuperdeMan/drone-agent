@@ -11,7 +11,7 @@
 
 A drone inspection operations platform in development, built on a safety-constrained mission runtime. The implemented single-drone simulation stack provides typed missions, admission and approval, local execution and evidence-based reports. Virtual docks, durable workflows, fleet scheduling and finding-to-reinspection workflows are the next product milestones.
 
-> **Current scope:** M2 completed on **2026-09-23** for a single drone in **PX4 SITL + Gazebo** (software-in-the-loop simulation). On **2026-09-25** the simulation line of M3 (local autonomy through a guarded PX4 external mode) passed its release gate; M3 closes only after Jetson-in-the-loop validation. H1 carries the pending JIL work; the original combined M3 gate remains not passed. P0 runtime provenance and product gates are implemented; release validation is in progress. P1–P5 software operations can proceed independently of hardware; hardware and air-ground work follow the [H/X milestones](docs/roadmap.md).
+> **Current scope:** M2 completed on **2026-09-23** for a single drone in **PX4 SITL + Gazebo** (software-in-the-loop simulation). On **2026-09-25** the simulation line of M3 (local autonomy through a guarded PX4 external mode) passed its release gate; M3 closes only after Jetson-in-the-loop validation. H1 carries the pending JIL work; the original combined M3 gate remains not passed. P0 runtime provenance and product gates passed on **2026-09-25** at `de597d0`; see [P0 validation](docs/p0-readiness.md). P1–P5 software operations can proceed independently of hardware; hardware and air-ground work follow the [H/X milestones](docs/roadmap.md).
 
 [Try locally](#try-locally) · [Design](#design) · [Validation](#validation) · [Documentation](#documentation) · [Roadmap](#roadmap)
 
@@ -85,6 +85,7 @@ Recorded results below belong to their **exact revisions and scopes**; they are 
 | [Resident desk with live planning](docs/tailnet-desk-readiness.md) | `74984f9` | Chinese and English requests planned, approved, flown and independently verified; a privacy-intrusive request refused. |
 | [M2 review and unified desk](docs/m2-review-2026-09-24.md) | `e8edf28` | 833 Linux checks and 18/18 M2 E2E cases passed; evidence handling, post-cancellation retries and judge coverage fixed. Live-model and interactive checks are listed separately. |
 | [M3-SITL release gate](docs/m3-readiness.md) | `75382dc` | 983 tests; 16 local-autonomy and fault scenarios × 3 seeds = 48/48; M1 66/66, M2 18/18 and 6/6 over Zenoh; zero false success reports and matching replay; supervision period p99 ≤ 106.6 ms. Jetson-in-the-loop pending hardware. |
+| [P0 release gate](docs/p0-readiness.md) | `de597d0` | 1000 Linux tests; 18/18 scripted M2 E2E cases and source audits; MiniMax-M3 live completion and cancellation probes; authoritative flight-version receipts verified. |
 
 The M2 end-to-end and natural-language adversarial runs used **labelled scripted planner answers** to test the execution chain and its boundaries. Live model behavior is documented separately in the baseline and resident-desk records. The [machine-readable release result](docs/verification/m2-2026-09-23-release.json) links the M2 evidence together.
 
@@ -118,7 +119,7 @@ Read [CLAUDE.md](CLAUDE.md) before contributing ([AGENTS.md](AGENTS.md) is the c
 |---|---|---|
 | M0–M2 | Contracts, single-drone runtime, constrained agent and evidence loop | Complete in simulation |
 | M3 | Local autonomy, perception, localization and degradation handling | Simulation line passed; Jetson-in-the-loop pending |
-| P0 | Capability inventory, runtime provenance and product gates | Implemented; release validation in progress |
+| P0 | Capability inventory, runtime provenance and product gates | Complete for the software / SITL scope |
 | P1–P2 | Resources, virtual docks and durable business workflows | Next product work; not implemented |
 | P3–P5 | Fleet scheduling, multimodal business loop and platform v0.1 | Planned; includes two-drone SITL and 72 h system endurance |
 | H1–H3 | JIL, bench / restricted flights and field operations | Separate hardware validation track |

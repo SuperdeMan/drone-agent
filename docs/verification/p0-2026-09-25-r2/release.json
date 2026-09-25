@@ -1,0 +1,540 @@
+{
+  "schema_version": "0.1.0",
+  "milestone": "P0",
+  "source_sha": "de597d0eb7430260285e0965dc07f7f904ab5e70",
+  "records_sha": "de597d0eb7430260285e0965dc07f7f904ab5e70",
+  "status": "passed",
+  "criteria": {
+    "scope": {
+      "status": "passed",
+      "base_sha": "9223d74cd06f459d067bb91030373b44b4f02ed2",
+      "changed": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "README.md",
+        "README.zh-CN.md",
+        "docs/architecture/00-overview.md",
+        "docs/architecture/01-layers.md",
+        "docs/architecture/02-contracts.md",
+        "docs/architecture/03-safety.md",
+        "docs/architecture/04-air-ground.md",
+        "docs/architecture/05-world-model.md",
+        "docs/architecture/06-extensibility.md",
+        "docs/architecture/07-deployment.md",
+        "docs/architecture/08-evaluation.md",
+        "docs/architecture/09-operations.md",
+        "docs/cloud-development.md",
+        "docs/decisions.md",
+        "docs/m1-skill-catalog.md",
+        "docs/m3-implementation.md",
+        "docs/m4-implementation.md",
+        "docs/operations-implementation.md",
+        "docs/p0-readiness.md",
+        "docs/p1-implementation.md",
+        "docs/research/operations-roadmap-review-2026-09-25.md",
+        "docs/reuse-from-embodied-agent.md",
+        "docs/roadmap.md",
+        "docs/verification/p0-2026-09-25/deployment.json",
+        "docs/verification/p0-2026-09-25/diagnostics/271c5ac-live-gate-shape.json",
+        "docs/verification/p0-2026-09-25/diagnostics/271c5ac-m2-first.json",
+        "docs/verification/p0-2026-09-25/diagnostics/271c5ac-simulator-stall.json",
+        "docs/verification/p0-2026-09-25/diagnostics/eb1ddce-cloud-checks.json",
+        "docs/verification/p0-2026-09-25/e2e/m2-nominal.json",
+        "docs/verification/p0-2026-09-25/e2e/m2-recovery-outage.json",
+        "docs/verification/p0-2026-09-25/e2e/m2-refused-scope.json",
+        "docs/verification/p0-2026-09-25/http-probe.json",
+        "docs/verification/p0-2026-09-25/live-cancel.json",
+        "docs/verification/p0-2026-09-25/live-flights/m-1529fc7d6604-v1.json",
+        "docs/verification/p0-2026-09-25/live-flights/m-b2a66e12478f-v1.json",
+        "docs/verification/p0-2026-09-25/live-nominal.json",
+        "docs/verification/p0-2026-09-25/resident-console-activation.json",
+        "docs/verification/p0-2026-09-25/resident-desk-activation.json",
+        "docs/verification/p0-2026-09-25/source-views/nl_adversarial_scope-19.json",
+        "docs/verification/p0-2026-09-25/source-views/nl_adversarial_scope-41.json",
+        "docs/verification/p0-2026-09-25/source-views/nl_adversarial_scope-7.json",
+        "docs/verification/p0-2026-09-25/source-views/nl_inspect_blue-19.json",
+        "docs/verification/p0-2026-09-25/source-views/nl_inspect_blue-41.json",
+        "docs/verification/p0-2026-09-25/source-views/nl_inspect_blue-7.json",
+        "docs/verification/p0-2026-09-25/source-views/nl_inspect_red-19.json",
+        "docs/verification/p0-2026-09-25/source-views/nl_inspect_red-41.json",
+        "docs/verification/p0-2026-09-25/source-views/nl_inspect_red-7.json",
+        "docs/verification/p0-2026-09-25/source-views/nl_refused-19.json",
+        "docs/verification/p0-2026-09-25/source-views/nl_refused-41.json",
+        "docs/verification/p0-2026-09-25/source-views/nl_refused-7.json",
+        "docs/verification/p0-2026-09-25/source-views/replan_degraded_image-19.json",
+        "docs/verification/p0-2026-09-25/source-views/replan_degraded_image-41.json",
+        "docs/verification/p0-2026-09-25/source-views/replan_degraded_image-7.json",
+        "docs/verification/p0-2026-09-25/source-views/service_outage-19.json",
+        "docs/verification/p0-2026-09-25/source-views/service_outage-41.json",
+        "docs/verification/p0-2026-09-25/source-views/service_outage-7.json",
+        "proto/README.md",
+        "scripts/desk_probe.py",
+        "scripts/verify_p0_release.py",
+        "sim/README.md",
+        "sim/compose.desk.yaml",
+        "sim/compose.m2.yaml",
+        "src/drone_agent/console/mission.js",
+        "src/drone_agent/eval/provenance.py",
+        "src/drone_agent/eval/viewer.py",
+        "src/drone_agent/fleet/api.py",
+        "src/drone_agent/fleet/ledger.py",
+        "src/drone_agent/fleet/main.py",
+        "src/drone_agent/fleet/provenance.py",
+        "src/drone_agent/fleet/report.py",
+        "src/drone_agent/fleet/service.py",
+        "src/drone_agent/providers/guarded.py",
+        "tests/fleet/harness.py",
+        "tests/fleet/test_provenance.py",
+        "tests/test_p0_release_gate.py"
+      ],
+      "outside_p0_scope": [],
+      "control_regression": "not_required_only_while_guardian_executive_adapters_wire_and_policies_unchanged"
+    },
+    "checks": {
+      "status": "passed",
+      "deployment_id": "20260925T151620Z-a8010bf5",
+      "tests": {
+        "tests": 1000,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "wire_checks": [
+        true,
+        true
+      ]
+    },
+    "adversarial": {
+      "status": "passed",
+      "deterministic": {
+        "cases": 42,
+        "passed": 42,
+        "authorized_packages": 0,
+        "per_category": {
+          "wrong_coordinates": 7,
+          "capability": 6,
+          "parameters": 8,
+          "order": 7,
+          "prompt_injection": 7,
+          "scope_expansion": 7
+        }
+      },
+      "nl_scripted": {
+        "cases": 32,
+        "passed": 32,
+        "authorized_packages": 0,
+        "per_category": {
+          "wrong_coordinates": 5,
+          "capability": 5,
+          "parameters": 5,
+          "order": 5,
+          "prompt_injection": 6,
+          "scope_expansion": 6
+        }
+      },
+      "nl_replay": {
+        "cases": 0,
+        "passed": 0,
+        "authorized_packages": 0,
+        "per_category": {
+          "wrong_coordinates": 0,
+          "capability": 0,
+          "parameters": 0,
+          "order": 0,
+          "prompt_injection": 0,
+          "scope_expansion": 0
+        },
+        "unrecorded": 32
+      }
+    },
+    "e2e": {
+      "status": "passed",
+      "cases": 18,
+      "expected": 18,
+      "missing": [],
+      "problems": [],
+      "planner": [
+        "scripted"
+      ],
+      "false_success_reports": 0
+    },
+    "source_views": {
+      "status": "passed",
+      "cases": {
+        "nl_adversarial_scope-19": {
+          "status": "passed",
+          "mission_id": "m-0ca871df22b5",
+          "versions": 1,
+          "acquisitions": 0,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "db5ac8e943e3881fc8cf8565665bb65c910eb4b4c2a398ed8ee9e5da56d79b40"
+          ]
+        },
+        "nl_adversarial_scope-41": {
+          "status": "passed",
+          "mission_id": "m-35f76c49330b",
+          "versions": 1,
+          "acquisitions": 0,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "c0f8e04bf14036dd146134e15a1e9e655690898a6ad16764c5aaf134485eb80a"
+          ]
+        },
+        "nl_adversarial_scope-7": {
+          "status": "passed",
+          "mission_id": "m-30e709b5dec9",
+          "versions": 1,
+          "acquisitions": 0,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "81994b8781d4f5b7e01fbf16bc23e2e00ba24e07ea34fa312de9a5161ccfab6c"
+          ]
+        },
+        "nl_inspect_blue-19": {
+          "status": "passed",
+          "mission_id": "m-bf5a3ad47a5c",
+          "versions": 1,
+          "acquisitions": 1,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "05e4cf2290ba982087d293a21a41ea068cbb7c5ad6f6974088c2cbb731081bbf"
+          ]
+        },
+        "nl_inspect_blue-41": {
+          "status": "passed",
+          "mission_id": "m-a4b475fa1194",
+          "versions": 1,
+          "acquisitions": 1,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "2f7290fb9d3c02143bbd843389ce5f51a4057859fdd182bf8b3a0793dc40c2a4"
+          ]
+        },
+        "nl_inspect_blue-7": {
+          "status": "passed",
+          "mission_id": "m-b815b9946cf1",
+          "versions": 1,
+          "acquisitions": 1,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "b08ccf519bd16195b01157f46266a755cafb10fd7db27485d599226cf178aaae"
+          ]
+        },
+        "nl_inspect_red-19": {
+          "status": "passed",
+          "mission_id": "m-892e3af50186",
+          "versions": 1,
+          "acquisitions": 1,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "bb2090c3b325e903109825770150aea687ce4e0225927bd9f9ea64337b509354"
+          ]
+        },
+        "nl_inspect_red-41": {
+          "status": "passed",
+          "mission_id": "m-30cb31b21582",
+          "versions": 1,
+          "acquisitions": 1,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "af940cf8b84de8b914195cc612341874908bd39c91c2214632dfb4237b620c83"
+          ]
+        },
+        "nl_inspect_red-7": {
+          "status": "passed",
+          "mission_id": "m-ed111bac4b37",
+          "versions": 1,
+          "acquisitions": 1,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "a339447ae0ef3c8b0091ddb17f2b9ff64c95199ae9e1283dc70ff30625ff41df"
+          ]
+        },
+        "nl_refused-19": {
+          "status": "passed",
+          "mission_id": "m-9ea142b1c328",
+          "versions": 1,
+          "acquisitions": 0,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "51659ad09bab21b6f7331b2712e75c863b784866aafe281275766eca11333a73"
+          ]
+        },
+        "nl_refused-41": {
+          "status": "passed",
+          "mission_id": "m-b13d84db2e8b",
+          "versions": 1,
+          "acquisitions": 0,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "f6e9145d00b7f7e16f29b35e14c516ab73b6930e000e7b294d646bba6f66f9bb"
+          ]
+        },
+        "nl_refused-7": {
+          "status": "passed",
+          "mission_id": "m-e24f302f3c6b",
+          "versions": 1,
+          "acquisitions": 0,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "0680933353f20e0df473326a24c365799564a3fe6cb7a1cc582cea940318ed90"
+          ]
+        },
+        "replan_degraded_image-19": {
+          "status": "passed",
+          "mission_id": "m-604a9fd1b7c2",
+          "versions": 2,
+          "acquisitions": 4,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "43f00872189cbd0929ae336d4269f9ebc9c3c269a4cdf5ab8372b5953e3e6bd4",
+            "24a91a555b0ae36b20cccaa3920250437e7055cd12b925598adc7f8833f5fffb"
+          ]
+        },
+        "replan_degraded_image-41": {
+          "status": "passed",
+          "mission_id": "m-c703d2c81815",
+          "versions": 2,
+          "acquisitions": 4,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "e7b0aa5cca1a22efac3607d329cdf5805be7e095972884769538fcbd1b2d0d49",
+            "aa9b1c337404801d5c1c31bd3fa2ee260be3cbbebe44e34cd1ea1c409ecd3c2e"
+          ]
+        },
+        "replan_degraded_image-7": {
+          "status": "passed",
+          "mission_id": "m-dc93dcfaf26c",
+          "versions": 2,
+          "acquisitions": 4,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "43c2103db9f0088508c0a368d7d9c915eb2013065e0b836b995ca8f2d77db352",
+            "ac92298e17d927c70e0ce4c1d8f9af1773021eb7535458354b31eb567578d504"
+          ]
+        },
+        "service_outage-19": {
+          "status": "passed",
+          "mission_id": "m-619701326076",
+          "versions": 1,
+          "acquisitions": 1,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "95f2f0722e2d204351f2cc180e1f72776692e927cea96e3ee707400d67e49ea3"
+          ]
+        },
+        "service_outage-41": {
+          "status": "passed",
+          "mission_id": "m-f505530a1b26",
+          "versions": 1,
+          "acquisitions": 1,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "3a89bc5f10d3c86d1db152edaf727aa6b110dabce19322476858bf393448ab91"
+          ]
+        },
+        "service_outage-7": {
+          "status": "passed",
+          "mission_id": "m-2e96a8d91e4f",
+          "versions": 1,
+          "acquisitions": 1,
+          "planning_source": "scripted",
+          "problems": [],
+          "projection_digests": [
+            "afe9fef74d665091e67e56649a36e1ab59efd6f866e73c8c9a8c49b871620a30"
+          ]
+        }
+      },
+      "problems": []
+    },
+    "live_sources": {
+      "status": "passed",
+      "completed_flights": 1,
+      "audits": [
+        {
+          "status": "passed",
+          "mission_id": "m-bbf8917d0baa",
+          "versions": 1,
+          "acquisitions": 1,
+          "planning_source": "live_model",
+          "problems": [],
+          "projection_digests": [
+            "a5b5edf51c12ce515b85fd66527ddf7ae1f804db9c63ac859ec121078fa18bbd"
+          ]
+        },
+        {
+          "status": "passed",
+          "mission_id": "m-3e7f55c7552c",
+          "versions": 1,
+          "acquisitions": 0,
+          "planning_source": "live_model",
+          "problems": [],
+          "projection_digests": [
+            "952994910b4938f5a91ef3c9a4883e99a3c55d80fb8b1719dce46079dfaba5e1"
+          ]
+        }
+      ],
+      "problems": []
+    },
+    "historical_boundaries": {
+      "status": "passed",
+      "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+      "m3_sitl": "passed",
+      "m3_combined": "not_passed",
+      "jil": "missing",
+      "sha256": "b7c4a6fe95a9e5ee63b043b9a84843f54f1693a5e5ab00f9e43f26917e0d12eb",
+      "counts_as_candidate_validation": false
+    }
+  },
+  "capabilities": [
+    {
+      "capability": "run_provenance_and_product_gate",
+      "milestone": "P0",
+      "implemented": true,
+      "software_validation": "passed",
+      "source_sha": "de597d0eb7430260285e0965dc07f7f904ab5e70",
+      "hardware_validation": "not_applicable"
+    },
+    {
+      "milestone": "M1",
+      "implemented": true,
+      "software_validation": "historical_passed",
+      "source_sha": "eefe76e7c579200b998f9af0a0e29bc8358a1af7",
+      "evidence": "docs/m1-readiness.md",
+      "counts_as_candidate_validation": false,
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "M2",
+      "implemented": true,
+      "software_validation": "historical_passed",
+      "source_sha": "f362b9e22398b61ec948c48b88d1243dd0a30dfe",
+      "evidence": "docs/m2-readiness.md",
+      "counts_as_candidate_validation": false,
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "M3-SITL",
+      "implemented": true,
+      "software_validation": "historical_passed",
+      "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+      "evidence": "docs/verification/m3-2026-09-25/release.json",
+      "counts_as_candidate_validation": false,
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "H1",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "H2",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "H3",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "P1",
+      "status": "planned",
+      "software_validation": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "P2",
+      "status": "planned",
+      "software_validation": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "P3",
+      "status": "planned",
+      "software_validation": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "P4",
+      "status": "planned",
+      "software_validation": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "P5",
+      "status": "planned",
+      "software_validation": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "X1",
+      "status": "planned",
+      "software_validation": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "X2",
+      "status": "planned",
+      "software_validation": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "X3",
+      "status": "planned",
+      "software_validation": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "M3",
+      "status": "not_passed",
+      "reason": "JIL missing; not a P0 dependency"
+    }
+  ],
+  "inputs": {
+    "deployment.json": "16653c050eecf8a0892bca2ea1eaa3472f75b630a58f36dacc50869b41179817",
+    "e2e/m2-nominal.json": "7ca3b09142a8e949d8717cd93709ea6d337f6ec4e8a772dc4a69eb9e80177fd9",
+    "e2e/m2-recovery-outage.json": "ca52d14f60a9ea65b1afc1f8853e3e549959b6924849e26782fd90245deb595c",
+    "e2e/m2-refused-scope.json": "e3d1d129d46baa6f5380709d30c141a60fa9e91af30b307406b37d68c58b9f66",
+    "live-nominal.json": "43fa8329bc429eb6eb67737f4b7782054fe7eaa860b16c8415c733ad3d227239",
+    "live-cancel.json": "34ec62738c03073345a7a93f2efc974ac5ceedc719e023398311a3dbe86c364f",
+    "live-flights/m-3e7f55c7552c-v1.json": "8841e80db639cba30f1236ac1b8b455cb5f2ad8b16c493572bfbb38c6bb7aa3f",
+    "live-flights/m-bbf8917d0baa-v1.json": "7c4bed3f052812650f02a0f81ab2d27c0e1b11aa3f989afc5f5f3afb1063ded7",
+    "source-views/nl_adversarial_scope-19.json": "edf651bc2d4f88be77898cbad7fa9991109f2a3d909210b9540275b8c86a69e9",
+    "source-views/nl_adversarial_scope-41.json": "13e55a4bd92ad414a5dda218c2c8ffa1a1212bdf406e0a460688bac0e283b8c9",
+    "source-views/nl_adversarial_scope-7.json": "96604e287e78ae699b3dc6d87e54be52f642aa113a0039c72d5f6b10cc2701dc",
+    "source-views/nl_inspect_blue-19.json": "e8ee667050ae32f2d474a601dde09f339df077bdbb387edde87c0020382fee48",
+    "source-views/nl_inspect_blue-41.json": "112694fffb63b0d9d56c20e48164c902c596f0acc939edbab9dfd9295c38b01a",
+    "source-views/nl_inspect_blue-7.json": "52f3cb006abb42652eb02ac73660d44edd9b6e31e9d7e749c059492bd5e05eb2",
+    "source-views/nl_inspect_red-19.json": "a5b1c18dee5be867db3bae662cb28eb8dc4025aee150405dc8ac38a10f152740",
+    "source-views/nl_inspect_red-41.json": "86611bfb6cefa6699b77a069daf7db173881753a445d8f8b0ebc5d01ddf79830",
+    "source-views/nl_inspect_red-7.json": "fcb57873f52aceed47629d0f7f9cda9ef3b183182c2c90560716b04649698c5a",
+    "source-views/nl_refused-19.json": "d4624f3d9b1ce3fb27e14911e908d19a227a39652d5a2c9fe4405fb53bd68408",
+    "source-views/nl_refused-41.json": "6e54b0b2f9e295d2abf8e94807d25e303e02cd2e3dff45509d354bb07a548f72",
+    "source-views/nl_refused-7.json": "9a09063392bbf82fd86133e48bec5d59531dd6d73a040b8956a8b1e9f1d9442a",
+    "source-views/replan_degraded_image-19.json": "d92a9591889f6e7021d9be31068089505c8cfa051d0ce878221c0a3b8aecc7e7",
+    "source-views/replan_degraded_image-41.json": "814f5a8d35070e6261ce5abf4a758b3b21536d0784906805255ab19b497688b9",
+    "source-views/replan_degraded_image-7.json": "d8e8d4014249183be2b651511e287a5a7dbb5224688131823e035fb06e94d363",
+    "source-views/service_outage-19.json": "548d269e94aa0836251a745b85770879fc29a2f99c9970b64b2e2e4478cd3d04",
+    "source-views/service_outage-41.json": "f8551ba866f28012e268ebf876f13fa90a59a8eb62aaad0b68baec37a627e740",
+    "source-views/service_outage-7.json": "a282ae04f1a7169b022cfb2d7d74990b1de3d4ec5ad7cf55c891f82def753456"
+  }
+}

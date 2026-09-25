@@ -6,7 +6,7 @@
 
 M0–M2 已完成；**M3-SITL 已通过（2026-09-25，`75382dc`），原 M3 未关闭，JIL 待硬件**。归档证据以 `docs/m1-readiness.md`、`m2-readiness.md`、`m3-readiness.md` 为准，不能转借历史成绩给新提交。
 
-按 D049 推进 **P0–P5 软件运营主线**；H1 承接 M3-JIL，H2 承接原 M4-A，H3 验证现场运营；X1 空地协同在 P3 后。P0 来源与门禁代码已实现，候选 `271c5ac` 正在准出验证；当前证据见 `docs/p0-readiness.md`。下一批任务见 `docs/operations-implementation.md`，首个产品能力里程碑详见 `docs/p1-implementation.md`。使用局部自主的具体场景才依赖 M3-SITL，P1/P2 不等待硬件。
+按 D049 推进 **P0–P5 软件运营主线**；H1 承接 M3-JIL，H2 承接原 M4-A，H3 验证现场运营；X1 空地协同在 P3 后。**P0 已完成（2026-09-25，`de597d0`，软件 / SITL 范围）**，证据见 `docs/p0-readiness.md`；下一阶段为 P1。下一批任务见 `docs/operations-implementation.md`，首个产品能力里程碑详见 `docs/p1-implementation.md`。使用局部自主的具体场景才依赖 M3-SITL，P1/P2 不等待硬件。
 
 常驻飞行台的统一入口以 `desk-cloud --status` 为准（D037：8448，`/` 为 M2，`/fixed/` 为 M1）；激活顺序为同部署的 console-cloud 再 desk-cloud，并核对两条链路版本。M3 外部模式尚未接入常驻任务台。操作与准确验证边界见 `docs/tailnet-desk.md` 及对应 readiness。
 

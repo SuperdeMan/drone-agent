@@ -10,7 +10,7 @@
 
 ### 当前实现与阅读边界（2026-09-25）
 
-原架构审阅基线为 `9223d74`；P0 实现候选为 `271c5ac`，验收见 [P0 记录](../p0-readiness.md)。**M2 已完成单机仿真；M3-SITL 已通过，M3-JIL 待硬件；P0 准出验证中，P1–P5 尚未实现。**
+原架构审阅基线为 `9223d74`；P0 验收版本为 `de597d0`，验收见 [P0 记录](../p0-readiness.md)。**M2 已完成单机仿真；M3-SITL 已通过，M3-JIL 待硬件；P0 已完成，P1–P5 尚未实现。**
 
 | 链路 | 当前落地 | 进一步阅读 |
 |---|---|---|
@@ -124,6 +124,7 @@ flowchart TB
 | [../decisions.md](../decisions.md) | 技术决策记录（只增不删） |
 | [09-operations.md](09-operations.md) | 资源、工作流、调度、发现与工单、运行来源和权限 |
 | [../roadmap.md](../roadmap.md) | P/H/X 里程碑、历史映射与退出标准 |
+| [../p0-readiness.md](../p0-readiness.md) | P0 当前验收、来源语义、能力清单与准确候选证据 |
 | [../operations-implementation.md](../operations-implementation.md) | P0–P5 / H / X 工作包、责任、依赖与验收 |
 | [../p1-implementation.md](../p1-implementation.md) | 下一产品里程碑：12 项工作包、单机场纵向链和故障矩阵 |
 | [../reuse-from-embodied-agent.md](../reuse-from-embodied-agent.md) | 从 `embodied-agent` / `car-agent` 复用什么、怎么迁 |
