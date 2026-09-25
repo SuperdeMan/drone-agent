@@ -6,11 +6,12 @@
 
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![M2 complete in simulation](https://img.shields.io/badge/Milestone-M2%20%7C%20simulation-0F766E)](docs/m2-readiness.md)
+[![M3 simulation line passed](https://img.shields.io/badge/M3--SITL-passed-0F766E)](docs/m3-readiness.md)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue)](LICENSE)
 
 面向无人机、逐步扩展到空地异构机器人的安全约束任务运行时。它把巡检请求转成类型化任务，检查执行边界，将审批绑定到确切任务，并按证据报告实际结果。
 
-> **当前范围：** M2 已于 **2026-09-23** 完成，验证对象是 **PX4 SITL + Gazebo**（软件在环仿真）中的单架无人机。局部自主、真机飞行和空地任务交接属于[后续里程碑](docs/roadmap.md)。
+> **当前范围：** M2 已于 **2026-09-23** 完成，验证对象是 **PX4 SITL + Gazebo**（软件在环仿真）中的单架无人机。**2026-09-25** M3 的仿真线（经 guardian 约束的 PX4 外部模式局部自主）通过发布门禁；M3 要在 Jetson-in-the-loop 验证后才关闭。真机飞行和空地任务交接属于[后续里程碑](docs/roadmap.md)。
 
 [本机体验](#本机体验) · [设计](#设计) · [验证记录](#验证记录) · [文档导航](#文档导航) · [路线图](#路线图)
 
@@ -21,6 +22,7 @@
 - **将审批绑定到任务。** Ed25519 签名覆盖已批准版本和任务包哈希；任务包经 mTLS 传输，机载再次独立核验。
 - **在本地监督下执行。** mission executive 调度技能；独立的 `guardian` 进程持有唯一飞控连接并执行恢复策略，飞控原生失效保护与人工接管始终保留。
 - **按证据报告，保留不确定性。** 影像与遥测检查支撑“已完成 / 未完成 / 不确定”报告；MCAP、ULog 和事件记录用于独立裁判与离线回放。
+- **经受约束的第二控制路径做局部自主（M3，仿真）。** ROS 2 Jazzy 节点按深度地图规划短时域片段；`guardian` 用控制屏障函数过滤每个目标，只授权几百毫秒；PX4 外部模式节点只转发这些授权，授权结束即停。机载事件检测只产生候选事实。
 - **提供人和 Agent 的任务入口。** Web 任务台支持规划与审批；A2A 网关接受任务提交与状态查询；常驻任务台可通过 Tailscale 私网访问。
 
 已实现的技能覆盖起飞、登记航线飞行、拍照、资产巡检、返航和降落。M2 巡检使用[仿真场景](configs/scenarios/m2_campus_v2.yaml)中预定义的观察航线。
@@ -82,6 +84,7 @@ PX4 SITL 与 Gazebo 在 Linux 中运行，原生组件使用 ASCII 仓库路径�
 | [规划器实调基线](docs/verification/m2-baseline-2026-09-23.json) | `f362b9e` | MiniMax-M3：20/20 可规划请求一次通过准入，8/8 应拒答请求正确拒答，4/4 应拦截请求未被准入。 |
 | [常驻任务台实调](docs/tailnet-desk-readiness.md) | `74984f9` | 中英文请求完成规划、审批、飞行与独立验证；隐私越界请求被拒答。 |
 | [M2 评审与统一入口](docs/m2-review-2026-09-24.md) | `e8edf28` | Linux 833 项测试、M2 E2E 18/18 通过；修复证据闭环、取消后自动重飞与裁判缺口；实调与入口交互范围单独列出。 |
+| [M3-SITL 发布门禁](docs/m3-readiness.md) | `75382dc` | 983 项测试；16 个局部自主与故障场景 × 3 种子 = 48/48；M1 66/66、M2 18/18、Zenoh 下 6/6；错误成功报告 0，飞行回放一致；监督周期 p99 ≤ 106.6 ms。Jetson-in-the-loop 待硬件。 |
 
 M2 端到端与自然语言对抗运行使用**带标注的脚本规划回答**，验证执行链路及其边界。真实模型行为单独记录在实调基线和常驻任务台验收中。[机器可读的发布结果](docs/verification/m2-2026-09-23-release.json)汇集了 M2 的验收依据。
 
@@ -113,11 +116,11 @@ uv run python scripts/generate_proto.py
 | 阶段 | 范围 | 状态 |
 |---|---|---|
 | M0–M2 | 契约、单机运行时、受约束 Agent 与证据闭环 | 已完成仿真验证 |
-| M3 | 局部自主、感知、定位与降级处理 | 下一阶段 |
+| M3 | 局部自主、感知、定位与降级处理 | 仿真线已通过；Jetson-in-the-loop 待硬件 |
 | M4 | 受限真机验证、UAV 与 rover 联合仿真 | 规划中 |
 | M5–M6 | 真实空地协同、更多平台与模型插件 | 规划中 |
 
-详见[完整路线图与退出标准](docs/roadmap.md)。ROS 2 / Offboard 自主控制、跨机器人交接及 DJI / ArduPilot 适配尚未实现。真实空域准入仍为桩，真实模式的任务会被拒绝；能耗估计仅用于仿真。
+详见[完整路线图与退出标准](docs/roadmap.md)。局部自主只在仿真中验证；跨机器人交接及 DJI / ArduPilot 适配尚未实现。空域准入已有真实接口与录制的 UOM 后端，真实模式没有报备的任务会被拒绝；能耗估计仅用于仿真。
 
 ## 许可证
 

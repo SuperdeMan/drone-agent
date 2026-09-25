@@ -6,8 +6,8 @@
 
 | 包 | 语言 | 职责 | 连接 |
 |---|---|---|---|
-| `da_egress_ext` | C++（`px4_ros2_cpp` release/1.17） | guardian 控制出口的物理延伸：注册外部模式 `DroneAgent Local`，只转发 TTL 内的 guardian 授权；授权过期即停并请求 PX4 Hold，1 s 后报告不可运行 | guardian 出口套接字；uXRCE-DDS |
-| `da_localization` | Python | PX4 估计器输出 → `LocalizationReport`（GNSS / 视觉 / 本地位置健康） | guardian 自主层套接字 |
+| `da_egress_ext` | C++（`px4_ros2_cpp` release/1.17） | guardian 控制出口的物理延伸：注册外部模式 `DroneAgent Local`，只转发 TTL 内的 guardian 授权；授权过期即停并请求 PX4 Hold，1 s 后报告不可运行；guardian 显式撤销后只停发、不切换任何模式（D047） | guardian 出口套接字；uXRCE-DDS |
+| `da_localization` | Python | PX4 估计器输出 → `LocalizationReport`（GNSS / 视觉 / 本地位置健康，附 PX4 输入年龄与估计器标志年龄；输入未到齐或标志过期时不作结论，D045 / D048） | guardian 自主层套接字 |
 | `da_local_nav` | Python（numpy） | 深度 → 体素地图 → 邻近障碍集合；局部任务 → A* 短时域候选片段（包含计划中的局部地图与局部规划两部分） | guardian 自主层套接字 |
 | `da_perception` | Python（numpy） | 下视 RGB 颜色特征检测 → 带协方差的 `BeliefFact` | executive 信念套接字 |
 | `da_edge_inference` | Python（numpy + ONNX Runtime） | 下视 RGB → CLIP 零样本场景类别 → 模型来源的候选 `BeliefFact`（最多 1 Hz、丢帧不排队；提示嵌入在镜像构建时计算，D044） | executive 信念套接字 |

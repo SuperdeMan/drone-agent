@@ -46,7 +46,7 @@
 
 ## 3. 总体分层
 
-**目标架构。** 当前链路使用 L0–L3、L5、L6 的 PX4/MAVSDK 路径；L4 在 M3 引入，地面机器人与协同在 M4-B / M5 引入，其他飞控与学习策略按后续里程碑接入。M2 的协调器只为单机分配任务，协同规则只记录不执行。
+**目标架构。** 当前链路在 SITL 中覆盖空中一侧的 L0–L6：M1 / M2 的 PX4/MAVSDK 航线路径，加上 M3 的 L4 局部自主（px4_ros2 外部模式，经 guardian 的 CBF 过滤与短时授权，M3-SITL 已验证，Jetson-in-the-loop 待硬件）；地面机器人与协同在 M4-B / M5 引入，其他飞控与学习策略按后续里程碑接入。M2 的协调器只为单机分配任务，协同规则只记录不执行。
 
 ```mermaid
 flowchart TB
@@ -60,7 +60,8 @@ flowchart TB
 
     uplink["无人机任务接入 · uplink（SITL）"]
     executive["L3 任务执行 · executive"]
-    autonomy["L4 局部自主 · M3 计划"]
+    autonomy["L4 局部自主 · M3（SITL）"]
+    egress["外部模式出口节点 · 只转发 guardian 授权"]
     guardian["L5 安全监督 · guardian"]
     adapter["L6 PX4 适配（guardian 内）"]
     flightController["PX4 原生控制与失效保护"]
@@ -68,10 +69,13 @@ flowchart TB
     admission -->|"签名任务包 · mTLS"| uplink
     uplink -->|"独立验签"| executive
     executive -->|"M2 技能意图"| guardian
-    executive -.-> autonomy
-    autonomy -.->|"M3 候选目标 / 轨迹"| guardian
+    guardian -->|"局部任务"| autonomy
+    autonomy -->|"候选轨迹片段"| guardian
+    autonomy -->|"信念 / 候选事实"| executive
     guardian --> adapter
     adapter --> flightController
+    guardian -->|"CBF 过滤后的短时授权"| egress
+    egress -->|"uXRCE-DDS · 外部模式"| flightController
 
     groundExecutive["L3 地面任务执行 · M4-B / M5 计划"]
     groundAutonomy["L4 导航与操作"]
@@ -88,16 +92,17 @@ flowchart TB
     classDef implemented stroke:#277563,stroke-width:2px
     classDef planned stroke:#8793a3,stroke-dasharray:5 4
     classDef safety stroke:#b88219,stroke-width:3px
-    class entry,planner,admission,uplink,executive,adapter,flightController implemented
-    class autonomy,groundExecutive,groundAutonomy,groundGuardian,groundAdapter,groundController planned
+    class entry,planner,admission,uplink,executive,autonomy,egress,adapter,flightController implemented
+    class groundExecutive,groundAutonomy,groundGuardian,groundAdapter,groundController planned
     class guardian safety
 ```
 
-实线表示当前 M2 执行路径，虚线及标注“计划”的节点表示后续扩展；金色边框的 guardian 是唯一控制出口。图中表示任务与控制意图的下行关系，观测、证据和状态按同一边界回传。
+实线表示当前执行路径（M1 / M2 的航线路径与 M3 的外部模式路径，后者在 SITL 中验证），虚线及标注“计划”的节点表示后续扩展；金色边框的 guardian 是唯一决定写与不写的进程，出口节点只是它在 ROS 2 一侧的延伸（D039）。图中表示任务与控制意图的下行关系，观测、证据和状态按同一边界回传。
 
 - **L0–L2**：Web / A2A / API 入口；Planner、只读工具、Catalog、业务账本与证据复核；确定性编译、准入及审批签名。M2 的 Coordinator 为单机直通，跨机器人协同仍待实施。
 - **机载边界**：独立 uplink 拉取任务包；executive 与 guardian 各自验签；飞控连接只在 guardian 内，飞控失效保护与 RC / GCS 接管始终保留。
-- **后续扩展**：L4 感知、定位、局部地图与规划，学习策略先影子运行；px4_ros2、其他飞控和地面平台适配按里程碑接入。
+- **L4（M3，SITL）**：定位健康、深度局部地图与短时域规划、颜色特征感知与事件检测；规划片段只是候选，guardian 过滤后以短时授权经出口节点下发，学习策略只影子运行（D039–D048）。
+- **后续扩展**：Jetson-in-the-loop 与真机（M4-A）、其他飞控和地面平台适配按里程碑接入。
 - **贯穿链路**：安全监督、观测证据、任务事件、MCAP / ULog 记录、回放与评测。
 
 **关键性质：L1/L2 与 L3–L6 之间传递的是任务及其边界，不是依赖公网连续下发的每帧动作。** 断链时 L3–L5 依据已授权任务包与本地恢复策略自主收尾。
@@ -106,7 +111,7 @@ flowchart TB
 
 | 路线 | 内容 | 进入系统的方式 |
 |---|---|---|
-| 工程主线 | 声明式任务 + 确定性执行 + 飞控原生模式；M3 再接入成熟局部规划 | M1 运行时、M2 受约束规划已落地；局部规划待实施 |
+| 工程主线 | 声明式任务 + 确定性执行 + 飞控原生模式；M3 再接入成熟局部规划 | M1 运行时、M2 受约束规划已落地；M3 局部规划与外部模式在 SITL 中通过，Jetson-in-the-loop 待硬件 |
 | 研究支线 | VLA / VLN、世界模型、学习型局部技能、合成数据 | 只以 `LocalPolicy` / `WorldPredictor` 插件形式接入；先影子运行与离线评测，再有限接管；不成为 M1–M4 的前置条件 |
 
 ## 5. 文档地图

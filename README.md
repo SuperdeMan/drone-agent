@@ -6,11 +6,12 @@
 
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![M2 complete in simulation](https://img.shields.io/badge/Milestone-M2%20%7C%20simulation-0F766E)](docs/m2-readiness.md)
+[![M3 simulation line passed](https://img.shields.io/badge/M3--SITL-passed-0F766E)](docs/m3-readiness.md)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue)](LICENSE)
 
 A safety-constrained mission runtime for drones, designed to grow into air-ground robotics. It turns inspection requests into typed missions, checks their boundaries, binds approval to the exact task, and reports what the evidence supports.
 
-> **Current scope:** M2 completed on **2026-09-23** for a single drone in **PX4 SITL + Gazebo** (software-in-the-loop simulation). Local autonomy, hardware flights and air-ground handoff are [planned milestones](docs/roadmap.md).
+> **Current scope:** M2 completed on **2026-09-23** for a single drone in **PX4 SITL + Gazebo** (software-in-the-loop simulation). On **2026-09-25** the simulation line of M3 (local autonomy through a guarded PX4 external mode) passed its release gate; M3 closes only after Jetson-in-the-loop validation. Hardware flights and air-ground handoff are [planned milestones](docs/roadmap.md).
 
 [Try locally](#try-locally) · [Design](#design) · [Validation](#validation) · [Documentation](#documentation) · [Roadmap](#roadmap)
 
@@ -21,6 +22,7 @@ A safety-constrained mission runtime for drones, designed to grow into air-groun
 - **Binds approval to the task.** Ed25519 signatures cover the approved version and package hash. Packages travel over mTLS and are independently checked onboard.
 - **Executes under local supervision.** The mission executive schedules skills; a separate `guardian` process owns the only flight-controller connection and applies recovery policies. Native failsafes and manual takeover remain available.
 - **Reports evidence, including uncertainty.** Image and telemetry checks feed completed / not completed / uncertain reports. MCAP, ULog and event records support independent judging and offline replay.
+- **Flies local autonomy through a guarded second path (M3, simulation).** ROS 2 Jazzy nodes plan short segments from depth maps; the `guardian` filters every target through a control barrier function and authorizes it for a few hundred milliseconds; a PX4 external-mode node only forwards those authorizations and stops when they end. Onboard event detection produces candidate facts only.
 - **Provides human and agent entry points.** A Web mission desk supports planning and approval; the A2A gateway accepts task submissions and status queries. A resident desk can run behind Tailscale.
 
 The implemented skill set covers takeoff, registered routes, image capture, asset inspection, return-home and landing. M2 inspection uses predefined observation routes in the [simulation scene](configs/scenarios/m2_campus_v2.yaml).
@@ -82,6 +84,7 @@ Recorded results below belong to their **exact revisions and scopes**; they are 
 | [Live planner baseline](docs/verification/m2-baseline-2026-09-23.json) | `f362b9e` | MiniMax-M3: 20/20 plannable requests admitted on the first attempt, 8/8 expected refusals, 4/4 required blocks. |
 | [Resident desk with live planning](docs/tailnet-desk-readiness.md) | `74984f9` | Chinese and English requests planned, approved, flown and independently verified; a privacy-intrusive request refused. |
 | [M2 review and unified desk](docs/m2-review-2026-09-24.md) | `e8edf28` | 833 Linux checks and 18/18 M2 E2E cases passed; evidence handling, post-cancellation retries and judge coverage fixed. Live-model and interactive checks are listed separately. |
+| [M3-SITL release gate](docs/m3-readiness.md) | `75382dc` | 983 tests; 16 local-autonomy and fault scenarios × 3 seeds = 48/48; M1 66/66, M2 18/18 and 6/6 over Zenoh; zero false success reports and matching replay; supervision period p99 ≤ 106.6 ms. Jetson-in-the-loop pending hardware. |
 
 The M2 end-to-end and natural-language adversarial runs used **labelled scripted planner answers** to test the execution chain and its boundaries. Live model behavior is documented separately in the baseline and resident-desk records. The [machine-readable release result](docs/verification/m2-2026-09-23-release.json) links the M2 evidence together.
 
@@ -113,11 +116,11 @@ Read [CLAUDE.md](CLAUDE.md) before contributing ([AGENTS.md](AGENTS.md) is the c
 | Stage | Scope | Status |
 |---|---|---|
 | M0–M2 | Contracts, single-drone runtime, constrained agent and evidence loop | Complete in simulation |
-| M3 | Local autonomy, perception, localization and degradation handling | Next |
+| M3 | Local autonomy, perception, localization and degradation handling | Simulation line passed; Jetson-in-the-loop pending |
 | M4 | Restricted hardware validation and UAV–rover joint simulation | Planned |
 | M5–M6 | Real air-ground collaboration, more platforms and model plugins | Planned |
 
-See the [full roadmap and exit criteria](docs/roadmap.md). ROS 2 / Offboard autonomy, cross-robot handoff and DJI / ArduPilot support are outside the current implementation. Real airspace admission remains a stub that rejects real-mode missions; energy estimates are for simulation only.
+See the [full roadmap and exit criteria](docs/roadmap.md). Local autonomy is validated in simulation only; cross-robot handoff and DJI / ArduPilot support are outside the current implementation. Airspace admission has a real interface with a recorded UOM backend and rejects real-mode missions without a filing; energy estimates are for simulation only.
 
 ## License
 

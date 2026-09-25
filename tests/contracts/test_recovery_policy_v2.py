@@ -4,6 +4,7 @@
 """
 
 import itertools
+import re
 from pathlib import Path
 
 import yaml
@@ -20,11 +21,20 @@ def outcome(edge):
     return None if edge is None else (edge.target, edge.then, edge.after_s)
 
 
-def test_every_v2_edge_is_planned_and_none_claims_verification():
+def test_every_v2_edge_is_verified_by_a_record_bound_to_its_own_content():
+    # Before M3-SITL no v2 edge could claim verification; the gate then bound every edge, with the evidence of its own
+    # scenario, to one tested revision (WP-M3-14, D042). Changing an edge's content voids its record.
+    # M3-SITL 之前没有任何 v2 边可以自称已验证；门禁随后用每条边自身场景的证据，把所有边绑定到同一被测版本
+    # （WP-M3-14，D042）。边内容一旦改变，其记录即失效。
     assert (V2.policy_id, V2.version) == ("multirotor_m3", "v2")
     assert RecoveryBehavior.LAND_AT in V2.nodes
-    assert all(edge.fault_injection_scenario and not edge.is_verified for edge in V2.edges)
     assert NEW_TRIGGERS <= {edge.trigger for edge in V2.edges}
+    V2.require_verified()
+    revisions = {edge.validation.software_revision for edge in V2.edges}
+    assert len(revisions) == 1 and re.fullmatch(r"[0-9a-f]{40}", revisions.pop())
+    for edge in V2.edges:
+        source = "m3_suite:" if edge.fault_injection_scenario.startswith("fi.m3.") else "m1_regression:"
+        assert edge.validation.evidence_ref.startswith(source) and "#seeds=" in edge.validation.evidence_ref
 
 
 def test_inherited_edges_keep_their_exact_content():

@@ -68,7 +68,7 @@ def test_a_lost_link_ages_the_whole_report_while_a_lost_gnss_does_not():
     # DDS 链路断开：所有输入都已 1.2 秒，报告在任何 GNSS 判定可能误导之前就表明了这一点。
     old = time.monotonic() - 1.2
     link_lost, now = inputs(gps_time=old, flags_time=old, local_time=old, status_time=old)
-    assert assess(link_lost, now).px4_status_age_s >= 1.2
+    assert assess(link_lost, now).px4_status_age_s > 1.19  # monotonic subtraction rounds / 单调时钟相减有舍入
     # GNSS gone but the estimator still streams: a fresh report of a real GNSS loss.
     # GNSS 丢失而估计器仍在发布：一份关于真实 GNSS 失效的新鲜报告。
     gnss_lost, now = inputs(gps_time=time.monotonic() - 2.0)
