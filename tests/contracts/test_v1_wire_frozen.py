@@ -29,3 +29,15 @@ def test_frozen_member_changes_are_rejected(section):
     changed[section][name][member] = None
     with pytest.raises(ValueError, match="breaking frozen v1"):
         TOOLS["check"](frozen, changed)
+
+
+def test_the_autonomy_protocol_is_frozen_since_m3_sitl():
+    # D039: drone.autonomy.v1 was a draft until M3-SITL passed (2026-09-25); it is now locked like the other v1 packages.
+    # D039：drone.autonomy.v1 在 M3-SITL 通过（2026-09-25）之前是草案；现在与其他 v1 包一样锁定。
+    frozen = json.loads((ROOT / "proto/v1-wire-lock.json").read_text())
+    for name in ("AutonomyFrame", "AuthorizedSetpoint", "AuthorizationRevoked", "EgressStatus", "LocalizationReport"):
+        assert f"drone.autonomy.v1.{name}" in frozen["messages"], name
+    with pytest.raises(ValueError, match="already frozen"):
+        TOOLS["add_package"](copy.deepcopy(frozen), frozen, "drone.autonomy.v1")
+    with pytest.raises(ValueError, match="not in the compiled wire"):
+        TOOLS["add_package"](copy.deepcopy(frozen), frozen, "drone.nowhere.v1")

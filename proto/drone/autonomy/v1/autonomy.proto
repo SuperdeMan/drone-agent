@@ -5,11 +5,13 @@ import "google/protobuf/timestamp.proto";
 
 // Local autonomy IPC between processes on one aircraft (D039). Frames travel on private Unix stream sockets as a
 // 4-byte big-endian length followed by one serialized AutonomyFrame (at most 64 KiB); they never cross a network
-// and never reach the fleet protocol. Draft until M3-SITL acceptance, then frozen like drone.*.v1.
+// and never reach the fleet protocol. Frozen in proto/v1-wire-lock.json since M3-SITL passed (2026-09-25): field
+// numbers and types never change; new fields only append.
 // Every message is re-validated by the receiver's domain model; decoding is not authorization.
 //
 // 同一架飞行器上进程之间的本地自主层 IPC（D039）。帧在私有 Unix 流套接字上传输：4 字节大端长度后接一个序列化的
-// AutonomyFrame（最大 64 KiB）；永不跨网络，也不进入车队协议。M3-SITL 验收前为草案，之后与 drone.*.v1 一样冻结。
+// AutonomyFrame（最大 64 KiB）；永不跨网络，也不进入车队协议。M3-SITL 通过（2026-09-25）后已写入
+// proto/v1-wire-lock.json：字段号与类型不得再改，新字段只能追加。
 // 接收方都要用领域模型重新校验每条消息；能解码不等于获得授权。
 // The ROS 2 side compiles this file with the system protoc 3.21; keep to proto3 features it supports.
 // ROS 2 一侧用系统 protoc 3.21 编译本文件；只使用它支持的 proto3 特性。

@@ -1,5 +1,23 @@
 {
   "enums": {
+    "drone.autonomy.v1.Implementation": {
+      "IMPLEMENTATION_DETERMINISTIC": 1,
+      "IMPLEMENTATION_LEARNED": 2,
+      "IMPLEMENTATION_UNSPECIFIED": 0
+    },
+    "drone.autonomy.v1.LearnedStage": {
+      "LEARNED_STAGE_FULL": 3,
+      "LEARNED_STAGE_LIMITED": 2,
+      "LEARNED_STAGE_SHADOW": 1,
+      "LEARNED_STAGE_UNSPECIFIED": 0
+    },
+    "drone.autonomy.v1.SegmentStatus": {
+      "SEGMENT_STATUS_NO_PATH": 3,
+      "SEGMENT_STATUS_OK": 1,
+      "SEGMENT_STATUS_OVERLOADED": 4,
+      "SEGMENT_STATUS_REACHED": 2,
+      "SEGMENT_STATUS_UNSPECIFIED": 0
+    },
     "drone.contracts.v1.ControlMode": {
       "CONTROL_MODE_EXTERNAL_MODE": 5,
       "CONTROL_MODE_MISSION_UPLOAD": 1,
@@ -160,6 +178,896 @@
   },
   "format": "drone.wire-lock/v1",
   "messages": {
+    "drone.autonomy.v1.AuthorizationRevoked": {
+      "command_seq": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "issued_at": {
+        "label": 1,
+        "number": 5,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "lease_epoch": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "reason": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.autonomy.v1.AuthorizedSetpoint": {
+      "command_seq": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "issued_at": {
+        "label": 1,
+        "number": 8,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "lease_epoch": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "max_horizontal_speed_mps": {
+        "label": 1,
+        "number": 11,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "max_vertical_speed_mps": {
+        "label": 1,
+        "number": 12,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "mission_id": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mission_version": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "position_ned": {
+        "label": 1,
+        "number": 10,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.Vector3"
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "step_id": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "ttl_ms": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      }
+    },
+    "drone.autonomy.v1.AutonomyFrame": {
+      "authorization_revoked": {
+        "label": 1,
+        "number": 8,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.AuthorizationRevoked"
+      },
+      "authorized_setpoint": {
+        "label": 1,
+        "number": 5,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.AuthorizedSetpoint"
+      },
+      "belief_fact": {
+        "label": 1,
+        "number": 7,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.BeliefFact"
+      },
+      "egress_status": {
+        "label": 1,
+        "number": 6,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.EgressStatus"
+      },
+      "local_task": {
+        "label": 1,
+        "number": 1,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.LocalTask"
+      },
+      "localization_report": {
+        "label": 1,
+        "number": 4,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.LocalizationReport"
+      },
+      "obstacle_set": {
+        "label": 1,
+        "number": 3,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.ObstacleSet"
+      },
+      "trajectory_segment": {
+        "label": 1,
+        "number": 2,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.TrajectorySegment"
+      }
+    },
+    "drone.autonomy.v1.BeliefFact": {
+      "fact": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 12,
+        "type_name": ""
+      },
+      "latency_ms": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "producer_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "replan_trigger": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.autonomy.v1.EgressStatus": {
+      "armed": {
+        "label": 1,
+        "number": 18,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "cant_run_reports": {
+        "label": 1,
+        "number": 20,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "compatibility_ok": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "fmu_link_ok": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "forwarded_setpoints": {
+        "label": 1,
+        "number": 12,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "highest_epoch": {
+        "label": 1,
+        "number": 10,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "hold_commands": {
+        "label": 1,
+        "number": 19,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "last_forwarded_seq": {
+        "label": 1,
+        "number": 11,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "last_watchdog_reason": {
+        "label": 1,
+        "number": 17,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mode_active": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "mode_nav_state": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "node_version": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "registered": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "rejected_epoch": {
+        "label": 1,
+        "number": 14,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "rejected_seq": {
+        "label": 1,
+        "number": 15,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "rejected_stale": {
+        "label": 1,
+        "number": 13,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "revocations": {
+        "label": 1,
+        "number": 21,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "stamp": {
+        "label": 1,
+        "number": 3,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "watchdog_exits": {
+        "label": 1,
+        "number": 16,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      }
+    },
+    "drone.autonomy.v1.LocalTask": {
+      "active": {
+        "label": 1,
+        "number": 17,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "deadline": {
+        "label": 1,
+        "number": 16,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "frame_id": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "goal": {
+        "label": 1,
+        "number": 10,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.Vector3"
+      },
+      "goal_tolerance_m": {
+        "label": 1,
+        "number": 11,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "issued_at": {
+        "label": 1,
+        "number": 15,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "lease_epoch": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "map_version": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "max_speed_mps": {
+        "label": 1,
+        "number": 12,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "mission_id": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "mission_version": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "scope_max": {
+        "label": 1,
+        "number": 14,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.Vector3"
+      },
+      "scope_min": {
+        "label": 1,
+        "number": 13,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.Vector3"
+      },
+      "step_id": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "task_id": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      }
+    },
+    "drone.autonomy.v1.LocalizationReport": {
+      "estimator_flags_age_s": {
+        "label": 1,
+        "number": 16,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "ev_position_fused": {
+        "label": 1,
+        "number": 10,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "gnss_eph_m": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "gnss_fix_type": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "gnss_ok": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "gnss_position_fused": {
+        "label": 1,
+        "number": 11,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "gnss_satellites": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "local_position_ok": {
+        "label": 1,
+        "number": 12,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      },
+      "position_std_m": {
+        "label": 1,
+        "number": 13,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "px4_status_age_s": {
+        "label": 1,
+        "number": 15,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "source_version": {
+        "label": 1,
+        "number": 14,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "stamp": {
+        "label": 1,
+        "number": 3,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "valid_until": {
+        "label": 1,
+        "number": 4,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "visual_ok": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 8,
+        "type_name": ""
+      }
+    },
+    "drone.autonomy.v1.ObstacleSet": {
+      "confidence": {
+        "label": 1,
+        "number": 12,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "coverage_radius_m": {
+        "label": 1,
+        "number": 14,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "frame_id": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "map_seq": {
+        "label": 1,
+        "number": 13,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "map_version": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "point_radius_m": {
+        "label": 1,
+        "number": 10,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "points": {
+        "label": 3,
+        "number": 9,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.Vector3"
+      },
+      "position_std_m": {
+        "label": 1,
+        "number": 11,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "source_id": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "source_version": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "stamp": {
+        "label": 1,
+        "number": 5,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "valid_until": {
+        "label": 1,
+        "number": 6,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      }
+    },
+    "drone.autonomy.v1.TrajectoryPoint": {
+      "position": {
+        "label": 1,
+        "number": 3,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.Vector3"
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "t_offset_s": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      }
+    },
+    "drone.autonomy.v1.TrajectorySegment": {
+      "created_at": {
+        "label": 1,
+        "number": 10,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      },
+      "cycle_ms": {
+        "label": 1,
+        "number": 17,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "frame_id": {
+        "label": 1,
+        "number": 12,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "implementation": {
+        "label": 1,
+        "number": 8,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.autonomy.v1.Implementation"
+      },
+      "learned_stage": {
+        "label": 1,
+        "number": 9,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.autonomy.v1.LearnedStage"
+      },
+      "lease_epoch": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "map_version": {
+        "label": 1,
+        "number": 13,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "max_speed_mps": {
+        "label": 1,
+        "number": 15,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "min_clearance_m": {
+        "label": 1,
+        "number": 18,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "points": {
+        "label": 3,
+        "number": 14,
+        "optional": false,
+        "type": 11,
+        "type_name": ".drone.autonomy.v1.TrajectoryPoint"
+      },
+      "robot_id": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "segment_seq": {
+        "label": 1,
+        "number": 5,
+        "optional": true,
+        "type": 3,
+        "type_name": ""
+      },
+      "source_id": {
+        "label": 1,
+        "number": 6,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "source_version": {
+        "label": 1,
+        "number": 7,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "status": {
+        "label": 1,
+        "number": 16,
+        "optional": true,
+        "type": 14,
+        "type_name": ".drone.autonomy.v1.SegmentStatus"
+      },
+      "task_id": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "valid_until": {
+        "label": 1,
+        "number": 11,
+        "optional": false,
+        "type": 11,
+        "type_name": ".google.protobuf.Timestamp"
+      }
+    },
+    "drone.autonomy.v1.Vector3": {
+      "schema_version": {
+        "label": 1,
+        "number": 1,
+        "optional": true,
+        "type": 9,
+        "type_name": ""
+      },
+      "x": {
+        "label": 1,
+        "number": 2,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "y": {
+        "label": 1,
+        "number": 3,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      },
+      "z": {
+        "label": 1,
+        "number": 4,
+        "optional": true,
+        "type": 1,
+        "type_name": ""
+      }
+    },
     "drone.contracts.v1.AerialState": {
       "armed": {
         "label": 1,

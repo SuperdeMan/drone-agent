@@ -12,6 +12,7 @@
 | [contracts.proto](drone/contracts/v1/contracts.proto) | 六类共享契约、恢复策略与技能描述 |
 | [control.proto](drone/control/v1/control.proto) | guardian 本地意图、业务心跳、租约安装、命令状态对账 |
 | [fleet.proto](drone/fleet/v1/fleet.proto) | M2 投递拉取 / 确认、签名任务包、操作者请求、事件、媒体与状态；后续交接消息 |
+| [autonomy.proto](drone/autonomy/v1/autonomy.proto) | M3 同一架飞行器上进程之间的自主层 IPC（D039）：局部任务、候选轨迹片段、障碍集合、定位报告、授权设定值与撤销、出口节点状态、信念事实；只走私有 Unix 套接字，不进入车队协议；M3-SITL 通过后写入 wire 锁 |
 
 ```powershell
 $env:UV_DEFAULT_INDEX = 'https://pypi.tuna.tsinghua.edu.cn/simple'

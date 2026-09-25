@@ -55,19 +55,49 @@ def check(frozen, current):
                     raise ValueError(f"breaking frozen v1 {section}: {name}.{member}")
 
 
+def add_package(frozen, current, package):
+    """Append one accepted package's messages, enums and services to the lock; everything already frozen stays as is.
+
+    A package already in the lock, or absent from the compiled wire, is refused.
+
+    把一个已验收包的消息、枚举与服务追加到锁中；已冻结的内容保持不变。已在锁中或不在编译结果中的包一律拒绝。
+    """
+    prefix = package + "."
+    sections = ("messages", "enums", "services")
+    if any(name.startswith(prefix) for section in sections for name in frozen[section]):
+        raise ValueError(f"{package} is already frozen")
+    added = 0
+    for section in sections:
+        for name, members in current[section].items():
+            if name.startswith(prefix):
+                frozen[section][name] = members
+                added += 1
+    if not added:
+        raise ValueError(f"{package} is not in the compiled wire")
+    return added
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--add-package", help="append a newly accepted drone.<service>.v1 package, e.g. "
+                                              "drone.autonomy.v1 after M3-SITL (D039)")
     args = parser.parse_args()
     with tempfile.TemporaryDirectory() as directory:
         path = runpy.run_path(str(ROOT / "scripts/generate_proto.py"))["generate"](Path(directory))
         current = describe(path)
     if args.check:
         check(json.loads(LOCK.read_text(encoding="utf-8")), current)
+    elif args.add_package:
+        frozen = json.loads(LOCK.read_text(encoding="utf-8"))
+        check(frozen, current)
+        added = add_package(frozen, current, args.add_package)
+        LOCK.write_text(json.dumps(frozen, sort_keys=True, indent=2) + "\n", encoding="utf-8", newline="\n")
+        print(f"froze {added} definitions of {args.add_package}")
     elif LOCK.exists():
         raise SystemExit("v1 is already frozen; a new wire major requires an explicit migration")
     else:
-        LOCK.write_text(json.dumps(current, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+        LOCK.write_text(json.dumps(current, sort_keys=True, indent=2) + "\n", encoding="utf-8", newline="\n")
     print("v1 wire compatibility verified")
 
 

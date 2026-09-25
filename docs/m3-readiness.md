@@ -23,7 +23,7 @@ M3 的验收按 D038 拆成两条线：**M3-SITL**（共享云主机 amd64：第
 | 任务来源 | M3 场景由确定性夹具 `eval/m3_fixture.py` 生成任务包；M2 回归沿用脚本规划回答，不计模型行为 |
 | 发布门禁 | [门禁结果](verification/m3-2026-09-25/release.json)：`m3_sitl: passed`，checks、adversarial、m3_suite、m1_regression、m2_regression、m2_zenoh、measurement、recovery_edges 八项全部通过（29 个输入的 SHA-256 与仓库文件一致）；`jil: missing`，总体 `not_passed`。门禁在只增加记录与文档的后代提交 `cc148a8` 上运行 |
 
-机器可读证据在 [`verification/m3-2026-09-25/`](verification/m3-2026-09-25/)：部署回执、分批回执（含不计入的回执）、门禁批次日志、恢复边绑定报告与门禁结果。运行方法见 [云端开发指南](cloud-development.md) 的「M3-SITL 验证」。
+机器可读证据在 [`verification/m3-2026-09-25/`](verification/m3-2026-09-25/)：部署回执、分批回执（含不计入的回执）、门禁批次日志、恢复边绑定报告与门禁结果。运行方法见 [云端开发指南](cloud-development.md) 的「M3-SITL 验证」。门禁通过后，按 D039 把 `drone.autonomy.v1` 写入 [wire 锁](../proto/v1-wire-lock.json)（只追加 14 个定义，原有条目不变），此后该协议的字段号与类型不得再改。
 
 ## 退出标准核对
 
