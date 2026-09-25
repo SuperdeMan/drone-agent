@@ -1,0 +1,109 @@
+{
+  "status": "verified",
+  "source_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+  "control_sha256": "4cbadb08c989aebfec297340f0e302753b22e2ddd348a46712975a8b3d65996a",
+  "deployment_id": "20260925T141617Z-a90faca4",
+  "origin": "https://<tailnet-host>:8448",
+  "listener": "127.0.0.1:8769",
+  "images": {
+    "sim": "drone-agent-m2-sim:271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7-4cbadb08c989",
+    "aircraft": "drone-agent-m1-aircraft:271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7-4cbadb08c989",
+    "ground": "drone-agent-m1-ground:271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7-4cbadb08c989"
+  },
+  "planner": "live",
+  "signer_key_id": "ed25519:6563c47cfafa2a22",
+  "certificate_fingerprints": {
+    "ca": "c0e1bca164a5817a5aa477738aa5a340a24da6e3722f2ed9a57c3341792af2e5",
+    "service": "fcac24effa0c96900d7a9b48ca2dbfbb94f28c29d094f0944aa33d5b94d1a206",
+    "robot": "74f38d4714bbcc1ac0653581c1ef3b1b59a7b13b3cf00b3faaa37dd24bbd1a3e"
+  },
+  "planner_label": "live:minimax/MiniMax-M3",
+  "health": {
+    "ok": true,
+    "result": {
+      "status": "ready",
+      "signer_key_id": "ed25519:6563c47cfafa2a22",
+      "robot_id": "uav_01",
+      "planner": "live:minimax/MiniMax-M3",
+      "execution_backend": "px4_sitl",
+      "source_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7"
+    },
+    "console_source_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+    "fixed": {
+      "status": "ready",
+      "mode": "tailnet",
+      "console_source_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+      "runtime_source_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7"
+    },
+    "supervisor": {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+      "updated_at": "2026-09-25T14:59:43.690066+00:00"
+    },
+    "modes": [
+      "mission",
+      "fixed"
+    ]
+  },
+  "funnel": false,
+  "containers": {
+    "desk-model-proxy": {
+      "container_id": "a5a7ae88e5cc7f9abecbd5bf2847e08ecd4a6eb5030b4f62f47a420f6055988a",
+      "image_id": "sha256:3daeef1fb91b01cd888180dd46331e65fa5a122b0238cb1ecfc510a98bbb955a",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_egress",
+        "drone-agent-cloud_desk_model"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-service": {
+      "container_id": "c883ecc489f439a78c23627d37831e44dab669d8946afe11f5c606aebac1a2ed",
+      "image_id": "sha256:3daeef1fb91b01cd888180dd46331e65fa5a122b0238cb1ecfc510a98bbb955a",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_model",
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-uplink": {
+      "container_id": "82324dd626762f3172e1ac53826c478b6d8684648758d0fd15116a50efc59e0f",
+      "image_id": "sha256:e007fb97037e58b2af23e730874a16e265fbdfcfa37a02a21741e4b7197e67fe",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk": {
+      "container_id": "512ed08391912816bb45077a0326ab4e615106b378733c9908d3e46b64227326",
+      "image_id": "sha256:3daeef1fb91b01cd888180dd46331e65fa5a122b0238cb1ecfc510a98bbb955a",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_ingress"
+      ],
+      "read_only": true,
+      "docker_access": false
+    }
+  },
+  "other_serve_before_sha256": "349f04197a2a7e4747c39ec22a20f21bd45708ae3c2d9f8a12dd0164fe16b28b",
+  "other_serve_after_sha256": "349f04197a2a7e4747c39ec22a20f21bd45708ae3c2d9f8a12dd0164fe16b28b",
+  "other_containers_before": {
+    "count": 30,
+    "sha256": "e716ae072e4bf56a9278edaf03c5e38ec3049b87d9f10c2fb6706fc99add6af9"
+  },
+  "other_containers_after": {
+    "count": 30,
+    "sha256": "e716ae072e4bf56a9278edaf03c5e38ec3049b87d9f10c2fb6706fc99add6af9"
+  },
+  "supervisor_unit_sha256": "58fbac4765274ef5863044d07b6af1f777a141e5c9ad4987b96d6d887d2159aa"
+}

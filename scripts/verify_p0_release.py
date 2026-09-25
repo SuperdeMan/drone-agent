@@ -88,14 +88,22 @@ def source_views(receipts: list[dict], directory: Path | None, sha: str) -> dict
     return {"status": "failed" if problems else "passed", "cases": audits, "problems": problems}
 
 
-def live_sources(receipts: list[dict], sha: str) -> dict:
+def live_sources(receipts: list[dict], sha: str, flight_records: list[dict] | None = None) -> dict:
     """Require actual HTTPS desk evidence, including one completed live-planned flight.
 
     要求真实 HTTPS 任务台证据，其中至少一次实调规划飞行完成。
     """
     if not receipts:
         return {"status": "missing", "reason": "no live desk source probe"}
+    if flight_records is None:
+        return {"status": "missing", "reason": "authoritative supervisor flight.json records are required"}
     audits, problems, completed = [], [], 0
+    flights = {}
+    for record in flight_records:
+        key = record.get("mission_id"), record.get("version")
+        if key in flights:
+            problems.append("duplicate_authoritative_flight_receipt")
+        flights[key] = record
     for receipt in receipts:
         mission = receipt.get("mission") or {}
         if receipt.get("errors"):
@@ -105,13 +113,27 @@ def live_sources(receipts: list[dict], sha: str) -> dict:
         if result["status"] != "passed":
             problems.append("live_source_audit_failed")
         judge = (mission.get("cloud") or {}).get("judge") or {}
+        public_flights = (mission.get("cloud") or {}).get("flights", [])
+        for public in public_flights:
+            key = mission.get("mission_id"), public.get("version")
+            recorded = flights.get(key)
+            if recorded is None:
+                problems.append("missing_authoritative_flight_receipt")
+                continue
+            # The public summary omits source_sha; the supervisor's persisted receipt is authoritative.
+            # 公开摘要没有 source_sha；版本依据是监管者持久化的回执。
+            fields = ("version", "status", "epoch", "started_at", "ended_at", "manual_cleanup")
+            if (recorded.get("source_sha") != sha
+                    or Path(recorded.get("package", "")).name != f"{key[0]}-v{key[1]}.json"
+                    or any(public.get(k) != recorded.get(k) for k in fields)):
+                problems.append("authoritative_flight_binding_mismatch")
         if mission.get("status") == "completed":
             if (judge.get("passed") is True and judge.get("replay_agrees") is True
                     and judge.get("false_success_reports") == 0 and judge.get("problems") == []
                     and judge.get("flown_versions") and mission.get("evidence") and receipt.get("media")
                     and (mission.get("report") or {}).get("all_targets_completed") is True
-                    and all(f.get("source_sha") == sha for f in (mission.get("cloud") or {}).get("flights", []))
-                    and (mission.get("cloud") or {}).get("flights")):
+                    and public_flights and all(f.get("status") == "finished" for f in public_flights)
+                    and set(judge["flown_versions"]) == {f.get("version") for f in public_flights}):
                 completed += 1
             else:
                 problems.append("live_flight_not_independently_verified")
@@ -153,6 +175,7 @@ def main() -> None:
     parser.add_argument("--e2e", type=Path, nargs="*", default=[])
     parser.add_argument("--views-dir", type=Path)
     parser.add_argument("--live-probe", type=Path, nargs="*", default=[])
+    parser.add_argument("--live-flights-dir", type=Path, help="raw supervisor flight.json records for the live probes")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if not re.fullmatch(r"[0-9a-f]{40}", args.sha):
@@ -171,14 +194,17 @@ def main() -> None:
         return json.loads(path.read_text(encoding="utf-8")) if path else None
 
     e2e = [load(p) for p in args.e2e]
+    flight_paths = sorted(args.live_flights_dir.glob("*.json")) if args.live_flights_dir else None
     criteria = {
         "scope": revision_scope(args.sha), "checks": M2["checks"](load(args.deployment), args.sha),
         "adversarial": M2["adversarial"](), "e2e": M2["e2e"](e2e, args.sha),
         "source_views": source_views(e2e, args.views_dir, args.sha),
-        "live_sources": live_sources([load(p) for p in args.live_probe], args.sha),
+        "live_sources": live_sources([load(p) for p in args.live_probe], args.sha,
+                                     [load(p) for p in flight_paths] if flight_paths is not None else None),
         "historical_boundaries": historical_boundaries(),
     }
     paths = [p for p in [args.deployment, *args.e2e, *args.live_probe] if p]
+    paths += flight_paths or []
     if args.views_dir and args.views_dir.is_dir():
         paths += sorted(args.views_dir.glob("*.json"))
     inputs = {p.relative_to(args.output.parent).as_posix() if p.is_relative_to(args.output.parent) else str(p):

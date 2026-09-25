@@ -2,7 +2,7 @@
 
 [路线图](roadmap.md) · [P0 工作包](operations-implementation.md) · [来源实现](../src/drone_agent/fleet/provenance.py) · [发布门禁](../scripts/verify_p0_release.py)
 
-**状态：实现候选，本地检查已通过，云端与任务台验证待完成；P0 尚未关闭。** 本页对应 D054 的来源贯穿与独立产品门禁，不改变历史 M0–M3 的验收结论。
+**状态：候选 `271c5ac`，云端检查已通过，飞行与任务台验证进行中；P0 尚未关闭。** 本页对应 D054 的来源贯穿与独立产品门禁，不改变历史 M0–M3 的验收结论。
 
 ## 实现范围
 
@@ -23,7 +23,7 @@ Windows 完整测试：995 项，994 通过、1 项按既有规则跳过（Unix 
 | 判据 | 必需证据 | 当前状态 |
 |---|---|---|
 | scope | 从审阅基线到候选的变更限于 P0；控制执行、适配器、wire 和恢复配置不变 | 待候选固定 |
-| checks | 同候选云端完整检查、0 失败 / 错误 / 跳过、项目隔离 | 待执行 |
+| checks | 同候选云端完整检查、0 失败 / 错误 / 跳过、项目隔离 | 995 项通过；[部署回执](verification/p0-2026-09-25/deployment.json) |
 | adversarial | 确定性 / 脚本规划对抗集、授权包 0 | 待门禁执行 |
 | e2e | M2 全部 6 场景 × 3 种子、独立裁判与回放 | 待执行 |
 | source_views | 每个 E2E 导出视图与裁判保存的文件摘要匹配；来源投影、配置、报告一致 | 待执行 |
@@ -36,10 +36,10 @@ Windows 完整测试：995 项，994 通过、1 项按既有规则跳过（Unix 
 
 先在同一已提交候选上运行 `dev_stack.py deploy --sha <SHA> --apply`，再分批执行完整 M2 场景。`fetch` 拉取和校验各运行，把接受批次的 `service-export/view.json` 按 `<scenario>-<seed>.json` 原字节保存在独立来源目录；不重排 JSON 或改写摘要。
 
-按 D037 顺序激活同部署的 `console-cloud --apply` 与 `desk-cloud --apply`，经 `desk_probe.py http/session` 获取真实入口与实调任务证据。源码、场景和 Provider 的记录不一致时先修正再重验，不混用不同候选。
+按 D037 顺序激活同部署的 `console-cloud --apply` 与 `desk-cloud --apply`，经 `desk_probe.py http/session` 获取真实入口与实调任务证据。另外读取监管者 `desk/flights/<mission>-v<N>/flight.json` 的原字节回执，核对其源码、任务 / 版本、epoch、状态与公开摘要一致。页面摘要本身没有 source_sha，不能向其补造此字段。源码、场景和 Provider 的记录不一致时先修正再重验，不混用不同候选。
 
 ```powershell
-uv run python scripts/verify_p0_release.py --sha <完整候选SHA> --deployment <部署回执> --e2e <M2回执列表> --views-dir <来源视图目录> --live-probe <实调探针回执> --output <P0门禁结果>
+uv run python scripts/verify_p0_release.py --sha <完整候选SHA> --deployment <部署回执> --e2e <M2回执列表> --views-dir <来源视图目录> --live-probe <实调探针回执> --live-flights-dir <监管者飞行回执目录> --output <P0门禁结果>
 ```
 
 本次不启用真实设备，不更改数据库 schema，也不把 P0 软件通过视为 H1/JIL 或原 M3 组合门禁通过。硬件与后续产品工作仍按路线图单独准出。

@@ -11,8 +11,10 @@ import json
 import runpy
 from pathlib import Path
 
+import pytest
+
 from drone_agent.eval.provenance import audit_view
-from drone_agent.fleet.provenance import ModelUse, SourceContext, digest, export, seal
+from drone_agent.fleet.provenance import EvidenceOrigin, ModelUse, SourceContext, digest, export, seal
 from drone_agent.mission.registry import Registry
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -68,10 +70,46 @@ def test_live_label_without_a_completed_independent_flight_cannot_close_p0():
     assert GATE["live_sources"]([], SHA)["status"] == "missing"
     view = source_view("live_model")
     mission = {**view["mission"], "versions": view["versions"], "evidence": [], "report": None}
-    assert GATE["live_sources"]([{"mission": mission}], SHA)["status"] == "failed"
+    assert GATE["live_sources"]([{"mission": mission}], SHA, [])["status"] == "failed"
     mission["status"] = "completed"
     mission["cloud"] = {"judge": {"passed": True, "replay_agrees": True, "false_success_reports": 1, "problems": []}}
-    assert GATE["live_sources"]([{"mission": mission}], SHA)["status"] == "failed"
+    assert GATE["live_sources"]([{"mission": mission}], SHA, [])["status"] == "failed"
+
+
+def live_flight():
+    """Public desk shape plus the separate authoritative flight receipt. / 页面摘要与独立权威飞行回执的真实形状。"""
+    view = source_view("live_model")
+    v = view["versions"][0]
+    image = EvidenceOrigin(evidence_id="capture-1", media_sha256="e" * 64, source="sim_render", run_id="test-gate")
+    v["decision"]["run_provenance"]["evidence:capture-1"] = seal(image)
+    v["provenance"] = export({"mission_id": "m-source", "version": 1, "decision": v["decision"]})
+    public = {"version": 1, "status": "finished", "epoch": 18, "started_at": "start", "ended_at": "end",
+              "manual_cleanup": False}
+    mission = {"mission_id": "m-source", "status": "completed", "versions": [v],
+               "evidence": [{"evidence_id": "capture-1", "version": 1, "sha256": "e" * 64,
+                             "provenance": image.model_dump(mode="json")}],
+               "report": {"all_targets_completed": True, "provenance": [v["provenance"]]},
+               "cloud": {"flights": [public], "judge": {"passed": True, "replay_agrees": True,
+                          "false_success_reports": 0, "problems": [], "flown_versions": [1]}}}
+    authoritative = {**public, "source_sha": SHA, "mission_id": "m-source", "package": "m-source-v1.json"}
+    return {"mission": mission, "media": [{"evidence_id": "capture-1"}]}, authoritative
+
+
+def test_live_source_gate_uses_the_persisted_receipt_not_an_absent_public_field():
+    probe, flight = live_flight()
+    assert "source_sha" not in probe["mission"]["cloud"]["flights"][0]
+    assert GATE["live_sources"]([probe], SHA, [flight])["status"] == "passed"
+    assert GATE["live_sources"]([probe], SHA)["status"] == "missing"
+    assert GATE["live_sources"]([probe], SHA, [])["status"] == "failed"
+    assert GATE["live_sources"]([probe], SHA, [flight, flight])["status"] == "failed"
+
+
+@pytest.mark.parametrize("field,value", [("source_sha", "b" * 40), ("epoch", 17),
+                                         ("package", "another-mission-v1.json"), ("status", "running")])
+def test_live_source_gate_rejects_mixed_flight_identity_and_revision(field, value):
+    probe, flight = live_flight()
+    flight[field] = value
+    assert GATE["live_sources"]([probe], SHA, [flight])["status"] == "failed"
 
 
 def test_historical_sitl_pass_never_closes_hardware_or_future_products(monkeypatch, tmp_path):

@@ -11,7 +11,7 @@
 
 A drone inspection operations platform in development, built on a safety-constrained mission runtime. The implemented single-drone simulation stack provides typed missions, admission and approval, local execution and evidence-based reports. Virtual docks, durable workflows, fleet scheduling and finding-to-reinspection workflows are the next product milestones.
 
-> **Current scope:** M2 completed on **2026-09-23** for a single drone in **PX4 SITL + Gazebo** (software-in-the-loop simulation). On **2026-09-25** the simulation line of M3 (local autonomy through a guarded PX4 external mode) passed its release gate; M3 closes only after Jetson-in-the-loop validation. H1 carries the pending JIL work; the original combined M3 gate remains not passed. P0 documentation is updated, while runtime provenance and product gates still need implementation. P1–P5 software operations can proceed independently of hardware; hardware and air-ground work follow the [H/X milestones](docs/roadmap.md).
+> **Current scope:** M2 completed on **2026-09-23** for a single drone in **PX4 SITL + Gazebo** (software-in-the-loop simulation). On **2026-09-25** the simulation line of M3 (local autonomy through a guarded PX4 external mode) passed its release gate; M3 closes only after Jetson-in-the-loop validation. H1 carries the pending JIL work; the original combined M3 gate remains not passed. P0 runtime provenance and product gates are implemented; release validation is in progress. P1–P5 software operations can proceed independently of hardware; hardware and air-ground work follow the [H/X milestones](docs/roadmap.md).
 
 [Try locally](#try-locally) · [Design](#design) · [Validation](#validation) · [Documentation](#documentation) · [Roadmap](#roadmap)
 
@@ -118,7 +118,7 @@ Read [CLAUDE.md](CLAUDE.md) before contributing ([AGENTS.md](AGENTS.md) is the c
 |---|---|---|
 | M0–M2 | Contracts, single-drone runtime, constrained agent and evidence loop | Complete in simulation |
 | M3 | Local autonomy, perception, localization and degradation handling | Simulation line passed; Jetson-in-the-loop pending |
-| P0 | Capability inventory, runtime provenance and product gates | Documentation updated; implementation pending |
+| P0 | Capability inventory, runtime provenance and product gates | Implemented; release validation in progress |
 | P1–P2 | Resources, virtual docks and durable business workflows | Next product work; not implemented |
 | P3–P5 | Fleet scheduling, multimodal business loop and platform v0.1 | Planned; includes two-drone SITL and 72 h system endurance |
 | H1–H3 | JIL, bench / restricted flights and field operations | Separate hardware validation track |

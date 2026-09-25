@@ -1,0 +1,31 @@
+{
+  "source_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+  "run": "m2-20260925T142000Z-d992a67b",
+  "case": "nl_inspect_red-7",
+  "counted_for_release": false,
+  "classification": "unsafe_or_incorrect",
+  "problems": [
+    "flown_versions 2 != 1",
+    "replans 1 != 0"
+  ],
+  "false_success_reports": 0,
+  "observed_stall": {
+    "from": "2026-09-25T14:21:22.981792+00:00",
+    "to": "2026-09-25T14:21:23.439245+00:00",
+    "wall_s": 0.457453,
+    "sim_delta_s": 0.004
+  },
+  "guardian": {
+    "intervention": "observation_stale",
+    "at": "2026-09-25T14:21:23.552688+00:00",
+    "supervision_p99_s": 0.10208398103713989,
+    "supervision_max_s": 0.10748990112915635
+  },
+  "source_audit": "passed for both versions and the acquisition",
+  "interpretation": "Simulator clock stalled while guardian kept its supervision budget; root cause within rendering or shared-host contention is not isolated. Preserve failed expectation and rerun the unchanged candidate; no threshold changes.",
+  "inputs": {
+    "truth\\truth.jsonl": "e6011782e3a27ef72b60336f4f6d92c7f928ebb5bd2b37c3ab15aba4aeb11635",
+    "judge\\result.json": "830e0d21c0e737d52427537ee99425b806263ab9d57d58b17c5af71ffc8e22f6",
+    "service-export\\view.json": "bd1ceef334d1baf9f55903484214b797f4d73b99cdcec90e36be0c1e20c3abe2"
+  }
+}

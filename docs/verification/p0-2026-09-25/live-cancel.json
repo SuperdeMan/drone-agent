@@ -1,0 +1,651 @@
+{
+  "schema_version": "0.1.0",
+  "probe": "session",
+  "hello": {
+    "identity_scheme": "tailnet",
+    "can_write": true,
+    "planner": "live:minimax/MiniMax-M3"
+  },
+  "host_states": [
+    {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+      "updated_at": "2026-09-25T15:03:39.724184+00:00"
+    },
+    {
+      "schema_version": "0.1.0",
+      "state": "preparing",
+      "mission_id": "m-b2a66e12478f",
+      "version": 1,
+      "detail": "booting a fresh flight controller (battery swap) and waiting for PX4 home",
+      "queue": [],
+      "source_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+      "updated_at": "2026-09-25T15:05:20.978399+00:00"
+    },
+    {
+      "schema_version": "0.1.0",
+      "state": "flying",
+      "mission_id": "m-b2a66e12478f",
+      "version": 1,
+      "detail": "epoch 19",
+      "queue": [],
+      "source_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+      "updated_at": "2026-09-25T15:05:47.194139+00:00"
+    },
+    {
+      "schema_version": "0.1.0",
+      "state": "restoring",
+      "mission_id": "m-b2a66e12478f",
+      "version": 1,
+      "detail": null,
+      "queue": [],
+      "source_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+      "updated_at": "2026-09-25T15:05:57.567169+00:00"
+    },
+    {
+      "schema_version": "0.1.0",
+      "state": "judging",
+      "mission_id": "m-b2a66e12478f",
+      "version": 1,
+      "detail": null,
+      "queue": [],
+      "source_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+      "updated_at": "2026-09-25T15:05:59.834940+00:00"
+    },
+    {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+      "updated_at": "2026-09-25T15:06:03.997368+00:00"
+    }
+  ],
+  "timeline": [
+    {
+      "t": 2.5,
+      "status": "awaiting_approval",
+      "versions": [
+        [
+          1,
+          "awaiting_approval"
+        ]
+      ],
+      "live": null,
+      "cloud": [],
+      "judge": null
+    },
+    {
+      "t": 2.6,
+      "status": "queued",
+      "versions": [
+        [
+          1,
+          "queued"
+        ]
+      ],
+      "live": null,
+      "cloud": [],
+      "judge": null
+    },
+    {
+      "t": 3.2,
+      "status": "delivered",
+      "versions": [
+        [
+          1,
+          "delivered"
+        ]
+      ],
+      "live": null,
+      "cloud": [],
+      "judge": null
+    },
+    {
+      "t": 4.2,
+      "status": "delivered",
+      "versions": [
+        [
+          1,
+          "delivered"
+        ]
+      ],
+      "live": null,
+      "cloud": [
+        [
+          1,
+          "preparing"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 30.3,
+      "status": "delivered",
+      "versions": [
+        [
+          1,
+          "delivered"
+        ]
+      ],
+      "live": null,
+      "cloud": [
+        [
+          1,
+          "flying"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 32.4,
+      "status": "running",
+      "versions": [
+        [
+          1,
+          "running"
+        ]
+      ],
+      "live": [
+        "takeoff",
+        "running",
+        [
+          "cancel"
+        ]
+      ],
+      "cloud": [
+        [
+          1,
+          "flying"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 33.4,
+      "status": "running",
+      "versions": [
+        [
+          1,
+          "running"
+        ]
+      ],
+      "live": [
+        "takeoff",
+        "recovering",
+        [
+          "cancel"
+        ]
+      ],
+      "cloud": [
+        [
+          1,
+          "flying"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 38.4,
+      "status": "incomplete",
+      "versions": [
+        [
+          1,
+          "finished"
+        ]
+      ],
+      "live": null,
+      "cloud": [
+        [
+          1,
+          "flying"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 43.4,
+      "status": "incomplete",
+      "versions": [
+        [
+          1,
+          "finished"
+        ]
+      ],
+      "live": null,
+      "cloud": [
+        [
+          1,
+          "finished"
+        ]
+      ],
+      "judge": null
+    },
+    {
+      "t": 47.5,
+      "status": "incomplete",
+      "versions": [
+        [
+          1,
+          "finished"
+        ]
+      ],
+      "live": null,
+      "cloud": [
+        [
+          1,
+          "finished"
+        ]
+      ],
+      "judge": true
+    }
+  ],
+  "errors": [],
+  "sent": [
+    {
+      "t": 2.5,
+      "action": "approve",
+      "version": 1
+    },
+    {
+      "t": 32.4,
+      "action": "cancel",
+      "request_id": "op-cancel-d4ef5b9af194",
+      "step": "takeoff"
+    }
+  ],
+  "reconnects": 0,
+  "planning_s": 2.5,
+  "duration_s": 47.5,
+  "media": [],
+  "mission": {
+    "mission_id": "m-b2a66e12478f",
+    "status": "incomplete",
+    "replans": 0,
+    "request": {
+      "text": "Please photograph the blue marker north-west of the landing pad.",
+      "channel": "console",
+      "requested_by": "tailnet:<operator>",
+      "approved_volume_id": "campus_training",
+      "asset_ids": [
+        "asset_blue"
+      ]
+    },
+    "versions": [
+      {
+        "version": 1,
+        "status": "finished",
+        "origin": "console",
+        "package_hash": "1ccd852ab45cae6215da2912daef467e8aacd11c9db5a30e04e83cdec4eeb248",
+        "planner": {
+          "status": "planned",
+          "provider_id": "minimax",
+          "model_id": "MiniMax-M3",
+          "prompt_version": "planner-v1",
+          "input_hash": "9104c33b320d0fdac8d446c1f469734ecc05f2d78eadcff79bd114284b53de6e",
+          "decline_reason": "",
+          "notes": "",
+          "attempts": 1,
+          "channels": [
+            "toolcall"
+          ]
+        },
+        "admission": {
+          "accepted": true,
+          "codes": [],
+          "energy_upper_fraction": 0.7696,
+          "checks": [
+            {
+              "check": "hash",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "boundaries",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "recovery_policy",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "capability",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "params",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "spatial",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "order_and_resources",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "time",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "energy",
+              "detail": "upper=0.7696",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "airspace",
+              "detail": "simulated_unfiled",
+              "passed": true,
+              "schema_version": "0.1.0"
+            },
+            {
+              "check": "unverified_edges",
+              "detail": "",
+              "passed": true,
+              "schema_version": "0.1.0"
+            }
+          ]
+        },
+        "approval": {
+          "approver": "tailnet:<operator>",
+          "approved_at": "2026-09-25T15:05:19.794547Z",
+          "expires_at": "2026-09-25T15:35:19.741806Z",
+          "signer_key_id": "ed25519:6563c47cfafa2a22"
+        },
+        "journals": {
+          "executive": {
+            "rows": 10,
+            "chain": "ok"
+          },
+          "guardian": {
+            "rows": 10,
+            "chain": "ok"
+          }
+        },
+        "decision": {
+          "blocked_at": null,
+          "codes": [],
+          "collaboration": [],
+          "run_provenance": {
+            "run": {
+              "body": {
+                "default_image_source": "sim_render",
+                "dirty_sha256": null,
+                "execution_backend": "px4_sitl",
+                "mission_id": "m-b2a66e12478f",
+                "mission_version": 1,
+                "planning": {
+                  "input_sha256": "9104c33b320d0fdac8d446c1f469734ecc05f2d78eadcff79bd114284b53de6e",
+                  "model_id": "MiniMax-M3",
+                  "outcome": "planned",
+                  "prompt_sha256": "6ccc030a90bb6203e57220ae77f48de1f956e8e8335d28340b40422c783a2eef",
+                  "prompt_version": "planner-v1",
+                  "provider_id": "minimax",
+                  "recording_sha256": "",
+                  "reported_model_id": "minimax/MiniMax-M3",
+                  "schema_version": "0.1.0",
+                  "source": "live_model"
+                },
+                "platform_sha256": "e94cd77b567f95e48e905fc30c4fdda2b7f8ee48db0f3d2b4c7f3c83c73ce24a",
+                "registry_sha256": "da98ee412a2da248e6756d0c466f3d3a2f3f9d8fe14643ec67d729fb218be48f",
+                "run_id": "service-bee1c7292ff34e40a3d3cdcc9b4bd65f",
+                "scenario_sha256": "3d659e8f39aff4b9ada7a4cb6985de8a7bbe6c31b3492843a6ec74b31a8f49c5",
+                "schema_version": "0.1.0",
+                "software_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+                "timestamp": "2026-09-25T15:05:19.744608Z"
+              },
+              "sha256": "eafebba286a8cac2bd2751ccec17abcc3bf43dc13213d5d2704ee335a802a540"
+            }
+          }
+        },
+        "provenance": {
+          "schema_version": "0.1.0",
+          "format": "drone.run-provenance/v1",
+          "mission_id": "m-b2a66e12478f",
+          "mission_version": 1,
+          "status": "recorded",
+          "run": {
+            "schema_version": "0.1.0",
+            "mission_id": "m-b2a66e12478f",
+            "mission_version": 1,
+            "run_id": "service-bee1c7292ff34e40a3d3cdcc9b4bd65f",
+            "execution_backend": "px4_sitl",
+            "default_image_source": "sim_render",
+            "software_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+            "dirty_sha256": null,
+            "scenario_sha256": "3d659e8f39aff4b9ada7a4cb6985de8a7bbe6c31b3492843a6ec74b31a8f49c5",
+            "platform_sha256": "e94cd77b567f95e48e905fc30c4fdda2b7f8ee48db0f3d2b4c7f3c83c73ce24a",
+            "registry_sha256": "da98ee412a2da248e6756d0c466f3d3a2f3f9d8fe14643ec67d729fb218be48f",
+            "planning": {
+              "schema_version": "0.1.0",
+              "source": "live_model",
+              "provider_id": "minimax",
+              "model_id": "MiniMax-M3",
+              "reported_model_id": "minimax/MiniMax-M3",
+              "prompt_version": "planner-v1",
+              "prompt_sha256": "6ccc030a90bb6203e57220ae77f48de1f956e8e8335d28340b40422c783a2eef",
+              "input_sha256": "9104c33b320d0fdac8d446c1f469734ecc05f2d78eadcff79bd114284b53de6e",
+              "recording_sha256": "",
+              "outcome": "planned"
+            },
+            "timestamp": "2026-09-25T15:05:19.744608Z"
+          },
+          "execution_backend": "px4_sitl",
+          "planning": {
+            "schema_version": "0.1.0",
+            "source": "live_model",
+            "provider_id": "minimax",
+            "model_id": "MiniMax-M3",
+            "reported_model_id": "minimax/MiniMax-M3",
+            "prompt_version": "planner-v1",
+            "prompt_sha256": "6ccc030a90bb6203e57220ae77f48de1f956e8e8335d28340b40422c783a2eef",
+            "input_sha256": "9104c33b320d0fdac8d446c1f469734ecc05f2d78eadcff79bd114284b53de6e",
+            "recording_sha256": "",
+            "outcome": "planned"
+          },
+          "imagery": [],
+          "analysis": [],
+          "analysis_sources": [
+            "not_run"
+          ],
+          "sha256": "8012686848988c567a04db9b48565d3e80700f052dafc7ccd2350d8d251a51fb"
+        }
+      }
+    ],
+    "operations": [
+      {
+        "request_id": "op-cancel-d4ef5b9af194",
+        "action": "cancel",
+        "requested_by": "tailnet:<operator>",
+        "version": 1,
+        "acked": true,
+        "accepted": 1,
+        "reason": "relayed"
+      }
+    ],
+    "report": {
+      "all_targets_completed": false,
+      "facts": [],
+      "generated_at": "2026-09-25T15:05:55.547963Z",
+      "mission_id": "m-b2a66e12478f",
+      "provenance": [
+        {
+          "analysis": [],
+          "analysis_sources": [
+            "not_run"
+          ],
+          "execution_backend": "px4_sitl",
+          "format": "drone.run-provenance/v1",
+          "imagery": [],
+          "mission_id": "m-b2a66e12478f",
+          "mission_version": 1,
+          "planning": {
+            "input_sha256": "9104c33b320d0fdac8d446c1f469734ecc05f2d78eadcff79bd114284b53de6e",
+            "model_id": "MiniMax-M3",
+            "outcome": "planned",
+            "prompt_sha256": "6ccc030a90bb6203e57220ae77f48de1f956e8e8335d28340b40422c783a2eef",
+            "prompt_version": "planner-v1",
+            "provider_id": "minimax",
+            "recording_sha256": "",
+            "reported_model_id": "minimax/MiniMax-M3",
+            "schema_version": "0.1.0",
+            "source": "live_model"
+          },
+          "run": {
+            "default_image_source": "sim_render",
+            "dirty_sha256": null,
+            "execution_backend": "px4_sitl",
+            "mission_id": "m-b2a66e12478f",
+            "mission_version": 1,
+            "planning": {
+              "input_sha256": "9104c33b320d0fdac8d446c1f469734ecc05f2d78eadcff79bd114284b53de6e",
+              "model_id": "MiniMax-M3",
+              "outcome": "planned",
+              "prompt_sha256": "6ccc030a90bb6203e57220ae77f48de1f956e8e8335d28340b40422c783a2eef",
+              "prompt_version": "planner-v1",
+              "provider_id": "minimax",
+              "recording_sha256": "",
+              "reported_model_id": "minimax/MiniMax-M3",
+              "schema_version": "0.1.0",
+              "source": "live_model"
+            },
+            "platform_sha256": "e94cd77b567f95e48e905fc30c4fdda2b7f8ee48db0f3d2b4c7f3c83c73ce24a",
+            "registry_sha256": "da98ee412a2da248e6756d0c466f3d3a2f3f9d8fe14643ec67d729fb218be48f",
+            "run_id": "service-bee1c7292ff34e40a3d3cdcc9b4bd65f",
+            "scenario_sha256": "3d659e8f39aff4b9ada7a4cb6985de8a7bbe6c31b3492843a6ec74b31a8f49c5",
+            "schema_version": "0.1.0",
+            "software_sha": "271c5ac36cf9dd8669ee32458c1f57b1fbdb20a7",
+            "timestamp": "2026-09-25T15:05:19.744608Z"
+          },
+          "schema_version": "0.1.0",
+          "sha256": "8012686848988c567a04db9b48565d3e80700f052dafc7ccd2350d8d251a51fb",
+          "status": "recorded"
+        }
+      ],
+      "rows": [
+        {
+          "column": "not_completed",
+          "effect_verdict": "unknown",
+          "execution_status": "cancelled",
+          "mission_version": 1,
+          "reason": "cancelled",
+          "schema_version": "0.1.0",
+          "service_verdict": null,
+          "skill_id": "skill.flight.takeoff",
+          "step_id": "takeoff",
+          "target": null
+        },
+        {
+          "column": "not_completed",
+          "effect_verdict": null,
+          "execution_status": null,
+          "mission_version": 1,
+          "reason": "not run",
+          "schema_version": "0.1.0",
+          "service_verdict": "unknown",
+          "skill_id": "skill.inspect.asset",
+          "step_id": "inspect_asset_blue",
+          "target": "asset_blue"
+        },
+        {
+          "column": "not_completed",
+          "effect_verdict": null,
+          "execution_status": null,
+          "mission_version": 1,
+          "reason": "not run",
+          "schema_version": "0.1.0",
+          "service_verdict": null,
+          "skill_id": "skill.flight.return_home",
+          "step_id": "return_home",
+          "target": null
+        },
+        {
+          "column": "not_completed",
+          "effect_verdict": null,
+          "execution_status": null,
+          "mission_version": 1,
+          "reason": "not run",
+          "schema_version": "0.1.0",
+          "service_verdict": null,
+          "skill_id": "skill.flight.land",
+          "step_id": "land",
+          "target": null
+        }
+      ],
+      "schema_version": "0.1.0",
+      "summary": {
+        "completed": 0,
+        "not_completed": 1,
+        "uncertain": 0
+      },
+      "targets": {
+        "asset_blue": "not_completed"
+      },
+      "versions": [
+        1
+      ]
+    },
+    "evidence": [],
+    "issues": [
+      "replan.cancelled_by_operator"
+    ],
+    "facts": [],
+    "cloud": {
+      "schema_version": "0.1.0",
+      "mission_id": "m-b2a66e12478f",
+      "flights": [
+        {
+          "version": 1,
+          "status": "finished",
+          "epoch": 19,
+          "started_at": "2026-09-25T15:05:20.977286+00:00",
+          "ended_at": "2026-09-25T15:05:59.828457+00:00",
+          "detail": null,
+          "manual_cleanup": false
+        }
+      ],
+      "judge": {
+        "classification": "not_completed",
+        "false_success_reports": 0,
+        "problems": [],
+        "flown_versions": [
+          1
+        ],
+        "truly_inspected": [],
+        "report_targets": {
+          "asset_blue": "not_completed"
+        },
+        "judged_at": "2026-09-25T15:06:01.348663+00:00",
+        "error": null,
+        "passed": true,
+        "replay_agrees": true,
+        "after_version": 1,
+        "case": "judge/m-b2a66e12478f/after-v1"
+      }
+    }
+  }
+}
