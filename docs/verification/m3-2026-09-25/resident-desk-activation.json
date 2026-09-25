@@ -1,0 +1,108 @@
+{
+  "status": "verified",
+  "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+  "control_sha256": "4cbadb08c989aebfec297340f0e302753b22e2ddd348a46712975a8b3d65996a",
+  "deployment_id": "20260924T164104Z-9fcf8617",
+  "origin": "https://<tailnet-host>:8448",
+  "listener": "127.0.0.1:8769",
+  "images": {
+    "sim": "drone-agent-m2-sim:75382dca07509726f4274078ce11e7e8cee064e6-4cbadb08c989",
+    "aircraft": "drone-agent-m1-aircraft:75382dca07509726f4274078ce11e7e8cee064e6-4cbadb08c989",
+    "ground": "drone-agent-m1-ground:75382dca07509726f4274078ce11e7e8cee064e6-4cbadb08c989"
+  },
+  "planner": "live",
+  "signer_key_id": "ed25519:6563c47cfafa2a22",
+  "certificate_fingerprints": {
+    "ca": "c0e1bca164a5817a5aa477738aa5a340a24da6e3722f2ed9a57c3341792af2e5",
+    "service": "fcac24effa0c96900d7a9b48ca2dbfbb94f28c29d094f0944aa33d5b94d1a206",
+    "robot": "74f38d4714bbcc1ac0653581c1ef3b1b59a7b13b3cf00b3faaa37dd24bbd1a3e"
+  },
+  "planner_label": "live:minimax/MiniMax-M3",
+  "health": {
+    "ok": true,
+    "result": {
+      "status": "ready",
+      "signer_key_id": "ed25519:6563c47cfafa2a22",
+      "robot_id": "uav_01",
+      "planner": "live:minimax/MiniMax-M3",
+      "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6"
+    },
+    "console_source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+    "fixed": {
+      "status": "ready",
+      "mode": "tailnet",
+      "console_source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+      "runtime_source_sha": "75382dca07509726f4274078ce11e7e8cee064e6"
+    },
+    "supervisor": {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+      "updated_at": "2026-09-25T12:11:01.275887+00:00"
+    },
+    "modes": [
+      "mission",
+      "fixed"
+    ]
+  },
+  "funnel": false,
+  "containers": {
+    "desk-model-proxy": {
+      "container_id": "18ed74ef714295ffd8f560708cd7753c645339ea3872199e37cb077747eed784",
+      "image_id": "sha256:6d2565b7cf4f674f3465cb987ee89b24af79738557c3bbbd4e665d8ccd086a2d",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_egress",
+        "drone-agent-cloud_desk_model"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-service": {
+      "container_id": "9b09fd87068cbc3b47b87ddbcd4cb4a49e80329f8cd207bb24445635bad412df",
+      "image_id": "sha256:6d2565b7cf4f674f3465cb987ee89b24af79738557c3bbbd4e665d8ccd086a2d",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_model",
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-uplink": {
+      "container_id": "a370c7d69acf30533253387fd5432c753aa04de8dfd77917fa237eff7e39d17c",
+      "image_id": "sha256:bfbe97d40818d426227a68fc404679e64b2d0c489ddf04fca81c6f226d217431",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk": {
+      "container_id": "88b380c723038807cab8cd1a3741bcb197901d9622f4c964c333ed406e135a63",
+      "image_id": "sha256:6d2565b7cf4f674f3465cb987ee89b24af79738557c3bbbd4e665d8ccd086a2d",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_ingress"
+      ],
+      "read_only": true,
+      "docker_access": false
+    }
+  },
+  "other_serve_before_sha256": "349f04197a2a7e4747c39ec22a20f21bd45708ae3c2d9f8a12dd0164fe16b28b",
+  "other_serve_after_sha256": "349f04197a2a7e4747c39ec22a20f21bd45708ae3c2d9f8a12dd0164fe16b28b",
+  "other_containers_before": {
+    "count": 30,
+    "sha256": "1c716fd3376c698472244158c6819c6a32ee14d21b6efc634d9192e92b9185bf"
+  },
+  "other_containers_after": {
+    "count": 30,
+    "sha256": "1c716fd3376c698472244158c6819c6a32ee14d21b6efc634d9192e92b9185bf"
+  },
+  "supervisor_unit_sha256": "f41f7c431b6ae458ada9eef8d7e83635427a30a58697374e3356c4ab17168f07"
+}

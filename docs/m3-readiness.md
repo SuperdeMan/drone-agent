@@ -218,7 +218,7 @@ M3-SITL 从首次云端构建到候选经过多轮修正。每一轮都是在云
 - **M1 回归中的一次仿真冻结**：M1 `stale_epoch+expired_intent` 首轮中，`expired_intent-41` 起飞后 4.66 s 仿真整体冻结 0.51 s（仿真时间只前进 0.044 s），guardian 按原阈值以观测过期悬停，10 s 后返航；过期意图探针所在的航线步骤没有开始，M1 裁判判不通过。M1 裁判没有作废规则，按 M2 门禁的先例同版本整批重跑通过，原回执保留在 `not-counted/`。M1 编排没有挂载 D045 的着色器缓存，这类停顿在 M1 栈上仍可能出现。
 - **仿真停顿的来源**：每个用例在 guardian 启动前至少 11 s（仿真启动期）有两次停顿，与任务无关；任务期间的停顿来自 llvmpipe 首次编译着色器（D045 第 11 条，持久化缓存后消失）或主机 CPU 争用。
 - **空域**：`AirspaceConstraintProvider` 只有录制的 UOM 后端；真实报备与 Remote ID 在 M4-A 执行，真实模式没有报备一律拒绝。
-- **常驻入口**：`8448` 任务台仍是 M2 自然语言任务与 M1 固定巡检，M3 外部模式没有接入常驻入口；本轮重新激活只是让常驻入口运行当前版本。
+- **常驻入口**：`8448` 任务台仍是 M2 自然语言任务与 M1 固定巡检，M3 外部模式没有接入常驻入口。门禁通过后按 D037 先后重新激活 `console-cloud` 与 `desk-cloud`，两者都运行 `75382dc`（部署 `20260924T164104Z-9fcf8617`），健康检查 ready、监管者空闲、两条链路版本一致；回执见 [`resident-console-activation.json`](verification/m3-2026-09-25/resident-console-activation.json) 与 [`resident-desk-activation.json`](verification/m3-2026-09-25/resident-desk-activation.json)（入口地址已脱敏）。
 - **不在 M3 范围**：真机与 UOM 实际报备（M4-A）、多机器人交接（M4-B）、Nav2 地面平台（M5）、学习型策略有限接管（M6）。
 
 ## 未完成：M3-JIL
