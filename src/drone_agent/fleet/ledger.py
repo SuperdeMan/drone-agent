@@ -15,10 +15,12 @@ uplink 转发的事件与证据、服务侧验证、事实与报告。它是最�
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sqlite3
 import threading
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 
 from drone_agent.contracts import ExecutionEvent, utcnow
@@ -96,11 +98,13 @@ class BusinessLedger:
     """Thread-safe SQLite ledger; one connection guarded by a lock. / 线程安全的 SQLite 账本；单连接加锁。"""
 
     def __init__(self, path: Path | str):
-        if str(path) != ":memory:":
-            Path(path).parent.mkdir(parents=True, exist_ok=True)
+        self.path = None if str(path) == ":memory:" else Path(path)
+        if self.path is not None:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
         self._db = sqlite3.connect(str(path), check_same_thread=False, isolation_level=None)
         self._db.row_factory = sqlite3.Row
         self._lock = threading.RLock()
+        self._depth = 0
         with self._lock:
             if str(path) != ":memory:":
                 self._db.execute("PRAGMA journal_mode=WAL")
@@ -111,6 +115,46 @@ class BusinessLedger:
     def close(self) -> None:
         with self._lock:
             self._db.close()
+
+    @contextlib.contextmanager
+    def transaction(self):
+        """One `BEGIN IMMEDIATE` write transaction under the connection lock; nested use joins the outer one.
+
+        在连接锁下的一个 `BEGIN IMMEDIATE` 写事务；嵌套使用并入外层事务。
+        """
+        with self._lock:
+            if self._depth:
+                self._depth += 1
+                try:
+                    yield self._db
+                finally:
+                    self._depth -= 1
+                return
+            self._db.execute("BEGIN IMMEDIATE")
+            self._depth = 1
+            try:
+                yield self._db
+            except BaseException:
+                self._db.execute("ROLLBACK")
+                raise
+            else:
+                self._db.execute("COMMIT")
+            finally:
+                self._depth = 0
+
+    def backup(self, target: Path) -> None:
+        """Online copy of the whole database as one self-contained file (SQLite backup API, no WAL sidecars).
+
+        整库在线复制为单个自包含文件（SQLite backup API，不带 WAL 附属文件）。
+        """
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with self._lock:
+            destination = sqlite3.connect(str(target))
+            try:
+                self._db.backup(destination)
+                destination.execute("PRAGMA journal_mode=DELETE")
+            finally:
+                destination.close()
 
     def _rows(self, sql: str, args=()) -> list[dict]:
         with self._lock:
@@ -126,10 +170,14 @@ class BusinessLedger:
 
     # ── requests and missions / 请求与任务 ──
 
-    def record_request(self, request, mission_id: str) -> tuple[str, bool]:
+    def record_request(self, request, mission_id: str, *,
+                       also: Callable[[sqlite3.Connection], None] | None = None) -> tuple[str, bool]:
         """Store a request once per (requester, idempotency key); a repeat returns the original mission.
 
-        每个 (请求者, 幂等键) 只存一次请求；重复提交返回原任务。
+        `also` writes companion rows (the P1 binding) inside the same transaction as the request and mission.
+
+        每个 (请求者, 幂等键) 只存一次请求；重复提交返回原任务。`also` 在与请求、任务相同的事务内写入配套行
+        （P1 绑定）。
         """
         with self._lock:
             known = self._one("SELECT mission_id FROM requests WHERE requested_by=? AND idempotency_key=?",
@@ -137,17 +185,14 @@ class BusinessLedger:
             if known:
                 return known["mission_id"], False
             now = _now()
-            self._db.execute("BEGIN")
-            try:
-                self._db.execute("INSERT INTO requests VALUES (?,?,?,?,?,?)",
-                                 (request.request_id, request.requested_by, request.idempotency_key, mission_id,
-                                  _dump(request), request.received_at.isoformat()))
-                self._db.execute("INSERT INTO missions(mission_id, request_id, status, created_at, updated_at) "
-                                 "VALUES (?,?,?,?,?)", (mission_id, request.request_id, "planning", now, now))
-                self._db.execute("COMMIT")
-            except Exception:
-                self._db.execute("ROLLBACK")
-                raise
+            with self.transaction() as db:
+                db.execute("INSERT INTO requests VALUES (?,?,?,?,?,?)",
+                           (request.request_id, request.requested_by, request.idempotency_key, mission_id,
+                            _dump(request), request.received_at.isoformat()))
+                db.execute("INSERT INTO missions(mission_id, request_id, status, created_at, updated_at) "
+                           "VALUES (?,?,?,?,?)", (mission_id, request.request_id, "planning", now, now))
+                if also is not None:
+                    also(db)
             return mission_id, True
 
     def request(self, request_id: str) -> dict | None:

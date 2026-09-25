@@ -5,7 +5,24 @@ const byId = id => document.getElementById(id);
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 const STATUS = {planning: "规划中", verifying: "证据同步中", awaiting_approval: "待审批", approving: "策略审批中", approved: "已批准·待投递", queued: "已排队投递",
   delivered: "机载已接收", delivery_rejected: "机载拒收", running: "执行中", finished: "本版本结束", completed: "已完成",
-  incomplete: "未完成", refused: "模型拒答", rejected: "准入拒绝", declined: "已驳回", planning_failed: "规划失败"};
+  incomplete: "未完成", refused: "模型拒答", rejected: "准入拒绝", declined: "已驳回", planning_failed: "规划失败",
+  cancelled: "已取消（未交付）", dispatch_expired: "审批过期未交付", withdrawn: "已作废（未交付）"};
+// P1 dispatch reasons (D055); a verdict is a time-limited judgment, never an authorization. / P1 派遣原因；判定有时效，不是授权。
+const REASON = {"dock.status_missing": "机场无状态", "dock.status_stale": "机场状态过期（>3 s）", "dock.session_reconciling": "机场新会话对账中",
+  "dock.link_unknown": "机场链路未知", "dock.lid_unknown": "舱盖状态未知", "dock.presence_unknown": "机位在位未知", "energy.unknown": "电量未知",
+  "environment.unknown": "环境未知", "robot.capability_unknown": "能力未知", "robot.phase_unknown": "飞行阶段未知", "dock.offline": "机场离线",
+  "dock.maintenance": "维护锁定", "dock.fault": "故障锁定", "dock.lid_jammed": "舱盖卡滞", "dock.lid_not_open": "舱盖未打开",
+  "dock.lid_open_unconfirmed": "开盖未经回执证实", "dock.aircraft_absent": "飞行器不在机位", "presence.conflict": "机场在位与飞行器空中冲突",
+  "energy.idle": "未补能", "energy.charging": "充电中", "energy.cooling": "冷却中", "energy.fault": "补能故障", "energy.insufficient": "电量低于任务需求",
+  "environment.deferred": "环境推迟", "environment.wind": "风速超限", "robot.airborne": "飞行器在空中", "robot.failsafe": "飞控失效保护中",
+  "robot.unbound": "未绑定", "capability.missing_skill": "缺少所需技能", "reservation.conflict": "资源被其他任务占用",
+  "reservation.missing": "本任务未持有资源", "window.expired": "任务窗口已过"};
+const VERDICT = {eligible: "可派遣", blocked: "不可派遣", unknown: "未知·不派遣"};
+const VTONE = {eligible: "ok", blocked: "bad", unknown: "warn"};
+const DIM = {online: "在线", offline: "离线", closed: "舱盖关", opening: "开盖中", open: "舱盖开", closing: "关盖中", jammed: "舱盖卡滞",
+  present: "在位", absent: "不在位", idle: "未补能", charging: "充电中", cooling: "冷却中", ready: "补能就绪", fault: "故障",
+  permitted: "环境许可", deferred: "环境推迟", normal: "运维正常", maintenance: "维护", unknown: "未知"};
+const PAD = {free: "机位空闲", reserved: "软预约", occupied: "占用", uncertain: "占用待对账"};
 const TONE = {completed: "ok", delivered: "ok", running: "ok", awaiting_approval: "warn", incomplete: "warn", approved: "warn",
   queued: "warn", refused: "bad", rejected: "bad", declined: "bad", delivery_rejected: "bad", planning_failed: "bad"};
 const COLUMN = {completed: "已完成", not_completed: "未完成", uncertain: "不确定"};
@@ -23,6 +40,7 @@ const FLIGHT = {preparing: "准备中", flying: "飞行中", finished: "落地�
   failed: "失败", interrupted: "中断"};
 const JUDGE = {completed: "完成", not_completed: "未完成", unsafe_or_incorrect: "不安全或不正确"};
 let socket = null, hello = null, current = null, selected = null, retry = 500, photos = {}, host = null, planning = null;
+let resources = null, resourceDetail = null;
 
 function notice(text) { byId("notice").textContent = text || ""; byId("notice").hidden = !text; }
 function chip(status) { return `<span class="chip ${TONE[status] || ""}">${esc(STATUS[status] || status)}</span>`; }
@@ -45,9 +63,11 @@ function connect() {
     const message = JSON.parse(event.data);
     if (message.type === "hello") onHello(message);
     else if (message.type === "missions") renderList(message.items);
-    else if (message.type === "mission") { if (planning) planned(); current = message.view; render(); }
+    else if (message.type === "mission") { if (planning) planned(); current = message.view; if (!resourceDetail) render(); }
     else if (message.type === "media") { photos[message.evidence_id] = message.png; renderEvidence(); }
     else if (message.type === "host") { host = message.status; renderHost(); }
+    else if (message.type === "resources") { resources = message.view; renderResources(); }
+    else if (message.type === "resource") { resourceDetail = message.detail; renderResourceDetail(); }
     else if (message.type === "error") { if (planning) planned(); notice((message.issue?.code ? message.issue.code + " · " : "") + message.message); }
   };
 }
@@ -64,6 +84,73 @@ function onHello(message) {
     '<p>不勾选表示体积内任意登记资产。</p>';
   byId("submit").disabled = !message.can_write;
   if (!message.can_write) notice("当前会话没有 tailnet 身份，只能查看；提交、审批与操作需要已识别的操作者。");
+  const projects = (message.projects || []).filter(p => !p.legacy);
+  byId("resources").hidden = byId("resourcesEyebrow").hidden = byId("robotRow").hidden = !projects.length;
+  byId("project").innerHTML = projects.map(p => `<option value="${esc(p.project_id)}">${esc(p.project_id)} · ${esc(p.roles.join("/"))}</option>`).join("");
+  if (projects.length) selectProject();
+}
+
+function selectProject() {
+  const project = (hello?.projects || []).find(p => p.project_id === byId("project").value);
+  byId("robot").innerHTML = (project?.robots || []).map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
+  resources = null; renderResources();
+  send({type: "resources", project_id: byId("project").value});
+}
+byId("project").onchange = selectProject;
+
+function chips(values) { return `<div class="chips">${values.map(([v, tone]) => `<span class="chip ${tone || ""}">${esc(v)}</span>`).join("")}</div>`; }
+function reasons(list) { return (list || []).map(r => REASON[r] || r).join("；"); }
+
+function dockChips(d) {
+  const s = d.status;
+  if (!s) return '<div class="why">尚无机场报告：不可派遣。</div>';
+  const charge = s.energy.charge_fraction == null ? "" : " " + Math.round(s.energy.charge_fraction * 100) + "%";
+  return chips([[DIM[s.link] || s.link, s.link === "online" && s.fresh ? "ok" : "bad"], [DIM[s.lid] || s.lid], [DIM[s.aircraft] || s.aircraft],
+    [(DIM[s.energy.state] || s.energy.state) + charge], [DIM[s.environment.state] || s.environment.state],
+    [s.lock ? "锁定：" + (DIM[s.lock.state] || s.lock.state) : DIM[s.upkeep] || s.upkeep, s.lock ? "bad" : ""],
+    [PAD[d.pad] || d.pad, d.pad === "uncertain" ? "bad" : d.pad === "free" ? "" : "warn"],
+    [(s.fresh ? "" : "过期 · ") + s.age_s.toFixed(1) + " s 前 · " + (s.session === "active" ? "会话有效" : "会话对账中"), s.fresh ? "" : "bad"]]);
+}
+
+function renderResources() {
+  if (!resources) { byId("resourceList").innerHTML = '<div class="empty">加载资源中。</div>'; return; }
+  const admin = (resources.roles || []).includes("admin");
+  byId("resourceList").innerHTML = resources.sites.map(site => `<div class="res"><b>${esc(site.site_id)}</b>
+    ${site.docks.map(d => `<div class="res"><button data-res="${esc(d.dock_id)}">${esc(d.dock_id)}</button> · ${esc(d.source === "logical_sim" ? "逻辑模拟机场" : d.source)}
+      ${dockChips(d)}${d.status?.lock && admin ? `<button data-release="${esc(d.dock_id)}">解除维护锁（管理员）</button>` : ""}</div>`).join("")}
+    ${site.robots.map(r => `<div class="res"><button data-res="${esc(r.robot_id)}">${esc(r.robot_id)}</button> · ${esc(r.execution_backend === "px4_sitl" ? "PX4 SITL" : "逻辑飞行")}
+      ${chips([[VERDICT[r.eligibility.verdict] || r.eligibility.verdict, VTONE[r.eligibility.verdict]],
+        [r.status ? (r.status.flight_phase === "grounded" ? "机体在地面" : r.status.flight_phase) + " · " + Math.round(r.status.age_s) + " s 前" : "机体无状态"]])}
+      ${r.eligibility.reasons.length ? `<div class="why">${esc(reasons(r.eligibility.reasons))}</div>` : ""}</div>`).join("")}</div>`).join("")
+    + `<p>目录 ${esc(resources.catalog.catalog_id)} · 策略 ${esc(resources.catalog.policy.version)} · 判定于 ${esc(resources.evaluated_at.slice(11, 19))}</p>`;
+  for (const button of byId("resourceList").querySelectorAll("[data-res]")) button.onclick = () => send({type: "resource", project_id: resources.project_id, resource_id: button.dataset.res});
+  for (const button of byId("resourceList").querySelectorAll("[data-release]")) button.onclick = () => {
+    const reason = prompt("解除维护锁的原因（将写入审计）") ?? "";
+    if (reason) send({type: "maintenance", project_id: resources.project_id, dock_id: button.dataset.release, action: "release", reason});
+  };
+}
+
+function renderResourceDetail() {
+  const d = resourceDetail;
+  if (!d) return;
+  let html = `<div class="eyebrow">资源 · ${esc(d.kind === "dock" ? "机场" : "机器人")}</div><h2>${esc(d.dock_id || d.robot_id)}</h2>`;
+  if (d.kind === "dock") {
+    html += `<p>来源：${esc(d.source)}；服务 ${esc(d.serves.join(", "))}；机位 ${esc(PAD[d.pad] || d.pad)}${d.holder ? "（" + esc(d.holder) + "）" : ""}</p>${dockChips(d)}`;
+    html += `<h3>动作（ACK 只表示受理，完成以后续状态报告为准）</h3><table><tr><th>动作</th><th>状态</th><th>活动</th><th>请求</th></tr>${d.actions.slice().reverse().map(a =>
+      `<tr><td>${esc(a.kind)}</td><td>${esc(a.state)}</td><td><code>${esc(a.activity_key)}</code></td><td>${esc(a.requested_at.slice(11, 19))}</td></tr>`).join("")}</table>`;
+    html += `<h3>预约</h3><table>${d.reservations.slice().reverse().map(r => `<tr><td><code>${esc(r.activity_key)}</code></td><td>${esc(r.state)}</td><td>${esc(r.reason)}</td></tr>`).join("")}</table>`;
+    html += `<h3>审计事件</h3><div class="events">${d.events.slice().reverse().map(e => `<div class="event ${e.kind === "status.rejected" ? "alert" : ""}"><time>${esc(e.created_at.slice(11, 19))}</time><span>${esc(e.kind)} ${esc(JSON.stringify(e.body).slice(0, 160))}</span></div>`).join("")}</div>`;
+  } else {
+    html += `<p>${esc(VERDICT[d.eligibility.verdict])}${d.eligibility.reasons.length ? "：" + esc(reasons(d.eligibility.reasons)) : ""}</p><dl><div><dt>能力来源</dt><dd>${esc(d.capability_source)}</dd></div>
+      <div><dt>执行后端</dt><dd>${esc(d.execution_backend)}</dd></div><div><dt>判定有效至</dt><dd>${esc(d.eligibility.valid_until)}</dd></div>
+      <div><dt>快照摘要</dt><dd>${esc(d.eligibility.snapshot_sha256.slice(0, 16))}…</dd></div></dl>`;
+  }
+  html += `<p><button class="ghost" id="closeResource">返回任务</button></p>`;
+  byId("detail").innerHTML = html;
+  byId("closeResource").onclick = () => {
+    resourceDetail = null;
+    if (current) render(); else byId("detail").innerHTML = '<div class="empty">选择或提交一个任务后显示规格、任务包、审批与进度。</div>';
+  };
 }
 
 byId("submit").onclick = () => {
@@ -75,7 +162,8 @@ byId("submit").onclick = () => {
   byId("submit").textContent = "规划中…（实调模型可能需要数十秒）";
   // Re-enable on the planned mission or an error; a live model can take a while. / 收到规划结果或错误时恢复按钮。
   planning = setTimeout(planned, 180000);
-  send({type: "text", rid: rid(), text, volume_id: byId("volume").value, asset_ids: assets});
+  const bound = !byId("robotRow").hidden && byId("robot").value ? {project_id: byId("project").value, robot_id: byId("robot").value} : {};
+  send({type: "text", rid: rid(), text, volume_id: byId("volume").value, asset_ids: assets, ...bound});
 };
 
 function planned() {
@@ -89,7 +177,7 @@ function renderList(items) {
   byId("missions").innerHTML = items.length ? items.map(m => `<button data-id="${esc(m.mission_id)}" aria-current="${m.mission_id === current?.mission.mission_id}">
     <span>${esc(m.mission_id)}<br><small>v${esc(m.current_version)} · ${esc(m.updated_at.slice(11, 19))}</small></span>${chip(m.status)}</button>`).join("")
     : '<div class="empty">暂无任务。</div>';
-  for (const button of byId("missions").querySelectorAll("button")) button.onclick = () => { selected = null; send({type: "watch", mission_id: button.dataset.id}); };
+  for (const button of byId("missions").querySelectorAll("button")) button.onclick = () => { selected = null; resourceDetail = null; send({type: "watch", mission_id: button.dataset.id}); };
 }
 
 function version() {
@@ -138,6 +226,23 @@ function render() {
       <p>操作经机载 uplink 写入操作者信箱，由 executive 与 guardian 复核绑定与时效；页面按钮不直达飞控。</p>`;
   }
   if (view.operations.length) html += `<h3>操作请求</h3><table>${view.operations.map(o => `<tr><td>${esc(o.action)}</td><td>${esc(o.requested_by)}</td><td>${o.acked ? (o.accepted ? "已转入信箱" : "被拒：" + esc(o.reason)) : "待拉取"}</td></tr>`).join("")}</table>`;
+  const dispatch = view.dispatch, binding = view.binding;
+  if (binding) {
+    html += `<h3>派遣（P1）</h3><dl><div><dt>项目 / 站点</dt><dd>${esc(binding.project_id)}${binding.legacy ? " · 历史任务（只读）" : " / " + esc(binding.site_id)}</dd></div>
+      ${binding.legacy ? "" : `<div><dt>机场 / 机器人</dt><dd>${esc(binding.dock_id)} / ${esc(binding.robot_id)}</dd></div><div><dt>执行后端</dt><dd>${esc(SOURCE[binding.execution_backend] || binding.execution_backend)}</dd></div>`}</dl>`;
+    if (dispatch) {
+      const latest = {};
+      for (const d of dispatch.decisions) latest[d.version + ":" + d.stage] = d;
+      html += `<table><tr><th>版本</th><th>阶段</th><th>判定</th><th>原因</th></tr>${Object.values(latest).map(d => `<tr><td>v${esc(d.version)}</td><td>${esc({preview: "预览", prepare: "准备", claim: "领取"}[d.stage] || d.stage)}</td>
+        <td><span class="chip ${VTONE[d.verdict] || ""}">${esc(VERDICT[d.verdict] || d.verdict)}</span></td><td>${esc(reasons(d.reasons) || "—")}</td></tr>`).join("")}</table>`;
+      html += `<table><tr><th>预约</th><th>状态</th><th>原因</th></tr>${dispatch.reservations.map(r => `<tr><td>v${esc(r.mission_version)}</td><td>${esc(r.state)}</td><td>${esc(r.reason)}</td></tr>`).join("")}</table>`;
+      if (dispatch.claims.length) html += `<p>交付：${dispatch.claims.map(c => `v${esc(c.mission_version)} ${c.state === "claimed" ? "已领取" : "已作废（" + esc(c.reason) + "）"}`).join("；")}</p>`;
+      if (dispatch.cancel) html += `<p>取消意图：${esc(dispatch.cancel.requested_by)} · ${esc(dispatch.cancel.requested_at.slice(11, 19))}${dispatch.cancel.relayed_request_id ? " · 已转发到飞行" : ""}</p>`;
+      const cancellable = ["awaiting_approval", "approving", "approved", "queued", "delivered"].includes(m.status) && !dispatch.cancel && !view.live;
+      if (cancellable) html += `<div class="buttons"><button class="ghost danger" id="cancelMission" ${writable ? "" : "disabled"}>取消任务</button></div>
+        <p>未领取的交付立即作废并释放预约；已领取的在飞行出现运行步骤时经机载通道取消，之后不再起飞。</p>`;
+    }
+  }
   const cloud = view.cloud;
   if (cloud) {
     html += `<h3>云端飞行</h3><table><tr><th>版本</th><th>状态</th><th>代次</th><th>开始 / 结束</th><th>说明</th></tr>
@@ -160,6 +265,7 @@ function render() {
   if (byId("approve")) byId("approve").onclick = () => send({type: "approve", mission_id: m.mission_id, version: v.version, package_hash: v.package_hash});
   if (byId("decline")) byId("decline").onclick = () => { const reason = prompt("驳回原因（可选）") ?? ""; send({type: "decline", mission_id: m.mission_id, version: v.version, reason}); };
   for (const button of byId("detail").querySelectorAll("[data-op]")) button.onclick = () => send({type: "operate", mission_id: m.mission_id, action: button.dataset.op, request_id: "op-" + rid()});
+  if (byId("cancelMission")) byId("cancelMission").onclick = () => send({type: "operate", mission_id: m.mission_id, action: "cancel", request_id: "op-" + rid()});
   renderReport(); renderEvidence(); renderIssues();
   for (const button of byId("missions").querySelectorAll("button")) button.setAttribute("aria-current", button.dataset.id === m.mission_id);
 }

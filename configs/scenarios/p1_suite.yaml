@@ -1,0 +1,88 @@
+# P1 fault and acceptance matrix (WP-P1-11, D055). `s0` cases run in the S0 world (eval/p1_world.py): the formal
+# mission service with the p1_campus_v1 catalog, logical docks and logical aircraft that run the real onboard
+# executive/guardian/uplink. `s1` cases run in the cloud against PX4 SITL with the p1_s1_v1 catalog
+# (scripts/remote_p1.py). Each case runs for every seed; `expected` is what the independent judges
+# (eval/judge_p1.py, and eval/judge_m2.py for S1 flights) require on top of the invariants they always check:
+# no dispatch against the dock's reports or truth, no duplicate or post-cancel dispatch, no release without
+# reconciled evidence, no project escape, no false success. S0 results never count as physical flights.
+#
+# P1 故障与验收矩阵（WP-P1-11，D055）。`s0` 用例在 S0 世界（eval/p1_world.py）中运行：带 p1_campus_v1 目录的正式
+# 任务服务、逻辑机场，以及运行真实机载 executive/guardian/uplink 的逻辑飞行器。`s1` 用例在云端以 p1_s1_v1 目录对
+# PX4 SITL 运行（scripts/remote_p1.py）。每个用例跑全部种子；`expected` 是独立裁判（eval/judge_p1.py，S1 飞行另用
+# eval/judge_m2.py）在始终检查的不变量之外的要求：不违背机场报告或真值派遣、不重复或取消后派遣、没有对账证据不
+# 释放、不越出项目、没有错误成功。S0 结果从不计为物理飞行。
+format: p1.suite/v1
+seeds: [7, 19, 41]
+s0:
+  - id: p1_f01_nominal
+    fault: P1-F01
+    description: "Healthy dock, full battery, valid approval: the mission completes and the hold is released once. / 健康机场、满电、有效审批：任务完成，持有恰好释放一次。"
+    expected: {flights: 1, statuses: [completed]}
+  - id: p1_f02_energy
+    fault: P1-F02
+    description: "Charging, cooling and a 'ready' dock whose charge is below the mission's need each block the claim with their own reason. / 充电中、冷却中与电量低于需求的“就绪”各自以本身原因阻止领取。"
+    expected: {flights: 0, statuses: [cancelled, cancelled, cancelled], reasons: [energy.charging, energy.cooling, energy.insufficient]}
+  - id: p1_f03_maintenance
+    fault: P1-F03
+    description: "A reported maintenance lock survives later normal telemetry and an operator's release attempt; only an admin release lets the mission fly. / 上报的维护锁在之后的正常遥测与操作者解锁尝试后仍在；只有 admin 解锁后任务才起飞。"
+    expected: {flights: 1, statuses: [completed], reasons: [dock.maintenance], lock_released_by_admin: true, probes_refused: true}
+  - id: p1_f04_offline
+    fault: P1-F04
+    description: "An offline dock goes stale after 3 s and nothing is claimed; a report from an unbound backend is refused; the mission flies after reports resume. / 离线机场 3 s 后过期、不领取；未绑定后端的报告被拒；恢复报告后任务起飞。"
+    expected: {flights: 1, statuses: [completed], reasons: [dock.status_stale], rejections: [backend_mismatch], probes_refused: true}
+  - id: p1_f05_timestamps
+    fault: P1-F05
+    description: "Future-stamped, reordered and replaced-boot reports are refused and never extend validity; a rebooted dock reconciles before it counts. / 未来时间、倒序与已替代 boot 的报告被拒且不延长有效期；重启的机场先对账再计入。"
+    expected: {flights: 1, statuses: [completed], reasons: [dock.status_stale, environment.deferred], rejections: [future_timestamp, reordered, replaced_boot], session_new: true}
+  - id: p1_f06_lid_jam
+    fault: P1-F06
+    description: "The open ACK arrives but the lid jams: nothing is claimed and the open action ends failed, not completed. / 开盖 ACK 到达但舱盖卡滞：不领取，开盖动作以失败结束而非完成。"
+    expected: {flights: 0, statuses: [cancelled], reasons: [dock.lid_jammed], actions: {open_lid: failed}}
+  - id: p1_f07_charge_stall
+    fault: P1-F07
+    description: "After a flight the charge ACK succeeds but the charge never grows: the dock never becomes ready by time and the next mission is not claimed. / 飞行后充电 ACK 成功但电量不增长：机场不会按时间变为就绪，下一任务不被领取。"
+    expected: {flights: 1, statuses: [cancelled, completed], reasons: [energy.charging], actions: {start_charge: acked}}
+  - id: p1_f08_contention
+    fault: P1-F08
+    description: "Two missions for one dock: one holder at a time, the second approval is refused until the first is reconciled; a repeated submission returns the same mission. / 同一机场两个任务：同时只有一个持有者，第二个审批在第一个对账前被拒；重复提交返回同一任务。"
+    expected: {flights: 2, statuses: [completed, completed], approvals_refused: 1, resubmit_same: true}
+  - id: p1_f09_receipt_lost
+    fault: P1-F09
+    description: "The aircraft lands but its journal rows are lost: the hold turns uncertain, survives a service restart and blocks another approval, and is released once after the rows arrive. / 飞行器落地但账本行丢失：持有转为不确定，经服务重启仍保留并阻止另一审批，行到达后恰好释放一次。"
+    expected: {flights: 1, statuses: [cancelled, completed], uncertain: true, approvals_refused: 1}
+  - id: p1_f10_presence_conflict
+    fault: P1-F10
+    description: "The dock says the aircraft is on the pad while the aircraft says it is airborne: the conflict blocks dispatch and is exposed, never resolved by picking one. / 机场称在位而飞行器称在空中：冲突阻止派遣并公开，不挑选任一方。"
+    expected: {flights: 1, statuses: [completed], reasons: [presence.conflict, robot.airborne]}
+  - id: p1_f11_before_claim
+    fault: P1-F11
+    description: "Maintenance, a lapsed approval and a cancel before the claim each prevent the hand-out; a cancel after the claim reaches the flight at its first running step and nothing flies again. / 领取前的维护、审批过期与取消各自阻止交付；领取后的取消在首个运行步骤送达，之后不再起飞。"
+    expected: {flights: 1, statuses: [cancelled, cancelled, dispatch_expired, incomplete], reasons: [dock.maintenance, environment.deferred], relayed_cancel: true}
+  - id: p1_f12_restarts
+    fault: P1-F12
+    description: "Service restart and dock reboot mid-flight, a duplicate and a late ACK: the mission converges with one flight and the hold is released once. / 飞行中服务重启与机场重启、重复与迟到 ACK：任务收敛为一次飞行，持有恰好释放一次。"
+    expected: {flights: 1, statuses: [completed], session_new: true, ack_ignored: 2}
+  - id: p1_f13_projects
+    fault: P1-F13
+    description: "Cross-project reads, media, approvals, operations, submissions and resources, a viewer's approval, a trimmed role and an A2A submission are all refused without data. / 跨项目读取、媒体、审批、操作、提交与资源，viewer 审批、裁剪后的角色与 A2A 提交全部被拒且不泄漏数据。"
+    expected: {flights: 1, statuses: [cancelled, completed], probes_refused: true}
+  - id: p1_f14_sources
+    fault: P1-F14
+    description: "A report claiming a real source, a report from another backend, an unknown dock, a person calling the backend method, a client-chosen backend and a real-device catalog are all refused; flights stay labelled logical. / 声称真实来源的报告、其他后端的报告、未知机场、人员调用后端方法、客户端指定后端与真实设备目录全部被拒；飞行保持逻辑标签。"
+    expected: {flights: 1, statuses: [completed], probes_refused: true, rejections: [invalid_report, backend_mismatch, unknown_dock], forged_catalog_refused: true}
+s1:
+  - id: p1_s1_nominal
+    fault: P1-F01
+    description: "The virtual dock serves uav_01 on PX4 SITL: dock preparation, claim, flight, landing and reconciled release. / 虚拟机场服务 PX4 SITL 上的 uav_01：机场准备、领取、飞行、落地与对账释放。"
+    seeds: [7, 19, 41]
+    expected: {status: completed, versions: 1, replans: 0, classification: completed, flight: true}
+  - id: p1_s1_blocked_before_claim
+    fault: P1-F11
+    description: "The dock enters maintenance after approval: no package reaches the aircraft; the cancel voids the delivery. / 审批后机场进入维护：任务包不到达飞行器；取消使投递作废。"
+    seeds: [7]
+    expected: {status: cancelled, flight: false, classification: not_completed}
+  - id: p1_s1_restart
+    fault: P1-F12
+    description: "The mission service and the dock backend restart while the aircraft flies: one flight, same result, one release. / 飞行中任务服务与机场后端重启：一次飞行、结果不变、释放一次。"
+    seeds: [7]
+    expected: {status: completed, versions: 1, replans: 0, classification: completed, flight: true}

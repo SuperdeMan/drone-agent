@@ -8,6 +8,11 @@ is recomputed from those rows by `refresh`, so a service restart or a late sync 
 result. A replanned version is approved automatically only when it is a verbatim retry (D032) and is
 delivered only after the previous version finished and the robot reported itself grounded.
 
+With an operations catalog (P1, D055) every new mission is bound to a project, site, dock and robot in the same
+transaction as the mission row; each call checks the caller's project role; approval takes the activity's
+reservation; the robot's pull passes the claim gate; and reconciliation alone releases resources. Without a
+catalog the service behaves exactly as in M2.
+
 任务服务：请求 → 规划 → 编译 / 准入 → 审批并签名 → 投递 → 入账 → 复核 → 报告。
 
 服务是唯一调用模型的地方（D029），也是审批签名密钥的唯一持有者（D030）。它从不与 guardian 通信：任务包
@@ -15,6 +20,9 @@ delivered only after the previous version finished and the robot reported itself
 哈希链账本行。派生状态（步骤结果、复核、三列报告、重规划）由 `refresh` 从这些行重新计算，因此服务
 重启或迟到的同步都收敛到同一结果。重规划版本只有在原样重试时才自动批准（D032），并且只在上一版本
 结束、机器人报告已在地面之后才投递。
+
+带运营目录时（P1，D055），每个新任务与任务行在同一事务中绑定到项目、站点、机场与机器人；每次调用检查调用方的
+项目角色；审批获取活动预约；机器人拉取须经领取闸门；只有对账才能释放资源。不带目录时服务行为与 M2 完全相同。
 """
 
 from __future__ import annotations
@@ -43,6 +51,7 @@ from drone_agent.contracts import (
 )
 from drone_agent.fleet.catalog import Catalog
 from drone_agent.fleet.coordinator import PassthroughCoordinator
+from drone_agent.fleet.dispatch import Dispatch, Operations
 from drone_agent.fleet.events import event_to_row, outcomes_from_rows, verify_chain
 from drone_agent.fleet.ledger import BusinessLedger
 from drone_agent.fleet.provenance import (
@@ -60,6 +69,7 @@ from drone_agent.fleet.provenance import (
     source_context,
 )
 from drone_agent.fleet.report import build_report
+from drone_agent.fleet.resources import Stage
 from drone_agent.fleet.transport import FleetHub
 from drone_agent.fleet.verifier import VLM_QUESTION, accept_fact, business_judgment, verify
 from drone_agent.mission.registry import Registry
@@ -71,7 +81,16 @@ from drone_agent.planner.replan import (
     propose_retry,
     triggers,
 )
-from drone_agent.runtime.issues import ISSUE_CODES, Issue, issue
+from drone_agent.runtime.issues import ISSUE_CODES, Issue, Severity, issue
+from drone_agent.runtime.permission import (
+    MISSION_APPROVE,
+    MISSION_OPERATE,
+    MISSION_READ,
+    MISSION_SUBMIT,
+    RESOURCE_MAINTAIN,
+    RESOURCE_READ,
+    Caller,
+)
 from drone_agent.runtime.signing import SigningKey
 
 # Version states after which the robot may hold the package. / 机器人可能已持有任务包的版本状态。
@@ -100,7 +119,8 @@ def package_diff(before: dict | None, after: dict) -> dict:
 class MissionService:
     def __init__(self, *, root: Path, scene: Path, ledger: BusinessLedger, hub: FleetHub, signing_key: SigningKey,
                  approval_policy: ApprovalPolicy, planner=None, robot_id: str = "uav_01", airspace=None,
-                 clock=utcnow, vision=None, provenance_context: SourceContext | None = None):
+                 clock=utcnow, vision=None, provenance_context: SourceContext | None = None,
+                 operations: Operations | None = None):
         self.registry = Registry(root, scene=scene)
         self.ledger, self.hub, self.key, self.policy = ledger, hub, signing_key, approval_policy
         self.planner, self.robot_id, self.clock, self.vision = planner, robot_id, clock, vision
@@ -109,11 +129,79 @@ class MissionService:
         self.coordinator = PassthroughCoordinator(robot_id, self.catalog)
         self.defaults = self.registry.data.get("mission_defaults", {})
         self.source = provenance_context or source_context(root, scene, self.registry.sha256)
+        self.ops, self.dispatch = operations, None
+        self.sources: dict[str, SourceContext] = {}
+        if operations is not None:
+            import hashlib
+
+            self.catalog = Catalog(ledger, static=self.registry.capability, statics=operations.capabilities)
+            self.dispatch = Dispatch(operations, ledger, self.catalog, clock=clock, terminal=self._terminal)
+            hub.claim_gate = self._gate
+            # A bound mission's source names its own site map. / 已绑定任务的来源记录其站点地图。
+            self.sources = {site_id: self.source.model_copy(update={
+                "scenario_sha256": hashlib.sha256((root / site.scene).read_bytes()).hexdigest(),
+                "registry_sha256": operations.registries[site_id].sha256})
+                for site_id, site in operations.catalog.sites.items()}
         # Reconcile persisted input even when the uplink already acknowledged every item before a restart.
         # 重启后复核持久化输入，即使 uplink 已在重启前确认了每条上传。
         self.dirty: set[str] = {m["mission_id"] for m in ledger.missions(-1) if m["current_version"] > 0}
         self.status_changed = False
         hub.listeners.append(self._ingested)
+
+    # ── P1 bindings and project checks / P1 绑定与项目检查 ──
+
+    def _binding(self, mission_id: str) -> dict | None:
+        return self.ops.store.binding(mission_id) if self.ops is not None else None
+
+    def _robot_of(self, mission_id: str) -> str:
+        binding = self._binding(mission_id)
+        return binding["robot_id"] if binding else self.robot_id
+
+    def _registry(self, robot_id: str) -> Registry:
+        if self.ops is not None and robot_id in self.ops.catalog.robots:
+            return self.ops.registry(robot_id)
+        return self.registry
+
+    def _coordinator(self, robot_id: str) -> PassthroughCoordinator:
+        return self.coordinator if robot_id == self.robot_id and self.ops is None else \
+            PassthroughCoordinator(robot_id, self.catalog)
+
+    def project_of(self, mission_id: str) -> str | None:
+        """The mission's project; missions without a binding belong to the legacy project. / 无绑定的任务属于 legacy 项目。"""
+        if self.ops is None:
+            return None
+        binding = self._binding(mission_id)
+        return binding["project_id"] if binding else self.ops.catalog.legacy_project.project_id
+
+    def _check(self, caller: Caller | None, mission_id: str, scope: str) -> None:
+        """Catalog mode: an unreadable mission looks absent; a readable one needs the scope's role.
+
+        目录模式：不可读的任务如同不存在；可读的任务还需要相应 scope 的角色。
+        """
+        if self.ops is None:
+            return
+        if caller is None:
+            raise ServiceError("auth.identity_missing", "catalog mode needs an authenticated caller")
+        self._mission(mission_id)
+        project = self.project_of(mission_id)
+        if not self.ops.directory.allows(caller, project, MISSION_READ):
+            raise ServiceError("service.not_found", mission_id)
+        if scope != MISSION_READ and not self.ops.directory.allows(caller, project, scope):
+            raise ServiceError("auth.project_denied", f"{scope} in {project}")
+
+    def _gate(self, robot_id: str, delivery: dict) -> bool:
+        handed = self.dispatch.gate(robot_id, delivery)
+        self.dirty.update(self.dispatch.touched)
+        return handed
+
+    def _terminal(self, mission_id: str, version: int) -> tuple[str, datetime] | None:
+        """The authoritative end of one activity: the robot's rejection or the mission result. / 活动的权威结束。"""
+        for delivery in self.ledger.deliveries(mission_id):
+            if delivery["kind"] == "mission_package" and delivery["version"] == version and delivery["acked_at"] \
+                    and not delivery["ack_accepted"]:
+                return "delivery_rejected", datetime.fromisoformat(delivery["acked_at"])
+        finished = self._finished_at(mission_id, version)
+        return ("mission_result", finished) if finished else None
 
     def _ingested(self, robot_id: str, kind: str, mission_id: str | None) -> None:
         if mission_id:
@@ -136,7 +224,9 @@ class MissionService:
             planning = ModelUse(source="deterministic", provider_id="runtime", model_id="bounded_retry",
                                 input_sha256=digest(spec.model_dump(mode="json")) if spec else "", outcome=status)
         decision = dict(records.pop("decision", None) or {})
-        decision[NAMESPACE] = {"run": seal(self.source.header(mission_id, version, planning))}
+        binding = self._binding(mission_id)
+        source = self.sources.get(binding["site_id"], self.source) if binding else self.source
+        decision[NAMESPACE] = {"run": seal(source.header(mission_id, version, planning))}
         self.ledger.record_version(mission_id, version, status=status, origin=origin, decision=decision, **records)
 
     def provenance(self, mission_id: str) -> list[dict]:
@@ -162,20 +252,64 @@ class MissionService:
 
     # ── submit and plan / 提交与规划 ──
 
-    async def submit(self, request: MissionRequest) -> dict:
+    async def submit(self, request: MissionRequest, caller: Caller | None = None) -> dict:
         """Plan, compile and admit a request; a repeated idempotency key returns the first mission.
 
-        规划、编译并准入一个请求；重复的幂等键返回第一次的任务。
+        In catalog mode the unscoped request goes to the catalog's default binding, membership checked (D055).
+
+        规划、编译并准入一个请求；重复的幂等键返回第一次的任务。目录模式下未带项目的请求进入目录默认绑定，
+        仍检查成员资格（D055）。
         """
+        if self.ops is not None:
+            default = self.ops.catalog.default_binding
+            if default is None:
+                raise ServiceError("auth.project_denied", "this deployment needs an explicit project and robot")
+            return await self.submit_bound(request, project_id=default.project_id, robot_id=default.robot_id,
+                                           caller=caller)
         mission_id, created = self.ledger.record_request(request, "m-" + uuid.uuid4().hex[:12])
         if not created:
-            return self.view(mission_id)
+            return self._view(mission_id)
         operation = self.ledger.begin_operation(mission_id, "plan", request.idempotency_key)
         try:
             await self._plan(mission_id, request)
         finally:
             self.ledger.finish_operation(operation, "done")
-        return self.view(mission_id)
+        return self._view(mission_id)
+
+    async def submit_bound(self, request: MissionRequest, *, project_id: str, robot_id: str,
+                           caller: Caller | None) -> dict:
+        """Submit into a project for one fixed robot; the binding is written with the mission (D055).
+
+        向项目内一台固定机器人提交；绑定与任务一起写入（D055）。
+        """
+        if self.ops is None:
+            raise ServiceError("service.invalid_request", "no operations catalog is configured")
+        catalog, directory = self.ops.catalog, self.ops.directory
+        if caller is None or project_id not in catalog.projects or \
+                not directory.allows(caller, project_id, MISSION_READ):
+            raise ServiceError("service.not_found", project_id)
+        if not directory.allows(caller, project_id, MISSION_SUBMIT):
+            raise ServiceError("auth.project_denied", f"{MISSION_SUBMIT} in {project_id}")
+        if catalog.project_of(robot_id) != project_id:
+            raise ServiceError("service.not_found", robot_id)
+        if catalog.robots[robot_id].execution_backend != self.source.execution_backend:
+            raise ServiceError("dispatch.backend_mismatch",
+                               f"{robot_id} runs {catalog.robots[robot_id].execution_backend}")
+        mission_id = "m-" + uuid.uuid4().hex[:12]
+        mission_id, created = self.ledger.record_request(
+            request, mission_id, also=self.ops.store.binding_writer(mission_id, project_id=project_id,
+                                                                    robot_id=robot_id))
+        if not created:
+            binding = self._binding(mission_id)
+            if binding is None or (binding["project_id"], binding["robot_id"]) != (project_id, robot_id):
+                raise ServiceError("service.idempotency_conflict", "the key was used for another project or robot")
+            return self._view(mission_id)
+        operation = self.ledger.begin_operation(mission_id, "plan", request.idempotency_key)
+        try:
+            await self._plan(mission_id, request)
+        finally:
+            self.ledger.finish_operation(operation, "done")
+        return self._view(mission_id)
 
     async def _plan(self, mission_id: str, request: MissionRequest) -> None:
         def stop(status: str, found: list[Issue], **records) -> None:
@@ -183,7 +317,8 @@ class MissionService:
             self.ledger.update_mission(mission_id, status=status, current_version=1)
             self._issues(found, mission_id, request.request_id)
 
-        if request.approved_volume_id not in self.registry.data.get("volumes", {}):
+        robot_id = self._robot_of(mission_id)
+        if request.approved_volume_id not in self._registry(robot_id).data.get("volumes", {}):
             # No model call for a scope the registry does not know. / 登记表不认识的范围不调用模型。
             return stop("rejected", [issue("scope.unregistered_volume", request.approved_volume_id)])
         if self.planner is None:
@@ -193,12 +328,13 @@ class MissionService:
             return stop("refused" if outcome.status == "refused" else "planning_failed", outcome.issues,
                         planner=outcome)
         spec = outcome.spec
-        robot, found = self.coordinator.assign(spec)
+        coordinator = self._coordinator(robot_id)
+        robot, found = coordinator.assign(spec)
         if robot is None:
             return stop("rejected", found, spec=spec, planner=outcome)
         result = self._evaluate(spec, robot, request)
         decision = {"blocked_at": result.blocked_at, "codes": result.codes,
-                    "collaboration": self.coordinator.collaboration(spec)}
+                    "collaboration": coordinator.collaboration(spec)}
         package = result.compile.package if result.compile else None
         status = "awaiting_approval" if result.blocked_at is None else "rejected"
         self._record_version(mission_id, 1, status=status, origin=request.channel.value, spec=spec,
@@ -207,10 +343,20 @@ class MissionService:
                                    decision=decision)
         self.ledger.update_mission(mission_id, status=status, robot_id=robot, current_version=1)
         self._issues(result.issues, mission_id, request.request_id)
+        if status == "awaiting_approval" and self._binding(mission_id) is not None:
+            # A soft hold while the human decides; approval refreshes or retakes it (D055). / 人工决定期间的软预约。
+            _, conflicts = self.dispatch.reserve(mission_id, 1)
+            if conflicts:
+                self.ledger.record_issue(issue("dispatch.reservation_conflict",
+                                               "held by " + ", ".join(sorted(set(conflicts.values()))),
+                                               severity=Severity.WARNING, mission_id=mission_id),
+                                         mission_id=mission_id)
+            self.dispatch.preview(mission_id, 1)
 
     def _evaluate(self, spec: MissionSpec, robot: str, request: MissionRequest):
-        return evaluate(spec, CompileContext(registry=self.registry, robot_id=robot),
-                        AdmissionContext(registry=self.registry, capability=self.catalog.capability(robot)[0],
+        registry = self._registry(robot)
+        return evaluate(spec, CompileContext(registry=registry, robot_id=robot),
+                        AdmissionContext(registry=registry, capability=self.catalog.capability(robot)[0],
                                          airspace=self.airspace, now=self.clock(), request=request))
 
     def _request(self, mission: dict) -> MissionRequest:
@@ -233,14 +379,22 @@ class MissionService:
             raise ServiceError("approval.stale_version", f"v{version} is {record['status']}")
         return mission, record
 
-    def approve(self, mission_id: str, version: int, *, approver: str, package_hash: str) -> dict:
+    def approve(self, mission_id: str, version: int, *, approver: str, package_hash: str,
+                caller: Caller | None = None) -> dict:
         """Human approval bound to the package hash the approver saw; signs and queues the package.
 
-        绑定审批人所见任务包哈希的人工审批；签名并排队投递。
+        In catalog mode the approver needs the project's approver role and the activity's reservation (D055).
+
+        绑定审批人所见任务包哈希的人工审批；签名并排队投递。目录模式下审批人需要项目 approver 角色，并须取得
+        活动预约（D055）。
         """
+        self._check(caller, mission_id, MISSION_APPROVE)
         if not approver or approver.startswith(("a2a:", "policy:")):
             raise ServiceError("approval.identity_missing", "an identified operator must approve")
         mission, record = self._awaiting(mission_id, version)
+        bound = self._binding(mission_id) is not None
+        if bound and self.ops.store.cancel_intent(mission_id) is not None:
+            raise ServiceError("dispatch.cancelled", "the mission was cancelled")
         if record["package_hash"] != package_hash:
             raise ServiceError("approval.stale_version", "the package changed since it was shown")
         admission = record["admission"] or {}
@@ -251,15 +405,22 @@ class MissionService:
         package = MissionPackage.model_validate(record["package"])
         if package.compute_hash() != package_hash:
             raise ServiceError("package.hash_mismatch")
+        if bound:
+            reservation, conflicts = self.dispatch.reserve(mission_id, version)
+            if reservation is None:
+                raise ServiceError("dispatch.reservation_conflict",
+                                   "held by " + ", ".join(sorted(set(conflicts.values()))))
         now = self.clock()
         approval = ApprovalRecord(
             approver=approver, approved_at=now, mission_id=mission_id, mission_version=version,
             package_hash=package_hash, allowed_robots=[mission["robot_id"]],
             expires_at=min(now + timedelta(minutes=self.policy.approval_ttl_minutes), package.temporal_window.not_after))
         self._approved(mission_id, version, package, self.key.sign(approval))
-        return self.view(mission_id)
+        return self._view(mission_id)
 
-    def decline(self, mission_id: str, version: int, *, approver: str, reason: str = "") -> dict:
+    def decline(self, mission_id: str, version: int, *, approver: str, reason: str = "",
+                caller: Caller | None = None) -> dict:
+        self._check(caller, mission_id, MISSION_APPROVE)
         if not approver or approver.startswith(("a2a:", "policy:")):
             raise ServiceError("approval.identity_missing", "an identified operator must decline")
         _, record = self._awaiting(mission_id, version)
@@ -270,7 +431,9 @@ class MissionService:
         self.ledger.update_version(mission_id, version, status="declined",
                                    decision={"declined_by": approver, "reason": reason[:300], "triggers": found})
         self.ledger.update_mission(mission_id, status="completed" if restored else "declined")
-        return self.view(mission_id)
+        if self._binding(mission_id) is not None:
+            self.dispatch.release_unclaimed(mission_id, version, "declined")
+        return self._view(mission_id)
 
     def _approved(self, mission_id: str, version: int, package: MissionPackage, signed: ApprovalRecord) -> None:
         package = package.model_copy(update={"approval": signed})
@@ -300,6 +463,14 @@ class MissionService:
             finished = self._finished_at(mission_id, earlier[-1]["version"])
             if finished is None or not self.catalog.grounded_since(mission["robot_id"], finished):
                 return False
+        if self._binding(mission_id) is not None:
+            # Queue only with the activity's hold; the claim gate still decides the hand-out (D055).
+            # 只在持有活动预约时排队；是否交付仍由领取闸门决定（D055）。
+            if self.ops.store.cancel_intent(mission_id) is not None:
+                return False
+            reservation, _ = self.dispatch.reserve(mission_id, version)
+            if reservation is None:
+                return False
         self.ledger.queue_delivery(mission["robot_id"], "mission_package", mission_id, version, record["package"])
         self.ledger.update_version(mission_id, version, status="queued")
         self.ledger.update_mission(mission_id, status="queued")
@@ -307,26 +478,47 @@ class MissionService:
 
     # ── operator requests / 操作请求 ──
 
-    def operate(self, mission_id: str, action: str, *, requested_by: str, request_id: str) -> dict:
+    def operate(self, mission_id: str, action: str, *, requested_by: str, request_id: str,
+                caller: Caller | None = None) -> dict:
         """Queue a pause/resume/cancel bound to the running step the service last saw.
 
-        排队一个绑定到服务最近所见运行步骤的暂停 / 恢复 / 取消请求。
+        For a bound mission a cancel is first persisted as the mission's cancel intent: an unclaimed delivery is voided,
+        a claimed one is cancelled as soon as the flight has a running step, and no later version flies (D055).
+
+        排队一个绑定到服务最近所见运行步骤的暂停 / 恢复 / 取消请求。对已绑定任务，取消先持久化为任务的取消意图：
+        未领取的投递作废，已领取的在飞行出现运行步骤后立即取消，之后任何版本都不再起飞（D055）。
         """
+        self._check(caller, mission_id, MISSION_OPERATE)
         if not requested_by or requested_by.startswith(("a2a:", "policy:")):
             raise ServiceError("auth.identity_missing", "an identified operator must operate")
         mission = self._mission(mission_id)
         if any(d["payload"].get("request_id") == request_id for d in self.ledger.deliveries(mission_id)
                if d["kind"] == "operator_request"):
-            return self.view(mission_id)
+            return self._view(mission_id)
+        bound = self._binding(mission_id) is not None
+        if bound and action == "cancel":
+            if mission["status"] in ("completed", "incomplete", "declined", "rejected", "refused", "planning_failed",
+                                     "delivery_rejected", "cancelled", "dispatch_expired"):
+                raise ServiceError("service.invalid_request", f"{mission['status']} missions cannot be cancelled")
+            self.ops.store.record_cancel(mission_id, requested_by=requested_by, request_id=request_id,
+                                         reason="operator")
         live = self._live(mission_id, mission["current_version"])
         if live is None or action not in live["allowed_actions"]:
+            if bound and action == "cancel":
+                # Persisted; the claim gate voids unclaimed work and the relay cancels claimed work (D055).
+                # 已持久化；领取闸门作废未领取工作，转发机制取消已领取工作（D055）。
+                self.dispatch.prepare()
+                self.refresh(mission_id)
+                return self._view(mission_id)
             raise ServiceError("service.invalid_request", f"{action} is not available now")
         request = OperatorRequest(request_id=request_id, robot_id=mission["robot_id"], mission_id=mission_id,
                                   mission_version=live["version"], lease_epoch=live["lease_epoch"],
                                   step_id=live["step_id"], action=MissionAction(action),
                                   valid_until=self.clock() + OPERATOR_TTL, requested_by=requested_by)
         self.ledger.queue_delivery(mission["robot_id"], "operator_request", mission_id, live["version"], request)
-        return self.view(mission_id)
+        if bound and action == "cancel":
+            self.ops.store.mark_cancel_relayed(mission_id, request_id)
+        return self._view(mission_id)
 
     # ── derived state from forwarded journals / 由转发账本派生的状态 ──
 
@@ -404,9 +596,61 @@ class MissionService:
                 verdicts[(version, step)] = result.final_verdict
         return verdicts
 
+    def _dispatch_state(self, mission_id: str) -> None:
+        """Bound missions: voided deliveries end their version; a cancel intent ends or cancels the mission.
+
+        已绑定任务：作废的投递结束其版本；取消意图结束或取消任务。
+        """
+        store = self.ops.store
+        codes = {"cancelled": "dispatch.cancelled", "approval_expired": "dispatch.approval_expired",
+                 "backend_mismatch": "dispatch.backend_mismatch"}
+        expired = False
+        for claim in store.claims(mission_id):
+            if claim["state"] != "void":
+                continue
+            record = self.ledger.version(mission_id, claim["mission_version"])
+            expired |= claim["reason"] != "cancelled"
+            if record is not None and record["status"] in ("approved", "queued"):
+                self.ledger.update_version(mission_id, claim["mission_version"], status="withdrawn")
+                self.ledger.record_issue(issue(codes.get(claim["reason"], "dispatch.blocked"),
+                                               f"v{claim['mission_version']} was never handed out: {claim['reason']}",
+                                               mission_id=mission_id), mission_id=mission_id)
+        mission = self._mission(mission_id)
+        record = self.ledger.version(mission_id, mission["current_version"])
+        intent = store.cancel_intent(mission_id)
+        if intent is None:
+            if expired and record is not None and record["status"] == "withdrawn" and \
+                    mission["status"] != "dispatch_expired":
+                self.ledger.update_mission(mission_id, status="dispatch_expired")
+            return
+        if record is not None and record["status"] in ("awaiting_approval", "approving", "approved"):
+            self.ledger.update_version(mission_id, mission["current_version"], status="withdrawn")
+            self.dispatch.release_unclaimed(mission_id, mission["current_version"], "cancelled")
+            record = self.ledger.version(mission_id, mission["current_version"])
+        if record is not None and record["status"] == "withdrawn" and mission["status"] != "cancelled":
+            self.ledger.update_mission(mission_id, status="cancelled")
+            return
+        if intent["relayed_request_id"] is None:
+            live = self._live(mission_id, mission["current_version"])
+            if live is not None and "cancel" in live["allowed_actions"]:
+                # The operator's persisted cancel reaches a flight that started after it was recorded.
+                # 操作者已持久化的取消送达记录之后才开始的飞行。
+                relayed = f"{intent['request_id']}-relay"[:80]
+                request = OperatorRequest(request_id=relayed, robot_id=mission["robot_id"], mission_id=mission_id,
+                                          mission_version=live["version"], lease_epoch=live["lease_epoch"],
+                                          step_id=live["step_id"], action=MissionAction.CANCEL,
+                                          valid_until=self.clock() + OPERATOR_TTL,
+                                          requested_by=intent["requested_by"])
+                self.ledger.queue_delivery(mission["robot_id"], "operator_request", mission_id, live["version"],
+                                           request)
+                store.mark_cancel_relayed(mission_id, relayed)
+                store.event(f"mission:{mission_id}", "cancel.relayed", "service", {"request_id": relayed})
+
     def refresh(self, mission_id: str) -> dict:
         """Recompute derived state from the ledger; idempotent. / 从账本重新计算派生状态；幂等。"""
         self._mission(mission_id)
+        if self._binding(mission_id) is not None:
+            self._dispatch_state(mission_id)
         for delivery in self.ledger.deliveries(mission_id):
             record = self.ledger.version(mission_id, delivery["version"])
             if delivery["kind"] != "mission_package" or delivery["acked_at"] is None or record["status"] != "queued":
@@ -466,7 +710,7 @@ class MissionService:
         else:
             self._advance(self._mission(mission_id), bool(report and report.all_targets_completed), outcomes)
             self._deliver_ready(mission_id)
-        return self.view(mission_id)
+        return self._view(mission_id)
 
     def _advance(self, mission: dict, completed: bool, outcomes: dict[int, dict[str, StepOutcome]]) -> None:
         mission_id, version = mission["mission_id"], mission["current_version"]
@@ -529,6 +773,9 @@ class MissionService:
         cancelled.update(delivery["payload"].get("step_id", "mission")
                          for delivery in self.ledger.deliveries(mission_id)
                          if delivery["kind"] == "operator_request" and delivery["payload"].get("action") == "cancel")
+        if self._binding(mission_id) is not None and self.ops.store.cancel_intent(mission_id) is not None:
+            # A persisted cancel intent is a barrier for every later version (D050/D055). / 持久化取消意图阻止之后所有版本。
+            cancelled.add("mission")
         if cancelled:
             # Cancel intent survives an unknown outcome or acknowledgement; never override it with another flight.
             # 即使结果或回执未知也保留取消意图，绝不自动重飞推翻操作者决定。
@@ -612,6 +859,8 @@ class MissionService:
             if self.status_changed:
                 self.status_changed = False
                 self.dirty.update(m["mission_id"] for m in self.ledger.missions(200) if m["status"] == "approved")
+            if self.dispatch is not None:
+                self.tick_operations()
             for mission_id in sorted(self.dirty):
                 self.dirty.discard(mission_id)
                 try:
@@ -625,10 +874,39 @@ class MissionService:
             except TimeoutError:
                 pass
 
+    def tick_operations(self) -> None:
+        """One P1 background pass: prepare docks, reconcile holds, do dock chores. / 一次 P1 后台处理。"""
+        try:
+            self.dirty.update(self.dispatch.tick())
+        except Exception as error:  # keep serving; the problem is visible / 继续服务；问题可见
+            self.ledger.record_issue(issue("service.degraded", f"dispatch: {type(error).__name__}: {error}"[:300]))
+
     # ── views / 视图 ──
 
-    def view(self, mission_id: str) -> dict:
-        """Everything the console shows for one mission. / 控制台为一个任务展示的全部内容。"""
+    def view(self, mission_id: str, caller: Caller | None = None) -> dict:
+        """Everything the console shows for one mission; catalog mode checks project read.
+
+        控制台为一个任务展示的全部内容；目录模式检查项目读权限。
+        """
+        self._check(caller, mission_id, MISSION_READ)
+        return self._view(mission_id)
+
+    def _dispatch_view(self, mission_id: str) -> dict | None:
+        binding = self._binding(mission_id)
+        if binding is None:
+            return None
+        store = self.ops.store
+        decisions = [{"decision_id": d["decision_id"], "version": d["mission_version"], "stage": d["stage"],
+                      "verdict": d["verdict"], "reasons": d["body"]["reasons"], "created_at": d["created_at"],
+                      "snapshot_sha256": d["body"]["snapshot_sha256"], "policy_version": d["body"]["policy_version"]}
+                     for d in store.decisions(mission_id, 40)]
+        actions = [row for row in store.actions(binding["dock_id"])
+                   if row["activity_key"].startswith(f"mission:{mission_id}:")]
+        return {"reservations": [r.model_dump(mode="json") for r in store.reservations(mission_id=mission_id)],
+                "decisions": decisions, "claims": store.claims(mission_id), "cancel": store.cancel_intent(mission_id),
+                "dock_actions": actions, "events": store.events(prefix=f"mission:{mission_id}", limit=60)}
+
+    def _view(self, mission_id: str) -> dict:
         mission = self._mission(mission_id)
         request = self.ledger.request(mission["request_id"])["body"]
         versions, previous = [], None
@@ -677,14 +955,22 @@ class MissionService:
                        "requested_by": d["payload"]["requested_by"], "version": d["version"],
                        "acked": d["acked_at"] is not None, "accepted": d["ack_accepted"], "reason": d["ack_reason"]}
                       for d in self.ledger.deliveries(mission_id) if d["kind"] == "operator_request"]
-        return {"mission": mission, "request": {k: request.get(k) for k in (
+        value = {"mission": mission, "request": {k: request.get(k) for k in (
                     "request_id", "text", "requested_by", "channel", "approved_volume_id", "asset_ids", "received_at")},
-                "versions": versions, "live": live, "evidence": evidence, "operations": operations,
-                "report": self.ledger.report(mission_id), "issues": self.ledger.issues(mission_id),
-                "facts": self.ledger.facts(mission_id)}
+                 "versions": versions, "live": live, "evidence": evidence, "operations": operations,
+                 "report": self.ledger.report(mission_id), "issues": self.ledger.issues(mission_id),
+                 "facts": self.ledger.facts(mission_id)}
+        if self.ops is not None:
+            binding = self._binding(mission_id)
+            value["binding"] = {k: binding[k] for k in ("project_id", "site_id", "dock_id", "robot_id",
+                                                        "execution_backend", "catalog_sha256")} if binding else \
+                {"project_id": self.ops.catalog.legacy_project.project_id, "legacy": True}
+            value["dispatch"] = self._dispatch_view(mission_id)
+        return value
 
-    def summary(self, mission_id: str) -> dict:
+    def summary(self, mission_id: str, caller: Caller | None = None) -> dict:
         """The read-only view an external agent may receive (D033). / 外部 agent 可以得到的只读视图（D033）。"""
+        self._check(caller, mission_id, MISSION_READ)
         mission = self._mission(mission_id)
         report = self.ledger.report(mission_id)
         return {"mission_id": mission_id, "status": mission["status"], "current_version": mission["current_version"],
@@ -693,3 +979,177 @@ class MissionService:
                 if report else None,
                 "issues": [i["code"] for i in self.ledger.issues(mission_id)],
                 "provenance": self.provenance(mission_id)}
+
+    # ── project-scoped reads (P1) / 按项目限定的读取（P1）──
+
+    def missions(self, caller: Caller | None = None, limit: int = 50) -> list[dict]:
+        """Recent missions the caller may read; M2 mode lists everything as before. / 调用方可读的近期任务。"""
+        fields = ("mission_id", "status", "current_version", "robot_id", "created_at", "updated_at")
+        rows = self.ledger.missions(limit if self.ops is None else 500)
+        if self.ops is None:
+            return [{k: m[k] for k in fields} for m in rows]
+        readable = set(self.ops.directory.projects(caller)) if caller is not None else set()
+        found = []
+        for mission in rows:
+            project = self.project_of(mission["mission_id"])
+            if project in readable and self.ops.directory.allows(caller, project, MISSION_READ):
+                found.append({**{k: mission[k] for k in fields}, "project_id": project})
+            if len(found) >= limit:
+                break
+        return found
+
+    def robots_view(self, caller: Caller | None = None) -> list[dict]:
+        if self.ops is None:
+            return self.catalog.view()
+        readable = [p for p in self.ops.directory.projects(caller)
+                    if self.ops.directory.allows(caller, p, RESOURCE_READ)] if caller is not None else []
+        robots = {r for r in self.ops.catalog.robots if self.ops.catalog.project_of(r) in readable}
+        return self.catalog.view(only=robots)
+
+    def media_row(self, mission_id: str, evidence_id: str, caller: Caller | None = None) -> dict | None:
+        """One evidence row after the project read check; others look absent. / 经项目读检查后的一条证据。"""
+        self._check(caller, mission_id, MISSION_READ)
+        return next((r for r in self.ledger.evidence(mission_id) if r["evidence_id"] == evidence_id), None)
+
+    def _require(self, caller: Caller | None, project_id: str, scope: str) -> None:
+        if self.ops is None:
+            raise ServiceError("service.invalid_request", "no operations catalog is configured")
+        if caller is None or project_id not in self.ops.catalog.projects or \
+                not self.ops.directory.allows(caller, project_id, RESOURCE_READ):
+            raise ServiceError("service.not_found", project_id)
+        if not self.ops.directory.allows(caller, project_id, scope):
+            raise ServiceError("auth.project_denied", f"{scope} in {project_id}")
+
+    def projects(self, caller: Caller | None = None) -> list[dict]:
+        if self.ops is None or caller is None:
+            return []
+        catalog, legacy = self.ops.catalog, self.ops.catalog.legacy_project.project_id
+        return [{"project_id": p, "name": catalog.projects[p].name if p in catalog.projects else "legacy M2 history",
+                 "legacy": p == legacy, "roles": sorted(r.value for r in self.ops.directory.roles(caller, p)),
+                 "robots": sorted(r for r in catalog.robots if catalog.project_of(r) == p)}
+                for p in self.ops.directory.projects(caller)]
+
+    def _dock_row(self, dock_id: str) -> dict:
+        store, catalog = self.ops.store, self.ops.catalog
+        dock, entry, now = store.dock_status(dock_id), catalog.docks[dock_id], self.clock()
+        holders = store.holders([f"{dock_id}.pad"])
+        pad = "free"
+        if holders:
+            reservation = store.reservation(holders[f"{dock_id}.pad"])
+            pad = reservation.state.value if reservation else "uncertain"
+        row = {"dock_id": dock_id, "site_id": entry.site_id, "vendor": entry.vendor, "model": entry.model,
+               "source": entry.backend.kind, "serves": list(entry.serves), "pad": pad,
+               "holder": holders.get(f"{dock_id}.pad"), "status": None}
+        if dock is not None:
+            age = (now - dock.report.observed_at).total_seconds()
+            report = dock.report
+            row["status"] = {
+                "session": dock.session.value, "boot_id": report.boot_id, "seq": report.seq,
+                "observed_at": report.observed_at.isoformat(), "received_at": dock.received_at.isoformat(),
+                "age_s": round(age, 3), "fresh": -catalog.policy.future_skew_s <= age <= catalog.policy.freshness_s,
+                "link": report.link.value, "lid": report.lid.value, "aircraft": report.aircraft.value,
+                "energy": report.energy.model_dump(mode="json"), "environment": report.environment.model_dump(mode="json"),
+                "upkeep": report.upkeep.value, "lock": dock.lock.model_dump(mode="json") if dock.lock else None}
+        return row
+
+    def _robot_row(self, robot_id: str) -> dict:
+        capability, source = self.catalog.capability(robot_id)
+        status, entry = self.catalog.status(robot_id), self.ops.catalog.robots[robot_id]
+        eligibility = self.dispatch.judge(robot_id, stage=Stage.PREVIEW)
+        return {"robot_id": robot_id, "site_id": entry.site_id, "dock_id": entry.dock_id,
+                "execution_backend": entry.execution_backend, "capability_source": source,
+                "skills": sorted(s.skill_id for s in capability.skills) if capability else [],
+                "status": {"flight_phase": status.flight_phase, "timestamp": status.timestamp.isoformat(),
+                           "age_s": round((self.clock() - status.timestamp).total_seconds(), 3),
+                           "energy": status.energy.remaining_fraction} if status else None,
+                "eligibility": {k: v for k, v in eligibility.model_dump(mode="json").items()
+                                if k in ("verdict", "reasons", "evaluated_at", "valid_until", "snapshot_sha256",
+                                         "policy_version")}}
+
+    def resources(self, project_id: str, caller: Caller | None = None) -> dict:
+        """Sites, docks and robots of one project with status age, source and preview eligibility (never authority).
+
+        一个项目的站点、机场与机器人，附状态年龄、来源与预览判定（从不构成授权）。
+        """
+        self._require(caller, project_id, RESOURCE_READ)
+        catalog = self.ops.catalog
+        sites = []
+        for site_id in catalog.projects[project_id].sites:
+            site = catalog.sites[site_id]
+            docks = [d for d, entry in catalog.docks.items() if entry.site_id == site_id]
+            robots = [r for r, entry in catalog.robots.items() if entry.site_id == site_id]
+            sites.append({"site_id": site_id, "scene": site.scene, "max_wind_mps": site.max_wind_mps,
+                          "docks": [self._dock_row(d) for d in docks], "robots": [self._robot_row(r) for r in robots]})
+        return {"project_id": project_id, "name": catalog.projects[project_id].name,
+                "roles": sorted(r.value for r in self.ops.directory.roles(caller, project_id)),
+                "catalog": {"catalog_id": catalog.catalog_id, "sha256": catalog.sha256,
+                            "policy": catalog.policy.model_dump(mode="json")},
+                "evaluated_at": self.clock().isoformat(), "sites": sites}
+
+    def resource(self, project_id: str, resource_id: str, caller: Caller | None = None) -> dict:
+        self._require(caller, project_id, RESOURCE_READ)
+        catalog, store = self.ops.catalog, self.ops.store
+        if resource_id in catalog.docks and catalog.sites[catalog.docks[resource_id].site_id].project_id == project_id:
+            return {"kind": "dock", **self._dock_row(resource_id),
+                    "actions": store.actions(resource_id)[-20:], "events": store.events(f"dock:{resource_id}", limit=40),
+                    "reservations": [r.model_dump(mode="json") for r in store.reservations(dock_id=resource_id)][-20:]}
+        if resource_id in catalog.robots and catalog.project_of(resource_id) == project_id:
+            return {"kind": "robot", **self._robot_row(resource_id)}
+        raise ServiceError("service.not_found", resource_id)
+
+    def eligibility(self, project_id: str, robot_id: str, caller: Caller | None = None) -> dict:
+        self._require(caller, project_id, RESOURCE_READ)
+        if self.ops.catalog.project_of(robot_id) != project_id:
+            raise ServiceError("service.not_found", robot_id)
+        return self.dispatch.judge(robot_id, stage=Stage.PREVIEW).model_dump(mode="json")
+
+    def maintenance(self, project_id: str, dock_id: str, action: str, reason: str,
+                    caller: Caller | None = None) -> dict:
+        """Admin lock or release of a dock; telemetry never releases a lock (D055). / admin 加锁或解锁；遥测从不解锁。"""
+        from drone_agent.fleet import docks
+
+        self._require(caller, project_id, RESOURCE_MAINTAIN)
+        entry = self.ops.catalog.docks.get(dock_id)
+        if entry is None or self.ops.catalog.sites[entry.site_id].project_id != project_id:
+            raise ServiceError("service.not_found", dock_id)
+        if action == "release":
+            if not docks.release_lock(self.ops.store, dock_id, caller.identity, reason):
+                raise ServiceError("dispatch.not_locked", dock_id)
+        elif action == "set":
+            docks.set_lock(self.ops.store, dock_id, caller.identity, reason)
+        else:
+            raise ServiceError("service.invalid_request", f"unknown maintenance action {action}")
+        return self._dock_row(dock_id)
+
+    # ── dock backends (P1) / 机场后端（P1）──
+
+    def dock_report(self, principal: str, report: dict) -> dict:
+        from drone_agent.fleet import docks
+
+        if self.ops is None:
+            raise ServiceError("service.invalid_request", "no operations catalog is configured")
+        result = docks.ingest(self.ops.store, principal, report, self.clock())
+        if result["accepted"]:
+            self.dirty.update(m["mission_id"] for m in self.ledger.missions(50)
+                              if m["status"] in ("approved", "queued", "delivered", "running", "verifying"))
+        return result
+
+    def dock_actions(self, principal: str, dock_id: str) -> list[dict]:
+        from drone_agent.fleet import docks
+
+        if self.ops is None:
+            raise ServiceError("service.invalid_request", "no operations catalog is configured")
+        try:
+            return docks.pending_actions(self.ops.store, principal, dock_id)
+        except docks.ReportRejected as error:
+            raise ServiceError("auth.backend_mismatch", str(error)) from error
+
+    def dock_ack(self, principal: str, action_id: str, accepted: bool, reason: str) -> dict:
+        from drone_agent.fleet import docks
+
+        if self.ops is None:
+            raise ServiceError("service.invalid_request", "no operations catalog is configured")
+        try:
+            return docks.acknowledge(self.ops.store, principal, action_id, accepted, reason)
+        except docks.ReportRejected as error:
+            raise ServiceError("auth.backend_mismatch", str(error)) from error

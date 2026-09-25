@@ -1,0 +1,28 @@
+# P1 S1 catalog (D055, WP-P1-08): one site whose logical dock serves the PX4 SITL aircraft `uav_01` on the
+# M2 campus map with its prevalidated routes. The dock stays logical (its pad sensor reads Gazebo truth); the
+# flight is PX4 SITL. The unscoped `submit` of the M2 desk lands in `campus_s1` with this binding and still
+# needs membership. Missions created before P1 belong to `legacy_m2`, read-only for first-party identities.
+#
+# P1 S1 目录（D055，WP-P1-08）：一个站点，其逻辑机场服务 M2 园区地图上、使用预验证航线的 PX4 SITL 飞行器
+# `uav_01`。机场仍是逻辑的（机位传感器读取 Gazebo 真值）；飞行是 PX4 SITL。M2 任务台未带项目的 `submit`
+# 落入 `campus_s1` 与此绑定，仍需成员资格。P1 之前创建的任务属于 `legacy_m2`，第一方身份只读。
+format: drone.operations-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p1_s1_v1
+legacy_project: {project_id: legacy_m2, first_party_roles: [viewer]}
+default_binding: {project_id: campus_s1, robot_id: uav_01}
+projects:
+  campus_s1: {name: "Campus inspection, PX4 SITL site / 园区巡检（PX4 SITL 站点）", sites: [site_s1]}
+sites:
+  site_s1: {project_id: campus_s1, scene: configs/scenarios/m2_campus_v2.yaml, max_wind_mps: 8.0}
+docks:
+  dock_s1:
+    site_id: site_s1
+    vendor: drone-agent
+    model: logical-dock-v1
+    serves: [uav_01]
+    actions: [open_lid, close_lid, start_charge]
+    backend: {kind: logical_sim, principal: "dock:p1-s1-sim"}
+robots:
+  uav_01: {site_id: site_s1, dock_id: dock_s1, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: px4_sitl}
+policy: {version: p1-dispatch-v1, freshness_s: 3.0, future_skew_s: 1.0, reconcile_reports: 2, soft_reservation_s: 900, claim_ack_timeout_s: 30, result_grace_s: 5}

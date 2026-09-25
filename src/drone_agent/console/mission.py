@@ -9,7 +9,10 @@ hri.v0 over `WS /ws/session` carries JSON text frames:
          "planner":...}
         {"type":"missions","items":[...]}   {"type":"mission","view":{...,"cloud":{...}}}   {"type":"media",...}
         {"type":"host","status":{...}}      {"type":"error","message":...,"issue":{...}}
-  up:   {"type":"text","rid":...,"text":...,"volume_id":...,"asset_ids":[...]}      submit a request
+        {"type":"resources","view":{...}}   {"type":"resource","detail":{...}}     (P1 catalog mode, D055)
+  up:   {"type":"text","rid":...,"text":...,"volume_id":...,"asset_ids":[...],"project_id"?,"robot_id"?}  submit
+        {"type":"resources","project_id":...}   {"type":"resource","project_id":...,"resource_id":...}
+        {"type":"maintenance","project_id":...,"dock_id":...,"action":"set|release","reason":...}  (admin)
         {"type":"watch","mission_id":...}   {"type":"list"}   {"type":"media","mission_id":...,"evidence_id":...}
         {"type":"approve","mission_id":...,"version":N,"package_hash":...}
         {"type":"decline","mission_id":...,"version":N,"reason":...}
@@ -17,6 +20,8 @@ hri.v0 over `WS /ws/session` carries JSON text frames:
 Writes need an identity: `Tailscale-User-Login` injected by Tailscale Serve (the backend listens on loopback
 only) or the local bridge user. Without one the session is read-only. Nothing here can reach the guardian:
 approvals become signed packages in the service and operations become operator requests the aircraft checks.
+With an operations catalog (P1) the page also lists the caller's projects and their sites, docks and robots with
+status age, source and the reasons a robot cannot be dispatched; it has no fault injection or flight control.
 
 A2A: `GET /.well-known/agent-card.json` and JSON-RPC 2.0 at `POST /a2a` (`message/send`, `tasks/get`) with a
 bearer token whose SHA-256 is configured. External agents are third-party: they may submit requests, which
@@ -29,7 +34,8 @@ On the resident desk (D035) the page also shows the simulation supervisor's publ
 
 任务控制台 v0 与 A2A 网关：只与任务服务 API 通信的 ASGI 应用。写操作需要身份：Tailscale Serve 注入的
 `Tailscale-User-Login`（后端只监听回环）或本机桥用户；没有身份的会话只读。这里没有任何路径能触达
-guardian：审批在服务中变成已签名任务包，操作变成飞行器会复核的操作请求。A2A 调用方是第三方：可以提交
+guardian：审批在服务中变成已签名任务包，操作变成飞行器会复核的操作请求。带运营目录时（P1），页面还列出调用方
+的项目及其站点、机场与机器人，附状态年龄、来源与不可派遣原因；页面没有故障注入或飞控接口。A2A 调用方是第三方：可以提交
 请求（等待人工审批）并读取状态与报告；控制级键、飞行 scope、审批与操作请求一律拒绝并记审计。
 
 常驻任务台（D035）另从 `--supervisor` 只读展示仿真监管者的公开记录：飞行主机状态（`host`），以及每个
@@ -128,6 +134,8 @@ class Session:
         self.trust = "first_party" if identity else "anonymous"
         self.watched: str | None = None
         self.last_view: str | None = None
+        self.resources_project: str | None = None
+        self.last_resources: str | None = None
         self.last_host: str | None = None
         self.busy = False
 
@@ -156,6 +164,7 @@ class Session:
         if "planner" not in payload:
             health = await self.call("health")
             payload["planner"] = (health or {}).get("planner")
+        payload["projects"] = await self.projects()
         await self.send(payload)
         await self.push_host(force=True)
         await self.list()
@@ -171,6 +180,28 @@ class Session:
         items = await self.call("list")
         if items is not None:
             await self.send({"type": "missions", "items": items})
+
+    async def projects(self) -> list[dict]:
+        """The caller's projects in catalog mode; none without a catalog or identity. / 目录模式下调用方的项目。"""
+        if not self.identity:
+            return []
+        try:
+            result = await self.console.api.call("projects", self.identity, self.trust)
+        except (OSError, TimeoutError, RuntimeError, ValueError):
+            return []
+        return result.get("result") or [] if result.get("ok") else []
+
+    async def push_resources(self, force: bool = False) -> None:
+        if not self.resources_project:
+            return
+        view = await self.call("resources.list", project_id=self.resources_project)
+        if view is None:
+            self.resources_project = None
+            return
+        text = json.dumps(view, sort_keys=True, default=str)
+        if force or text != self.last_resources:
+            self.last_resources = text
+            await self.send({"type": "resources", "view": view})
 
     async def push_view(self, force: bool = False) -> None:
         if not self.watched:
@@ -202,16 +233,35 @@ class Session:
                                     evidence_id=str(message.get("evidence_id")))
             if media is not None:
                 await self.send({"type": "media", **media})
+        elif kind == "resources":
+            self.resources_project = str(message.get("project_id", "")) or None
+            await self.push_resources(force=True)
+        elif kind == "resource":
+            detail = await self.call("resources.get", project_id=str(message.get("project_id", "")),
+                                     resource_id=str(message.get("resource_id", "")))
+            if detail is not None:
+                await self.send({"type": "resource", "detail": detail})
+        elif kind == "maintenance":
+            result = await self.call("resources.maintenance", project_id=str(message.get("project_id", "")),
+                                     dock_id=str(message.get("dock_id", "")), action=str(message.get("action", "")),
+                                     reason=str(message.get("reason", ""))[:300])
+            if result is not None:
+                await self.push_resources(force=True)
         elif kind == "text":
             if self.busy:
                 await self.send({"type": "error", "message": "a request is still being planned"})
                 return
             self.busy = True
+            common = {"text": str(message.get("text", "")), "volume_id": str(message.get("volume_id", "")),
+                      "asset_ids": [str(a) for a in message.get("asset_ids") or []],
+                      "idempotency_key": f"{self.identity}:{message.get('rid', '')}"[:120]}
             try:
-                view = await self.call("submit", text=str(message.get("text", "")),
-                                       volume_id=str(message.get("volume_id", "")),
-                                       asset_ids=[str(a) for a in message.get("asset_ids") or []],
-                                       idempotency_key=f"{self.identity}:{message.get('rid', '')}"[:120])
+                if message.get("project_id") and message.get("robot_id"):
+                    # P1: the project and robot the operator chose; the service checks the role. / 操作者所选项目与机器人。
+                    view = await self.call("missions.submit", project_id=str(message["project_id"]),
+                                           robot_id=str(message["robot_id"]), **common)
+                else:
+                    view = await self.call("submit", **common)
             finally:
                 self.busy = False
             if view is not None:
@@ -354,6 +404,7 @@ class MissionConsole:
                 await asyncio.sleep(self.poll_s)
                 await session.push_host()
                 await session.push_view()
+                await session.push_resources()
 
         watcher = asyncio.create_task(watch())
         try:

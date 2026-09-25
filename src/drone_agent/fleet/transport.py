@@ -61,6 +61,9 @@ class FleetHub:
     def __init__(self, ledger: BusinessLedger, media_dir: Path):
         self.ledger, self.media_dir = ledger, media_dir
         self.listeners: list[Callable[[str, str, str | None], None]] = []
+        # P1 claim gate (D055): decides per pull whether a mission package may be handed out; None keeps M2.
+        # P1 领取闸门（D055）：每次拉取时决定任务包能否交付；None 保持 M2 行为。
+        self.claim_gate: Callable[[str, dict], bool] | None = None
 
     def _notify(self, robot_id: str, kind: str, mission_id: str | None) -> None:
         for listener in self.listeners:
@@ -160,7 +163,16 @@ class FleetHub:
     def fetch_deliveries(self, robot_id: str, claimed: str, after_cursor: int, max_items: int) -> dict:
         if not robot_id or claimed != robot_id:
             return {"items": [], "cursor": after_cursor, "refused": "auth.robot_mismatch"}
-        rows = self.ledger.deliveries_after(robot_id, after_cursor, max(1, min(max_items, 10)))
+        limit = max(1, min(max_items, 10))
+        rows, cursor = [], after_cursor
+        while len(rows) < limit:
+            page = self.ledger.deliveries_after(robot_id, cursor, 10)
+            if not page:
+                break
+            for row in page:
+                cursor = row["cursor"]
+                if len(rows) < limit and self._claimable(robot_id, row):
+                    rows.append(row)
         items = []
         for row in rows:
             payload = row["payload"]
@@ -171,6 +183,22 @@ class FleetHub:
                 "issued_at": row["created_at"],
             })
         return {"items": items, "cursor": rows[-1]["cursor"] if rows else after_cursor}
+
+    def _claimable(self, robot_id: str, row: dict) -> bool:
+        """Operator requests always pass; a package passes only its claim gate, and a failing gate holds it.
+
+        操作请求总是通过；任务包只有通过领取闸门才交付，闸门出错时保持不交付。
+        """
+        if self.claim_gate is None or row["kind"] != "mission_package":
+            return True
+        try:
+            return bool(self.claim_gate(robot_id, row))
+        except Exception as error:  # fail closed, keep serving other deliveries / 失败即不交付，继续服务其他投递
+            from drone_agent.runtime.issues import issue
+
+            self.ledger.record_issue(issue("service.degraded", f"claim gate: {type(error).__name__}: {error}"[:300],
+                                           mission_id=row["mission_id"]), mission_id=row["mission_id"])
+            return False
 
     def acknowledge(self, robot_id: str, claimed: str, delivery_id: str, accepted: bool, reason: str) -> Receipt:
         if not robot_id or claimed != robot_id:

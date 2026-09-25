@@ -6,12 +6,18 @@ from a labelled fixture file and must never be reported as model behaviour; `non
 (the resident desk, D035) is `live` when the key is configured and otherwise `scripted` with the M2 suite's
 labelled answers. A missing key is reported, never replaced by a mock (D029).
 
+`--catalog` (P1, D055) loads an operations catalog and `--members` its trusted member list; the ledger is then
+migrated to schema v2 with a verified backup first (D056), and every new mission is bound to a project and robot.
+
 任务服务进程：mTLS 车队端点、私有 API 套接字与后台刷新。
 
 规划模式：`live` 从环境或 `<KEY>_FILE` 构建配置的 provider（默认 MiniMax-M3，D029），并把每次实调交互
 录制为 `recorded` 夹具供之后回放；`scripted` 从带标注的夹具文件作答，绝不能当作模型行为报告；`none`
 拒绝规划；`auto`（常驻任务台，D035）在配置了 key 时即 `live`，否则为使用 M2 场景集带标注回答的
 `scripted`。缺少密钥如实报告，绝不以 mock 代替（D029）。
+
+`--catalog`（P1，D055）加载运营目录，`--members` 加载其受信成员列表；账本随后先做经校验的备份再迁移到 schema
+v2（D056），每个新任务都绑定到项目与机器人。
 """
 
 from __future__ import annotations
@@ -24,6 +30,7 @@ import signal
 from pathlib import Path
 
 from drone_agent.fleet.api import serve_api
+from drone_agent.fleet.dispatch import build_operations
 from drone_agent.fleet.ledger import BusinessLedger
 from drone_agent.fleet.provenance import source_context
 from drone_agent.fleet.service import MissionService
@@ -109,12 +116,16 @@ async def main_async(args) -> None:
     planner, label = build_planner(args, registry)
     if planner is not None:
         planner.label = label
+    operations = None
+    if args.catalog is not None:
+        operations = build_operations(args.root, ledger, args.catalog, args.members, backups=args.state / "backups")
     service = MissionService(root=args.root, scene=args.scene, ledger=ledger, hub=hub,
                              signing_key=SigningKey.load(args.signing_key),
                              approval_policy=ApprovalPolicy.from_yaml(args.root / "configs/approval_policy.yaml"),
                              planner=planner, robot_id=args.robot_id,
                              provenance_context=source_context(args.root, args.scene, registry.sha256,
-                                                               backend=args.execution_backend))
+                                                               backend=args.execution_backend),
+                             operations=operations)
     tls = args.tls
     credentials = {"cert_pem": (tls / "service.crt").read_bytes(), "key_pem": (tls / "service.key").read_bytes(),
                    "ca_pem": (tls / "ca.crt").read_bytes()}
@@ -132,7 +143,9 @@ async def main_async(args) -> None:
              "signer_key_id": service.key.key_id, "planner": label,
              "robot_id": args.robot_id, "registry_hash": registry.sha256,
              "source_sha": os.environ.get("DRONE_SOURCE_SHA", "uncommitted"),
-             "provenance_context": service.source.model_dump(mode="json")}
+             "provenance_context": service.source.model_dump(mode="json"),
+             "operations": {"catalog_id": operations.catalog.catalog_id, "catalog_sha256": operations.catalog.sha256,
+                            "migration": operations.migration} if operations is not None else None}
     (args.state / "ready.json").write_bytes(canonical(ready))
     print(json.dumps(ready), flush=True)
     stop = asyncio.Event()
@@ -162,6 +175,8 @@ def main() -> None:
     parser.add_argument("--planner", choices=["auto", "live", "scripted", "none"], default="live")
     parser.add_argument("--execution-backend", choices=["none", "px4_sitl"], default="none")
     parser.add_argument("--fixtures", type=Path, help="scripted planner fixture file (scripted mode)")
+    parser.add_argument("--catalog", type=Path, help="P1 operations catalog (D055); migrates the ledger (D056)")
+    parser.add_argument("--members", type=Path, help="trusted project member list for --catalog")
     args = parser.parse_args()
     if args.planner == "scripted" and not args.fixtures:
         parser.error("--planner scripted requires --fixtures")

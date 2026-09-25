@@ -1,15 +1,19 @@
 """Local mission-service API: one JSON request per line over a private Unix socket.
 
-Callers are the console, the A2A gateway and harness scripts; each passes the identity it authenticated
-(`tailnet:<login>`, `local:<user>`, `a2a:<client>` or `harness:<run>`) and the trust level that identity
-has. The socket itself is the boundary: it lives in a private directory shared only with those callers.
-Permissions are decided here with the shared scope table (D033) and again inside the service, so an A2A
-identity can submit and read but never approve, decline or operate, whatever the gateway sends.
+Callers are the console, the A2A gateway, harness scripts and dock backends; each passes the identity it
+authenticated (`tailnet:<login>`, `local:<user>`, `a2a:<client>`, `harness:<run>` or `dock:<backend>`) and the
+trust level that identity has. The socket itself is the boundary: it lives in a private directory shared only with
+those callers. Permissions are decided here with the shared scope table (D033) and again inside the service, so an
+A2A identity can submit and read but never approve, decline or operate, whatever the gateway sends. With an
+operations catalog (P1, D055) the service also checks the caller's project role on every mission, resource and
+media call; project-scoped methods carry an explicit `project_id`, and a `dock:` identity can only report.
 
 本机任务服务 API：经私有 Unix 套接字每行一个 JSON 请求。调用方是控制台、A2A 网关与编排脚本；各自传入
 已认证的身份（`tailnet:<login>`、`local:<user>`、`a2a:<client>` 或 `harness:<run>`）及其信任级别。套接字
 本身就是边界：它位于只与这些调用方共享的私有目录中。权限在这里按共用 scope 表判定（D033），服务内部
-再判定一次，因此无论网关发送什么，A2A 身份都只能提交与读取，永远不能审批、驳回或操作。
+再判定一次，因此无论网关发送什么，A2A 身份都只能提交与读取，永远不能审批、驳回或操作。调用方还包括机场后端
+（`dock:<backend>`）。带运营目录时（P1，D055），服务还对每个任务、资源与媒体调用检查调用方的项目角色；按项目
+的方法显式携带 `project_id`，`dock:` 身份只能报告。
 """
 
 from __future__ import annotations
@@ -31,6 +35,9 @@ from drone_agent.runtime.permission import (
     MISSION_OPERATE,
     MISSION_READ,
     MISSION_SUBMIT,
+    RESOURCE_MAINTAIN,
+    RESOURCE_READ,
+    RESOURCE_REPORT,
     TRUST_LEVEL_CAPS,
     Caller,
     TrustLevel,
@@ -53,9 +60,24 @@ METHODS: dict[str, tuple[str, frozenset[str]]] = {
     "health": (MISSION_READ, frozenset()),
     # Gateways record the requests they refused before reaching the service. / 网关记录在到达服务前拒绝的请求。
     "audit": (MISSION_READ, frozenset({"code", "message"})),
+    # P1 (D055): explicit project scope; the service checks the caller's role in that project.
+    # P1（D055）：显式项目范围；服务检查调用方在该项目中的角色。
+    "projects": (MISSION_READ, frozenset()),
+    "missions.submit": (MISSION_SUBMIT, frozenset({"project_id", "robot_id", "text", "volume_id", "asset_ids",
+                                                   "idempotency_key"})),
+    "resources.list": (RESOURCE_READ, frozenset({"project_id"})),
+    "resources.get": (RESOURCE_READ, frozenset({"project_id", "resource_id"})),
+    "resources.eligibility": (RESOURCE_READ, frozenset({"project_id", "robot_id"})),
+    "resources.maintenance": (RESOURCE_MAINTAIN, frozenset({"project_id", "dock_id", "action", "reason"})),
+    # Dock backends only; the catalog binds each `dock:` identity to its docks. / 仅机场后端；目录把每个 `dock:` 身份绑定到其机场。
+    "docks.report": (RESOURCE_REPORT, frozenset({"report"})),
+    "docks.actions": (RESOURCE_REPORT, frozenset({"dock_id"})),
+    "docks.ack": (RESOURCE_REPORT, frozenset({"action_id", "accepted", "reason"})),
 }
 CHANNELS = {"tailnet": RequestChannel.CONSOLE, "local": RequestChannel.CONSOLE, "a2a": RequestChannel.A2A,
             "harness": RequestChannel.HARNESS}
+# The only methods a dock backend may call. / 机场后端只能调用的方法。
+BACKEND_METHODS = frozenset({"docks.report", "docks.actions", "docks.ack"})
 # Third-party callers submit, read the summary of their own missions and nothing else.
 # 第三方调用方只能提交并读取自己任务的摘要，别无其他。
 THIRD_PARTY_METHODS = {"submit", "summary", "health", "audit"}
@@ -64,9 +86,14 @@ THIRD_PARTY_METHODS = {"submit", "summary", "health", "audit"}
 def caller(actor: str, trust: str) -> Caller:
     """The caller for an authenticated actor; the prefix decides the trust ceiling. / 由身份前缀决定信任上限。"""
     prefix = actor.split(":", 1)[0] if ":" in actor else ""
+    if prefix == "dock" and actor.split(":", 1)[1]:
+        # A dock backend is never a person, whatever trust it claims. / 机场后端永远不是人，无论它声明何种信任。
+        return Caller(actor, TrustLevel.BACKEND, TRUST_LEVEL_CAPS[TrustLevel.BACKEND])
     if prefix not in CHANNELS or not actor.split(":", 1)[1]:
         return Caller(actor or "anonymous", TrustLevel.ANONYMOUS, frozenset({MISSION_READ}))
     level = TrustLevel(trust)
+    if level is TrustLevel.BACKEND:
+        raise ValueError("only dock identities are backends")
     if prefix == "a2a" and level is not TrustLevel.THIRD_PARTY:
         level = TrustLevel.THIRD_PARTY
     return Caller(actor, level, TRUST_LEVEL_CAPS[level])
@@ -92,6 +119,8 @@ async def dispatch(service: MissionService, request: dict) -> dict:
         return _error(decision.code, decision.reason)
     if who.trust_level is TrustLevel.THIRD_PARTY and method not in THIRD_PARTY_METHODS:
         return _error("auth.method_not_allowed", f"{method} is not available to external agents")
+    if method != "health" and (who.trust_level is TrustLevel.BACKEND) != (method in BACKEND_METHODS):
+        return _error("auth.method_not_allowed", f"{method} is not available to this identity")
     try:
         if method == "summary" and who.trust_level is TrustLevel.THIRD_PARTY:
             mission = service.ledger.mission(params["mission_id"])
@@ -112,34 +141,61 @@ async def _call(service: MissionService, method: str, params: dict, who: Caller)
             trust_level=who.trust_level, channel=CHANNELS[who.identity.split(":", 1)[0]],
             approved_volume_id=params["volume_id"], asset_ids=list(params["asset_ids"] or []),
             idempotency_key=params["idempotency_key"], received_at=utcnow())
-        view = await service.submit(request)
-        return service.summary(view["mission"]["mission_id"]) if who.trust_level is TrustLevel.THIRD_PARTY else view
+        view = await service.submit(request, caller=who)
+        mission_id = view["mission"]["mission_id"]
+        return service.summary(mission_id, caller=who) if who.trust_level is TrustLevel.THIRD_PARTY else view
+    if method == "missions.submit":
+        request = MissionRequest(
+            request_id="req-" + uuid.uuid4().hex[:16], text=params["text"], requested_by=who.identity,
+            trust_level=who.trust_level, channel=CHANNELS[who.identity.split(":", 1)[0]],
+            approved_volume_id=params["volume_id"], asset_ids=list(params["asset_ids"] or []),
+            idempotency_key=params["idempotency_key"], received_at=utcnow())
+        return await service.submit_bound(request, project_id=str(params["project_id"]),
+                                          robot_id=str(params["robot_id"]), caller=who)
     if method == "approve":
         return service.approve(params["mission_id"], int(params["version"]), approver=who.identity,
-                               package_hash=params["package_hash"])
+                               package_hash=params["package_hash"], caller=who)
     if method == "decline":
         return service.decline(params["mission_id"], int(params["version"]), approver=who.identity,
-                               reason=str(params["reason"]))
+                               reason=str(params["reason"]), caller=who)
     if method == "operate":
         return service.operate(params["mission_id"], params["action"], requested_by=who.identity,
-                               request_id=params["request_id"])
+                               request_id=params["request_id"], caller=who)
     if method == "view":
-        return service.view(params["mission_id"])
+        return service.view(params["mission_id"], caller=who)
     if method == "summary":
-        return service.summary(params["mission_id"])
+        return service.summary(params["mission_id"], caller=who)
     if method == "list":
-        return [{k: m[k] for k in ("mission_id", "status", "current_version", "robot_id", "created_at", "updated_at")}
-                for m in service.ledger.missions(50)]
+        return service.missions(caller=who)
     if method == "robots":
-        return service.catalog.view()
+        return service.robots_view(caller=who)
+    if method == "projects":
+        return service.projects(caller=who)
+    if method == "resources.list":
+        return service.resources(str(params["project_id"]), caller=who)
+    if method == "resources.get":
+        return service.resource(str(params["project_id"]), str(params["resource_id"]), caller=who)
+    if method == "resources.eligibility":
+        return service.eligibility(str(params["project_id"]), str(params["robot_id"]), caller=who)
+    if method == "resources.maintenance":
+        return service.maintenance(str(params["project_id"]), str(params["dock_id"]), str(params["action"]),
+                                   str(params["reason"])[:300], caller=who)
+    if method == "docks.report":
+        if not isinstance(params["report"], dict):
+            raise ServiceError("service.invalid_request", "report must be an object")
+        return service.dock_report(who.identity, params["report"])
+    if method == "docks.actions":
+        return service.dock_actions(who.identity, str(params["dock_id"]))
+    if method == "docks.ack":
+        return service.dock_ack(who.identity, str(params["action_id"]), params["accepted"] is True,
+                                str(params["reason"])[:300])
     if method == "audit":
         if ISSUE_CODES.get(params["code"]) is not IssueLayer.AUTH:
             raise ServiceError("service.invalid_request", "only authentication issues are audited here")
         service.ledger.record_issue(issue(params["code"], f"{who.identity}: {params['message']}"[:300]))
         return {"recorded": params["code"]}
     if method == "media":
-        row = next((r for r in service.ledger.evidence(params["mission_id"])
-                    if r["evidence_id"] == params["evidence_id"]), None)
+        row = service.media_row(params["mission_id"], params["evidence_id"], caller=who)
         media = service.hub.media(row["media_path"]) if row and row["media_path"] else None
         if media is None:
             raise ServiceError("service.not_found", params["evidence_id"])
@@ -147,7 +203,9 @@ async def _call(service: MissionService, method: str, params: dict, who: Caller)
     return {"status": "ready", "signer_key_id": service.key.key_id, "robot_id": service.robot_id,
              "planner": getattr(service.planner, "label", None) if service.planner else None,
              "execution_backend": service.source.execution_backend,
-             "source_sha": os.environ.get("DRONE_SOURCE_SHA", "uncommitted")}
+             "source_sha": os.environ.get("DRONE_SOURCE_SHA", "uncommitted"),
+             "catalog": {"catalog_id": service.ops.catalog.catalog_id, "sha256": service.ops.catalog.sha256}
+             if service.ops is not None else None}
 
 
 async def serve_api(service: MissionService, path: Path):

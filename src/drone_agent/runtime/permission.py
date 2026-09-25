@@ -11,6 +11,8 @@ Flight actuation (`flight.*`, `gimbal.*`, `payload.*`) is never granted to a req
 only the onboard executive/guardian pair acts on the aircraft, through the leased control egress.
 Operators pause, resume and cancel through `mission.operate`, which the executive and guardian
 re-check; A2A callers are third-party and may only submit requests and read status and reports.
+Project roles (P1, D055) map to scopes inside one project; the trust cap still clips them, so a role
+never widens what an identity channel may do. Dock backends report status through `resource.report` only.
 
 console、A2A 与规划工具调用方共用的 scope 目录与唯一权限决策。
 
@@ -18,6 +20,8 @@ scope 形如 `<resource>.<action>`；父 scope 覆盖子 scope（`mission` 覆�
 飞行执行类（`flight.*`、`gimbal.*`、`payload.*`）永不授予请求层调用方：只有机载 executive 与
 guardian 经带租约的控制出口作用于飞行器。操作者通过 `mission.operate` 暂停、恢复与取消，
 executive 与 guardian 会再次复核；A2A 调用方是第三方，只能提交请求、读取状态与报告。
+项目角色（P1，D055）映射为单个项目内的 scope；信任上限仍会裁剪，角色永远不会放宽身份通道的能力。
+机场后端只能经 `resource.report` 报告状态。
 """
 
 from __future__ import annotations
@@ -36,6 +40,10 @@ FLIGHT_ARM = "flight.arm"
 FLIGHT_MODE = "flight.mode"
 GIMBAL_CONTROL = "gimbal.control"
 PAYLOAD_RELEASE = "payload.release"
+# P1 operations resources (D055). / P1 运营资源（D055）。
+RESOURCE_READ = "resource.read"
+RESOURCE_MAINTAIN = "resource.maintain"
+RESOURCE_REPORT = "resource.report"
 
 ALL_SCOPES: frozenset[str] = frozenset(
     {
@@ -49,6 +57,9 @@ ALL_SCOPES: frozenset[str] = frozenset(
         FLIGHT_MODE,
         GIMBAL_CONTROL,
         PAYLOAD_RELEASE,
+        RESOURCE_READ,
+        RESOURCE_MAINTAIN,
+        RESOURCE_REPORT,
     }
 )
 
@@ -64,16 +75,48 @@ class TrustLevel(StrEnum):
     THIRD_PARTY = "third_party"  # external agent over A2A / 经 A2A 接入的外部 agent
     TOOL = "tool"  # planner tool or model-side caller / 规划工具或模型侧调用方
     ANONYMOUS = "anonymous"  # reachable but unidentified, e.g. a tagged tailnet device / 可达但无身份，如 tagged 设备
+    BACKEND = "backend"  # bound resource backend such as a dock simulator (P1) / 已绑定的资源后端，如机场模拟器（P1）
 
 
 # Hard upper bounds per trust level; grants outside the cap are ignored, never widened.
 # 每个信任级别的硬上限；超出上限的授予被忽略，永不放宽。
 TRUST_LEVEL_CAPS: dict[TrustLevel, frozenset[str]] = {
-    TrustLevel.FIRST_PARTY: frozenset({MISSION_SUBMIT, MISSION_READ, MISSION_APPROVE, MISSION_OPERATE, CAMERA_READ}),
+    TrustLevel.FIRST_PARTY: frozenset({MISSION_SUBMIT, MISSION_READ, MISSION_APPROVE, MISSION_OPERATE, CAMERA_READ,
+                                       RESOURCE_READ, RESOURCE_MAINTAIN}),
     TrustLevel.THIRD_PARTY: frozenset({MISSION_SUBMIT, MISSION_READ}),
     TrustLevel.TOOL: frozenset({MISSION_READ}),
     TrustLevel.ANONYMOUS: frozenset({MISSION_READ, CAMERA_READ}),
+    TrustLevel.BACKEND: frozenset({RESOURCE_REPORT}),
 }
+
+
+class Role(StrEnum):
+    """Project roles (D055); admin manages resources but never approves flights.
+
+    项目角色（D055）；admin 管理资源，但从不审批飞行。
+    """
+
+    VIEWER = "viewer"
+    OPERATOR = "operator"
+    APPROVER = "approver"
+    REVIEWER = "reviewer"  # business review arrives in P2/P4; read-only in P1 / 业务复核在 P2/P4，P1 只读
+    ADMIN = "admin"
+
+
+_READ = frozenset({MISSION_READ, RESOURCE_READ, CAMERA_READ})
+# Scopes one role grants inside its project. / 单个角色在其项目内授予的 scope。
+ROLE_SCOPES: dict[Role, frozenset[str]] = {
+    Role.VIEWER: _READ,
+    Role.OPERATOR: _READ | {MISSION_SUBMIT, MISSION_OPERATE},
+    Role.APPROVER: _READ | {MISSION_APPROVE},
+    Role.REVIEWER: _READ,
+    Role.ADMIN: _READ | {RESOURCE_MAINTAIN},
+}
+
+
+def role_scopes(roles) -> frozenset[str]:
+    """Union of the scopes of `roles`. / `roles` 的 scope 并集。"""
+    return frozenset().union(*(ROLE_SCOPES[Role(role)] for role in roles)) if roles else frozenset()
 
 
 def is_scope_covered(required: str, effective) -> bool:

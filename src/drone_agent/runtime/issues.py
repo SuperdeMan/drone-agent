@@ -37,6 +37,7 @@ class IssueLayer(StrEnum):
     ONBOARD = "onboard"
     AUTH = "auth"
     SERVICE = "service"
+    DISPATCH = "dispatch"  # P1 resources, reservations and the delivery claim (D055) / P1 资源、预约与交付领取（D055）
 
 
 class Severity(StrEnum):
@@ -136,12 +137,25 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "auth.control_intent_rejected": IssueLayer.AUTH,
     "auth.method_not_allowed": IssueLayer.AUTH,
     "auth.robot_mismatch": IssueLayer.AUTH,
+    "auth.project_denied": IssueLayer.AUTH,
+    "auth.backend_mismatch": IssueLayer.AUTH,
     # Service / 服务
     "service.degraded": IssueLayer.SERVICE,
     "service.transport_error": IssueLayer.SERVICE,
     "service.verification_mismatch": IssueLayer.SERVICE,
     "service.not_found": IssueLayer.SERVICE,
     "service.invalid_request": IssueLayer.SERVICE,
+    "service.idempotency_conflict": IssueLayer.SERVICE,
+    # Dispatch: eligibility, reservation, claim and dock reports (P1, D055) / 派遣：可派遣判定、预约、领取与机场报告
+    "dispatch.blocked": IssueLayer.DISPATCH,
+    "dispatch.unknown": IssueLayer.DISPATCH,
+    "dispatch.reservation_conflict": IssueLayer.DISPATCH,
+    "dispatch.approval_expired": IssueLayer.DISPATCH,
+    "dispatch.cancelled": IssueLayer.DISPATCH,
+    "dispatch.backend_mismatch": IssueLayer.DISPATCH,
+    "dispatch.release_pending": IssueLayer.DISPATCH,
+    "dispatch.report_rejected": IssueLayer.DISPATCH,
+    "dispatch.not_locked": IssueLayer.DISPATCH,
 }
 
 # Console actions a client may offer; anything else is dropped, never executed.

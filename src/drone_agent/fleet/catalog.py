@@ -2,12 +2,14 @@
 
 The catalog answers "who can do this skill" and "is this robot on the ground" from what robots published.
 A robot that never published a capability falls back to the scene's static descriptor, flagged as such;
-a missing or stale status is unknown, never grounded.
+a missing or stale status is unknown, never grounded. In P1 catalog mode every bound robot has its own static
+fallback derived from its platform (D055); being capable is never the same as being dispatchable.
 
 机器人目录：各机器人发布的能力与最新状态（WP-M2-12）。
 
 目录根据机器人发布的内容回答「谁能执行此技能」与「此机器人是否在地面」。从未发布能力的机器人回退到
-场景的静态描述并注明来源；缺失或过时的状态为未知，绝不视为在地面。
+场景的静态描述并注明来源；缺失或过时的状态为未知，绝不视为在地面。P1 目录模式下，每个已绑定机器人都有由其
+平台派生的静态回退（D055）；能执行从不等于可派遣。
 """
 
 from __future__ import annotations
@@ -21,14 +23,18 @@ GROUNDED = "grounded"
 
 
 class Catalog:
-    def __init__(self, ledger: BusinessLedger, static: CapabilityDescriptor | None = None):
+    def __init__(self, ledger: BusinessLedger, static: CapabilityDescriptor | None = None,
+                 statics: dict[str, CapabilityDescriptor] | None = None):
         self.ledger, self.static = ledger, static
+        self.statics = dict(statics or {})
 
     def capability(self, robot_id: str) -> tuple[CapabilityDescriptor | None, str]:
         """The capability and where it came from: `published`, `static` or `missing`. / 能力及其来源。"""
         row = self.ledger.robot(robot_id)
         if row and row["capability"]:
             return CapabilityDescriptor.model_validate(row["capability"]), "published"
+        if robot_id in self.statics:
+            return self.statics[robot_id], "static"
         if self.static is not None and self.static.robot_id == robot_id:
             return self.static, "static"
         return None, "missing"
@@ -42,10 +48,14 @@ class Catalog:
         status = self.status(robot_id)
         return status is not None and status.flight_phase == GROUNDED and status.timestamp >= since
 
-    def capable(self, skills: list[str]) -> list[str]:
-        ids = {row["robot_id"] for row in self.ledger.robots()}
+    def ids(self) -> set[str]:
+        ids = {row["robot_id"] for row in self.ledger.robots()} | set(self.statics)
         if self.static is not None:
             ids.add(self.static.robot_id)
+        return ids
+
+    def capable(self, skills: list[str]) -> list[str]:
+        ids = self.ids()
         capable = []
         for robot_id in sorted(ids):
             capability, _ = self.capability(robot_id)
@@ -53,9 +63,9 @@ class Catalog:
                 capable.append(robot_id)
         return capable
 
-    def view(self) -> list[dict]:
+    def view(self, only: set[str] | None = None) -> list[dict]:
         rows = []
-        ids = {row["robot_id"] for row in self.ledger.robots()} | ({self.static.robot_id} if self.static else set())
+        ids = self.ids() if only is None else self.ids() & only
         for robot_id in sorted(ids):
             capability, source = self.capability(robot_id)
             status = self.status(robot_id)

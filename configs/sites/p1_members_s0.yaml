@@ -1,0 +1,16 @@
+# Harness memberships for the S0 catalog p1_campus_v1 (D055). Real operator logins never live in the repository;
+# the resident desk reads its member list from the cloud secrets directory. `harness:*` identities exist only
+# inside test runs, and every project named here must exist in the catalog it is loaded with.
+#
+# S0 目录 p1_campus_v1 的编排成员资格（D055）。真实操作者登录名从不进入仓库；常驻任务台从云端 secrets 目录
+# 读取成员列表。`harness:*` 身份只存在于测试运行中；这里出现的每个项目都必须存在于一同加载的目录中。
+format: drone.project-members/v1
+schema_version: "0.1.0"
+members:
+  - {principal: "harness:p1-operator", project_id: campus_ops, roles: [operator, approver]}
+  - {principal: "harness:p1-admin", project_id: campus_ops, roles: [admin]}
+  - {principal: "harness:p1-viewer", project_id: campus_ops, roles: [viewer]}
+  - {principal: "harness:p1-harbor", project_id: harbor_ops, roles: [operator, approver]}
+  - {principal: "harness:p1-judge", project_id: campus_ops, roles: [viewer]}
+  - {principal: "harness:p1-judge", project_id: harbor_ops, roles: [viewer]}
+  - {principal: "harness:p1-judge", project_id: legacy_m2, roles: [viewer]}
