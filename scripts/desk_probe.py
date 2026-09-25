@@ -313,9 +313,9 @@ def follow(origin: str, client: Client, view: dict, args, receipt: dict, started
         "mission_id": mission_id, "status": view["mission"]["status"], "replans": view["mission"]["replans"],
         "request": {k: view["request"][k] for k in ("text", "channel", "requested_by", "approved_volume_id", "asset_ids")},
         "versions": [{k: v.get(k) for k in ("version", "status", "origin", "package_hash", "planner", "admission",
-                                             "approval", "journals", "decision")} for v in view["versions"]],
+                                             "approval", "journals", "decision", "provenance")} for v in view["versions"]],
         "operations": view["operations"], "report": view["report"],
-        "evidence": [{k: e.get(k) for k in ("evidence_id", "version", "step_id", "sha256", "verification")}
+        "evidence": [{k: e.get(k) for k in ("evidence_id", "version", "step_id", "sha256", "verification", "provenance")}
                      for e in view.get("evidence", [])],
         "issues": [i["code"] for i in view["issues"]], "facts": view["facts"], "cloud": view.get("cloud"),
     }

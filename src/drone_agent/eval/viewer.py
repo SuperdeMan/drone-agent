@@ -634,6 +634,14 @@ def _service_tables(view: dict | None) -> list[dict]:
             approvals.append([v["version"], approval.get("approver"), approval.get("approved_at"),
                               approval.get("expires_at"), approval.get("signer_key_id"), (v.get("package_hash") or "")[:16]])
     tables = [
+        {"id": "provenance", "title": "运行来源（逐版本） / run provenance by version",
+         "columns": ["version", "execution", "planning", "imagery", "analysis", "software", "digest"],
+         "rows": [[v["version"], (p := v.get("provenance") or {}).get("execution_backend", "legacy_unknown"),
+                   (p.get("planning") or {}).get("source", "legacy_unknown"),
+                   ", ".join(sorted({i["source"] for i in p.get("imagery", [])})) or "none",
+                   ", ".join(p.get("analysis_sources", ["legacy_unknown"])),
+                   (p.get("run") or {}).get("software_sha") or "unknown", p.get("sha256", "unknown")]
+                  for v in view.get("versions", [])]},
         {"id": "planning", "title": "规划与准入（任务服务） / planning and admission",
          "columns": ["version", "origin", "status", "planner", "prompt", "input_hash", "attempts", "admitted",
                      "energy_upper", "codes"], "rows": planning},

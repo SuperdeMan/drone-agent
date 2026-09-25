@@ -12,6 +12,8 @@ GuardedProvider：为 provider 加上限流、健康记账与纯文本补全缓�
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import os
 import time
 from typing import Any
@@ -46,6 +48,7 @@ class GuardedProvider:
                  limiter: RateLimiter | None = None):
         self.inner = inner
         self.provider_id = provider_id
+        self.last_source, self.last_cache_digest = "not_called", ""
         enabled = os.getenv("LLM_CACHE", "on").strip().lower() != "off"
         ttl = int(_env_float("LLM_CACHE_TTL_S", 120))
         self._cache = cache if cache is not None else (LLMCache(ttl_seconds=ttl) if enabled else None)
@@ -74,12 +77,19 @@ class GuardedProvider:
             health_tracker.record(self.provider_id, True, latency_ms=latency)
 
     async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
+        self.last_source, self.last_cache_digest = "not_called", ""
         if self._cache is not None:
             hit = self._cache.get(messages, model, temperature, thinking)
             if hit is not None:
+                # A cached response is reuse, not a fresh model invocation. / 缓存响应是复用，不是新的模型实调。
+                self.last_source = "cache"
+                self.last_cache_digest = hashlib.sha256(json.dumps(
+                    {"messages": messages, "model": model, "response": hit}, ensure_ascii=False,
+                    sort_keys=True, separators=(",", ":")).encode()).hexdigest()
                 return hit
         await self._admit("complete")
         started = time.monotonic()
+        self.last_source = "provider"
         try:
             content, model_used, finish, usage = await self.inner.complete(
                 messages, model, temperature, max_tokens, thinking=thinking, timeout_s=timeout_s)
@@ -87,14 +97,17 @@ class GuardedProvider:
             self._record(started, None, error)
             raise
         self._record(started, finish)
+        self.last_source = "provider"
         if self._cache is not None and finish == "stop":
             self._cache.put(messages, model, temperature, content, model_used, thinking)
         return content, model_used, finish, usage
 
     async def complete_tools(self, messages, model, temperature, max_tokens, tools=None, tool_choice=None,
                              thinking=None, timeout_s=None):
+        self.last_source, self.last_cache_digest = "not_called", ""
         await self._admit("complete_tools")
         started = time.monotonic()
+        self.last_source = "provider"
         try:
             result = await self.inner.complete_tools(
                 messages, model, temperature, max_tokens, tools=tools, tool_choice=tool_choice,
@@ -103,6 +116,7 @@ class GuardedProvider:
             self._record(started, None, error)
             raise
         self._record(started, result[2])
+        self.last_source = "provider"
         return result
 
     def __getattr__(self, name: str) -> Any:  # stream and anything else pass through / 其余直通

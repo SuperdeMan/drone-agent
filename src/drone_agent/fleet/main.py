@@ -25,6 +25,7 @@ from pathlib import Path
 
 from drone_agent.fleet.api import serve_api
 from drone_agent.fleet.ledger import BusinessLedger
+from drone_agent.fleet.provenance import source_context
 from drone_agent.fleet.service import MissionService
 from drone_agent.fleet.transport import FleetHub, serve_fleet
 from drone_agent.mission.registry import Registry
@@ -111,7 +112,9 @@ async def main_async(args) -> None:
     service = MissionService(root=args.root, scene=args.scene, ledger=ledger, hub=hub,
                              signing_key=SigningKey.load(args.signing_key),
                              approval_policy=ApprovalPolicy.from_yaml(args.root / "configs/approval_policy.yaml"),
-                             planner=planner, robot_id=args.robot_id)
+                             planner=planner, robot_id=args.robot_id,
+                             provenance_context=source_context(args.root, args.scene, registry.sha256,
+                                                               backend=args.execution_backend))
     tls = args.tls
     credentials = {"cert_pem": (tls / "service.crt").read_bytes(), "key_pem": (tls / "service.key").read_bytes(),
                    "ca_pem": (tls / "ca.crt").read_bytes()}
@@ -128,7 +131,8 @@ async def main_async(args) -> None:
     ready = {"fleet_port": port, "transport": args.transport, "api": str(args.api),
              "signer_key_id": service.key.key_id, "planner": label,
              "robot_id": args.robot_id, "registry_hash": registry.sha256,
-             "source_sha": os.environ.get("DRONE_SOURCE_SHA", "uncommitted")}
+             "source_sha": os.environ.get("DRONE_SOURCE_SHA", "uncommitted"),
+             "provenance_context": service.source.model_dump(mode="json")}
     (args.state / "ready.json").write_bytes(canonical(ready))
     print(json.dumps(ready), flush=True)
     stop = asyncio.Event()
@@ -156,6 +160,7 @@ def main() -> None:
     parser.add_argument("--api", type=Path, default=Path("/run/mission/api.sock"))
     parser.add_argument("--robot-id", default="uav_01")
     parser.add_argument("--planner", choices=["auto", "live", "scripted", "none"], default="live")
+    parser.add_argument("--execution-backend", choices=["none", "px4_sitl"], default="none")
     parser.add_argument("--fixtures", type=Path, help="scripted planner fixture file (scripted mode)")
     args = parser.parse_args()
     if args.planner == "scripted" and not args.fixtures:

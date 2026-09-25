@@ -9,6 +9,11 @@ const STATUS = {planning: "规划中", verifying: "证据同步中", awaiting_ap
 const TONE = {completed: "ok", delivered: "ok", running: "ok", awaiting_approval: "warn", incomplete: "warn", approved: "warn",
   queued: "warn", refused: "bad", rejected: "bad", declined: "bad", delivery_rejected: "bad", planning_failed: "bad"};
 const COLUMN = {completed: "已完成", not_completed: "未完成", uncertain: "不确定"};
+// Sources are read-only service records, never a backend selector. / 来源只读自服务记录，不是后端选择器。
+const SOURCE = {none: "未连接执行后端", logical_sim: "逻辑模拟", px4_sitl: "PX4 SITL", vendor_protocol_sim: "厂商协议模拟",
+  real_device: "真实设备", sim_render: "仿真渲染", recorded_real: "真实素材回放", live_sensor: "实时传感器",
+  test_fixture: "测试素材", live_model: "模型实调", recorded_model: "录制 / 缓存回放", scripted: "脚本回答",
+  deterministic: "确定性代码", not_run: "未运行", unknown: "未知", legacy_unknown: "历史来源未记录"};
 // Simulation supervisor records (D035): shown as recorded, never used to decide anything here.
 // 仿真监管者记录（D035）：按记录原样展示，这里不据此做任何决定。
 const HOST = {idle: "空闲，等待已审批任务", waiting_for_workspace: "等待云端工作区（其他仿真或部署占用）",
@@ -103,6 +108,11 @@ function render() {
   let html = `<div class="eyebrow">任务 ${esc(m.mission_id)} · ${esc(view.request.channel)} · ${esc(view.request.requested_by)}</div>
     <h2>${esc(v?.spec?.goal || view.request.text)}</h2><p>原始请求：${esc(view.request.text)}</p><div>${chip(m.status)}</div>
     <div class="versions">${view.versions.map(x => `<button data-v="${x.version}" aria-pressed="${x.version === v.version}">v${x.version} · ${esc(STATUS[x.status] || x.status)} · ${esc(x.origin)}</button>`).join("")}</div>`;
+  const provenance = v.provenance || {}, run = provenance.run || {};
+  html += `<h3>运行来源</h3><dl><div><dt>执行后端</dt><dd>${esc(SOURCE[provenance.execution_backend] || SOURCE.legacy_unknown)}</dd></div>
+    <div><dt>规划来源</dt><dd>${esc(SOURCE[provenance.planning?.source] || SOURCE.legacy_unknown)}</dd></div>
+    <div><dt>分析来源</dt><dd>${esc((provenance.analysis_sources || ["legacy_unknown"]).map(s => SOURCE[s] || s).join(" / "))}</dd></div>
+    <div><dt>软件版本</dt><dd>${esc(run.software_sha || "未知")}${run.dirty_sha256 ? " · 含未提交代码" : ""}</dd></div></dl>`;
   if (v.planner) html += `<h3>规划</h3><dl><div><dt>模型</dt><dd>${esc(v.planner.provider_id)} / ${esc(v.planner.model_id)}</dd></div>
     <div><dt>提示版本</dt><dd>${esc(v.planner.prompt_version)}</dd></div><div><dt>输入哈希</dt><dd>${esc((v.planner.input_hash || "").slice(0, 16))}…</dd></div>
     <div><dt>尝试 / 通道</dt><dd>${esc(v.planner.attempts)} · ${esc(v.planner.channels.join(","))}</dd></div>
@@ -167,6 +177,7 @@ function renderReport() {
 function renderEvidence() {
   const items = current?.evidence || [];
   byId("evidence").innerHTML = items.length ? items.map(e => `<button data-id="${esc(e.evidence_id)}">v${esc(e.version)} ${esc(e.step_id)} · ${esc(e.captured_at.slice(11, 19))}
+    · ${esc(SOURCE[e.provenance?.source] || SOURCE.legacy_unknown)}
     · ${e.verification ? esc(e.verification.final_verdict) + (e.verification.agrees ? "" : " · 机载/服务不一致") : "待复核"}</button>
     ${photos[e.evidence_id] ? `<div class="photo"><img alt="机载相机证据" src="${esc(photos[e.evidence_id])}"></div>` : ""}`).join("") : '<div class="empty">暂无证据。</div>';
   for (const button of byId("evidence").querySelectorAll("button")) button.onclick = () => send({type: "media", mission_id: current.mission.mission_id, evidence_id: button.dataset.id});

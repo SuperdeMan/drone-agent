@@ -77,7 +77,7 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
     command: [python3, -m, drone_agent.fleet.main, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
               --planner, auto, --state, /state, --tls, /tls, --signing-key, /secrets/approval-signing.key,
-              --api, /api/api.sock, --listen, "0.0.0.0:8450"]
+              --api, /api/api.sock, --listen, "0.0.0.0:8450", --execution-backend, px4_sitl]
     volumes:
       - ${DRONE_DESK_ROOT:?}/service:/state
       - ${DRONE_DESK_ROOT:?}/api:/api

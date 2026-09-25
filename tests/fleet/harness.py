@@ -20,6 +20,7 @@ from pathlib import Path
 from drone_agent.admission.models import MissionRequest, RequestChannel
 from drone_agent.contracts import MissionPackage, RecoveryPolicy, SkillInstanceState, utcnow
 from drone_agent.fleet.ledger import BusinessLedger
+from drone_agent.fleet.provenance import source_context
 from drone_agent.fleet.service import MissionService
 from drone_agent.fleet.transport import FleetHub, LocalFleetClient
 from drone_agent.guardian.core import Guardian
@@ -162,7 +163,9 @@ def build_loop(root: Path, planner=None) -> Loop:
     hub = FleetHub(ledger, root / "service/media")
     service = MissionService(root=ROOT, scene=SCENE, ledger=ledger, hub=hub, signing_key=key,
                              approval_policy=ApprovalPolicy.from_yaml(ROOT / "configs/approval_policy.yaml"),
-                             planner=planner or scripted_planner())
+                             planner=planner or scripted_planner(),
+                             provenance_context=source_context(ROOT, SCENE, fast_registry().sha256,
+                                                               backend="logical_sim"))
     uplink = Uplink(LocalFleetClient(hub, "uav_01"), robot_id="uav_01",
                     trust=TrustStore.from_entries([key.trust_entry()]), capability=fast_registry().capability,
                     inbox=root / "inbox", mailbox=root / "mailbox", aircraft=root / "aircraft",

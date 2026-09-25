@@ -45,9 +45,23 @@ from drone_agent.fleet.catalog import Catalog
 from drone_agent.fleet.coordinator import PassthroughCoordinator
 from drone_agent.fleet.events import event_to_row, outcomes_from_rows, verify_chain
 from drone_agent.fleet.ledger import BusinessLedger
+from drone_agent.fleet.provenance import (
+    NAMESPACE,
+    AnalysisOrigin,
+    EvidenceOrigin,
+    ModelUse,
+    SourceContext,
+    digest,
+    export,
+    planning_use,
+    project,
+    provider_source,
+    seal,
+    source_context,
+)
 from drone_agent.fleet.report import build_report
 from drone_agent.fleet.transport import FleetHub
-from drone_agent.fleet.verifier import accept_fact, business_judgment, verify
+from drone_agent.fleet.verifier import VLM_QUESTION, accept_fact, business_judgment, verify
 from drone_agent.mission.registry import Registry
 from drone_agent.planner.replan import (
     ApprovalPolicy,
@@ -86,7 +100,7 @@ def package_diff(before: dict | None, after: dict) -> dict:
 class MissionService:
     def __init__(self, *, root: Path, scene: Path, ledger: BusinessLedger, hub: FleetHub, signing_key: SigningKey,
                  approval_policy: ApprovalPolicy, planner=None, robot_id: str = "uav_01", airspace=None,
-                 clock=utcnow, vision=None):
+                 clock=utcnow, vision=None, provenance_context: SourceContext | None = None):
         self.registry = Registry(root, scene=scene)
         self.ledger, self.hub, self.key, self.policy = ledger, hub, signing_key, approval_policy
         self.planner, self.robot_id, self.clock, self.vision = planner, robot_id, clock, vision
@@ -94,6 +108,7 @@ class MissionService:
         self.catalog = Catalog(ledger, static=self.registry.capability)
         self.coordinator = PassthroughCoordinator(robot_id, self.catalog)
         self.defaults = self.registry.data.get("mission_defaults", {})
+        self.source = provenance_context or source_context(root, scene, self.registry.sha256)
         # Reconcile persisted input even when the uplink already acknowledged every item before a restart.
         # 重启后复核持久化输入，即使 uplink 已在重启前确认了每条上传。
         self.dirty: set[str] = {m["mission_id"] for m in ledger.missions(-1) if m["current_version"] > 0}
@@ -109,6 +124,41 @@ class MissionService:
     def _issues(self, found: list[Issue], mission_id: str, request_id: str = "") -> None:
         for item in found:
             self.ledger.record_issue(item, mission_id=mission_id, request_id=request_id or None)
+
+    def _record_version(self, mission_id: str, version: int, *, status: str, origin: str, **records) -> None:
+        """Persist the version and its trusted source in the same database write.
+
+        在同一次数据库写入中保存版本及其受信来源。
+        """
+        planning = planning_use(self.planner, records.get("planner"))
+        if origin == "replan":
+            spec = records.get("spec")
+            planning = ModelUse(source="deterministic", provider_id="runtime", model_id="bounded_retry",
+                                input_sha256=digest(spec.model_dump(mode="json")) if spec else "", outcome=status)
+        decision = dict(records.pop("decision", None) or {})
+        decision[NAMESPACE] = {"run": seal(self.source.header(mission_id, version, planning))}
+        self.ledger.record_version(mission_id, version, status=status, origin=origin, decision=decision, **records)
+
+    def provenance(self, mission_id: str) -> list[dict]:
+        """Saved sources only; upgrades cannot relabel historical runs. / 只读已保存来源；升级不能重标历史运行。"""
+        return [export(record) for record in self.ledger.versions(mission_id)]
+
+    def _evidence_sources(self, mission_id: str, version: int) -> None:
+        """Bind each acquisition to the saved deployment, never the robot's self-declared label.
+
+        每份采集绑定已保存部署，不采信机器人自报来源标签。
+        """
+        record = self.ledger.version(mission_id, version)
+        run = project(record).run
+        if run is None:
+            return
+        saved = (record["decision"] or {}).get(NAMESPACE, {})
+        for row in self.ledger.evidence(mission_id, version):
+            key = f"evidence:{row['evidence_id']}"
+            if key not in saved:
+                self.ledger.record_source(mission_id, version, key, EvidenceOrigin(
+                    evidence_id=row["evidence_id"], media_sha256=row["sha256"],
+                    source=run.default_image_source, run_id=run.run_id))
 
     # ── submit and plan / 提交与规划 ──
 
@@ -129,7 +179,7 @@ class MissionService:
 
     async def _plan(self, mission_id: str, request: MissionRequest) -> None:
         def stop(status: str, found: list[Issue], **records) -> None:
-            self.ledger.record_version(mission_id, 1, status=status, origin=request.channel.value, **records)
+            self._record_version(mission_id, 1, status=status, origin=request.channel.value, **records)
             self.ledger.update_mission(mission_id, status=status, current_version=1)
             self._issues(found, mission_id, request.request_id)
 
@@ -151,7 +201,7 @@ class MissionService:
                     "collaboration": self.coordinator.collaboration(spec)}
         package = result.compile.package if result.compile else None
         status = "awaiting_approval" if result.blocked_at is None else "rejected"
-        self.ledger.record_version(mission_id, 1, status=status, origin=request.channel.value, spec=spec,
+        self._record_version(mission_id, 1, status=status, origin=request.channel.value, spec=spec,
                                    planner=outcome, compile=result.compile, admission=result.admission,
                                    package=package, package_hash=package.package_hash if package else None,
                                    decision=decision)
@@ -374,6 +424,7 @@ class MissionService:
             if record["status"] not in DELIVERED:
                 continue
             version = record["version"]
+            self._evidence_sources(mission_id, version)
             journals = self._journals(mission_id, version)
             executive = journals.get("executive", [])
             package = MissionPackage.model_validate(record["package"])
@@ -403,7 +454,8 @@ class MissionService:
                            and outcomes[version][node.task_id].counts_as_completed for node in package.nodes)
         report = None
         if packages:
-            report = build_report(mission_id, packages, outcomes, verdicts, self.ledger.facts(mission_id))
+            report = build_report(mission_id, packages, outcomes, verdicts, self.ledger.facts(mission_id),
+                                  provenance=self.provenance(mission_id))
             previous = self.ledger.report(mission_id)
             body = report.model_dump(mode="json")
             if previous is None or {k: v for k, v in previous.items() if k != "generated_at"} != {
@@ -496,7 +548,7 @@ class MissionService:
         result = self._evaluate(proposal, mission["robot_id"], self._request(mission))
         common = {"origin": "replan", "spec": proposal, "compile": result.compile, "admission": result.admission}
         if result.blocked_at is not None:
-            self.ledger.record_version(mission_id, version + 1, status="rejected",
+            self._record_version(mission_id, version + 1, status="rejected",
                                        decision={"blocked_at": result.blocked_at, "codes": result.codes,
                                                  "triggers": [t.model_dump() for t in found]}, **common)
             return incomplete(result.issues)
@@ -506,7 +558,7 @@ class MissionService:
         details = {**decision.model_dump(mode="json"), "triggers": [t.model_dump() for t in found]}
         status = {"auto_approvable": "approving", "requires_human": "awaiting_approval"}.get(
             decision.classification, "rejected")
-        self.ledger.record_version(mission_id, version + 1, status=status, package=proposed,
+        self._record_version(mission_id, version + 1, status=status, package=proposed,
                                    package_hash=proposed.package_hash, decision=details, **common)
         if status == "rejected":
             self.ledger.update_mission(mission_id, current_version=version + 1)
@@ -531,8 +583,24 @@ class MissionService:
                 continue
             row = next(r for r in self.ledger.evidence(mission_id) if r["evidence_id"] == body["evidence_id"])
             evidence = Evidence.model_validate(row["body"])
-            fact = await business_judgment(evidence, self.hub.media(row["media_path"]), row["width"], row["height"],
-                                           provider, model, asset_id=evidence.subject_ids[0])
+            fact, outcome = None, "failed"
+            try:
+                fact = await business_judgment(evidence, self.hub.media(row["media_path"]), row["width"], row["height"],
+                                               provider, model, asset_id=evidence.subject_ids[0])
+                outcome = "returned" if fact is not None else "no_fact"
+            finally:
+                source, recording = provider_source(provider)
+                attempt = AnalysisOrigin(attempt_id=uuid.uuid4().hex, evidence_id=evidence.evidence_id,
+                                         use=ModelUse(source=source, model_id=model,
+                                                      reported_model_id=fact.source_version if fact else "",
+                                                      prompt_version="business-judgment-v1",
+                                                      prompt_sha256=digest(VLM_QUESTION),
+                                                      input_sha256=evidence.sha256, recording_sha256=recording,
+                                                      outcome=outcome))
+                self.ledger.record_source(mission_id, row["mission_version"], f"analysis:{attempt.attempt_id}", attempt)
+                report = self.ledger.report(mission_id)
+                if report is not None:
+                    self.ledger.record_report(mission_id, {**report, "provenance": self.provenance(mission_id)})
             if fact is not None and accept_fact(fact):
                 self.ledger.record_fact(mission_id, fact)
                 added += 1
@@ -585,6 +653,7 @@ class MissionService:
                 "approval": {k: approval.get(k) for k in ("approver", "approved_at", "expires_at", "signer_key_id")}
                 if approval else None,
                 "decision": record["decision"],
+                "provenance": export(record),
                 "journals": {name: {"rows": len(rows), "chain": verify_chain(rows)[1] or "ok"}
                              for name, rows in journals.items()},
                 "events": [{"journal": name, "seq": r["seq"], "kind": r["kind"], "timestamp": r["timestamp"],
@@ -601,6 +670,9 @@ class MissionService:
                      "sha256": r["sha256"], "media": bool(r["media_path"]), "width": r["width"], "height": r["height"],
                      "captured_at": r["body"]["time_window"]["timestamp"],
                      "verification": verifications.get(r["evidence_id"])} for r in self.ledger.evidence(mission_id)]
+        origins = {image["evidence_id"]: image for v in versions for image in v["provenance"]["imagery"]}
+        for item in evidence:
+            item["provenance"] = origins.get(item["evidence_id"], {"source": "legacy_unknown"})
         operations = [{"request_id": d["payload"]["request_id"], "action": d["payload"]["action"],
                        "requested_by": d["payload"]["requested_by"], "version": d["version"],
                        "acked": d["acked_at"] is not None, "accepted": d["ack_accepted"], "reason": d["ack_reason"]}
@@ -619,4 +691,5 @@ class MissionService:
                 "updated_at": mission["updated_at"],
                 "report": {k: report[k] for k in ("targets", "summary", "all_targets_completed", "versions")}
                 if report else None,
-                "issues": [i["code"] for i in self.ledger.issues(mission_id)]}
+                "issues": [i["code"] for i in self.ledger.issues(mission_id)],
+                "provenance": self.provenance(mission_id)}

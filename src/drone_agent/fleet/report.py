@@ -54,6 +54,7 @@ class MissionReport(ContractModel):
     all_targets_completed: bool
     facts: list[dict] = Field(default_factory=list)
     generated_at: datetime
+    provenance: list[dict] = Field(default_factory=list)
 
 
 def classify(outcome: StepOutcome | None, service: EffectVerdict | None) -> tuple[Column, str]:
@@ -73,7 +74,7 @@ def classify(outcome: StepOutcome | None, service: EffectVerdict | None) -> tupl
 
 def build_report(mission_id: str, packages: dict[int, MissionPackage], outcomes: dict[int, dict[str, StepOutcome]],
                  service_verdicts: dict[tuple[int, str], EffectVerdict] | None = None,
-                 facts: list[dict] | None = None) -> MissionReport:
+                 facts: list[dict] | None = None, *, provenance: list[dict] | None = None) -> MissionReport:
     """Build the report from per-version packages, onboard outcomes and final service verdicts.
 
     由各版本任务包、机载结果与服务最终判定生成报告。
@@ -97,4 +98,4 @@ def build_report(mission_id: str, packages: dict[int, MissionPackage], outcomes:
     return MissionReport(mission_id=mission_id, versions=sorted(packages), rows=rows, targets=targets,
                          summary=summary, all_targets_completed=bool(targets) and all(
                              c == "completed" for c in targets.values()),
-                         facts=list(facts or []), generated_at=utcnow())
+                         facts=list(facts or []), generated_at=utcnow(), provenance=list(provenance or []))

@@ -181,10 +181,44 @@ class BusinessLedger:
         allowed = {"status", "package", "package_hash", "approval", "decision", "admission"}
         if set(records) - allowed:
             raise ValueError("unknown version fields")
-        values = [v if k in ("status", "package_hash") else _dump(v) for k, v in records.items()]
-        assignments = ", ".join(f"{k}=?" for k in records) + ", updated_at=?"
-        self._exec(f"UPDATE versions SET {assignments} WHERE mission_id=? AND version=?",
-                   (*values, _now(), mission_id, version))
+        with self._lock:
+            if "decision" in records:
+                from drone_agent.fleet.provenance import NAMESPACE
+
+                current = self.version(mission_id, version)
+                saved = ((current or {}).get("decision") or {}).get(NAMESPACE, {})
+                decision = dict(records["decision"] or {})
+                incoming = decision.get(NAMESPACE, saved)
+                if any(incoming.get(key) != value for key, value in saved.items()):
+                    raise ValueError("provenance records are immutable")
+                if incoming:
+                    decision[NAMESPACE] = incoming
+                records["decision"] = decision
+            values = [v if k in ("status", "package_hash") else _dump(v) for k, v in records.items()]
+            assignments = ", ".join(f"{k}=?" for k in records) + ", updated_at=?"
+            self._exec(f"UPDATE versions SET {assignments} WHERE mission_id=? AND version=?",
+                       (*values, _now(), mission_id, version))
+
+    def record_source(self, mission_id: str, version: int, key: str, value) -> None:
+        """Append one sealed source record, preserving the existing database schema.
+
+        追加一条不可覆盖的来源记录，保持既有数据库 schema。
+        """
+        from drone_agent.fleet.provenance import NAMESPACE, seal
+
+        with self._lock:
+            current = self.version(mission_id, version)
+            if current is None:
+                raise ValueError("source requires an existing mission version")
+            decision = dict(current["decision"] or {})
+            saved = dict(decision.get(NAMESPACE, {}))
+            encoded = seal(value)
+            if key in saved:
+                if saved[key] != encoded:
+                    raise ValueError("provenance records are immutable")
+                return
+            decision[NAMESPACE] = {**saved, key: encoded}
+            self.update_version(mission_id, version, decision=decision)
 
     def version(self, mission_id: str, version: int) -> dict | None:
         row = self._one("SELECT * FROM versions WHERE mission_id=? AND version=?", (mission_id, version))
