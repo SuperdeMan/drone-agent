@@ -1,0 +1,19 @@
+{
+  "schema_version": "0.1.0",
+  "kind": "negative_record",
+  "counts_as_candidate_validation": false,
+  "candidate": "373e0a88de8744756bc943208132ed9a901d3acf",
+  "deployment_id": "20260926T034822Z-284bf26f",
+  "date": "2026-09-26",
+  "finding": "The desk workflow probe stopped as soon as the root run completed and never tracked the reinspection run it had started.",
+  "cause": "The page pushes the watched run whenever it changes. The root completed while the probe slept, so a pushed root frame queued ahead of the replies; refresh() took the next queued frame (the root) as the reply for the child run, the child was never tracked, and the end condition (every tracked run final, every mission judged) held with only the root and its first mission.",
+  "effect": "session.json lists one run and one flown mission, so desk_session could only fail; the probe cannot produce a false pass because the gate requires a completed reinspection run and at least two judged flights.",
+  "desk_state_after": {
+    "root_run": {"workflow_id": "asset_check", "state": "completed", "mission": "m-72c0d3dc39a4", "mission_status": "completed", "flight": "finished, judged passed, replay agrees"},
+    "work_order": "reinspection_requested",
+    "reinspection_run": {"workflow_id": "asset_reinspection", "state": "cancelled", "mission": "m-69eaeb91106c", "mission_status": "cancelled before approval, never flown", "reservation": "released (cancelled)"},
+    "cleanup": "the operator cancelled the reinspection run through the page protocol so its soft reservation of the pad would not block the next session"
+  },
+  "fix": "3bdbd50: refresh() reads until the requested run's frame, and the probe only ends once every child run is tracked; tests/test_desk_probe_workflow.py reproduces the interleaving with a fake desk.",
+  "consequence": "Every criterion was collected again on the new candidate 3bdbd50. The 373e0a8 receipts in diagnostics/373e0a8/ all passed (cloud checks 1173/0/0/0, S1 5/5 with 8 flights, M2 18/18, desk activated with both drills passed and the workflow tables migrated) but are kept only as supporting records."
+}

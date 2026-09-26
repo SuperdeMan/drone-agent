@@ -6,7 +6,7 @@
 
 M0–M2 已完成；**M3-SITL 已通过（2026-09-25，`75382dc`），原 M3 未关闭，JIL 待硬件**。归档证据以 `docs/m1-readiness.md`、`m2-readiness.md`、`m3-readiness.md` 为准，不能转借历史成绩给新提交。
 
-按 D049 推进 **P0–P5 软件运营主线**；H1 承接 M3-JIL，H2 承接原 M4-A，H3 验证现场运营；X1 空地协同在 P3 后。**P0 已完成（2026-09-25，`de597d0`）；P1 已完成（2026-09-26，`b49701b`，软件 / SITL 范围）**，证据见 `docs/p0-readiness.md`、`docs/p1-readiness.md`；下一阶段为 P2。下一批任务见 `docs/operations-implementation.md`。使用局部自主的具体场景才依赖 M3-SITL，P2 不等待硬件。P1 起服务带运营目录（`--catalog`）时账本为 schema v2（D056）；任何新的持久化表仍属 schema 变更，须先设计并获批准。
+按 D049 推进 **P0–P5 软件运营主线**；H1 承接 M3-JIL，H2 承接原 M4-A，H3 验证现场运营；X1 空地协同在 P3 后。**P0 已完成（2026-09-25，`de597d0`）；P1 已完成（2026-09-26，`b49701b`）；P2 已完成（2026-09-26，`3bdbd50`），均为软件 / SITL 范围**，证据见 `docs/p0-readiness.md`、`docs/p1-readiness.md`、`docs/p2-readiness.md`；下一阶段为 P3 与 P4（可并行）。下一批任务见 `docs/operations-implementation.md`。使用局部自主的具体场景才依赖 M3-SITL，P3 / P4 不等待硬件。P1 起服务带运营目录（`--catalog`）时账本为 schema v2（D056）；P2 起再带工作流目录（`--workflows`）时同一账本另有 9 张 `wf_` 表（D058，`meta.workflow_schema=1`，`schema_version` 仍为 2）。任何新的持久化表仍属 schema 变更，须先设计并获批准。
 
 常驻飞行台的统一入口以 `desk-cloud --status` 为准（D037：8448，`/` 为 M2，`/fixed/` 为 M1）；激活顺序为同部署的 console-cloud 再 desk-cloud，并核对两条链路版本。M3 外部模式尚未接入常驻任务台。操作与准确验证边界见 `docs/tailnet-desk.md` 及对应 readiness。
 
@@ -17,10 +17,10 @@ M0–M2 已完成；**M3-SITL 已通过（2026-09-25，`75382dc`），原 M3 未
 完整定义与理由见 `docs/architecture/07-deployment.md` 与各文档；本节只列约定：
 
 - `docs/` — `architecture/`（00–09 分主题，`00-overview.md` 是入口与文档地图）、`decisions.md`、`roadmap.md`、`reuse-from-embodied-agent.md`、`research/`（前沿调研、GPT-6 Pro 评估原文与摘要）。架构级变更**先改文档 + `decisions.md` 增条目，再动代码**。
-- `src/drone_agent/` — 单包多子模块。**模块随里程碑创建，不预建空模块。** 已有 `contracts`(M0)、`runtime`(日志/IPC/MCAP；M2 加签名、机器人状态、机载 `uplink`)、`guardian`(监督/恢复/出口；M3 加外部模式控制、CBF 过滤与能源可达性)、`adapters`(PX4)、`mission`(执行/登记表/验证)、`eval`(裁判/场景/注入/对抗语料/M2 与 M3 裁判)、`console`(D027 的 M1 固定仿真入口；M2 的 hri.v0 任务台与 A2A 网关)、`providers`/`planner`/`admission`(M2)、`fleet`(M2：业务账本、目录、mTLS 传输、证据复核与报告、直通协调器、任务服务与本机 API；P1–P5 计划：资源 / 工作流 / 调度 / 业务闭环；X1 计划：空地交接)、`autonomy`(M3：`drone.autonomy.v1` 领域模型、帧编解码与按角色划分的本地套接字)。机载代码（`mission`/`guardian`/`adapters`/`runtime` 的机载模块与 `uplink`）不得导入 `providers`/`planner`/`admission`，契约测试钉住传递导入图。
+- `src/drone_agent/` — 单包多子模块。**模块随里程碑创建，不预建空模块。** 已有 `contracts`(M0)、`runtime`(日志/IPC/MCAP；M2 加签名、机器人状态、机载 `uplink`)、`guardian`(监督/恢复/出口；M3 加外部模式控制、CBF 过滤与能源可达性)、`adapters`(PX4)、`mission`(执行/登记表/验证)、`eval`(裁判/场景/注入/对抗语料/M2 与 M3 裁判)、`console`(D027 的 M1 固定仿真入口；M2 的 hri.v0 任务台与 A2A 网关)、`providers`/`planner`/`admission`(M2)、`fleet`(M2：业务账本、目录、mTLS 传输、证据复核与报告、直通协调器、任务服务与本机 API；P1：资源目录、机场、可派遣判定、预约与领取闸门；P2：工作流模板、持久内核、分析、复核与模拟工单；P3–P5 计划：调度 / 业务闭环；X1 计划：空地交接)、`autonomy`(M3：`drone.autonomy.v1` 领域模型、帧编解码与按角色划分的本地套接字)。机载代码（`mission`/`guardian`/`adapters`/`runtime` 的机载模块与 `uplink`）不得导入 `providers`/`planner`/`admission`，契约测试钉住传递导入图。
 - `ros2_ws/` — M3 的 ROS 2 Jazzy 节点（D014、D039）：`src/da_egress_ext`（C++，px4_ros2 外部模式出口节点）、`da_localization`、`da_local_nav`、`da_perception`、`da_edge_inference`（事件检测，D044）、`da_common`（系统 Python），以及 `run_node.sh`。节点不导入 `drone_agent`，只经 `proto/drone/autonomy/v1` 的本地套接字帧交互；纯逻辑的测试在 `tests/ros2_ws/`，契约测试钉住「不触真值、出口只转发」。
 - `proto/` — 进程间契约（executive ↔ guardian；车队协议）与共享消息；M0 骨架，M1 冻结，包名 `drone.<service>.v1`。字段清单与共享 proto 由 `scripts/generate_contract_fields.py` 导出；禁止旧字段重编号。
-- `configs/` — `platforms/`（版本锁定与目标能力描述）、`skills/`（技能草案）、`recovery_policies/`（恢复策略图）、`scenarios/`（注入矩阵与后续评测场景）、`perception/`（M3 事件检测的版本化提示集与模型固定值，D044）、`sites/`（P1 运营目录与编排成员列表，D055；真实操作者成员只放云端 secrets）、`planner_tools.yaml`（规划层工具白名单，只读）。草案中的场景名不代表已验证。
+- `configs/` — `platforms/`（版本锁定与目标能力描述）、`skills/`（技能草案）、`recovery_policies/`（恢复策略图）、`scenarios/`（注入矩阵与后续评测场景）、`perception/`（M3 事件检测的版本化提示集与模型固定值，D044）、`sites/`（P1 运营目录与编排成员列表，D055；真实操作者成员只放云端 secrets）、`workflows/`（P2 工作流模板目录与带标注的分析夹具，D057）、`planner_tools.yaml`（规划层工具白名单，只读）。草案中的场景名不代表已验证。
 - `tests/` — 镜像 `src/`；`tests/contracts/` 是契约测试，`tests/fault_injection/`（M1）是故障注入测试；`tests/admission/` 与 `tests/planner/`（M2）承载对抗性规划测试，语料版本化在 `eval/adversarial/`。
 - `eval/` — 版本化评测任务、`adversarial/`（M2 起的对抗性规划语料）与 `BASELINES.md`（只增不改，负结果照记）。
 - `sim/` — M0 开发 compose 与只读冒烟；M1 扩展完整仿真。Windows 先用 `scripts/stage_sim.py` 暂存到 ASCII 目录，版本与 digest 固定，见 `sim/README.md`。
@@ -53,6 +53,7 @@ M0–M2 已完成；**M3-SITL 已通过（2026-09-25，`75382dc`），原 M3 未
 - M2 端到端（D029–D034）：`dev_stack.py m2 --scenario all --seeds 7,19,41` 在云端跑自然语言 → 审批签名 → mTLS 上行 → 飞行 → 报告的 6 场景；默认脚本规划回答只证明链路，不计模型行为；`m2-key --apply` 把本机环境里的 `MINIMAX_API_KEY` 写入云端项目 secrets 供 `--planner live`。M2 是否关闭只看 `scripts/verify_m2_release.py`（同一 commit 的检查、对抗语料、E2E、M1 回归与实调基线）。本机任务台 `python -m drone_agent.console.mission --local` 只规划与签名、不飞。见 [M2 验收记录](docs/m2-readiness.md)。
 - 云端常驻入口（D028）：`dev_stack.py console-cloud` 只读计划，`--apply` 激活本项目代理 unit、受限网页容器及独立 Serve `8447` 映射，`--status` 返回入口。网络准入交给既有 Tailscale，不新增登录页、不启用 Funnel、不改变其他应用映射或 ACL；见 [Tailnet 指南](docs/tailnet-console.md)。
 - M3-SITL（D038–D042）：`dev_stack.py m3 --scenario <id|all|class:名称> --seeds 7,19,41` 在云端构建 M3 镜像（ROS 2 基础层跨版本缓存）并运行 `configs/scenarios/m3_suite.yaml`；独立裁判 `eval/judge_m3.py` 在线与回放各一次，检查真值净距（含未登记障碍）、两条飞控链路互斥、出口看门狗、期望 v2 恢复边与 D040 周期 / 延迟预算。外部模式任务的 guardian 先等出口节点与 PX4 连通、自主层给出有结论的定位报告再开放控制（D048）。M3-SITL 是否通过只看 `scripts/verify_m3_release.py`（同一 commit 的检查、对抗语料、M3 场景集、M1 / M2 回归、Zenoh 子集、D040 测量与 `bind_recovery_edges.py` 写入的 v2 恢复边绑定），只接受隔离成立、整批通过的回执。M3-JIL 需要 Jetson 硬件，未验证前不得宣称。
+- P 系列（D054–D058）：S0 矩阵在本机运行（`python -m drone_agent.eval.p1_world` / `p2_world --output <目录>`），S1 在云端运行 `dev_stack.py p1|p2 --scenario <id|all>`（P2 链路用例每例两次 PX4 SITL 飞行）。P0 / P1 / P2 是否准出只看 `scripts/verify_p{0,1,2}_release.py`：门禁当场重跑 S0，并核对同一 commit 的云端检查、S1、M2 回归与常驻任务台回执。服务参数 `--workflows` 必须同时带 `--catalog`；`desk-cloud --apply` 先在账本副本上演练 P1 与 P2 迁移，再迁移真实账本。
 - M2 任务台常驻入口（D035）：`dev_stack.py desk-cloud` 只读计划，`--apply` 构建该版本 M2 镜像、激活 `desk*` 常驻容器、仿真监管者 unit 与独立 Serve `8448` 映射，`--status` 返回入口；写入或更换模型 key 后需重新 `--apply`。批准的任务由监管者持项目锁在仿真中飞行，任务终态后在线 / 回放独立裁判。验收用 `scripts/desk_probe.py` 经真实 Tailnet HTTPS 进行；见 [任务台指南](docs/tailnet-desk.md)。
 
 ## 已知环境约束

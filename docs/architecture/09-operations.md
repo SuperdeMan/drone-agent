@@ -2,7 +2,7 @@
 
 [架构入口](00-overview.md) · [契约](02-contracts.md) · [安全](03-safety.md) · [路线图](../roadmap.md) · [实施任务](../operations-implementation.md)
 
-**状态：2026-09-25 设计基线；P0 来源与门禁已完成（`de597d0`），验收见 [P0 记录](../p0-readiness.md)；P1 已完成（`b49701b`，见 [P1 记录](../p1-readiness.md)），P2–P5 仍待实施。** 除明确列出的 P0 来源代码与 P1 已实现部分，本页对象、API 名称和新增文件位置均为设计。已有底座是 M2 任务服务与 M3-SITL；具体差距见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。决策为 D049–D056。
+**状态：2026-09-25 设计基线；P0 来源与门禁已完成（`de597d0`），验收见 [P0 记录](../p0-readiness.md)；P1 已完成（`b49701b`，见 [P1 记录](../p1-readiness.md)）；P2 已完成（`3bdbd50`，见 [P2 记录](../p2-readiness.md)），P3–P5 仍待实施。** 除明确列出的 P0 来源代码与 P1、P2 已实现部分（§10–§12），本页对象、API 名称和新增文件位置均为设计。已有底座是 M2 任务服务与 M3-SITL；具体差距见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。决策为 D049–D058。
 
 ## 1. 产品闭环与执行边界
 
@@ -157,7 +157,7 @@ S0 验证逻辑与规模，S1 验证 PX4 软件飞控与执行链，S2 验证授
 | `fleet/catalog.py`、`fleet/resources.py`、`fleet/docks.py` | 资源目录、机场观测与可派遣判定 |
 | `fleet/workflow_models.py`、`fleet/workflow.py`、`fleet/workflow_store.py` | 服务侧契约、持久状态机、inbox/outbox 与定时 |
 | `fleet/coordinator.py`、`fleet/reservation.py` | 多候选分配、唯一所有权、时空预约与对账 |
-| `fleet/analysis.py`、`fleet/findings.py`、`fleet/work_orders.py` | 分析、发现、复核及工单生命周期 |
+| `fleet/analysis.py`、`fleet/findings.py`、`fleet/work_orders.py` | 分析、发现、复核及工单生命周期（P2 的最小工单与复核记录在 `workflow_store.py` / `workflow.py` 中实现，`findings.py` / `work_orders.py` 留给 P4） |
 | `fleet/provenance.py`（P0 已实现）、`fleet/vendor_gateway.py`（后续） | 来源记录与后续厂商任务适配 |
 | `console/`、`eval/`、`configs/`、`scripts/` | 运营页面、分层模拟与裁判、版本化模板及验证入口 |
 
@@ -186,3 +186,17 @@ S0 验证逻辑与规模，S1 验证 PX4 软件飞控与执行链，S2 验证授
 | 策略值 | 3 s 新鲜度、1 s 未来偏差、2 份报告完成新会话对账、软预约 900 s、领取后 30 s 无机器人 ACK 转 uncertain、落地 5 s 后仍无本活动结果转 uncertain |
 
 已知限制：P1 只做固定绑定的单候选检查；S0 的三台逻辑 UAV 不是物理仿真，S1 只有一台 PX4 SITL；逻辑机场不代表机场硬件或厂商协议；各站地图由 M2 园区派生（只改登记表 ID 与降落点归属），规划器仍使用基础场景，编译与准入使用站点地图。多候选排序、时空预约、跨站接力属于 P3。
+
+
+## 12. P2 当前接口（D057 / D058）
+
+| 位置 | 已实现内容 |
+|---|---|
+| 模板 | `configs/workflows/p2_campus_v1.yaml`（S0：`campus_round`、`asset_check` + `asset_reinspection`、带间隔排班的 `quick_check`、`harbor_ops` 隔离夹具）；`p2_s1_v1.yaml`（S1 与常驻任务台：`campus_s1` 的 `asset_check`、`campus_round`、`asset_reinspection`，每日排班默认停用）；`analysis_fixture_v1.yaml`（带标注的脚本分析答案）。服务带 `--workflows` 时必须同时带 `--catalog` |
+| 服务模块 | `fleet/workflow_models.py`（模板、触发、排班、输出契约与校验）、`fleet/workflow_store.py`（D058 的 9 张 `wf_` 表、迁移 / 演练、租约与 fencing、CAS、outbox、取消代次、业务记录）、`fleet/workflow.py`（引擎：触发、推进、投递、对账、取消、复核、维修反馈、草案、视图）、`fleet/analysis.py`（脚本与确定性颜色特征分析，结果密封进任务版本来源）；`service.submit_workflow` 是唯一的任务提交入口 |
+| API | `workflows.list/get`（viewer 起）、`start/cancel/schedule/repair/draft`（operator）、`review`（reviewer）、`event`（只限模板绑定的 `event:` 身份）；不可读对象一律 `service.not_found` |
+| 任务台 | hri.v0 增加 `workflows` / `workflow` / `workflow_draft` 下行帧与 `workflows`、`workflow_watch`、`workflow_start`、`workflow_cancel`、`workflow_schedule`、`workflow_review`、`workflow_repair`、`workflow_draft` 上行帧；子任务审批仍在任务视图按任务包哈希逐个进行，没有批量审批或草案激活帧 |
+| 验证底座 | `eval/p2_world.py`（S0 世界与 P2-F01–F15）、`eval/judge_p2.py`（S0 / S1 独立裁判）、`eval/p2_prepare.py`、`eval/workflow_adversarial.py`；云端 `scripts/remote_p2.py` 与 `sim/compose.p2.yaml`；门禁 `scripts/verify_p2_release.py` |
+| 策略值 | 运行租约 10 s（后半程才续约，接管时代次加一）；每个到期排班只启动启动窗内最近一次，补跑需显式上限；DAG 最多 40 个节点、10 个任务；工单须以 reviewer 确认为条件；复检不链式触发 |
+
+已知限制：分析只有带标注的脚本答案与确定性颜色特征，不代表识别质量；工单只到「待复检」，关单与复检质量属于 P4；一个服务进程一个引擎，多 worker 只在 S0 用例中验证 fencing；草案只返回、不存储、不可激活，生效必须经版本化配置评审。

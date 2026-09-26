@@ -1,0 +1,152 @@
+{
+  "schema_version": "0.1.0",
+  "probe": "workflow",
+  "hello": {
+    "identity_scheme": "tailnet",
+    "can_write": true,
+    "planner": "live:minimax/MiniMax-M3"
+  },
+  "project": "campus_s1",
+  "templates": [
+    {
+      "workflow_id": "asset_check",
+      "version": 1,
+      "sha256": "5b22878866b02acffe58ae32eeee651ff9b3d45e3b8f5ab8b1d1b1115d03b4ff",
+      "triggers": [
+        {
+          "trigger_id": "manual",
+          "kind": "manual",
+          "state": null
+        },
+        {
+          "trigger_id": "daily_0900",
+          "kind": "schedule",
+          "state": "disabled"
+        },
+        {
+          "trigger_id": "asset_alarm",
+          "kind": "event",
+          "state": null
+        }
+      ]
+    },
+    {
+      "workflow_id": "asset_reinspection",
+      "version": 1,
+      "sha256": "f645271806569e4ffe3156aabb1370d8ecde44ef7aa6d57b92e3b68472a6722a",
+      "triggers": [
+        {
+          "trigger_id": "reinspection",
+          "kind": "internal",
+          "state": null
+        }
+      ]
+    },
+    {
+      "workflow_id": "campus_round",
+      "version": 1,
+      "sha256": "d46bc0e9e687aada9bfdbe05fdcc14191ea784881d0735f5bfaeaabd02a45afb",
+      "triggers": [
+        {
+          "trigger_id": "manual",
+          "kind": "manual",
+          "state": null
+        }
+      ]
+    }
+  ],
+  "draft": {
+    "status": "planned",
+    "active": false,
+    "error": null,
+    "errors": [],
+    "spec_sha256": "45db56669c5605b8bd5917b33dd8966bef12f4cd1ec1373900e6ffe355aa1786",
+    "use": {
+      "schema_version": "0.1.0",
+      "source": "live_model",
+      "provider_id": "minimax",
+      "model_id": "MiniMax-M3",
+      "reported_model_id": "",
+      "prompt_version": "workflow-v1",
+      "prompt_sha256": "79ebc96bdfdf533c89c9e4b8810847a405ef7bca00e51d1a46659f5a521e9e10",
+      "input_sha256": "be2c4ade1cb50797c31d1919111c24b117a0238928fe15cfde2ba28207d8951b",
+      "recording_sha256": "",
+      "outcome": "planned"
+    },
+    "nodes": [
+      [
+        "inspect_1",
+        "submit_mission"
+      ],
+      [
+        "await_1",
+        "await_mission"
+      ],
+      [
+        "analyze_1",
+        "analyze_evidence"
+      ],
+      [
+        "review_1",
+        "human_review"
+      ],
+      [
+        "order_1",
+        "create_work_order"
+      ],
+      [
+        "report",
+        "build_report"
+      ]
+    ],
+    "robots": [
+      "uav_01"
+    ]
+  },
+  "refused": [
+    {
+      "frame": "inject",
+      "error": "unknown type 'inject'"
+    },
+    {
+      "frame": "docks.report",
+      "error": "unknown type 'docks.report'"
+    },
+    {
+      "frame": "arm",
+      "error": "unknown type 'arm'"
+    },
+    {
+      "frame": "flight",
+      "error": "unknown type 'flight'"
+    },
+    {
+      "frame": "simulator.inject",
+      "error": "unknown type 'simulator.inject'"
+    },
+    {
+      "frame": "workflow_activate",
+      "error": "unknown type 'workflow_activate'"
+    },
+    {
+      "frame": "workflow_approve_all",
+      "error": "unknown type 'workflow_approve_all'"
+    }
+  ],
+  "timeline": [],
+  "runs": {},
+  "missions": {},
+  "sent": [],
+  "errors": [],
+  "roles": [
+    "admin",
+    "approver",
+    "operator",
+    "reviewer"
+  ],
+  "catalog": {
+    "catalog_id": "p2_s1_v1",
+    "sha256": "01f2b9adaeda59e7c9e4dc92069371aef6d5e5cda783227b17f5ace57be74d63"
+  },
+  "duration_s": 3.6
+}

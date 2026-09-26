@@ -1,0 +1,1423 @@
+{
+  "schema_version": "0.1.0",
+  "probe": "workflow",
+  "hello": {
+    "identity_scheme": "tailnet",
+    "can_write": true,
+    "planner": "live:minimax/MiniMax-M3"
+  },
+  "project": "campus_s1",
+  "templates": [
+    {
+      "workflow_id": "asset_check",
+      "version": 1,
+      "sha256": "5b22878866b02acffe58ae32eeee651ff9b3d45e3b8f5ab8b1d1b1115d03b4ff",
+      "triggers": [
+        {
+          "trigger_id": "manual",
+          "kind": "manual",
+          "state": null
+        },
+        {
+          "trigger_id": "daily_0900",
+          "kind": "schedule",
+          "state": "disabled"
+        },
+        {
+          "trigger_id": "asset_alarm",
+          "kind": "event",
+          "state": null
+        }
+      ]
+    },
+    {
+      "workflow_id": "asset_reinspection",
+      "version": 1,
+      "sha256": "f645271806569e4ffe3156aabb1370d8ecde44ef7aa6d57b92e3b68472a6722a",
+      "triggers": [
+        {
+          "trigger_id": "reinspection",
+          "kind": "internal",
+          "state": null
+        }
+      ]
+    },
+    {
+      "workflow_id": "campus_round",
+      "version": 1,
+      "sha256": "d46bc0e9e687aada9bfdbe05fdcc14191ea784881d0735f5bfaeaabd02a45afb",
+      "triggers": [
+        {
+          "trigger_id": "manual",
+          "kind": "manual",
+          "state": null
+        }
+      ]
+    }
+  ],
+  "draft": null,
+  "refused": [
+    {
+      "frame": "inject",
+      "error": "unknown type 'inject'"
+    },
+    {
+      "frame": "docks.report",
+      "error": "unknown type 'docks.report'"
+    },
+    {
+      "frame": "arm",
+      "error": "unknown type 'arm'"
+    },
+    {
+      "frame": "flight",
+      "error": "unknown type 'flight'"
+    },
+    {
+      "frame": "simulator.inject",
+      "error": "unknown type 'simulator.inject'"
+    },
+    {
+      "frame": "workflow_activate",
+      "error": "unknown type 'workflow_activate'"
+    },
+    {
+      "frame": "workflow_approve_all",
+      "error": "unknown type 'workflow_approve_all'"
+    }
+  ],
+  "timeline": [
+    {
+      "t": 0.5,
+      "runs": {
+        "wr-f535056d6cca44f592ad": [
+          "pending",
+          []
+        ]
+      }
+    },
+    {
+      "t": 5.5,
+      "runs": {
+        "wr-f535056d6cca44f592ad": [
+          "waiting",
+          [
+            "approval"
+          ]
+        ]
+      }
+    },
+    {
+      "t": 10.6,
+      "runs": {
+        "wr-f535056d6cca44f592ad": [
+          "waiting",
+          [
+            "device"
+          ]
+        ]
+      }
+    },
+    {
+      "t": 15.6,
+      "runs": {
+        "wr-f535056d6cca44f592ad": [
+          "waiting",
+          [
+            "flight"
+          ]
+        ]
+      }
+    },
+    {
+      "t": 90.7,
+      "runs": {
+        "wr-f535056d6cca44f592ad": [
+          "waiting",
+          [
+            "review"
+          ]
+        ]
+      }
+    },
+    {
+      "t": 110.7,
+      "runs": {
+        "wr-f535056d6cca44f592ad": [
+          "waiting",
+          [
+            "repair"
+          ]
+        ]
+      }
+    },
+    {
+      "t": 131.0,
+      "runs": {
+        "wr-f535056d6cca44f592ad": [
+          "completed",
+          []
+        ],
+        "wr-cb578e1a064f435b84ab": [
+          "waiting",
+          [
+            "approval"
+          ]
+        ]
+      }
+    },
+    {
+      "t": 136.2,
+      "runs": {
+        "wr-f535056d6cca44f592ad": [
+          "completed",
+          []
+        ],
+        "wr-cb578e1a064f435b84ab": [
+          "waiting",
+          [
+            "flight"
+          ]
+        ]
+      }
+    },
+    {
+      "t": 210.0,
+      "runs": {
+        "wr-f535056d6cca44f592ad": [
+          "completed",
+          []
+        ],
+        "wr-cb578e1a064f435b84ab": [
+          "completed",
+          []
+        ]
+      }
+    }
+  ],
+  "runs": {
+    "wr-f535056d6cca44f592ad": {
+      "run": {
+        "run_id": "wr-f535056d6cca44f592ad",
+        "workflow_id": "asset_check",
+        "version": 1,
+        "state": "completed",
+        "trigger_source": "manual:tailnet:<operator>",
+        "started_by": "tailnet:<operator>",
+        "outcome": {
+          "counts": {
+            "completed": 8
+          },
+          "failed": [],
+          "result": "completed",
+          "unknown": []
+        }
+      },
+      "nodes": [
+        [
+          "inspect",
+          "submit_mission",
+          "completed",
+          null
+        ],
+        [
+          "await_inspection",
+          "await_mission",
+          "completed",
+          null
+        ],
+        [
+          "analyze",
+          "analyze_evidence",
+          "completed",
+          null
+        ],
+        [
+          "review",
+          "human_review",
+          "completed",
+          null
+        ],
+        [
+          "work_order",
+          "create_work_order",
+          "completed",
+          null
+        ],
+        [
+          "await_repair",
+          "await_repair",
+          "completed",
+          null
+        ],
+        [
+          "reinspect",
+          "request_reinspection",
+          "completed",
+          null
+        ],
+        [
+          "report",
+          "build_report",
+          "completed",
+          null
+        ]
+      ],
+      "analyses": [
+        {
+          "asset_id": "asset_red",
+          "analyzer": "scripted_fixture_v1",
+          "source": "scripted",
+          "verdict": "suspected"
+        }
+      ],
+      "reviews": [
+        {
+          "decision": "confirmed",
+          "reviewer": "tailnet:<operator>"
+        }
+      ],
+      "orders": [
+        {
+          "order_id": "wo-e13e0669a6fa4348",
+          "state": "reinspection_requested",
+          "reinspection_run": "wr-cb578e1a064f435b84ab"
+        }
+      ],
+      "missions": [
+        {
+          "mission_id": "m-ff4ecdae7e95",
+          "node_id": "inspect",
+          "status": "completed",
+          "reservations": [
+            {
+              "state": "released",
+              "reason": "reconciled"
+            }
+          ]
+        }
+      ]
+    },
+    "wr-cb578e1a064f435b84ab": {
+      "run": {
+        "run_id": "wr-cb578e1a064f435b84ab",
+        "workflow_id": "asset_reinspection",
+        "version": 1,
+        "state": "completed",
+        "trigger_source": "internal:wo-e13e0669a6fa4348",
+        "started_by": "workflow:wr-f535056d6cca44f592ad",
+        "outcome": {
+          "counts": {
+            "completed": 4
+          },
+          "failed": [],
+          "result": "completed",
+          "unknown": []
+        }
+      },
+      "nodes": [
+        [
+          "inspect",
+          "submit_mission",
+          "completed",
+          null
+        ],
+        [
+          "await_inspection",
+          "await_mission",
+          "completed",
+          null
+        ],
+        [
+          "analyze",
+          "analyze_evidence",
+          "completed",
+          null
+        ],
+        [
+          "report",
+          "build_report",
+          "completed",
+          null
+        ]
+      ],
+      "analyses": [
+        {
+          "asset_id": "asset_red",
+          "analyzer": "scripted_fixture_v1",
+          "source": "scripted",
+          "verdict": "suspected"
+        }
+      ],
+      "reviews": [],
+      "orders": [],
+      "missions": [
+        {
+          "mission_id": "m-e4c9282360aa",
+          "node_id": "inspect",
+          "status": "completed",
+          "reservations": [
+            {
+              "state": "released",
+              "reason": "reconciled"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "missions": {
+    "m-ff4ecdae7e95": {
+      "status": "completed",
+      "binding": {
+        "project_id": "campus_s1",
+        "site_id": "site_s1",
+        "dock_id": "dock_s1",
+        "robot_id": "uav_01",
+        "execution_backend": "px4_sitl",
+        "catalog_sha256": "c5a6821e937cc34c199e0e40555b915a7961af325d188991ef86969c70f2cbeb"
+      },
+      "dispatch": {
+        "reservations": [
+          {
+            "schema_version": "0.1.0",
+            "reservation_id": "res-89c48b2f75484becbb18",
+            "activity_key": "mission:m-ff4ecdae7e95:v1",
+            "project_id": "campus_s1",
+            "mission_id": "m-ff4ecdae7e95",
+            "mission_version": 1,
+            "robot_id": "uav_01",
+            "dock_id": "dock_s1",
+            "resources": [
+              "dock_s1.charger",
+              "dock_s1.pad",
+              "uav_01.motion"
+            ],
+            "state": "released",
+            "expires_at": "2026-09-26T06:52:58.623890Z",
+            "reason": "reconciled",
+            "evidence": {
+              "dock": {
+                "boot_id": "boot-dock_s1-df543e9a0c",
+                "observed_at": "2026-09-26T06:39:13.482980+00:00",
+                "seq": 118
+              },
+              "robot_status_at": "2026-09-26T06:39:13.307536+00:00",
+              "terminal": {
+                "at": "2026-09-26T06:39:13.286449+00:00",
+                "kind": "mission_result"
+              }
+            },
+            "created_at": "2026-09-26T06:37:53.674897Z",
+            "updated_at": "2026-09-26T06:39:13.896123Z"
+          }
+        ],
+        "decisions": [
+          {
+            "decision_id": "dec-7b66b1a15e6b42f49def",
+            "version": 1,
+            "stage": "preview",
+            "verdict": "eligible",
+            "reasons": [],
+            "created_at": "2026-09-26T06:37:53.676680+00:00",
+            "snapshot_sha256": "fb8baa3bf1eef8ccb8a7a8dd3194cb95e56a77f136ab2024cf1a98a90e008ddd",
+            "policy_version": "p1-dispatch-v1"
+          },
+          {
+            "decision_id": "dec-55638e6965d44b3f838d",
+            "version": 1,
+            "stage": "claim",
+            "verdict": "blocked",
+            "reasons": [
+              "dock.lid_not_open"
+            ],
+            "created_at": "2026-09-26T06:37:58.663157+00:00",
+            "snapshot_sha256": "ed87dfae01b752f753c783f5d55b70045c687458881f9cf6909e4d36ecb2fdef",
+            "policy_version": "p1-dispatch-v1"
+          },
+          {
+            "decision_id": "dec-f27f4ba62c3d407c9b01",
+            "version": 1,
+            "stage": "prepare",
+            "verdict": "eligible",
+            "reasons": [],
+            "created_at": "2026-09-26T06:37:58.730137+00:00",
+            "snapshot_sha256": "bcfa33a1c4e3460424a0f8a86a531a8a389bec4f3ecf4276834457aba3e2a7d2",
+            "policy_version": "p1-dispatch-v1"
+          },
+          {
+            "decision_id": "dec-80f721743ed04bf6aa0e",
+            "version": 1,
+            "stage": "claim",
+            "verdict": "eligible",
+            "reasons": [],
+            "created_at": "2026-09-26T06:38:02.291718+00:00",
+            "snapshot_sha256": "4d289edbe58d0da4e7f6451d77480fd7b1a10bf3f527ad9ed5999af4448efee6",
+            "policy_version": "p1-dispatch-v1"
+          }
+        ],
+        "claims": [
+          {
+            "delivery_id": "9a01e9f3fa9641669fd6fa23b2a43a23",
+            "mission_id": "m-ff4ecdae7e95",
+            "mission_version": 1,
+            "state": "claimed",
+            "reason": "eligible",
+            "decision_id": "dec-80f721743ed04bf6aa0e",
+            "decided_at": "2026-09-26T06:38:02.291932+00:00"
+          }
+        ],
+        "cancel": null,
+        "dock_actions": [
+          {
+            "action_id": "act-6c7f4a2a7ee34ccc8163",
+            "dock_id": "dock_s1",
+            "kind": "open_lid",
+            "activity_key": "mission:m-ff4ecdae7e95:v1",
+            "state": "completed",
+            "requested_at": "2026-09-26T06:37:58.732604+00:00",
+            "acked_at": "2026-09-26T06:37:58.869374+00:00",
+            "ack_accepted": 1,
+            "ack_reason": "",
+            "result_at": "2026-09-26T06:38:01.901667+00:00"
+          },
+          {
+            "action_id": "act-f5049da0a00e4a19bea8",
+            "dock_id": "dock_s1",
+            "kind": "close_lid",
+            "activity_key": "mission:m-ff4ecdae7e95:v1",
+            "state": "completed",
+            "requested_at": "2026-09-26T06:39:13.897946+00:00",
+            "acked_at": "2026-09-26T06:39:14.506485+00:00",
+            "ack_accepted": 1,
+            "ack_reason": "",
+            "result_at": "2026-09-26T06:39:17.528900+00:00"
+          },
+          {
+            "action_id": "act-df3fc269b7ac4daf8fb8",
+            "dock_id": "dock_s1",
+            "kind": "start_charge",
+            "activity_key": "mission:m-ff4ecdae7e95:v1",
+            "state": "completed",
+            "requested_at": "2026-09-26T06:39:17.571171+00:00",
+            "acked_at": "2026-09-26T06:39:18.536403+00:00",
+            "ack_accepted": 1,
+            "ack_reason": "",
+            "result_at": "2026-09-26T06:39:26.586249+00:00"
+          }
+        ],
+        "events": [
+          {
+            "id": 20050,
+            "subject": "mission:m-ff4ecdae7e95:v1",
+            "kind": "reservation.reserved",
+            "actor": "service",
+            "body": {
+              "expires_at": "2026-09-26T06:52:53.674553+00:00",
+              "reservation_id": "res-89c48b2f75484becbb18",
+              "resources": [
+                "uav_01.motion",
+                "dock_s1.pad",
+                "dock_s1.charger"
+              ]
+            },
+            "created_at": "2026-09-26T06:37:53.674996+00:00"
+          },
+          {
+            "id": 20067,
+            "subject": "mission:m-ff4ecdae7e95:v1",
+            "kind": "reservation.occupied",
+            "actor": "service",
+            "body": {
+              "evidence": {
+                "decision_id": "dec-80f721743ed04bf6aa0e",
+                "delivery_id": "9a01e9f3fa9641669fd6fa23b2a43a23",
+                "snapshot_sha256": "4d289edbe58d0da4e7f6451d77480fd7b1a10bf3f527ad9ed5999af4448efee6"
+              },
+              "from": [
+                "reserved"
+              ],
+              "reason": "claimed",
+              "reservation_id": "res-89c48b2f75484becbb18"
+            },
+            "created_at": "2026-09-26T06:38:02.291901+00:00"
+          },
+          {
+            "id": 20068,
+            "subject": "mission:m-ff4ecdae7e95",
+            "kind": "delivery.claimed",
+            "actor": "service",
+            "body": {
+              "decision_id": "dec-80f721743ed04bf6aa0e",
+              "delivery_id": "9a01e9f3fa9641669fd6fa23b2a43a23",
+              "version": 1
+            },
+            "created_at": "2026-09-26T06:38:02.291967+00:00"
+          },
+          {
+            "id": 20103,
+            "subject": "mission:m-ff4ecdae7e95:v1",
+            "kind": "activity.departed",
+            "actor": "service",
+            "body": {
+              "robot_status_at": "2026-09-26T06:38:34.391846+00:00"
+            },
+            "created_at": "2026-09-26T06:38:34.993542+00:00"
+          },
+          {
+            "id": 20143,
+            "subject": "mission:m-ff4ecdae7e95:v1",
+            "kind": "reservation.released",
+            "actor": "service",
+            "body": {
+              "evidence": {
+                "dock": {
+                  "boot_id": "boot-dock_s1-df543e9a0c",
+                  "observed_at": "2026-09-26T06:39:13.482980+00:00",
+                  "seq": 118
+                },
+                "robot_status_at": "2026-09-26T06:39:13.307536+00:00",
+                "terminal": {
+                  "at": "2026-09-26T06:39:13.286449+00:00",
+                  "kind": "mission_result"
+                }
+              },
+              "from": [
+                "occupied",
+                "uncertain"
+              ],
+              "reason": "reconciled",
+              "reservation_id": "res-89c48b2f75484becbb18"
+            },
+            "created_at": "2026-09-26T06:39:13.896346+00:00"
+          }
+        ]
+      },
+      "request": {
+        "channel": "workflow",
+        "requested_by": "workflow:wr-f535056d6cca44f592ad"
+      },
+      "versions": [
+        {
+          "version": 1,
+          "status": "finished",
+          "origin": "workflow",
+          "approval": {
+            "approver": "tailnet:<operator>",
+            "approved_at": "2026-09-26T06:37:58.616508Z",
+            "expires_at": "2026-09-26T07:07:53.671039Z",
+            "signer_key_id": "ed25519:6563c47cfafa2a22"
+          },
+          "provenance": {
+            "schema_version": "0.1.0",
+            "format": "drone.run-provenance/v1",
+            "mission_id": "m-ff4ecdae7e95",
+            "mission_version": 1,
+            "status": "recorded",
+            "run": {
+              "schema_version": "0.1.0",
+              "mission_id": "m-ff4ecdae7e95",
+              "mission_version": 1,
+              "run_id": "service-7b5fc3e7cf1f4311b38b27085e4686f2",
+              "execution_backend": "px4_sitl",
+              "default_image_source": "sim_render",
+              "software_sha": "3bdbd503325d292efa298f28b6292dd2bf341cc0",
+              "dirty_sha256": null,
+              "scenario_sha256": "3d659e8f39aff4b9ada7a4cb6985de8a7bbe6c31b3492843a6ec74b31a8f49c5",
+              "platform_sha256": "e94cd77b567f95e48e905fc30c4fdda2b7f8ee48db0f3d2b4c7f3c83c73ce24a",
+              "registry_sha256": "da98ee412a2da248e6756d0c466f3d3a2f3f9d8fe14643ec67d729fb218be48f",
+              "planning": {
+                "schema_version": "0.1.0",
+                "source": "deterministic",
+                "provider_id": "workflow",
+                "model_id": "asset_check@v1",
+                "reported_model_id": "",
+                "prompt_version": "",
+                "prompt_sha256": "",
+                "input_sha256": "433ee4bf7b7b1b55a82e747e6851693e44de464abb486a12d05b99a1d3a2dcbe",
+                "recording_sha256": "",
+                "outcome": "planned"
+              },
+              "timestamp": "2026-09-26T06:37:53.673665Z"
+            },
+            "execution_backend": "px4_sitl",
+            "planning": {
+              "schema_version": "0.1.0",
+              "source": "deterministic",
+              "provider_id": "workflow",
+              "model_id": "asset_check@v1",
+              "reported_model_id": "",
+              "prompt_version": "",
+              "prompt_sha256": "",
+              "input_sha256": "433ee4bf7b7b1b55a82e747e6851693e44de464abb486a12d05b99a1d3a2dcbe",
+              "recording_sha256": "",
+              "outcome": "planned"
+            },
+            "imagery": [
+              {
+                "schema_version": "0.1.0",
+                "evidence_id": "capture:c065a62219ffbdb63026f0d8c7f31373c5fd8ab48d76be25132d759d6376a72f",
+                "media_sha256": "083767c34c783dcc23815e468842ae5d895196fa12c01539617333bcc89e7ae6",
+                "source": "sim_render",
+                "run_id": "service-7b5fc3e7cf1f4311b38b27085e4686f2"
+              }
+            ],
+            "analysis": [
+              {
+                "schema_version": "0.1.0",
+                "attempt_id": "an-f3ea64b127eb4342885a",
+                "evidence_id": "capture:c065a62219ffbdb63026f0d8c7f31373c5fd8ab48d76be25132d759d6376a72f",
+                "use": {
+                  "schema_version": "0.1.0",
+                  "source": "scripted",
+                  "provider_id": "workflow-analysis",
+                  "model_id": "scripted_fixture_v1",
+                  "reported_model_id": "",
+                  "prompt_version": "scripted",
+                  "prompt_sha256": "",
+                  "input_sha256": "083767c34c783dcc23815e468842ae5d895196fa12c01539617333bcc89e7ae6",
+                  "recording_sha256": "f237d5fe51128426399483575021c0c9cd06e2c193395b3ace8d00273218a2e3",
+                  "outcome": "suspected"
+                },
+                "timestamp": "2026-09-26T06:39:14.463812Z"
+              }
+            ],
+            "analysis_sources": [
+              "scripted"
+            ],
+            "sha256": "29643510f0548b2e3d026594fe4f2ea5508548475bbb47cc91f08e50c2836064"
+          }
+        }
+      ],
+      "report": {
+        "all_targets_completed": true,
+        "facts": [],
+        "generated_at": "2026-09-26T06:39:14.490826Z",
+        "mission_id": "m-ff4ecdae7e95",
+        "provenance": [
+          {
+            "analysis": [
+              {
+                "attempt_id": "an-f3ea64b127eb4342885a",
+                "evidence_id": "capture:c065a62219ffbdb63026f0d8c7f31373c5fd8ab48d76be25132d759d6376a72f",
+                "schema_version": "0.1.0",
+                "timestamp": "2026-09-26T06:39:14.463812Z",
+                "use": {
+                  "input_sha256": "083767c34c783dcc23815e468842ae5d895196fa12c01539617333bcc89e7ae6",
+                  "model_id": "scripted_fixture_v1",
+                  "outcome": "suspected",
+                  "prompt_sha256": "",
+                  "prompt_version": "scripted",
+                  "provider_id": "workflow-analysis",
+                  "recording_sha256": "f237d5fe51128426399483575021c0c9cd06e2c193395b3ace8d00273218a2e3",
+                  "reported_model_id": "",
+                  "schema_version": "0.1.0",
+                  "source": "scripted"
+                }
+              }
+            ],
+            "analysis_sources": [
+              "scripted"
+            ],
+            "execution_backend": "px4_sitl",
+            "format": "drone.run-provenance/v1",
+            "imagery": [
+              {
+                "evidence_id": "capture:c065a62219ffbdb63026f0d8c7f31373c5fd8ab48d76be25132d759d6376a72f",
+                "media_sha256": "083767c34c783dcc23815e468842ae5d895196fa12c01539617333bcc89e7ae6",
+                "run_id": "service-7b5fc3e7cf1f4311b38b27085e4686f2",
+                "schema_version": "0.1.0",
+                "source": "sim_render"
+              }
+            ],
+            "mission_id": "m-ff4ecdae7e95",
+            "mission_version": 1,
+            "planning": {
+              "input_sha256": "433ee4bf7b7b1b55a82e747e6851693e44de464abb486a12d05b99a1d3a2dcbe",
+              "model_id": "asset_check@v1",
+              "outcome": "planned",
+              "prompt_sha256": "",
+              "prompt_version": "",
+              "provider_id": "workflow",
+              "recording_sha256": "",
+              "reported_model_id": "",
+              "schema_version": "0.1.0",
+              "source": "deterministic"
+            },
+            "run": {
+              "default_image_source": "sim_render",
+              "dirty_sha256": null,
+              "execution_backend": "px4_sitl",
+              "mission_id": "m-ff4ecdae7e95",
+              "mission_version": 1,
+              "planning": {
+                "input_sha256": "433ee4bf7b7b1b55a82e747e6851693e44de464abb486a12d05b99a1d3a2dcbe",
+                "model_id": "asset_check@v1",
+                "outcome": "planned",
+                "prompt_sha256": "",
+                "prompt_version": "",
+                "provider_id": "workflow",
+                "recording_sha256": "",
+                "reported_model_id": "",
+                "schema_version": "0.1.0",
+                "source": "deterministic"
+              },
+              "platform_sha256": "e94cd77b567f95e48e905fc30c4fdda2b7f8ee48db0f3d2b4c7f3c83c73ce24a",
+              "registry_sha256": "da98ee412a2da248e6756d0c466f3d3a2f3f9d8fe14643ec67d729fb218be48f",
+              "run_id": "service-7b5fc3e7cf1f4311b38b27085e4686f2",
+              "scenario_sha256": "3d659e8f39aff4b9ada7a4cb6985de8a7bbe6c31b3492843a6ec74b31a8f49c5",
+              "schema_version": "0.1.0",
+              "software_sha": "3bdbd503325d292efa298f28b6292dd2bf341cc0",
+              "timestamp": "2026-09-26T06:37:53.673665Z"
+            },
+            "schema_version": "0.1.0",
+            "sha256": "29643510f0548b2e3d026594fe4f2ea5508548475bbb47cc91f08e50c2836064",
+            "status": "recorded"
+          }
+        ],
+        "rows": [
+          {
+            "column": "completed",
+            "effect_verdict": "verified",
+            "execution_status": "succeeded",
+            "mission_version": 1,
+            "reason": "",
+            "schema_version": "0.1.0",
+            "service_verdict": null,
+            "skill_id": "skill.flight.takeoff",
+            "step_id": "takeoff",
+            "target": null
+          },
+          {
+            "column": "completed",
+            "effect_verdict": "verified",
+            "execution_status": "succeeded",
+            "mission_version": 1,
+            "reason": "",
+            "schema_version": "0.1.0",
+            "service_verdict": "verified",
+            "skill_id": "skill.inspect.asset",
+            "step_id": "inspect_asset_red",
+            "target": "asset_red"
+          },
+          {
+            "column": "completed",
+            "effect_verdict": "verified",
+            "execution_status": "succeeded",
+            "mission_version": 1,
+            "reason": "",
+            "schema_version": "0.1.0",
+            "service_verdict": null,
+            "skill_id": "skill.flight.return_home",
+            "step_id": "return_home",
+            "target": null
+          },
+          {
+            "column": "completed",
+            "effect_verdict": "verified",
+            "execution_status": "succeeded",
+            "mission_version": 1,
+            "reason": "",
+            "schema_version": "0.1.0",
+            "service_verdict": null,
+            "skill_id": "skill.flight.land",
+            "step_id": "land",
+            "target": null
+          }
+        ],
+        "schema_version": "0.1.0",
+        "summary": {
+          "completed": 1,
+          "not_completed": 0,
+          "uncertain": 0
+        },
+        "targets": {
+          "asset_red": "completed"
+        },
+        "versions": [
+          1
+        ]
+      },
+      "cloud": {
+        "schema_version": "0.1.0",
+        "mission_id": "m-ff4ecdae7e95",
+        "flights": [
+          {
+            "version": 1,
+            "status": "finished",
+            "epoch": 24,
+            "started_at": "2026-09-26T06:38:02.945536+00:00",
+            "ended_at": "2026-09-26T06:39:18.015368+00:00",
+            "detail": null,
+            "manual_cleanup": false
+          }
+        ],
+        "judge": {
+          "classification": "completed",
+          "false_success_reports": 0,
+          "problems": [],
+          "flown_versions": [
+            1
+          ],
+          "truly_inspected": [
+            "asset_red"
+          ],
+          "report_targets": {
+            "asset_red": "completed"
+          },
+          "judged_at": "2026-09-26T06:39:19.868459+00:00",
+          "error": null,
+          "passed": true,
+          "replay_agrees": true,
+          "after_version": 1,
+          "case": "judge/m-ff4ecdae7e95/after-v1"
+        }
+      }
+    },
+    "m-e4c9282360aa": {
+      "status": "completed",
+      "binding": {
+        "project_id": "campus_s1",
+        "site_id": "site_s1",
+        "dock_id": "dock_s1",
+        "robot_id": "uav_01",
+        "execution_backend": "px4_sitl",
+        "catalog_sha256": "c5a6821e937cc34c199e0e40555b915a7961af325d188991ef86969c70f2cbeb"
+      },
+      "dispatch": {
+        "reservations": [
+          {
+            "schema_version": "0.1.0",
+            "reservation_id": "res-993312edd36b482cb514",
+            "activity_key": "mission:m-e4c9282360aa:v1",
+            "project_id": "campus_s1",
+            "mission_id": "m-e4c9282360aa",
+            "mission_version": 1,
+            "robot_id": "uav_01",
+            "dock_id": "dock_s1",
+            "resources": [
+              "dock_s1.charger",
+              "dock_s1.pad",
+              "uav_01.motion"
+            ],
+            "state": "released",
+            "expires_at": "2026-09-26T06:55:04.139739Z",
+            "reason": "reconciled",
+            "evidence": {
+              "dock": {
+                "boot_id": "boot-dock_s1-df543e9a0c",
+                "observed_at": "2026-09-26T06:41:18.270495+00:00",
+                "seq": 242
+              },
+              "robot_status_at": "2026-09-26T06:41:18.176790+00:00",
+              "terminal": {
+                "at": "2026-09-26T06:41:17.858608+00:00",
+                "kind": "mission_result"
+              }
+            },
+            "created_at": "2026-09-26T06:39:44.264763Z",
+            "updated_at": "2026-09-26T06:41:18.743122Z"
+          }
+        ],
+        "decisions": [
+          {
+            "decision_id": "dec-028b50ee602a4cd9b810",
+            "version": 1,
+            "stage": "preview",
+            "verdict": "eligible",
+            "reasons": [],
+            "created_at": "2026-09-26T06:39:44.266253+00:00",
+            "snapshot_sha256": "453dfa5e116589e0915c1311556803bc205be29176a59c4ac2dd58d37b771197",
+            "policy_version": "p1-dispatch-v1"
+          },
+          {
+            "decision_id": "dec-3c01fda3511748e29c19",
+            "version": 1,
+            "stage": "prepare",
+            "verdict": "eligible",
+            "reasons": [],
+            "created_at": "2026-09-26T06:40:04.398575+00:00",
+            "snapshot_sha256": "7cf24665d8d8d3178322ad9ab06c21d44700c575183e979ddfe2325a6bb32570",
+            "policy_version": "p1-dispatch-v1"
+          },
+          {
+            "decision_id": "dec-395faab469db4cf8b8b2",
+            "version": 1,
+            "stage": "claim",
+            "verdict": "blocked",
+            "reasons": [
+              "dock.lid_not_open"
+            ],
+            "created_at": "2026-09-26T06:40:04.596617+00:00",
+            "snapshot_sha256": "133b67ef262e896c58f08511a6bb586f949f8edab9a784ad635032e14af05f32",
+            "policy_version": "p1-dispatch-v1"
+          },
+          {
+            "decision_id": "dec-2fe7d611f44a42cab76a",
+            "version": 1,
+            "stage": "claim",
+            "verdict": "eligible",
+            "reasons": [],
+            "created_at": "2026-09-26T06:40:08.223570+00:00",
+            "snapshot_sha256": "caa48f942df276b1642c85d1c898ed88f660f14e3bee6d983d407204e01fd69f",
+            "policy_version": "p1-dispatch-v1"
+          }
+        ],
+        "claims": [
+          {
+            "delivery_id": "187f4328873740a58cb42e60e4f0f534",
+            "mission_id": "m-e4c9282360aa",
+            "mission_version": 1,
+            "state": "claimed",
+            "reason": "eligible",
+            "decision_id": "dec-2fe7d611f44a42cab76a",
+            "decided_at": "2026-09-26T06:40:08.223728+00:00"
+          }
+        ],
+        "cancel": null,
+        "dock_actions": [
+          {
+            "action_id": "act-27aff6b401e740799ea4",
+            "dock_id": "dock_s1",
+            "kind": "open_lid",
+            "activity_key": "mission:m-e4c9282360aa:v1",
+            "state": "completed",
+            "requested_at": "2026-09-26T06:40:04.399481+00:00",
+            "acked_at": "2026-09-26T06:40:04.807692+00:00",
+            "ack_accepted": 1,
+            "ack_reason": "",
+            "result_at": "2026-09-26T06:40:07.826261+00:00"
+          },
+          {
+            "action_id": "act-d2b0ce13e21e477895fd",
+            "dock_id": "dock_s1",
+            "kind": "close_lid",
+            "activity_key": "mission:m-e4c9282360aa:v1",
+            "state": "completed",
+            "requested_at": "2026-09-26T06:41:18.744667+00:00",
+            "acked_at": "2026-09-26T06:41:19.333869+00:00",
+            "ack_accepted": 1,
+            "ack_reason": "",
+            "result_at": "2026-09-26T06:41:22.392725+00:00"
+          },
+          {
+            "action_id": "act-c8277cd5023e4c3d84c8",
+            "dock_id": "dock_s1",
+            "kind": "start_charge",
+            "activity_key": "mission:m-e4c9282360aa:v1",
+            "state": "acked",
+            "requested_at": "2026-09-26T06:41:22.448646+00:00",
+            "acked_at": "2026-09-26T06:41:23.398450+00:00",
+            "ack_accepted": 1,
+            "ack_reason": "",
+            "result_at": null
+          }
+        ],
+        "events": [
+          {
+            "id": 20197,
+            "subject": "mission:m-e4c9282360aa:v1",
+            "kind": "reservation.reserved",
+            "actor": "service",
+            "body": {
+              "expires_at": "2026-09-26T06:54:44.264607+00:00",
+              "reservation_id": "res-993312edd36b482cb514",
+              "resources": [
+                "uav_01.motion",
+                "dock_s1.pad",
+                "dock_s1.charger"
+              ]
+            },
+            "created_at": "2026-09-26T06:39:44.264826+00:00"
+          },
+          {
+            "id": 20230,
+            "subject": "mission:m-e4c9282360aa:v1",
+            "kind": "reservation.occupied",
+            "actor": "service",
+            "body": {
+              "evidence": {
+                "decision_id": "dec-2fe7d611f44a42cab76a",
+                "delivery_id": "187f4328873740a58cb42e60e4f0f534",
+                "snapshot_sha256": "caa48f942df276b1642c85d1c898ed88f660f14e3bee6d983d407204e01fd69f"
+              },
+              "from": [
+                "reserved"
+              ],
+              "reason": "claimed",
+              "reservation_id": "res-993312edd36b482cb514"
+            },
+            "created_at": "2026-09-26T06:40:08.223686+00:00"
+          },
+          {
+            "id": 20231,
+            "subject": "mission:m-e4c9282360aa",
+            "kind": "delivery.claimed",
+            "actor": "service",
+            "body": {
+              "decision_id": "dec-2fe7d611f44a42cab76a",
+              "delivery_id": "187f4328873740a58cb42e60e4f0f534",
+              "version": 1
+            },
+            "created_at": "2026-09-26T06:40:08.223753+00:00"
+          },
+          {
+            "id": 20266,
+            "subject": "mission:m-e4c9282360aa:v1",
+            "kind": "activity.departed",
+            "actor": "service",
+            "body": {
+              "robot_status_at": "2026-09-26T06:40:39.356437+00:00"
+            },
+            "created_at": "2026-09-26T06:40:39.555578+00:00"
+          },
+          {
+            "id": 20306,
+            "subject": "mission:m-e4c9282360aa:v1",
+            "kind": "reservation.released",
+            "actor": "service",
+            "body": {
+              "evidence": {
+                "dock": {
+                  "boot_id": "boot-dock_s1-df543e9a0c",
+                  "observed_at": "2026-09-26T06:41:18.270495+00:00",
+                  "seq": 242
+                },
+                "robot_status_at": "2026-09-26T06:41:18.176790+00:00",
+                "terminal": {
+                  "at": "2026-09-26T06:41:17.858608+00:00",
+                  "kind": "mission_result"
+                }
+              },
+              "from": [
+                "occupied",
+                "uncertain"
+              ],
+              "reason": "reconciled",
+              "reservation_id": "res-993312edd36b482cb514"
+            },
+            "created_at": "2026-09-26T06:41:18.743195+00:00"
+          }
+        ]
+      },
+      "request": {
+        "channel": "workflow",
+        "requested_by": "workflow:wr-cb578e1a064f435b84ab"
+      },
+      "versions": [
+        {
+          "version": 1,
+          "status": "finished",
+          "origin": "workflow",
+          "approval": {
+            "approver": "tailnet:<operator>",
+            "approved_at": "2026-09-26T06:40:04.137088Z",
+            "expires_at": "2026-09-26T07:09:44.260936Z",
+            "signer_key_id": "ed25519:6563c47cfafa2a22"
+          },
+          "provenance": {
+            "schema_version": "0.1.0",
+            "format": "drone.run-provenance/v1",
+            "mission_id": "m-e4c9282360aa",
+            "mission_version": 1,
+            "status": "recorded",
+            "run": {
+              "schema_version": "0.1.0",
+              "mission_id": "m-e4c9282360aa",
+              "mission_version": 1,
+              "run_id": "service-7b5fc3e7cf1f4311b38b27085e4686f2",
+              "execution_backend": "px4_sitl",
+              "default_image_source": "sim_render",
+              "software_sha": "3bdbd503325d292efa298f28b6292dd2bf341cc0",
+              "dirty_sha256": null,
+              "scenario_sha256": "3d659e8f39aff4b9ada7a4cb6985de8a7bbe6c31b3492843a6ec74b31a8f49c5",
+              "platform_sha256": "e94cd77b567f95e48e905fc30c4fdda2b7f8ee48db0f3d2b4c7f3c83c73ce24a",
+              "registry_sha256": "da98ee412a2da248e6756d0c466f3d3a2f3f9d8fe14643ec67d729fb218be48f",
+              "planning": {
+                "schema_version": "0.1.0",
+                "source": "deterministic",
+                "provider_id": "workflow",
+                "model_id": "asset_reinspection@v1",
+                "reported_model_id": "",
+                "prompt_version": "",
+                "prompt_sha256": "",
+                "input_sha256": "5c054f67698a52a21ccd53a37769bf16a8c87519947cbf20ba75e9576e05cd24",
+                "recording_sha256": "",
+                "outcome": "planned"
+              },
+              "timestamp": "2026-09-26T06:39:44.263186Z"
+            },
+            "execution_backend": "px4_sitl",
+            "planning": {
+              "schema_version": "0.1.0",
+              "source": "deterministic",
+              "provider_id": "workflow",
+              "model_id": "asset_reinspection@v1",
+              "reported_model_id": "",
+              "prompt_version": "",
+              "prompt_sha256": "",
+              "input_sha256": "5c054f67698a52a21ccd53a37769bf16a8c87519947cbf20ba75e9576e05cd24",
+              "recording_sha256": "",
+              "outcome": "planned"
+            },
+            "imagery": [
+              {
+                "schema_version": "0.1.0",
+                "evidence_id": "capture:929d6b3e74514249bdca7795c498fc6b61ef70b694bc3b176f6fc05593799aa6",
+                "media_sha256": "62577321fb02aa9d9848824badd7ad2717e1a2b0bf1300f7ded6589eb0eda1cc",
+                "source": "sim_render",
+                "run_id": "service-7b5fc3e7cf1f4311b38b27085e4686f2"
+              }
+            ],
+            "analysis": [
+              {
+                "schema_version": "0.1.0",
+                "attempt_id": "an-fbc5b83520c94f06a04d",
+                "evidence_id": "capture:929d6b3e74514249bdca7795c498fc6b61ef70b694bc3b176f6fc05593799aa6",
+                "use": {
+                  "schema_version": "0.1.0",
+                  "source": "scripted",
+                  "provider_id": "workflow-analysis",
+                  "model_id": "scripted_fixture_v1",
+                  "reported_model_id": "",
+                  "prompt_version": "scripted",
+                  "prompt_sha256": "",
+                  "input_sha256": "62577321fb02aa9d9848824badd7ad2717e1a2b0bf1300f7ded6589eb0eda1cc",
+                  "recording_sha256": "f237d5fe51128426399483575021c0c9cd06e2c193395b3ace8d00273218a2e3",
+                  "outcome": "suspected"
+                },
+                "timestamp": "2026-09-26T06:41:19.291646Z"
+              }
+            ],
+            "analysis_sources": [
+              "scripted"
+            ],
+            "sha256": "e3605b824de0931de5bd63f169f675dc278b4a2f78c16bd88568ae5d097b36e6"
+          }
+        }
+      ],
+      "report": {
+        "all_targets_completed": true,
+        "facts": [],
+        "generated_at": "2026-09-26T06:41:19.320162Z",
+        "mission_id": "m-e4c9282360aa",
+        "provenance": [
+          {
+            "analysis": [
+              {
+                "attempt_id": "an-fbc5b83520c94f06a04d",
+                "evidence_id": "capture:929d6b3e74514249bdca7795c498fc6b61ef70b694bc3b176f6fc05593799aa6",
+                "schema_version": "0.1.0",
+                "timestamp": "2026-09-26T06:41:19.291646Z",
+                "use": {
+                  "input_sha256": "62577321fb02aa9d9848824badd7ad2717e1a2b0bf1300f7ded6589eb0eda1cc",
+                  "model_id": "scripted_fixture_v1",
+                  "outcome": "suspected",
+                  "prompt_sha256": "",
+                  "prompt_version": "scripted",
+                  "provider_id": "workflow-analysis",
+                  "recording_sha256": "f237d5fe51128426399483575021c0c9cd06e2c193395b3ace8d00273218a2e3",
+                  "reported_model_id": "",
+                  "schema_version": "0.1.0",
+                  "source": "scripted"
+                }
+              }
+            ],
+            "analysis_sources": [
+              "scripted"
+            ],
+            "execution_backend": "px4_sitl",
+            "format": "drone.run-provenance/v1",
+            "imagery": [
+              {
+                "evidence_id": "capture:929d6b3e74514249bdca7795c498fc6b61ef70b694bc3b176f6fc05593799aa6",
+                "media_sha256": "62577321fb02aa9d9848824badd7ad2717e1a2b0bf1300f7ded6589eb0eda1cc",
+                "run_id": "service-7b5fc3e7cf1f4311b38b27085e4686f2",
+                "schema_version": "0.1.0",
+                "source": "sim_render"
+              }
+            ],
+            "mission_id": "m-e4c9282360aa",
+            "mission_version": 1,
+            "planning": {
+              "input_sha256": "5c054f67698a52a21ccd53a37769bf16a8c87519947cbf20ba75e9576e05cd24",
+              "model_id": "asset_reinspection@v1",
+              "outcome": "planned",
+              "prompt_sha256": "",
+              "prompt_version": "",
+              "provider_id": "workflow",
+              "recording_sha256": "",
+              "reported_model_id": "",
+              "schema_version": "0.1.0",
+              "source": "deterministic"
+            },
+            "run": {
+              "default_image_source": "sim_render",
+              "dirty_sha256": null,
+              "execution_backend": "px4_sitl",
+              "mission_id": "m-e4c9282360aa",
+              "mission_version": 1,
+              "planning": {
+                "input_sha256": "5c054f67698a52a21ccd53a37769bf16a8c87519947cbf20ba75e9576e05cd24",
+                "model_id": "asset_reinspection@v1",
+                "outcome": "planned",
+                "prompt_sha256": "",
+                "prompt_version": "",
+                "provider_id": "workflow",
+                "recording_sha256": "",
+                "reported_model_id": "",
+                "schema_version": "0.1.0",
+                "source": "deterministic"
+              },
+              "platform_sha256": "e94cd77b567f95e48e905fc30c4fdda2b7f8ee48db0f3d2b4c7f3c83c73ce24a",
+              "registry_sha256": "da98ee412a2da248e6756d0c466f3d3a2f3f9d8fe14643ec67d729fb218be48f",
+              "run_id": "service-7b5fc3e7cf1f4311b38b27085e4686f2",
+              "scenario_sha256": "3d659e8f39aff4b9ada7a4cb6985de8a7bbe6c31b3492843a6ec74b31a8f49c5",
+              "schema_version": "0.1.0",
+              "software_sha": "3bdbd503325d292efa298f28b6292dd2bf341cc0",
+              "timestamp": "2026-09-26T06:39:44.263186Z"
+            },
+            "schema_version": "0.1.0",
+            "sha256": "e3605b824de0931de5bd63f169f675dc278b4a2f78c16bd88568ae5d097b36e6",
+            "status": "recorded"
+          }
+        ],
+        "rows": [
+          {
+            "column": "completed",
+            "effect_verdict": "verified",
+            "execution_status": "succeeded",
+            "mission_version": 1,
+            "reason": "",
+            "schema_version": "0.1.0",
+            "service_verdict": null,
+            "skill_id": "skill.flight.takeoff",
+            "step_id": "takeoff",
+            "target": null
+          },
+          {
+            "column": "completed",
+            "effect_verdict": "verified",
+            "execution_status": "succeeded",
+            "mission_version": 1,
+            "reason": "",
+            "schema_version": "0.1.0",
+            "service_verdict": "verified",
+            "skill_id": "skill.inspect.asset",
+            "step_id": "inspect_asset_red",
+            "target": "asset_red"
+          },
+          {
+            "column": "completed",
+            "effect_verdict": "verified",
+            "execution_status": "succeeded",
+            "mission_version": 1,
+            "reason": "",
+            "schema_version": "0.1.0",
+            "service_verdict": null,
+            "skill_id": "skill.flight.return_home",
+            "step_id": "return_home",
+            "target": null
+          },
+          {
+            "column": "completed",
+            "effect_verdict": "verified",
+            "execution_status": "succeeded",
+            "mission_version": 1,
+            "reason": "",
+            "schema_version": "0.1.0",
+            "service_verdict": null,
+            "skill_id": "skill.flight.land",
+            "step_id": "land",
+            "target": null
+          }
+        ],
+        "schema_version": "0.1.0",
+        "summary": {
+          "completed": 1,
+          "not_completed": 0,
+          "uncertain": 0
+        },
+        "targets": {
+          "asset_red": "completed"
+        },
+        "versions": [
+          1
+        ]
+      },
+      "cloud": {
+        "schema_version": "0.1.0",
+        "mission_id": "m-e4c9282360aa",
+        "flights": [
+          {
+            "version": 1,
+            "status": "finished",
+            "epoch": 25,
+            "started_at": "2026-09-26T06:40:08.836177+00:00",
+            "ended_at": "2026-09-26T06:41:22.517474+00:00",
+            "detail": null,
+            "manual_cleanup": false
+          }
+        ],
+        "judge": {
+          "classification": "completed",
+          "false_success_reports": 0,
+          "problems": [],
+          "flown_versions": [
+            1
+          ],
+          "truly_inspected": [
+            "asset_red"
+          ],
+          "report_targets": {
+            "asset_red": "completed"
+          },
+          "judged_at": "2026-09-26T06:41:24.577727+00:00",
+          "error": null,
+          "passed": true,
+          "replay_agrees": true,
+          "after_version": 1,
+          "case": "judge/m-e4c9282360aa/after-v1"
+        }
+      }
+    }
+  },
+  "sent": [
+    {
+      "t": 5.6,
+      "action": "approve",
+      "mission_id": "m-ff4ecdae7e95",
+      "version": 1
+    },
+    {
+      "t": 90.7,
+      "action": "review",
+      "node_id": "review",
+      "decision": "confirmed"
+    },
+    {
+      "t": 110.7,
+      "action": "repair",
+      "order_id": "wo-e13e0669a6fa4348"
+    },
+    {
+      "t": 131.1,
+      "action": "approve",
+      "mission_id": "m-e4c9282360aa",
+      "version": 1
+    }
+  ],
+  "errors": [],
+  "roles": [
+    "admin",
+    "approver",
+    "operator",
+    "reviewer"
+  ],
+  "catalog": {
+    "catalog_id": "p2_s1_v1",
+    "sha256": "01f2b9adaeda59e7c9e4dc92069371aef6d5e5cda783227b17f5ace57be74d63"
+  },
+  "root_run": "wr-f535056d6cca44f592ad",
+  "duration_s": 215.5
+}

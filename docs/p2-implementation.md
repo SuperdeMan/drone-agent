@@ -2,7 +2,7 @@
 
 [总任务表](operations-implementation.md) · [运营架构 §4](architecture/09-operations.md) · [存储设计](p2-storage-design.md) · [路线图](roadmap.md)
 
-**状态：2026-09-26 设计，实施中。** P1 已在 `b49701b` 关闭，项目身份、预约、领取闸门与任务级取消意图直接复用。P2 交付可重启的巡检—分析—人工复核—模拟工单流程，并联通维修反馈与复检请求；关单质量与真实分析器属于 P4。决策见 D057（语义）与 D058（存储，2026-09-26 已获批准）。
+**状态：2026-09-26 已完成（`3bdbd50`，软件 / SITL 范围），验收见 [P2 记录](p2-readiness.md)，实施记录见 §8。** P1 已在 `b49701b` 关闭，项目身份、预约、领取闸门与任务级取消意图直接复用。P2 交付可重启的巡检—分析—人工复核—模拟工单流程，并联通维修反馈与复检请求；关单质量与真实分析器属于 P4。决策见 D057（语义）与 D058（存储，2026-09-26 已获批准）。
 
 ## 1. 验收场景与范围
 
@@ -23,7 +23,7 @@ S0 用 P1 的三站逻辑世界（真实机载 uplink / guardian / executive + �
 | `fleet/main.py` | `--workflows <目录>`（需同时带 `--catalog`）；启动时迁移工作流扩展表（D058） |
 | `admission/models.py` | 请求入口枚举追加 `workflow`（服务侧，非 wire） |
 
-新增：`fleet/workflow_models.py`（WP-P2-01，已完成）、`fleet/workflow_store.py`、`fleet/workflow.py`、`fleet/analysis.py`、`fleet/work_orders.py`、`planner/workflow_draft.py`、`eval/p2_world.py`、`eval/judge_p2.py`、`configs/workflows/`、`configs/scenarios/p2_suite.yaml`、`scripts/remote_p2.py`、`sim/compose.p2.yaml`、`scripts/verify_p2_release.py`。
+新增：`fleet/workflow_models.py`、`fleet/workflow_store.py`、`fleet/workflow.py`、`fleet/analysis.py`、`planner/workflow_draft.py`、`eval/p2_world.py`、`eval/judge_p2.py`、`eval/p2_prepare.py`、`eval/workflow_adversarial.py`、`configs/workflows/`、`configs/scenarios/p2_suite.yaml`、`scripts/remote_p2.py`、`sim/compose.p2.yaml`、`scripts/verify_p2_release.py`。原计划的 `fleet/work_orders.py` 没有单独建立：P2 的工单只有创建、维修反馈与复检链接三步，放在 `workflow_store.py` 的业务记录与引擎中即可，完整生命周期留给 P4（见 §8）。
 
 ## 3. 语义要点（D057）
 
@@ -68,7 +68,7 @@ S0 用 P1 的三站逻辑世界（真实机载 uplink / guardian / executive + �
 | WP-P2-03 触发 | `fleet/workflow.py` | 同事件 100 次一个运行；重启不补飞；伪造事件拒绝 |
 | WP-P2-04 任务桥接 | `fleet/service.py`、`fleet/workflow.py` | 丢响应不产生第二任务；未知等待；逐次审批 |
 | WP-P2-05 取消 | `fleet/workflow.py` | 取消 / 派遣并发、ACK 丢失、重启、迟到成功、未知结果均无后继飞行；收尾未知不显示 cancelled |
-| WP-P2-06 业务活动 | `fleet/analysis.py`、`fleet/work_orders.py` | 分析来源标注；工单重试不重复；反馈不等于复检通过 |
+| WP-P2-06 业务活动 | `fleet/analysis.py`、`fleet/workflow_store.py`、`fleet/workflow.py` | 分析来源标注；工单重试不重复；反馈不等于复检通过 |
 | WP-P2-07 入口与草案 | `console/`、`planner/workflow_draft.py` | 等待 / 失败有原因；草案不可生效；注入不扩大范围、不得批准权 |
 | WP-P2-08 门禁 | `p2_suite.yaml`、`verify_p2_release.py`、`p2-readiness.md` | 下列矩阵全过；S1 链路 × 3 种子；假成功与重复派飞 0 |
 
@@ -103,3 +103,18 @@ S1（`scripts/remote_p2.py`，PX4 SITL + 逻辑机场）：`p2_s1_chain` × 7 / 
 `scripts/verify_p2_release.py` 判据：scope（相对 `b49701b` 的改动在 P2 路径内，机载未改则不需 M1 回归）、checks（云端全量）、adversarial（M2 语料 + 工作流草案语料，授权 / 可生效草案 0）、s0_matrix（当场运行 P2-F01–F15 × 3）、p1_regression（当场运行 P1 S0 矩阵）、s1、m2_regression（18/18）、desk（带工作流目录激活、迁移演练与实际迁移、页面 / 脚本 / 健康一致、工作流入口拒绝注入与控制帧）、desk_session（经任务台运行一条工作流到模拟工单）、historical（M3 / P0 / P1 记录不变）。缺证据为 `missing`。
 
 P3 接手物：运行 / 节点 / outbox 的持久边界与 fencing、触发去重与排班、任务桥接与取消代次、工单与复检链接。P2 完成不证明多机调度、VLM 识别、复检关单质量或机场硬件。
+
+## 8. 实施记录
+
+实现分四个提交：`ee63bb8`（WP-P2-01 与存储设计）、`8a1c228`（内核、触发、业务活动、草案与 S0）、`373e0a8`（任务台入口、S1 执行器、任务台激活与门禁）、`3bdbd50`（任务台工作流探针跟踪复检运行，见 [P2 记录](p2-readiness.md) 的负记录）。与上文方案的差异和实施中确定的细节：
+
+- **引擎挂载**：引擎挂在任务服务的运行循环上（`service.tick_workflows()`），每个服务进程一个 worker。每次 tick 先处理到期排班，再逐个活跃运行取租约并推进；租约只在后半程续约，避免每次 tick 都写库。返回值是需要刷新的任务 ID，交给原有的任务刷新路径。
+- **提交与取消的竞态**：`submit_workflow` 在任务服务的账本事务内调用 outbox 的领取守卫，核对 outbox 行仍由本 worker 领取、运行未进入取消状态且取消代次未变，然后才写请求、任务与绑定。取消在领取之后、提交之前提交时，不会产生任务（P2-F08）。
+- **取消状态不可被覆盖**：实现中发现普通推进可能把 `cancel_requested` 改回 `running`。现在 `set_run_state` 只允许取消状态转向 `cancelling` 或 `cancelled`，存储测试覆盖该约束。
+- **收尾动作**（D057 §10）：P1 的机场收尾遇到任何持有者都跳过，链式任务的软预约因此会让机场永远不充电，复检任务卡在 `energy.idle`。现在只有已领取或不确定的持有才阻止收尾；软预约持有者已请求开盖时不关盖。P1 S0 矩阵在门禁中当场回归。
+- **工单**：没有单独的 `work_orders.py`。工单行由 `create_work_order` 活动在 outbox 投递时按幂等键写入，与任务提交共用同一领取守卫；模板校验保证该活动只能以复核节点的 `confirmed` 为条件，载荷带复核 ID、复核人与证据，裁判的 `false_order` 再独立核对每张工单都有 reviewer 确认。维修反馈只把状态改为 `repair_reported`，复检请求以工单为内部触发身份启动复检运行（每张工单一个），并转为 `reinspection_requested`。P2 不关单。
+- **fencing 用例**：P2-F14 最初让过期 worker 重投 outbox，结果被任务服务的请求幂等键去重，没有触及 fencing。现在由过期 worker 直接用旧代次写节点转移，断言抛出 `Fenced`，并核对每个活动仍恰有一个任务。
+- **草案规划**：草案请求沿用 M2 规划的 `OPERATOR_REQUEST:` / `OPERATOR_SCOPE:` 消息格式，因此脚本回答的规划器与实调规划器走同一路径；实调时保存录制。编译产物总是 `active: false`，门禁检查它只使用项目内机器人并以 `build_report` 收尾。
+- **S1 执行器**：`remote_p2.py` 叠加 M2、P1、P2 三个 compose 文件，用编排身份像人一样审批、复核、反馈维修；每个交付的任务包飞一次，首飞之后每次飞行前换电（飞控断电重启）。取消与重启故障在飞行器空中时触发。
+- **任务台**：激活先在账本副本上依次做 P1 与 P2 迁移演练，再做真实迁移；成员列表加入 reviewer 角色。探针 `desk_probe.py workflow` 记录模板、排班、草案与帧拒绝，`--start` 时按页面方式跑完一条工作流。
+- **测试**：新增 72 个 Python 测试（模板 34、存储 7、引擎 11、S0 裁判 7、S1 布局裁判 2、草案 4、任务台 2、门禁 4、任务台探针 1）与 3 个任务台脚本的 node 测试；全量 1174 个测试。

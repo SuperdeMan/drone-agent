@@ -1,0 +1,293 @@
+{
+  "schema_version": "0.1.0",
+  "milestone": "P2",
+  "source_sha": "3bdbd503325d292efa298f28b6292dd2bf341cc0",
+  "records_sha": "3bdbd503325d292efa298f28b6292dd2bf341cc0",
+  "status": "passed",
+  "criteria": {
+    "scope": {
+      "status": "passed",
+      "m1_regression": "not_required_onboard_runtime_wire_and_policies_unchanged",
+      "base_sha": "b49701b6386ee7ea88dc05221879786f717d1947",
+      "changed": 80,
+      "outside_p2_scope": [],
+      "onboard_changed": []
+    },
+    "checks": {
+      "status": "passed",
+      "deployment_id": "20260926T044735Z-83b97ef1",
+      "tests": {
+        "tests": 1174,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "wire_checks": [
+        true,
+        true
+      ]
+    },
+    "adversarial": {
+      "status": "passed",
+      "missions": {
+        "status": "passed",
+        "deterministic": {
+          "cases": 42,
+          "passed": 42,
+          "authorized_packages": 0,
+          "per_category": {
+            "wrong_coordinates": 7,
+            "capability": 6,
+            "parameters": 8,
+            "order": 7,
+            "prompt_injection": 7,
+            "scope_expansion": 7
+          }
+        },
+        "nl_scripted": {
+          "cases": 32,
+          "passed": 32,
+          "authorized_packages": 0,
+          "per_category": {
+            "wrong_coordinates": 5,
+            "capability": 5,
+            "parameters": 5,
+            "order": 5,
+            "prompt_injection": 6,
+            "scope_expansion": 6
+          }
+        },
+        "nl_replay": {
+          "cases": 0,
+          "passed": 0,
+          "authorized_packages": 0,
+          "per_category": {
+            "wrong_coordinates": 0,
+            "capability": 0,
+            "parameters": 0,
+            "order": 0,
+            "prompt_injection": 0,
+            "scope_expansion": 0
+          },
+          "unrecorded": 32
+        }
+      },
+      "workflow_drafts": {
+        "cases": 12,
+        "passed": 12,
+        "escapes": 0,
+        "activatable_drafts": 0,
+        "activation_path": "none: drafts are returned and audited only"
+      }
+    },
+    "s0_matrix": {
+      "status": "passed",
+      "cases": 45,
+      "expected": 45,
+      "passed": 45,
+      "counts": {
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "post_cancel_successor": 0,
+        "false_success": 0,
+        "false_order": 0,
+        "project_escape": 0,
+        "lost_run": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "74b325b138fed47c326207924ad563ab87cb7ec92502a983d2f5391c1dc9b17e"
+    },
+    "p1_regression": {
+      "status": "passed",
+      "cases": 42,
+      "expected": 42,
+      "passed": 42,
+      "counts": {
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0,
+        "project_escape": 0,
+        "false_success": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "dca7cfe82368cde9a664586cd3e3d7d1eb47dc0a1dd0263a547284d33d9b646d"
+    },
+    "s1": {
+      "status": "passed",
+      "cases": 5,
+      "expected": 5,
+      "missing": [],
+      "problems": [],
+      "counts": {
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "post_cancel_successor": 0,
+        "false_success": 0,
+        "false_order": 0,
+        "project_escape": 0,
+        "lost_run": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "flights": 8
+    },
+    "m2_regression": {
+      "status": "passed",
+      "cases": 18,
+      "expected": 18,
+      "missing": [],
+      "problems": [],
+      "planner": [
+        "scripted"
+      ],
+      "false_success_reports": 0
+    },
+    "desk": {
+      "status": "passed",
+      "problems": [],
+      "catalogs": [
+        "p1_s1_v1",
+        "p2_s1_v1"
+      ],
+      "migrations": [
+        "current",
+        "current"
+      ],
+      "draft": {
+        "status": "planned",
+        "active": false,
+        "source": "live_model"
+      }
+    },
+    "desk_session": {
+      "status": "passed",
+      "problems": [],
+      "runs": 2,
+      "missions": 2,
+      "flights": 2
+    },
+    "historical": {
+      "status": "passed",
+      "problems": [],
+      "m3": {
+        "sha256": "b7c4a6fe95a9e5ee63b043b9a84843f54f1693a5e5ab00f9e43f26917e0d12eb",
+        "status": "not_passed",
+        "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+        "counts_as_candidate_validation": false
+      },
+      "p0": {
+        "sha256": "e361b3734e9ed5ba1774187382af3dbff96e1189a0e677eaa708ed86face4320",
+        "status": "passed",
+        "source_sha": "de597d0eb7430260285e0965dc07f7f904ab5e70",
+        "counts_as_candidate_validation": false
+      },
+      "p1": {
+        "sha256": "b9a091a415a606590ba34bcfe68c54b9a2a37c52c56d98adb1cb8e257bda67fb",
+        "status": "passed",
+        "source_sha": "b49701b6386ee7ea88dc05221879786f717d1947",
+        "counts_as_candidate_validation": false
+      }
+    }
+  },
+  "capabilities": [
+    {
+      "capability": "durable_workflows_v1",
+      "milestone": "P2",
+      "implemented": true,
+      "software_validation": "passed",
+      "source_sha": "3bdbd503325d292efa298f28b6292dd2bf341cc0",
+      "layers": {
+        "S0": {
+          "scenarios": 15,
+          "seeds": 3,
+          "logical_uavs": 3,
+          "physical_flight": false
+        },
+        "S1": {
+          "px4_sitl_aircraft": 1,
+          "logical_docks": 1
+        }
+      },
+      "analysis": "scripted_and_deterministic_only; recognition quality is P4",
+      "work_orders": "simulated; closing an order is P4",
+      "hardware_validation": "not_applicable"
+    },
+    {
+      "milestone": "P1",
+      "software_validation": "historical_passed",
+      "source_sha": "b49701b6386ee7ea88dc05221879786f717d1947",
+      "counts_as_candidate_validation": false
+    },
+    {
+      "milestone": "M3",
+      "status": "not_passed",
+      "reason": "JIL missing; not a P2 dependency"
+    },
+    {
+      "milestone": "H1",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "H2",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "H3",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "P3",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "P4",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "P5",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "X1",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "X2",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "X3",
+      "status": "planned",
+      "software_validation": "missing"
+    }
+  ],
+  "inputs": {
+    "deployment.json": "f3074473cd2111904b4313571b7767d3177867f3e195eda32783d9d95438bbf8",
+    "resident-desk-activation.json": "1dd66174224e62cd9637b61fa45ad78b7e82f250ad890ae8af2c4c9e2ca14a8c",
+    "desk/http-probe.json": "337b22dfffe1047734b9020cc0570d7247d1e97d7de0092e51f5cf69436500d1",
+    "desk/workflow-probe.json": "9a3b9b4904e6604b640e295326ac5e53ea74ebfd50c8b9c89c394f04347f6e00",
+    "desk/session.json": "644c50e2c7b60f704badd29840b7a13eb4fd4bc6740a76eba1d828cea2a79be8",
+    "s1/p2-20260926T045240Z-cdb7a745.json": "5d34d729a31188538c733e7e5b1f514f27a7912114c16ecf2b14c2ca3a747ae1",
+    "s1/p2-20260926T050420Z-0fa3e04d.json": "04633dcea42f7a973c8cef5b0d820fd7ddd3121b58235092d51cdb9b8e889095",
+    "e2e/m2-nominal.json": "219a362c92632a2aa1b81830fb45ce9943385d3b1e2d8022d18861e2e8eb9681",
+    "e2e/m2-outage.json": "6460a6bfc1183f90ba7f0ab56337a305b08128a4da675a6537b6f6ce77772945",
+    "e2e/m2-replan-7.json": "ae8dd4ea450f6f171cb4c30b0fdb55a2d7dd663d8c4916a4a942955dcee4f149",
+    "e2e/m2-replan-19.json": "9131b949180662848da17c69060e140272528074acff159806622803d96759ec",
+    "e2e/m2-replan-41.json": "422afdecda3f1bab08ce66dacdc2458678d51d9ab33255e0b68226044c74f3a1",
+    "e2e/m2-refused-scope.json": "636a1e890fde7647fb081c0413e6338590862c7a7f0e1148f8b07d0388afd476",
+    "desk/flights/m-e4c9282360aa-v1.json": "ac16642453133f1a2ba0cc3f0b49fc3fc67bc62c014a712657218e5851a7fd7c",
+    "desk/flights/m-ff4ecdae7e95-v1.json": "1d3115c9d7929383e645cee9820eabfba0dbdb3d451dfa890c2b71d42510b924"
+  }
+}

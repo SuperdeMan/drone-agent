@@ -8,9 +8,9 @@
 
 首场景是园区三处登记设备的周期巡检与外观异常复检。业务流程可跨天，每次飞行仍是有界 MissionSpec；模型只生成类型化草案和业务判断，控制与恢复由确定性运行时承担。先做多站多无人机任务协同，再复用其目录、所有权与预约扩展空地本体。
 
-### 当前实现与阅读边界（2026-09-25）
+### 当前实现与阅读边界（2026-09-26）
 
-原架构审阅基线为 `9223d74`；P0 验收版本为 `de597d0`，验收见 [P0 记录](../p0-readiness.md)；P1 验收版本为 `b49701b`，见 [P1 记录](../p1-readiness.md)。**M2 已完成单机仿真；M3-SITL 已通过，M3-JIL 待硬件；P0、P1 已完成（软件 / SITL 范围），P2–P5 尚未实现。**
+原架构审阅基线为 `9223d74`；P0 验收版本为 `de597d0`，验收见 [P0 记录](../p0-readiness.md)；P1 验收版本为 `b49701b`，见 [P1 记录](../p1-readiness.md)；P2 验收版本为 `3bdbd50`，见 [P2 记录](../p2-readiness.md)。**M2 已完成单机仿真；M3-SITL 已通过，M3-JIL 待硬件；P0、P1、P2 已完成（软件 / SITL 范围），P3–P5 尚未实现。**
 
 | 链路 | 当前落地 | 进一步阅读 |
 |---|---|---|
@@ -20,8 +20,10 @@
 | 局部自主（SITL） | ROS 2 Jazzy、深度局部地图与短时域规划、CBF、外部模式出口、能源可达性 / 恢复 v2、CLIP 候选事件、Zenoh | [M3 记录](../m3-readiness.md) |
 | 证据 | 确定性采集复核、可选 VLM 业务判断、三列报告、独立裁判和回放 | [评测](08-evaluation.md) |
 | 云端入口与目录 | 统一 M1/M2 飞行台；单机直通 Coordinator、SQLite 任务镜像 | [任务台](../tailnet-desk.md) |
+| 资源与派遣（P1） | 项目角色、站点 / 逻辑机场 / 机器人目录、可派遣判定、最小预约、领取闸门与对账释放 | [运营层 §11](09-operations.md) |
+| 持久工作流（P2） | 版本化白名单模板、人工 / 排班 / 事件触发、租约与 outbox、取消代次、脚本 / 确定性分析、复核、模拟工单与复检 | [运营层 §12](09-operations.md) |
 
-**待实现**：Site/Dock、持久业务工作流、项目角色、多机调度、发现 / 工单 / 复检；完整语义场景图；Jetson / 真机；地面与厂商平台。M3 事件检测是 CLIP 场景分类，不是通用缺陷识别或机载生成式 VLM。空域已有录制 UOM 后端，没有 live 报备能力；能耗估计限仿真。
+**待实现**：多机调度与时空预约、真实分析器与发现去重、工单关单与复检质量、真实机场；完整语义场景图；Jetson / 真机；地面与厂商平台。M3 事件检测是 CLIP 场景分类，不是通用缺陷识别或机载生成式 VLM。空域已有录制 UOM 后端，没有 live 报备能力；能耗估计限仿真。
 
 历史验收分别绑定 [M1 `eefe76e`](../m1-readiness.md)、[M2 `f362b9e`](../m2-readiness.md)、[M3-SITL `75382dc`](../m3-readiness.md)。M3 总门禁仍为 `not_passed`，H1 承接 JIL；归档结果不能转借为当前 HEAD 或 P 系列成绩。常驻入口的版本与实调范围见[任务台记录](../tailnet-desk-readiness.md)。
 
@@ -126,7 +128,10 @@ flowchart TB
 | [../roadmap.md](../roadmap.md) | P/H/X 里程碑、历史映射与退出标准 |
 | [../p0-readiness.md](../p0-readiness.md) | P0 当前验收、来源语义、能力清单与准确候选证据 |
 | [../operations-implementation.md](../operations-implementation.md) | P0–P5 / H / X 工作包、责任、依赖与验收 |
-| [../p1-implementation.md](../p1-implementation.md) | 下一产品里程碑：12 项工作包、单机场纵向链和故障矩阵 |
+| [../p1-implementation.md](../p1-implementation.md) | P1 的 12 项工作包、单机场纵向链、故障矩阵与实现落位 |
+| [../p1-readiness.md](../p1-readiness.md) | P1 验收版本、S0 / S1 与常驻任务台迁移证据 |
+| [../p2-implementation.md](../p2-implementation.md) | P2 持久工作流的语义、API、故障矩阵与实施记录 |
+| [../p2-readiness.md](../p2-readiness.md) | P2 验收版本、S0 / S1、常驻任务台工作流会话与门禁 |
 | [../reuse-from-embodied-agent.md](../reuse-from-embodied-agent.md) | 从 `embodied-agent` / `car-agent` 复用什么、怎么迁 |
 | [../research/](../research/) | 前沿调研与 GPT-6 Pro 评估摘要 |
 | [../m0-readiness.md](../m0-readiness.md) | M0 交付核对与实际验证证据 |

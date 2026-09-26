@@ -1,0 +1,11 @@
+{
+  "schema_version": "0.1.0",
+  "kind": "negative_record",
+  "counts_as_candidate_validation": false,
+  "candidate": "3bdbd503325d292efa298f28b6292dd2bf341cc0",
+  "date": "2026-09-26",
+  "what": "The first full gate run stopped with PermissionError while the S0 judge hashed the artifacts of p2_f03_crashes-7.",
+  "cause": "run_case cancels any UAV task still running after the scenario but does not await the cancellation before exporting and judging, so an in-process onboard journal can still hold its byte-range lock (*.jsonl.lock) when the judge reads every file of the case. Windows refuses to read locked bytes. The same teardown exists in the P1 world; in about 220 earlier S0 case runs it had not happened.",
+  "check": "After the gate process exited, the same case directory (outputs/p2-s0-3bdbd50/p2_f03_crashes-7) was judged again online and from the recordings: passed, as_expected, 4 runs, 4 missions, 4 flights, all nine counts 0, replay agrees. The crash hid no duplicate dispatch.",
+  "handling": "The gate was run again on the same candidate with fresh output directories; its own S0 and P1 runs are the counted results. Awaiting the cancelled UAV tasks before the export is a harness fix left for after the P2 closure, since it changes no system behaviour and a crash can never pass the gate."
+}
