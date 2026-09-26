@@ -356,10 +356,22 @@ class Dispatch:
                 self.store.transition(activity, ("uncertain",), "occupied", "ack_received")
 
     def chores(self) -> None:
-        """After the last activity of a dock ended, close the lid and start charging. / 机场最近活动结束后关盖并开始充电。"""
+        """After the last activity of a dock ended, close the lid and start charging.
+
+        Only a claimed or uncertain hold stops the chores: a soft reservation of a mission still waiting for its claim
+        needs the charge to become eligible, so it must not block charging, and once it asked for the lid to open the
+        lid stays open (P2 finding, D057).
+
+        机场最近活动结束后关盖并开始充电。只有已领取或不确定的持有会停止这些动作：仍在等待领取的任务的软预约需要充电后
+        才能可派遣，因此不能阻止充电；它一旦请求开盖，舱盖就保持打开（P2 发现，D057）。
+        """
         for dock_id in self.catalog.docks:
             dock = self.store.dock_status(dock_id)
-            if dock is None or self.store.holders([f"{dock_id}.pad"]):
+            if dock is None:
+                continue
+            holder = self.store.holders([f"{dock_id}.pad"]).get(f"{dock_id}.pad")
+            held = self.store.reservation(holder) if holder else None
+            if holder and (held is None or held.state is not ReservationState.RESERVED):
                 continue
             if abs((self.clock() - dock.report.observed_at).total_seconds()) > self.catalog.policy.freshness_s:
                 continue
@@ -370,7 +382,8 @@ class Dispatch:
             report = dock.report
             kind = None
             if report.lid in (LidState.OPEN, LidState.OPENING):
-                kind = "close_lid"
+                if held is None or self.store.action_for(held.activity_key, "open_lid") is None:
+                    kind = "close_lid"
             elif report.lid is LidState.CLOSED and report.aircraft is Presence.PRESENT and \
                     report.energy.state is EnergyPhase.IDLE:
                 kind = "start_charge"

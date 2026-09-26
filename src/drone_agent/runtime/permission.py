@@ -13,6 +13,8 @@ Operators pause, resume and cancel through `mission.operate`, which the executiv
 re-check; A2A callers are third-party and may only submit requests and read status and reports.
 Project roles (P1, D055) map to scopes inside one project; the trust cap still clips them, so a role
 never widens what an identity channel may do. Dock backends report status through `resource.report` only.
+P2 workflows (D057) add `workflow.*`: every role reads, operators run and draft, reviewers review, and only a bound
+`event:` backend raises events; no third-party, tool or anonymous caller holds any of them.
 
 console、A2A 与规划工具调用方共用的 scope 目录与唯一权限决策。
 
@@ -21,7 +23,8 @@ scope 形如 `<resource>.<action>`；父 scope 覆盖子 scope（`mission` 覆�
 guardian 经带租约的控制出口作用于飞行器。操作者通过 `mission.operate` 暂停、恢复与取消，
 executive 与 guardian 会再次复核；A2A 调用方是第三方，只能提交请求、读取状态与报告。
 项目角色（P1，D055）映射为单个项目内的 scope；信任上限仍会裁剪，角色永远不会放宽身份通道的能力。
-机场后端只能经 `resource.report` 报告状态。
+机场后端只能经 `resource.report` 报告状态。P2 工作流（D057）新增 `workflow.*`：所有角色可读，operator 可运行与起草，
+reviewer 可复核，只有已绑定的 `event:` 后端可触发事件；第三方、工具与匿名调用方都不持有其中任何一个。
 """
 
 from __future__ import annotations
@@ -44,6 +47,12 @@ PAYLOAD_RELEASE = "payload.release"
 RESOURCE_READ = "resource.read"
 RESOURCE_MAINTAIN = "resource.maintain"
 RESOURCE_REPORT = "resource.report"
+# P2 workflows (D057). / P2 工作流（D057）。
+WORKFLOW_READ = "workflow.read"
+WORKFLOW_RUN = "workflow.run"
+WORKFLOW_REVIEW = "workflow.review"
+WORKFLOW_DRAFT = "workflow.draft"
+WORKFLOW_EVENT = "workflow.event"
 
 ALL_SCOPES: frozenset[str] = frozenset(
     {
@@ -60,6 +69,11 @@ ALL_SCOPES: frozenset[str] = frozenset(
         RESOURCE_READ,
         RESOURCE_MAINTAIN,
         RESOURCE_REPORT,
+        WORKFLOW_READ,
+        WORKFLOW_RUN,
+        WORKFLOW_REVIEW,
+        WORKFLOW_DRAFT,
+        WORKFLOW_EVENT,
     }
 )
 
@@ -75,18 +89,20 @@ class TrustLevel(StrEnum):
     THIRD_PARTY = "third_party"  # external agent over A2A / 经 A2A 接入的外部 agent
     TOOL = "tool"  # planner tool or model-side caller / 规划工具或模型侧调用方
     ANONYMOUS = "anonymous"  # reachable but unidentified, e.g. a tagged tailnet device / 可达但无身份，如 tagged 设备
-    BACKEND = "backend"  # bound resource backend such as a dock simulator (P1) / 已绑定的资源后端，如机场模拟器（P1）
+    # Bound backend: a dock simulator (P1) or a workflow event source (P2). / 已绑定的后端：机场模拟器（P1）或工作流事件源（P2）。
+    BACKEND = "backend"
 
 
 # Hard upper bounds per trust level; grants outside the cap are ignored, never widened.
 # 每个信任级别的硬上限；超出上限的授予被忽略，永不放宽。
 TRUST_LEVEL_CAPS: dict[TrustLevel, frozenset[str]] = {
     TrustLevel.FIRST_PARTY: frozenset({MISSION_SUBMIT, MISSION_READ, MISSION_APPROVE, MISSION_OPERATE, CAMERA_READ,
-                                       RESOURCE_READ, RESOURCE_MAINTAIN}),
+                                       RESOURCE_READ, RESOURCE_MAINTAIN, WORKFLOW_READ, WORKFLOW_RUN, WORKFLOW_REVIEW,
+                                       WORKFLOW_DRAFT}),
     TrustLevel.THIRD_PARTY: frozenset({MISSION_SUBMIT, MISSION_READ}),
     TrustLevel.TOOL: frozenset({MISSION_READ}),
     TrustLevel.ANONYMOUS: frozenset({MISSION_READ, CAMERA_READ}),
-    TrustLevel.BACKEND: frozenset({RESOURCE_REPORT}),
+    TrustLevel.BACKEND: frozenset({RESOURCE_REPORT, WORKFLOW_EVENT}),
 }
 
 
@@ -99,17 +115,17 @@ class Role(StrEnum):
     VIEWER = "viewer"
     OPERATOR = "operator"
     APPROVER = "approver"
-    REVIEWER = "reviewer"  # business review arrives in P2/P4; read-only in P1 / 业务复核在 P2/P4，P1 只读
+    REVIEWER = "reviewer"  # confirms or dismisses business findings (P2) / 确认或驳回业务发现（P2）
     ADMIN = "admin"
 
 
-_READ = frozenset({MISSION_READ, RESOURCE_READ, CAMERA_READ})
+_READ = frozenset({MISSION_READ, RESOURCE_READ, CAMERA_READ, WORKFLOW_READ})
 # Scopes one role grants inside its project. / 单个角色在其项目内授予的 scope。
 ROLE_SCOPES: dict[Role, frozenset[str]] = {
     Role.VIEWER: _READ,
-    Role.OPERATOR: _READ | {MISSION_SUBMIT, MISSION_OPERATE},
+    Role.OPERATOR: _READ | {MISSION_SUBMIT, MISSION_OPERATE, WORKFLOW_RUN, WORKFLOW_DRAFT},
     Role.APPROVER: _READ | {MISSION_APPROVE},
-    Role.REVIEWER: _READ,
+    Role.REVIEWER: _READ | {WORKFLOW_REVIEW},
     Role.ADMIN: _READ | {RESOURCE_MAINTAIN},
 }
 

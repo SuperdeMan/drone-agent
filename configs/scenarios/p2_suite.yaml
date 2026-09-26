@@ -1,0 +1,97 @@
+# P2 restart, deduplication and cancellation matrix (WP-P2-08, D057). `s0` cases run in the S0 world
+# (eval/p2_world.py): the P1 world with the p2_campus_v1 workflow catalog loaded into the same formal mission service.
+# `s1` cases run in the cloud against PX4 SITL with the p2_s1_v1 catalog (scripts/remote_p2.py). Each case runs for
+# every seed; `expected` is what the independent judge (eval/judge_p2.py, with the P1 dispatch and flight checks and,
+# for S1, the M2 flight judge) requires on top of the invariants it always checks: at most one mission per logical
+# activity, nothing created, claimed or started after a cancel, no completed run without verified inspections, no
+# work order without a reviewer's confirmation, one run per trigger key, no project escape. `lease_s` shortens the
+# run lease only where a case waits for a replaced worker. S0 results never count as physical flights.
+#
+# P2 重启、去重与取消矩阵（WP-P2-08，D057）。`s0` 用例在 S0 世界（eval/p2_world.py）中运行：P1 世界，并把 p2_campus_v1
+# 工作流目录加载到同一正式任务服务。`s1` 用例在云端以 p2_s1_v1 目录对 PX4 SITL 运行（scripts/remote_p2.py）。每个用例跑
+# 全部种子；`expected` 是独立裁判（eval/judge_p2.py，另含 P1 派遣与飞行检查，S1 另加 M2 飞行裁判）在始终检查的不变量之外的
+# 要求：每个逻辑活动至多一个任务、取消后不新建 / 领取 / 开始任何东西、没有证实巡检的运行不算完成、没有复核人确认不建工单、
+# 每个触发键一个运行、不越出项目。`lease_s` 只在用例需等待替换 worker 时缩短运行租约。S0 结果从不计为物理飞行。
+format: p2.suite/v1
+seeds: [7, 19, 41]
+s0:
+  - id: p2_f01_round
+    fault: P2-F01
+    description: "Two markers in series on one robot, the red one suspected and confirmed: one work order; the second mission is submitted only after the first settled. / 同一机器人依次巡检两处标记，红色疑似并被确认：一张工单；第二个任务在第一个了结后才提交。"
+    expected: {flights: 2, runs: {completed: 1}, missions: 2, analyses: 2, reviews: 1, orders: 1}
+  - id: p2_f02_repair
+    fault: P2-F02
+    description: "Order, lost order response, repair feedback (repeated, then a second one refused) and a reinspection run with its own flight. / 工单、工单回执丢失、维修反馈（重复一次，再来一次不同的被拒）以及有自己飞行的复检运行。"
+    expected: {flights: 2, runs: {completed: 2}, missions: 2, analyses: 2, reviews: 1, orders: 1, order_states: [reinspection_requested], order_response_lost: true, repair_probe_refused: true}
+  - id: p2_f03_crashes
+    fault: P2-F03
+    description: "The process dies before the outbox commits, after it commits, after the mission was accepted and before the node completion; each run recovers with exactly one mission. / 进程分别死在 outbox 提交前、提交后、任务已受理后与节点完成入账前；每个运行恢复后恰好一个任务。"
+    lease_s: 3
+    expected: {flights: 4, runs: {completed: 4}, missions: 4, crash_windows: 4}
+  - id: p2_f04_duplicates
+    fault: P2-F04
+    description: "One alarm event sent 100 times and one manual start repeated three times each map to one run. / 同一告警事件发送 100 次、同一人工启动重复三次，各自只对应一个运行。"
+    expected: {flights: 1, runs: {completed: 1, cancelled: 1}, missions: 1, single_event_run: true}
+  - id: p2_f05_forged_events
+    fault: P2-F05
+    description: "Events from an unbound source, for another project, with extra or out-of-choice payload, of another type or trigger kind, and event calls by a person, a dock, an agent are all refused; nothing runs. / 未绑定来源、跨项目、多余或越界载荷、其他类型或触发类别的事件，以及人员、机场、agent 的事件调用全部被拒；没有运行。"
+    expected: {flights: 0, runs: {}, missions: 0, probes: true}
+  - id: p2_f06_schedule
+    fault: P2-F06
+    description: "A viewer cannot enable a schedule; an occurrence starts once, a restart inside the window does not start it again, an outage past the window only records missed occurrences, a disabled schedule starts nothing. / viewer 不能启用排班；一个发生时刻只启动一次，启动窗内重启不再启动，越过启动窗的停机只记录错过，停用的排班不启动。"
+    lease_s: 3
+    expected: {flights: 1, runs: {completed: 1}, missions: 1, schedule_missed_min: 4, probes: true}
+  - id: p2_f07_cancel_before_dispatch
+    fault: P2-F07
+    description: "Cancelled before the engine wrote the effect, and after it wrote but before it delivered: no mission. / 在引擎写入效果之前、以及写入之后投递之前取消：没有任务。"
+    expected: {flights: 0, runs: {cancelled: 2}, missions: 0}
+  - id: p2_f08_cancel_race
+    fault: P2-F08
+    description: "A cancel commits between the claim and the submission (no mission), and a cancel after the submission blocks the approval. / 取消在领取与提交之间提交（不建任务），以及提交后的取消阻止审批。"
+    expected: {flights: 0, runs: {cancelled: 2}, missions: 1, approvals_refused: 1}
+  - id: p2_f09_cancel_in_flight
+    fault: P2-F09
+    description: "Cancelled while the first mission flies: the cancel reaches the flight, the run is cancelled only after the landing was reconciled, the second marker is never submitted and nothing is analyzed. / 第一个任务飞行中取消：取消送达飞行，落地对账后运行才取消，第二处标记从不提交，也不做分析。"
+    expected: {flights: 1, runs: {cancelled: 1}, missions: 1, analyses: 0}
+  - id: p2_f10_cancel_receipts_lost
+    fault: P2-F10
+    description: "Cancelled in flight while the journal rows are lost, then the service restarts: the run stays cancelling without a new dispatch until the rows arrive. / 飞行中取消且账本行丢失，随后服务重启：运行保持取消中、不派新任务，直到账本行到达。"
+    lease_s: 3
+    expected: {flights: 1, runs: {cancelled: 1}, missions: 1, analyses: 0, cancelling_across_restart: true}
+  - id: p2_f11_late_success
+    fault: P2-F11
+    description: "The mission succeeds and settles while the engine is paused, then the run is cancelled: the late result is recorded and nothing follows it. / 引擎暂停期间任务成功并了结，随后运行被取消：迟到结果只记录，其后无任何动作。"
+    expected: {flights: 1, runs: {cancelled: 1}, missions: 1, analyses: 0, late_result: completed}
+  - id: p2_f12_evidence_wait
+    fault: P2-F12
+    description: "Image uploads are lost after the flight: the run waits for evidence without analyzing, and continues only once the service verified the late image. / 飞行后影像上传丢失：运行等待证据而不分析，服务复核迟到影像后才继续。"
+    expected: {flights: 1, runs: {completed: 1}, missions: 1, analyses: 1, evidence_wait: true}
+  - id: p2_f13_declined_branch
+    fault: P2-F13
+    description: "The approver declines the first mission: that branch fails, the second marker is still inspected, the run fails and nothing is reported completed for the declined marker. / 审批人驳回第一个任务：该分支失败，第二处标记仍被巡检，运行失败，被驳回标记不报告已完成。"
+    expected: {flights: 1, runs: {failed: 1}, missions: 2, mission_statuses: [completed, declined]}
+  - id: p2_f14_stale_worker
+    fault: P2-F14
+    description: "Worker A freezes after its claim, worker B takes the expired lease and delivers; A's resumed submission and write are refused; one mission. / worker A 领取后冻结，worker B 接管过期租约并投递；A 恢复后的提交与写入被拒；只有一个任务。"
+    lease_s: 3
+    expected: {flights: 1, runs: {completed: 1}, missions: 1, stale_worker_fenced: true}
+  - id: p2_f15_isolation
+    fault: P2-F15
+    description: "Cross-project reads, starts, cancels, reviews and schedules, a viewer's start, an operator's review, an agent's start and forged templates are refused; a second, different review decision is refused; a model draft stays an inactive draft, an escalating one fails, and neither can be started. / 跨项目读取、启动、取消、复核与排班，viewer 启动、operator 复核、agent 启动与伪造模板全部被拒；不同的第二个复核决定被拒；模型草案保持未生效，越权草案失败，二者都不能启动。"
+    expected: {flights: 2, runs: {completed: 2}, missions: 2, orders: 0, reviews: 1, probes: true, forged_workflows_refused: 5, drafts: {benign: planned, escalate: failed}}
+s1:
+  - id: p2_s1_chain
+    fault: P2-F02
+    description: "asset_check on PX4 SITL: inspection, scripted analysis, human review, simulated work order, repair feedback and a reinspection run with its own flight. / PX4 SITL 上的 asset_check：巡检、脚本分析、人工复核、模拟工单、维修反馈与有自己飞行的复检运行。"
+    seeds: [7, 19, 41]
+    expected: {runs: {completed: 2}, missions: 2, flights: 2, orders: 1, order_states: [reinspection_requested]}
+  - id: p2_s1_cancel_in_flight
+    fault: P2-F09
+    description: "campus_round cancelled while the red mission flies on PX4 SITL: the second marker is never submitted and the run is cancelled after the landing was reconciled. / PX4 SITL 上红色任务飞行中取消 campus_round：第二处标记从不提交，落地对账后运行取消。"
+    seeds: [7]
+    expected: {runs: {cancelled: 1}, missions: 1, flights: 1, analyses: 0}
+  - id: p2_s1_restart
+    fault: P2-F10
+    description: "The mission service restarts while the workflow's mission flies on PX4 SITL: the same run completes with one mission. / 工作流任务在 PX4 SITL 上飞行时任务服务重启：同一运行以一个任务完成。"
+    seeds: [7]
+    expected: {runs: {completed: 1}, missions: 1, flights: 1}

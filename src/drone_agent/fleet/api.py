@@ -6,14 +6,17 @@ trust level that identity has. The socket itself is the boundary: it lives in a 
 those callers. Permissions are decided here with the shared scope table (D033) and again inside the service, so an
 A2A identity can submit and read but never approve, decline or operate, whatever the gateway sends. With an
 operations catalog (P1, D055) the service also checks the caller's project role on every mission, resource and
-media call; project-scoped methods carry an explicit `project_id`, and a `dock:` identity can only report.
+media call; project-scoped methods carry an explicit `project_id`, and a `dock:` identity can only report. With a
+workflow catalog (P2, D057) `workflows.*` methods start, cancel and schedule runs, record reviews and repair
+feedback, and an `event:` identity bound in a template can only raise that template's events.
 
 本机任务服务 API：经私有 Unix 套接字每行一个 JSON 请求。调用方是控制台、A2A 网关与编排脚本；各自传入
 已认证的身份（`tailnet:<login>`、`local:<user>`、`a2a:<client>` 或 `harness:<run>`）及其信任级别。套接字
 本身就是边界：它位于只与这些调用方共享的私有目录中。权限在这里按共用 scope 表判定（D033），服务内部
 再判定一次，因此无论网关发送什么，A2A 身份都只能提交与读取，永远不能审批、驳回或操作。调用方还包括机场后端
 （`dock:<backend>`）。带运营目录时（P1，D055），服务还对每个任务、资源与媒体调用检查调用方的项目角色；按项目
-的方法显式携带 `project_id`，`dock:` 身份只能报告。
+的方法显式携带 `project_id`，`dock:` 身份只能报告。带工作流目录时（P2，D057），`workflows.*` 方法启动、取消与排班运行，
+记录复核与维修反馈；模板中绑定的 `event:` 身份只能触发该模板的事件。
 """
 
 from __future__ import annotations
@@ -39,6 +42,11 @@ from drone_agent.runtime.permission import (
     RESOURCE_READ,
     RESOURCE_REPORT,
     TRUST_LEVEL_CAPS,
+    WORKFLOW_DRAFT,
+    WORKFLOW_EVENT,
+    WORKFLOW_READ,
+    WORKFLOW_REVIEW,
+    WORKFLOW_RUN,
     Caller,
     TrustLevel,
     authorize,
@@ -73,11 +81,25 @@ METHODS: dict[str, tuple[str, frozenset[str]]] = {
     "docks.report": (RESOURCE_REPORT, frozenset({"report"})),
     "docks.actions": (RESOURCE_REPORT, frozenset({"dock_id"})),
     "docks.ack": (RESOURCE_REPORT, frozenset({"action_id", "accepted", "reason"})),
+    # P2 (D057): the engine checks the project role; `workflows.event` only for the template's bound `event:` source.
+    # P2（D057）：引擎检查项目角色；`workflows.event` 只给模板绑定的 `event:` 来源。
+    "workflows.list": (WORKFLOW_READ, frozenset({"project_id"})),
+    "workflows.get": (WORKFLOW_READ, frozenset({"project_id", "run_id"})),
+    "workflows.start": (WORKFLOW_RUN, frozenset({"project_id", "workflow_id", "request_id", "inputs"})),
+    "workflows.cancel": (WORKFLOW_RUN, frozenset({"project_id", "run_id", "request_id", "reason"})),
+    "workflows.schedule": (WORKFLOW_RUN, frozenset({"project_id", "workflow_id", "trigger_id", "action", "reason"})),
+    "workflows.review": (WORKFLOW_REVIEW, frozenset({"project_id", "run_id", "node_id", "decision", "request_id",
+                                                     "note"})),
+    "workflows.repair": (WORKFLOW_RUN, frozenset({"project_id", "order_id", "request_id", "note"})),
+    "workflows.draft": (WORKFLOW_DRAFT, frozenset({"project_id", "text"})),
+    "workflows.event": (WORKFLOW_EVENT, frozenset({"project_id", "workflow_id", "trigger_id", "event_type", "event_id",
+                                                   "payload"})),
 }
 CHANNELS = {"tailnet": RequestChannel.CONSOLE, "local": RequestChannel.CONSOLE, "a2a": RequestChannel.A2A,
             "harness": RequestChannel.HARNESS}
-# The only methods a dock backend may call. / 机场后端只能调用的方法。
-BACKEND_METHODS = frozenset({"docks.report", "docks.actions", "docks.ack"})
+# The only methods a backend may call, by the kind of backend. / 后端只能调用的方法，按后端种类区分。
+BACKEND_METHODS = frozenset({"docks.report", "docks.actions", "docks.ack", "workflows.event"})
+BACKEND_PREFIXES = {"docks.report": "dock", "docks.actions": "dock", "docks.ack": "dock", "workflows.event": "event"}
 # Third-party callers submit, read the summary of their own missions and nothing else.
 # 第三方调用方只能提交并读取自己任务的摘要，别无其他。
 THIRD_PARTY_METHODS = {"submit", "summary", "health", "audit"}
@@ -86,8 +108,9 @@ THIRD_PARTY_METHODS = {"submit", "summary", "health", "audit"}
 def caller(actor: str, trust: str) -> Caller:
     """The caller for an authenticated actor; the prefix decides the trust ceiling. / 由身份前缀决定信任上限。"""
     prefix = actor.split(":", 1)[0] if ":" in actor else ""
-    if prefix == "dock" and actor.split(":", 1)[1]:
-        # A dock backend is never a person, whatever trust it claims. / 机场后端永远不是人，无论它声明何种信任。
+    if prefix in ("dock", "event") and actor.split(":", 1)[1]:
+        # A dock backend or an event source is never a person, whatever trust it claims.
+        # 机场后端或事件源永远不是人，无论它声明何种信任。
         return Caller(actor, TrustLevel.BACKEND, TRUST_LEVEL_CAPS[TrustLevel.BACKEND])
     if prefix not in CHANNELS or not actor.split(":", 1)[1]:
         return Caller(actor or "anonymous", TrustLevel.ANONYMOUS, frozenset({MISSION_READ}))
@@ -121,6 +144,8 @@ async def dispatch(service: MissionService, request: dict) -> dict:
         return _error("auth.method_not_allowed", f"{method} is not available to external agents")
     if method != "health" and (who.trust_level is TrustLevel.BACKEND) != (method in BACKEND_METHODS):
         return _error("auth.method_not_allowed", f"{method} is not available to this identity")
+    if method in BACKEND_PREFIXES and who.identity.split(":", 1)[0] != BACKEND_PREFIXES[method]:
+        return _error("auth.method_not_allowed", f"{method} is not available to this kind of backend")
     try:
         if method == "summary" and who.trust_level is TrustLevel.THIRD_PARTY:
             mission = service.ledger.mission(params["mission_id"])
@@ -189,6 +214,8 @@ async def _call(service: MissionService, method: str, params: dict, who: Caller)
     if method == "docks.ack":
         return service.dock_ack(who.identity, str(params["action_id"]), params["accepted"] is True,
                                 str(params["reason"])[:300])
+    if method.startswith("workflows."):
+        return await _workflow_call(service, method, params, who)
     if method == "audit":
         if ISSUE_CODES.get(params["code"]) is not IssueLayer.AUTH:
             raise ServiceError("service.invalid_request", "only authentication issues are audited here")
@@ -205,7 +232,36 @@ async def _call(service: MissionService, method: str, params: dict, who: Caller)
              "execution_backend": service.source.execution_backend,
              "source_sha": os.environ.get("DRONE_SOURCE_SHA", "uncommitted"),
              "catalog": {"catalog_id": service.ops.catalog.catalog_id, "sha256": service.ops.catalog.sha256}
-             if service.ops is not None else None}
+             if service.ops is not None else None,
+             "workflows": {"catalog_id": service.workflows.catalog.catalog_id,
+                           "sha256": service.workflows.catalog.sha256}
+             if getattr(service, "workflows", None) is not None else None}
+
+
+async def _workflow_call(service: MissionService, method: str, params: dict, who: Caller):
+    engine = getattr(service, "workflows", None)
+    if engine is None:
+        raise ServiceError("service.invalid_request", "no workflow catalog is configured")
+    if method == "workflows.list":
+        return engine.list_view(who, params["project_id"])
+    if method == "workflows.get":
+        return engine.run_view(who, params["project_id"], params["run_id"])
+    if method == "workflows.start":
+        return engine.start(who, params["project_id"], params["workflow_id"], params["request_id"], params["inputs"])
+    if method == "workflows.cancel":
+        return engine.cancel(who, params["project_id"], params["run_id"], params["request_id"], params["reason"])
+    if method == "workflows.schedule":
+        return engine.set_schedule(who, params["project_id"], params["workflow_id"], params["trigger_id"],
+                                   params["action"], params["reason"])
+    if method == "workflows.review":
+        return engine.review(who, params["project_id"], params["run_id"], params["node_id"], params["decision"],
+                             params["request_id"], params["note"])
+    if method == "workflows.repair":
+        return engine.repair(who, params["project_id"], params["order_id"], params["request_id"], params["note"])
+    if method == "workflows.draft":
+        return await engine.draft(who, params["project_id"], params["text"])
+    return engine.event(who.identity, params["project_id"], params["workflow_id"], params["trigger_id"],
+                        params["event_type"], params["event_id"], params["payload"])
 
 
 async def serve_api(service: MissionService, path: Path):

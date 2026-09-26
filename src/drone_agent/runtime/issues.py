@@ -38,6 +38,7 @@ class IssueLayer(StrEnum):
     AUTH = "auth"
     SERVICE = "service"
     DISPATCH = "dispatch"  # P1 resources, reservations and the delivery claim (D055) / P1 资源、预约与交付领取（D055）
+    WORKFLOW = "workflow"  # P2 workflow triggers, runs and business records (D057) / P2 工作流触发、运行与业务记录（D057）
 
 
 class Severity(StrEnum):
@@ -156,6 +157,17 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "dispatch.release_pending": IssueLayer.DISPATCH,
     "dispatch.report_rejected": IssueLayer.DISPATCH,
     "dispatch.not_locked": IssueLayer.DISPATCH,
+    # P2 workflows (D057) / P2 工作流（D057）
+    "workflow.not_startable": IssueLayer.WORKFLOW,
+    "workflow.invalid_inputs": IssueLayer.WORKFLOW,
+    "workflow.not_cancellable": IssueLayer.WORKFLOW,
+    "workflow.not_waiting": IssueLayer.WORKFLOW,
+    "workflow.already_decided": IssueLayer.WORKFLOW,
+    "workflow.order_state": IssueLayer.WORKFLOW,
+    "workflow.event_refused": IssueLayer.WORKFLOW,
+    "workflow.schedule_invalid": IssueLayer.WORKFLOW,
+    "workflow.authority_lost": IssueLayer.WORKFLOW,
+    "workflow.invalid_draft": IssueLayer.WORKFLOW,
 }
 
 # Console actions a client may offer; anything else is dropped, never executed.

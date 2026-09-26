@@ -90,7 +90,6 @@ class NodeState(StrEnum):
     """One node's state; `running` means an effect is being delivered. / 单个节点的状态；`running` 表示效果投递中。"""
 
     PENDING = "pending"
-    READY = "ready"
     RUNNING = "running"
     WAITING = "waiting"
     COMPLETED = "completed"

@@ -22,6 +22,7 @@ class RequestChannel(StrEnum):
     A2A = "a2a"
     HARNESS = "harness"
     REPLAN = "replan"
+    WORKFLOW = "workflow"  # a P2 workflow activity; still approved per mission (D057) / P2 工作流活动；仍逐任务审批（D057）
 
 
 class MissionRequest(ContractModel):

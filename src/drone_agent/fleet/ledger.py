@@ -195,6 +195,15 @@ class BusinessLedger:
                     also(db)
             return mission_id, True
 
+    def request_by_key(self, requested_by: str, idempotency_key: str) -> str | None:
+        """The mission of a (requester, idempotency key), for reconciliation after a lost response.
+
+        （请求者，幂等键）对应的任务，用于响应丢失后的对账。
+        """
+        row = self._one("SELECT mission_id FROM requests WHERE requested_by=? AND idempotency_key=?",
+                        (requested_by, idempotency_key))
+        return row["mission_id"] if row else None
+
     def request(self, request_id: str) -> dict | None:
         row = self._one("SELECT * FROM requests WHERE request_id=?", (request_id,))
         return None if row is None else {**row, "body": _load(row["body"])}

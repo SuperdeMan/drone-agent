@@ -1,0 +1,17 @@
+# Harness memberships for the P2 S0 world (D057) on the operations catalog p1_campus_v1. Real operator logins never
+# live in the repository. The reviewer is a separate identity so that the review path proves the role, not the
+# operator's convenience; event sources are not members at all: they are bound per trigger in the workflow catalog.
+#
+# P2 S0 世界的编排成员资格（D057），对应运营目录 p1_campus_v1。真实操作者登录名从不进入仓库。复核人是单独的身份，
+# 使复核路径证明的是角色，而不是操作者的便利；事件源根本不是成员：它们在工作流目录中按触发器绑定。
+format: drone.project-members/v1
+schema_version: "0.1.0"
+members:
+  - {principal: "harness:p2-operator", project_id: campus_ops, roles: [operator, approver]}
+  - {principal: "harness:p2-reviewer", project_id: campus_ops, roles: [reviewer]}
+  - {principal: "harness:p2-viewer", project_id: campus_ops, roles: [viewer]}
+  - {principal: "harness:p2-admin", project_id: campus_ops, roles: [admin]}
+  - {principal: "harness:p2-harbor", project_id: harbor_ops, roles: [operator, approver, reviewer]}
+  - {principal: "harness:p2-judge", project_id: campus_ops, roles: [viewer]}
+  - {principal: "harness:p2-judge", project_id: harbor_ops, roles: [viewer]}
+  - {principal: "harness:p2-judge", project_id: legacy_m2, roles: [viewer]}

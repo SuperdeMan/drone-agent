@@ -58,6 +58,7 @@ class LinkFaults:
 
     drop_events: bool = False  # journal rows are lost on the way up / 账本行在上行途中丢失
     drop_status: bool = False  # status reports are lost / 状态报告丢失
+    drop_media: bool = False  # image uploads are lost, evidence metadata still arrives (P2) / 影像上传丢失，证据元数据仍到达（P2）
 
 
 class FaultyClient:
@@ -75,6 +76,11 @@ class FaultyClient:
         if self.faults.drop_status:
             return Receipt(False, "link_lost")
         return await self.inner.publish_status(status)
+
+    async def publish_media(self, media):
+        if self.faults.drop_media:
+            return Receipt(False, "link_lost")
+        return await self.inner.publish_media(media)
 
     def __getattr__(self, name):
         return getattr(self.inner, name)

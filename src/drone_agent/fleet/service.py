@@ -11,7 +11,9 @@ delivered only after the previous version finished and the robot reported itself
 With an operations catalog (P1, D055) every new mission is bound to a project, site, dock and robot in the same
 transaction as the mission row; each call checks the caller's project role; approval takes the activity's
 reservation; the robot's pull passes the claim gate; and reconciliation alone releases resources. Without a
-catalog the service behaves exactly as in M2.
+catalog the service behaves exactly as in M2. A P2 workflow activity submits through `submit_workflow`: a narrow draft
+built from the template, the same compilation, admission and soft hold, and one transaction for the whole mission,
+keyed by the activity so that a retry after a lost response finds the same mission (D057).
 
 任务服务：请求 → 规划 → 编译 / 准入 → 审批并签名 → 投递 → 入账 → 复核 → 报告。
 
@@ -22,7 +24,9 @@ catalog the service behaves exactly as in M2.
 结束、机器人报告已在地面之后才投递。
 
 带运营目录时（P1，D055），每个新任务与任务行在同一事务中绑定到项目、站点、机场与机器人；每次调用检查调用方的
-项目角色；审批获取活动预约；机器人拉取须经领取闸门；只有对账才能释放资源。不带目录时服务行为与 M2 完全相同。
+项目角色；审批获取活动预约；机器人拉取须经领取闸门；只有对账才能释放资源。不带目录时服务行为与 M2 完全相同。P2 工作流
+活动经 `submit_workflow` 提交：由模板生成的窄草案、相同的编译、准入与软预约，整个任务在一个事务中写入，并以活动为键，
+使响应丢失后的重试找到同一任务（D057）。
 """
 
 from __future__ import annotations
@@ -35,7 +39,7 @@ from pathlib import Path
 from drone_agent.admission.admission import AdmissionContext
 from drone_agent.admission.airspace import SimulatedAirspaceProvider
 from drone_agent.admission.compiler import FRAMEWORK, CompileContext
-from drone_agent.admission.models import MissionRequest
+from drone_agent.admission.models import MissionRequest, RequestChannel
 from drone_agent.admission.pipeline import evaluate
 from drone_agent.contracts import (
     ApprovalRecord,
@@ -46,6 +50,7 @@ from drone_agent.contracts import (
     MissionPackage,
     MissionSpec,
     OperatorRequest,
+    Provenance,
     StepOutcome,
     utcnow,
 )
@@ -73,6 +78,7 @@ from drone_agent.fleet.resources import Stage
 from drone_agent.fleet.transport import FleetHub
 from drone_agent.fleet.verifier import VLM_QUESTION, accept_fact, business_judgment, verify
 from drone_agent.mission.registry import Registry
+from drone_agent.planner.draft import draft_schema, draft_to_spec, validate_draft
 from drone_agent.planner.replan import (
     ApprovalPolicy,
     ReplanTrigger,
@@ -90,6 +96,7 @@ from drone_agent.runtime.permission import (
     RESOURCE_MAINTAIN,
     RESOURCE_READ,
     Caller,
+    TrustLevel,
 )
 from drone_agent.runtime.signing import SigningKey
 
@@ -146,6 +153,10 @@ class MissionService:
         # 重启后复核持久化输入，即使 uplink 已在重启前确认了每条上传。
         self.dirty: set[str] = {m["mission_id"] for m in ledger.missions(-1) if m["current_version"] > 0}
         self.status_changed = False
+        # P2 (D057): the workflow engine and its draft planner, attached by the process entry when a workflow
+        # catalog is loaded. / P2（D057）：工作流引擎及其草案规划器；加载了工作流目录时由进程入口挂上。
+        self.workflows = None
+        self.workflow_planner = None
         hub.listeners.append(self._ingested)
 
     # ── P1 bindings and project checks / P1 绑定与项目检查 ──
@@ -218,7 +229,7 @@ class MissionService:
 
         在同一次数据库写入中保存版本及其受信来源。
         """
-        planning = planning_use(self.planner, records.get("planner"))
+        planning = records.pop("planning", None) or planning_use(self.planner, records.get("planner"))
         if origin == "replan":
             spec = records.get("spec")
             planning = ModelUse(source="deterministic", provider_id="runtime", model_id="bounded_retry",
@@ -327,20 +338,32 @@ class MissionService:
         if outcome.status != "planned":
             return stop("refused" if outcome.status == "refused" else "planning_failed", outcome.issues,
                         planner=outcome)
-        spec = outcome.spec
+        self._admit(mission_id, request, outcome.spec, planner=outcome)
+
+    def _admit(self, mission_id: str, request: MissionRequest, spec: MissionSpec, *, planner=None,
+               planning: ModelUse | None = None) -> None:
+        """Assign, compile and admit a planned v1, then soft-hold the resources while a human decides.
+
+        分配、编译并准入已规划的 v1，然后在人工决定期间软预约资源。
+        """
+        robot_id = self._robot_of(mission_id)
         coordinator = self._coordinator(robot_id)
         robot, found = coordinator.assign(spec)
         if robot is None:
-            return stop("rejected", found, spec=spec, planner=outcome)
+            self._record_version(mission_id, 1, status="rejected", origin=request.channel.value, spec=spec,
+                                 planner=planner, planning=planning)
+            self.ledger.update_mission(mission_id, status="rejected", current_version=1)
+            self._issues(found, mission_id, request.request_id)
+            return
         result = self._evaluate(spec, robot, request)
         decision = {"blocked_at": result.blocked_at, "codes": result.codes,
                     "collaboration": coordinator.collaboration(spec)}
         package = result.compile.package if result.compile else None
         status = "awaiting_approval" if result.blocked_at is None else "rejected"
         self._record_version(mission_id, 1, status=status, origin=request.channel.value, spec=spec,
-                                   planner=outcome, compile=result.compile, admission=result.admission,
-                                   package=package, package_hash=package.package_hash if package else None,
-                                   decision=decision)
+                             planner=planner, planning=planning, compile=result.compile, admission=result.admission,
+                             package=package, package_hash=package.package_hash if package else None,
+                             decision=decision)
         self.ledger.update_mission(mission_id, status=status, robot_id=robot, current_version=1)
         self._issues(result.issues, mission_id, request.request_id)
         if status == "awaiting_approval" and self._binding(mission_id) is not None:
@@ -352,6 +375,68 @@ class MissionService:
                                                severity=Severity.WARNING, mission_id=mission_id),
                                          mission_id=mission_id)
             self.dispatch.preview(mission_id, 1)
+
+    def submit_workflow(self, *, run_id: str, key: str, project_id: str, robot_id: str, volume_id: str, asset_id: str,
+                        template: str, guard) -> dict | None:
+        """Submit one workflow activity deterministically; None when `guard` refuses inside the transaction (D057).
+
+        The template contributes a narrow single-asset draft; ids, window, budget and policy come from the site map as
+        for a planned request, and compilation, admission and the soft hold are the same. The request, mission,
+        binding, version and hold are written in one transaction whose first step is `guard` (the outbox claim is
+        still ours and no cancel committed since), so a cancel that committed first leaves nothing behind. The
+        activity key is the idempotency key: a retry after a lost response returns the first mission. The version
+        still needs a human approval; nothing here signs or queues a package.
+
+        确定性地提交一个工作流活动；`guard` 在事务内拒绝时返回 None（D057）。模板只提供一个窄的单资产草案；ID、时间窗、
+        预算与策略与规划请求一样来自站点地图，编译、准入与软预约相同。请求、任务、绑定、版本与预约在一个事务中写入，
+        事务的第一步是 `guard`（outbox 领取仍属于我方，且自那以后没有提交取消），因此先提交的取消不会留下任何东西。活动键
+        即幂等键：响应丢失后的重试返回第一次的任务。该版本仍需人工审批；这里不签名也不排队任何任务包。
+        """
+        if self.ops is None:
+            raise ServiceError("service.invalid_request", "no operations catalog is configured")
+        principal = f"workflow:{run_id}"
+        known = self.ledger.request_by_key(principal, key)
+        if known is not None:
+            return self._view(known)
+        catalog = self.ops.catalog
+        if catalog.project_of(robot_id) != project_id:
+            raise ServiceError("service.not_found", robot_id)
+        if catalog.robots[robot_id].execution_backend != self.source.execution_backend:
+            raise ServiceError("dispatch.backend_mismatch",
+                               f"{robot_id} runs {catalog.robots[robot_id].execution_backend}")
+        registry = self._registry(robot_id)
+        data = registry.data
+        draft = {"decision": "plan", "decline_reason": "", "goal": f"Inspect {asset_id}", "goal_type": "inspect",
+                 "approved_volume_id": volume_id,
+                 "tasks": [{"task_id": f"inspect_{asset_id}", "skill_id": "skill.inspect.asset", "asset_id": asset_id}],
+                 "notes": f"workflow activity {key}"}
+        errors = validate_draft(draft, draft_schema(list(data.get("volumes", {})), list(data["assets"]),
+                                                    data.get("mission_defaults", {}).get("planner_skills", [])))
+        if errors:
+            raise ServiceError("workflow.invalid_draft", "; ".join(errors)[:300])
+        now = self.clock()
+        request = MissionRequest(request_id="req-" + uuid.uuid4().hex[:16],
+                                 text=f"Workflow {template}: inspect {asset_id} in {volume_id}", requested_by=principal,
+                                 trust_level=TrustLevel.FIRST_PARTY, channel=RequestChannel.WORKFLOW,
+                                 approved_volume_id=volume_id, asset_ids=[asset_id], idempotency_key=key,
+                                 received_at=now)
+        planning = ModelUse(source="deterministic", provider_id="workflow", model_id=template,
+                            input_sha256=digest(draft), outcome="planned")
+        mission_id = "m-" + uuid.uuid4().hex[:12]
+        with self.ledger.transaction() as db:
+            if not guard(db):
+                return None
+            mission_id, created = self.ledger.record_request(
+                request, mission_id, also=self.ops.store.binding_writer(mission_id, project_id=project_id,
+                                                                        robot_id=robot_id))
+            if created:
+                spec = draft_to_spec(draft, request, registry, mission_id=mission_id, mission_version=1,
+                                     provenance=Provenance(model_id=f"workflow/{template}",
+                                                           prompt_version="workflow-template-v1",
+                                                           input_hash=planning.input_sha256, generated_at=now),
+                                     now=now)
+                self._admit(mission_id, request, spec, planning=planning)
+        return self._view(mission_id)
 
     def _evaluate(self, spec: MissionSpec, robot: str, request: MissionRequest):
         registry = self._registry(robot)
@@ -861,6 +946,8 @@ class MissionService:
                 self.dirty.update(m["mission_id"] for m in self.ledger.missions(200) if m["status"] == "approved")
             if self.dispatch is not None:
                 self.tick_operations()
+            if self.workflows is not None:
+                self.tick_workflows()
             for mission_id in sorted(self.dirty):
                 self.dirty.discard(mission_id)
                 try:
@@ -880,6 +967,13 @@ class MissionService:
             self.dirty.update(self.dispatch.tick())
         except Exception as error:  # keep serving; the problem is visible / 继续服务；问题可见
             self.ledger.record_issue(issue("service.degraded", f"dispatch: {type(error).__name__}: {error}"[:300]))
+
+    def tick_workflows(self) -> None:
+        """One P2 background pass: schedules and every active run. / 一次 P2 后台处理：排班与全部活动运行。"""
+        try:
+            self.dirty.update(self.workflows.tick())
+        except Exception as error:  # keep serving; the problem is visible / 继续服务；问题可见
+            self.ledger.record_issue(issue("service.degraded", f"workflows: {type(error).__name__}: {error}"[:300]))
 
     # ── views / 视图 ──
 

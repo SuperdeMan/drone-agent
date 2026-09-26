@@ -8,6 +8,8 @@ labelled answers. A missing key is reported, never replaced by a mock (D029).
 
 `--catalog` (P1, D055) loads an operations catalog and `--members` its trusted member list; the ledger is then
 migrated to schema v2 with a verified backup first (D056), and every new mission is bound to a project and robot.
+`--workflows` (P2, D057) adds a workflow catalog on top: the workflow tables are added with a verified backup first
+(D058) and the workflow engine runs in the background pass.
 
 任务服务进程：mTLS 车队端点、私有 API 套接字与后台刷新。
 
@@ -17,7 +19,8 @@ migrated to schema v2 with a verified backup first (D056), and every new mission
 `scripted`。缺少密钥如实报告，绝不以 mock 代替（D029）。
 
 `--catalog`（P1，D055）加载运营目录，`--members` 加载其受信成员列表；账本随后先做经校验的备份再迁移到 schema
-v2（D056），每个新任务都绑定到项目与机器人。
+v2（D056），每个新任务都绑定到项目与机器人。`--workflows`（P2，D057）再加载工作流目录：先做经校验的备份再加上工作流表
+（D058），工作流引擎在后台处理中运行。
 """
 
 from __future__ import annotations
@@ -119,6 +122,11 @@ async def main_async(args) -> None:
     operations = None
     if args.catalog is not None:
         operations = build_operations(args.root, ledger, args.catalog, args.members, backups=args.state / "backups")
+    workflows = None
+    if args.workflows is not None:
+        from drone_agent.fleet.workflow import build_workflows
+
+        workflows = build_workflows(args.root, ledger, args.workflows, operations, backups=args.state / "backups")
     service = MissionService(root=args.root, scene=args.scene, ledger=ledger, hub=hub,
                              signing_key=SigningKey.load(args.signing_key),
                              approval_policy=ApprovalPolicy.from_yaml(args.root / "configs/approval_policy.yaml"),
@@ -126,6 +134,15 @@ async def main_async(args) -> None:
                              provenance_context=source_context(args.root, args.scene, registry.sha256,
                                                                backend=args.execution_backend),
                              operations=operations)
+    if workflows is not None:
+        from drone_agent.fleet.workflow import WorkflowEngine
+        from drone_agent.planner.workflow_draft import WorkflowDraftPlanner
+
+        service.workflows = WorkflowEngine(service, workflows, root=args.root)
+        # Drafts share the mission planner's provider; live exchanges are recorded like plans (D029, D057 §9).
+        # 草案与任务规划器共用 provider；实调交互与规划一样被录制（D029，D057 §9）。
+        service.workflow_planner = WorkflowDraftPlanner.from_planner(
+            planner, recordings=args.state / "recordings" if label.startswith("live") else None)
     tls = args.tls
     credentials = {"cert_pem": (tls / "service.crt").read_bytes(), "key_pem": (tls / "service.key").read_bytes(),
                    "ca_pem": (tls / "ca.crt").read_bytes()}
@@ -145,7 +162,9 @@ async def main_async(args) -> None:
              "source_sha": os.environ.get("DRONE_SOURCE_SHA", "uncommitted"),
              "provenance_context": service.source.model_dump(mode="json"),
              "operations": {"catalog_id": operations.catalog.catalog_id, "catalog_sha256": operations.catalog.sha256,
-                            "migration": operations.migration} if operations is not None else None}
+                            "migration": operations.migration} if operations is not None else None,
+             "workflows": {"catalog_id": workflows.catalog.catalog_id, "catalog_sha256": workflows.catalog.sha256,
+                           "migration": workflows.migration} if workflows is not None else None}
     (args.state / "ready.json").write_bytes(canonical(ready))
     print(json.dumps(ready), flush=True)
     stop = asyncio.Event()
@@ -177,7 +196,10 @@ def main() -> None:
     parser.add_argument("--fixtures", type=Path, help="scripted planner fixture file (scripted mode)")
     parser.add_argument("--catalog", type=Path, help="P1 operations catalog (D055); migrates the ledger (D056)")
     parser.add_argument("--members", type=Path, help="trusted project member list for --catalog")
+    parser.add_argument("--workflows", type=Path, help="P2 workflow catalog (D057); needs --catalog; migrates (D058)")
     args = parser.parse_args()
+    if args.workflows is not None and args.catalog is None:
+        parser.error("--workflows needs --catalog")
     if args.planner == "scripted" and not args.fixtures:
         parser.error("--planner scripted requires --fixtures")
     asyncio.run(main_async(args))
