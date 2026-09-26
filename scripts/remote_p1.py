@@ -94,6 +94,9 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed) -> dict:
     case = base / f"{scenario['id']}-{seed}"
     for folder in FOLDERS:
         (case / folder).mkdir(parents=True)
+    # The dock backend runs without capabilities, so its log directory must be writable without DAC override; the
+    # workspace itself stays 0700. / 机场后端不带任何 capability，其日志目录须无需越权即可写；工作区本身仍为 0700。
+    os.chmod(case / "dock", 0o777)
     secrets = root / "secrets" / "m2"
     env = dict(os.environ, DRONE_SOURCE_SHA=sha, DRONE_M2_RUN=str(case), DRONE_M2_SECRETS=str(secrets),
                DRONE_M2_MODEL=str(root / "secrets" / "m2-model"), DRONE_M2_PLANNER="scripted",
