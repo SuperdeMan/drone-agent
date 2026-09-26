@@ -57,8 +57,10 @@ class DockSimulator:
 
     def __init__(self, dock_id: str, *, battery: Battery, presence: Callable[[], tuple[list[float], bool] | None],
                  seed: int = 0, pad_radius_m: float = 2.0, lid_time_s: float = 0.6, charge_rate: float = 0.5,
-                 cooling_s: float = 0.6):
+                 cooling_s: float = 0.6, pad: tuple[float, float] = (0.0, 0.0)):
         self.dock_id, self.battery, self.presence = dock_id, battery, presence
+        # Where the pad is in the frame the presence sensor reports (P3 S1: the Gazebo world). / 机位在传感器坐标中的位置。
+        self.pad = pad
         self.random = random.Random(f"{dock_id}:{seed}")
         self.pad_radius_m, self.lid_time_s, self.charge_rate, self.cooling_s = pad_radius_m, lid_time_s, charge_rate, cooling_s
         self.faults = DockFaults()
@@ -83,7 +85,8 @@ class DockSimulator:
         if seen is None:
             return "unknown"
         position, in_air = seen
-        on_pad = math.hypot(position[0], position[1]) <= self.pad_radius_m and position[2] < 0.3 and not in_air
+        on_pad = math.hypot(position[0] - self.pad[0], position[1] - self.pad[1]) <= self.pad_radius_m \
+            and position[2] < 0.3 and not in_air
         return "present" if on_pad else "absent"
 
     def energy(self) -> tuple[str, float | None]:
@@ -268,8 +271,11 @@ async def serve(args) -> None:
 
     battery = Battery(1.0)
     presence = TruthPresence(args.truth_glob, args.truth_root)
+    if args.pad:
+        presence.last = ([float(v) for v in args.pad.split(",")] + [0.0], False)
+    pad = tuple(float(v) for v in args.pad.split(",")) if args.pad else (0.0, 0.0)
     dock = DockSimulator(args.dock, battery=battery, presence=presence, seed=args.seed, lid_time_s=args.lid_time,
-                         charge_rate=args.charge_rate, cooling_s=args.cooling)
+                         charge_rate=args.charge_rate, cooling_s=args.cooling, pad=pad)
     client = ApiClient(args.api, actor=args.principal, trust="backend")
 
     async def call(method: str, **params) -> dict:
@@ -326,6 +332,7 @@ def main() -> None:
     parser.add_argument("--control", type=Path, help="harness-only fault switches (JSON), never a service input")
     parser.add_argument("--log", type=Path, help="append the dock's own truth log here")
     parser.add_argument("--period", type=float, default=1.0)
+    parser.add_argument("--pad", default=None, help="x,y of the pad in the truth frame (P3 S1); default the origin")
     parser.add_argument("--seed", type=int, default=None,
                         help="fixed for replays; by default every process start is a new boot session")
     parser.add_argument("--lid-time", type=float, default=3.0)

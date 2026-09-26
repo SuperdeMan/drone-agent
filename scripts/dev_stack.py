@@ -469,6 +469,10 @@ def main() -> None:
     p2_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
     p2_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
     p2_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
+    p3_parser = commands.add_parser("p3", help="run P3 S1 cases (two PX4 SITL aircraft under the scheduler) in the cloud")
+    p3_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
+    p3_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
+    p3_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
     m3_parser = commands.add_parser("m3", help="run M3-SITL scenarios (external mode, autonomy, recovery v2) in the cloud")
     m3_parser.add_argument("--scenario", default="ext_inspect", help="all, class:<name> or comma-separated ids")
     m3_parser.add_argument("--seeds", default="7,19,41")
@@ -548,7 +552,7 @@ def main() -> None:
                     },
                     timeout=21600,
                 )
-            elif args.command in ("p1", "p2"):
+            elif args.command in ("p1", "p2", "p3"):
                 result = ssh(
                     connection,
                     {

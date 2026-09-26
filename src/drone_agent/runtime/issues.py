@@ -39,6 +39,7 @@ class IssueLayer(StrEnum):
     SERVICE = "service"
     DISPATCH = "dispatch"  # P1 resources, reservations and the delivery claim (D055) / P1 资源、预约与交付领取（D055）
     WORKFLOW = "workflow"  # P2 workflow triggers, runs and business records (D057) / P2 工作流触发、运行与业务记录（D057）
+    SCHEDULING = "scheduling"  # P3 tasks, assignments and airspace holds (D059) / P3 任务、分配与空域持有（D059）
 
 
 class Severity(StrEnum):
@@ -157,6 +158,7 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "dispatch.release_pending": IssueLayer.DISPATCH,
     "dispatch.report_rejected": IssueLayer.DISPATCH,
     "dispatch.not_locked": IssueLayer.DISPATCH,
+    "dispatch.assignment_superseded": IssueLayer.DISPATCH,
     # P2 workflows (D057) / P2 工作流（D057）
     "workflow.not_startable": IssueLayer.WORKFLOW,
     "workflow.invalid_inputs": IssueLayer.WORKFLOW,
@@ -168,6 +170,12 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "workflow.schedule_invalid": IssueLayer.WORKFLOW,
     "workflow.authority_lost": IssueLayer.WORKFLOW,
     "workflow.invalid_draft": IssueLayer.WORKFLOW,
+    # P3 scheduling (D059) / P3 调度（D059）
+    "task.invalid_request": IssueLayer.SCHEDULING,
+    "task.candidate_outside_project": IssueLayer.SCHEDULING,
+    "task.not_cancellable": IssueLayer.SCHEDULING,
+    "task.rejected": IssueLayer.SCHEDULING,
+    "task.withdrawn": IssueLayer.SCHEDULING,
 }
 
 # Console actions a client may offer; anything else is dropped, never executed.

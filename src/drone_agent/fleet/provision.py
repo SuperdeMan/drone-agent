@@ -40,7 +40,12 @@ def _fresh(path: Path) -> bool:
     return cert.not_valid_after_utc - dt.datetime.now(dt.timezone.utc) > dt.timedelta(days=3)
 
 
-def provision(output: Path, robot_id: str = "uav_01") -> dict:
+def provision(output: Path, robot_id: str = "uav_01", also: tuple[str, ...] = ()) -> dict:
+    """Keys and certificates of one deployment; `also` adds a client certificate for each further robot in
+    `robot-tls-<id>/` (P3 two-aircraft cases, D061).
+
+    一个部署的密钥与证书；`also` 为每台其他机器人在 `robot-tls-<id>/` 中增加客户端证书（P3 双机用例，D061）。
+    """
     output.mkdir(parents=True, exist_ok=True)
     os.chmod(output, 0o700)
     signing = output / "approval-signing.key"
@@ -61,6 +66,8 @@ def provision(output: Path, robot_id: str = "uav_01") -> dict:
                         x509.load_pem_x509_certificate(ca_cert.read_bytes()))
     leaves = {"service-tls": ("service", lambda: pki.service_credential(ca)),
               "robot-tls": ("robot", lambda: pki.robot_credential(ca, robot_id))}
+    for other in also:
+        leaves[f"robot-tls-{other}"] = ("robot", lambda other=other: pki.robot_credential(ca, other))
     fingerprints = {"ca": ca.fingerprint}
     for folder, (name, issue) in leaves.items():
         cert = output / folder / f"{name}.crt"
@@ -70,16 +77,19 @@ def provision(output: Path, robot_id: str = "uav_01") -> dict:
             cert.write_bytes(credential.cert_pem)
             created.append(folder)
         (output / folder / "ca.crt").write_bytes(ca.cert_pem)
-        fingerprints[name] = pki.fingerprint(x509.load_pem_x509_certificate(cert.read_bytes()))
-    return {"signer_key_id": key.key_id, "fingerprints": fingerprints, "robot_id": robot_id, "created": created}
+        fingerprints[name if folder in ("service-tls", "robot-tls") else folder] = pki.fingerprint(
+            x509.load_pem_x509_certificate(cert.read_bytes()))
+    return {"signer_key_id": key.key_id, "fingerprints": fingerprints, "robot_id": robot_id, "also": list(also),
+            "created": created}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("/secrets"))
     parser.add_argument("--robot-id", default="uav_01")
+    parser.add_argument("--also-robot", action="append", default=[], help="another robot needing a client certificate")
     args = parser.parse_args()
-    print(json.dumps(provision(args.output, args.robot_id)))
+    print(json.dumps(provision(args.output, args.robot_id, tuple(args.also_robot))))
 
 
 if __name__ == "__main__":

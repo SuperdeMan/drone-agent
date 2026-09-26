@@ -1,0 +1,300 @@
+# P3 S1 two-aircraft cases (WP-P3-01/05, D059, D061). One `sitl-p3` container runs one headless Gazebo world with PX4
+# instance 0 (uav_01) and instance 1 (uav_02). Each aircraft has its own onboard stack: uplink (its own client
+# certificate), guardian (a fixed address on `sim_p3`, where its PX4 instance sends the API link on the default port),
+# executive (no network), inbox, mailbox, authority state and flight directory; uav_02's platform identity comes from a
+# mounted descriptor. Each has its own truth and camera relay (in the simulator's namespace, never mounted to onboard
+# processes) and its own logical dock backend (no network; API socket, truth read-only). A returned aircraft recharges
+# for about 76 s, so a task that waits for the first flight's cells goes to the other aircraft. The mission service loads
+# the p3_s1_v1 operations, workflow and scheduling catalogs; its ledger lives in the case directory. No host ports;
+# secrets are mounted read-only into the single container that needs each of them.
+#
+# P3 S1 双机用例（WP-P3-01/05，D059，D061）。一个 `sitl-p3` 容器运行一个无界面 Gazebo 世界，内含 PX4 实例 0（uav_01）与实例
+# 1（uav_02）。每架飞行器有自己的机载栈：uplink（自己的客户端证书）、guardian（`sim_p3` 上的固定地址，其 PX4 实例以默认端口把
+# API 链路发往此处）、executive（无网络）、inbox、mailbox、控制权状态与飞行目录；uav_02 的平台身份来自挂载的描述文件。每架
+# 各有真值与相机转接（位于仿真器命名空间，从不挂给机载进程）以及逻辑机场后端（无网络；API 套接字、真值只读）。返航的飞行器
+# 补能约 76 s，因此等待首个飞行单元的任务会交给另一架飞行器。任务服务加载 p3_s1_v1 的运营、工作流与调度目录；账本在用例目录
+# 内。不发布宿主端口；每个密钥只读挂载到唯一需要它的容器。
+name: drone-agent-cloud
+services:
+  sitl-p3:
+    image: ${DRONE_P3_SIM_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: ${DRONE_P3_SITL_CPUS:-2.5}
+    mem_limit: ${DRONE_P3_SITL_MEM:-3g}
+    memswap_limit: ${DRONE_P3_SITL_MEM:-3g}
+    pids_limit: 1024
+    environment:
+      PX4_SIM_SPEED_FACTOR: "1"
+      DRONE_P3_PARTNER_0: ${DRONE_P3_GUARDIAN_A_IP:?}
+      DRONE_P3_PARTNER_1: ${DRONE_P3_GUARDIAN_B_IP:?}
+    volumes:
+      - ${DRONE_P3_RUN:?}/ulog_a:/opt/PX4-Autopilot/build/px4_sitl_default/rootfs/0/log
+      - ${DRONE_P3_RUN:?}/ulog_b:/opt/PX4-Autopilot/build/px4_sitl_default/rootfs/1/log
+      - ${DRONE_P3_RUN:?}/sitl:/sitl-logs
+    networks:
+      sim_p3: {ipv4_address: "${DRONE_P3_SITL_IP:?}"}
+  collector-a:
+    image: ${DRONE_P3_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.3
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    network_mode: service:sitl-p3
+    environment:
+      PYTHONPATH: /usr/lib/python3/dist-packages
+      DRONE_TRUTH_MODEL: x500_0
+      DRONE_CAMERA_TOPIC: /world/default/model/x500_0/link/inspection_camera/sensor/cam_0/image
+    command: [/usr/bin/python3, /workspace/sim/collect.py]
+    volumes:
+      - ${DRONE_P3_RUN:?}/sensor_a:/sensor
+      - ${DRONE_P3_RUN:?}/truth_a:/truth
+  collector-b:
+    image: ${DRONE_P3_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.3
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    network_mode: service:sitl-p3
+    environment:
+      PYTHONPATH: /usr/lib/python3/dist-packages
+      DRONE_TRUTH_MODEL: x500_1
+      DRONE_CAMERA_TOPIC: /world/default/model/x500_1/link/inspection_camera/sensor/cam_0/image
+    command: [/usr/bin/python3, /workspace/sim/collect.py]
+    volumes:
+      - ${DRONE_P3_RUN:?}/sensor_b:/sensor
+      - ${DRONE_P3_RUN:?}/truth_b:/truth
+  mission-service:
+    image: ${DRONE_P3_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=32m"]
+    cpus: 0.6
+    mem_limit: 640m
+    memswap_limit: 640m
+    pids_limit: 128
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+      PYTHONDONTWRITEBYTECODE: "1"
+    command: [python3, -m, drone_agent.fleet.main, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
+              --planner, scripted, --fixtures, /input/planner-fixtures.json, --state, /state,
+              --tls, /tls, --signing-key, /secrets/approval-signing.key, --api, /run/mission/api.sock,
+              --listen, "0.0.0.0:8450", --execution-backend, px4_sitl,
+              --catalog, /workspace/configs/sites/p3_s1_v1.yaml,
+              --members, /workspace/configs/sites/p3_members_s1.yaml,
+              --workflows, /workspace/configs/workflows/p3_s1_v1.yaml,
+              --scheduling, /workspace/configs/scheduling/p3_s1_v1.yaml]
+    volumes:
+      - ${DRONE_P3_RUN:?}/input:/input:ro
+      - ${DRONE_P3_RUN:?}/service:/state
+      - ${DRONE_P3_RUN:?}/api:/run/mission
+      - ${DRONE_P3_SECRETS:?}/service-tls:/tls:ro
+      - ${DRONE_P3_SECRETS:?}/approval-signing.key:/secrets/approval-signing.key:ro
+    networks: [uplink]
+  dock-sim-a:
+    image: ${DRONE_P3_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:size=8m"]
+    cpus: 0.2
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 32
+    network_mode: none
+    environment: {PYTHONDONTWRITEBYTECODE: "1", PYTHONUNBUFFERED: "1"}
+    command: [python3, -m, drone_agent.eval.dock_simulator, --serve, --api, /run/mission/api.sock,
+              --principal, "dock:p3-s1-a", --dock, dock_s1a, --pad, "0,0", --truth-root, /truth,
+              --truth-glob, truth.jsonl, --control, /control/dock_a.json, --log, /dock/dock_a.jsonl, --period, "1.0",
+              --charge-rate, "0.005"]
+    volumes:
+      - ${DRONE_P3_RUN:?}/api:/run/mission:ro
+      - ${DRONE_P3_RUN:?}/truth_a:/truth:ro
+      - ${DRONE_P3_RUN:?}/control:/control:ro
+      - ${DRONE_P3_RUN:?}/dock:/dock
+  dock-sim-b:
+    image: ${DRONE_P3_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:size=8m"]
+    cpus: 0.2
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 32
+    network_mode: none
+    environment: {PYTHONDONTWRITEBYTECODE: "1", PYTHONUNBUFFERED: "1"}
+    command: [python3, -m, drone_agent.eval.dock_simulator, --serve, --api, /run/mission/api.sock,
+              --principal, "dock:p3-s1-b", --dock, dock_s1b, --pad, "12,0", --truth-root, /truth,
+              --truth-glob, truth.jsonl, --control, /control/dock_b.json, --log, /dock/dock_b.jsonl, --period, "1.0",
+              --charge-rate, "0.005"]
+    volumes:
+      - ${DRONE_P3_RUN:?}/api:/run/mission:ro
+      - ${DRONE_P3_RUN:?}/truth_b:/truth:ro
+      - ${DRONE_P3_RUN:?}/control:/control:ro
+      - ${DRONE_P3_RUN:?}/dock:/dock
+  uplink-a:
+    image: ${DRONE_P3_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=16m"]
+    cpus: 0.3
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    environment: {PYTHONDONTWRITEBYTECODE: "1"}
+    command: [python3, -m, drone_agent.runtime.uplink, --scene, /workspace/configs/scenarios/p3_s1_a_v1.yaml,
+              --robot-id, uav_01, --transport, grpc, --service, "mission-service:8450", --server-name, mission-service,
+              --tls, /tls, --trust, /trust/trust.json, --inbox, /inbox, --mailbox, /mailbox, --aircraft, /aircraft,
+              --state, /uplink]
+    volumes:
+      - ${DRONE_P3_RUN:?}/aircraft_a:/aircraft:ro
+      - ${DRONE_P3_RUN:?}/inbox_a:/inbox
+      - ${DRONE_P3_RUN:?}/mailbox_a:/mailbox
+      - ${DRONE_P3_RUN:?}/uplink_a:/uplink
+      - ${DRONE_P3_SECRETS:?}/robot-tls:/tls:ro
+      - ${DRONE_P3_SECRETS:?}/trust:/trust:ro
+    networks: [uplink]
+  uplink-b:
+    image: ${DRONE_P3_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=16m"]
+    cpus: 0.3
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    environment: {PYTHONDONTWRITEBYTECODE: "1"}
+    command: [python3, -m, drone_agent.runtime.uplink, --scene, /workspace/configs/scenarios/p3_s1_b_v1.yaml,
+              --robot-id, uav_02, --transport, grpc, --service, "mission-service:8450", --server-name, mission-service,
+              --tls, /tls, --trust, /trust/trust.json, --inbox, /inbox, --mailbox, /mailbox, --aircraft, /aircraft,
+              --state, /uplink]
+    volumes:
+      - ${DRONE_P3_RUN:?}/aircraft_b:/aircraft:ro
+      - ${DRONE_P3_RUN:?}/inbox_b:/inbox
+      - ${DRONE_P3_RUN:?}/mailbox_b:/mailbox
+      - ${DRONE_P3_RUN:?}/uplink_b:/uplink
+      - ${DRONE_P3_RUN:?}/platform-b.yaml:/workspace/configs/platforms/px4_sitl_multirotor.yaml:ro
+      - ${DRONE_P3_SECRETS:?}/robot-tls-uav_02:/tls:ro
+      - ${DRONE_P3_SECRETS:?}/trust:/trust:ro
+    networks: [uplink]
+  guardian-a:
+    image: ${DRONE_P3_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.6
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+    command: [python3, -m, drone_agent.runtime.launch, guardian, --simulation,
+              --scene, /workspace/configs/scenarios/p3_s1_a_v1.yaml, --trust, /trust/trust.json,
+              --robot-state, /robot/authority.json, --package, "/inbox/history/${DRONE_P3_PACKAGE_A:?}"]
+    volumes:
+      - ${DRONE_P3_RUN:?}/sensor_a:/sensor:ro
+      - ${DRONE_P3_RUN:?}/inbox_a:/inbox:ro
+      - ${DRONE_P3_FLIGHT_A:?}:/artifacts
+      - ${DRONE_P3_RUN:?}/ipc_a:/run/drone
+      - ${DRONE_P3_RUN:?}/robot_a:/robot
+      - ${DRONE_P3_SECRETS:?}/trust:/trust:ro
+    networks:
+      sim_p3: {ipv4_address: "${DRONE_P3_GUARDIAN_A_IP:?}"}
+  guardian-b:
+    image: ${DRONE_P3_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.6
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+    command: [python3, -m, drone_agent.runtime.launch, guardian, --simulation,
+              --scene, /workspace/configs/scenarios/p3_s1_b_v1.yaml, --trust, /trust/trust.json,
+              --robot-state, /robot/authority.json, --package, "/inbox/history/${DRONE_P3_PACKAGE_B:?}"]
+    volumes:
+      - ${DRONE_P3_RUN:?}/sensor_b:/sensor:ro
+      - ${DRONE_P3_RUN:?}/inbox_b:/inbox:ro
+      - ${DRONE_P3_FLIGHT_B:?}:/artifacts
+      - ${DRONE_P3_RUN:?}/ipc_b:/run/drone
+      - ${DRONE_P3_RUN:?}/robot_b:/robot
+      - ${DRONE_P3_RUN:?}/platform-b.yaml:/workspace/configs/platforms/px4_sitl_multirotor.yaml:ro
+      - ${DRONE_P3_SECRETS:?}/trust:/trust:ro
+    networks:
+      sim_p3: {ipv4_address: "${DRONE_P3_GUARDIAN_B_IP:?}"}
+  executive-a:
+    image: ${DRONE_P3_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.4
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 64
+    network_mode: none
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+    command: [python3, -m, drone_agent.runtime.launch, executive,
+              --scene, /workspace/configs/scenarios/p3_s1_a_v1.yaml, --trust, /trust/trust.json,
+              --package, "/inbox/history/${DRONE_P3_PACKAGE_A:?}", --epoch, "${DRONE_P3_EPOCH_A:?}",
+              --operator-mailbox, /mailbox/operator.json]
+    volumes:
+      - ${DRONE_P3_RUN:?}/inbox_a:/inbox:ro
+      - ${DRONE_P3_FLIGHT_A:?}:/artifacts
+      - ${DRONE_P3_RUN:?}/ipc_a:/run/drone
+      - ${DRONE_P3_RUN:?}/mailbox_a:/mailbox:ro
+      - ${DRONE_P3_SECRETS:?}/trust:/trust:ro
+  executive-b:
+    image: ${DRONE_P3_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    init: true
+    cpus: 0.4
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 64
+    network_mode: none
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+    command: [python3, -m, drone_agent.runtime.launch, executive,
+              --scene, /workspace/configs/scenarios/p3_s1_b_v1.yaml, --trust, /trust/trust.json,
+              --package, "/inbox/history/${DRONE_P3_PACKAGE_B:?}", --epoch, "${DRONE_P3_EPOCH_B:?}",
+              --operator-mailbox, /mailbox/operator.json]
+    volumes:
+      - ${DRONE_P3_RUN:?}/inbox_b:/inbox:ro
+      - ${DRONE_P3_FLIGHT_B:?}:/artifacts
+      - ${DRONE_P3_RUN:?}/ipc_b:/run/drone
+      - ${DRONE_P3_RUN:?}/mailbox_b:/mailbox:ro
+      - ${DRONE_P3_RUN:?}/platform-b.yaml:/workspace/configs/platforms/px4_sitl_multirotor.yaml:ro
+      - ${DRONE_P3_SECRETS:?}/trust:/trust:ro
+  judge:
+    image: ${DRONE_P3_GROUND_IMAGE:?}
+    pull_policy: never
+    cpus: 0.5
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 64
+    network_mode: none
+    command: [python3, -m, drone_agent.eval.judge_p3, /run, --layer, s1, --root, /workspace,
+              --output, /output/result.json]
+    volumes:
+      - ${DRONE_P3_RUN:?}:/run:ro
+      - ${DRONE_P3_RUN:?}/judge:/output
+networks:
+  sim_p3:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${DRONE_P3_SUBNET:?}
+  uplink:
+    internal: true

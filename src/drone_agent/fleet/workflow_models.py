@@ -29,7 +29,7 @@ from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
 
 import yaml
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, model_validator
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, model_serializer, model_validator
 
 from drone_agent.contracts.common import ContractModel
 from drone_agent.fleet.provenance import digest
@@ -126,6 +126,7 @@ class WaitReason(StrEnum):
     REVIEW = "review"
     REPAIR = "repair"
     DELIVERY = "delivery"
+    ASSIGNMENT = "assignment"  # a P3 task waits for the scheduler (D059) / P3 任务等待调度器（D059）
 
 
 def activity_key(run_id: str, node_id: str, occurrence: int = 1) -> str:
@@ -151,11 +152,47 @@ class InputRef(WorkflowModel):
 
 
 class SubmitMissionParams(WorkflowModel):
-    """One single-asset inspection mission for a fixed robot (09-operations §1). / 固定机器人的单资产巡检任务。"""
+    """One single-asset inspection: for a fixed robot (P2), or a P3 task the scheduler assigns among candidates.
 
-    robot_id: str = Field(pattern=ID)
+    With `robot_id` the node submits the mission itself (D057). Without it the node submits a task: `candidates` lists
+    the project robots it may go to (empty for every robot of the project) and `priority` orders the queue (D059).
+    The P3 fields are left out of the canonical form while unused, so every P2 template keeps its digest.
+
+    单资产巡检：固定机器人（P2），或由调度器在候选中分配的 P3 任务。带 `robot_id` 时节点自己提交任务（D057）。不带时节点
+    提交任务单：`candidates` 列出可去的本项目机器人（为空即本项目全部机器人），`priority` 决定排队顺序（D059）。P3 字段
+    未使用时不进入规范形式，因此每个 P2 模板的摘要保持不变。
+    """
+
+    robot_id: str | None = Field(default=None, pattern=ID)
     volume_id: str = Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")
     asset: str | InputRef = Field(description="registered asset id or run input / 登记资产 ID 或运行输入")
+    candidates: tuple[str, ...] = Field(default=(), max_length=50)
+    priority: int = Field(default=0, ge=0, le=9)
+
+    @model_validator(mode="after")
+    def _mode(self):
+        if self.robot_id is not None and (self.candidates or self.priority):
+            raise ValueError("a fixed robot takes neither candidates nor a priority")
+        if any(not re.fullmatch(ID, robot) for robot in self.candidates) or \
+                len(set(self.candidates)) != len(self.candidates):
+            raise ValueError("candidates are distinct robot ids")
+        return self
+
+    @model_serializer(mode="wrap")
+    def _canonical(self, handler):
+        data = handler(self)
+        if self.robot_id is None:
+            data.pop("robot_id", None)
+        if not self.candidates:
+            data.pop("candidates", None)
+        if not self.priority:
+            data.pop("priority", None)
+        return data
+
+    @property
+    def assigned(self) -> bool:
+        """Whether the scheduler chooses the robot (P3). / 是否由调度器选择机器人（P3）。"""
+        return self.robot_id is None
 
     def asset_pattern_ok(self) -> bool:
         return isinstance(self.asset, InputRef) or re.fullmatch(r"^[a-z][a-z0-9_]{0,63}$", self.asset) is not None
@@ -738,6 +775,11 @@ class WorkflowCatalog(WorkflowModel):
                 if not isinstance(node, SubmitMissionNode):
                     continue
                 params = node.params
+                assets = [params.asset] if isinstance(params.asset, str) else \
+                    list(workflow.inputs[params.asset.input].choices)
+                if params.assigned:
+                    self._check_assigned(workflow, node, operations, registries, assets)
+                    continue
                 robot = operations.robots.get(params.robot_id)
                 if robot is None or operations.project_of(params.robot_id) != workflow.project_id:
                     raise ValueError(f"{workflow.workflow_id}.{node.node_id} names a robot outside its project")
@@ -746,8 +788,6 @@ class WorkflowCatalog(WorkflowModel):
                     raise ValueError(f"{workflow.workflow_id}.{node.node_id} names an unregistered volume")
                 if INSPECTION_SKILL not in registry.get("mission_defaults", {}).get("planner_skills", []):
                     raise ValueError(f"{workflow.workflow_id}.{node.node_id}: the site does not offer inspections")
-                assets = [params.asset] if isinstance(params.asset, str) else \
-                    list(workflow.inputs[params.asset.input].choices)
                 for asset in assets:
                     entry = registry["assets"].get(asset)
                     if entry is None or entry.get("volume") != params.volume_id:
@@ -766,6 +806,37 @@ class WorkflowCatalog(WorkflowModel):
                                              f"{node.params.analyzer} has no band for every asset")
         return fixtures
 
+    @staticmethod
+    def _check_assigned(workflow: WorkflowSpec, node, operations, registries: dict, assets: list[str]) -> None:
+        """An assignment-mode node: candidates of its project, and every asset inspectable by at least one of them.
+
+        分配模式节点：候选属于其项目，且每个资产至少可由其中一台巡检。
+        """
+        robots = sorted(r for r in operations.robots if operations.project_of(r) == workflow.project_id)
+        candidates = list(node.params.candidates) or robots
+        if any(robot not in robots for robot in candidates):
+            raise ValueError(f"{workflow.workflow_id}.{node.node_id} names a candidate outside its project")
+        for asset in assets:
+            able = []
+            for robot in candidates:
+                registry = registries[operations.robots[robot].site_id].data
+                entry = registry.get("assets", {}).get(asset)
+                if entry is not None and entry.get("volume") == node.params.volume_id and \
+                        node.params.volume_id in registry.get("volumes", {}) and \
+                        INSPECTION_SKILL in registry.get("mission_defaults", {}).get("planner_skills", []):
+                    able.append(robot)
+            if not able:
+                raise ValueError(f"{workflow.workflow_id}.{node.node_id}: no candidate can inspect {asset} in "
+                                 f"{node.params.volume_id}")
+
+    def assigned_nodes(self) -> list[tuple[str, str]]:
+        """(workflow, node) of every assignment-mode submission; they need the P3 scheduler.
+
+        每个分配模式提交节点的（流程，节点）；它们需要 P3 调度器。
+        """
+        return [(w.workflow_id, n.node_id) for w in self.workflows for n in w.nodes
+                if isinstance(n, SubmitMissionNode) and n.params.assigned]
+
 
 def load_workflows(path: Path) -> WorkflowCatalog:
     return WorkflowCatalog.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
@@ -775,9 +846,23 @@ def load_workflows(path: Path) -> WorkflowCatalog:
 
 
 class MissionOutput(WorkflowModel):
-    """submit_mission: the one mission of this activity. / 本活动唯一的任务。"""
+    """submit_mission: the one mission of this activity, or the P3 task that carries it (D059).
 
-    mission_id: str
+    本活动唯一的任务，或承载它的 P3 任务单（D059）。
+    """
+
+    mission_id: str | None = None
+    task_id: str | None = None
+
+    @model_validator(mode="after")
+    def _one(self):
+        if (self.mission_id is None) == (self.task_id is None):
+            raise ValueError("a submission output names exactly one mission or one task")
+        return self
+
+    @model_serializer(mode="wrap")
+    def _canonical(self, handler):
+        return {key: value for key, value in handler(self).items() if value is not None}
 
 
 class InspectionOutput(WorkflowModel):

@@ -118,6 +118,11 @@ class Dispatch:
         self.ops, self.ledger, self.robots, self.clock, self.terminal = ops, ledger, robots, clock, terminal
         self.store, self.catalog = ops.store, ops.catalog
         self.touched: set[str] = set()
+        # P3 (D059), attached when a scheduling catalog is loaded: the airspace cells of every flight and a check that
+        # a delivery still belongs to its task's current assignment. None keeps the P1 / P2 behaviour.
+        # P3（D059），加载调度目录时挂上：每次飞行的空域单元，以及投递仍属于其任务当前分配的检查。None 保持 P1 / P2 行为。
+        self.airspace = None
+        self.assignment_problem: Callable[[str], str | None] | None = None
 
     # ── judgments / 判定 ──
 
@@ -130,7 +135,30 @@ class Dispatch:
                         robot_status=self.robots.status(robot_id),
                         dock=self.store.dock_status(dock_id) if dock_id else None,
                         holders=self.store.holders(self.catalog.resources(robot_id)) if dock_id else {},
-                        activity=activity, lid_confirmed=bool(opened and opened["state"] == "completed"))
+                        activity=activity, lid_confirmed=bool(opened and opened["state"] == "completed"),
+                        extra=self.airspace_reasons(activity, stage))
+
+    def airspace_reasons(self, activity: str | None, stage: Stage) -> tuple[str, ...]:
+        """The P3 airspace codes of an activity's recorded footprint: cells held by others, cells this activity must
+        hold at the claim, and cells inside a silent robot's envelope (D059).
+
+        活动已记录航迹覆盖的 P3 空域原因：被他人持有的单元、领取时本活动必须持有的单元，以及落入失联机器人包络的单元（D059）。
+        """
+        if self.airspace is None or activity is None:
+            return ()
+        fp = self.airspace.footprint_of(activity)
+        if fp is None:
+            return ()
+        reasons = []
+        held = self.airspace.held(fp.cells)
+        if any(holder != activity for holder in held.values()):
+            reasons.append("airspace.cell_held")
+        if stage is Stage.CLAIM and any(held.get(cell) != activity for cell in fp.cells):
+            reasons.append("airspace.hold_missing")
+        envelope = self.airspace.envelopes(exclude={activity})
+        if any(cell in envelope for cell in fp.cells):
+            reasons.append("airspace.envelope")
+        return tuple(reasons)
 
     def record(self, eligibility: DispatchEligibility, mission_id: str, version: int) -> str:
         """Append a decision only when its verdict or reasons changed. / 只在判定或原因变化时追加记录。"""
@@ -153,11 +181,25 @@ class Dispatch:
     # ── reservations / 预约 ──
 
     def reserve(self, mission_id: str, version: int) -> tuple[object | None, dict[str, str]]:
+        """Soft-hold the robot's resources, plus the flight's airspace cells when P3 is loaded (D059).
+
+        软预约机器人的资源；加载 P3 时一并预约该飞行的空域单元（D059）。
+        """
         binding, record = self.store.binding(mission_id), self.ledger.version(mission_id, version)
         not_after = needs_of(record).not_after if record and record["package"] else None
-        return self.store.reserve(activity=activity_key(mission_id, version), project_id=binding["project_id"],
-                                  mission_id=mission_id, version=version, robot_id=binding["robot_id"],
-                                  expires_at=soft_expiry(self.catalog, self.clock(), not_after))
+        activity = activity_key(mission_id, version)
+        common = {"activity": activity, "project_id": binding["project_id"], "mission_id": mission_id,
+                  "version": version, "robot_id": binding["robot_id"],
+                  "expires_at": soft_expiry(self.catalog, self.clock(), not_after)}
+        if self.airspace is None or record is None or not record["package"]:
+            return self.store.reserve(**common)
+        with self.store.transaction():
+            fp = self.airspace.footprint_of(activity)
+            if fp is None:
+                fp = self.airspace.mission_footprint(binding["robot_id"], record["package"])
+                self.airspace.scheduling.record_footprint(activity, mission_id=mission_id, version=version,
+                                                          robot_id=binding["robot_id"], body=fp.body())
+            return self.store.reserve(**common, extra=fp.cells, blocked=self.airspace.envelopes(exclude={activity}))
 
     def release_unclaimed(self, mission_id: str, version: int, reason: str) -> bool:
         """Nothing physical happened before a claim, so an unclaimed hold may be released. / 领取前无物理动作，可释放。"""
@@ -186,6 +228,11 @@ class Dispatch:
         mission_id, version = delivery["mission_id"], delivery["version"]
         if self.store.cancel_intent(mission_id) is not None:
             return "cancelled"
+        if self.assignment_problem is not None:
+            # A delivery of a superseded assignment epoch never flies (D059). / 已被替代的分配代次的投递永不起飞（D059）。
+            problem = self.assignment_problem(mission_id)
+            if problem is not None:
+                return problem
         record = self.ledger.version(mission_id, version)
         approval = ApprovalRecord.model_validate(record["approval"]) if record and record["approval"] else None
         if approval is None or approval.expires_at <= self.clock():

@@ -1,0 +1,12 @@
+# Harness memberships for the P3 S1 catalog p3_s1_v1 used by the cloud two-aircraft cases (D059). The resident desk
+# does not use this file: its members come from the cloud secrets directory.
+#
+# 云端双机用例所用 P3 S1 目录 p3_s1_v1 的编排成员资格（D059）。常驻任务台不使用本文件：其成员来自云端 secrets 目录。
+format: drone.project-members/v1
+schema_version: "0.1.0"
+members:
+  - {principal: "harness:p3-operator", project_id: campus_p3, roles: [operator, approver]}
+  - {principal: "harness:p3-reviewer", project_id: campus_p3, roles: [reviewer]}
+  - {principal: "harness:p3-admin", project_id: campus_p3, roles: [admin]}
+  - {principal: "harness:p3-judge", project_id: campus_p3, roles: [viewer]}
+  - {principal: "harness:p3-judge", project_id: legacy_m2, roles: [viewer]}

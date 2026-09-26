@@ -1,0 +1,27 @@
+# P3 S1 catalog (D059, D061): two adjacent sites in `campus_p3`, each with one logical dock serving one PX4 SITL
+# aircraft, and both aircraft in the one P3 Gazebo world: `uav_01` is PX4 instance 0 on its pad at the shared origin,
+# `uav_02` instance 1 on its pad 12 m east. The docks stay logical (their pad sensors read Gazebo truth); the flights are
+# PX4 SITL. Where each site map lies in the shared frame is in configs/scheduling/p3_s1_v1.yaml. Harness memberships
+# are p3_members_s1.yaml; no real device, and the service refuses real backends.
+#
+# P3 S1 目录（D059、D061）：`campus_p3` 中两个相邻站点，各有一个逻辑机场服务一架 PX4 SITL 飞行器，两架飞行器位于同一个 P3
+# Gazebo 世界：`uav_01` 是 PX4 实例 0，机位在共享原点；`uav_02` 是实例 1，机位在其东 12 m。机场仍是逻辑的（机位传感器读取
+# Gazebo 真值）；飞行是 PX4 SITL。各站地图在共享坐标中的位置写在 configs/scheduling/p3_s1_v1.yaml。编排成员为
+# p3_members_s1.yaml；没有真实设备，服务拒绝真实后端。
+format: drone.operations-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p3_s1_v1
+legacy_project: {project_id: legacy_m2, first_party_roles: [viewer]}
+default_binding: null
+projects:
+  campus_p3: {name: "Campus inspection, two PX4 SITL sites in one world / 园区巡检（同一世界中的两个 PX4 SITL 站点）", sites: [site_s1a, site_s1b]}
+sites:
+  site_s1a: {project_id: campus_p3, scene: configs/scenarios/p3_s1_a_v1.yaml, max_wind_mps: 8.0}
+  site_s1b: {project_id: campus_p3, scene: configs/scenarios/p3_s1_b_v1.yaml, max_wind_mps: 8.0}
+docks:
+  dock_s1a: {site_id: site_s1a, vendor: drone-agent, model: logical-dock-v1, serves: [uav_01], actions: [open_lid, close_lid, start_charge], backend: {kind: logical_sim, principal: "dock:p3-s1-a"}}
+  dock_s1b: {site_id: site_s1b, vendor: drone-agent, model: logical-dock-v1, serves: [uav_02], actions: [open_lid, close_lid, start_charge], backend: {kind: logical_sim, principal: "dock:p3-s1-b"}}
+robots:
+  uav_01: {site_id: site_s1a, dock_id: dock_s1a, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: px4_sitl}
+  uav_02: {site_id: site_s1b, dock_id: dock_s1b, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: px4_sitl}
+policy: {version: p1-dispatch-v1, freshness_s: 3.0, future_skew_s: 1.0, reconcile_reports: 2, soft_reservation_s: 900, claim_ack_timeout_s: 30, result_grace_s: 5}

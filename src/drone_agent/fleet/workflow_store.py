@@ -225,6 +225,9 @@ class WorkflowStore:
             raise MigrationError("run migrate() before opening the workflow store")
         self.ledger, self.catalog, self.fixtures, self.clock = ledger, catalog, dict(fixtures), clock
         self.catalogs: dict[str, WorkflowCatalog] = {}
+        # Called inside a run's cancel transaction; the P3 scheduler cancels the run's tasks here (D059).
+        # 在运行取消的事务内调用；P3 调度器在此取消该运行的任务单（D059）。
+        self.cancel_hooks: list = []
         self._record_catalog(catalog, fixtures)
 
     def transaction(self):
@@ -592,6 +595,9 @@ class WorkflowStore:
                     self.event(f"mission:{row['mission_id']}", "cancel.requested", actor,
                                {"request_id": request_id, "workflow_run": run_id})
                 missions.append(row["mission_id"])
+            for hook in self.cancel_hooks:
+                missions += [m for m in hook(run_id, actor=actor, request_id=request_id,
+                                             reason=f"workflow {run_id} cancelled") if m not in missions]
             children, cascaded = [], []
             for child in self.children(run_id):
                 if RunState(child["state"]) not in TERMINAL_RUN | CANCELLING_RUN:

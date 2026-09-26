@@ -552,8 +552,12 @@ class WorkflowEngine:
         project = run["project_id"]
         if isinstance(node_spec, SubmitMissionNode):
             params = node_spec.params
-            return {"project_id": project, "robot_id": params.robot_id, "volume_id": params.volume_id,
-                    "asset_id": self._asset(run, node_spec), "template": f"{spec.workflow_id}@v{spec.version}"}
+            base = {"project_id": project, "volume_id": params.volume_id, "asset_id": self._asset(run, node_spec),
+                    "template": f"{spec.workflow_id}@v{spec.version}"}
+            if params.assigned:
+                # A P3 task: the scheduler picks the robot among the candidates (D059). / P3 任务单：调度器在候选中选机。
+                return {**base, "candidates": list(params.candidates), "priority": params.priority}
+            return {**base, "robot_id": params.robot_id}
         if isinstance(node_spec, WorkOrderNode):
             review = outputs[node_spec.params.review_from]
             analyze_id = spec.node(node_spec.params.review_from).params.analysis_from
@@ -609,6 +613,15 @@ class WorkflowEngine:
     def _consume(self, run: dict, row: dict, guard) -> dict | None:
         """Deliver one effect to its deduplicating consumer; None when the guard refused. / 把效果投递给去重消费者。"""
         payload, key = row["payload"], row["idempotency_key"]
+        if row["kind"] == Activity.SUBMIT_MISSION.value and "robot_id" not in payload:
+            scheduler = self.service.scheduler
+            if scheduler is None:
+                raise ServiceError("service.invalid_request", "no scheduling catalog is configured")
+            task, _ = scheduler.submit_internal(requested_by=run_principal(run["run_id"]), key=key,
+                                                project_id=payload["project_id"], asset_id=payload["asset_id"],
+                                                volume_id=payload["volume_id"], candidates=payload["candidates"],
+                                                priority=payload["priority"], source="workflow", guard=guard)
+            return None if task is None else MissionOutput(task_id=task["task_id"]).model_dump(mode="json")
         if row["kind"] == Activity.SUBMIT_MISSION.value:
             view = self.service.submit_workflow(run_id=run["run_id"], key=key, project_id=payload["project_id"],
                                                 robot_id=payload["robot_id"], volume_id=payload["volume_id"],
@@ -655,6 +668,10 @@ class WorkflowEngine:
         按键查询已领取效果实际产生了什么；什么都没发生时为 None。
         """
         key, payload = row["idempotency_key"], row["payload"]
+        if row["kind"] == Activity.SUBMIT_MISSION.value and "robot_id" not in payload:
+            scheduler = self.service.scheduler
+            task = scheduler.store.task_by_key(run_principal(run["run_id"]), key) if scheduler else None
+            return MissionOutput(task_id=task["task_id"]).model_dump(mode="json") if task else None
         if row["kind"] == Activity.SUBMIT_MISSION.value:
             mission_id = self.ledger.request_by_key(run_principal(run["run_id"]), key)
             return MissionOutput(mission_id=mission_id).model_dump(mode="json") if mission_id else None
@@ -729,7 +746,10 @@ class WorkflowEngine:
 
         （状态，原因，细节，输出）：只有已了结任务的服务复核通过巡检才使其完成。
         """
-        mission_id = outputs[node_spec.params.mission_from]["mission_id"]
+        submitted = outputs[node_spec.params.mission_from]
+        if submitted.get("task_id"):
+            return self._await_task(run, spec, node_spec, submitted["task_id"])
+        mission_id = submitted["mission_id"]
         asset = self._asset(run, spec.node(node_spec.params.mission_from))
         mission = self.ledger.mission(mission_id)
         if mission["status"] not in MISSION_TERMINAL:
@@ -758,6 +778,49 @@ class WorkflowEngine:
         if column == "uncertain" or mission["status"] == "completed":
             return NodeState.OUTCOME_UNKNOWN, "inspection.uncertain", detail, None
         return NodeState.FAILED, f"mission.{mission['status']}", detail, None
+
+    def _await_task(self, run, spec, node_spec: AwaitMissionNode, task_id: str) -> tuple:
+        """A P3 task through its assignments: it waits in the queue, follows the current mission, and completes only
+        with the service-verified inspection the scheduler settled (D059).
+
+        P3 任务单经其各次分配：在队列中等待、跟随当前任务，只以调度器结算的服务复核通过的巡检完成（D059）。
+        """
+        scheduler = self.service.scheduler
+        task = scheduler.store.task(task_id) if scheduler is not None else None
+        if task is None:
+            return NodeState.OUTCOME_UNKNOWN, "task.missing", {"task_id": task_id}, None
+        asset = self._asset(run, spec.node(node_spec.params.mission_from))
+        detail = {"task_id": task_id, "task_state": task["state"], "epoch": task["epoch"],
+                  "robot_id": task["robot_id"], "mission_id": task["mission_id"]}
+        state = task["state"]
+        if state == "queued":
+            last = scheduler.store.last_decision(task_id)
+            detail["reasons"] = {c["robot_id"]: c["reasons"] for c in last["body"]["candidates"]} if last else {}
+            return NodeState.WAITING, WaitReason.ASSIGNMENT.value, detail, None
+        if state in ("assigned", "cancel_requested", "cancelling"):
+            mission = self.ledger.mission(task["mission_id"]) if task["mission_id"] else None
+            if mission is not None and mission["status"] not in MISSION_TERMINAL:
+                reason, waiting = self._mission_wait(mission)
+                return NodeState.WAITING, reason.value, {**detail, **waiting}, None
+            return NodeState.WAITING, WaitReason.DEVICE.value, detail, None
+        if state == "completed":
+            outcome = task["outcome"]
+            return NodeState.COMPLETED, None, detail, InspectionOutput(
+                mission_id=outcome["mission_id"], mission_status="completed",
+                mission_version=outcome["mission_version"], asset_id=asset, inspection="verified",
+                evidence_id=outcome["evidence_id"], evidence_sha256=outcome["evidence_sha256"],
+                captured_at=outcome["captured_at"]).model_dump(mode="json")
+        if state == "outcome_unknown":
+            return NodeState.OUTCOME_UNKNOWN, "inspection.uncertain", detail, None
+        return NodeState.FAILED, f"task.{state}", detail, None
+
+    def _submitted_mission(self, result: dict | None) -> str | None:
+        """The mission a submission produced: its own, or the P3 task's final one. / 提交产生的任务：自身的，或 P3 任务单的最终任务。"""
+        result = result or {}
+        if result.get("task_id") and self.service.scheduler is not None:
+            task = self.service.scheduler.store.task(result["task_id"]) or {}
+            return (task.get("outcome") or {}).get("mission_id") or task.get("mission_id")
+        return result.get("mission_id")
 
     def _verified_evidence(self, mission_id: str, asset: str) -> dict | None:
         """The newest acquisition of the asset whose service verification is verified. / 服务复核为已证实的该资产最新采集。"""
@@ -840,7 +903,7 @@ class WorkflowEngine:
                 continue
             node = nodes[node_spec.node_id]
             submitted = nodes[node_spec.params.mission_from]["result"] or {}
-            mission_id = submitted.get("mission_id")
+            mission_id = self._submitted_mission(submitted)
             mission = self.ledger.mission(mission_id) if mission_id else None
             report = (self.ledger.report(mission_id) if mission_id else None) or {}
             asset = self._asset(run, spec.node(node_spec.params.mission_from))
@@ -850,7 +913,8 @@ class WorkflowEngine:
                 "flight_column": (report.get("targets") or {}).get(asset),
                 "inspection": {"completed": "verified", "failed": "not_completed",
                                "outcome_unknown": "unknown"}.get(node["state"], node["state"]),
-                "reason": node["reason"], "evidence_id": (node["result"] or {}).get("evidence_id")})
+                "reason": node["reason"], "evidence_id": (node["result"] or {}).get("evidence_id"),
+                **({"task_id": submitted["task_id"]} if submitted.get("task_id") else {})})
         return {"format": "drone.workflow-report/v1", "run_id": run["run_id"], "workflow_id": spec.workflow_id,
                 "version": spec.version, "generated_at": self.clock().isoformat(), "inspections": inspections,
                 "analyses": [{"analysis_id": a["analysis_id"], "asset_id": a["asset_id"], "analyzer": a["analyzer"],

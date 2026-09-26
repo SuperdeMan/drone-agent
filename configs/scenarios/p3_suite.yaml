@@ -1,0 +1,115 @@
+# P3 scheduling matrix and scale ladder (WP-P3-05, D059). `s0` cases run in the S0 world (eval/p3_world.py): the P1
+# world with the p3_campus_v1 operations, scheduling and workflow catalogs loaded into the same formal mission service.
+# `ladder` rungs run the same world on generated catalogs of 10 / 30 / 100 logical nodes (one logical UAV and one
+# logical dock each) under a closed-loop task stream that keeps at most `budget` tasks in flight. `s1` cases run in the
+# cloud against two PX4 SITL instances in one Gazebo world (scripts/remote_p3.py). `expected` is what the independent
+# judge (eval/judge_p3.py, with the P1 claim, release, flight and probe checks) requires on top of the invariants it
+# always checks: one active assignment per task and one holder per resource at any moment, at most one completion per
+# task and no flight of a withdrawn assignment, no lost task, no shared cell and nothing inside a silent robot's
+# envelope, true separation, no false success, no effect of a superseded epoch and every decision replayable. S0 results
+# never count as physical flights, and the ladder's node counts never as aircraft.
+#
+# P3 调度矩阵与规模阶梯（WP-P3-05，D059）。`s0` 用例在 S0 世界（eval/p3_world.py）中运行：P1 世界，并把 p3_campus_v1 的运营、
+# 调度与工作流目录加载到同一正式任务服务。`ladder` 各档在生成的 10 / 30 / 100 逻辑节点目录（每节点一台逻辑 UAV 与一个逻辑机场）
+# 上运行同一世界，闭环任务流在途任务至多 `budget` 个。`s1` 用例在云端对同一 Gazebo 世界中的两个 PX4 SITL 实例运行
+# （scripts/remote_p3.py）。`expected` 是独立裁判（eval/judge_p3.py，另含 P1 领取、释放、飞行与探测检查）在始终检查的不变量之外
+# 的要求：任一时刻每任务一个有效分配、每项资源一个持有者，每任务至多完成一次且被撤回的分配不飞行，不丢任务，无共用单元且不落入
+# 失联机器人包络，真实间隔，无错误成功，旧代次无效果，每个判定可重放。S0 结果从不计为物理飞行，阶梯节点数从不计为飞行器架数。
+format: p3.suite/v1
+seeds: [7, 19, 41]
+s0:
+  - id: p3_f01_assign
+    fault: P3-F01
+    description: "mid and east submitted together (order by seed): mid goes to the nearest a, east to b, and both fly at once. / mid 与 east 同时提交（顺序随种子）：mid 给最近的 a、east 给 b，两机同时飞行。"
+    expected: {flights: 2, tasks: {completed: 2}, first_robot: {asset_mid: uav_a, asset_east: uav_b}, parallel: true}
+  - id: p3_f02_exclusion
+    fault: P3-F02
+    description: "a in maintenance, charging or offline (by seed) when mid is submitted: b takes it and a's reasons are recorded. / 提交 mid 时 a 维护、补能中或离线（随种子）：由 b 执行，a 的排除原因入判定。"
+    expected: {flights: 1, tasks: {completed: 1}, first_robot: {asset_mid: uav_b}}
+  - id: p3_f03_no_candidate
+    fault: P3-F03
+    description: "An asset no candidate registers and a real-airspace volume are rejected; the only candidate in maintenance makes a task wait without a mission until an admin releases it. / 无候选登记的资产与真实空域体积被拒绝；唯一候选维护中时任务等待且不建任务，直到管理员解除。"
+    expected: {flights: 1, tasks: {rejected: 2, completed: 1}, reasons: [asset.unregistered, volume.unapproved, dock.maintenance], waited_without_mission: true}
+  - id: p3_f04_race
+    fault: P3-F04
+    description: "Two scheduler workers decide the same two tasks before either commits: each task gets one owner, each robot one activity, and the late commits are refused. / 两个调度 worker 在任一方提交前对同两个任务作出判定：每任务一个所有者、每机一个活动，迟到提交被拒。"
+    expected: {flights: 2, tasks: {completed: 2}, refused_min: 1}
+  - id: p3_f05_airspace
+    fault: P3-F05
+    description: "A second mid task waits on the first one's cells and flies after the release; the far pair's tasks fly meanwhile. / 第二个 mid 任务等待第一个的单元，释放后才飞；远处站点对的任务同时飞行。"
+    expected: {flights: 4, tasks: {completed: 4}, reasons: [airspace.cell_held], parallel: true}
+  - id: p3_f06_lost_contact
+    fault: P3-F06
+    description: "a loses its link while flying mid: b's east waits on a's growing envelope, the far pair's task flies, and east goes after the link returns and a is reconciled. / a 飞 mid 时链路中断：b 的 east 等待 a 增长的包络，远处站点对的任务照飞，链路恢复并对账后 east 才执行。"
+    expected: {flights: 3, tasks: {completed: 3}, reasons: [airspace.envelope], envelope_wait: true}
+  - id: p3_f07_uncertain
+    fault: P3-F07
+    description: "a lands without its result reaching the service and the service restarts: the task keeps its owner, the cells stay held, and a second mid task waits until reconciliation. / a 落地但结果未到服务、服务重启：任务保持所有者、单元保持持有，第二个 mid 任务等到对账后。"
+    expected: {flights: 2, tasks: {completed: 2}, kept_owner: true}
+  - id: p3_f08_withdraw
+    fault: P3-F08
+    description: "a is assigned, then its dock goes into maintenance before the claim: the assignment is withdrawn, b flies epoch 2, and approving a's old mission is refused. / a 已分配，领取前其机场进入维护：分配被撤回，b 以代次 2 飞行，审批 a 的旧任务被拒。"
+    expected: {flights: 1, tasks: {completed: 1}, withdrawn: 1, max_epoch: 2, first_robot: {asset_mid: uav_a}, completed_by: {asset_mid: uav_b}, probes: true}
+  - id: p3_f09_withdraw_race
+    fault: P3-F09
+    description: "A withdrawal after the claim is refused and a flies; a withdrawal before any pull voids the delivery and b flies. / 领取之后的撤回被拒、a 飞行；任何拉取之前的撤回使投递作废、b 飞行。"
+    expected: {flights: 2, tasks: {completed: 2}, withdrawn: 1, forced_withdrawal_refused: true}
+  - id: p3_f10_stale_epoch
+    fault: P3-F10
+    description: "After a withdrawal, a late commit of the old decision, an approval of the old mission and the old queued delivery all stay without effect. / 撤回之后，旧判定的迟到提交、对旧任务的审批与旧的排队投递都没有效果。"
+    expected: {flights: 1, tasks: {completed: 1}, withdrawn: 1, max_epoch: 2, probes: true}
+  - id: p3_f11_relay
+    fault: P3-F11
+    description: "A pair round: a inspects mid, then a's dock faults; north is relayed to b, mid is not redone and the run completes. / 站点对巡回：a 巡检 mid 后其机场故障；north 接力给 b，mid 不重做，运行完成。"
+    expected: {flights: 2, tasks: {completed: 2}, runs: {completed: 1}, completed_by: {asset_mid: uav_a, asset_north: uav_b}}
+  - id: p3_f12_flight_failure
+    fault: P3-F12
+    description: "a's captures are flat so its flights fail; after reconciliation a is excluded and b completes epoch 2. / a 拍摄为平帧、飞行失败；对账后排除 a，b 以代次 2 完成。"
+    expected: {tasks: {completed: 1}, max_epoch: 2, first_robot: {asset_mid: uav_a}, completed_by: {asset_mid: uav_b}}
+  - id: p3_f13_cancel
+    fault: P3-F13
+    description: "Tasks cancelled while queued, while awaiting approval and in flight, and a workflow cancel that reaches its tasks: nothing is assigned or claimed afterwards. / 排队中、待审批与飞行中取消任务，以及到达其任务单的工作流取消：此后不分配、不领取。"
+    expected: {flights: 1, tasks: {cancelled: 5}, runs: {cancelled: 1}}
+  - id: p3_f14_isolation
+    fault: P3-F14
+    description: "Cross-project submit / get / list / cancel, candidates outside the project, viewer, agent and backend calls are refused without data; both projects' own tasks complete. / 跨项目提交 / 读取 / 列表 / 取消、项目外候选、viewer、agent 与后端调用全部被拒且无数据；两个项目自己的任务完成。"
+    expected: {flights: 2, tasks: {completed: 2}, probes: true}
+  - id: p3_f15_declined
+    fault: P3-F15
+    description: "The approver declines the assigned mission: the task fails and is not reassigned. / 审批人驳回已分配的任务：任务失败，不改派。"
+    expected: {flights: 0, tasks: {failed: 1}}
+ladder:
+  - id: p3_l10
+    nodes: 10
+    budget: 6
+    seeds: [7]
+    description: "10 logical nodes (5 pairs), 20 tasks, at most 6 in flight. / 10 个逻辑节点（5 对），20 个任务，在途至多 6 个。"
+    expected: {}
+  - id: p3_l30
+    nodes: 30
+    budget: 8
+    seeds: [7]
+    description: "30 logical nodes (15 pairs), 60 tasks, at most 8 in flight. / 30 个逻辑节点（15 对），60 个任务，在途至多 8 个。"
+    expected: {}
+  - id: p3_l100
+    nodes: 100
+    budget: 8
+    seeds: [7]
+    description: "100 logical nodes (50 pairs), 200 tasks, at most 8 in flight. / 100 个逻辑节点（50 对），200 个任务，在途至多 8 个。"
+    expected: {}
+s1:
+  - id: p3_s1_parallel
+    fault: P3-S1-01
+    seeds: [7, 19, 41]
+    description: "The pair_check workflow: the scheduler sends mid to uav_01 and east to uav_02, whose footprints do not meet, and both PX4 aircraft fly at the same time. / pair_check 工作流：调度器把 mid 给 uav_01、east 给 uav_02，二者航迹覆盖不相交，两架 PX4 飞行器同时飞行。"
+    expected: {flights: 2, tasks: {completed: 2}, runs: {completed: 1}, first_robot: {asset_mid: uav_01, asset_east: uav_02}, parallel: true}
+  - id: p3_s1_contention
+    fault: P3-S1-02
+    seeds: [7]
+    description: "Two mid tasks: the first goes to uav_01; the second waits on the first one's cells and, once they are released, flies on uav_02 while uav_01 recharges. / 两个 mid 任务：第一个给 uav_01；第二个等待第一个的单元，释放后在 uav_01 补能期间由 uav_02 飞行。"
+    expected: {flights: 2, tasks: {completed: 2}, reasons: [airspace.cell_held], completed_in_order: [uav_01, uav_02]}
+  - id: p3_s1_relay
+    fault: P3-S1-03
+    seeds: [7]
+    description: "mid is assigned to uav_01, whose dock then goes into maintenance before the approval: the assignment is withdrawn and uav_02 flies epoch 2; uav_01 never flies. / mid 分配给 uav_01，随后其机场在审批前进入维护：分配被撤回，uav_02 以代次 2 飞行；uav_01 从未起飞。"
+    expected: {flights: 1, tasks: {completed: 1}, withdrawn: 1, max_epoch: 2, first_robot: {asset_mid: uav_01}, completed_by: {asset_mid: uav_02}}

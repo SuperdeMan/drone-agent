@@ -157,6 +157,9 @@ class MissionService:
         # catalog is loaded. / P2（D057）：工作流引擎及其草案规划器；加载了工作流目录时由进程入口挂上。
         self.workflows = None
         self.workflow_planner = None
+        # P3 (D059): the scheduler, attached by the process entry when a scheduling catalog is loaded.
+        # P3（D059）：调度器；加载了调度目录时由进程入口挂上。
+        self.scheduler = None
         hub.listeners.append(self._ingested)
 
     # ── P1 bindings and project checks / P1 绑定与项目检查 ──
@@ -341,10 +344,13 @@ class MissionService:
         self._admit(mission_id, request, outcome.spec, planner=outcome)
 
     def _admit(self, mission_id: str, request: MissionRequest, spec: MissionSpec, *, planner=None,
-               planning: ModelUse | None = None) -> None:
+               planning: ModelUse | None = None, strict_hold: bool = False) -> None:
         """Assign, compile and admit a planned v1, then soft-hold the resources while a human decides.
 
-        分配、编译并准入已规划的 v1，然后在人工决定期间软预约资源。
+        With `strict_hold` (a P3 assignment, D059) a conflicting hold raises so the caller's transaction rolls back.
+
+        分配、编译并准入已规划的 v1，然后在人工决定期间软预约资源。`strict_hold`（P3 分配，D059）时持有冲突即抛出，
+        使调用方的事务回滚。
         """
         robot_id = self._robot_of(mission_id)
         coordinator = self._coordinator(robot_id)
@@ -369,6 +375,9 @@ class MissionService:
         if status == "awaiting_approval" and self._binding(mission_id) is not None:
             # A soft hold while the human decides; approval refreshes or retakes it (D055). / 人工决定期间的软预约。
             _, conflicts = self.dispatch.reserve(mission_id, 1)
+            if conflicts and strict_hold:
+                raise ServiceError("dispatch.reservation_conflict",
+                                   "held by " + ", ".join(sorted(set(conflicts.values()))))
             if conflicts:
                 self.ledger.record_issue(issue("dispatch.reservation_conflict",
                                                "held by " + ", ".join(sorted(set(conflicts.values()))),
@@ -392,9 +401,31 @@ class MissionService:
         事务的第一步是 `guard`（outbox 领取仍属于我方，且自那以后没有提交取消），因此先提交的取消不会留下任何东西。活动键
         即幂等键：响应丢失后的重试返回第一次的任务。该版本仍需人工审批；这里不签名也不排队任何任务包。
         """
+        return self._submit_deterministic(principal=f"workflow:{run_id}", key=key, project_id=project_id,
+                                          robot_id=robot_id, volume_id=volume_id, asset_id=asset_id, template=template,
+                                          provider="workflow", channel=RequestChannel.WORKFLOW, guard=guard)
+
+    def submit_assigned(self, *, principal: str, key: str, project_id: str, robot_id: str, volume_id: str,
+                        asset_id: str, template: str, guard) -> dict | None:
+        """The mission of one P3 assignment, inside the scheduler's transaction (D059).
+
+        Same deterministic draft, compilation, admission and soft hold as a workflow activity, keyed by the task and
+        its assignment epoch; the hold is strict: a conflict raises, so the whole assignment rolls back. The version
+        still needs a human approval.
+
+        一次 P3 分配的任务，在调度器的事务内写入（D059）。与工作流活动相同的确定性草案、编译、准入与软预约，以任务及其分配
+        代次为键；预约是严格的：冲突即抛出，整个分配回滚。该版本仍需人工审批。
+        """
+        return self._submit_deterministic(principal=principal, key=key, project_id=project_id, robot_id=robot_id,
+                                          volume_id=volume_id, asset_id=asset_id, template=template,
+                                          provider="scheduler", channel=RequestChannel.SCHEDULER, guard=guard,
+                                          strict_hold=True)
+
+    def _submit_deterministic(self, *, principal: str, key: str, project_id: str, robot_id: str, volume_id: str,
+                              asset_id: str, template: str, provider: str, channel: RequestChannel, guard,
+                              strict_hold: bool = False) -> dict | None:
         if self.ops is None:
             raise ServiceError("service.invalid_request", "no operations catalog is configured")
-        principal = f"workflow:{run_id}"
         known = self.ledger.request_by_key(principal, key)
         if known is not None:
             return self._view(known)
@@ -409,18 +440,18 @@ class MissionService:
         draft = {"decision": "plan", "decline_reason": "", "goal": f"Inspect {asset_id}", "goal_type": "inspect",
                  "approved_volume_id": volume_id,
                  "tasks": [{"task_id": f"inspect_{asset_id}", "skill_id": "skill.inspect.asset", "asset_id": asset_id}],
-                 "notes": f"workflow activity {key}"}
+                 "notes": f"{provider} activity {key}"}
         errors = validate_draft(draft, draft_schema(list(data.get("volumes", {})), list(data["assets"]),
                                                     data.get("mission_defaults", {}).get("planner_skills", [])))
         if errors:
             raise ServiceError("workflow.invalid_draft", "; ".join(errors)[:300])
         now = self.clock()
         request = MissionRequest(request_id="req-" + uuid.uuid4().hex[:16],
-                                 text=f"Workflow {template}: inspect {asset_id} in {volume_id}", requested_by=principal,
-                                 trust_level=TrustLevel.FIRST_PARTY, channel=RequestChannel.WORKFLOW,
+                                 text=f"{provider.capitalize()} {template}: inspect {asset_id} in {volume_id}",
+                                 requested_by=principal, trust_level=TrustLevel.FIRST_PARTY, channel=channel,
                                  approved_volume_id=volume_id, asset_ids=[asset_id], idempotency_key=key,
                                  received_at=now)
-        planning = ModelUse(source="deterministic", provider_id="workflow", model_id=template,
+        planning = ModelUse(source="deterministic", provider_id=provider, model_id=template,
                             input_sha256=digest(draft), outcome="planned")
         mission_id = "m-" + uuid.uuid4().hex[:12]
         with self.ledger.transaction() as db:
@@ -431,11 +462,11 @@ class MissionService:
                                                                         robot_id=robot_id))
             if created:
                 spec = draft_to_spec(draft, request, registry, mission_id=mission_id, mission_version=1,
-                                     provenance=Provenance(model_id=f"workflow/{template}",
-                                                           prompt_version="workflow-template-v1",
+                                     provenance=Provenance(model_id=f"{provider}/{template}",
+                                                           prompt_version=f"{provider}-template-v1",
                                                            input_hash=planning.input_sha256, generated_at=now),
                                      now=now)
-                self._admit(mission_id, request, spec, planning=planning)
+                self._admit(mission_id, request, spec, planning=planning, strict_hold=strict_hold)
         return self._view(mission_id)
 
     def _evaluate(self, spec: MissionSpec, robot: str, request: MissionRequest):
@@ -663,10 +694,13 @@ class MissionService:
         # Image success needs a positive service recheck, even before metadata arrives. / 影像元数据未到也不能缺省成功。
         verdicts = {(version, node.task_id): EffectVerdict.UNKNOWN for node in package.nodes
                     if "image" in node.completion_evidence}
+        # The mission's own site map: an asset exists only where it is registered (P3, D059).
+        # 任务自己的站点地图：资产只在其登记处存在（P3，D059）。
+        registry = self._registry(self._robot_of(mission_id))
         for step, (evidence, row) in latest.items():
             outcome = outcomes.get(step)
             result = verify(evidence, self.hub.media(row["media_path"]), row["width"], row["height"], package,
-                            self.registry, outcome.effect_verdict if outcome else None)
+                            registry, outcome.effect_verdict if outcome else None)
             body = result.model_dump(mode="json")
             previous = stored.get(evidence.evidence_id)
             if previous is None or {k: v for k, v in previous.items() if k != "verified_at"} != {
@@ -688,7 +722,8 @@ class MissionService:
         """
         store = self.ops.store
         codes = {"cancelled": "dispatch.cancelled", "approval_expired": "dispatch.approval_expired",
-                 "backend_mismatch": "dispatch.backend_mismatch"}
+                 "backend_mismatch": "dispatch.backend_mismatch",
+                 "assignment_superseded": "dispatch.assignment_superseded"}
         expired = False
         for claim in store.claims(mission_id):
             if claim["state"] != "void":
@@ -948,6 +983,8 @@ class MissionService:
                 self.tick_operations()
             if self.workflows is not None:
                 self.tick_workflows()
+            if self.scheduler is not None:
+                self.tick_scheduler()
             for mission_id in sorted(self.dirty):
                 self.dirty.discard(mission_id)
                 try:
@@ -974,6 +1011,13 @@ class MissionService:
             self.dirty.update(self.workflows.tick())
         except Exception as error:  # keep serving; the problem is visible / 继续服务；问题可见
             self.ledger.record_issue(issue("service.degraded", f"workflows: {type(error).__name__}: {error}"[:300]))
+
+    def tick_scheduler(self) -> None:
+        """One P3 background pass: settle, withdraw, assign (D059). / 一次 P3 后台处理：结算、撤回、分配（D059）。"""
+        try:
+            self.dirty.update(self.scheduler.tick())
+        except Exception as error:  # keep serving; the problem is visible / 继续服务；问题可见
+            self.ledger.record_issue(issue("service.degraded", f"scheduler: {type(error).__name__}: {error}"[:300]))
 
     # ── views / 视图 ──
 
@@ -1060,6 +1104,8 @@ class MissionService:
                                                         "execution_backend", "catalog_sha256")} if binding else \
                 {"project_id": self.ops.catalog.legacy_project.project_id, "legacy": True}
             value["dispatch"] = self._dispatch_view(mission_id)
+        if self.scheduler is not None:
+            value["task"] = self.scheduler.mission_task(mission_id)
         return value
 
     def summary(self, mission_id: str, caller: Caller | None = None) -> dict:

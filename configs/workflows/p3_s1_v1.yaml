@@ -1,0 +1,26 @@
+# P3 S1 workflow catalog (D057, D059) for the operations catalog p3_s1_v1. `pair_check` inspects `mid` and `east` side
+# by side and leaves both robots to the scheduler, so on the two PX4 SITL aircraft the scheduler sends `mid` to the
+# nearer uav_01 and `east` to uav_02, whose footprints do not meet, and both fly at once. Every mission still waits for
+# its own human approval (D032).
+#
+# P3 S1 工作流目录（D057、D059），对应运营目录 p3_s1_v1。`pair_check` 并行巡检 `mid` 与 `east` 并把两台机器人都交给调度器，
+# 因此在两架 PX4 SITL 飞行器上，调度器把 `mid` 给更近的 uav_01、`east` 给 uav_02，二者航迹覆盖不相交，同时飞行。每个任务仍需
+# 各自的人工审批（D032）。
+format: drone.workflow-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p3_s1_v1
+operations_catalog: p3_s1_v1
+workflows:
+  - workflow_id: pair_check
+    version: 1
+    project_id: campus_p3
+    title: "Pair check: mid and east side by side, robots chosen by the scheduler / 站点对检查：并行巡检 mid 与 east，由调度器选机"
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect_mid, activity: submit_mission, params: {volume_id: campus_training, asset: asset_mid}}
+      - {node_id: await_mid, activity: await_mission, params: {mission_from: inspect_mid}}
+      - {node_id: inspect_east, activity: submit_mission, params: {volume_id: campus_training, asset: asset_east}}
+      - {node_id: await_east, activity: await_mission, params: {mission_from: inspect_east}}
+      - {node_id: report, activity: build_report, requires: done, after: [await_mid, await_east]}
+    budget: {max_missions: 2}

@@ -1,0 +1,16 @@
+# Harness memberships for the P3 S0 world (D059) on the operations catalog p3_campus_v1. Real operator logins never
+# live in the repository. The reviewer is a separate identity; the judge reads every project it checks.
+#
+# P3 S0 世界的编排成员资格（D059），对应运营目录 p3_campus_v1。真实操作者登录名从不进入仓库。复核人是单独的身份；裁判身份
+# 可读取它核对的每个项目。
+format: drone.project-members/v1
+schema_version: "0.1.0"
+members:
+  - {principal: "harness:p3-operator", project_id: campus_ops, roles: [operator, approver]}
+  - {principal: "harness:p3-reviewer", project_id: campus_ops, roles: [reviewer]}
+  - {principal: "harness:p3-viewer", project_id: campus_ops, roles: [viewer]}
+  - {principal: "harness:p3-admin", project_id: campus_ops, roles: [admin]}
+  - {principal: "harness:p3-harbor", project_id: harbor_ops, roles: [operator, approver, reviewer]}
+  - {principal: "harness:p3-judge", project_id: campus_ops, roles: [viewer]}
+  - {principal: "harness:p3-judge", project_id: harbor_ops, roles: [viewer]}
+  - {principal: "harness:p3-judge", project_id: legacy_m2, roles: [viewer]}

@@ -1,0 +1,37 @@
+# P3 S0 catalog (D059): two pairs of adjacent sites in `campus_ops` (a/b, and c/d 100 m north), each site with one
+# logical dock and one logical UAV, plus the `harbor_ops` fixture project for the isolation cases (P3-F14). Every UAV
+# runs the real onboard executive/guardian/uplink with a logical flight adapter; every dock is the logical simulator.
+# Where each site map lies in the shared frame is in configs/scheduling/p3_campus_v1.yaml, not here, so this catalog's
+# digest stays what the P1 bindings pin. Memberships are a separate trusted input (p3_members_s0.yaml).
+#
+# P3 S0 目录（D059）：`campus_ops` 中两对相邻站点（a/b，以及北面 100 m 的 c/d），每站一个逻辑机场与一台逻辑 UAV，外加隔离
+# 用例（P3-F14）所需的 `harbor_ops` 夹具项目。每台 UAV 运行真实的机载 executive/guardian/uplink 与逻辑飞行适配器；每个机场
+# 是逻辑模拟器。各站地图在共享坐标中的位置写在 configs/scheduling/p3_campus_v1.yaml 而不在这里，使本目录的摘要保持为 P1 绑定
+# 所固定的值。成员资格是单独的受信输入（p3_members_s0.yaml）。
+format: drone.operations-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p3_campus_v1
+legacy_project: {project_id: legacy_m2, first_party_roles: [viewer]}
+default_binding: null
+projects:
+  campus_ops: {name: "Campus inspection, two pairs of logical sites / 园区巡检（两对逻辑站点）", sites: [site_a, site_b, site_c, site_d]}
+  harbor_ops: {name: "Isolation fixture project / 隔离验证夹具项目", sites: [site_h]}
+sites:
+  site_a: {project_id: campus_ops, scene: configs/scenarios/p3_site_a_v1.yaml, max_wind_mps: 8.0}
+  site_b: {project_id: campus_ops, scene: configs/scenarios/p3_site_b_v1.yaml, max_wind_mps: 8.0}
+  site_c: {project_id: campus_ops, scene: configs/scenarios/p3_site_c_v1.yaml, max_wind_mps: 8.0}
+  site_d: {project_id: campus_ops, scene: configs/scenarios/p3_site_d_v1.yaml, max_wind_mps: 8.0}
+  site_h: {project_id: harbor_ops, scene: configs/scenarios/p3_site_h_v1.yaml, max_wind_mps: 8.0}
+docks:
+  dock_a: {site_id: site_a, vendor: drone-agent, model: logical-dock-v1, serves: [uav_a], actions: [open_lid, close_lid, start_charge], backend: {kind: logical_sim, principal: "dock:p3-s0-sim"}}
+  dock_b: {site_id: site_b, vendor: drone-agent, model: logical-dock-v1, serves: [uav_b], actions: [open_lid, close_lid, start_charge], backend: {kind: logical_sim, principal: "dock:p3-s0-sim"}}
+  dock_c: {site_id: site_c, vendor: drone-agent, model: logical-dock-v1, serves: [uav_c], actions: [open_lid, close_lid, start_charge], backend: {kind: logical_sim, principal: "dock:p3-s0-sim"}}
+  dock_d: {site_id: site_d, vendor: drone-agent, model: logical-dock-v1, serves: [uav_d], actions: [open_lid, close_lid, start_charge], backend: {kind: logical_sim, principal: "dock:p3-s0-sim"}}
+  dock_h: {site_id: site_h, vendor: drone-agent, model: logical-dock-v1, serves: [uav_h], actions: [open_lid, close_lid, start_charge], backend: {kind: logical_sim, principal: "dock:p3-s0-harbor"}}
+robots:
+  uav_a: {site_id: site_a, dock_id: dock_a, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: logical_sim}
+  uav_b: {site_id: site_b, dock_id: dock_b, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: logical_sim}
+  uav_c: {site_id: site_c, dock_id: dock_c, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: logical_sim}
+  uav_d: {site_id: site_d, dock_id: dock_d, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: logical_sim}
+  uav_h: {site_id: site_h, dock_id: dock_h, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: logical_sim}
+policy: {version: p1-dispatch-v1, freshness_s: 3.0, future_skew_s: 1.0, reconcile_reports: 2, soft_reservation_s: 900, claim_ack_timeout_s: 30, result_grace_s: 5}

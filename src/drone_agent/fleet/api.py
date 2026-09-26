@@ -94,6 +94,13 @@ METHODS: dict[str, tuple[str, frozenset[str]]] = {
     "workflows.draft": (WORKFLOW_DRAFT, frozenset({"project_id", "text"})),
     "workflows.event": (WORKFLOW_EVENT, frozenset({"project_id", "workflow_id", "trigger_id", "event_type", "event_id",
                                                    "payload"})),
+    # P3 (D059): tasks the scheduler assigns, under the same project roles as missions.
+    # P3（D059）：调度器分配的任务单，与任务同样的项目角色。
+    "tasks.submit": (MISSION_SUBMIT, frozenset({"project_id", "asset_id", "volume_id", "candidates", "priority",
+                                                "idempotency_key"})),
+    "tasks.list": (MISSION_READ, frozenset({"project_id"})),
+    "tasks.get": (MISSION_READ, frozenset({"project_id", "task_id"})),
+    "tasks.cancel": (MISSION_OPERATE, frozenset({"project_id", "task_id", "request_id", "reason"})),
 }
 CHANNELS = {"tailnet": RequestChannel.CONSOLE, "local": RequestChannel.CONSOLE, "a2a": RequestChannel.A2A,
             "harness": RequestChannel.HARNESS}
@@ -216,6 +223,8 @@ async def _call(service: MissionService, method: str, params: dict, who: Caller)
                                 str(params["reason"])[:300])
     if method.startswith("workflows."):
         return await _workflow_call(service, method, params, who)
+    if method.startswith("tasks."):
+        return _task_call(service, method, params, who)
     if method == "audit":
         if ISSUE_CODES.get(params["code"]) is not IssueLayer.AUTH:
             raise ServiceError("service.invalid_request", "only authentication issues are audited here")
@@ -235,7 +244,24 @@ async def _call(service: MissionService, method: str, params: dict, who: Caller)
              if service.ops is not None else None,
              "workflows": {"catalog_id": service.workflows.catalog.catalog_id,
                            "sha256": service.workflows.catalog.sha256}
-             if getattr(service, "workflows", None) is not None else None}
+             if getattr(service, "workflows", None) is not None else None,
+             "scheduling": {"catalog_id": service.scheduler.catalog.catalog_id,
+                            "sha256": service.scheduler.catalog.sha256}
+             if getattr(service, "scheduler", None) is not None else None}
+
+
+def _task_call(service: MissionService, method: str, params: dict, who: Caller):
+    scheduler = getattr(service, "scheduler", None)
+    if scheduler is None:
+        raise ServiceError("service.invalid_request", "no scheduling catalog is configured")
+    if method == "tasks.submit":
+        return scheduler.submit(who, params["project_id"], params["asset_id"], params["volume_id"],
+                                params["candidates"], params["priority"], params["idempotency_key"])
+    if method == "tasks.list":
+        return scheduler.list_view(who, params["project_id"])
+    if method == "tasks.get":
+        return scheduler.task_view(who, params["project_id"], params["task_id"])
+    return scheduler.cancel(who, params["project_id"], params["task_id"], params["request_id"], params["reason"])
 
 
 async def _workflow_call(service: MissionService, method: str, params: dict, who: Caller):

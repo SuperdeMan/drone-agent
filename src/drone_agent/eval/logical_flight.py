@@ -50,7 +50,7 @@ def image(signature: str | None) -> bytes:
 
     160x120 灰色帧，中间 40x40 为特征颜色方块；None 返回无特征的平帧。
     """
-    colour = {"red": (230, 20, 20), "blue": (20, 20, 230)}.get(signature)
+    colour = {"red": (230, 20, 20), "green": (20, 230, 20), "blue": (20, 20, 230)}.get(signature)
     pixels = bytearray()
     for row in range(120):
         for column in range(160):
@@ -76,6 +76,8 @@ class FlightFake:
         self.capabilities.recovery_behaviors = {RecoveryBehavior.HOLD, RecoveryBehavior.RTL,
                                                 RecoveryBehavior.LAND_HERE, RecoveryBehavior.HANDOVER_TO_FC_FAILSAFE}
         self.position, self.path = [0.0, 0.0, 0.0], []
+        # Harness-only fault: the motors never lift the aircraft off the pad. / 只在编排中使用的故障：电机无法离开机位。
+        self.climb_blocked = False
         self.airborne, self.mode, self.sample = False, "HOLD", 0
         self.writes, self.frames = [], list(frames or [])
         self.sim_clock = None
@@ -109,8 +111,12 @@ class FlightFake:
         self.writes.append((node.skill_id.rsplit(".", 1)[1], phase))
         p = node.params
         if node.skill_id == "skill.flight.takeoff":
-            self.airborne, self.mode = True, "TAKEOFF"
-            self.path = [[0, 0, p["altitude_m_agl"]]] * 3
+            self.mode = "TAKEOFF"
+            if self.climb_blocked:
+                self.path = [[0, 0, 0]] * 3
+            else:
+                self.airborne = True
+                self.path = [[0, 0, p["altitude_m_agl"]]] * 3
         elif phase == "approach":
             self.mode = "MISSION"
             self.fly(self.registry.route(p["approach_route_id"]))

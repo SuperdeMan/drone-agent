@@ -11,6 +11,7 @@ hri.v0 over `WS /ws/session` carries JSON text frames:
         {"type":"host","status":{...}}      {"type":"error","message":...,"issue":{...}}
         {"type":"resources","view":{...}}   {"type":"resource","detail":{...}}     (P1 catalog mode, D055)
         {"type":"workflows","view":{...}}   {"type":"workflow","view":{...}}   {"type":"workflow_draft","result":{...}}
+        {"type":"tasks","view":{...}}   {"type":"task","view":{...}}     (P3 scheduling, D059)
   up:   {"type":"text","rid":...,"text":...,"volume_id":...,"asset_ids":[...],"project_id"?,"robot_id"?}  submit
         {"type":"resources","project_id":...}   {"type":"resource","project_id":...,"resource_id":...}
         {"type":"maintenance","project_id":...,"dock_id":...,"action":"set|release","reason":...}  (admin)
@@ -21,6 +22,10 @@ hri.v0 over `WS /ws/session` carries JSON text frames:
         {"type":"workflow_review","project_id":...,"run_id":...,"node_id":...,"decision":...,"request_id":...,"note":...}
         {"type":"workflow_repair","project_id":...,"order_id":...,"request_id":...,"note":...}
         {"type":"workflow_draft","project_id":...,"text":...}
+        {"type":"tasks_watch","project_id":...}   {"type":"task_watch","project_id":...,"task_id":...}   (P3, D059)
+        {"type":"task_submit","project_id":...,"asset_id":...,"volume_id":...,"candidates":[...],"priority":N,
+         "request_id":...}
+        {"type":"task_cancel","project_id":...,"task_id":...,"request_id":...,"reason":...}
         {"type":"watch","mission_id":...}   {"type":"list"}   {"type":"media","mission_id":...,"evidence_id":...}
         {"type":"approve","mission_id":...,"version":N,"package_hash":...}
         {"type":"decline","mission_id":...,"version":N,"reason":...}
@@ -32,6 +37,9 @@ With an operations catalog (P1) the page also lists the caller's projects and th
 status age, source and the reasons a robot cannot be dispatched; it has no fault injection or flight control. With
 a workflow catalog (P2) it shows the project's templates, runs with every wait and failure reason, reviews, work
 orders and drafts; a run's missions are still approved one by one in the mission view, and a draft never runs.
+With a scheduling catalog (P3) it shows the task queue, each robot's assignment and preview verdict, every waiting and
+excluded candidate with its reasons, and the airspace holds; the scheduler assigns, a person still approves each
+assigned mission in the mission view, and nothing here chooses a robot for the scheduler.
 
 A2A: `GET /.well-known/agent-card.json` and JSON-RPC 2.0 at `POST /a2a` (`message/send`, `tasks/get`) with a
 bearer token whose SHA-256 is configured. External agents are third-party: they may submit requests, which
@@ -46,7 +54,9 @@ On the resident desk (D035) the page also shows the simulation supervisor's publ
 `Tailscale-User-Login`（后端只监听回环）或本机桥用户；没有身份的会话只读。这里没有任何路径能触达
 guardian：审批在服务中变成已签名任务包，操作变成飞行器会复核的操作请求。带运营目录时（P1），页面还列出调用方
 的项目及其站点、机场与机器人，附状态年龄、来源与不可派遣原因；页面没有故障注入或飞控接口。带工作流目录时（P2），页面
-展示项目的模板、带全部等待与失败原因的运行、复核、工单与草案；运行的任务仍在任务视图中逐个审批，草案从不运行。A2A 调用方是第三方：可以提交
+展示项目的模板、带全部等待与失败原因的运行、复核、工单与草案；运行的任务仍在任务视图中逐个审批，草案从不运行。带调度
+目录时（P3），页面展示任务单队列、各机器人的分配与预览判定、每个等待与被排除候选及其原因，以及空域持有；由调度器分配，
+每个已分配任务仍由人在任务视图中审批，这里不替调度器选机。A2A 调用方是第三方：可以提交
 请求（等待人工审批）并读取状态与报告；控制级键、飞行 scope、审批与操作请求一律拒绝并记审计。
 
 常驻任务台（D035）另从 `--supervisor` 只读展示仿真监管者的公开记录：飞行主机状态（`host`），以及每个
@@ -151,6 +161,10 @@ class Session:
         self.last_workflows: str | None = None
         self.watched_run: tuple[str, str] | None = None
         self.last_run: str | None = None
+        self.tasks_project: str | None = None
+        self.last_tasks: str | None = None
+        self.watched_task: tuple[str, str] | None = None
+        self.last_task: str | None = None
         self.last_host: str | None = None
         self.busy = False
 
@@ -242,6 +256,64 @@ class Session:
         if force or text != self.last_run:
             self.last_run = text
             await self.send({"type": "workflow", "view": view})
+
+    async def push_tasks(self, force: bool = False) -> None:
+        if not self.tasks_project:
+            return
+        view = await self.call("tasks.list", project_id=self.tasks_project)
+        if view is None:
+            self.tasks_project = None
+            return
+        text = json.dumps(view, sort_keys=True, default=str)
+        if force or text != self.last_tasks:
+            self.last_tasks = text
+            await self.send({"type": "tasks", "view": view})
+
+    async def push_task(self, force: bool = False) -> None:
+        if not self.watched_task:
+            return
+        project_id, task_id = self.watched_task
+        view = await self.call("tasks.get", project_id=project_id, task_id=task_id)
+        if view is None:
+            self.watched_task = None
+            return
+        text = json.dumps(view, sort_keys=True, default=str)
+        if force or text != self.last_task:
+            self.last_task = text
+            await self.send({"type": "task", "view": view})
+
+    async def task(self, kind: str, message: dict) -> None:
+        """P3 frames: named API calls the service checks against the caller's project role; the scheduler assigns.
+
+        P3 帧：由服务按调用方项目角色检查的具名 API 调用；由调度器分配。
+        """
+        project = str(message.get("project_id", ""))[:120]
+        if kind == "tasks_watch":
+            self.tasks_project = project or None
+            await self.push_tasks(force=True)
+            return
+        if kind == "task_watch":
+            self.watched_task = (project, str(message.get("task_id", ""))[:120])
+            await self.push_task(force=True)
+            return
+        request_id = str(message.get("request_id", ""))[:80]
+        if kind == "task_submit":
+            candidates = message.get("candidates") if isinstance(message.get("candidates"), list) else []
+            try:
+                priority = int(message.get("priority", 0))
+            except (TypeError, ValueError):
+                priority = 0
+            result = await self.call("tasks.submit", project_id=project, asset_id=str(message.get("asset_id", ""))[:120],
+                                     volume_id=str(message.get("volume_id", ""))[:120],
+                                     candidates=[str(c)[:120] for c in candidates[:16]], priority=priority,
+                                     idempotency_key=f"{self.identity}:{request_id}"[:120])
+        else:
+            result = await self.call("tasks.cancel", project_id=project, task_id=str(message.get("task_id", ""))[:120],
+                                     request_id=request_id, reason=str(message.get("reason", ""))[:300])
+        if result is not None and "task" in result:
+            self.watched_task = (project, result["task"]["task_id"])
+            await self.push_task(force=True)
+        await self.push_tasks(force=True)
 
     async def workflow(self, kind: str, message: dict) -> None:
         """P2 frames: every one is a named API call the service checks against the caller's project role.
@@ -355,6 +427,8 @@ class Session:
         elif kind in ("workflows", "workflow_watch", "workflow_start", "workflow_cancel", "workflow_schedule",
                       "workflow_review", "workflow_repair", "workflow_draft"):
             await self.workflow(kind, message)
+        elif kind in ("tasks_watch", "task_watch", "task_submit", "task_cancel"):
+            await self.task(kind, message)
         elif kind in ("approve", "decline", "operate"):
             params = {"approve": ("mission_id", "version", "package_hash"),
                       "decline": ("mission_id", "version", "reason"),
@@ -494,6 +568,8 @@ class MissionConsole:
                 await session.push_resources()
                 await session.push_workflows()
                 await session.push_run()
+                await session.push_tasks()
+                await session.push_task()
 
         watcher = asyncio.create_task(watch())
         try:

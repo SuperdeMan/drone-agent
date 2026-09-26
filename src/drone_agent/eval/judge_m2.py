@@ -108,7 +108,9 @@ def true_effect(node, flight: Path, executive: list[dict], truth: list[dict], re
 def judge_case(case: Path, root: Path, *, use_replay: bool = False) -> dict:
     scenario = json.loads((case / "input/scenario.json").read_text())
     expected = scenario["expected"]
-    registry = Registry(root, scene=root / M2_SCENE)
+    # A P3 sub-case names its robot's own site map; every M2 case keeps the M2 campus (D059).
+    # P3 子用例指明其机器人自己的站点地图；每个 M2 用例保持 M2 园区（D059）。
+    registry = Registry(root, scene=root / scenario.get("scene", M2_SCENE))
     truth_path = case / "truth/truth.jsonl"
     truth = [json.loads(line) for line in truth_path.read_text().splitlines()] if truth_path.exists() else []
     view_path = case / "service-export/view.json"

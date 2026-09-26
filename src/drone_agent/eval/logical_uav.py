@@ -98,6 +98,10 @@ class LogicalUav:
         self.robot_id = registry.capability.robot_id
         self.battery, self.drain = battery, drain_per_sample
         self.link = LinkFaults()
+        # Harness-only capture override: each flight captures these signatures first (None is a flat frame).
+        # 只在编排中使用的拍摄覆盖：每次飞行先按这些特征拍摄（None 为无特征平帧）。
+        self.frames: list[str | None] = []
+        self.climb_blocked = False  # harness-only motor fault for every next flight / 只在编排中使用的电机故障
         self.uplink = Uplink(FaultyClient(LocalFleetClient(hub, self.robot_id), self.link), robot_id=self.robot_id,
                              trust=trust, capability=registry.capability, inbox=directory / "inbox",
                              mailbox=directory / "mailbox", aircraft=directory / "aircraft",
@@ -161,7 +165,8 @@ class LogicalUav:
                  "epoch": epoch, "started_at": utcnow().isoformat(), "ended_at": None, "result": None, "error": None,
                  "battery_at_start": round(self.battery.fraction, 4)}
         self.flights.append(entry)
-        adapter = FlightFake(self.registry, artifacts, battery=self.battery, drain_per_sample=self.drain)
+        adapter = FlightFake(self.registry, artifacts, self.frames, battery=self.battery, drain_per_sample=self.drain)
+        adapter.climb_blocked = self.climb_blocked
         adapter.sim_clock = lambda: time.monotonic() - self.started
         snapshot, holder = adapter.snapshot, {"guardian": None, "last": 0.0}
 

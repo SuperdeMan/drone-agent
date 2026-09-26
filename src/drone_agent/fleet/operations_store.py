@@ -356,16 +356,20 @@ class OperationsStore:
         return expired
 
     def reserve(self, *, activity: str, project_id: str, mission_id: str, version: int, robot_id: str,
-                expires_at: datetime) -> tuple[ResourceReservation | None, dict[str, str]]:
+                expires_at: datetime, extra: tuple[str, ...] = (),
+                blocked: dict[str, str] | None = None) -> tuple[ResourceReservation | None, dict[str, str]]:
         """Reserve the robot's resources for `activity`; returns (reservation, conflicting holders).
 
         A repeat of the same activity returns its reservation (a soft one gets the new expiry); a reservation that
-        was only released by soft expiry may be taken again. The exclusive-hold index is the final arbiter.
+        was only released by soft expiry may be taken again. The exclusive-hold index is the final arbiter. `extra`
+        adds the flight's airspace cells (P3, D059) to the same exclusive holds; a new hold on a cell that `blocked`
+        maps to another activity (a silent robot's envelope) is refused.
 
         为 `activity` 预约机器人的资源；返回（预约，冲突持有者）。同一活动重复预约返回原预约（软预约刷新到期时间）；
-        仅因软到期而释放的预约可以重新获取。独占持有索引是最终裁决。
+        仅因软到期而释放的预约可以重新获取。独占持有索引是最终裁决。`extra` 把该飞行的空域单元（P3，D059）加入同一组
+        独占持有；`blocked` 映射到其他活动的单元（失联机器人的包络）上不接受新持有。
         """
-        resources = self.catalog.resources(robot_id)
+        resources = (*self.catalog.resources(robot_id), *extra)
         dock_id = self.catalog.robots[robot_id].dock_id
         now = self.clock()
         try:
@@ -380,6 +384,8 @@ class OperationsStore:
                 if current is not None and current["reason"] != "soft_expired":
                     return self.reservation(activity), {}
                 others = {r: a for r, a in self.holders(resources).items() if a != activity}
+                others |= {r: f"envelope:{a}" for r, a in (blocked or {}).items()
+                           if r in resources and a != activity and r not in others}
                 if others:
                     return None, others
                 if current is None:

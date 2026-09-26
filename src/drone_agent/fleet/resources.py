@@ -454,6 +454,13 @@ REASONS: dict[str, Verdict] = {
     "reservation.conflict": BLOCKED,
     "reservation.missing": BLOCKED,
     "window.expired": BLOCKED,
+    # P3 (D059): candidate filters and airspace cells. / P3（D059）：候选过滤与空域单元。
+    "asset.unregistered": BLOCKED,
+    "volume.unapproved": BLOCKED,
+    "task.robot_excluded": BLOCKED,
+    "airspace.cell_held": BLOCKED,
+    "airspace.envelope": BLOCKED,
+    "airspace.hold_missing": BLOCKED,
 }
 
 
@@ -489,18 +496,20 @@ def evaluate(catalog: OperationsCatalog, robot_id: str, *, stage: Stage, now: da
              needs: DispatchNeeds | None = None, capability: CapabilityDescriptor | None = None,
              robot_status: RobotStatus | None = None, dock: DockStatus | None = None,
              holders: dict[str, str] | None = None, activity: str | None = None,
-             lid_confirmed: bool = False) -> DispatchEligibility:
+             lid_confirmed: bool = False, extra: tuple[str, ...] = ()) -> DispatchEligibility:
     """Judge one snapshot; the same inputs always give the same verdict and reasons.
 
     `holders` maps each of the robot's resources to the activity key actively holding it. At the claim stage the
     lid must be open and `lid_confirmed` (this activity's open action completed per a later report), and this
-    activity must hold every resource.
+    activity must hold every resource. `extra` carries reasons a caller judged on the same snapshot (the P3 airspace
+    cells, D059); they enter the digest and the one verdict rule.
 
     判定一个快照；相同输入总得到相同的判定与原因。`holders` 把机器人的每项资源映射到当前有效持有它的活动键。
     领取阶段要求舱盖为 open 且 `lid_confirmed`（本活动的开盖动作已由后续报告证实完成），并且本活动持有全部资源。
+    `extra` 是调用方在同一快照上判定的原因（P3 空域单元，D059）；它们进入摘要并适用同一条判定规则。
     """
     policy, robot = catalog.policy, catalog.robots.get(robot_id)
-    reasons: set[str] = set()
+    reasons: set[str] = set(extra)
     holders = dict(holders or {})
     dock_id = robot.dock_id if robot else None
     if robot is None:
@@ -583,7 +592,8 @@ def evaluate(catalog: OperationsCatalog, robot_id: str, *, stage: Stage, now: da
         "capability": capability.model_dump(mode="json") if capability else None,
         "robot_status": robot_status.model_dump(mode="json") if robot_status else None,
         "dock": dock.model_dump(mode="json") if dock else None, "holders": holders, "lid_confirmed": lid_confirmed,
-        "now": now.isoformat(), "policy": policy.model_dump(mode="json")})
+        "now": now.isoformat(), "policy": policy.model_dump(mode="json"),
+        **({"extra": sorted(set(extra))} if extra else {})})
     valid_until = now
     if verdict is Verdict.ELIGIBLE and dock is not None:
         valid_until = dock.report.observed_at + timedelta(seconds=policy.freshness_s)

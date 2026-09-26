@@ -1,0 +1,31 @@
+# P3 S0 scheduling catalog (D059) for the operations catalog p3_campus_v1. The shared frame `campus` places site a at
+# its origin, b 12 m east, c and d 100 m north of them and the harbor fixture 300 m south; the airspace is cut into
+# 4 m cells and a flight's footprint is its route box grown by 2 m, so within a pair a flight to the shared `mid` or
+# `north` marker meets the neighbour's flights to them, while `mid` from a and `east` from b stay apart. A robot silent
+# for more than 5 s after taking its mission blocks new holds within its speed times the silence (plus 2 m), bounded by
+# its approved volume. The short reassignment delay keeps the S0 withdrawal cases quick; ranking and policy versions are
+# recorded with every decision.
+#
+# P3 S0 调度目录（D059），对应运营目录 p3_campus_v1。共享坐标 `campus` 把站点 a 放在原点，b 在其东 12 m，c 与 d 在它们北面
+# 100 m，港区夹具在南 300 m；空域切成 4 m 单元，一次飞行的航迹覆盖是其航线外包矩形外扩 2 m，因此同一对中飞往共享 `mid` 或
+# `north` 标记的飞行会与邻站飞往它们的飞行相交，而 a 的 `mid` 与 b 的 `east` 互不相交。领取任务后失联超过 5 s 的机器人，在其
+# 速度乘失联时长（加 2 m）范围内阻止新持有，并以其批准体积为界。较短的改派延迟让 S0 撤回用例更快；排序与策略版本随每个判定
+# 记录。
+format: drone.scheduling-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p3_campus_v1
+operations_catalog: p3_campus_v1
+airspace:
+  frame: campus
+  cell_m: 4.0
+  buffer_m: 2.0
+  contact_timeout_s: 5.0
+  envelope_margin_m: 2.0
+  sites:
+    site_a: {origin: [0, 0]}
+    site_b: {origin: [12, 0]}
+    site_c: {origin: [0, 100]}
+    site_d: {origin: [12, 100]}
+    site_h: {origin: [0, -300]}
+ranking: {version: p3-rank-v1, cruise_mps: 2.0, setup_s: 20.0, usage_window_s: 3600.0}
+policy: {version: p3-sched-v1, reassign_after_s: 5.0, max_assignments: 4, task_window_s: 1800.0, max_tasks_per_pass: 50}

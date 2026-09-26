@@ -19,6 +19,8 @@ from gz.transport13 import Node, SubscribeOptions
 sensor, truth = Path("/sensor"), Path("/truth")
 # The Gazebo entity to record; M3 flies PX4's x500_vision (D041). / 要记录的 Gazebo 实体；M3 飞 PX4 的 x500_vision（D041）。
 MODEL = os.environ.get("DRONE_TRUTH_MODEL", "x500_0")
+# The camera to relay; P3 gives each instance its own scoped topic (D061). / 要转接的相机；P3 每个实例有自己的限定话题（D061）。
+CAMERA = os.environ.get("DRONE_CAMERA_TOPIC", "/drone/cam_0/image")
 sensor.mkdir(exist_ok=True)
 truth.mkdir(exist_ok=True)
 node = Node()
@@ -63,7 +65,7 @@ def pose_callback(msg):
 opts = SubscribeOptions()
 opts.msgs_per_sec = 20
 assert node.subscribe(Pose_V, "/world/default/pose/info", pose_callback, opts)
-assert node.subscribe(Image, "/drone/cam_0/image", image_callback)
+assert node.subscribe(Image, CAMERA, image_callback)
 for sig in (signal.SIGINT, signal.SIGTERM):
     signal.signal(sig, lambda *_: stopped.set())
 while not stopped.wait(0.2):

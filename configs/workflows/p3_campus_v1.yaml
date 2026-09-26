@@ -1,0 +1,40 @@
+# P3 S0 workflow catalog (D057, D059) for the operations catalog p3_campus_v1. Its inspections leave the robot to the
+# scheduler: a submission names candidates (or none for every robot of the project) and becomes a task that is
+# assigned, withdrawn or relayed by the scheduler and still approved one mission at a time (D032). `pair_round`
+# inspects the two markers a pair shares one after the other, so a relay can hand the second one to the neighbour
+# without redoing the first; `pair_check` inspects `mid` and `east` side by side.
+#
+# P3 S0 工作流目录（D057、D059），对应运营目录 p3_campus_v1。其巡检把机器人交给调度器：提交节点列出候选（或不列、即本项目
+# 全部机器人），成为由调度器分配、撤回或接力的任务单，每个任务仍逐个审批（D032）。`pair_round` 依次巡检一对站点共享的两个
+# 标记，因此接力可以把第二个交给邻站而不重做第一个；`pair_check` 并行巡检 `mid` 与 `east`。
+format: drone.workflow-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p3_campus_v1
+operations_catalog: p3_campus_v1
+workflows:
+  - workflow_id: pair_round
+    version: 1
+    project_id: campus_ops
+    title: "Pair round: the shared mid and north markers in series, robot chosen per task / 站点对巡回：依次巡检共享的 mid 与 north 标记，逐任务选机"
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect_mid, activity: submit_mission, params: {volume_id: campus_training, asset: asset_mid, candidates: [uav_a, uav_b]}}
+      - {node_id: await_mid, activity: await_mission, params: {mission_from: inspect_mid}}
+      - {node_id: inspect_north, activity: submit_mission, requires: done, after: [await_mid], params: {volume_id: campus_training, asset: asset_north, candidates: [uav_a, uav_b]}}
+      - {node_id: await_north, activity: await_mission, params: {mission_from: inspect_north}}
+      - {node_id: report, activity: build_report, requires: done, after: [await_north]}
+    budget: {max_missions: 2}
+  - workflow_id: pair_check
+    version: 1
+    project_id: campus_ops
+    title: "Pair check: mid and east side by side, robots chosen by the scheduler / 站点对检查：并行巡检 mid 与 east，由调度器选机"
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect_mid, activity: submit_mission, params: {volume_id: campus_training, asset: asset_mid}}
+      - {node_id: await_mid, activity: await_mission, params: {mission_from: inspect_mid}}
+      - {node_id: inspect_east, activity: submit_mission, params: {volume_id: campus_training, asset: asset_east}}
+      - {node_id: await_east, activity: await_mission, params: {mission_from: inspect_east}}
+      - {node_id: report, activity: build_report, requires: done, after: [await_mid, await_east]}
+    budget: {max_missions: 2}
