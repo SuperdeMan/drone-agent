@@ -1,0 +1,47 @@
+# P1 S1 cases (WP-P1-08, D055), layered on compose.m2.yaml with the same networks, images and secrets. The mission
+# service additionally loads the p1_s1_v1 catalog and the harness member list, so its ledger migrates to schema v2
+# (D056) inside the case directory. `dock-sim` is the logical dock's backend: it has no network at all and reaches
+# only the service API socket; it reads Gazebo truth (read-only) for its pad sensor and a harness-only control file
+# (read-only) for faults, and writes nothing but its own log. Faults reach the dock, never the service, and nothing
+# here can reach the guardian. The judge runs the M2 flight judge plus the P1 dispatch checks.
+#
+# P1 S1 用例（WP-P1-08，D055），叠加在 compose.m2.yaml 之上，网络、镜像与密钥相同。任务服务另外加载 p1_s1_v1 目录与
+# 编排成员列表，因此其账本在用例目录内迁移到 schema v2（D056）。`dock-sim` 是逻辑机场的后端：完全没有网络，只能访问
+# 服务 API 套接字；它只读 Gazebo 真值作为机位传感器，只读编排专用控制文件作为故障输入，只写自己的日志。故障只作用
+# 于机场，从不作用于服务；这里没有任何东西能触达 guardian。裁判运行 M2 飞行裁判与 P1 派遣检查。
+services:
+  mission-service:
+    command: [python3, -m, drone_agent.fleet.main, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
+              --planner, "${DRONE_M2_PLANNER:?}", --fixtures, /input/planner-fixtures.json, --state, /state,
+              --tls, /tls, --signing-key, /secrets/approval-signing.key, --api, /run/mission/api.sock,
+              --listen, "0.0.0.0:8450", --transport, "${DRONE_M2_TRANSPORT:-grpc}",
+              --zenoh-listen, "tls/0.0.0.0:7447", --execution-backend, px4_sitl,
+              --catalog, /workspace/configs/sites/p1_s1_v1.yaml,
+              --members, /workspace/configs/sites/p1_members_s1.yaml]
+  dock-sim:
+    image: ${DRONE_M2_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:size=8m"]
+    cpus: 0.2
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 32
+    network_mode: none
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    command: [python3, -m, drone_agent.eval.dock_simulator, --serve, --api, /run/mission/api.sock,
+              --principal, "dock:p1-s1-sim", --dock, dock_s1, --truth-root, /truth, --truth-glob, truth.jsonl,
+              --control, /control/dock.json, --log, /dock/dock.jsonl, --period, "1.0"]
+    volumes:
+      - ${DRONE_M2_RUN:?}/api:/run/mission:ro
+      - ${DRONE_M2_RUN:?}/truth:/truth:ro
+      - ${DRONE_M2_RUN:?}/control:/control:ro
+      - ${DRONE_M2_RUN:?}/dock:/dock
+  judge:
+    command: [python3, -m, drone_agent.eval.judge_p1, /run, --layer, s1, --root, /workspace,
+              --output, /output/result.json]

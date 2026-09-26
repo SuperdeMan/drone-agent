@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 import uuid
 from datetime import datetime, timedelta
@@ -478,3 +479,65 @@ def soft_expiry(catalog: OperationsCatalog, now: datetime, not_after: datetime |
     """Soft reservation expiry, never beyond the approval or package window. / 软预约到期时间，不超过审批或任务窗口。"""
     expiry = now + timedelta(seconds=catalog.policy.soft_reservation_s)
     return min(expiry, not_after) if not_after is not None else expiry
+
+
+_OPERATIONS_LINE = re.compile(r'^(CREATE (TABLE|UNIQUE INDEX|INDEX) (IF NOT EXISTS )?"?op_|INSERT INTO "op_)')
+
+
+def v1_lines(path: Path) -> list[str]:
+    """The SQL dump of the v1 tables only: op_* objects, their sequence rows and migration meta keys are left out.
+
+    只含 v1 表的 SQL 转储：去掉 op_* 对象、其序列行与迁移 meta 键。
+    """
+    with sqlite3.connect(str(path)) as db:
+        dump = list(db.iterdump())
+    kept = []
+    for line in dump:
+        if _OPERATIONS_LINE.match(line) or line.startswith("INSERT INTO \"sqlite_sequence\" VALUES('op_"):
+            continue
+        if line.startswith('INSERT INTO "meta"') and ("'schema_version'" in line or "'operations_" in line):
+            continue
+        kept.append(line)
+    return kept
+
+
+def drill(path: Path) -> dict:
+    """D056 drill on a copy of a ledger: migrate it and prove the v1 data unchanged; reports counts, never content.
+
+    在账本副本上做 D056 演练：迁移并证明 v1 数据不变；只报告计数，从不报告内容。
+    """
+
+    def v1_dump(target: Path) -> str:
+        return hashlib.sha256("\n".join(v1_lines(target)).encode()).hexdigest()
+
+    before = v1_dump(path)
+    ledger = BusinessLedger(path)
+    try:
+        report = migrate(ledger, backups=path.parent / "backups")
+        with sqlite3.connect(str(path)) as db:
+            integrity = db.execute("PRAGMA integrity_check").fetchone()[0]
+            tables = sorted(row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                            if row[0].startswith("op_"))
+    finally:
+        ledger.close()
+    after = v1_dump(path)
+    return {"status": "passed" if report["status"] in ("migrated", "current") and integrity == "ok"
+            and before == after and tables == sorted(TABLES) else "failed",
+            "migration": report["status"], "schema_version": SCHEMA_VERSION, "integrity": integrity,
+            "v1_dump_sha256_before": before, "v1_dump_sha256_after": after, "op_tables": len(tables),
+            "rows_before": report.get("rows_before"), "backup": report.get("backup")}
+
+
+def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--drill", type=Path, required=True, help="a copy of the ledger to migrate (D056 drill)")
+    args = parser.parse_args()
+    result = drill(args.drill)
+    print(json.dumps(result))
+    raise SystemExit(0 if result["status"] == "passed" else 1)
+
+
+if __name__ == "__main__":
+    main()

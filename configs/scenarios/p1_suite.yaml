@@ -80,9 +80,9 @@ s1:
     fault: P1-F11
     description: "The dock enters maintenance after approval: no package reaches the aircraft; the cancel voids the delivery. / 审批后机场进入维护：任务包不到达飞行器；取消使投递作废。"
     seeds: [7]
-    expected: {status: cancelled, flight: false, classification: not_completed}
+    expected: {status: cancelled, flight: false, classification: not_completed, reasons: [dock.maintenance]}
   - id: p1_s1_restart
     fault: P1-F12
     description: "The mission service and the dock backend restart while the aircraft flies: one flight, same result, one release. / 飞行中任务服务与机场后端重启：一次飞行、结果不变、释放一次。"
     seeds: [7]
-    expected: {status: completed, versions: 1, replans: 0, classification: completed, flight: true}
+    expected: {status: completed, versions: 1, replans: 0, classification: completed, flight: true, session_new: true}

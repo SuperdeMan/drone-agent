@@ -334,6 +334,36 @@ def fetch_command(connection: Connection, args: argparse.Namespace, *, transport
     return record
 
 
+def desk_members(connection: Connection, *, apply: bool) -> dict:
+    """The desk member list: this tailnet user as the campus_s1 operator, approver and admin, plus the supervisor's
+    read-only identity. The login comes from the desk's own hello over the tailnet and is never printed.
+
+    任务台成员列表：当前 tailnet 用户为 campus_s1 的 operator、approver 与 admin，另加监管者的只读身份。登录名取自
+    经 tailnet 的任务台 hello，从不打印。
+    """
+    status = ssh(connection, {"action": "desk_status"}, timeout=120)
+    origin = status.get("origin") or ""
+    if not re.fullmatch(r"https://[a-zA-Z0-9.-]+\.ts\.net:8448", origin):
+        raise ValueError("the resident desk has no tailnet origin yet")
+    probe = runpy.run_path(str(ROOT / "scripts/desk_probe.py"))
+    client = probe["Client"](origin)
+    try:
+        identity = client.next("hello", 30).get("identity") or ""
+    finally:
+        client.close()
+    if not identity.startswith("tailnet:") or len(identity) <= len("tailnet:"):
+        raise ValueError("this device has no tailnet identity at the desk")
+    members = {"format": "drone.project-members/v1", "members": [
+        {"principal": identity, "project_id": "campus_s1", "roles": ["operator", "approver", "admin"]},
+        {"principal": identity, "project_id": "legacy_m2", "roles": ["viewer"]},
+        {"principal": "harness:desk-supervisor", "project_id": "campus_s1", "roles": ["viewer"]},
+        {"principal": "harness:desk-supervisor", "project_id": "legacy_m2", "roles": ["viewer"]}]}
+    if not apply:
+        return {"status": "plan", "entries": len(members["members"]), "writes": "secrets/desk/members.yaml (0600)",
+                "principal_schemes": ["harness", "tailnet"]}
+    return ssh(connection, {"action": "desk_members", "run_id": new_run_id(), "members": members}, timeout=120)
+
+
 def deploy_command(connection: Connection, args: argparse.Namespace) -> dict:
     state = ssh(connection, {"action": "status"})
     if args.resume:
@@ -403,6 +433,8 @@ def main() -> None:
     cloud_console_action = cloud_console_parser.add_mutually_exclusive_group()
     cloud_console_action.add_argument("--apply", action="store_true")
     cloud_console_action.add_argument("--status", action="store_true")
+    members_parser = commands.add_parser("desk-members", help="store the desk member list in cloud secrets (P1, D055)")
+    members_parser.add_argument("--apply", action="store_true")
     desk_parser = commands.add_parser("desk-cloud", help="plan or activate the resident M2 mission desk (D035)")
     desk_action = desk_parser.add_mutually_exclusive_group()
     desk_action.add_argument("--apply", action="store_true")
@@ -429,6 +461,10 @@ def main() -> None:
                            help="scripted fixtures are labelled test doubles; live needs the model key in cloud secrets")
     m2_parser.add_argument("--transport", choices=["grpc", "zenoh"], default="grpc",
                            help="FleetTransport between the mission service and the uplink (D046)")
+    p1_parser = commands.add_parser("p1", help="run P1 S1 cases (catalog, logical dock, claim gate, PX4 SITL) in the cloud")
+    p1_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
+    p1_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
+    p1_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
     m3_parser = commands.add_parser("m3", help="run M3-SITL scenarios (external mode, autonomy, recovery v2) in the cloud")
     m3_parser.add_argument("--scenario", default="ext_inspect", help="all, class:<name> or comma-separated ids")
     m3_parser.add_argument("--seeds", default="7,19,41")
@@ -454,6 +490,10 @@ def main() -> None:
             if args.command == "console-cloud":
                 action = "console_status" if args.status else "console_apply" if args.apply else "console_plan"
                 result = ssh(connection, {"action": action, "run_id": new_run_id()}, timeout=300)
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+                return
+            if args.command == "desk-members":
+                result = desk_members(connection, apply=args.apply)
                 print(json.dumps(result, ensure_ascii=False, indent=2))
                 return
             if args.command == "desk-cloud":
@@ -503,6 +543,18 @@ def main() -> None:
                         "isolation": args.isolation,
                     },
                     timeout=21600,
+                )
+            elif args.command == "p1":
+                result = ssh(
+                    connection,
+                    {
+                        "action": "p1",
+                        "run_id": new_run_id(),
+                        "scenario": args.scenario,
+                        "seeds": [int(seed) for seed in args.seeds.split(",") if seed],
+                        "keep_going": args.keep_going,
+                    },
+                    timeout=14400,
                 )
             elif args.command == "m2-key":
                 # Read only from the process environment; never from a sibling project's .env (CLAUDE.md).

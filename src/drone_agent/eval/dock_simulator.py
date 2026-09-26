@@ -258,7 +258,13 @@ class TruthPresence:
 
 
 async def serve(args) -> None:
+    import os
+
     from drone_agent.fleet.api import ApiClient
+
+    if args.seed is None:
+        # A restarted backend is a new boot session, never a replay of the old one. / 重启的后端是新会话，不是旧会话的重放。
+        args.seed = int.from_bytes(os.urandom(4), "big")
 
     battery = Battery(1.0)
     presence = TruthPresence(args.truth_glob, args.truth_root)
@@ -303,6 +309,9 @@ async def serve(args) -> None:
                 for entry in dock.truth:
                     stream.write(json.dumps(entry) + "\n")
             dock.truth.clear()
+            if args.log.stat().st_size > 16 * 1024 * 1024:
+                # A resident dock keeps one previous log file. / 常驻机场保留一个旧日志文件。
+                args.log.replace(args.log.with_name(args.log.name + ".1"))
         await asyncio.sleep(args.period)
 
 
@@ -317,7 +326,8 @@ def main() -> None:
     parser.add_argument("--control", type=Path, help="harness-only fault switches (JSON), never a service input")
     parser.add_argument("--log", type=Path, help="append the dock's own truth log here")
     parser.add_argument("--period", type=float, default=1.0)
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seed", type=int, default=None,
+                        help="fixed for replays; by default every process start is a new boot session")
     parser.add_argument("--lid-time", type=float, default=3.0)
     parser.add_argument("--charge-rate", type=float, default=0.05)
     parser.add_argument("--cooling", type=float, default=5.0)

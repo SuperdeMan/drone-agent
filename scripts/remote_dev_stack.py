@@ -24,9 +24,9 @@ IMAGE_REFS = ("drone-agent-sitl:px4-1.17.0-m0", "px4io/px4-dev-ros2:drone-m0-pin
 CONTROL_FILES = ("compose.cloud.yaml", "checks.Dockerfile", "requirements.txt")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 RUN_ID = re.compile(r"^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
-# Recorded run directories (`m1-<run_id>`) and case directories (`<scenario>-<seed>`) under artifacts/.
-# artifacts/ 下的运行目录（`m1-<run_id>`）与用例目录（`<scenario>-<seed>`）。
-RUN_DIR = re.compile(r"^m[0-9]+-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
+# Recorded run directories (`m1-<run_id>`, `p1-<run_id>`) and case directories (`<scenario>-<seed>`) under artifacts/.
+# artifacts/ 下的运行目录（`m1-<run_id>`、`p1-<run_id>`）与用例目录（`<scenario>-<seed>`）。
+RUN_DIR = re.compile(r"^[mp][0-9]+-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 CASE_DIR = re.compile(r"^[a-z][a-z0-9_]*-[0-9]+$")
 READ_ONLY_ACTIONS = frozenset({"status", "runs", "inspect", "live_status", "console_plan", "console_status",
                                "desk_plan", "desk_status"})
@@ -378,7 +378,8 @@ def store_model_key(root: Path, request: dict) -> dict:
 def dispatch(request: dict) -> dict:
     action = request.get("action")
     if action not in {*READ_ONLY_ACTIONS, "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1", "m2",
-                       "m3", "m2_key", "live_start", "live_operate", "console_apply", "desk_apply"}:
+                       "m3", "p1", "m2_key", "live_start", "live_operate", "console_apply", "desk_apply",
+                       "desk_members"}:
         raise ValueError("unsupported cloud action")
     if action not in READ_ONLY_ACTIONS and not RUN_ID.fullmatch(request.get("run_id", "")):
         raise ValueError("invalid run identity")
@@ -405,7 +406,7 @@ def dispatch(request: dict) -> dict:
             return console["plan"](root, deployment)
         with locked(root):
             return console["apply"](root, deployment, request)
-    if action in {"desk_plan", "desk_status", "desk_apply"}:
+    if action in {"desk_plan", "desk_status", "desk_apply", "desk_members"}:
         import runpy
 
         deployment = current(root)
@@ -418,6 +419,8 @@ def dispatch(request: dict) -> dict:
         if action == "desk_plan":
             return desk["plan"](root, deployment)
         with locked(root):
+            if action == "desk_members":
+                return desk["store_members"](root, request)
             return desk["apply"](root, deployment, request)
     if action in {"live_status", "live_start", "live_operate"}:
         import runpy
@@ -458,6 +461,13 @@ def dispatch(request: dict) -> dict:
             if not script.is_file():
                 raise ValueError("deploy a version with the M2 end-to-end runner first")
             return runpy.run_path(str(script))["run_m2"](root, deployment, request)
+        if action == "p1":
+            import runpy
+
+            script = deployment / "source/scripts/remote_p1.py"
+            if not script.is_file():
+                raise ValueError("deploy a version with the P1 S1 runner first")
+            return runpy.run_path(str(script))["run_p1"](root, deployment, request)
         if action == "verify":
             return operation_receipt(deployment, request["run_id"], smoke(root, deployment, request["run_id"]))
         if action == "test":

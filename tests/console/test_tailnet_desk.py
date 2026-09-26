@@ -131,7 +131,7 @@ def test_status_is_unhealthy_when_page_and_service_revisions_differ(tmp_path, mo
 
 
 @pytest.mark.parametrize("defect", [None, "public", "extra_network", "writable_api", "root_user", "service_egress",
-                                    "proxy_mount"])
+                                    "proxy_mount", "dock_network", "dock_writes_truth", "members_writable"])
 def test_container_verification_reads_actual_publication_mounts_and_user(tmp_path, monkeypatch, defect):
     desk = SUP["Desk"](tmp_path)
     ports = {"8769/tcp": [{"HostIp": "127.0.0.1", "HostPort": "8769"}]}
@@ -143,14 +143,20 @@ def test_container_verification_reads_actual_publication_mounts_and_user(tmp_pat
                             ("/fixed/records", desk.root / "artifacts", False),
                             ("/fixed/releases", desk.root / "releases", False),
                             ("/fixed/outputs", desk.base / "fixed-pages", True)],
-                  "desk-model-proxy": []}.get(service, [("/state", desk.service, True)])
+                  "desk-model-proxy": [],
+                  "desk-dock": [("/api", desk.base / "api", False), ("/truth", desk.flights, False),
+                                ("/dock", desk.base / "dock", True)],
+                  "desk-service": [("/state", desk.service, True),
+                                   ("/members/members.yaml", desk.secrets / "members.yaml", False)],
+                  }.get(service, [("/state", desk.service, True)])
+        networks = {f"drone-agent-cloud_{name}": {} for name in DESK["NETWORKS"][service]} or {"none": {}}
         value = {
             "Id": service, "Image": "sha256:test", "State": {"Running": True},
             "Config": {"User": "1000:1001", "Labels": {"io.drone-agent.source-sha": "a" * 40}},
             "HostConfig": {"PortBindings": copy.deepcopy(ports) if web else {}, "ReadonlyRootfs": True,
                            "Privileged": False, "CapDrop": ["ALL"]},
             "NetworkSettings": {"Ports": copy.deepcopy(ports) if web else {},
-                                "Networks": {f"drone-agent-cloud_{name}": {} for name in DESK["NETWORKS"][service]}},
+                                "Networks": networks},
             "Mounts": [{"Destination": d, "Source": str(s), "RW": rw, "Type": "bind"} for d, s, rw in mounts],
         }
         if web and defect == "public":
@@ -163,6 +169,12 @@ def test_container_verification_reads_actual_publication_mounts_and_user(tmp_pat
             value["Config"]["User"] = ""
         if service == "desk-service" and defect == "service_egress":
             value["NetworkSettings"]["Networks"]["drone-agent-cloud_desk_egress"] = {}
+        if service == "desk-dock" and defect == "dock_network":
+            value["NetworkSettings"]["Networks"] = {"drone-agent-cloud_desk_uplink": {}}
+        if service == "desk-dock" and defect == "dock_writes_truth":
+            value["Mounts"][1]["RW"] = True
+        if service == "desk-service" and defect == "members_writable":
+            value["Mounts"][1]["RW"] = True
         if service == "desk-model-proxy" and defect == "proxy_mount":
             value["Mounts"] = [{"Destination": "/secrets", "Source": str(desk.secrets), "RW": False, "Type": "bind"}]
         return value
@@ -179,7 +191,7 @@ def test_container_verification_reads_actual_publication_mounts_and_user(tmp_pat
         with pytest.raises(ValueError):
             function(desk, "a" * 40)
     else:
-        assert set(function(desk, "a" * 40)) == {"desk-model-proxy", "desk-service", "desk-uplink", "desk"}
+        assert set(function(desk, "a" * 40)) == {"desk-model-proxy", "desk-service", "desk-dock", "desk-uplink", "desk"}
 
 
 # ── the simulation supervisor / 仿真监管者 ──

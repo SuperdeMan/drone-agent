@@ -5,6 +5,7 @@ D056 迁移演练与 P1 运营存储的预约不变量。
 
 from __future__ import annotations
 
+import json
 import shutil
 import sqlite3
 import threading
@@ -15,7 +16,15 @@ import pytest
 
 from drone_agent.contracts import utcnow
 from drone_agent.fleet.ledger import BusinessLedger
-from drone_agent.fleet.operations_store import DDL, MigrationError, OperationsStore, migrate, schema_version
+from drone_agent.fleet.operations_store import (
+    DDL,
+    MigrationError,
+    OperationsStore,
+    drill,
+    migrate,
+    schema_version,
+    v1_lines,
+)
 from drone_agent.fleet.resources import load_catalog
 from tests.fleet.harness import build_loop, request
 
@@ -25,9 +34,9 @@ CATALOG = load_catalog(ROOT / "configs/sites/p1_campus_v1.yaml")
 
 def v1_dump(path: Path) -> list[str]:
     """Every statement of the v1 tables, in order. / v1 表的全部语句，按序。"""
-    with sqlite3.connect(str(path)) as db:
-        return [line for line in db.iterdump() if "op_" not in line and "schema_version" not in line
-                and "operations_" not in line]
+    lines = v1_lines(path)
+    assert any(line.startswith('INSERT INTO "missions"') for line in lines), "the drill must see real v1 rows"
+    return lines
 
 
 async def populated(tmp_path: Path) -> Path:
@@ -173,3 +182,14 @@ def test_two_writers_racing_for_one_dock_leave_exactly_one_holder(tmp_path):
 def test_the_store_refuses_an_unmigrated_ledger(tmp_path):
     with pytest.raises(MigrationError):
         OperationsStore(BusinessLedger(tmp_path / "ledger.sqlite3"), CATALOG)
+
+
+async def test_the_drill_reports_counts_and_digests_but_no_content(tmp_path):
+    path = await populated(tmp_path)
+    copy = tmp_path / "drill/ledger.sqlite3"
+    copy.parent.mkdir()
+    shutil.copyfile(path, copy)
+    result = drill(copy)
+    assert result["status"] == "passed" and result["op_tables"] == 12
+    assert result["v1_dump_sha256_before"] == result["v1_dump_sha256_after"]
+    assert "Inspect" not in json.dumps(result), "the receipt carries no mission content"

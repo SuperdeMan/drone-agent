@@ -5,14 +5,19 @@
 # network, the only resident container that also joins the outbound `desk_egress` network. Profile `flight`: the
 # simulator, truth collector, guardian, executive and judge, started and stopped only by the simulation supervisor
 # with the same networks and mounts as the end-to-end cases. No fault injection. Secrets are mounted read-only into
-# the single container that needs each of them; the page holds none.
+# the single container that needs each of them; the page holds none. P1 (D055/D056): the service loads the p1_s1_v1
+# catalog with the member list from the desk secrets (real logins never enter the repository), and `desk-dock` is the
+# resident backend of the logical dock: no network at all, only the API socket, the flights' Gazebo truth (read-only)
+# for its pad sensor and its own log.
 #
 # 常驻 M2 任务台（D035）。常驻：`desk`（页面，只发布 127.0.0.1:8769，位于私有 Tailscale Serve 8448 之后）、
 # `desk-service`（任务服务）与 `desk-uplink`（机载 uplink）；它们只共享内部 `desk_uplink` 网络与 API 套接字
 # 目录。任务服务只能经 `desk-model-proxy` 访问模型端点（D036）：它是内部 `desk_model` 网络上的允许列表 CONNECT
 # 代理，也是唯一同时接入可出站 `desk_egress` 网络的常驻容器。profile `flight`：仿真器、真值采集、guardian、
 # executive 与裁判，只由仿真监管者启停，网络与挂载同端到端用例；不做故障注入。每个密钥只读挂载到唯一需要它的
-# 容器；页面不持任何密钥。
+# 容器；页面不持任何密钥。P1（D055/D056）：服务加载 p1_s1_v1 目录与任务台 secrets 中的成员列表（真实登录名从不
+# 进入仓库）；`desk-dock` 是逻辑机场的常驻后端：完全没有网络，只有 API 套接字、飞行的 Gazebo 真值（只读，作为机位
+# 传感器）与它自己的日志。
 name: drone-agent-cloud
 services:
   desk:
@@ -77,12 +82,14 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
     command: [python3, -m, drone_agent.fleet.main, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
               --planner, auto, --state, /state, --tls, /tls, --signing-key, /secrets/approval-signing.key,
-              --api, /api/api.sock, --listen, "0.0.0.0:8450", --execution-backend, px4_sitl]
+              --api, /api/api.sock, --listen, "0.0.0.0:8450", --execution-backend, px4_sitl,
+              --catalog, /workspace/configs/sites/p1_s1_v1.yaml, --members, /members/members.yaml]
     volumes:
       - ${DRONE_DESK_ROOT:?}/service:/state
       - ${DRONE_DESK_ROOT:?}/api:/api
       - ${DRONE_DESK_SECRETS:?}/service-tls:/tls:ro
       - ${DRONE_DESK_SECRETS:?}/approval-signing.key:/secrets/approval-signing.key:ro
+      - ${DRONE_DESK_SECRETS:?}/members.yaml:/members/members.yaml:ro
       - ${DRONE_DESK_MODEL:?}:/model:ro
     depends_on: [desk-model-proxy]
     networks: [desk_uplink, desk_model]
@@ -132,6 +139,31 @@ services:
       - ${DRONE_DESK_SECRETS:?}/robot-tls:/tls:ro
       - ${DRONE_DESK_SECRETS:?}/trust:/trust:ro
     networks: [desk_uplink]
+  desk-dock:
+    image: ${DRONE_DESK_GROUND_IMAGE:?}
+    pull_policy: never
+    restart: unless-stopped
+    init: true
+    user: ${DRONE_DESK_UID:?}:${DRONE_DESK_GID:?}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:size=8m"]
+    cpus: 0.2
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 32
+    network_mode: none
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    command: [python3, -m, drone_agent.eval.dock_simulator, --serve, --api, /api/api.sock,
+              --principal, "dock:p1-s1-sim", --dock, dock_s1, --truth-root, /truth, --truth-glob, "*/truth/truth.jsonl",
+              --log, /dock/dock.jsonl, --period, "1.0"]
+    volumes:
+      - ${DRONE_DESK_ROOT:?}/api:/api:ro
+      - ${DRONE_DESK_ROOT:?}/flights:/truth:ro
+      - ${DRONE_DESK_ROOT:?}/dock:/dock
   desk-sitl:
     profiles: [flight]
     image: ${DRONE_DESK_SIM_IMAGE:?}

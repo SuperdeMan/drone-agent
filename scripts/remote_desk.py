@@ -4,20 +4,28 @@ Activation builds the M2 images of the deployed revision, provisions the desk's 
 resident containers, installs the supervisor unit and adds the private Serve route 8448 -> 127.0.0.1:8769. It
 verifies the page, the service and the supervisor on that revision, the containers' actual boundaries, and that
 no other container or Serve entry (including D028's 8447) changed; on failure only these components are
-restored. The model key is never read here: the service reads its own mounted file.
+restored. The model key is never read here: the service reads its own mounted file. P1 (D055/D056): activation
+needs the desk member list in the desk secrets, runs the ledger migration drill on a copy of the live ledger before
+anything is switched (only counts and digests are kept), starts the resident dock backend, and records the real
+migration the service performed on start.
 
 规划、激活并检查常驻 M2 任务台（D035）：本项目容器、一个监管者 unit、一个 Serve 映射。激活时构建所部署版本
 的 M2 镜像，生成任务台自己的信任根，启动三个常驻容器，安装监管者 unit，并新增私有 Serve 映射 8448 ->
 127.0.0.1:8769。它核对页面、服务与监管者都运行该版本、容器的实际边界，以及其他容器与 Serve 条目（含 D028
-的 8447）没有变化；失败时只恢复这些组件。这里从不读取模型 key：服务读取它自己挂载的文件。
+的 8447）没有变化；失败时只恢复这些组件。这里从不读取模型 key：服务读取它自己挂载的文件。P1（D055/D056）：激活
+要求任务台 secrets 中有成员列表，在切换任何组件之前先对当前账本的副本执行迁移演练（只保留计数与摘要），启动常驻
+机场后端，并记录服务启动时实际执行的迁移。
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import runpy
+import shutil
+import sqlite3
 import time
 import urllib.error
 import urllib.request
@@ -36,10 +44,11 @@ MARKER = "# Managed by drone-agent D035"
 HTTPS_PORT = 8448
 LISTENER = "127.0.0.1:8769"
 BACKEND = "http://" + LISTENER
-RESIDENTS = ("desk-model-proxy", "desk-service", "desk-uplink", "desk")
-# The approved topology (D035, D036): only the model proxy joins the outbound network. / 只有模型代理接入出站网络。
+RESIDENTS = ("desk-model-proxy", "desk-service", "desk-dock", "desk-uplink", "desk")
+# The approved topology (D035, D036, D055): only the model proxy joins the outbound network; the dock has none.
+# 已批准的拓扑（D035、D036、D055）：只有模型代理接入出站网络；机场后端没有网络。
 NETWORKS = {"desk": {"desk_ingress"}, "desk-service": {"desk_uplink", "desk_model"}, "desk-uplink": {"desk_uplink"},
-            "desk-model-proxy": {"desk_model", "desk_egress"}}
+            "desk-model-proxy": {"desk_model", "desk_egress"}, "desk-dock": set()}
 command, serve_config, fingerprint, read_json = (CONSOLE["command"], CONSOLE["serve_config"], CONSOLE["fingerprint"],
                                                  CONSOLE["read_json"])
 
@@ -123,7 +132,10 @@ def plan(root: Path, deployment: Path) -> dict:
             "deployment_id": deployment.name, "origin": origin, "listener": LISTENER, "service_unit": UNIT,
             "images": image_names(tag), "planner": "live" if (desk.model / "minimax.key").is_file() else "scripted",
             "serve_other_routes_sha256": fingerprint(other_routes(config)), "funnel": False, "a2a_clients": 0,
-            "authorization": "existing tailnet access; writes need the Serve login header (D033)",
+            "authorization": "existing tailnet access; writes need the Serve login header and a project role "
+                             "from the desk member list (D033, D055)",
+            "catalog": "configs/sites/p1_s1_v1.yaml", "members_provisioned": (desk.secrets / "members.yaml").is_file(),
+            "ledger_migration": "drill on a copy first, then schema v2 with a verified backup on start (D056)",
             "apply_required": True}
 
 
@@ -159,8 +171,16 @@ def inspect_desk(desk, source_sha: str) -> dict:
         mounts = {m["Destination"]: (m["Source"], m["RW"]) for m in details["Mounts"] if m["Type"] == "bind"}
         if any("docker.sock" in source or "/.ssh" in source for source, _ in mounts.values()):
             raise ValueError(f"{service} mounts a host control path")
-        if networks != {f"{project}_{name}" for name in NETWORKS[service]}:
+        expected = {f"{project}_{name}" for name in NETWORKS[service]} if NETWORKS[service] else {"none"}
+        if networks != expected:
             raise ValueError(f"{service} networks differ from the approved topology")
+        if service == "desk-dock" and mounts != {"/api": (str(desk.base / "api"), False),
+                                                  "/truth": (str(desk.flights), False),
+                                                  "/dock": (str(desk.base / "dock"), True)}:
+            raise ValueError("desk-dock mounts differ from the approved scope")
+        if service == "desk-service" and mounts.get("/members/members.yaml") != (str(desk.secrets / "members.yaml"),
+                                                                                  False):
+            raise ValueError("desk-service must read the member list read-only")
         if service == "desk":
             ports = {"8769/tcp": [{"HostIp": "127.0.0.1", "HostPort": "8769"}]}
             if host.get("PortBindings") != ports or details["NetworkSettings"].get("Ports") != ports:
@@ -204,6 +224,67 @@ def status(root: Path) -> dict:
             "project_deployment_id": HELPERS["current"](root).name}
 
 
+def migration_drill(desk, artifact: Path, image: str) -> dict:
+    """D056 drill on a copy of the live ledger with the new image; only counts and digests are kept.
+
+    用新镜像对当前账本副本执行 D056 演练；只保留计数与摘要。
+    """
+    live = desk.service / "ledger.sqlite3"
+    if not live.is_file():
+        return {"status": "not_applicable", "reason": "no ledger yet"}
+    work = artifact / "migration-drill"
+    work.mkdir(mode=0o700)
+    source = sqlite3.connect(f"file:{live.as_posix()}?mode=ro", uri=True)
+    target = sqlite3.connect(str(work / "ledger.sqlite3"))
+    try:
+        source.backup(target)
+        target.execute("PRAGMA journal_mode=DELETE")
+    finally:
+        target.close()
+        source.close()
+    try:
+        output = HELPERS["run"](["docker", "run", "--rm", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
+                                 "-v", f"{work}:/drill", image, "python3", "-m", "drone_agent.fleet.operations_store",
+                                 "--drill", "/drill/ledger.sqlite3"], timeout=300)
+        result = json.loads(output.strip().splitlines()[-1])
+    finally:
+        # The copy holds mission data; only the receipt stays. / 副本含任务数据；只保留回执。
+        shutil.rmtree(work, ignore_errors=True)
+    (artifact / "migration-drill.json").write_text(json.dumps(result, indent=2))
+    if result.get("status") != "passed":
+        raise RuntimeError("the ledger migration drill did not pass; nothing was switched")
+    return result
+
+
+def store_members(root: Path, request: dict) -> dict:
+    """Write the desk member list (JSON is valid YAML) into the desk secrets; the logins never leave the host.
+
+    把任务台成员列表（JSON 即合法 YAML）写入任务台 secrets；登录名不离开主机。
+    """
+    value = request.get("members")
+    if not isinstance(value, dict) or value.get("format") != "drone.project-members/v1":
+        raise ValueError("a drone.project-members/v1 member list is required")
+    entries = value.get("members")
+    if not isinstance(entries, list) or not entries or len(entries) > 32:
+        raise ValueError("1 to 32 memberships are required")
+    for entry in entries:
+        principal = entry.get("principal", "")
+        if set(entry) != {"principal", "project_id", "roles"} or entry["project_id"] not in ("campus_s1", "legacy_m2") \
+                or not re.fullmatch(r"(tailnet|harness):\S{1,200}", principal) or not entry["roles"] \
+                or set(entry["roles"]) - {"viewer", "operator", "approver", "reviewer", "admin"}:
+            raise ValueError("invalid membership entry")
+    folder = SUPERVISOR["Desk"](root).secrets
+    folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+    data = json.dumps({"format": value["format"], "schema_version": "0.1.0", "members": entries}, indent=2)
+    pending = folder / "members.yaml.pending"
+    descriptor = os.open(pending, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(descriptor, "w") as stream:
+        stream.write(data)
+    pending.replace(folder / "members.yaml")
+    return {"status": "stored", "entries": len(entries), "sha256": hashlib.sha256(data.encode()).hexdigest(),
+            "principal_schemes": sorted({e["principal"].split(":", 1)[0] for e in entries})}
+
+
 def apply(root: Path, deployment: Path, request: dict) -> dict:
     """Activate and verify owned components; on failure restore only these components.
 
@@ -235,6 +316,9 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
         raise ValueError("the deployment's checks image is missing; deploy the revision again")
     images = M2["build_images"](deployment / "source", artifact, tag, checks)
     keys = M2["provision"](root, images["ground"], name="desk")
+    if not (desk.secrets / "members.yaml").is_file():
+        raise ValueError("provision the desk member list first (dev_stack.py desk-members --apply)")
+    drill = migration_drill(desk, artifact, images["ground"])
     record = {"schema_version": "0.1.0", "source_sha": value["source_sha"], "control_sha256": value["control_sha256"],
               "deployment_id": deployment.name, "origin": value["origin"], "listener": LISTENER, "images": images,
               "planner": value["planner"], "uid": os.getuid(), "gid": os.getgid(),
@@ -270,6 +354,10 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
             raise RuntimeError(f"planner mode differs from the plan: {value['planner']}")
         if command(["systemctl", "is-active", UNIT], check=False).returncode:
             raise RuntimeError("the desk supervisor is not active")
+        started = read_json(desk.service / "ready.json") or {}
+        operations = started.get("operations") or {}
+        if operations.get("catalog_id") != "p1_s1_v1" or not operations.get("migration"):
+            raise RuntimeError("the mission service did not start with the P1 catalog and a migrated ledger")
         command(["sudo", "-n", "tailscale", "serve", "--bg", f"--https={HTTPS_PORT}", BACKEND])
         after_serve = serve_config()
         if not route_matches(after_serve, value["origin"]) or other_routes(after_serve) != other_routes(before_serve):
@@ -281,6 +369,9 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
                                                                     "origin", "listener", "images", "planner",
                                                                     "signer_key_id", "certificate_fingerprints")},
                    "planner_label": result.get("planner"), "health": health, "funnel": False,
+                   "operations": {"catalog_id": operations.get("catalog_id"),
+                                  "catalog_sha256": operations.get("catalog_sha256"),
+                                  "migration": operations.get("migration"), "drill": drill},
                    "containers": inspect_desk(desk, value["source_sha"]),
                    "other_serve_before_sha256": fingerprint(other_routes(before_serve)),
                    "other_serve_after_sha256": fingerprint(other_routes(after_serve)),

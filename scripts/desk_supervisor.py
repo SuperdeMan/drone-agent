@@ -96,6 +96,7 @@ class Desk:
         return [self.base, self.history, self.mailbox, self.uplink, self.aircraft, self.state, self.ipc, self.flights,
                 self.cases, self.idle / "aircraft", self.idle / "case", self.public / "missions",
                 self.supervisor / "docker-client", self.base / "deployments", self.base / "fixed-pages",
+                self.base / "dock",
                 self.service, self.api.parent]
 
 
@@ -140,9 +141,14 @@ class Stack:
         return result
 
 
+# The supervisor reads missions as its own viewer identity; the desk member list grants it read-only roles (P1).
+# 监管者以自己的只读身份读取任务；任务台成员列表只授予它查看角色（P1）。
+SUPERVISOR_ACTOR = "harness:desk-supervisor"
+
+
 def api(desk: Desk, method: str, **params):
-    """Read-only call to the mission-service API as an anonymous reader. / 以匿名读者身份只读调用任务服务 API。"""
-    request = {"method": method, "actor": "", "trust": "anonymous", "params": params}
+    """Read-only call to the mission-service API as the supervisor's viewer identity. / 以监管者的查看身份只读调用。"""
+    request = {"method": method, "actor": SUPERVISOR_ACTOR, "trust": "first_party", "params": params}
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
         client.settimeout(30)
         client.connect(str(desk.api))
