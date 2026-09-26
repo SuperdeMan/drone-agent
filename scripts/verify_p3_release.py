@@ -217,11 +217,8 @@ def desk(activation: dict | None, http: dict | None, probe: dict | None, sha: st
         part = activation.get(name) or {}
         if part.get("catalog_id") != catalog:
             problems.append(f"desk_without_{name}_catalog")
-        migration = part.get("migration") or {}
-        if name != "operations" and migration.get("status") not in ("migrated", "current"):
+        if (part.get("migration") or {}).get("status") not in ("migrated", "current"):
             problems.append(f"desk_without_{name}_migration")
-        if name == "operations" and not migration:
-            problems.append("desk_without_operations_migration")
         if (part.get("drill") or {}).get("status") not in ("passed", "not_applicable"):
             problems.append(f"{name}_migration_drill_not_passed")
     containers = activation.get("containers") or {}
