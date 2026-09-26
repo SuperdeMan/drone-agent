@@ -439,10 +439,17 @@ def workflow(origin: str, args) -> tuple[dict, str | None]:
     deadline = time.monotonic() + args.timeout
 
     def refresh(run_id: str) -> None:
+        # The page also pushes the watched run whenever it changes, so a reply can queue behind pushed frames: keep
+        # every run view read and stop only at the requested run.
+        # 页面在被监视运行变化时也会推送，应答可能排在推送帧之后：保存读到的每个运行视图，读到所请求的运行才停。
         client.send({"type": "workflow_watch", "project_id": args.project, "run_id": run_id})
-        reply = client.next(("workflow", "error"), 60)
-        if reply["type"] == "workflow":
+        while True:
+            reply = client.next(("workflow", "error"), 60)
+            if reply["type"] == "error":
+                return
             runs[reply["view"]["run"]["run_id"]] = reply["view"]
+            if reply["view"]["run"]["run_id"] == run_id:
+                return
 
     def mission(mission_id: str) -> dict:
         client.send({"type": "watch", "mission_id": mission_id})
@@ -494,7 +501,11 @@ def workflow(origin: str, args) -> tuple[dict, str | None]:
             flown = [m for m in missions.values() if m and m["mission"]["status"] in TERMINAL]
             judged = all((m.get("cloud") or {}).get("judge") for m in flown
                          if m["mission"]["status"] not in NEVER_FLIES)
-            if runs and all(v["run"]["state"] in RUN_FINAL for v in runs.values()) and judged                     and len(flown) == len(missions):
+            # Done only when every reinspection run a tracked run started is tracked too.
+            # 被跟踪运行启动的每个复检运行也都已跟踪，才算结束。
+            followed = all(child["run_id"] in runs for view in runs.values() for child in view["children"])
+            if runs and followed and all(v["run"]["state"] in RUN_FINAL for v in runs.values()) and judged \
+                    and len(flown) == len(missions):
                 break
         except (ConnectionError, OSError, ssl.SSLError, TimeoutError) as error:
             receipt["errors"].append({"t": round(time.monotonic() - started, 1), "error": type(error).__name__})
