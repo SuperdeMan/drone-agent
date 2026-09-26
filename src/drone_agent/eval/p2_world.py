@@ -642,9 +642,14 @@ async def run_case(case: Path, repo: Path, scenario: dict, seed: int, sha: str) 
     except Exception as failure:  # the judge sees the failure as evidence / 裁判把失败当作证据
         error = f"{type(failure).__name__}: {failure}"[:400]
     finally:
-        for uav in world.uavs.values():
-            if uav.task is not None and not uav.task.done():
-                uav.task.cancel()
+        pending = {uav.task for uav in world.uavs.values() if uav.task is not None and not uav.task.done()}
+        for task in pending:
+            task.cancel()
+        if pending:
+            # A cancelled flight closes its journals, releasing their locks, only when it runs again; let it finish
+            # before the export and the judge read every file of the case.
+            # 被取消的飞行要等再次运行时才关闭日志、释放其锁；在导出与裁判读取用例全部文件之前先让它结束。
+            await asyncio.wait(pending, timeout=30)
     world.export({"scenario": scenario["id"], "seed": seed, "source_sha": sha, "layer": "S0",
                   "description": scenario.get("description", ""), "expected": scenario.get("expected", {}),
                   "harness_error": error, "duration_s": round(time.monotonic() - started, 2)})
