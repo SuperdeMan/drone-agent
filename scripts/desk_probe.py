@@ -4,15 +4,18 @@ Run it on a tailnet device against the origin that `dev_stack.py desk-cloud --st
 - `http`: page, script (compared with this checkout), health, Agent Card, A2A refusals, cross-origin WebSocket;
 - `session`: one mission over hri.v0 exactly as the page drives it (submit, approve, optional pause and resume or
   cancel at a step), reconnecting like the page, until the mission ends and the supervisor's judge is published;
-- `spoof`: a WebSocket session that forges the Serve identity header.
+- `spoof`: a WebSocket session that forges the Serve identity header;
+- `resources` (P1): the caller's projects, each project's sites, docks and robots with status age, source and the
+  eligibility kept apart from the link state, one dock's detail, and the refusal of injection or control frames.
 Receipts never contain the tailnet host name or the operator's login, and the probe decides nothing: it records
 what the desk, the service and the judge reported.
 
 经真实 Tailnet HTTPS 入口验收常驻任务台（D035）。在 tailnet 设备上针对 `dev_stack.py desk-cloud --status`
 返回的入口运行：`http` 检查页面、脚本（与本检出比对）、健康、Agent Card、A2A 拒绝与跨源 WebSocket；
 `session` 按页面相同方式经 hri.v0 驱动一个任务（提交、审批、可选在某步骤暂停后恢复或取消），像页面一样
-断线重连，直到任务结束且监管者发布裁判结果；`spoof` 伪造 Serve 身份头。回执从不包含 tailnet 主机名或操作者
-登录名；探针不做任何判定，只记录任务台、服务与裁判报告的内容。
+断线重连，直到任务结束且监管者发布裁判结果；`spoof` 伪造 Serve 身份头；`resources`（P1）记录调用方的项目，
+每个项目的站点、机场与机器人（状态年龄、来源，以及与链路状态分开的可派遣判定），一个机场的详情，以及对注入或
+控制帧的拒绝。回执从不包含 tailnet 主机名或操作者登录名；探针不做任何判定，只记录任务台、服务与裁判报告的内容。
 """
 
 from __future__ import annotations
@@ -214,11 +217,60 @@ def reconnect(origin: str, mission_id: str, deadline: float) -> Client:
     raise TimeoutError("could not reconnect before the deadline")
 
 
+FORBIDDEN_FRAMES = ({"type": "inject", "fault": "lid_jam"}, {"type": "docks.report", "report": {}},
+                    {"type": "arm"}, {"type": "flight", "command": "takeoff"}, {"type": "simulator.inject"})
+
+
+def resources(origin: str) -> tuple[dict, str | None]:
+    """The P1 resource entry as the page drives it; injection or control frames must be refused.
+
+    按页面方式驱动 P1 资源入口；注入或控制帧必须被拒绝。
+    """
+    client = Client(origin)
+    hello = client.next("hello", 30)
+    login = (hello.get("identity") or "").removeprefix("tailnet:") or None
+    receipt = {"hello": {"identity_scheme": (hello.get("identity") or "none").split(":")[0],
+                         "can_write": hello["can_write"]},
+               "projects": [{k: p.get(k) for k in ("project_id", "legacy", "roles", "robots")}
+                            for p in hello.get("projects", [])], "resources": {}, "detail": None, "refused": []}
+    for project in [p for p in hello.get("projects", []) if not p.get("legacy")]:
+        client.send({"type": "resources", "project_id": project["project_id"]})
+        reply = client.next(("resources", "error"), 30)
+        view = reply.get("view") or {}
+        receipt["resources"][project["project_id"]] = {
+            "catalog": view.get("catalog"), "error": reply.get("issue"),
+            "docks": [{"dock_id": d["dock_id"], "source": d["source"], "pad": d["pad"],
+                       "status": {k: (d["status"] or {}).get(k) for k in (
+                           "link", "fresh", "age_s", "session", "lid", "aircraft", "energy", "environment", "upkeep",
+                           "lock")} if d["status"] else None}
+                      for site in view.get("sites", []) for d in site["docks"]],
+            "robots": [{"robot_id": r["robot_id"], "execution_backend": r["execution_backend"],
+                        "capability_source": r["capability_source"], "status": r["status"],
+                        "eligibility": r["eligibility"]} for site in view.get("sites", []) for r in site["robots"]]}
+        docks = receipt["resources"][project["project_id"]]["docks"]
+        if docks and receipt["detail"] is None:
+            client.send({"type": "resource", "project_id": project["project_id"], "resource_id": docks[0]["dock_id"]})
+            detail = client.next(("resource", "error"), 30).get("detail") or {}
+            receipt["detail"] = {"kind": detail.get("kind"), "actions": len(detail.get("actions", [])),
+                                 "events": len(detail.get("events", [])),
+                                 "reservations": len(detail.get("reservations", []))}
+    for frame in FORBIDDEN_FRAMES:
+        client.send(frame)
+        reply = client.next("error", 30)
+        receipt["refused"].append({"frame": frame["type"], "error": reply.get("message")})
+    client.close()
+    status, _, script = fetch(origin, "/mission.js")
+    receipt["script"] = {"status": status, "control_or_injection_frames": sorted(
+        name for name in ("inject", "docks.report", "simulator", "\"arm\"", "takeoff") if name.encode() in script)}
+    return receipt, login
+
+
 def session(origin: str, args) -> tuple[dict, str | None]:
     started = time.monotonic()
     client, login, receipt = open_session(origin)
+    bound = {"project_id": args.project, "robot_id": args.robot} if args.project and args.robot else {}
     client.send({"type": "text", "rid": uuid.uuid4().hex[:16], "text": args.text, "volume_id": args.volume,
-                 "asset_ids": args.asset or []})
+                 "asset_ids": args.asset or [], **bound})
     first = client.next(("mission", "error"), args.plan_timeout)
     if first["type"] == "error":
         receipt["errors"].append(first)
@@ -318,6 +370,7 @@ def follow(origin: str, client: Client, view: dict, args, receipt: dict, started
         "evidence": [{k: e.get(k) for k in ("evidence_id", "version", "step_id", "sha256", "verification", "provenance")}
                      for e in view.get("evidence", [])],
         "issues": [i["code"] for i in view["issues"]], "facts": view["facts"], "cloud": view.get("cloud"),
+        "binding": view.get("binding"), "dispatch": view.get("dispatch"),
     }
     return receipt
 
@@ -395,7 +448,7 @@ def fixed_session(origin: str, args) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("http", "session", "watch", "spoof", "fixed"):
+    for name in ("http", "session", "watch", "spoof", "fixed", "resources"):
         command = commands.add_parser(name)
         command.add_argument("--origin", required=True, help="https://<node>.<tailnet>.ts.net:8448")
         command.add_argument("--output", type=Path)
@@ -408,6 +461,8 @@ def main() -> None:
     run.add_argument("--volume", default="campus_training")
     run.add_argument("--asset", action="append")
     run.add_argument("--plan-timeout", type=float, default=300)
+    run.add_argument("--project", help="P1: submit into this project (with --robot)")
+    run.add_argument("--robot", help="P1: the robot the operator chose")
     follow_existing.add_argument("--mission", required=True)
     for command in (run, follow_existing):
         command.add_argument("--approve", action="store_true")
@@ -424,6 +479,8 @@ def main() -> None:
         result = fixed_session(args.origin, args)
     elif args.command == "spoof":
         result, login = spoof(args.origin)
+    elif args.command == "resources":
+        result, login = resources(args.origin)
     elif args.command == "watch":
         result, login = watch(args.origin, args)
     else:

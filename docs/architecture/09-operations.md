@@ -69,7 +69,7 @@ S0 模拟器实现同一状态契约、动作请求 / ACK / 物理结果的分�
 
 派遣经过：能力与项目权限过滤 → 状态 / 时间 / 能源检查 → 原子预约 → 编译准入与审批 → **交付前重新检查取消、审批、状态和预约**。机器人实际开始前仍做本地复核。等待审批期间允许软预约到期；过期后重新预约，资源或机器人绑定改变则重编译并重新审批。
 
-P1 调度侧默认 1 Hz 更新、3 s 新鲜度预算、最多 1 s 未来时钟偏差，作为待实现的固定测试初值；`boot_id + seq` 防同会话倒序，重启后须完成新会话对账才替换现有状态。过期、未来时间或缺字段返回 unknown。该预算不修改 guardian 的观测或授权 TTL。
+P1 调度侧默认 1 Hz 更新、3 s 新鲜度预算、最多 1 s 未来时钟偏差，已按此实现为版本化策略（D055）；`boot_id + seq` 防同会话倒序，重启后须完成新会话对账才替换现有状态。过期、未来时间或缺字段返回 unknown。该预算不修改 guardian 的观测或授权 TTL。
 
 未知执行、ACK 丢失、机场与无人机的在位信息冲突时，预约进入 `uncertain`。只有属于对应任务的终态、新鲜在位 / 落地证据和状态对账满足后才释放；取消、租约过期、心跳断开或重启都不能单独释放。
 
@@ -173,3 +173,16 @@ S0 验证逻辑与规模，S1 验证 PX4 软件飞控与执行链，S2 验证授
 服务 `view` 的每个版本有 `provenance`，每份 evidence 有独立来源；report.provenance 与 A2A summary.provenance 保留逐版本清单。现有 API 不接受来源或后端参数。任务台增加只读来源展示，证据浏览器增加 provenance 表。历史行无 RunHeader 时保持 legacy_unknown，不按当前部署补填。
 
 当前贯穿 M2 服务链与本机无设备模式；M1/M3 的历史回执保留原有来源记录，能力清单明确对应旧 SHA。VLM 的可选分析通路有独立来源测试；没有实际分析时为 not_run，不能把规划实调当成 VLM 业务验证。数据库 schema v1、控制授权与机载 wire 不变。
+
+
+## 11. P1 当前接口（D055 / D056）
+
+| 位置 | 已实现内容 |
+|---|---|
+| 目录 | `configs/sites/p1_campus_v1.yaml`（S0：`campus_ops` 三站三机场三台逻辑 UAV，`harbor_ops` 为隔离夹具）；`p1_s1_v1.yaml`（S1 与常驻任务台：`campus_s1`，`dock_s1` 服务 PX4 SITL 上的 `uav_01`）。成员列表是受信部署输入。不带 `--catalog` 的服务保持 M2 行为 |
+| 服务模块 | `fleet/resources.py`（契约与纯判定）、`fleet/operations_store.py`（schema v2、预约、领取、审计）、`fleet/docks.py`（报告入账与动作）、`fleet/dispatch.py`（软预约、准备、领取闸门、对账释放、收尾动作） |
+| API | `projects`、`missions.submit`、`resources.list/get/eligibility/maintenance` 按项目角色；`docks.report/actions/ack` 只限目录绑定的 `dock:` 身份；旧方法在目录模式下按任务所属项目检查角色，不可读对象一律 `service.not_found` |
+| 验证底座 | `eval/dock_simulator.py`、`eval/logical_flight.py`、`eval/logical_uav.py`、`eval/p1_world.py`（S0 世界与 P1-F01–F14）、`eval/judge_p1.py`（S0 / S1 独立裁判）；云端 `scripts/remote_p1.py` 与 `sim/compose.p1.yaml` |
+| 策略值 | 3 s 新鲜度、1 s 未来偏差、2 份报告完成新会话对账、软预约 900 s、领取后 30 s 无机器人 ACK 转 uncertain、落地 5 s 后仍无本活动结果转 uncertain |
+
+已知限制：P1 只做固定绑定的单候选检查；S0 的三台逻辑 UAV 不是物理仿真，S1 只有一台 PX4 SITL；逻辑机场不代表机场硬件或厂商协议；各站地图由 M2 园区派生（只改登记表 ID 与降落点归属），规划器仍使用基础场景，编译与准入使用站点地图。多候选排序、时空预约、跨站接力属于 P3。

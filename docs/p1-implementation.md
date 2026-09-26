@@ -93,3 +93,22 @@ P1-F01 同时在 S0 与 S1 执行；其余以 S0 确定性故障为主，P1-F11/
 
 P2 接手物：资源与错误码版本、稳定项目身份、预约和取消屏障、任务服务提交 / 查询 / 对账入口、运行来源、单机场 S1 配置及完整回执。P1 完成不证明持久工作流、多机飞行、VLM 识别或机场硬件已就绪。
 
+
+## 7. 实施记录（2026-09-26，D055 / D056）
+
+| 工作包 | 落位 | 说明 |
+|---|---|---|
+| WP-P1-01 资源契约 | `fleet/resources.py`、`configs/sites/` | 目录、成员、六维机场状态、判定与预约；拒绝未知字段、真实 / 厂商后端与断链引用；原因码分阻断与未知两类 |
+| WP-P1-02 存储与授权设计 | [存储设计](p1-storage-design.md)、D056 | 已获批准；纯增量 schema v2，演练覆盖备份校验、失败回滚、旧代码读新库与恢复 |
+| WP-P1-03 目录与投影 | `fleet/operations_store.py`、`fleet/catalog.py` | 按项目的目录、boot / seq 投影、重启保留锁与 uncertain 持有 |
+| WP-P1-04 单机场模拟器 | `eval/dock_simulator.py` | 舱盖 / 充电 / 在位 / 环境 / 运维；ACK 与物理结果分离；逐项故障开关与自身真值日志 |
+| WP-P1-05 可派遣判定 | `resources.evaluate` | 预览 / 准备 / 领取三阶段同一纯函数，输入快照摘要与有效期 |
+| WP-P1-06 最小预约与对账 | `operations_store.reserve/transition`、`dispatch.reconcile` | 独占索引、同键幂等、软预约到期、CAS 恰好一次释放、证据不足为 uncertain |
+| WP-P1-07 正式服务接入 | `fleet/service.py`、`fleet/dispatch.py`、`fleet/transport.py` | 绑定与任务同事务写入；审批取预约；uplink 拉取经领取闸门；取消意图屏障与转发 |
+| WP-P1-08 单机 SITL | `scripts/remote_p1.py`、`sim/compose.p1.yaml`、常驻任务台 | `uav_01` 经 `dock_s1` 的正式链路；机场后端无网络 |
+| WP-P1-09 项目授权 | `runtime/permission.py`、`fleet/api.py`、`service._check` | 角色 ∩ 信任上限；每个任务 / 资源 / 媒体 / 订阅调用校验项目；`dock:` 身份只能报告 |
+| WP-P1-10 资源入口 | `console/mission.*` | 项目与资源面板、原因、年龄、来源；项目绑定提交；领取前取消；管理员解除维护锁 |
+| WP-P1-11 三站与故障矩阵 | `eval/p1_world.py`、`eval/judge_p1.py`、`configs/scenarios/p1_suite.yaml` | P1-F01–F14 × 3 种子；裁判反向验证；S1 另 5 例 |
+| WP-P1-12 准出 | `scripts/verify_p1_release.py`、[P1 记录](p1-readiness.md) | 同候选全检查、S0、S1、M2 回归、常驻任务台与历史边界 |
+
+实现中的取舍：S0 飞行器运行真实 uplink / guardian / executive 与逻辑飞行适配器（不伪造账本行）；机场在位传感器读取所在模拟世界的真值（S0 逻辑位置，S1 Gazebo 真值）；各站地图由 M2 园区派生，只改登记表 ID 与降落点归属，规划器仍用基础场景。落地后 5 s 仍无本活动结果才把持有转为 uncertain，避免正常同步延迟造成的状态闪烁。主机停顿（如休眠）使 S0 用例作废并重跑，保留作废记录，不计通过或失败。

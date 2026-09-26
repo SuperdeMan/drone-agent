@@ -236,7 +236,7 @@ M3 不改 `drone.contracts.v1`、`drone.control.v1` 与 `drone.fleet.v1` 已冻�
 
 ## 12. P 系列运营契约增量（D049–D053，设计）
 
-字段与生命周期设计见 [运营层 §2–7](09-operations.md)。本节是与既有契约的连接规则；P0 已实现服务侧 SourceContext、RunHeader、ModelUse、EvidenceOrigin、AnalysisOrigin 与 RunProvenance（`fleet/provenance.py`）；复用既有 JSON 字段，SQL schema 与 wire 不变。P1 的资源模型仍待实施。
+字段与生命周期设计见 [运营层 §2–7](09-operations.md)。本节是与既有契约的连接规则；P0 已实现服务侧 SourceContext、RunHeader、ModelUse、EvidenceOrigin、AnalysisOrigin 与 RunProvenance（`fleet/provenance.py`）；复用既有 JSON 字段，SQL schema 与 wire 不变。P1 的资源对象（目录、成员、机场状态、可派遣判定、预约）已在 `fleet/resources.py` 实现，均为服务侧、拒绝未知字段且冻结；账本按 D056 增量升到 schema v2，机载 wire 与任务包哈希边界不变，见 [运营层 §11](09-operations.md)。
 
 | 连接 | 约束 |
 |---|---|

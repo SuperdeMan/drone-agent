@@ -200,9 +200,18 @@ uv run python scripts/dev_stack.py deploy --sha HEAD --apply
 
 验证镜像使用 pip 支持的 [独立 Python 环境管理](https://pip.pypa.io/en/stable/topics/python-option/)，不为测试而改变 ROS 的依赖版本。
 
-## P 系列开发准备（2026-09-25，D049–D053）
+## P 系列（2026-09-26，D049–D056）
 
-当前可运行入口仍是本页的 M1/M2/M3 与常驻任务台。P0–P5 新工作见[实施任务](operations-implementation.md)和[P1 详细方案](p1-implementation.md)，P0 已有 `verify_p0_release.py`，用法与证据见 [P0 记录](p0-readiness.md)；其余 `verify_p*_release.py`、机场模拟器及运营 API 仍未实现，不能直接执行计划中的脚本名。
+P0 的 `verify_p0_release.py` 用法与证据见 [P0 记录](p0-readiness.md)。P1 的资源、虚拟机场与领取闸门（D055）及账本 schema v2（D056）已实现，命令如下；P2–P5 的脚本名仍是计划。
+
+| 用途 | 命令 | 说明 |
+|---|---|---|
+| S0 故障矩阵 | `uv run python -m drone_agent.eval.p1_world --output <目录>` | 本机即可运行；14 场景 × 3 种子；正式任务服务 + 逻辑机场 + 运行真实机载进程的逻辑飞行器；独立裁判在线与回放各判一次；主机停顿（如休眠）使该次尝试作废并重跑，保留记录 |
+| S1 用例 | `uv run python scripts/dev_stack.py p1 --scenario all [--keep-going]` | 云端 `compose.m2.yaml` + `compose.p1.yaml`；`uav_01` 在 PX4 SITL 上经虚拟机场的领取闸门飞行、审批后维护阻断、飞行中服务与机场后端重启，共 5 例 |
+| 拉取 S1 产物 | `uv run python scripts/dev_stack.py fetch --run p1-<运行ID> --cases p1_s1_nominal-7 --apply` | 摘要核对同 M2 |
+| 常驻任务台成员 | `uv run python scripts/dev_stack.py desk-members --apply` | 经 tailnet 读取本机在任务台的身份，写入云端 `secrets/desk/members.yaml`（0600）；登录名不进仓库、不进回执 |
+| 常驻任务台 | `desk-cloud --apply` | 激活前在当前账本副本上运行 D056 迁移演练（只留计数与摘要），通过后才切换；服务启动时带备份迁移 |
+| 发布门禁 | `uv run python scripts/verify_p1_release.py ...` | 见 [P1 记录](p1-readiness.md) |
 
 P1/P2 联调复用现有云端单机 mission_upload 与项目锁，不需要 Jetson。P3 在新方案下测量两机同世界容量后再扩展编排；S0 的 10/30/100 逻辑节点规模与 S1 物理实例数分别记录。保持 guardian 独立配额、项目隔离与按需 SITL，不自动改动其他项目或系统配置。
 
