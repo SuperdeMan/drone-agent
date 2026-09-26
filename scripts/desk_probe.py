@@ -40,8 +40,11 @@ from wsproto.events import AcceptConnection, CloseConnection, Ping, RejectConnec
 from wsproto.utilities import LocalProtocolError
 
 ROOT = Path(__file__).resolve().parents[1]
-TERMINAL = ("completed", "incomplete", "declined", "delivery_rejected", "rejected", "refused", "planning_failed")
-NEVER_FLIES = ("declined", "rejected", "refused", "planning_failed")
+TERMINAL = ("completed", "incomplete", "declined", "delivery_rejected", "rejected", "refused", "planning_failed",
+            "cancelled", "dispatch_expired")
+# P1: a delivery cancelled or expired before its claim was never handed out, so no flight or judge follows.
+# P1：领取前取消或过期的交付从未交出，之后不会有飞行与裁判。
+NEVER_FLIES = ("declined", "rejected", "refused", "planning_failed", "cancelled", "dispatch_expired")
 
 
 class Client:
