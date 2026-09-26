@@ -60,6 +60,17 @@ __NAV__
   <div id="resourceList"><div class="empty">选择项目后显示站点、机场与机器人。</div></div>
   <p>“在线”不等于可派遣：可派遣是带有效期的判断，不是授权；每次飞行仍需人工审批签名，机载仍会复核。</p>
  </section>
+ <div class="eyebrow" id="workflowsEyebrow" hidden>P2 / 工作流</div>
+ <section class="box" id="workflows" hidden aria-label="工作流">
+  <div id="workflowTemplates"><div class="empty">加载工作流模板中。</div></div>
+  <h3>近期运行</h3><div class="list" id="workflowRuns"><div class="empty">暂无运行。</div></div>
+  <h3>模拟工单</h3><div id="workflowOrders"><div class="empty">暂无工单。</div></div>
+  <h3>模板草案（不生效）</h3>
+  <textarea id="draftText" maxlength="2000" placeholder="例：每天 8:30 巡检蓝色标记，人工确认异常后建单。"></textarea>
+  <div class="buttons"><button class="ghost" id="draftButton">生成草案</button></div>
+  <div id="draftResult"></div>
+  <p>模板只编排业务流程；其中每次飞行仍在任务视图中逐个审批签名。草案只供评审，不能启动，生效需经版本化配置评审。</p>
+ </section>
  <div class="eyebrow">01 / 提交任务</div>
  <section class="box" aria-label="提交自然语言任务">
   <textarea id="text" maxlength="2000" placeholder="例：检查起飞点东侧的红色设备标记，带回一张清晰照片。"></textarea>

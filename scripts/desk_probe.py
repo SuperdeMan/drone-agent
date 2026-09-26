@@ -6,7 +6,10 @@ Run it on a tailnet device against the origin that `dev_stack.py desk-cloud --st
   cancel at a step), reconnecting like the page, until the mission ends and the supervisor's judge is published;
 - `spoof`: a WebSocket session that forges the Serve identity header;
 - `resources` (P1): the caller's projects, each project's sites, docks and robots with status age, source and the
-  eligibility kept apart from the link state, one dock's detail, and the refusal of injection or control frames.
+  eligibility kept apart from the link state, one dock's detail, and the refusal of injection or control frames;
+- `workflow` (P2): the project's templates and schedules, one inactive draft from the configured planner, the
+  refusal of injection, control and activation frames, and optionally one run started, approved mission by mission,
+  reviewed and given repair feedback as the page does, until every run is final and each flight was judged.
 Receipts never contain the tailnet host name or the operator's login, and the probe decides nothing: it records
 what the desk, the service and the judge reported.
 
@@ -15,7 +18,9 @@ what the desk, the service and the judge reported.
 `session` 按页面相同方式经 hri.v0 驱动一个任务（提交、审批、可选在某步骤暂停后恢复或取消），像页面一样
 断线重连，直到任务结束且监管者发布裁判结果；`spoof` 伪造 Serve 身份头；`resources`（P1）记录调用方的项目，
 每个项目的站点、机场与机器人（状态年龄、来源，以及与链路状态分开的可派遣判定），一个机场的详情，以及对注入或
-控制帧的拒绝。回执从不包含 tailnet 主机名或操作者登录名；探针不做任何判定，只记录任务台、服务与裁判报告的内容。
+控制帧的拒绝；`workflow`（P2）记录项目的模板与排班、配置的规划器给出的一份未生效草案、对注入、控制与激活帧的拒绝，
+并可按页面方式启动一次运行、逐任务审批、复核并给出维修反馈，直到每个运行终结且每次飞行都有裁判结果。回执从不包含
+tailnet 主机名或操作者登录名；探针不做任何判定，只记录任务台、服务与裁判报告的内容。
 """
 
 from __future__ import annotations
@@ -378,6 +383,147 @@ def follow(origin: str, client: Client, view: dict, args, receipt: dict, started
     return receipt
 
 
+WORKFLOW_FORBIDDEN = (*FORBIDDEN_FRAMES, {"type": "workflow_activate", "draft": {}},
+                      {"type": "workflow_approve_all", "project_id": "campus_s1"})
+RUN_FINAL = ("completed", "failed", "outcome_unknown", "cancelled")
+
+
+def workflow(origin: str, args) -> tuple[dict, str | None]:
+    """A P2 workflow over hri.v0 exactly as the page drives it; the probe only records. / 按页面方式驱动 P2 工作流；探针只记录。"""
+    started = time.monotonic()
+    client = Client(origin)
+    hello = client.next("hello", 30)
+    login = (hello.get("identity") or "").removeprefix("tailnet:") or None
+    receipt = {"hello": {"identity_scheme": (hello.get("identity") or "none").split(":")[0],
+                         "can_write": hello["can_write"], "planner": hello.get("planner")},
+               "project": args.project, "templates": [], "draft": None, "refused": [], "timeline": [], "runs": {},
+               "missions": {}, "sent": [], "errors": []}
+    client.send({"type": "workflows", "project_id": args.project})
+    listing = client.next(("workflows", "error"), 30)
+    view = listing.get("view") or {}
+    receipt["roles"] = view.get("roles")
+    receipt["catalog"] = view.get("catalog")
+    receipt["templates"] = [{"workflow_id": t["workflow_id"], "version": t["version"], "sha256": t["sha256"],
+                             "triggers": [{"trigger_id": x["trigger_id"], "kind": x["kind"],
+                                           "state": (x.get("state") or {}).get("state")} for x in t["triggers"]]}
+                            for t in view.get("templates", [])]
+    if args.draft_text:
+        client.send({"type": "workflow_draft", "project_id": args.project, "text": args.draft_text})
+        reply = client.next(("workflow_draft", "error"), args.plan_timeout)
+        result = reply.get("result") or {}
+        receipt["draft"] = {"status": result.get("status"), "active": result.get("active"),
+                            "error": reply.get("issue"), "errors": result.get("errors"),
+                            "spec_sha256": result.get("spec_sha256"), "use": result.get("use"),
+                            "nodes": [[n["node_id"], n["activity"]] for n in (result.get("spec") or {}).get("nodes", [])],
+                            "robots": sorted({n["params"]["robot_id"] for n in (result.get("spec") or {}).get("nodes", [])
+                                              if n["activity"] == "submit_mission"})}
+    for frame in WORKFLOW_FORBIDDEN:
+        client.send(frame)
+        reply = client.next("error", 30)
+        receipt["refused"].append({"frame": frame["type"], "error": reply.get("message")})
+    if not args.start:
+        client.close()
+        receipt["duration_s"] = round(time.monotonic() - started, 1)
+        return receipt, login
+    client.send({"type": "workflow_start", "project_id": args.project, "workflow_id": args.workflow,
+                 "request_id": "probe-" + uuid.uuid4().hex[:16],
+                 "inputs": {"asset": args.asset_input} if args.asset_input else {}})
+    first = client.next(("workflow", "error"), 60)
+    if first["type"] == "error":
+        receipt["errors"].append(first)
+        client.close()
+        return receipt, login
+    root = first["view"]["run"]["run_id"]
+    receipt["root_run"] = root
+    runs, missions, reviewed, repaired = {root: first["view"]}, {}, set(), set()
+    deadline = time.monotonic() + args.timeout
+
+    def refresh(run_id: str) -> None:
+        client.send({"type": "workflow_watch", "project_id": args.project, "run_id": run_id})
+        reply = client.next(("workflow", "error"), 60)
+        if reply["type"] == "workflow":
+            runs[reply["view"]["run"]["run_id"]] = reply["view"]
+
+    def mission(mission_id: str) -> dict:
+        client.send({"type": "watch", "mission_id": mission_id})
+        while True:
+            reply = client.next(("mission", "error"), 60)
+            if reply["type"] == "error" or reply["view"]["mission"]["mission_id"] == mission_id:
+                return reply.get("view") or {}
+
+    while time.monotonic() < deadline:
+        try:
+            for run_id in list(runs):
+                refresh(run_id)
+                for child in runs[run_id]["children"]:
+                    if child["run_id"] not in runs:
+                        refresh(child["run_id"])
+            state = {"t": round(time.monotonic() - started, 1),
+                     "runs": {r: [v["run"]["state"], v["waiting"]] for r, v in runs.items()}}
+            if not receipt["timeline"] or receipt["timeline"][-1]["runs"] != state["runs"]:
+                receipt["timeline"].append(state)
+            for run_id, view in list(runs.items()):
+                for item in view["missions"]:
+                    detail = mission(item["mission_id"])
+                    missions[item["mission_id"]] = detail
+                    latest = (detail.get("versions") or [{}])[-1]
+                    if latest.get("status") == "awaiting_approval":
+                        client.send({"type": "approve", "mission_id": item["mission_id"],
+                                     "version": latest["version"], "package_hash": latest["package_hash"]})
+                        receipt["sent"].append({"t": round(time.monotonic() - started, 1), "action": "approve",
+                                                "mission_id": item["mission_id"], "version": latest["version"]})
+                for node in view["nodes"]:
+                    key = (run_id, node["node_id"])
+                    if node["state"] == "waiting" and node["activity"] == "human_review" and key not in reviewed:
+                        client.send({"type": "workflow_review", "project_id": args.project, "run_id": run_id,
+                                     "node_id": node["node_id"], "decision": args.review,
+                                     "request_id": "probe-" + uuid.uuid4().hex[:16], "note": "desk probe review"})
+                        reviewed.add(key)
+                        receipt["sent"].append({"t": round(time.monotonic() - started, 1), "action": "review",
+                                                "node_id": node["node_id"], "decision": args.review})
+                    if node["state"] == "waiting" and node["activity"] == "await_repair":
+                        for order in view["orders"]:
+                            if order["state"] == "open" and order["order_id"] not in repaired:
+                                client.send({"type": "workflow_repair", "project_id": args.project,
+                                             "order_id": order["order_id"],
+                                             "request_id": "probe-" + uuid.uuid4().hex[:16],
+                                             "note": "desk probe repair feedback"})
+                                repaired.add(order["order_id"])
+                                receipt["sent"].append({"t": round(time.monotonic() - started, 1),
+                                                        "action": "repair", "order_id": order["order_id"]})
+            flown = [m for m in missions.values() if m and m["mission"]["status"] in TERMINAL]
+            judged = all((m.get("cloud") or {}).get("judge") for m in flown
+                         if m["mission"]["status"] not in NEVER_FLIES)
+            if runs and all(v["run"]["state"] in RUN_FINAL for v in runs.values()) and judged                     and len(flown) == len(missions):
+                break
+        except (ConnectionError, OSError, ssl.SSLError, TimeoutError) as error:
+            receipt["errors"].append({"t": round(time.monotonic() - started, 1), "error": type(error).__name__})
+            client.close()
+            time.sleep(3)
+            client = Client(origin)
+            client.next("hello", 30)
+            continue
+        time.sleep(5)
+    client.close()
+    receipt["duration_s"] = round(time.monotonic() - started, 1)
+    receipt["runs"] = {run_id: {"run": {k: v["run"][k] for k in ("run_id", "workflow_id", "version", "state",
+                                                                "trigger_source", "started_by", "outcome")},
+                                "nodes": [[n["node_id"], n["activity"], n["state"], n["reason"]] for n in v["nodes"]],
+                                "analyses": [{k: a[k] for k in ("asset_id", "analyzer", "source", "verdict")}
+                                             for a in v["analyses"]],
+                                "reviews": [{k: r[k] for k in ("decision", "reviewer")} for r in v["reviews"]],
+                                "orders": [{k: o[k] for k in ("order_id", "state", "reinspection_run")}
+                                           for o in v["orders"]],
+                                "missions": v["missions"]} for run_id, v in runs.items()}
+    receipt["missions"] = {mission_id: {
+        "status": m["mission"]["status"], "binding": m.get("binding"), "dispatch": m.get("dispatch"),
+        "request": {k: m["request"][k] for k in ("channel", "requested_by")},
+        "versions": [{k: v.get(k) for k in ("version", "status", "origin", "approval", "provenance")}
+                     for v in m["versions"]],
+        "report": m.get("report"), "cloud": m.get("cloud")} for mission_id, m in missions.items() if m}
+    return receipt, login
+
+
 def fixed_session(origin: str, args) -> dict:
     """Exercise the mounted M1 page protocol and record its independent result. / 验证挂载的 M1 页面协议并记录独立结果。"""
     status, _, body = fetch(origin, "/fixed/")
@@ -451,7 +597,7 @@ def fixed_session(origin: str, args) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("http", "session", "watch", "spoof", "fixed", "resources"):
+    for name in ("http", "session", "watch", "spoof", "fixed", "resources", "workflow"):
         command = commands.add_parser(name)
         command.add_argument("--origin", required=True, help="https://<node>.<tailnet>.ts.net:8448")
         command.add_argument("--output", type=Path)
@@ -467,6 +613,15 @@ def main() -> None:
     run.add_argument("--project", help="P1: submit into this project (with --robot)")
     run.add_argument("--robot", help="P1: the robot the operator chose")
     follow_existing.add_argument("--mission", required=True)
+    flow = commands.choices["workflow"]
+    flow.add_argument("--project", default="campus_s1")
+    flow.add_argument("--draft-text", help="ask the configured planner for one inactive template draft")
+    flow.add_argument("--start", action="store_true", help="also start, approve, review and repair one run")
+    flow.add_argument("--workflow", default="asset_check")
+    flow.add_argument("--asset-input", default="asset_red")
+    flow.add_argument("--review", choices=("confirmed", "dismissed"), default="confirmed")
+    flow.add_argument("--plan-timeout", type=float, default=300)
+    flow.add_argument("--timeout", type=float, default=2700)
     for command in (run, follow_existing):
         command.add_argument("--approve", action="store_true")
         command.add_argument("--pause-step")
@@ -484,6 +639,8 @@ def main() -> None:
         result, login = spoof(args.origin)
     elif args.command == "resources":
         result, login = resources(args.origin)
+    elif args.command == "workflow":
+        result, login = workflow(args.origin, args)
     elif args.command == "watch":
         result, login = watch(args.origin, args)
     else:

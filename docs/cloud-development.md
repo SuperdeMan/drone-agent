@@ -200,9 +200,9 @@ uv run python scripts/dev_stack.py deploy --sha HEAD --apply
 
 验证镜像使用 pip 支持的 [独立 Python 环境管理](https://pip.pypa.io/en/stable/topics/python-option/)，不为测试而改变 ROS 的依赖版本。
 
-## P 系列（2026-09-26，D049–D056）
+## P 系列（2026-09-26，D049–D058）
 
-P0 的 `verify_p0_release.py` 用法与证据见 [P0 记录](p0-readiness.md)。P1 的资源、虚拟机场与领取闸门（D055）及账本 schema v2（D056）已实现，命令如下；P2–P5 的脚本名仍是计划。
+P0 的 `verify_p0_release.py` 用法与证据见 [P0 记录](p0-readiness.md)。P1 的资源、虚拟机场与领取闸门（D055）及账本 schema v2（D056）已实现；P2 的持久工作流（D057）与工作流扩展表（D058）已实现，命令如下；P3–P5 的脚本名仍是计划。
 
 | 用途 | 命令 | 说明 |
 |---|---|---|
@@ -212,7 +212,12 @@ P0 的 `verify_p0_release.py` 用法与证据见 [P0 记录](p0-readiness.md)。
 | 常驻任务台成员 | `uv run python scripts/dev_stack.py desk-members --apply` | 经 tailnet 读取本机在任务台的身份，写入云端 `secrets/desk/members.yaml`（0600）；登录名不进仓库、不进回执 |
 | 常驻任务台 | `desk-cloud --apply` | 激活前在当前账本副本上运行 D056 迁移演练（只留计数与摘要），通过后才切换；服务启动时带备份迁移 |
 | 发布门禁 | `uv run python scripts/verify_p1_release.py ...` | 见 [P1 记录](p1-readiness.md) |
+| P2 S0 矩阵 | `uv run python -m drone_agent.eval.p2_world --output <目录>` | 本机即可运行；P2-F01–F15 × 3 种子：P1 世界加工作流引擎，只经正式 API 驱动；独立裁判 `eval/judge_p2.py` 在线与回放各判一次，并带 P1 派遣 / 释放 / 飞行检查 |
+| P2 S1 用例 | `uv run python scripts/dev_stack.py p2 --scenario all [--keep-going]` | 云端 `compose.m2.yaml` + `compose.p1.yaml` + `compose.p2.yaml`；服务加载 `p2_s1_v1` 工作流目录；编排按人的方式逐任务审批、复核、维修反馈；链路 × 3 种子（两次飞行含复检）、飞行中取消、飞行中重启服务，共 5 例；裁判逐任务跑 M2 飞行裁判再做 P1 / P2 检查 |
+| 草案对抗语料 | `uv run python -m drone_agent.eval.workflow_adversarial` | 工作流草案注入语料（脚本替身）；生效 / 越权草案必须为 0 |
+| 常驻任务台（P2） | `desk-members --apply` 后 `desk-cloud --apply` | 成员列表给本机身份加 reviewer；激活前在同一账本副本上先后运行 D056 与 D058 演练，服务启动时带备份加上工作流表 |
+| P2 发布门禁 | `uv run python scripts/verify_p2_release.py ...` | 见 [P2 方案](p2-implementation.md) 与验收记录 |
 
 P1/P2 联调复用现有云端单机 mission_upload 与项目锁，不需要 Jetson。P3 在新方案下测量两机同世界容量后再扩展编排；S0 的 10/30/100 逻辑节点规模与 S1 物理实例数分别记录。保持 guardian 独立配额、项目隔离与按需 SITL，不自动改动其他项目或系统配置。
 
-H1 承接 M3-JIL。原 `verify_m3_release.py` 的总门禁仍会因 JIL 缺席而 `not_passed`；P 系列未来门禁单列所需软件能力与硬件缺项，不覆盖历史结果。运营存储 schema / 迁移的具体方案先完成审查并按项目红线获批，再实施。
+H1 承接 M3-JIL。原 `verify_m3_release.py` 的总门禁仍会因 JIL 缺席而 `not_passed`；P 系列未来门禁单列所需软件能力与硬件缺项，不覆盖历史结果。运营存储 schema / 迁移的具体方案先完成审查并按项目红线获批，再实施（D056、D058 均已获批）。

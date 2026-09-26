@@ -1,0 +1,24 @@
+# P2 S1 cases (WP-P2-08, D057), layered on compose.m2.yaml and compose.p1.yaml with the same networks, images,
+# secrets and logical dock backend. The mission service additionally loads the p2_s1_v1 workflow catalog and the P2
+# harness member list, so its ledger gains the workflow tables (D058) inside the case directory. Workflow missions
+# are ordinary single-asset M2 inspections of `uav_01`, still approved one by one by the harness approver. Nothing
+# here can reach the guardian. The judge runs the M2 flight judge per mission plus the P1 dispatch and P2 workflow
+# checks.
+#
+# P2 S1 用例（WP-P2-08，D057），叠加在 compose.m2.yaml 与 compose.p1.yaml 之上，网络、镜像、密钥与逻辑机场后端相同。
+# 任务服务另外加载 p2_s1_v1 工作流目录与 P2 编排成员列表，因此其账本在用例目录内加上工作流表（D058）。工作流任务是
+# `uav_01` 的普通单资产 M2 巡检，仍由编排审批人逐个审批。这里没有任何东西能触达 guardian。裁判对每个任务运行 M2 飞行
+# 裁判，另加 P1 派遣检查与 P2 工作流检查。
+services:
+  mission-service:
+    command: [python3, -m, drone_agent.fleet.main, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
+              --planner, "${DRONE_M2_PLANNER:?}", --fixtures, /input/planner-fixtures.json, --state, /state,
+              --tls, /tls, --signing-key, /secrets/approval-signing.key, --api, /run/mission/api.sock,
+              --listen, "0.0.0.0:8450", --transport, "${DRONE_M2_TRANSPORT:-grpc}",
+              --zenoh-listen, "tls/0.0.0.0:7447", --execution-backend, px4_sitl,
+              --catalog, /workspace/configs/sites/p1_s1_v1.yaml,
+              --members, /workspace/configs/sites/p2_members_s1.yaml,
+              --workflows, /workspace/configs/workflows/p2_s1_v1.yaml]
+  judge:
+    command: [python3, -m, drone_agent.eval.judge_p2, /run, --layer, s1, --root, /workspace,
+              --output, /output/result.json]

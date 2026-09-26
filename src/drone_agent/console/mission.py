@@ -10,9 +10,17 @@ hri.v0 over `WS /ws/session` carries JSON text frames:
         {"type":"missions","items":[...]}   {"type":"mission","view":{...,"cloud":{...}}}   {"type":"media",...}
         {"type":"host","status":{...}}      {"type":"error","message":...,"issue":{...}}
         {"type":"resources","view":{...}}   {"type":"resource","detail":{...}}     (P1 catalog mode, D055)
+        {"type":"workflows","view":{...}}   {"type":"workflow","view":{...}}   {"type":"workflow_draft","result":{...}}
   up:   {"type":"text","rid":...,"text":...,"volume_id":...,"asset_ids":[...],"project_id"?,"robot_id"?}  submit
         {"type":"resources","project_id":...}   {"type":"resource","project_id":...,"resource_id":...}
         {"type":"maintenance","project_id":...,"dock_id":...,"action":"set|release","reason":...}  (admin)
+        {"type":"workflows","project_id":...}   {"type":"workflow_watch","project_id":...,"run_id":...}   (P2, D057)
+        {"type":"workflow_start","project_id":...,"workflow_id":...,"request_id":...,"inputs":{...}}
+        {"type":"workflow_cancel","project_id":...,"run_id":...,"request_id":...,"reason":...}
+        {"type":"workflow_schedule","project_id":...,"workflow_id":...,"trigger_id":...,"action":...,"reason":...}
+        {"type":"workflow_review","project_id":...,"run_id":...,"node_id":...,"decision":...,"request_id":...,"note":...}
+        {"type":"workflow_repair","project_id":...,"order_id":...,"request_id":...,"note":...}
+        {"type":"workflow_draft","project_id":...,"text":...}
         {"type":"watch","mission_id":...}   {"type":"list"}   {"type":"media","mission_id":...,"evidence_id":...}
         {"type":"approve","mission_id":...,"version":N,"package_hash":...}
         {"type":"decline","mission_id":...,"version":N,"reason":...}
@@ -21,7 +29,9 @@ Writes need an identity: `Tailscale-User-Login` injected by Tailscale Serve (the
 only) or the local bridge user. Without one the session is read-only. Nothing here can reach the guardian:
 approvals become signed packages in the service and operations become operator requests the aircraft checks.
 With an operations catalog (P1) the page also lists the caller's projects and their sites, docks and robots with
-status age, source and the reasons a robot cannot be dispatched; it has no fault injection or flight control.
+status age, source and the reasons a robot cannot be dispatched; it has no fault injection or flight control. With
+a workflow catalog (P2) it shows the project's templates, runs with every wait and failure reason, reviews, work
+orders and drafts; a run's missions are still approved one by one in the mission view, and a draft never runs.
 
 A2A: `GET /.well-known/agent-card.json` and JSON-RPC 2.0 at `POST /a2a` (`message/send`, `tasks/get`) with a
 bearer token whose SHA-256 is configured. External agents are third-party: they may submit requests, which
@@ -35,7 +45,8 @@ On the resident desk (D035) the page also shows the simulation supervisor's publ
 任务控制台 v0 与 A2A 网关：只与任务服务 API 通信的 ASGI 应用。写操作需要身份：Tailscale Serve 注入的
 `Tailscale-User-Login`（后端只监听回环）或本机桥用户；没有身份的会话只读。这里没有任何路径能触达
 guardian：审批在服务中变成已签名任务包，操作变成飞行器会复核的操作请求。带运营目录时（P1），页面还列出调用方
-的项目及其站点、机场与机器人，附状态年龄、来源与不可派遣原因；页面没有故障注入或飞控接口。A2A 调用方是第三方：可以提交
+的项目及其站点、机场与机器人，附状态年龄、来源与不可派遣原因；页面没有故障注入或飞控接口。带工作流目录时（P2），页面
+展示项目的模板、带全部等待与失败原因的运行、复核、工单与草案；运行的任务仍在任务视图中逐个审批，草案从不运行。A2A 调用方是第三方：可以提交
 请求（等待人工审批）并读取状态与报告；控制级键、飞行 scope、审批与操作请求一律拒绝并记审计。
 
 常驻任务台（D035）另从 `--supervisor` 只读展示仿真监管者的公开记录：飞行主机状态（`host`），以及每个
@@ -136,6 +147,10 @@ class Session:
         self.last_view: str | None = None
         self.resources_project: str | None = None
         self.last_resources: str | None = None
+        self.workflows_project: str | None = None
+        self.last_workflows: str | None = None
+        self.watched_run: tuple[str, str] | None = None
+        self.last_run: str | None = None
         self.last_host: str | None = None
         self.busy = False
 
@@ -203,6 +218,75 @@ class Session:
             self.last_resources = text
             await self.send({"type": "resources", "view": view})
 
+    async def push_workflows(self, force: bool = False) -> None:
+        if not self.workflows_project:
+            return
+        view = await self.call("workflows.list", project_id=self.workflows_project)
+        if view is None:
+            self.workflows_project = None
+            return
+        text = json.dumps(view, sort_keys=True, default=str)
+        if force or text != self.last_workflows:
+            self.last_workflows = text
+            await self.send({"type": "workflows", "view": view})
+
+    async def push_run(self, force: bool = False) -> None:
+        if not self.watched_run:
+            return
+        project_id, run_id = self.watched_run
+        view = await self.call("workflows.get", project_id=project_id, run_id=run_id)
+        if view is None:
+            self.watched_run = None
+            return
+        text = json.dumps(view, sort_keys=True, default=str)
+        if force or text != self.last_run:
+            self.last_run = text
+            await self.send({"type": "workflow", "view": view})
+
+    async def workflow(self, kind: str, message: dict) -> None:
+        """P2 frames: every one is a named API call the service checks against the caller's project role.
+
+        P2 帧：每一个都是由服务按调用方项目角色检查的具名 API 调用。
+        """
+        project = str(message.get("project_id", ""))
+        text = {key: str(message.get(key, ""))[:300] for key in ("run_id", "workflow_id", "trigger_id", "node_id",
+                                                                 "order_id", "action", "decision", "reason", "note",
+                                                                 "request_id")}
+        if kind == "workflows":
+            self.workflows_project = project or None
+            await self.push_workflows(force=True)
+            return
+        if kind == "workflow_watch":
+            self.watched_run = (project, text["run_id"])
+            await self.push_run(force=True)
+            return
+        if kind == "workflow_draft":
+            result = await self.call("workflows.draft", project_id=project, text=str(message.get("text", ""))[:2000])
+            if result is not None:
+                await self.send({"type": "workflow_draft", "result": result})
+            return
+        inputs = message.get("inputs") if isinstance(message.get("inputs"), dict) else {}
+        calls = {
+            "workflow_start": ("workflows.start", {"workflow_id": text["workflow_id"], "request_id": text["request_id"],
+                                                   "inputs": {str(k): str(v) for k, v in inputs.items()}}),
+            "workflow_cancel": ("workflows.cancel", {"run_id": text["run_id"], "request_id": text["request_id"],
+                                                     "reason": text["reason"]}),
+            "workflow_schedule": ("workflows.schedule", {"workflow_id": text["workflow_id"],
+                                                         "trigger_id": text["trigger_id"], "action": text["action"],
+                                                         "reason": text["reason"]}),
+            "workflow_review": ("workflows.review", {"run_id": text["run_id"], "node_id": text["node_id"],
+                                                     "decision": text["decision"], "request_id": text["request_id"],
+                                                     "note": text["note"]}),
+            "workflow_repair": ("workflows.repair", {"order_id": text["order_id"], "request_id": text["request_id"],
+                                                     "note": text["note"]}),
+        }
+        method, params = calls[kind]
+        result = await self.call(method, project_id=project, **params)
+        if result is not None and "run" in result:
+            self.watched_run = (project, result["run"]["run_id"])
+            await self.push_run(force=True)
+        await self.push_workflows(force=True)
+
     async def push_view(self, force: bool = False) -> None:
         if not self.watched:
             return
@@ -268,6 +352,9 @@ class Session:
                 self.watched = view["mission"]["mission_id"]
                 await self.push_view(force=True)
                 await self.list()
+        elif kind in ("workflows", "workflow_watch", "workflow_start", "workflow_cancel", "workflow_schedule",
+                      "workflow_review", "workflow_repair", "workflow_draft"):
+            await self.workflow(kind, message)
         elif kind in ("approve", "decline", "operate"):
             params = {"approve": ("mission_id", "version", "package_hash"),
                       "decline": ("mission_id", "version", "reason"),
@@ -405,6 +492,8 @@ class MissionConsole:
                 await session.push_host()
                 await session.push_view()
                 await session.push_resources()
+                await session.push_workflows()
+                await session.push_run()
 
         watcher = asyncio.create_task(watch())
         try:

@@ -7,14 +7,16 @@ no other container or Serve entry (including D028's 8447) changed; on failure on
 restored. The model key is never read here: the service reads its own mounted file. P1 (D055/D056): activation
 needs the desk member list in the desk secrets, runs the ledger migration drill on a copy of the live ledger before
 anything is switched (only counts and digests are kept), starts the resident dock backend, and records the real
-migration the service performed on start.
+migration the service performed on start. P2 (D057/D058): the same copy then runs the workflow-extension drill, the
+service loads the workflow catalog, and activation also requires its migration on start.
 
 规划、激活并检查常驻 M2 任务台（D035）：本项目容器、一个监管者 unit、一个 Serve 映射。激活时构建所部署版本
 的 M2 镜像，生成任务台自己的信任根，启动三个常驻容器，安装监管者 unit，并新增私有 Serve 映射 8448 ->
 127.0.0.1:8769。它核对页面、服务与监管者都运行该版本、容器的实际边界，以及其他容器与 Serve 条目（含 D028
 的 8447）没有变化；失败时只恢复这些组件。这里从不读取模型 key：服务读取它自己挂载的文件。P1（D055/D056）：激活
 要求任务台 secrets 中有成员列表，在切换任何组件之前先对当前账本的副本执行迁移演练（只保留计数与摘要），启动常驻
-机场后端，并记录服务启动时实际执行的迁移。
+机场后端，并记录服务启动时实际执行的迁移。P2（D057/D058）：同一副本随后执行工作流扩展演练，服务加载工作流目录，激活也
+要求服务启动时完成其迁移。
 """
 
 from __future__ import annotations
@@ -225,9 +227,9 @@ def status(root: Path) -> dict:
 
 
 def migration_drill(desk, artifact: Path, image: str) -> dict:
-    """D056 drill on a copy of the live ledger with the new image; only counts and digests are kept.
+    """D056 and then D058 drills on one copy of the live ledger with the new image; only counts and digests are kept.
 
-    用新镜像对当前账本副本执行 D056 演练；只保留计数与摘要。
+    用新镜像对当前账本的同一副本先后执行 D056 与 D058 演练；只保留计数与摘要。
     """
     live = desk.service / "ledger.sqlite3"
     if not live.is_file():
@@ -242,17 +244,22 @@ def migration_drill(desk, artifact: Path, image: str) -> dict:
     finally:
         target.close()
         source.close()
+    drills = {}
     try:
-        output = HELPERS["run"](["docker", "run", "--rm", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
-                                 "-v", f"{work}:/drill", image, "python3", "-m", "drone_agent.fleet.operations_store",
-                                 "--drill", "/drill/ledger.sqlite3"], timeout=300)
-        result = json.loads(output.strip().splitlines()[-1])
+        for name, module in (("operations", "drone_agent.fleet.operations_store"),
+                             ("workflows", "drone_agent.fleet.workflow_store")):
+            output = HELPERS["run"](["docker", "run", "--rm", "--network", "none", "--user",
+                                     f"{os.getuid()}:{os.getgid()}", "-v", f"{work}:/drill", image, "python3", "-m",
+                                     module, "--drill", "/drill/ledger.sqlite3"], timeout=300)
+            drills[name] = json.loads(output.strip().splitlines()[-1])
     finally:
         # The copy holds mission data; only the receipt stays. / 副本含任务数据；只保留回执。
         shutil.rmtree(work, ignore_errors=True)
+    result = {"status": "passed" if all(d.get("status") == "passed" for d in drills.values()) and len(drills) == 2
+              else "failed", **drills}
     (artifact / "migration-drill.json").write_text(json.dumps(result, indent=2))
     if result.get("status") != "passed":
-        raise RuntimeError("the ledger migration drill did not pass; nothing was switched")
+        raise RuntimeError("the ledger migration drills did not pass; nothing was switched")
     return result
 
 
@@ -358,6 +365,10 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
         operations = started.get("operations") or {}
         if operations.get("catalog_id") != "p1_s1_v1" or not operations.get("migration"):
             raise RuntimeError("the mission service did not start with the P1 catalog and a migrated ledger")
+        workflows = started.get("workflows") or {}
+        if workflows.get("catalog_id") != "p2_s1_v1" or (workflows.get("migration") or {}).get("status") not in (
+                "migrated", "current"):
+            raise RuntimeError("the mission service did not start with the P2 workflow catalog and its tables")
         command(["sudo", "-n", "tailscale", "serve", "--bg", f"--https={HTTPS_PORT}", BACKEND])
         after_serve = serve_config()
         if not route_matches(after_serve, value["origin"]) or other_routes(after_serve) != other_routes(before_serve):
@@ -371,7 +382,10 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
                    "planner_label": result.get("planner"), "health": health, "funnel": False,
                    "operations": {"catalog_id": operations.get("catalog_id"),
                                   "catalog_sha256": operations.get("catalog_sha256"),
-                                  "migration": operations.get("migration"), "drill": drill},
+                                  "migration": operations.get("migration"), "drill": drill.get("operations", drill)},
+                   "workflows": {"catalog_id": workflows.get("catalog_id"),
+                                 "catalog_sha256": workflows.get("catalog_sha256"),
+                                 "migration": workflows.get("migration"), "drill": drill.get("workflows")},
                    "containers": inspect_desk(desk, value["source_sha"]),
                    "other_serve_before_sha256": fingerprint(other_routes(before_serve)),
                    "other_serve_after_sha256": fingerprint(other_routes(after_serve)),

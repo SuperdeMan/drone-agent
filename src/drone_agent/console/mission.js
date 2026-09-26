@@ -41,6 +41,20 @@ const FLIGHT = {preparing: "准备中", flying: "飞行中", finished: "落地�
 const JUDGE = {completed: "完成", not_completed: "未完成", unsafe_or_incorrect: "不安全或不正确"};
 let socket = null, hello = null, current = null, selected = null, retry = 500, photos = {}, host = null, planning = null;
 let resources = null, resourceDetail = null;
+// P2 workflows (D057): runs, nodes and reasons as the service reports them. / P2 工作流：按服务记录展示运行、节点与原因。
+let workflows = null, run = null, mode = "mission";
+const WSTATE = {pending: "待开始", running: "进行中", waiting: "等待中", completed: "已完成", skipped: "已跳过", failed: "失败",
+  outcome_unknown: "结果未知", cancelled: "已取消", cancel_requested: "已请求取消", cancelling: "取消收尾中"};
+const WTONE = {completed: "ok", running: "ok", waiting: "warn", cancel_requested: "warn", cancelling: "warn", failed: "bad",
+  outcome_unknown: "bad", cancelled: "bad"};
+const WAIT = {approval: "等待审批", device: "等待设备", environment: "等待环境", flight: "飞行中", evidence: "等待证据复核",
+  review: "等待人工复核", repair: "等待维修反馈", delivery: "投递中"};
+const SKIP = {condition_false: "条件不满足", upstream_skipped: "上游已跳过", upstream_failed: "上游失败", upstream_unknown: "上游结果未知",
+  cancelled: "随运行取消"};
+const ACTIVITY = {submit_mission: "提交任务", await_mission: "等待任务结果", analyze_evidence: "分析证据", human_review: "人工复核",
+  create_work_order: "模拟工单", await_repair: "等待维修反馈", request_reinspection: "请求复检", build_report: "生成报告"};
+const ORDER = {open: "待维修", repair_reported: "已反馈维修·待复检", reinspection_requested: "已请求复检"};
+const FINAL = ["completed", "failed", "outcome_unknown", "cancelled"];
 
 function notice(text) { byId("notice").textContent = text || ""; byId("notice").hidden = !text; }
 function chip(status) { return `<span class="chip ${TONE[status] || ""}">${esc(STATUS[status] || status)}</span>`; }
@@ -63,7 +77,10 @@ function connect() {
     const message = JSON.parse(event.data);
     if (message.type === "hello") onHello(message);
     else if (message.type === "missions") renderList(message.items);
-    else if (message.type === "mission") { if (planning) planned(); current = message.view; if (!resourceDetail) render(); }
+    else if (message.type === "mission") { if (planning) planned(); current = message.view; if (!resourceDetail && mode === "mission") render(); }
+    else if (message.type === "workflows") { workflows = message.view; renderWorkflows(); }
+    else if (message.type === "workflow") { run = message.view; if (mode === "workflow") renderRun(); }
+    else if (message.type === "workflow_draft") renderDraft(message.result);
     else if (message.type === "media") { photos[message.evidence_id] = message.png; renderEvidence(); }
     else if (message.type === "host") { host = message.status; renderHost(); }
     else if (message.type === "resources") { resources = message.view; renderResources(); }
@@ -95,6 +112,8 @@ function selectProject() {
   byId("robot").innerHTML = (project?.robots || []).map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
   resources = null; renderResources();
   send({type: "resources", project_id: byId("project").value});
+  workflows = null;
+  send({type: "workflows", project_id: byId("project").value});
 }
 byId("project").onchange = selectProject;
 
@@ -153,6 +172,127 @@ function renderResourceDetail() {
   };
 }
 
+function wchip(state) { return `<span class="chip ${WTONE[state] || ""}">${esc(WSTATE[state] || state)}</span>`; }
+function why(node) {
+  if (node.state === "waiting") return WAIT[node.reason] || node.reason || "";
+  if (node.state === "skipped" || node.state === "cancelled") return SKIP[node.reason] || node.reason || "";
+  return node.reason || "";
+}
+function can(role) { return hello?.can_write && (workflows?.roles || []).includes(role); }
+
+function renderWorkflows() {
+  const shown = Boolean(workflows);
+  byId("workflows").hidden = byId("workflowsEyebrow").hidden = !shown;
+  if (!shown) return;
+  const operator = can("operator");
+  byId("workflowTemplates").innerHTML = workflows.templates.map(t => {
+    const inputs = Object.entries(t.inputs || {});
+    const choose = inputs.map(([name, spec]) => `<select data-input="${esc(name)}" data-wf="${esc(t.workflow_id)}">${spec.choices.map(c =>
+      `<option value="${esc(c)}">${esc(c)}</option>`).join("")}</select>`).join("");
+    const manual = t.triggers.some(x => x.kind === "manual");
+    const schedules = t.triggers.filter(x => x.kind === "schedule").map(x => {
+      const on = x.state?.state === "enabled";
+      const when = x.schedule.every === "day" ? `每天 ${x.schedule.at} ${x.schedule.timezone}` : `每 ${x.schedule.minutes} 分钟`;
+      return `<div class="row"><span>排班 ${esc(when)} · ${on ? "已启用，下次 " + esc((x.state.cursor_at || "").slice(0, 16)) : "已停用"}</span>
+        <button class="ghost" data-schedule="${esc(t.workflow_id)}" data-trigger="${esc(x.trigger_id)}" data-action="${on ? "disable" : "enable"}" ${operator ? "" : "disabled"}>${on ? "停用排班" : "启用排班"}</button></div>`;
+    }).join("");
+    const events = t.triggers.filter(x => x.kind === "event").map(x => `<p>事件触发：${esc(x.source)} · ${esc(x.event_type)}</p>`).join("");
+    return `<div class="res"><b>${esc(t.workflow_id)} v${esc(t.version)}</b><div>${esc(t.title)}</div>
+      ${manual ? `<div class="row">${choose}<button class="ghost" data-start="${esc(t.workflow_id)}" ${operator ? "" : "disabled"}>启动运行</button></div>` : "<p>只由复检内部触发。</p>"}
+      ${schedules}${events}</div>`;
+  }).join("") || '<div class="empty">本项目没有工作流模板。</div>';
+  byId("workflowRuns").innerHTML = workflows.runs.map(r => `<button data-run="${esc(r.run_id)}" aria-current="${r.run_id === run?.run.run_id}">
+    <span>${esc(r.workflow_id)} v${esc(r.version)}<br><small>${esc(r.run_id)} · ${esc(r.updated_at.slice(11, 19))}${r.waiting.length ? " · " + esc(r.waiting.map(w => WAIT[w] || w).join("/")) : ""}</small></span>${wchip(r.state)}</button>`).join("")
+    || '<div class="empty">暂无运行。</div>';
+  byId("workflowOrders").innerHTML = workflows.orders.map(o => `<div class="res"><b>${esc(o.order_id)}</b> · ${esc(o.asset_id)} · ${esc(ORDER[o.state] || o.state)}
+    ${o.state === "open" ? `<button data-repair="${esc(o.order_id)}" ${operator ? "" : "disabled"}>记录维修反馈</button>` : ""}
+    ${o.reinspection_run ? `<div><button data-run="${esc(o.reinspection_run)}">复检运行 ${esc(o.reinspection_run)}</button></div>` : ""}</div>`).join("")
+    || '<div class="empty">暂无工单。</div>';
+  byId("draftButton").disabled = !operator;
+  const project = workflows.project_id;
+  for (const button of byId("workflowTemplates").querySelectorAll("[data-start]")) button.onclick = () => {
+    const inputs = {};
+    for (const select of byId("workflowTemplates").querySelectorAll(`[data-wf="${button.dataset.start}"]`)) inputs[select.dataset.input] = select.value;
+    send({type: "workflow_start", project_id: project, workflow_id: button.dataset.start, request_id: "ui-" + rid(), inputs});
+    mode = "workflow";
+  };
+  for (const button of byId("workflowTemplates").querySelectorAll("[data-schedule]")) button.onclick = () => {
+    const reason = prompt(button.dataset.action === "enable" ? "启用排班的原因（写入审计）" : "停用排班的原因（写入审计）") ?? "";
+    if (reason) send({type: "workflow_schedule", project_id: project, workflow_id: button.dataset.schedule, trigger_id: button.dataset.trigger, action: button.dataset.action, reason});
+  };
+  for (const button of byId("workflows").querySelectorAll("[data-run]")) button.onclick = () => watchRun(button.dataset.run);
+  for (const button of byId("workflowOrders").querySelectorAll("[data-repair]")) button.onclick = () => {
+    const note = prompt("维修反馈说明（只转为待复检，不关单）") ?? "";
+    if (note) send({type: "workflow_repair", project_id: project, order_id: button.dataset.repair, request_id: "ui-" + rid(), note});
+  };
+}
+
+function watchRun(runId) {
+  mode = "workflow"; resourceDetail = null;
+  send({type: "workflow_watch", project_id: workflows.project_id, run_id: runId});
+}
+
+function renderRun() {
+  if (!run) return;
+  const r = run.run, project = r.project_id;
+  const final = FINAL.includes(r.state);
+  let html = `<div class="eyebrow">工作流运行 ${esc(r.run_id)} · ${esc(r.trigger_source)} · 发起 ${esc(r.started_by)}</div>
+    <h2>${esc(run.template.title)}</h2><div>${wchip(r.state)} <small class="chip">${esc(r.workflow_id)} v${esc(r.version)}</small>
+    ${run.waiting.length ? `<span class="chip warn">${esc(run.waiting.map(w => WAIT[w] || w).join(" / "))}</span>` : ""}</div>`;
+  if (r.cancel) html += `<p>取消：${esc(r.cancel.requested_by)} · ${esc(r.cancel.requested_at.slice(11, 19))} · ${esc(r.cancel.reason)}；已开始的飞行经原通道收尾，对账前显示“取消收尾中”。</p>`;
+  if (!final && !r.cancel) html += `<div class="buttons"><button class="ghost danger" id="cancelRun" ${can("operator") ? "" : "disabled"}>取消本次运行</button></div>
+    <p>取消先持久化：未投递的效果作废，已提交的任务写入取消意图；停用排班请在模板处单独操作。</p>`;
+  html += `<h3>节点</h3><table><tr><th>节点</th><th>活动</th><th>状态</th><th>原因 / 结果</th></tr>${run.nodes.map(n => {
+    const result = n.result || {};
+    let detail = esc(why(n));
+    if (result.mission_id && n.activity === "submit_mission") detail = `<button class="ghost" data-mission="${esc(result.mission_id)}">${esc(result.mission_id)}</button>`;
+    if (n.activity === "await_mission" && n.state === "completed") detail = `已证实 · 证据 ${esc(result.evidence_id.slice(0, 18))}…`;
+    if (n.activity === "analyze_evidence" && n.state === "completed") detail = `${result.suspected ? "疑似异常" : "未见异常"} · ${esc(SOURCE[result.source] || result.source)} · ${esc(result.confidence)}`;
+    if (n.activity === "human_review" && n.state === "completed") detail = `${result.decision === "confirmed" ? "确认" : "驳回"} · ${esc(result.reviewer)}`;
+    if (result.order_id) detail = `工单 ${esc(result.order_id)}`;
+    if (n.activity === "request_reinspection" && result.run_id) detail = `<button class="ghost" data-child="${esc(result.run_id)}">复检 ${esc(result.run_id)}</button>`;
+    if (n.detail?.late_result) detail += ` · 取消后到达的结果：${esc(WSTATE[n.detail.late_result.state] || n.detail.late_result.state)}（只记录）`;
+    const review = n.activity === "human_review" && n.state === "waiting" && !r.cancel
+      ? `<div class="buttons"><button class="ghost" data-review="${esc(n.node_id)}" data-decision="confirmed" ${can("reviewer") ? "" : "disabled"}>确认异常</button>
+         <button class="ghost danger" data-review="${esc(n.node_id)}" data-decision="dismissed" ${can("reviewer") ? "" : "disabled"}>驳回</button></div>` : "";
+    return `<tr><td>${esc(n.node_id)}</td><td>${esc(ACTIVITY[n.activity] || n.activity)}</td><td>${wchip(n.state)}</td><td>${detail}${review}</td></tr>`;
+  }).join("")}</table>`;
+  if (run.missions.length) html += `<h3>子任务（每个仍需人工审批）</h3><table>${run.missions.map(m => `<tr><td><button class="ghost" data-mission="${esc(m.mission_id)}">${esc(m.mission_id)}</button></td>
+    <td>${esc(m.node_id)}</td><td>${chip(m.status)}</td><td>${esc(m.reservations.map(x => x.state).join(", "))}</td></tr>`).join("")}</table>`;
+  if (run.analyses.length) html += `<h3>分析（来源已标注；脚本 / 确定性结果不是模型识别）</h3><table>${run.analyses.map(a => `<tr><td>${esc(a.asset_id)}</td>
+    <td>${esc(a.analyzer)}</td><td>${esc(SOURCE[a.source] || a.source)}</td><td>${esc(a.verdict)}</td></tr>`).join("")}</table>`;
+  if (run.orders.length) html += `<h3>工单</h3><table>${run.orders.map(o => `<tr><td>${esc(o.order_id)}</td><td>${esc(o.asset_id)}</td><td>${esc(ORDER[o.state] || o.state)}</td></tr>`).join("")}</table>`;
+  if (run.children.length) html += `<h3>复检运行</h3>${run.children.map(c => `<p><button class="ghost" data-child="${esc(c.run_id)}">${esc(c.run_id)}</button> ${wchip(c.state)}</p>`).join("")}`;
+  html += `<h3>时间线</h3><div class="events">${run.events.slice().reverse().slice(0, 40).map(e => `<div class="event"><time>${esc(e.created_at.slice(11, 19))}</time>
+    <span>${esc(e.kind)} ${esc(e.body.node_id || "")} ${esc(e.body.state || e.body.to || "")} ${esc(e.body.reason || "")}</span></div>`).join("")}</div>`;
+  byId("detail").innerHTML = html;
+  if (byId("cancelRun")) byId("cancelRun").onclick = () => {
+    const reason = prompt("取消原因（写入审计）") ?? "";
+    if (reason) send({type: "workflow_cancel", project_id: project, run_id: r.run_id, request_id: "ui-" + rid(), reason});
+  };
+  for (const button of byId("detail").querySelectorAll("[data-review]")) button.onclick = () => {
+    const note = prompt(button.dataset.decision === "confirmed" ? "确认说明（写入复核记录）" : "驳回说明（写入复核记录）") ?? "";
+    send({type: "workflow_review", project_id: project, run_id: r.run_id, node_id: button.dataset.review, decision: button.dataset.decision, request_id: "ui-" + rid(), note});
+  };
+  for (const button of byId("detail").querySelectorAll("[data-mission]")) button.onclick = () => { mode = "mission"; selected = null; send({type: "watch", mission_id: button.dataset.mission}); };
+  for (const button of byId("detail").querySelectorAll("[data-child]")) button.onclick = () => watchRun(button.dataset.child);
+}
+
+function renderDraft(result) {
+  const spec = result.spec;
+  byId("draftResult").innerHTML = `<p>草案 ${esc(result.status === "planned" ? "已生成（未生效）" : result.status === "refused" ? "被拒答" : "无效")} · 来源 ${esc(SOURCE[result.use?.source] || result.use?.source)}
+    ${result.errors?.length ? " · " + esc(result.errors.join("；")) : ""}${result.decline_reason ? " · " + esc(result.decline_reason) : ""}</p>
+    ${spec ? `<table>${spec.nodes.map(n => `<tr><td>${esc(n.node_id)}</td><td>${esc(ACTIVITY[n.activity] || n.activity)}</td></tr>`).join("")}</table>
+    <p>摘要 ${esc(result.spec_sha256.slice(0, 16))}…；${esc(result.note)}</p>` : ""}`;
+}
+
+byId("draftButton").onclick = () => {
+  const text = byId("draftText").value.trim();
+  if (!text || !workflows) return notice("请先写下流程需求并选择项目。");
+  send({type: "workflow_draft", project_id: workflows.project_id, text});
+  byId("draftResult").innerHTML = '<p>生成草案中…</p>';
+};
+
 byId("submit").onclick = () => {
   const text = byId("text").value.trim();
   if (!text) return notice("请先写下任务目标。");
@@ -177,7 +317,7 @@ function renderList(items) {
   byId("missions").innerHTML = items.length ? items.map(m => `<button data-id="${esc(m.mission_id)}" aria-current="${m.mission_id === current?.mission.mission_id}">
     <span>${esc(m.mission_id)}<br><small>v${esc(m.current_version)} · ${esc(m.updated_at.slice(11, 19))}</small></span>${chip(m.status)}</button>`).join("")
     : '<div class="empty">暂无任务。</div>';
-  for (const button of byId("missions").querySelectorAll("button")) button.onclick = () => { selected = null; resourceDetail = null; send({type: "watch", mission_id: button.dataset.id}); };
+  for (const button of byId("missions").querySelectorAll("button")) button.onclick = () => { mode = "mission"; selected = null; resourceDetail = null; send({type: "watch", mission_id: button.dataset.id}); };
 }
 
 function version() {

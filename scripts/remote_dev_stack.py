@@ -378,7 +378,7 @@ def store_model_key(root: Path, request: dict) -> dict:
 def dispatch(request: dict) -> dict:
     action = request.get("action")
     if action not in {*READ_ONLY_ACTIONS, "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1", "m2",
-                       "m3", "p1", "m2_key", "live_start", "live_operate", "console_apply", "desk_apply",
+                       "m3", "p1", "p2", "m2_key", "live_start", "live_operate", "console_apply", "desk_apply",
                        "desk_members"}:
         raise ValueError("unsupported cloud action")
     if action not in READ_ONLY_ACTIONS and not RUN_ID.fullmatch(request.get("run_id", "")):
@@ -468,6 +468,13 @@ def dispatch(request: dict) -> dict:
             if not script.is_file():
                 raise ValueError("deploy a version with the P1 S1 runner first")
             return runpy.run_path(str(script))["run_p1"](root, deployment, request)
+        if action == "p2":
+            import runpy
+
+            script = deployment / "source/scripts/remote_p2.py"
+            if not script.is_file():
+                raise ValueError("deploy a version with the P2 S1 runner first")
+            return runpy.run_path(str(script))["run_p2"](root, deployment, request)
         if action == "verify":
             return operation_receipt(deployment, request["run_id"], smoke(root, deployment, request["run_id"]))
         if action == "test":

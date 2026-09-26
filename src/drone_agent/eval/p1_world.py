@@ -92,6 +92,10 @@ def scripted_planner(repo: Path) -> PlannerEngine:
 class P1World:
     """One S0 case: service, docks, aircraft and the recordings the judge reads. / 一个 S0 用例。"""
 
+    # The service's execution label; a judge smoke test of the S1 layout may use the S1 catalog's label.
+    # 服务的执行标签；S1 布局的裁判冒烟测试可以使用 S1 目录的标签。
+    backend = "logical_sim"
+
     def __init__(self, case: Path, repo: Path, *, seed: int, catalog: Path | None = None,
                  members: Path | None = None):
         self.case, self.repo, self.seed = case, repo, seed
@@ -138,7 +142,7 @@ class P1World:
                               approval_policy=ApprovalPolicy.from_yaml(repo / "configs/approval_policy.yaml"),
                               planner=scripted_planner(repo), clock=self.clock,
                               provenance_context=source_context(repo, repo / M2_SCENE, registry.sha256,
-                                                                backend="logical_sim"),
+                                                                backend=self.backend),
                               operations=operations)
 
     def restart_service(self) -> None:

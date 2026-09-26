@@ -94,3 +94,79 @@ test('legacy missions are read-only history without a dispatch section', () => {
   assert.match(out, /历史任务（只读）/);
   assert.doesNotMatch(out, /id="cancelMission"/);
 });
+
+// P2 workflows (D057): waits and failures are named, reviews need the role, drafts are shown as inactive.
+// P2 工作流（D057）：等待与失败有名字，复核需要角色，草案显示为未生效。
+const workflowsView = {
+  project_id: 'campus_s1', roles: ['operator', 'approver'], catalog: {catalog_id: 'p2_s1_v1', sha256: 'x'},
+  templates: [{workflow_id: 'asset_check', version: 1, title: 'Asset check<script>', sha256: 'x', nodes: [],
+    inputs: {asset: {kind: 'asset_id', choices: ['asset_red', 'asset_blue'], required: true}},
+    triggers: [{trigger_id: 'manual', kind: 'manual'},
+      {trigger_id: 'daily_0900', kind: 'schedule', schedule: {every: 'day', at: '09:00', timezone: 'Asia/Shanghai'}, state: {state: 'disabled'}},
+      {trigger_id: 'asset_alarm', kind: 'event', source: 'event:campus-alarm', event_type: 'asset.alarm'}]}],
+  runs: [{run_id: 'wr-1', workflow_id: 'asset_check', version: 1, state: 'waiting', trigger_source: 'manual:x',
+    created_at: '2026-09-26T00:00:00+00:00', updated_at: '2026-09-26T00:00:01+00:00', waiting: ['approval']}],
+  orders: [{order_id: 'wo-1', asset_id: 'asset_red', state: 'open', reinspection_run: null}],
+};
+
+test('the workflow panel names templates, schedules, waits and open orders', () => {
+  const ui = setup();
+  ui.run(`hello = {can_write: true, projects: []}; workflows = ${JSON.stringify(workflowsView)}; renderWorkflows();`);
+  const templates = ui.nodes.get('workflowTemplates').innerHTML;
+  assert.match(templates, /启动运行/);
+  assert.match(templates, /每天 09:00 Asia\/Shanghai · 已停用/);
+  assert.match(templates, /启用排班/);
+  assert.match(templates, /事件触发：event:campus-alarm/);
+  assert.doesNotMatch(templates, /<script>/, 'template titles are escaped');
+  assert.match(ui.nodes.get('workflowRuns').innerHTML, /等待审批/);
+  assert.match(ui.nodes.get('workflowOrders').innerHTML, /记录维修反馈/);
+});
+
+test('a run shows every wait and failure reason, and only reviewers get review buttons', () => {
+  const ui = setup();
+  const run = {
+    run: {run_id: 'wr-1', project_id: 'campus_s1', workflow_id: 'asset_check', version: 1, trigger_source: 'manual:tailnet:ops',
+      started_by: 'tailnet:ops', state: 'waiting', cancel: null},
+    template: {title: 'Asset check', order: []}, waiting: ['review'],
+    nodes: [{node_id: 'inspect', activity: 'submit_mission', state: 'completed', reason: null, result: {mission_id: 'm-1'}, detail: null},
+      {node_id: 'await_inspection', activity: 'await_mission', state: 'completed', reason: null,
+        result: {evidence_id: 'image:0123456789abcdef0123', mission_id: 'm-1'}, detail: null},
+      {node_id: 'analyze', activity: 'analyze_evidence', state: 'completed', reason: null,
+        result: {suspected: true, source: 'scripted', confidence: 0.82}, detail: null},
+      {node_id: 'review', activity: 'human_review', state: 'waiting', reason: 'review', result: null, detail: null},
+      {node_id: 'work_order', activity: 'create_work_order', state: 'pending', reason: null, result: null, detail: null},
+      {node_id: 'blue', activity: 'await_mission', state: 'failed', reason: 'mission.declined', result: null, detail: null},
+      {node_id: 'skip', activity: 'analyze_evidence', state: 'skipped', reason: 'upstream_failed', result: null, detail: null}],
+    missions: [{mission_id: 'm-1', node_id: 'inspect', status: 'completed', reservations: []}],
+    analyses: [{asset_id: 'asset_red', analyzer: 'scripted_fixture_v1', source: 'scripted', verdict: 'suspected'}],
+    orders: [], children: [], events: [],
+  };
+  ui.run(`hello = {can_write: true, projects: []}; workflows = ${JSON.stringify({...workflowsView, roles: ['operator']})}; run = ${JSON.stringify(run)}; mode = 'workflow'; renderRun();`);
+  let out = ui.nodes.get('detail').innerHTML;
+  assert.match(out, /等待人工复核/);
+  assert.match(out, /疑似异常 · 脚本回答/);
+  assert.match(out, /mission\.declined/);
+  assert.match(out, /上游失败/);
+  assert.match(out, /脚本 \/ 确定性结果不是模型识别/);
+  assert.match(out, /id="cancelRun"/);
+  assert.match(out, /data-review="review" data-decision="confirmed" disabled/, 'an operator without the reviewer role cannot review');
+  ui.run(`workflows.roles = ['reviewer']; renderRun();`);
+  out = ui.nodes.get('detail').innerHTML;
+  assert.doesNotMatch(out, /data-decision="confirmed" disabled/);
+  assert.match(out, /id="cancelRun" disabled/, 'a reviewer cannot cancel');
+  ui.run(`run.run.cancel = {requested_by: 'tailnet:ops', requested_at: '2026-09-26T00:00:02+00:00', reason: 'stop'}; run.run.state = 'cancelling'; renderRun();`);
+  out = ui.nodes.get('detail').innerHTML;
+  assert.match(out, /取消收尾中/);
+  assert.doesNotMatch(out, /id="cancelRun"/);
+  assert.doesNotMatch(out, /data-review=/, 'no review after a cancel');
+});
+
+test('a draft is shown as inactive with its source', () => {
+  const ui = setup();
+  ui.run(`renderDraft(${JSON.stringify({status: 'planned', use: {source: 'live_model'}, errors: [], spec_sha256: 'abcdef0123456789ff',
+    note: 'drafts never run', spec: {nodes: [{node_id: 'review_1', activity: 'human_review'}]}})});`);
+  const out = ui.nodes.get('draftResult').innerHTML;
+  assert.match(out, /已生成（未生效）/);
+  assert.match(out, /模型实调/);
+  assert.match(out, /人工复核/);
+});

@@ -335,11 +335,11 @@ def fetch_command(connection: Connection, args: argparse.Namespace, *, transport
 
 
 def desk_members(connection: Connection, *, apply: bool) -> dict:
-    """The desk member list: this tailnet user as the campus_s1 operator, approver and admin, plus the supervisor's
-    read-only identity. The login comes from the desk's own hello over the tailnet and is never printed.
+    """The desk member list: this tailnet user as the campus_s1 operator, approver, admin and (P2) reviewer, plus the
+    supervisor's read-only identity. The login comes from the desk's own hello over the tailnet and is never printed.
 
-    任务台成员列表：当前 tailnet 用户为 campus_s1 的 operator、approver 与 admin，另加监管者的只读身份。登录名取自
-    经 tailnet 的任务台 hello，从不打印。
+    任务台成员列表：当前 tailnet 用户为 campus_s1 的 operator、approver、admin 与（P2）reviewer，另加监管者的只读身份。
+    登录名取自经 tailnet 的任务台 hello，从不打印。
     """
     status = ssh(connection, {"action": "desk_status"}, timeout=120)
     origin = status.get("origin") or ""
@@ -354,7 +354,7 @@ def desk_members(connection: Connection, *, apply: bool) -> dict:
     if not identity.startswith("tailnet:") or len(identity) <= len("tailnet:"):
         raise ValueError("this device has no tailnet identity at the desk")
     members = {"format": "drone.project-members/v1", "members": [
-        {"principal": identity, "project_id": "campus_s1", "roles": ["operator", "approver", "admin"]},
+        {"principal": identity, "project_id": "campus_s1", "roles": ["operator", "approver", "admin", "reviewer"]},
         {"principal": identity, "project_id": "legacy_m2", "roles": ["viewer"]},
         {"principal": "harness:desk-supervisor", "project_id": "campus_s1", "roles": ["viewer"]},
         {"principal": "harness:desk-supervisor", "project_id": "legacy_m2", "roles": ["viewer"]}]}
@@ -465,6 +465,10 @@ def main() -> None:
     p1_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
     p1_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
     p1_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
+    p2_parser = commands.add_parser("p2", help="run P2 S1 cases (workflows on the formal service, PX4 SITL) in the cloud")
+    p2_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
+    p2_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
+    p2_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
     m3_parser = commands.add_parser("m3", help="run M3-SITL scenarios (external mode, autonomy, recovery v2) in the cloud")
     m3_parser.add_argument("--scenario", default="ext_inspect", help="all, class:<name> or comma-separated ids")
     m3_parser.add_argument("--seeds", default="7,19,41")
@@ -544,11 +548,11 @@ def main() -> None:
                     },
                     timeout=21600,
                 )
-            elif args.command == "p1":
+            elif args.command in ("p1", "p2"):
                 result = ssh(
                     connection,
                     {
-                        "action": "p1",
+                        "action": args.command,
                         "run_id": new_run_id(),
                         "scenario": args.scenario,
                         "seeds": [int(seed) for seed in args.seeds.split(",") if seed],

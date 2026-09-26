@@ -1,0 +1,13 @@
+# Harness memberships for the cloud P2 S1 cases (D057) on the operations catalog p1_s1_v1. The resident desk does not
+# use this file: its members come from the cloud secrets directory. The reviewer is its own identity, so the S1 chain
+# proves the reviewer role rather than the operator's convenience.
+#
+# 云端 P2 S1 用例的编排成员资格（D057），对应运营目录 p1_s1_v1。常驻任务台不使用本文件：其成员来自云端 secrets 目录。
+# 复核人是单独的身份，使 S1 链路证明的是 reviewer 角色，而不是操作者的便利。
+format: drone.project-members/v1
+schema_version: "0.1.0"
+members:
+  - {principal: "harness:p2-operator", project_id: campus_s1, roles: [operator, approver]}
+  - {principal: "harness:p2-reviewer", project_id: campus_s1, roles: [reviewer]}
+  - {principal: "harness:p2-judge", project_id: campus_s1, roles: [viewer]}
+  - {principal: "harness:p2-judge", project_id: legacy_m2, roles: [viewer]}

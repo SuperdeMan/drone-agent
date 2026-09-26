@@ -82,11 +82,11 @@ class P2World(P1World):
     """One P2 S0 case: the P1 world with workflows. / 一个 P2 S0 用例：带工作流的 P1 世界。"""
 
     def __init__(self, case: Path, repo: Path, *, seed: int, workflows: Path | None = None,
-                 lease_s: float | None = None):
+                 lease_s: float | None = None, catalog: Path | None = None, members: Path | None = None):
         self.workflows_path = workflows or repo / WORKFLOWS
         self.lease_s = lease_s
         self.workflows_paused = False
-        super().__init__(case, repo, seed=seed, members=repo / MEMBERS)
+        super().__init__(case, repo, seed=seed, catalog=catalog, members=members or repo / MEMBERS)
 
     def _service(self):
         service = super()._service()
