@@ -39,7 +39,8 @@ class FakeDesk:
                 "assignments": assignments, "decisions": [], "events": []}
 
     def mission(self, mission_id: str) -> dict:
-        status = {"m-1": "withdrawn" if self.stage else "awaiting_approval",
+        # A withdrawn assignment's mission is cancelled by the service. / 被撤回分配的任务由服务取消。
+        status = {"m-1": "cancelled" if self.stage else "awaiting_approval",
                   "m-2": "completed" if self.stage == 2 else "awaiting_approval"}[mission_id]
         judged = status == "completed"
         return {"mission": {"mission_id": mission_id, "status": status},

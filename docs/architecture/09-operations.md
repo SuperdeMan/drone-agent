@@ -2,7 +2,7 @@
 
 [架构入口](00-overview.md) · [契约](02-contracts.md) · [安全](03-safety.md) · [路线图](../roadmap.md) · [实施任务](../operations-implementation.md)
 
-**状态：2026-09-25 设计基线；P0 来源与门禁已完成（`de597d0`），验收见 [P0 记录](../p0-readiness.md)；P1 已完成（`b49701b`，见 [P1 记录](../p1-readiness.md)）；P2 已完成（`3bdbd50`，见 [P2 记录](../p2-readiness.md)），P3–P5 仍待实施。** 除明确列出的 P0 来源代码与 P1、P2 已实现部分（§10–§12），本页对象、API 名称和新增文件位置均为设计。已有底座是 M2 任务服务与 M3-SITL；具体差距见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。决策为 D049–D058。
+**状态：2026-09-25 设计基线；P0 来源与门禁已完成（`de597d0`），验收见 [P0 记录](../p0-readiness.md)；P1 已完成（`b49701b`，见 [P1 记录](../p1-readiness.md)）；P2 已完成（`3bdbd50`，见 [P2 记录](../p2-readiness.md)）；P3 实施中（接口见 §13，方案见 [P3 方案](../p3-implementation.md)），P4–P5 仍待实施。** 除明确列出的 P0 来源代码与 P1、P2、P3 已实现部分（§10–§13），本页对象、API 名称和新增文件位置均为设计。已有底座是 M2 任务服务与 M3-SITL；具体差距见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。决策为 D049–D058。
 
 ## 1. 产品闭环与执行边界
 
@@ -200,3 +200,20 @@ S0 验证逻辑与规模，S1 验证 PX4 软件飞控与执行链，S2 验证授
 | 策略值 | 运行租约 10 s（后半程才续约，接管时代次加一）；每个到期排班只启动启动窗内最近一次，补跑需显式上限；DAG 最多 40 个节点、10 个任务；工单须以 reviewer 确认为条件；复检不链式触发 |
 
 已知限制：分析只有带标注的脚本答案与确定性颜色特征，不代表识别质量；工单只到「待复检」，关单与复检质量属于 P4；一个服务进程一个引擎，多 worker 只在 S0 用例中验证 fencing；草案只返回、不存储、不可激活，生效必须经版本化配置评审。
+
+## 13. P3 当前接口（D059 / D060 / D061）
+
+| 位置 | 已实现内容 |
+|---|---|
+| 目录 | `configs/scheduling/p3_campus_v1.yaml`（S0：两组相邻站点 a/b、c/d 相距 100 m 与隔离项目 h；共享坐标 `campus`，网格 4 m、缓冲 2 m）；`p3_s1_v1.yaml`（S1：`uav_01` 位于 Gazebo 原点、`uav_02` 位于东 12 m）；`p3_desk_v1.yaml`（常驻任务台：单站点 `site_s1`，改派时限 60 s）。站点地图 `configs/scenarios/p3_*` 由 `eval/p3_layout.py` 生成并由测试钉住；阶梯目录由同一生成器写入 `outputs/`。服务带 `--scheduling` 时必须同时带 `--catalog`，分配模式的工作流模板要求带调度目录 |
+| 服务模块 | `fleet/scheduling_models.py`（任务单、分配、目录与状态）、`fleet/coordinator.py`（`decide`：按录制快照的纯判定，硬过滤后按预计到场、近期使用、机器人 ID 排序）、`fleet/reservation.py`（航迹覆盖、网格单元、失联包络）、`fleet/scheduling_store.py`（D060 的 5 张 `sc_` 表、迁移 / 演练、CAS）、`fleet/scheduler.py`（判定、分配事务、撤回、结算与接力、取消级联、视图）；`service.submit_assigned` 为分配生成确定性任务，严格软预约同时持有机器人、机场与航迹单元 |
+| API | `tasks.submit`（operator）、`tasks.list/get`（viewer 起）、`tasks.cancel`（operator）；候选必须属于本项目，不可读对象一律 `service.not_found`；`projects` 的每个条目标注该项目是否可调度 |
+| 任务台 | hri.v0 增加 `tasks` / `task` 下行帧与 `tasks_watch`、`task_watch`、`task_submit`、`task_cancel` 上行帧；调度面板显示队列、逐候选等待与拒绝原因、各机判定、分配代次与空域持有；被分配的任务仍在任务视图按任务包哈希逐个审批，没有分配或审批帧 |
+| 验证底座 | `eval/p3_world.py`（S0 世界、P3-F01–F15 与规模阶梯）、`eval/judge_p3.py`（S0 / S1 独立裁判，S1 按机器人把 Gazebo 真值换回站点坐标后逐任务跑 M2 飞行裁判）、`eval/p3_prepare.py`；云端 `scripts/remote_p3.py`、`sim/compose.p3.yaml` 与两机仿真镜像 `sim/p3.Dockerfile`；门禁 `scripts/verify_p3_release.py` |
+| 策略值 | 失联超时 5 s 后包络按平台最大速度随静默时间增长并加 2 m 余量，裁剪到已批准体积；S0 改派时限 5 s、S1 20 s、任务台 60 s；每个任务单至多 4 次分配；判定每轮至多 50 个任务单 |
+
+已知限制：
+- S0 的逻辑飞行与阶梯节点不是物理仿真；S1 只证明同一世界的两架 PX4 SITL，机场仍是逻辑的。
+- 空域是仿真网格与保守包络，不代表真实空域报备；冲突只靠独占单元与分时化解，不做近距离协同。
+- 技能清单（`configs/skills/*.yaml`）把资源名写成 `uav_01.motion` / `uav_01.camera`，编译、准入与机载校验逐字比对清单，因此 `uav_02` 的任务包与机载租约沿用这些名字；地面预约按机器人正确命名（`uav_02.motion`），每架飞行器的租约只在自己的 guardian 内生效，不影响互斥。资源名模板化属于技能契约与机载校验变更，留待真机多机（H 系列）之前处理。
+- 每个用例每架飞行器至多飞一次；单实例换电不在两机世界中实现。
