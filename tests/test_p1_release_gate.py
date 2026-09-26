@@ -121,18 +121,25 @@ def test_the_desk_session_must_be_bound_claimed_reconciled_and_judged():
         assert GATE["desk_session"](*values, SHA)["status"] == "failed"
 
 
-def test_history_is_an_input_and_onboard_changes_require_m1():
+def test_history_is_an_input_and_onboard_changes_require_m1(monkeypatch, tmp_path):
+    # Checks images are git archives without .git; inject only the Git read boundary, not the gate decision.
+    # 检查镜像来自 git archive，没有 .git；只替换 Git 读取边界，不替换门禁判定。
+    records = {path: (ROOT / path).read_bytes() for path in (GATE["M3_PATH"], GATE["P0_PATH"])}
+    subprocess = GATE["historical"].__globals__["subprocess"]
+    monkeypatch.setattr(subprocess, "check_output",
+                        lambda command, **_k: records[command[2].split(":", 1)[1]])
     assert GATE["historical"]()["status"] == "passed"
+    altered = tmp_path / GATE["P0_PATH"]
+    altered.parent.mkdir(parents=True)
+    altered.write_bytes(records[GATE["P0_PATH"]] + b"\n")
+    (tmp_path / GATE["M3_PATH"]).parent.mkdir(parents=True)
+    (tmp_path / GATE["M3_PATH"]).write_bytes(records[GATE["M3_PATH"]])
+    monkeypatch.setitem(GATE["historical"].__globals__, "ROOT", tmp_path)
+    assert GATE["historical"]()["status"] == "failed", "a rewritten P0 record never passes"
+
     scope = GATE["scope"]
-    globals_ = scope.__globals__
-    real = globals_["git"]
-    try:
-        globals_["git"] = lambda *args: "src/drone_agent/fleet/service.py\ndocs/roadmap.md" if args[0] == "diff" \
-            else real(*args)
-        assert scope(globals_["P0_SHA"], [])["status"] == "passed"
-        globals_["git"] = lambda *args: "src/drone_agent/guardian/core.py" if args[0] == "diff" else real(*args)
-        assert scope(globals_["P0_SHA"], [])["status"] == "missing", "an onboard change needs the M1 regression"
-        globals_["git"] = lambda *args: "Dockerfile.random" if args[0] == "diff" else real(*args)
-        assert scope(globals_["P0_SHA"], [])["status"] == "failed"
-    finally:
-        globals_["git"] = real
+    monkeypatch.setattr(subprocess, "run", lambda *_a, **_k: type("Done", (), {"returncode": 0})())
+    for changed, status in (("src/drone_agent/fleet/service.py\ndocs/roadmap.md", "passed"),
+                            ("src/drone_agent/guardian/core.py", "missing"), ("Dockerfile.random", "failed")):
+        monkeypatch.setitem(scope.__globals__, "git", lambda *args, value=changed: value)
+        assert scope(GATE["P0_SHA"], [])["status"] == status, changed
