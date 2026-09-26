@@ -7,7 +7,7 @@
 1. [CLAUDE.md](CLAUDE.md) — 项目规则全文（阶段状态、目录约定、命名、验证、红线）
 2. [docs/architecture/00-overview.md](docs/architecture/00-overview.md) — 架构入口与文档地图；架构级变更**先改文档再动代码**
 3. [docs/architecture/02-contracts.md](docs/architecture/02-contracts.md) 与 [03-safety.md](docs/architecture/03-safety.md) — 契约与安全语义，代码以此为准
-4. [docs/roadmap.md](docs/roadmap.md) — P/H/X 阶段、历史映射与退出标准；运营工作另读 [09-operations.md](docs/architecture/09-operations.md)、[实施任务](docs/operations-implementation.md) 与 [P1 详细方案](docs/p1-implementation.md)
+4. [docs/roadmap.md](docs/roadmap.md) — P/H/X 阶段、历史映射与退出标准；运营工作另读 [09-operations.md](docs/architecture/09-operations.md)、[实施任务](docs/operations-implementation.md) 与 [P1 验收记录](docs/p1-readiness.md)（资源、预约、领取闸门与取消屏障的接手物）
 5. [docs/decisions.md](docs/decisions.md) — 技术决策记录，只增不删
 6. [docs/reuse-from-embodied-agent.md](docs/reuse-from-embodied-agent.md) — 移植任何姊妹项目代码前必读
 

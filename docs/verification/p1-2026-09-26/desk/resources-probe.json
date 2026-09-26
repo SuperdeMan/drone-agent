@@ -1,0 +1,129 @@
+{
+  "schema_version": "0.1.0",
+  "probe": "resources",
+  "hello": {
+    "identity_scheme": "tailnet",
+    "can_write": true
+  },
+  "projects": [
+    {
+      "project_id": "campus_s1",
+      "legacy": false,
+      "roles": [
+        "admin",
+        "approver",
+        "operator"
+      ],
+      "robots": [
+        "uav_01"
+      ]
+    },
+    {
+      "project_id": "legacy_m2",
+      "legacy": true,
+      "roles": [
+        "viewer"
+      ],
+      "robots": []
+    }
+  ],
+  "resources": {
+    "campus_s1": {
+      "catalog": {
+        "catalog_id": "p1_s1_v1",
+        "sha256": "c5a6821e937cc34c199e0e40555b915a7961af325d188991ef86969c70f2cbeb",
+        "policy": {
+          "schema_version": "0.1.0",
+          "version": "p1-dispatch-v1",
+          "freshness_s": 3.0,
+          "future_skew_s": 1.0,
+          "reconcile_reports": 2,
+          "soft_reservation_s": 900.0,
+          "claim_ack_timeout_s": 30.0,
+          "result_grace_s": 5.0
+        }
+      },
+      "error": null,
+      "docks": [
+        {
+          "dock_id": "dock_s1",
+          "source": "logical_sim",
+          "pad": "free",
+          "status": {
+            "link": "online",
+            "fresh": true,
+            "age_s": 0.436,
+            "session": "active",
+            "lid": "closed",
+            "aircraft": "present",
+            "energy": {
+              "schema_version": "0.1.0",
+              "state": "ready",
+              "charge_fraction": 1.0
+            },
+            "environment": {
+              "schema_version": "0.1.0",
+              "state": "permitted",
+              "wind_mps": 2.0
+            },
+            "upkeep": "normal",
+            "lock": null
+          }
+        }
+      ],
+      "robots": [
+        {
+          "robot_id": "uav_01",
+          "execution_backend": "px4_sitl",
+          "capability_source": "published",
+          "status": {
+            "flight_phase": "grounded",
+            "timestamp": "2026-09-25T15:52:43.826956+00:00",
+            "age_s": 33049.646,
+            "energy": 1.0
+          },
+          "eligibility": {
+            "verdict": "eligible",
+            "reasons": [],
+            "snapshot_sha256": "5d01b7f7728fc7acff1e2fa31319dcded15afd86de397c30a7d3054e3def9baf",
+            "policy_version": "p1-dispatch-v1",
+            "evaluated_at": "2026-09-26T01:03:33.472054Z",
+            "valid_until": "2026-09-26T01:03:36.035370Z"
+          }
+        }
+      ]
+    }
+  },
+  "detail": {
+    "kind": "dock",
+    "actions": 0,
+    "events": 40,
+    "reservations": 0
+  },
+  "refused": [
+    {
+      "frame": "inject",
+      "error": "unknown type 'inject'"
+    },
+    {
+      "frame": "docks.report",
+      "error": "unknown type 'docks.report'"
+    },
+    {
+      "frame": "arm",
+      "error": "unknown type 'arm'"
+    },
+    {
+      "frame": "flight",
+      "error": "unknown type 'flight'"
+    },
+    {
+      "frame": "simulator.inject",
+      "error": "unknown type 'simulator.inject'"
+    }
+  ],
+  "script": {
+    "status": 200,
+    "control_or_injection_frames": []
+  }
+}

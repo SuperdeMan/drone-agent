@@ -1,0 +1,9 @@
+{
+  "schema_version": "0.1.0",
+  "counts_as_candidate_validation": false,
+  "source_sha": "5ed5fda",
+  "status": "error",
+  "reason_tail": "docker failed (1): time=\"2026-09-26T08:17:34+08:00\" level=warning msg=\"Found orphan containers ([drone-agent-cloud-uplink-1 drone-agent-cloud-dock-sim-1 drone-agent-cloud-mission-service-1 drone-agent-cloud-collector-1 drone-agent-cloud-mod",
+  "finding": "the cloud checks image is a git archive without .git; the new P1 gate test read Git history (git show / git merge-base) and failed there, as P0's first cloud run once did",
+  "fix": "b49701b injects only the Git read boundary in that test; the full suite also passed from a local git-archive extract before redeploying"
+}

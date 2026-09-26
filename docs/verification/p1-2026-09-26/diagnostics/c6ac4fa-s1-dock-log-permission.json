@@ -1,0 +1,107 @@
+{
+  "schema_version": "0.1.0",
+  "counts_as_candidate_validation": false,
+  "source_sha": "c6ac4faba86f71e0ff872f2a4ededca32062db77",
+  "run": "p1-20260926T000830Z-f08a679a",
+  "status": "failed",
+  "results": [
+    {
+      "scenario": "p1_s1_nominal",
+      "seed": 7,
+      "passed": false,
+      "error": "timed out waiting for an active dock session"
+    },
+    {
+      "scenario": "p1_s1_nominal",
+      "seed": 19,
+      "passed": false,
+      "error": "timed out waiting for an active dock session"
+    },
+    {
+      "scenario": "p1_s1_nominal",
+      "seed": 41,
+      "passed": false,
+      "error": "timed out waiting for an active dock session"
+    },
+    {
+      "scenario": "p1_s1_blocked_before_claim",
+      "seed": 7,
+      "passed": false,
+      "error": "timed out waiting for an active dock session"
+    },
+    {
+      "scenario": "p1_s1_restart",
+      "seed": 7,
+      "passed": false,
+      "error": "timed out waiting for an active dock session"
+    }
+  ],
+  "finding": "the S1 dock backend ran as root with every capability dropped, so it could not write its log into the host-owned case directory and exited before its first report; no dock session, no dispatch",
+  "fix": "5ed5fda makes that one log directory writable inside the 0700 workspace; the desk variant runs as the owner uid and was unaffected",
+  "receipt": {
+    "status": "failed",
+    "layer": "S1",
+    "source_sha": "c6ac4faba86f71e0ff872f2a4ededca32062db77",
+    "deployment_id": "20260926T000451Z-1fa187a8",
+    "artifact_directory": "/home/ubuntu/drone-agent/artifacts/20260926T000451Z-1fa187a8/p1-20260926T000830Z-f08a679a",
+    "planner": "scripted",
+    "signer_key_id": "ed25519:1e70aaeb377272d5",
+    "certificate_fingerprints": {
+      "ca": "7153e9f8fc21bdc50e1bcbab3ccf247318342b055607308989652ae1aa5d20f7",
+      "service": "4798496b0b9d1eb5eb8144340b2b2d29426e8644638980cd2e6d5239384f3e2e",
+      "robot": "9c4d2f7e49ec06dab24cc5c164ec7e9d1fdc6c10315e4c0e2297d249eff7f502"
+    },
+    "selection": [
+      "p1_s1_nominal-7",
+      "p1_s1_nominal-19",
+      "p1_s1_nominal-41",
+      "p1_s1_blocked_before_claim-7",
+      "p1_s1_restart-7"
+    ],
+    "results": [
+      {
+        "passed": false,
+        "error": "timed out waiting for an active dock session",
+        "scenario": "p1_s1_nominal",
+        "seed": 7
+      },
+      {
+        "passed": false,
+        "error": "timed out waiting for an active dock session",
+        "scenario": "p1_s1_nominal",
+        "seed": 19
+      },
+      {
+        "passed": false,
+        "error": "timed out waiting for an active dock session",
+        "scenario": "p1_s1_nominal",
+        "seed": 41
+      },
+      {
+        "passed": false,
+        "error": "timed out waiting for an active dock session",
+        "scenario": "p1_s1_blocked_before_claim",
+        "seed": 7
+      },
+      {
+        "passed": false,
+        "error": "timed out waiting for an active dock session",
+        "scenario": "p1_s1_restart",
+        "seed": 7
+      }
+    ],
+    "other_containers_before": {
+      "count": 30,
+      "sha256": "72eec8764f1da2f8cc95d0b2cd36fd0343d46972eb2e9b65f91b41ac955fc7de"
+    },
+    "other_containers_after": {
+      "count": 30,
+      "sha256": "72eec8764f1da2f8cc95d0b2cd36fd0343d46972eb2e9b65f91b41ac955fc7de"
+    },
+    "images": {
+      "sim": "sha256:c2063bbcc74f37c19508471cba0a87cabf0516810c6310308cfe42c6c8b0dba8",
+      "aircraft": "sha256:35ee3863f5154e2c2720dc5aa975427148addaab01bee5eca7593200d1534730",
+      "ground": "sha256:9bd666a2ab185d8ba723635dc2d5f909710136894c872163bedddc4b5686a9ff"
+    }
+  }
+}

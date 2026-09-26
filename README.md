@@ -9,9 +9,9 @@
 [![M3 simulation line passed](https://img.shields.io/badge/M3--SITL-passed-0F766E)](docs/m3-readiness.md)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue)](LICENSE)
 
-A drone inspection operations platform in development, built on a safety-constrained mission runtime. The implemented single-drone simulation stack provides typed missions, admission and approval, local execution and evidence-based reports. Virtual docks, durable workflows, fleet scheduling and finding-to-reinspection workflows are the next product milestones.
+A drone inspection operations platform in development, built on a safety-constrained mission runtime. The implemented simulation stack provides typed missions, admission and approval, local execution and evidence-based reports, plus project-scoped sites and virtual docks that gate every dispatch. Durable workflows, fleet scheduling and finding-to-reinspection workflows are the next product milestones.
 
-> **Current scope:** M2 completed on **2026-09-23** for a single drone in **PX4 SITL + Gazebo** (software-in-the-loop simulation). On **2026-09-25** the simulation line of M3 (local autonomy through a guarded PX4 external mode) passed its release gate; M3 closes only after Jetson-in-the-loop validation. H1 carries the pending JIL work; the original combined M3 gate remains not passed. P0 runtime provenance and product gates passed on **2026-09-25** at `de597d0`; see [P0 validation](docs/p0-readiness.md). P1–P5 software operations can proceed independently of hardware; hardware and air-ground work follow the [H/X milestones](docs/roadmap.md).
+> **Current scope:** M2 completed on **2026-09-23** for a single drone in **PX4 SITL + Gazebo** (software-in-the-loop simulation). On **2026-09-25** the simulation line of M3 (local autonomy through a guarded PX4 external mode) passed its release gate; M3 closes only after Jetson-in-the-loop validation. H1 carries the pending JIL work; the original combined M3 gate remains not passed. P0 runtime provenance and product gates passed on **2026-09-25** at `de597d0`; see [P0 validation](docs/p0-readiness.md). P1 projects, virtual docks and the dispatch claim gate passed on **2026-09-26** at `b49701b`: three sites with logical docks and logical aircraft (S0), and one PX4 SITL aircraft through a virtual dock (S1); see [P1 validation](docs/p1-readiness.md). P2–P5 software operations can proceed independently of hardware; hardware and air-ground work follow the [H/X milestones](docs/roadmap.md).
 
 [Try locally](#try-locally) · [Design](#design) · [Validation](#validation) · [Documentation](#documentation) · [Roadmap](#roadmap)
 
@@ -23,6 +23,7 @@ A drone inspection operations platform in development, built on a safety-constra
 - **Executes under local supervision.** The mission executive schedules skills; a separate `guardian` process owns the only flight-controller connection and applies recovery policies. Native failsafes and manual takeover remain available.
 - **Reports evidence, including uncertainty.** Image and telemetry checks feed completed / not completed / uncertain reports. MCAP, ULog and event records support independent judging and offline replay.
 - **Flies local autonomy through a guarded second path (M3, simulation).** ROS 2 Jazzy nodes plan short segments from depth maps; the `guardian` filters every target through a control barrier function and authorizes it for a few hundred milliseconds; a PX4 external-mode node only forwards those authorizations and stops when they end. Onboard event detection produces candidate facts only.
+- **Dispatches only what the site supports (P1, simulation).** Projects bind sites, docks and aircraft. A dock reports link, lid, aircraft presence, energy, environment and upkeep; one deterministic eligibility check with exclusive reservations gates the preview, the lid opening and the moment the aircraft fetches its package. Holds are released only on a terminal result plus fresh grounded evidence, never on a timeout. Docks are logical simulators, not vendor hardware.
 - **Provides human and agent entry points.** A Web mission desk supports planning and approval; the A2A gateway accepts task submissions and status queries. A resident desk can run behind Tailscale.
 
 The implemented skill set covers takeoff, registered routes, image capture, asset inspection, return-home and landing. M2 inspection uses predefined observation routes in the [simulation scene](configs/scenarios/m2_campus_v2.yaml).
@@ -86,6 +87,7 @@ Recorded results below belong to their **exact revisions and scopes**; they are 
 | [M2 review and unified desk](docs/m2-review-2026-09-24.md) | `e8edf28` | 833 Linux checks and 18/18 M2 E2E cases passed; evidence handling, post-cancellation retries and judge coverage fixed. Live-model and interactive checks are listed separately. |
 | [M3-SITL release gate](docs/m3-readiness.md) | `75382dc` | 983 tests; 16 local-autonomy and fault scenarios × 3 seeds = 48/48; M1 66/66, M2 18/18 and 6/6 over Zenoh; zero false success reports and matching replay; supervision period p99 ≤ 106.6 ms. Jetson-in-the-loop pending hardware. |
 | [P0 release gate](docs/p0-readiness.md) | `de597d0` | 1000 Linux tests; 18/18 scripted M2 E2E cases and source audits; MiniMax-M3 live completion and cancellation probes; authoritative flight-version receipts verified. |
+| [P1 release gate](docs/p1-readiness.md) | `b49701b` | 1102 Linux tests; 14 dock and dispatch faults × 3 seeds = 42/42 over three logical sites (S0); 5/5 PX4 SITL cases through a virtual dock (S1); M2 18/18; wrong / duplicate dispatch, wrong release, project escape and false success all zero; resident desk migrated with a verified backup. |
 
 The M2 end-to-end and natural-language adversarial runs used **labelled scripted planner answers** to test the execution chain and its boundaries. Live model behavior is documented separately in the baseline and resident-desk records. The [machine-readable release result](docs/verification/m2-2026-09-23-release.json) links the M2 evidence together.
 
@@ -110,7 +112,7 @@ Read [CLAUDE.md](CLAUDE.md) before contributing ([AGENTS.md](AGENTS.md) is the c
 | Message semantics and runtime assurance | [Contracts](docs/architecture/02-contracts.md) · [Safety](docs/architecture/03-safety.md) · [Wire protocol](proto/README.md) |
 | Cloud simulation and the mission desk | [Cloud development](docs/cloud-development.md) · [Mission desk](docs/tailnet-desk.md) |
 | Review flight evidence and replay | [Evaluation](docs/architecture/08-evaluation.md) · [Fetch and view a run](docs/cloud-development.md#查看与人工核对结果) |
-| Operations design and next work | [Operations architecture](docs/architecture/09-operations.md) · [Implementation tasks](docs/operations-implementation.md) · [P1 detailed plan](docs/p1-implementation.md) |
+| Operations design and next work | [Operations architecture](docs/architecture/09-operations.md) · [Implementation tasks](docs/operations-implementation.md) · [P1 validation](docs/p1-readiness.md) |
 | Design rationale and reuse | [Decisions](docs/decisions.md) · [Sibling-project reuse](docs/reuse-from-embodied-agent.md) |
 
 ## Roadmap
@@ -120,7 +122,8 @@ Read [CLAUDE.md](CLAUDE.md) before contributing ([AGENTS.md](AGENTS.md) is the c
 | M0–M2 | Contracts, single-drone runtime, constrained agent and evidence loop | Complete in simulation |
 | M3 | Local autonomy, perception, localization and degradation handling | Simulation line passed; Jetson-in-the-loop pending |
 | P0 | Capability inventory, runtime provenance and product gates | Complete for the software / SITL scope |
-| P1–P2 | Resources, virtual docks and durable business workflows | Next product work; not implemented |
+| P1 | Projects, sites, virtual docks and the dispatch claim gate | Complete for the software / SITL scope |
+| P2 | Durable business workflows | Next product work; not implemented |
 | P3–P5 | Fleet scheduling, multimodal business loop and platform v0.1 | Planned; includes two-drone SITL and 72 h system endurance |
 | H1–H3 | JIL, bench / restricted flights and field operations | Separate hardware validation track |
 | X1–X3 | Air-ground collaboration, vendor hardware and model / kernel research | Conditional extensions |

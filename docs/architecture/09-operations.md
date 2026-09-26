@@ -2,7 +2,7 @@
 
 [架构入口](00-overview.md) · [契约](02-contracts.md) · [安全](03-safety.md) · [路线图](../roadmap.md) · [实施任务](../operations-implementation.md)
 
-**状态：2026-09-25 设计基线；P0 来源与门禁已完成（`de597d0`），验收见 [P0 记录](../p0-readiness.md)；P1 实施中（D055 / D056），P2–P5 仍待实施。** 除明确列出的 P0 来源代码与 P1 已实现部分，本页对象、API 名称和新增文件位置均为设计。已有底座是 M2 任务服务与 M3-SITL；具体差距见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。决策为 D049–D056。
+**状态：2026-09-25 设计基线；P0 来源与门禁已完成（`de597d0`），验收见 [P0 记录](../p0-readiness.md)；P1 已完成（`b49701b`，见 [P1 记录](../p1-readiness.md)），P2–P5 仍待实施。** 除明确列出的 P0 来源代码与 P1 已实现部分，本页对象、API 名称和新增文件位置均为设计。已有底座是 M2 任务服务与 M3-SITL；具体差距见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。决策为 D049–D056。
 
 ## 1. 产品闭环与执行边界
 
