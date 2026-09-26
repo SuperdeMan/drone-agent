@@ -144,7 +144,7 @@ def session_receipt():
                                                         "false_success_reports": 0, "problems": []}}}
     receipt = {"errors": [], "sent": [{"action": "approve", "mission_id": "m-000000000001", "version": 1}],
                "task": {"task": {"task_id": "tk-1", "state": "completed", "robot_id": "uav_01", "epoch": 1,
-                                 "source": "operator"},
+                                 "source": "api", "requested_by": "tailnet:<operator>"},
                         "decisions": [{"verdict": "wait", "robot_id": None},
                                       {"verdict": "assign", "robot_id": "uav_01"}]},
                "missions": {"m-000000000001": mission}}
@@ -156,6 +156,8 @@ def test_the_desk_task_must_be_scheduled_approved_claimed_reconciled_and_judged(
     assert GATE["desk_session"](receipt, flights, SHA)["status"] == "passed"
     assert GATE["desk_session"](None, flights, SHA)["status"] == "missing"
     for mutate in (lambda r, f: r["task"]["task"].update(state="assigned"),
+                   lambda r, f: r["task"]["task"].update(source="workflow"),
+                   lambda r, f: r["task"]["task"].update(requested_by="harness:p3-operator"),
                    lambda r, f: r["task"].update(decisions=[{"verdict": "wait", "robot_id": None}]),
                    lambda r, f: r.update(sent=[]),
                    lambda r, f: r["missions"]["m-000000000001"]["request"].update(channel="console"),

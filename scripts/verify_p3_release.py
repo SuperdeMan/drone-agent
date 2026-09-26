@@ -260,8 +260,12 @@ def desk_session(receipt: dict | None, flights: list[dict] | None, sha: str) -> 
         problems.append("desk_probe_reported_errors")
     task = (receipt.get("task") or {}).get("task") or {}
     decisions = (receipt.get("task") or {}).get("decisions") or []
-    if task.get("state") != "completed" or task.get("robot_id") != "uav_01" or task.get("source") != "operator":
+    if task.get("state") != "completed" or task.get("robot_id") != "uav_01":
         problems.append("task_not_completed_by_the_desk_robot")
+    # A person on the desk: submitted through the API (not a workflow) by a tailnet identity (redacted in receipts).
+    # 任务台上的人：经 API（不是工作流）由 tailnet 身份提交（回执中已脱敏）。
+    if task.get("source") != "api" or not str(task.get("requested_by") or "").startswith("tailnet:"):
+        problems.append("task_not_submitted_by_a_person_on_the_desk")
     if not any(d.get("verdict") == "assign" and d.get("robot_id") == "uav_01" for d in decisions):
         problems.append("no_scheduler_assignment_recorded")
     approvals = [s for s in receipt.get("sent") or [] if s.get("action") == "approve"]
