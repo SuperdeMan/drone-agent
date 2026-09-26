@@ -1,0 +1,107 @@
+# P2 workflow catalog for the S0 world (D057), written for the operations catalog p1_campus_v1: `campus_round` flies
+# both markers of site_a in series, `asset_check` and its reinspection template run on site_b, `quick_check` on
+# site_c is the short chain the restart, cancel and fencing cases use, and `harbor_check` belongs to the isolation
+# fixture project. Every mission still needs a human approval; the logical aircraft are not physical flights.
+#
+# S0 世界的 P2 工作流目录（D057），对应运营目录 p1_campus_v1：`campus_round` 在 site_a 依次飞两处标记，`asset_check` 及其
+# 复检模板在 site_b 运行，site_c 的 `quick_check` 是重启、取消与隔离写入用例使用的短链路，`harbor_check` 属于隔离夹具项目。
+# 每个任务仍需人工审批；逻辑飞行器不是物理飞行。
+format: drone.workflow-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p2_campus_v1
+operations_catalog: p1_campus_v1
+analyzers:
+  scripted_fixture_v1: {kind: scripted, fixture: configs/workflows/analysis_fixture_v1.yaml}
+workflows:
+  - workflow_id: campus_round
+    version: 1
+    project_id: campus_ops
+    title: "Site A round: both markers in series, analysis, review and simulated work orders / A 站巡回：两处标记依次巡检、分析、复核与模拟工单"
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect_red, activity: submit_mission, params: {robot_id: uav_a, volume_id: campus_training, asset: asset_red}}
+      - {node_id: await_red, activity: await_mission, params: {mission_from: inspect_red}}
+      - {node_id: inspect_blue, activity: submit_mission, requires: done, after: [await_red], params: {robot_id: uav_a, volume_id: campus_training, asset: asset_blue}}
+      - {node_id: await_blue, activity: await_mission, params: {mission_from: inspect_blue}}
+      - {node_id: analyze_red, activity: analyze_evidence, params: {inspection_from: await_red, analyzer: scripted_fixture_v1}}
+      - {node_id: analyze_blue, activity: analyze_evidence, params: {inspection_from: await_blue, analyzer: scripted_fixture_v1}}
+      - {node_id: review_red, activity: human_review, when: [{node: analyze_red, output: suspected, equals: true}], params: {analysis_from: analyze_red}}
+      - {node_id: review_blue, activity: human_review, when: [{node: analyze_blue, output: suspected, equals: true}], params: {analysis_from: analyze_blue}}
+      - {node_id: order_red, activity: create_work_order, when: [{node: review_red, output: decision, equals: confirmed}], params: {review_from: review_red}}
+      - {node_id: order_blue, activity: create_work_order, when: [{node: review_blue, output: decision, equals: confirmed}], params: {review_from: review_blue}}
+      - {node_id: report, activity: build_report, requires: done, after: [order_red, order_blue]}
+    budget: {max_missions: 2}
+  - workflow_id: asset_check
+    version: 1
+    project_id: campus_ops
+    title: "Site B asset check with repair and reinspection / B 站资产检查（含维修与复检）"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+      - trigger_id: daily_0900
+        kind: schedule
+        schedule: {every: day, at: "09:00", timezone: Asia/Shanghai}
+        start_window_s: 600
+        inputs: {asset: asset_blue}
+      - {trigger_id: asset_alarm, kind: event, source: "event:campus-alarm", event_type: asset.alarm, inputs_from_event: [asset]}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_b, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: scripted_fixture_v1}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - {node_id: work_order, activity: create_work_order, when: [{node: review, output: decision, equals: confirmed}], params: {review_from: review}}
+      - {node_id: await_repair, activity: await_repair, params: {order_from: work_order}}
+      - node_id: reinspect
+        activity: request_reinspection
+        params: {order_from: work_order, repair_from: await_repair, workflow_id: asset_reinspection, version: 1, asset_input: asset}
+      - {node_id: report, activity: build_report, requires: done, after: [reinspect]}
+    budget: {max_missions: 1}
+  - workflow_id: asset_reinspection
+    version: 1
+    project_id: campus_ops
+    title: "Site B reinspection after repair feedback / B 站维修反馈后的复检"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: reinspection, kind: internal}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_b, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: scripted_fixture_v1}}
+      - {node_id: report, activity: build_report, requires: done, after: [analyze]}
+    budget: {max_missions: 1}
+  - workflow_id: quick_check
+    version: 1
+    project_id: campus_ops
+    title: "Site C quick check: inspect, analyze, report / C 站快速检查：巡检、分析、报告"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+      - trigger_id: every_30_min
+        kind: schedule
+        schedule: {every: interval, minutes: 30}
+        start_window_s: 300
+        inputs: {asset: asset_red}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_c, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: scripted_fixture_v1}}
+      - {node_id: report, activity: build_report, requires: done, after: [analyze]}
+    budget: {max_missions: 1}
+  - workflow_id: harbor_check
+    version: 1
+    project_id: harbor_ops
+    title: "Isolation fixture: harbor quick check / 隔离夹具：港区快速检查"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+      - {trigger_id: harbor_alarm, kind: event, source: "event:harbor-alarm", event_type: asset.alarm, inputs_from_event: [asset]}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_h, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: report, activity: build_report, requires: done, after: [await_inspection]}
+    budget: {max_missions: 1}

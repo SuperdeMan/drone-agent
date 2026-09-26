@@ -19,6 +19,11 @@ dependencies = [
     "mcap>=1.2,<2",
     "pydantic>=2.7",
     "pyyaml>=6.0",
+    # P2 (D057): workflow schedules resolve IANA time zones from this pinned database on every platform, so the same
+    # template gives the same occurrences on Windows and in the Linux images.
+    # P2（D057）：工作流排班在所有平台上都从这个固定版本的库解析 IANA 时区，同一模板在 Windows 与 Linux 镜像中得到
+    # 相同的发生时刻。
+    "tzdata>=2025.2",
     "uvicorn==0.53.0",
     # M2 (D033): pure-Python WebSocket implementation for the hri.v0 console session.
     # M2（D033）：hri.v0 控制台会话使用的纯 Python WebSocket 实现。

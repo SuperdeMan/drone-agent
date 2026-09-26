@@ -1,0 +1,21 @@
+# Scripted analysis answers for the P2 workflows (D057, WP-P2-06). A hand-written test double, not model output: the
+# `scripted_fixture_v1` analyzer returns these answers for service-verified evidence of the named asset and records
+# the source as `scripted` with this file's SHA-256. It exists so that the review and work-order path can be tested
+# before P4 brings real analyzers; it proves nothing about recognizing a real defect.
+#
+# P2 工作流的脚本分析回答（D057，WP-P2-06）。这是手写的测试替身，不是模型输出：`scripted_fixture_v1` 分析器对所列资产
+# 经服务复核的证据返回这些回答，来源记为 `scripted` 并附本文件的 SHA-256。它的用途是在 P4 引入真实分析器之前测试复核
+# 与工单路径；它不证明任何识别真实缺陷的能力。
+format: drone.analysis-fixture/v1
+schema_version: "0.1.0"
+source: scripted
+note: "hand-written test double, not model output / 手写测试替身，不是模型输出"
+answers:
+  asset_red:
+    verdict: suspected
+    confidence: 0.82
+    description: "scripted: paint loss on the marker's north edge / 脚本：标记北缘掉漆"
+  asset_blue:
+    verdict: normal
+    confidence: 0.9
+    description: "scripted: no visible change / 脚本：无可见变化"
