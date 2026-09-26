@@ -282,6 +282,14 @@ class Session:
             self.last_task = text
             await self.send({"type": "task", "view": view})
 
+    def task_key(self, request_id: str) -> str:
+        """A task key in the scheduler's safe alphabet: a digest of the caller and the page's request id, so a login
+        with `@` still submits, a retried request stays idempotent and the key never carries the login.
+
+        调度器安全字符集内的任务单键：调用方与页面请求号的摘要，因此含 `@` 的登录名也能提交，重试的请求保持幂等，键中也不含登录名。
+        """
+        return "desk:" + hashlib.sha256(f"{self.identity}\n{request_id}".encode()).hexdigest()[:40]
+
     async def task(self, kind: str, message: dict) -> None:
         """P3 frames: named API calls the service checks against the caller's project role; the scheduler assigns.
 
@@ -306,7 +314,7 @@ class Session:
             result = await self.call("tasks.submit", project_id=project, asset_id=str(message.get("asset_id", ""))[:120],
                                      volume_id=str(message.get("volume_id", ""))[:120],
                                      candidates=[str(c)[:120] for c in candidates[:16]], priority=priority,
-                                     idempotency_key=f"{self.identity}:{request_id}"[:120])
+                                     idempotency_key=self.task_key(request_id))
         else:
             result = await self.call("tasks.cancel", project_id=project, task_id=str(message.get("task_id", ""))[:120],
                                      request_id=request_id, reason=str(message.get("reason", ""))[:300])

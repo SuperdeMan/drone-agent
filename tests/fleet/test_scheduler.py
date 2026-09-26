@@ -116,6 +116,37 @@ def test_rejections_are_final_and_record_the_permanent_reason(world):
     run(scenario())
 
 
+def test_a_robot_that_can_never_take_the_task_is_excluded_once_instead_of_retried_every_pass(world):
+    from drone_agent.fleet.service import ServiceError
+
+    w = world()
+    submit = w.service.submit_assigned
+
+    def refuse_uav_a(**params):
+        if params["robot_id"] == "uav_a":
+            raise ServiceError("dispatch.backend_mismatch", "uav_a runs another backend")
+        return submit(**params)
+
+    w.service.submit_assigned = refuse_uav_a
+
+    async def scenario():
+        await settled(w)
+        task = await w.task("asset_mid", key="moves-on")
+        await w.drive_tasks(lambda: w.task_state(task) == "assigned", "assigned", approve=False, timeout_s=15)
+        assert w.task_robot(task) == "uav_b" and w.task_row(task)["epoch"] == 1
+        assert [e["robot_id"] for e in w.task_row(task)["excluded"]] == ["uav_a"]
+        refused = [e for e in w.tasks.events(f"task:{task}", 50) if e["kind"] == "assignment.refused"]
+        assert len(refused) == 1 and refused[0]["body"]["reason"] == "dispatch.backend_mismatch"
+        # Free the cells the first task holds, so the next one is decided on uav_a alone. / 释放第一个任务单持有的单元。
+        await w.cancel_task(task)
+        await w.drive_tasks(lambda: w.task_final(task), "cancelled", approve=False, timeout_s=15)
+        only = await w.task("asset_mid", candidates=["uav_a"], key="nowhere")
+        await w.drive_tasks(lambda: w.task_final(only), "rejected", approve=False, timeout_s=15)
+        assert w.task_state(only) == "rejected" and "task.robot_excluded" in w.task_row(only)["reason"]
+
+    run(scenario())
+
+
 def test_a_blocked_unclaimed_assignment_is_withdrawn_and_reassigned_with_a_new_epoch(world):
     w = world()
 

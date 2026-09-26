@@ -56,6 +56,9 @@ MISSION_TERMINAL = ("completed", "incomplete", "declined", "rejected", "refused"
 UNCLAIMED = ("awaiting_approval", "approving", "approved", "queued")
 ASSET = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 REQUEST_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,120}$")
+# Refusals of a mission for one robot that retrying cannot change (configuration, the robot's site map).
+# 重试也改变不了的、针对某台机器人的任务拒绝（配置、该机站点地图）。
+PERMANENT_REFUSALS = frozenset({"dispatch.backend_mismatch", "workflow.invalid_draft", "service.not_found"})
 
 
 @dataclass
@@ -348,6 +351,23 @@ class Scheduler:
             if refused:
                 self.store.event(f"task:{task['task_id']}", "assignment.refused", self.worker,
                                  {"robot_id": robot, "epoch": epoch, **refused})
+        if refused.get("reason") in PERMANENT_REFUSALS:
+            self._exclude(task, robot, refused["reason"])
+
+    def _exclude(self, task: dict, robot: str, reason: str) -> None:
+        """Exclude a robot that can never take this task, so the queue moves on instead of retrying every pass; no
+        assignment happened, so the epoch stays. / 排除永远不能执行本任务的机器人，队列继续推进而不是每轮重试；没有发生
+        分配，代次不变。"""
+        current = self.store.task(task["task_id"])
+        if current is None or current["state"] != TaskState.QUEUED.value or current["cancel"] is not None:
+            return
+        excluded = [*current["excluded"], {"robot_id": robot, "reason": reason, "epoch": current["epoch"],
+                                           "mission_id": None}]
+        try:
+            self.store.update_task(task["task_id"], current["state_version"], actor=SCHEDULER, excluded=excluded,
+                                   reason=reason)
+        except StaleTask:
+            return
 
     def _requeue(self, task: dict, epoch: int, *, exclude: tuple[str, str] | None, mission_id: str | None,
                  version: int | None = None) -> dict:
