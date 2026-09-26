@@ -48,6 +48,8 @@ CATALOG = ROOT / "configs/sites/p3_campus_v1.yaml"
 SCHEDULING = ROOT / "configs/scheduling/p3_campus_v1.yaml"
 S1_CATALOG = ROOT / "configs/sites/p3_s1_v1.yaml"
 S1_SCHEDULING = ROOT / "configs/scheduling/p3_s1_v1.yaml"
+DESK_CATALOG = ROOT / "configs/sites/p1_s1_v1.yaml"
+DESK_SCHEDULING = ROOT / "configs/scheduling/p3_desk_v1.yaml"
 
 
 def registries(catalog):
@@ -58,7 +60,8 @@ def registries(catalog):
 
 
 def test_the_committed_catalogs_check_against_their_operations_catalogs():
-    for operations, scheduling in ((CATALOG, SCHEDULING), (S1_CATALOG, S1_SCHEDULING)):
+    for operations, scheduling in ((CATALOG, SCHEDULING), (S1_CATALOG, S1_SCHEDULING),
+                                   (DESK_CATALOG, DESK_SCHEDULING)):
         catalog = load_catalog(operations)
         catalog.check_files(ROOT)
         load_scheduling(scheduling).check(catalog, registries(catalog))

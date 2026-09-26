@@ -25,6 +25,7 @@ import argparse
 import asyncio
 import json
 import os
+import sys
 import uuid
 from pathlib import Path
 
@@ -336,14 +337,52 @@ class ApiClient:
         return json.loads(line)
 
 
+async def relay(path: Path, trust: str) -> None:
+    """Harness relay: one `{"actor", "method", "params"}` line in, one response line out, until stdin ends.
+
+    One long-lived process instead of one interpreter per call keeps a shared host's CPU for the simulation; every
+    request still goes through the socket and its checks like any other call.
+
+    编排中继：每读入一行 `{"actor", "method", "params"}` 就输出一行应答，直到 stdin 结束。用一个常驻进程代替每次调用一个
+    解释器，把共享主机的 CPU 留给仿真；每个请求仍像其他调用一样经过套接字及其检查。
+    """
+    loop = asyncio.get_running_loop()
+    while True:
+        line = await loop.run_in_executor(None, sys.stdin.readline)
+        if not line:
+            return
+        try:
+            request = json.loads(line)
+            if not isinstance(request, dict) or request.get("method") not in METHODS \
+                    or not isinstance(request.get("params") or {}, dict):
+                raise ValueError("not a relay request")
+            actor = str(request["actor"])
+        except (ValueError, KeyError) as error:
+            response = {"ok": False, "issue": {"code": "service.invalid_request", "message": type(error).__name__}}
+        else:
+            try:
+                response = await ApiClient(path, actor=actor, trust=trust).call(request["method"],
+                                                                                **(request.get("params") or {}))
+            except (OSError, RuntimeError, ValueError, TimeoutError) as error:
+                response = {"ok": False, "issue": {"code": "service.degraded", "message": type(error).__name__}}
+        sys.stdout.write(json.dumps(response, ensure_ascii=False) + "\n")
+        sys.stdout.flush()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--socket", type=Path, default=Path("/run/mission/api.sock"))
-    parser.add_argument("--actor", required=True)
+    parser.add_argument("--actor", help="the caller's identity (required unless --relay)")
     parser.add_argument("--trust", default=TrustLevel.FIRST_PARTY.value)
-    parser.add_argument("method", choices=sorted(METHODS))
+    parser.add_argument("--relay", action="store_true", help="read one request per stdin line (harness)")
+    parser.add_argument("method", nargs="?", choices=sorted(METHODS))
     parser.add_argument("params", nargs="?", default="{}")
     args = parser.parse_args()
+    if args.relay:
+        asyncio.run(relay(args.socket, args.trust))
+        return
+    if not args.actor or not args.method:
+        parser.error("--actor and a method are required")
     result = asyncio.run(ApiClient(args.socket, actor=args.actor, trust=args.trust).call(args.method,
                                                                                          **json.loads(args.params)))
     print(json.dumps(result, ensure_ascii=False))

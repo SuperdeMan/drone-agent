@@ -1,0 +1,22 @@
+# Resident desk scheduling catalog (D059, D060) for the operations catalog p1_s1_v1: one site and one PX4 SITL
+# aircraft, so the scheduler always chooses uav_01 or explains why it waits; tasks go through the same approvals,
+# claim gate and reconciliation as every desk mission. The desk flies one mission at a time and approvals come from
+# people, so an unclaimed assignment is only withdrawn after a minute.
+#
+# 常驻任务台调度目录（D059、D060），对应运营目录 p1_s1_v1：一个站点、一架 PX4 SITL 飞行器，因此调度器总是选 uav_01 或说明
+# 为何等待；任务单与任务台的其他任务一样经过审批、领取闸门与对账。任务台一次只飞一个任务、审批来自人，因此未领取的分配要
+# 一分钟后才撤回。
+format: drone.scheduling-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p3_desk_v1
+operations_catalog: p1_s1_v1
+airspace:
+  frame: campus_s1
+  cell_m: 4.0
+  buffer_m: 2.0
+  contact_timeout_s: 5.0
+  envelope_margin_m: 2.0
+  sites:
+    site_s1: {origin: [0, 0]}
+ranking: {version: p3-rank-v1, cruise_mps: 2.0, setup_s: 20.0, usage_window_s: 3600.0}
+policy: {version: p3-sched-v1, reassign_after_s: 60.0, max_assignments: 4, task_window_s: 1800.0, max_tasks_per_pass: 50}

@@ -672,6 +672,13 @@ class Scheduler:
             if cells:
                 holds.append({"activity": reservation.activity_key, "mission_id": reservation.mission_id,
                               "robot_id": reservation.robot_id, "state": reservation.state.value, "cells": cells})
+        # What the page may offer: each asset with the robots whose site map registers it and its volume.
+        # 页面可提供的选项：每个资产及登记它的机器人与所属体积。
+        assets: dict[str, dict] = {}
+        for robot_id in self.project_robots(project_id):
+            for asset_id, asset in sorted(self.ops.registry(robot_id).data.get("assets", {}).items()):
+                entry = assets.setdefault(asset_id, {"volume_id": asset.get("volume"), "robots": []})
+                entry["robots"].append(robot_id)
         own = {h["activity"] for h in holds}
         envelopes: dict[str, list[str]] = {}
         for cell, activity in self.airspace.envelopes().items():
@@ -681,7 +688,7 @@ class Scheduler:
                 "catalog": {"catalog_id": self.catalog.catalog_id, "sha256": self.catalog.sha256,
                             "ranking": self.catalog.ranking.version, "policy": self.catalog.policy.version},
                 "roles": sorted(r.value for r in self.ops.directory.roles(caller, project_id)),
-                "tasks": [self._summary(t) for t in live + done], "robots": robots,
+                "tasks": [self._summary(t) for t in live + done], "robots": robots, "assets": assets,
                 "airspace": {"frame": self.catalog.airspace.frame, "cell_m": self.catalog.airspace.cell_m,
                              "holds": holds, "envelopes": [{"activity": a, "cells": sorted(c)}
                                                            for a, c in sorted(envelopes.items())]}}

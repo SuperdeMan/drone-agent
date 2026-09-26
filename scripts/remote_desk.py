@@ -8,7 +8,9 @@ restored. The model key is never read here: the service reads its own mounted fi
 needs the desk member list in the desk secrets, runs the ledger migration drill on a copy of the live ledger before
 anything is switched (only counts and digests are kept), starts the resident dock backend, and records the real
 migration the service performed on start. P2 (D057/D058): the same copy then runs the workflow-extension drill, the
-service loads the workflow catalog, and activation also requires its migration on start.
+service loads the workflow catalog, and activation also requires its migration on start. P3 (D059/D060): the same
+copy then runs the scheduling-extension drill, the service loads the p3_desk_v1 scheduling catalog, and activation
+also requires that migration on start.
 
 规划、激活并检查常驻 M2 任务台（D035）：本项目容器、一个监管者 unit、一个 Serve 映射。激活时构建所部署版本
 的 M2 镜像，生成任务台自己的信任根，启动三个常驻容器，安装监管者 unit，并新增私有 Serve 映射 8448 ->
@@ -16,7 +18,8 @@ service loads the workflow catalog, and activation also requires its migration o
 的 8447）没有变化；失败时只恢复这些组件。这里从不读取模型 key：服务读取它自己挂载的文件。P1（D055/D056）：激活
 要求任务台 secrets 中有成员列表，在切换任何组件之前先对当前账本的副本执行迁移演练（只保留计数与摘要），启动常驻
 机场后端，并记录服务启动时实际执行的迁移。P2（D057/D058）：同一副本随后执行工作流扩展演练，服务加载工作流目录，激活也
-要求服务启动时完成其迁移。
+要求服务启动时完成其迁移。P3（D059/D060）：同一副本再执行调度扩展演练，服务加载 p3_desk_v1 调度目录，激活同样要求服务
+启动时完成该迁移。
 """
 
 from __future__ import annotations
@@ -137,7 +140,9 @@ def plan(root: Path, deployment: Path) -> dict:
             "authorization": "existing tailnet access; writes need the Serve login header and a project role "
                              "from the desk member list (D033, D055)",
             "catalog": "configs/sites/p1_s1_v1.yaml", "members_provisioned": (desk.secrets / "members.yaml").is_file(),
-            "ledger_migration": "drill on a copy first, then schema v2 with a verified backup on start (D056)",
+            "workflows": "configs/workflows/p2_s1_v1.yaml", "scheduling": "configs/scheduling/p3_desk_v1.yaml",
+            "ledger_migration": "drills on a copy first (D056, D058, D060), then the migrations with verified backups "
+                                "on start",
             "apply_required": True}
 
 
@@ -227,9 +232,10 @@ def status(root: Path) -> dict:
 
 
 def migration_drill(desk, artifact: Path, image: str) -> dict:
-    """D056 and then D058 drills on one copy of the live ledger with the new image; only counts and digests are kept.
+    """D056, D058 and D060 drills in turn on one copy of the live ledger with the new image; only counts and digests
+    are kept.
 
-    用新镜像对当前账本的同一副本先后执行 D056 与 D058 演练；只保留计数与摘要。
+    用新镜像对当前账本的同一副本依次执行 D056、D058 与 D060 演练；只保留计数与摘要。
     """
     live = desk.service / "ledger.sqlite3"
     if not live.is_file():
@@ -247,7 +253,8 @@ def migration_drill(desk, artifact: Path, image: str) -> dict:
     drills = {}
     try:
         for name, module in (("operations", "drone_agent.fleet.operations_store"),
-                             ("workflows", "drone_agent.fleet.workflow_store")):
+                             ("workflows", "drone_agent.fleet.workflow_store"),
+                             ("scheduling", "drone_agent.fleet.scheduling_store")):
             output = HELPERS["run"](["docker", "run", "--rm", "--network", "none", "--user",
                                      f"{os.getuid()}:{os.getgid()}", "-v", f"{work}:/drill", image, "python3", "-m",
                                      module, "--drill", "/drill/ledger.sqlite3"], timeout=300)
@@ -255,7 +262,7 @@ def migration_drill(desk, artifact: Path, image: str) -> dict:
     finally:
         # The copy holds mission data; only the receipt stays. / 副本含任务数据；只保留回执。
         shutil.rmtree(work, ignore_errors=True)
-    result = {"status": "passed" if all(d.get("status") == "passed" for d in drills.values()) and len(drills) == 2
+    result = {"status": "passed" if all(d.get("status") == "passed" for d in drills.values()) and len(drills) == 3
               else "failed", **drills}
     (artifact / "migration-drill.json").write_text(json.dumps(result, indent=2))
     if result.get("status") != "passed":
@@ -369,6 +376,10 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
         if workflows.get("catalog_id") != "p2_s1_v1" or (workflows.get("migration") or {}).get("status") not in (
                 "migrated", "current"):
             raise RuntimeError("the mission service did not start with the P2 workflow catalog and its tables")
+        scheduling = started.get("scheduling") or {}
+        if scheduling.get("catalog_id") != "p3_desk_v1" or (scheduling.get("migration") or {}).get("status") not in (
+                "migrated", "current"):
+            raise RuntimeError("the mission service did not start with the P3 scheduling catalog and its tables")
         command(["sudo", "-n", "tailscale", "serve", "--bg", f"--https={HTTPS_PORT}", BACKEND])
         after_serve = serve_config()
         if not route_matches(after_serve, value["origin"]) or other_routes(after_serve) != other_routes(before_serve):
@@ -386,6 +397,9 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
                    "workflows": {"catalog_id": workflows.get("catalog_id"),
                                  "catalog_sha256": workflows.get("catalog_sha256"),
                                  "migration": workflows.get("migration"), "drill": drill.get("workflows")},
+                   "scheduling": {"catalog_id": scheduling.get("catalog_id"),
+                                  "catalog_sha256": scheduling.get("catalog_sha256"),
+                                  "migration": scheduling.get("migration"), "drill": drill.get("scheduling")},
                    "containers": inspect_desk(desk, value["source_sha"]),
                    "other_serve_before_sha256": fingerprint(other_routes(before_serve)),
                    "other_serve_after_sha256": fingerprint(other_routes(after_serve)),

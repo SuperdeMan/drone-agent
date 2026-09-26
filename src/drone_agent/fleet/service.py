@@ -1164,9 +1164,13 @@ class MissionService:
         if self.ops is None or caller is None:
             return []
         catalog, legacy = self.ops.catalog, self.ops.catalog.legacy_project.project_id
+        # A project takes tasks when the scheduling catalog places every one of its sites (D059).
+        # 调度目录为项目的每个站点都给出位置时，项目才受理任务单（D059）。
+        placed = set(self.scheduler.catalog.airspace.sites) if self.scheduler is not None else set()
         return [{"project_id": p, "name": catalog.projects[p].name if p in catalog.projects else "legacy M2 history",
                  "legacy": p == legacy, "roles": sorted(r.value for r in self.ops.directory.roles(caller, p)),
-                 "robots": sorted(r for r in catalog.robots if catalog.project_of(r) == p)}
+                 "robots": sorted(r for r in catalog.robots if catalog.project_of(r) == p),
+                 "scheduling": p in catalog.projects and set(catalog.projects[p].sites) <= placed}
                 for p in self.ops.directory.projects(caller)]
 
     def _dock_row(self, dock_id: str) -> dict:

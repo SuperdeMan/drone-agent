@@ -27,6 +27,7 @@ import ipaddress
 import json
 import os
 import runpy
+import select
 import subprocess
 import threading
 import time
@@ -123,6 +124,46 @@ def platform_for(source: Path, robot: str) -> bytes:
         if sensor.get("frame_id", "").startswith(base + "/"):
             sensor["frame_id"] = robot + sensor["frame_id"][len(base):]
     return yaml.safe_dump(data, sort_keys=False, allow_unicode=True).encode()
+
+
+class Relay:
+    """One long-lived API relay in the mission-service container (`fleet.api --relay`), started on first use.
+
+    A shared 4-core host cannot spare an interpreter per API call while two aircraft fly; every request still goes
+    through the service socket and its checks.
+
+    服务容器内一个常驻 API 中继（`fleet.api --relay`），首次使用时启动。两架飞行器飞行时，4 核共享主机负担不起每次 API
+    调用一个解释器；每个请求仍经过服务套接字及其检查。
+    """
+
+    def __init__(self, argv: list[str], env: dict):
+        self.argv, self.env, self.process, self.lock = argv, env, None, threading.Lock()
+
+    def call(self, request: dict, timeout: float = 180) -> dict | None:
+        with self.lock:
+            if self.process is None or self.process.poll() is not None:
+                self.process = subprocess.Popen(self.argv, env=self.env, stdin=subprocess.PIPE,
+                                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            try:
+                self.process.stdin.write(json.dumps(request, ensure_ascii=False).encode() + b"\n")
+                self.process.stdin.flush()
+                ready, _, _ = select.select([self.process.stdout], [], [], timeout)
+                line = self.process.stdout.readline() if ready else b""
+                if not line:
+                    raise ConnectionError("relay ended or timed out")
+                return json.loads(line)
+            except (OSError, ValueError, ConnectionError):
+                self.close()
+                return None
+
+    def close(self) -> None:
+        if self.process is not None:
+            try:
+                self.process.stdin.close()
+                self.process.wait(timeout=10)
+            except (OSError, subprocess.TimeoutExpired):
+                self.process.kill()
+            self.process = None
 
 
 class Sampler(threading.Thread):
@@ -317,14 +358,12 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed, subnet, *,
             raise RuntimeError(f"P3 compose failed ({result.returncode}); artifacts: {case}")
         return result
 
+    relay = Relay([*prefix, "exec", "-T", "mission-service", "python3", "-m", "drone_agent.fleet.api", "--socket",
+                   "/run/mission/api.sock", "--relay"], env)
+
     def api(method: str, *, actor: str = OPERATOR, record: bool = True, **params) -> dict:
-        result = compose("exec", "-T", "mission-service", "python3", "-m", "drone_agent.fleet.api", "--socket",
-                         "/run/mission/api.sock", "--actor", actor, method, json.dumps(params, ensure_ascii=False),
-                         timeout=180, quiet=True, check=False)
-        try:
-            response = json.loads(result.stdout.decode().strip().splitlines()[-1])
-        except (ValueError, IndexError):
-            response = {"ok": False, "issue": {"code": "service.degraded"}}
+        response = relay.call({"actor": actor, "method": method, "params": params}) \
+            or {"ok": False, "issue": {"code": "service.degraded"}}
         value = response.get("result")
         if record:
             transcript.append({"at": now(), "actor": actor, "trust": "first_party", "method": method, "probe": False,
@@ -489,7 +528,7 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed, subnet, *,
                 settled = (run_view.get("result") or {}).get("run", {}).get("state") in RUN_FINAL
             if settled:
                 break
-            time.sleep(1.0)
+            time.sleep(2.0)
         else:
             raise RuntimeError("the case's tasks did not finish in time")
         wait(lambda: all(dock(k).get("pad") == "free" for k in AIRCRAFT), 150, "both reconciled releases")
@@ -513,6 +552,7 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed, subnet, *,
         (case / "service-export/resources.json").write_text(json.dumps(snapshots, ensure_ascii=False, indent=2))
         logs = compose("logs", "--no-color", "--no-log-prefix", "sitl-p3", timeout=60, check=False, quiet=True)
         (case / "sitl.log").write_bytes(logs.stdout)
+        relay.close()
         compose("stop", "-t", "5", "uplink-a", "uplink-b", "dock-sim-a", "dock-sim-b", "mission-service",
                 "collector-a", "collector-b")
         compose("stop", "-t", "10", "sitl-p3")
@@ -556,10 +596,12 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed, subnet, *,
         result["passed"] = result["passed"] and verdict["sufficient"]
         return result
     except Exception as error:
+        relay.close()
         compose("logs", "--no-color", "--tail", "200", check=False)
         compose("stop", "-t", "5", *SERVICES, check=False)
         return {"passed": False, "error": str(error), "scenario": scenario["id"], "seed": seed}
     finally:
+        relay.close()
         sampler.stop_event.set()
 
 
@@ -593,12 +635,18 @@ def poll_flight(case: Path, compose, key: str, active: dict) -> dict | None:
     if status is None:
         return None
     observation = status["observation"]
-    if status["safety"] == "abort" and not active["cleanup"]:
-        # Simulation operator ends a surrendered flight of this instance. / 仿真操作员收尾本实例已移交控制权的飞行。
+    finished = (flight / "result.json").exists()
+    if finished and observation.get("in_air") is True:
+        active.setdefault("airborne_after_result", time.monotonic())
+    stuck = finished and time.monotonic() - active.get("airborne_after_result", time.monotonic()) > 30
+    if (status["safety"] == "abort" or stuck) and not active["cleanup"]:
+        # Simulation operator ends a surrendered flight of this instance, or one still airborne 30 s after its
+        # executive ended. / 仿真操作员收尾本实例已移交控制权的飞行，或执行器结束 30 s 后仍在空中的飞行。
         compose("exec", "-T", "sitl-p3", "/opt/PX4-Autopilot/build/px4_sitl_default/bin/px4-commander", "--instance",
                 str(AIRCRAFT[key]["instance"]), "land", check=False)
         active["cleanup"] = True
-        (flight / "manual-cleanup.json").write_text(json.dumps({"reason": status["reason"]}))
+        (flight / "manual-cleanup.json").write_text(json.dumps({
+            "reason": status["reason"] if status["safety"] == "abort" else "airborne_after_result"}))
     if observation.get("in_air") is False and observation.get("armed") is False and (flight / "result.json").exists():
         if active["landed_at"] is None:
             active["landed_at"] = time.monotonic()

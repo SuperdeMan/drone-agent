@@ -55,6 +55,18 @@ const ACTIVITY = {submit_mission: "提交任务", await_mission: "等待任务�
   create_work_order: "模拟工单", await_repair: "等待维修反馈", request_reinspection: "请求复检", build_report: "生成报告"};
 const ORDER = {open: "待维修", repair_reported: "已反馈维修·待复检", reinspection_requested: "已请求复检"};
 const FINAL = ["completed", "failed", "outcome_unknown", "cancelled"];
+// P3 scheduling (D059): the scheduler's queue, decisions and holds as the service records them.
+// P3 调度（D059）：按服务记录展示调度器的队列、判定与持有。
+let tasks = null, task = null;
+Object.assign(REASON, {"asset.unregistered": "该机站点未登记此资产", "volume.unapproved": "体积不是已批准的仿真体积",
+  "task.robot_excluded": "本任务已排除该机（此前失败）", "airspace.cell_held": "航迹单元被其他活动持有",
+  "airspace.envelope": "落入失联飞行器的包络", "airspace.hold_missing": "本活动未持有航迹单元"});
+const TSTATE = {queued: "排队中", assigned: "已分配", completed: "已完成", failed: "失败", outcome_unknown: "结果未知",
+  rejected: "已拒绝", cancel_requested: "已请求取消", cancelling: "取消收尾中", cancelled: "已取消"};
+const TTONE = {completed: "ok", assigned: "ok", queued: "warn", cancel_requested: "warn", cancelling: "warn", failed: "bad",
+  outcome_unknown: "bad", rejected: "bad", cancelled: "bad"};
+const ASTATE = {active: "有效", withdrawn: "已撤回（未领取）", ended: "已结束"};
+const TVERDICT = {assign: "分配", wait: "等待", reject: "拒绝"};
 
 function notice(text) { byId("notice").textContent = text || ""; byId("notice").hidden = !text; }
 function chip(status) { return `<span class="chip ${TONE[status] || ""}">${esc(STATUS[status] || status)}</span>`; }
@@ -81,6 +93,8 @@ function connect() {
     else if (message.type === "workflows") { workflows = message.view; renderWorkflows(); }
     else if (message.type === "workflow") { run = message.view; if (mode === "workflow") renderRun(); }
     else if (message.type === "workflow_draft") renderDraft(message.result);
+    else if (message.type === "tasks") { tasks = message.view; renderTasks(); }
+    else if (message.type === "task") { task = message.view; if (mode === "task") renderTask(); }
     else if (message.type === "media") { photos[message.evidence_id] = message.png; renderEvidence(); }
     else if (message.type === "host") { host = message.status; renderHost(); }
     else if (message.type === "resources") { resources = message.view; renderResources(); }
@@ -114,6 +128,8 @@ function selectProject() {
   send({type: "resources", project_id: byId("project").value});
   workflows = null;
   send({type: "workflows", project_id: byId("project").value});
+  tasks = null; renderTasks();
+  if (project?.scheduling) send({type: "tasks_watch", project_id: byId("project").value});
 }
 byId("project").onchange = selectProject;
 
@@ -276,6 +292,81 @@ function renderRun() {
   };
   for (const button of byId("detail").querySelectorAll("[data-mission]")) button.onclick = () => { mode = "mission"; selected = null; send({type: "watch", mission_id: button.dataset.mission}); };
   for (const button of byId("detail").querySelectorAll("[data-child]")) button.onclick = () => watchRun(button.dataset.child);
+}
+
+function tchip(state) { return `<span class="chip ${TTONE[state] || ""}">${esc(TSTATE[state] || state)}</span>`; }
+function waiting(t) {
+  if (t.state !== "queued" || !t.waiting) return "";
+  return Object.entries(t.waiting).map(([robot, list]) => `${robot}：${reasons(list) || "可派遣"}`).join("；");
+}
+
+function renderTasks() {
+  const shown = Boolean(tasks);
+  byId("tasks").hidden = byId("tasksEyebrow").hidden = !shown;
+  if (!shown) return;
+  const operator = hello?.can_write && (tasks.roles || []).includes("operator");
+  const assets = Object.entries(tasks.assets || {});
+  const chosen = byId("taskAsset").value;
+  byId("taskAsset").innerHTML = assets.map(([id, a]) => `<option value="${esc(id)}" data-volume="${esc(a.volume_id)}">${esc(id)} · ${esc(a.robots.join("/"))}</option>`).join("");
+  if (assets.some(([id]) => id === chosen)) byId("taskAsset").value = chosen;
+  byId("taskSubmit").disabled = !operator || !assets.length;
+  byId("taskRobots").innerHTML = tasks.robots.map(r => `<div class="res"><b>${esc(r.robot_id)}</b> · ${esc(r.dock_id)}
+    ${chips([[VERDICT[r.eligibility.verdict] || r.eligibility.verdict, VTONE[r.eligibility.verdict]]])}
+    ${r.eligibility.reasons.length ? `<div class="why">${esc(reasons(r.eligibility.reasons))}</div>` : ""}
+    ${r.assignments.map(a => `<div><button data-task="${esc(a.task_id)}">${esc(a.task_id)}</button> 代次 ${esc(a.epoch)}${a.mission_id ? " · " + esc(a.mission_id) : ""}</div>`).join("")}</div>`).join("")
+    || '<div class="empty">本项目没有机器人。</div>';
+  byId("taskQueue").innerHTML = tasks.tasks.slice().reverse().map(t => `<button data-task="${esc(t.task_id)}" aria-current="${t.task_id === task?.task.task_id}">
+    <span>${esc(t.asset_id)} · P${esc(t.priority)}<br><small>${esc(t.task_id)} · ${esc(t.updated_at.slice(11, 19))}${t.robot_id ? " · " + esc(t.robot_id) + " 代次 " + esc(t.epoch) : ""}</small>
+    ${waiting(t) ? `<div class="why">${esc(waiting(t))}</div>` : ""}${t.reason ? `<div class="why">${esc(reasons(t.reason.split(",")))}</div>` : ""}</span>${tchip(t.state)}</button>`).join("")
+    || '<div class="empty">暂无任务单。</div>';
+  const holds = tasks.airspace.holds, envelopes = tasks.airspace.envelopes;
+  byId("taskAirspace").innerHTML = (holds.map(h => `<div class="res"><b>${esc(h.robot_id)}</b> · ${esc(h.mission_id)} · ${esc(PAD[h.state] || h.state)}
+    <div class="why">${esc(h.cells.length)} 个单元（${esc(tasks.airspace.cell_m)} m）</div></div>`).join("")
+    + envelopes.map(e => `<div class="res"><b>失联包络</b> · ${esc(e.activity)}<div class="why">${esc(e.cells.length)} 个单元，只增不减，直到对账</div></div>`).join(""))
+    || '<div class="empty">无持有。</div>';
+  for (const button of byId("tasks").querySelectorAll("[data-task]")) button.onclick = () => watchTask(button.dataset.task);
+}
+
+function watchTask(taskId) {
+  mode = "task"; resourceDetail = null;
+  send({type: "task_watch", project_id: tasks.project_id, task_id: taskId});
+}
+
+byId("taskSubmit").onclick = () => {
+  const option = byId("taskAsset").selectedOptions[0];
+  if (!option || !tasks) return notice("请先选择项目与资产。");
+  send({type: "task_submit", project_id: tasks.project_id, asset_id: option.value, volume_id: option.dataset.volume,
+        candidates: [], priority: Number(byId("taskPriority").value), request_id: "ui-" + rid()});
+  mode = "task";
+};
+
+function renderTask() {
+  if (!task) return;
+  const t = task.task, project = t.project_id;
+  const live = !["completed", "failed", "outcome_unknown", "rejected", "cancelled"].includes(t.state);
+  let html = `<div class="eyebrow">任务单 ${esc(t.task_id)} · 提交 ${esc(t.requested_by)} · 来源 ${esc(t.source)}</div>
+    <h2>${esc(t.asset_id)} · ${esc(t.volume_id)}</h2><div>${tchip(t.state)} <small class="chip">优先级 ${esc(t.priority)}</small>
+    ${t.robot_id ? `<small class="chip">${esc(t.robot_id)} · 代次 ${esc(t.epoch)}</small>` : ""}</div>`;
+  if (t.reason) html += `<p>原因：${esc(reasons(t.reason.split(",")))}</p>`;
+  if (t.outcome) html += `<p>结果：${esc(t.outcome.robot_id || "")} · ${esc(t.outcome.mission_id || "")} · ${esc(t.outcome.status || t.outcome.reason || "")}</p>`;
+  if (t.cancel) html += `<p>取消：${esc(t.cancel.requested_by)} · ${esc((t.cancel.requested_at || "").slice(11, 19))} · ${esc(t.cancel.reason)}；已开始的飞行经原通道收尾，对账后才显示已取消。</p>`;
+  if (live && !t.cancel) html += `<div class="buttons"><button class="ghost danger" id="cancelTask" ${hello?.can_write && (tasks?.roles || []).includes("operator") ? "" : "disabled"}>取消任务单</button></div>`;
+  html += `<h3>分配（代次递增；撤回只发生在领取之前）</h3>${task.assignments.length ? `<table><tr><th>代次</th><th>机器人</th><th>任务</th><th>状态</th></tr>${task.assignments.map(a => `<tr>
+    <td>${esc(a.epoch)}</td><td>${esc(a.robot_id)}</td><td>${a.mission_id ? `<button class="ghost" data-mission="${esc(a.mission_id)}">${esc(a.mission_id)}</button> ${a.mission_status ? chip(a.mission_status) : ""}` : ""}</td>
+    <td>${esc(ASTATE[a.state] || a.state)}${a.reason ? " · " + esc(reasons(a.reason.split(","))) : ""}</td></tr>`).join("")}</table>` : '<div class="empty">尚未分配。</div>'}`;
+  html += `<h3>判定（按录制快照可重放）</h3>${task.decisions.map(d => `<div class="res"><b>${esc(TVERDICT[d.verdict] || d.verdict)}${d.robot_id ? " → " + esc(d.robot_id) : ""}</b>
+    · ${esc(d.created_at.slice(11, 19))} · 代次 ${esc(d.epoch)} · ${esc(d.ranking_version)} / ${esc(d.policy_version)} · 快照 ${esc(d.snapshot_sha256.slice(0, 12))}…
+    <table><tr><th>候选</th><th>判定</th><th>预计到场 s</th><th>近期使用</th><th>原因</th></tr>${d.candidates.map(c => `<tr><td>${esc(c.robot_id)}</td>
+    <td>${esc(VERDICT[c.verdict] || c.verdict)}</td><td>${esc(c.eta_s ?? "—")}</td><td>${esc(c.usage)}</td><td>${esc(reasons(c.reasons))}</td></tr>`).join("")}</table></div>`).join("")
+    || '<div class="empty">暂无判定。</div>'}`;
+  html += `<h3>时间线</h3><div class="events">${task.events.slice().reverse().slice(0, 40).map(e => `<div class="event"><time>${esc(e.created_at.slice(11, 19))}</time>
+    <span>${esc(e.kind)} ${esc(e.body.robot_id || "")} ${esc(e.body.epoch ?? "")} ${esc(e.body.reason || e.body.state || "")}</span></div>`).join("")}</div>`;
+  byId("detail").innerHTML = html;
+  if (byId("cancelTask")) byId("cancelTask").onclick = () => {
+    const reason = prompt("取消原因（写入审计）") ?? "";
+    if (reason) send({type: "task_cancel", project_id: project, task_id: t.task_id, request_id: "ui-" + rid(), reason});
+  };
+  for (const button of byId("detail").querySelectorAll("[data-mission]")) button.onclick = () => { mode = "mission"; selected = null; send({type: "watch", mission_id: button.dataset.mission}); };
 }
 
 function renderDraft(result) {

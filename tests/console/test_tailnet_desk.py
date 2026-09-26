@@ -61,6 +61,14 @@ def test_residents_share_only_internal_networks_and_mount_secrets_read_only():
     assert "secrets/m2" not in text and "docker.sock" not in text and ".ssh" not in text
 
 
+def test_the_desk_service_loads_the_operations_workflow_and_scheduling_catalogs():
+    command = COMPOSE["services"]["desk-service"]["command"]
+    for flag, path in (("--catalog", "configs/sites/p1_s1_v1.yaml"), ("--workflows", "configs/workflows/p2_s1_v1.yaml"),
+                       ("--scheduling", "configs/scheduling/p3_desk_v1.yaml")):
+        assert command[command.index(flag) + 1] == "/workspace/" + path
+        assert (ROOT / path).is_file()
+
+
 @pytest.mark.parametrize("path,proxy,service", [("sim/compose.desk.yaml", "desk-model-proxy", "desk-service"),
                                                ("sim/compose.m2.yaml", "model-proxy", "mission-service")])
 def test_only_the_allowlisted_proxy_reaches_the_outbound_network(path, proxy, service):

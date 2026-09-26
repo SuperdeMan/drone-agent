@@ -170,3 +170,78 @@ test('a draft is shown as inactive with its source', () => {
   assert.match(out, /模型实调/);
   assert.match(out, /人工复核/);
 });
+
+// P3 scheduling (D059): queue, waits and exclusions are named, the scheduler chooses, approvals stay per mission.
+// P3 调度（D059）：队列、等待与排除都有名字，由调度器选机，审批仍逐任务进行。
+const tasksView = {
+  project_id: 'campus_s1', roles: ['operator', 'approver'],
+  catalog: {catalog_id: 'p3_desk_v1', sha256: 'x', ranking: 'p3-rank-v1', policy: 'p3-sched-v1'},
+  assets: {asset_red: {volume_id: 'campus_training', robots: ['uav_01']}, 'asset_<b>': {volume_id: 'campus_training', robots: ['uav_01']}},
+  tasks: [{task_id: 'tk-1', project_id: 'campus_s1', asset_id: 'asset_red', volume_id: 'campus_training', candidates: [], priority: 0,
+    state: 'queued', epoch: 0, robot_id: null, mission_id: null, reason: null, source: 'operator', created_at: '2026-09-26T00:00:00+00:00',
+    updated_at: '2026-09-26T00:00:01+00:00', not_after: null, waiting: {uav_01: ['energy.charging', 'airspace.cell_held']}, decision: null},
+    {task_id: 'tk-2', project_id: 'campus_s1', asset_id: 'asset_west', volume_id: 'campus_training', candidates: [], priority: 0,
+    state: 'rejected', epoch: 0, robot_id: null, mission_id: null, reason: 'asset.unregistered', source: 'operator',
+    created_at: '2026-09-26T00:00:00+00:00', updated_at: '2026-09-26T00:00:01+00:00', not_after: null, waiting: null, decision: null}],
+  robots: [{robot_id: 'uav_01', site_id: 'site_s1', dock_id: 'dock_s1', assignments: [{task_id: 'tk-0', epoch: 1, mission_id: 'm-1'}],
+    eligibility: {verdict: 'blocked', reasons: ['robot.airborne']}}],
+  airspace: {frame: 'campus', cell_m: 4, holds: [{activity: 'mission:m-1:v1', mission_id: 'm-1', robot_id: 'uav_01', state: 'occupied',
+    cells: ['air.campus.0.0', 'air.campus.0.1']}], envelopes: []},
+};
+
+test('the scheduling panel names every wait and rejection and offers only registered assets', () => {
+  const ui = setup();
+  ui.run(`hello = {can_write: true, projects: []}; tasks = ${JSON.stringify(tasksView)}; renderTasks();`);
+  const queue = ui.nodes.get('taskQueue').innerHTML;
+  assert.match(queue, /排队中/);
+  assert.match(queue, /uav_01：充电中；航迹单元被其他活动持有/);
+  assert.match(queue, /已拒绝/);
+  assert.match(queue, /该机站点未登记此资产/);
+  assert.match(ui.nodes.get('taskRobots').innerHTML, /不可派遣[\s\S]*飞行器在空中/);
+  assert.match(ui.nodes.get('taskAirspace').innerHTML, /2 个单元（4 m）/);
+  const options = ui.nodes.get('taskAsset').innerHTML;
+  assert.match(options, /asset_red · uav_01/);
+  assert.doesNotMatch(options, /<b>/, 'asset ids are escaped');
+  assert.equal(ui.nodes.get('taskSubmit').disabled, false);
+  ui.run(`tasks.roles = ['viewer']; renderTasks();`);
+  assert.equal(ui.nodes.get('taskSubmit').disabled, true, 'a viewer cannot submit');
+});
+
+test('a task shows its replayable decisions and assignment epochs and never approves', () => {
+  const ui = setup();
+  const view = {
+    task: {...tasksView.tasks[0], state: 'assigned', robot_id: 'uav_02', epoch: 2, mission_id: 'm-2', requested_by: 'tailnet:ops',
+      excluded: [], cancel: null, outcome: null},
+    assignments: [{epoch: 1, robot_id: 'uav_01', mission_id: 'm-1', state: 'withdrawn', reason: 'dock.maintenance', blocked_since: 'x',
+      created_at: 'x', updated_at: 'x', mission_status: 'withdrawn'},
+      {epoch: 2, robot_id: 'uav_02', mission_id: 'm-2', state: 'active', reason: null, blocked_since: null, created_at: 'x',
+      updated_at: 'x', mission_status: 'awaiting_approval'}],
+    decisions: [{decision_id: 'sd-1', created_at: '2026-09-26T00:00:03+00:00', epoch: 2, verdict: 'assign', robot_id: 'uav_02',
+      order: ['uav_02'], snapshot_sha256: '0123456789abcdef', ranking_version: 'p3-rank-v1', policy_version: 'p3-sched-v1',
+      candidates: [{robot_id: 'uav_01', verdict: 'blocked', reasons: ['dock.maintenance'], permanent: false, eta_s: 23.2, usage: 0,
+        held: [], envelope: []}, {robot_id: 'uav_02', verdict: 'eligible', reasons: [], permanent: false, eta_s: 24, usage: 0, held: [],
+        envelope: []}]}],
+    events: [{created_at: '2026-09-26T00:00:02+00:00', kind: 'assignment.withdrawn', body: {robot_id: 'uav_01', epoch: 1, reason: 'dock.maintenance'}}],
+  };
+  ui.run(`hello = {can_write: true, projects: []}; tasks = ${JSON.stringify(tasksView)}; task = ${JSON.stringify(view)}; mode = 'task'; renderTask();`);
+  const out = ui.nodes.get('detail').innerHTML;
+  assert.match(out, /已撤回（未领取） · 维护锁定/);
+  assert.match(out, /分配 → uav_02/);
+  assert.match(out, /快照 0123456789ab…/);
+  assert.match(out, /uav_01<\/td>\s*<td>不可派遣<\/td><td>23\.2<\/td>/);
+  assert.match(out, /待审批/);
+  assert.match(out, /id="cancelTask"/);
+  assert.doesNotMatch(out, /id="approve/, 'approval stays in the mission view');
+});
+
+test('only a scheduling project subscribes to the queue', () => {
+  const ui = setup();
+  // A browser selects the first option; the stand-in element needs it set. / 浏览器会选中首项；替身元素需显式设置。
+  ui.nodes.get('project').value = 'campus_s1';
+  ui.run(`onHello({protocol: 'hri.v0', identity: 'tailnet:ops', can_write: true, volumes: [], assets: [], planner: 'scripted',
+    projects: [{project_id: 'campus_s1', roles: ['operator'], robots: ['uav_01'], legacy: false, scheduling: false}]});`);
+  assert.ok(ui.sent.some(m => m.type === 'workflows' && m.project_id === 'campus_s1'));
+  assert.ok(!ui.sent.some(m => m.type === 'tasks_watch'), 'no queue without a scheduling catalog');
+  ui.run(`hello.projects[0].scheduling = true; selectProject();`);
+  assert.deepEqual(ui.sent.filter(m => m.type === 'tasks_watch'), [{type: 'tasks_watch', project_id: 'campus_s1'}]);
+});

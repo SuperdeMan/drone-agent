@@ -64,7 +64,8 @@ def _json(value):
 
 
 def _jsonl(path: Path) -> list[dict]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]         if path.is_file() else []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()] \
+        if path.is_file() else []
 
 
 def _percentiles(values: list[float]) -> dict | None:

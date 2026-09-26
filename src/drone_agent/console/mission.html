@@ -71,6 +71,16 @@ __NAV__
   <div id="draftResult"></div>
   <p>模板只编排业务流程；其中每次飞行仍在任务视图中逐个审批签名。草案只供评审，不能启动，生效需经版本化配置评审。</p>
  </section>
+ <div class="eyebrow" id="tasksEyebrow" hidden>P3 / 调度</div>
+ <section class="box" id="tasks" hidden aria-label="任务单与调度">
+  <div class="row"><label for="taskAsset">资产</label><select id="taskAsset"></select></div>
+  <div class="row"><label for="taskPriority">优先级</label><select id="taskPriority"><option value="0">0 · 常规</option><option value="1">1 · 较高</option><option value="2">2 · 优先</option></select></div>
+  <div class="buttons"><button class="ghost" id="taskSubmit">提交任务单（由调度器选机）</button></div>
+  <h3>机器人</h3><div id="taskRobots"><div class="empty">加载中。</div></div>
+  <h3>队列</h3><div class="list" id="taskQueue"><div class="empty">暂无任务单。</div></div>
+  <h3>空域持有</h3><div id="taskAirspace"><div class="empty">无持有。</div></div>
+  <p>调度器按固定排序（预计到场、近期使用、机器人 ID）确定性选机，并记下每个候选的排除原因；每个被分配的任务仍在任务视图中逐个人工审批签名。</p>
+ </section>
  <div class="eyebrow">01 / 提交任务</div>
  <section class="box" aria-label="提交自然语言任务">
   <textarea id="text" maxlength="2000" placeholder="例：检查起飞点东侧的红色设备标记，带回一张清晰照片。"></textarea>

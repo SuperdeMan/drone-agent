@@ -10,6 +10,8 @@
 # resident backend of the logical dock: no network at all, only the API socket, the flights' Gazebo truth (read-only)
 # for its pad sensor and its own log. P2 (D057/D058): the service also loads the p2_s1_v1 workflow catalog, so the
 # ledger gains the workflow tables with a verified backup; workflow missions are approved one by one like any other.
+# P3 (D059/D060): the service also loads the p3_desk_v1 scheduling catalog (the ledger gains the scheduling tables the
+# same way); the scheduler assigns tasks to the one aircraft and each assigned mission is still approved by a person.
 #
 # 常驻 M2 任务台（D035）。常驻：`desk`（页面，只发布 127.0.0.1:8769，位于私有 Tailscale Serve 8448 之后）、
 # `desk-service`（任务服务）与 `desk-uplink`（机载 uplink）；它们只共享内部 `desk_uplink` 网络与 API 套接字
@@ -19,7 +21,8 @@
 # 容器；页面不持任何密钥。P1（D055/D056）：服务加载 p1_s1_v1 目录与任务台 secrets 中的成员列表（真实登录名从不
 # 进入仓库）；`desk-dock` 是逻辑机场的常驻后端：完全没有网络，只有 API 套接字、飞行的 Gazebo 真值（只读，作为机位
 # 传感器）与它自己的日志。P2（D057/D058）：服务还加载 p2_s1_v1 工作流目录，账本先经校验备份再加上工作流表；工作流任务
-# 与其他任务一样逐个审批。
+# 与其他任务一样逐个审批。P3（D059/D060）：服务还加载 p3_desk_v1 调度目录（账本以同样方式加上调度表）；调度器把任务单分配
+# 给这一架飞行器，每个已分配任务仍由人审批。
 name: drone-agent-cloud
 services:
   desk:
@@ -86,7 +89,8 @@ services:
               --planner, auto, --state, /state, --tls, /tls, --signing-key, /secrets/approval-signing.key,
               --api, /api/api.sock, --listen, "0.0.0.0:8450", --execution-backend, px4_sitl,
               --catalog, /workspace/configs/sites/p1_s1_v1.yaml, --members, /members/members.yaml,
-              --workflows, /workspace/configs/workflows/p2_s1_v1.yaml]
+              --workflows, /workspace/configs/workflows/p2_s1_v1.yaml,
+              --scheduling, /workspace/configs/scheduling/p3_desk_v1.yaml]
     volumes:
       - ${DRONE_DESK_ROOT:?}/service:/state
       - ${DRONE_DESK_ROOT:?}/api:/api

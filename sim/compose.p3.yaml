@@ -6,14 +6,17 @@
 # processes) and its own logical dock backend (no network; API socket, truth read-only). A returned aircraft recharges
 # for about 76 s, so a task that waits for the first flight's cells goes to the other aircraft. The mission service loads
 # the p3_s1_v1 operations, workflow and scheduling catalogs; its ledger lives in the case directory. No host ports;
-# secrets are mounted read-only into the single container that needs each of them.
+# secrets are mounted read-only into the single container that needs each of them. Under CPU contention on the shared
+# host the simulator (weight 4096), the guardians and the truth / camera relays (2048) are scheduled ahead of the
+# rest (1024); the weights only order contention and never change a threshold (D061).
 #
 # P3 S1 双机用例（WP-P3-01/05，D059，D061）。一个 `sitl-p3` 容器运行一个无界面 Gazebo 世界，内含 PX4 实例 0（uav_01）与实例
 # 1（uav_02）。每架飞行器有自己的机载栈：uplink（自己的客户端证书）、guardian（`sim_p3` 上的固定地址，其 PX4 实例以默认端口把
 # API 链路发往此处）、executive（无网络）、inbox、mailbox、控制权状态与飞行目录；uav_02 的平台身份来自挂载的描述文件。每架
 # 各有真值与相机转接（位于仿真器命名空间，从不挂给机载进程）以及逻辑机场后端（无网络；API 套接字、真值只读）。返航的飞行器
 # 补能约 76 s，因此等待首个飞行单元的任务会交给另一架飞行器。任务服务加载 p3_s1_v1 的运营、工作流与调度目录；账本在用例目录
-# 内。不发布宿主端口；每个密钥只读挂载到唯一需要它的容器。
+# 内。不发布宿主端口；每个密钥只读挂载到唯一需要它的容器。共享主机 CPU 争用时，仿真器（权重 4096）、guardian 与真值 / 相机
+# 转接（2048）优先于其余容器（1024）调度；权重只决定争用时的先后，从不改变任何阈值（D061）。
 name: drone-agent-cloud
 services:
   sitl-p3:
@@ -21,6 +24,7 @@ services:
     pull_policy: never
     init: true
     cpus: ${DRONE_P3_SITL_CPUS:-2.5}
+    cpu_shares: 4096
     mem_limit: ${DRONE_P3_SITL_MEM:-3g}
     memswap_limit: ${DRONE_P3_SITL_MEM:-3g}
     pids_limit: 1024
@@ -39,6 +43,7 @@ services:
     pull_policy: never
     init: true
     cpus: 0.3
+    cpu_shares: 2048
     mem_limit: 256m
     memswap_limit: 256m
     pids_limit: 64
@@ -56,6 +61,7 @@ services:
     pull_policy: never
     init: true
     cpus: 0.3
+    cpu_shares: 2048
     mem_limit: 256m
     memswap_limit: 256m
     pids_limit: 64
@@ -194,6 +200,7 @@ services:
     pull_policy: never
     init: true
     cpus: 0.6
+    cpu_shares: 2048
     mem_limit: 512m
     memswap_limit: 512m
     pids_limit: 128
@@ -216,6 +223,7 @@ services:
     pull_policy: never
     init: true
     cpus: 0.6
+    cpu_shares: 2048
     mem_limit: 512m
     memswap_limit: 512m
     pids_limit: 128

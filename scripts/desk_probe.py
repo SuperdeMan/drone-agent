@@ -9,7 +9,10 @@ Run it on a tailnet device against the origin that `dev_stack.py desk-cloud --st
   eligibility kept apart from the link state, one dock's detail, and the refusal of injection or control frames;
 - `workflow` (P2): the project's templates and schedules, one inactive draft from the configured planner, the
   refusal of injection, control and activation frames, and optionally one run started, approved mission by mission,
-  reviewed and given repair feedback as the page does, until every run is final and each flight was judged.
+  reviewed and given repair feedback as the page does, until every run is final and each flight was judged;
+- `tasks` (P3): the project's queue with each robot's assignment and preview verdict, the assets the page offers,
+  the airspace holds, the refusal of injection, control and assignment frames, and optionally one task submitted as
+  the page does, its assigned mission approved, until the task is final and its flight was judged.
 Receipts never contain the tailnet host name or the operator's login, and the probe decides nothing: it records
 what the desk, the service and the judge reported.
 
@@ -19,7 +22,9 @@ what the desk, the service and the judge reported.
 断线重连，直到任务结束且监管者发布裁判结果；`spoof` 伪造 Serve 身份头；`resources`（P1）记录调用方的项目，
 每个项目的站点、机场与机器人（状态年龄、来源，以及与链路状态分开的可派遣判定），一个机场的详情，以及对注入或
 控制帧的拒绝；`workflow`（P2）记录项目的模板与排班、配置的规划器给出的一份未生效草案、对注入、控制与激活帧的拒绝，
-并可按页面方式启动一次运行、逐任务审批、复核并给出维修反馈，直到每个运行终结且每次飞行都有裁判结果。回执从不包含
+并可按页面方式启动一次运行、逐任务审批、复核并给出维修反馈，直到每个运行终结且每次飞行都有裁判结果；`tasks`（P3）记录
+项目的队列（各机器人的分配与预览判定）、页面提供的资产、空域持有、对注入、控制与分配帧的拒绝，并可按页面方式提交一个任务单、
+审批其被分配的任务，直到任务单终结且其飞行有裁判结果。回执从不包含
 tailnet 主机名或操作者登录名；探针不做任何判定，只记录任务台、服务与裁判报告的内容。
 """
 
@@ -535,6 +540,128 @@ def workflow(origin: str, args) -> tuple[dict, str | None]:
     return receipt, login
 
 
+TASK_FORBIDDEN = (*FORBIDDEN_FRAMES, {"type": "task_assign", "task_id": "tk-probe", "robot_id": "uav_01"},
+                  {"type": "task_approve_all", "project_id": "campus_s1"}, {"type": "scheduler_tick"})
+TASK_FINAL = ("completed", "failed", "outcome_unknown", "rejected", "cancelled")
+
+
+def tasks(origin: str, args) -> tuple[dict, str | None]:
+    """The P3 scheduling entry over hri.v0 exactly as the page drives it; the probe only records.
+
+    按页面方式驱动 P3 调度入口；探针只记录。
+    """
+    started = time.monotonic()
+    client = Client(origin)
+    hello = client.next("hello", 30)
+    login = (hello.get("identity") or "").removeprefix("tailnet:") or None
+    receipt = {"hello": {"identity_scheme": (hello.get("identity") or "none").split(":")[0],
+                         "can_write": hello["can_write"], "planner": hello.get("planner")},
+               "project": args.project,
+               "projects": [{k: p.get(k) for k in ("project_id", "legacy", "roles", "robots", "scheduling")}
+                            for p in hello.get("projects", [])],
+               "queue": None, "refused": [], "timeline": [], "task": None, "missions": {}, "sent": [], "errors": []}
+    client.send({"type": "tasks_watch", "project_id": args.project})
+    listing = client.next(("tasks", "error"), 30)
+    view = listing.get("view") or {}
+    airspace = view.get("airspace") or {}
+    receipt["queue"] = {"error": listing.get("issue"), "roles": view.get("roles"), "catalog": view.get("catalog"),
+                        "assets": view.get("assets"), "robots": view.get("robots"), "tasks": len(view.get("tasks", [])),
+                        "airspace": {"frame": airspace.get("frame"), "cell_m": airspace.get("cell_m"),
+                                     "holds": len(airspace.get("holds", [])),
+                                     "envelopes": len(airspace.get("envelopes", []))}}
+    for frame in TASK_FORBIDDEN:
+        client.send(frame)
+        reply = client.next("error", 30)
+        receipt["refused"].append({"frame": frame["type"], "error": reply.get("message")})
+    if not args.start:
+        client.close()
+        receipt["duration_s"] = round(time.monotonic() - started, 1)
+        return receipt, login
+    client.send({"type": "task_submit", "project_id": args.project, "asset_id": args.asset, "volume_id": args.volume,
+                 "candidates": [], "priority": 0, "request_id": "probe-" + uuid.uuid4().hex[:16]})
+    first = client.next(("task", "error"), 60)
+    if first["type"] == "error":
+        receipt["errors"].append(first)
+        client.close()
+        return receipt, login
+    task_id = first["view"]["task"]["task_id"]
+    receipt["task_id"] = task_id
+    latest, missions, approved = first["view"], {}, set()
+    deadline = time.monotonic() + args.timeout
+
+    def refresh() -> dict:
+        # The page pushes the watched task whenever it changes; keep reading until this task's view arrives.
+        # 页面在被监视任务单变化时推送；一直读到本任务单的视图为止。
+        client.send({"type": "task_watch", "project_id": args.project, "task_id": task_id})
+        while True:
+            reply = client.next(("task", "error"), 60)
+            if reply["type"] == "error":
+                return latest
+            if reply["view"]["task"]["task_id"] == task_id:
+                return reply["view"]
+
+    def mission(mission_id: str) -> dict:
+        client.send({"type": "watch", "mission_id": mission_id})
+        while True:
+            reply = client.next(("mission", "error"), 60)
+            if reply["type"] == "error" or reply["view"]["mission"]["mission_id"] == mission_id:
+                return reply.get("view") or {}
+
+    while time.monotonic() < deadline:
+        try:
+            latest = refresh()
+            current = latest["task"]
+            state = {"t": round(time.monotonic() - started, 1), "state": current["state"], "epoch": current["epoch"],
+                     "robot_id": current["robot_id"], "waiting": current.get("waiting")}
+            if not receipt["timeline"] or {k: v for k, v in receipt["timeline"][-1].items() if k != "t"} != \
+                    {k: v for k, v in state.items() if k != "t"}:
+                receipt["timeline"].append(state)
+            for assignment in latest["assignments"]:
+                if not assignment["mission_id"]:
+                    continue
+                detail = mission(assignment["mission_id"])
+                missions[assignment["mission_id"]] = detail
+                version = (detail.get("versions") or [{}])[-1]
+                key = (assignment["mission_id"], version.get("version"))
+                if assignment["state"] == "active" and version.get("status") == "awaiting_approval" \
+                        and key not in approved:
+                    client.send({"type": "approve", "mission_id": assignment["mission_id"],
+                                 "version": version["version"], "package_hash": version["package_hash"]})
+                    approved.add(key)
+                    receipt["sent"].append({"t": round(time.monotonic() - started, 1), "action": "approve",
+                                            "mission_id": assignment["mission_id"], "version": version["version"]})
+            flown = [m for m in missions.values() if m and m["mission"]["status"] in TERMINAL]
+            judged = all((m.get("cloud") or {}).get("judge") for m in flown
+                         if m["mission"]["status"] not in NEVER_FLIES)
+            if current["state"] in TASK_FINAL and judged and len(flown) == len(missions):
+                break
+        except (ConnectionError, OSError, ssl.SSLError, TimeoutError) as error:
+            receipt["errors"].append({"t": round(time.monotonic() - started, 1), "error": type(error).__name__})
+            client.close()
+            time.sleep(3)
+            client = Client(origin)
+            client.next("hello", 30)
+            continue
+        time.sleep(5)
+    client.close()
+    receipt["duration_s"] = round(time.monotonic() - started, 1)
+    receipt["task"] = {
+        "task": {k: latest["task"].get(k) for k in ("task_id", "project_id", "asset_id", "volume_id", "state", "epoch",
+                                                     "robot_id", "mission_id", "reason", "source", "requested_by",
+                                                     "outcome")},
+        "assignments": latest["assignments"],
+        "decisions": [{k: d[k] for k in ("decision_id", "verdict", "robot_id", "epoch", "snapshot_sha256",
+                                         "ranking_version", "policy_version", "candidates")}
+                      for d in latest["decisions"]]}
+    receipt["missions"] = {mission_id: {
+        "status": m["mission"]["status"], "binding": m.get("binding"), "dispatch": m.get("dispatch"),
+        "request": {k: m["request"][k] for k in ("channel", "requested_by")},
+        "versions": [{k: v.get(k) for k in ("version", "status", "origin", "approval", "provenance")}
+                     for v in m["versions"]],
+        "report": m.get("report"), "cloud": m.get("cloud")} for mission_id, m in missions.items() if m}
+    return receipt, login
+
+
 def fixed_session(origin: str, args) -> dict:
     """Exercise the mounted M1 page protocol and record its independent result. / 验证挂载的 M1 页面协议并记录独立结果。"""
     status, _, body = fetch(origin, "/fixed/")
@@ -608,7 +735,7 @@ def fixed_session(origin: str, args) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("http", "session", "watch", "spoof", "fixed", "resources", "workflow"):
+    for name in ("http", "session", "watch", "spoof", "fixed", "resources", "workflow", "tasks"):
         command = commands.add_parser(name)
         command.add_argument("--origin", required=True, help="https://<node>.<tailnet>.ts.net:8448")
         command.add_argument("--output", type=Path)
@@ -633,6 +760,12 @@ def main() -> None:
     flow.add_argument("--review", choices=("confirmed", "dismissed"), default="confirmed")
     flow.add_argument("--plan-timeout", type=float, default=300)
     flow.add_argument("--timeout", type=float, default=2700)
+    queue = commands.choices["tasks"]
+    queue.add_argument("--project", default="campus_s1")
+    queue.add_argument("--start", action="store_true", help="also submit one task and approve its assigned mission")
+    queue.add_argument("--asset", default="asset_red")
+    queue.add_argument("--volume", default="campus_training")
+    queue.add_argument("--timeout", type=float, default=2700)
     for command in (run, follow_existing):
         command.add_argument("--approve", action="store_true")
         command.add_argument("--pause-step")
@@ -652,6 +785,8 @@ def main() -> None:
         result, login = resources(args.origin)
     elif args.command == "workflow":
         result, login = workflow(args.origin, args)
+    elif args.command == "tasks":
+        result, login = tasks(args.origin, args)
     elif args.command == "watch":
         result, login = watch(args.origin, args)
     else:

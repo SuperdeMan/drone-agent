@@ -33,6 +33,15 @@ def test_every_service_is_capped_and_has_no_host_entry_point():
     assert all(network.get("internal") is True for network in COMPOSE["networks"].values())
 
 
+def test_contention_favours_the_simulator_guardians_and_relays_without_raising_any_cap():
+    weights = {name: service.get("cpu_shares", 1024) for name, service in COMPOSE["services"].items()}
+    assert weights["sitl-p3"] == 4096
+    assert {weights[n] for n in ("guardian-a", "guardian-b", "collector-a", "collector-b")} == {2048}
+    assert all(w == 1024 for n, w in weights.items() if n not in ("sitl-p3", "guardian-a", "guardian-b", "collector-a",
+                                                                   "collector-b"))
+    assert COMPOSE["services"]["sitl-p3"]["cpus"] == "${DRONE_P3_SITL_CPUS:-2.5}"
+
+
 def test_truth_and_the_simulator_never_reach_an_onboard_process():
     for name in ONBOARD:
         assert not any("/truth" in mount for mount in mounts(name)), name

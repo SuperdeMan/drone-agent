@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -93,3 +95,24 @@ def test_auto_mode_is_live_only_with_a_key_and_otherwise_answers_the_suite(tmp_p
     key.write_text("not-a-real-key-0123456789")
     monkeypatch.setenv("MINIMAX_API_KEY_FILE", str(key))
     assert planner_mode("auto") == "live" and planner_mode("scripted") == "scripted"
+
+
+async def test_the_harness_relay_answers_one_line_per_request_and_refuses_malformed_ones(monkeypatch, capsys):
+    from drone_agent.fleet import api
+
+    calls = []
+
+    async def call(self, method, **params):
+        calls.append((self.actor, self.trust, method, params))
+        return {"ok": True, "result": {"method": method}}
+
+    monkeypatch.setattr(api.ApiClient, "call", call)
+    requests = [json.dumps({"actor": "harness:p3-judge", "method": "tasks.list", "params": {"project_id": "campus_p3"}}),
+                json.dumps({"actor": "harness:p3-judge", "method": "arm", "params": {}}), "not json",
+                json.dumps({"method": "list"})]
+    monkeypatch.setattr(api.sys, "stdin", io.StringIO("".join(line + "\n" for line in requests)))
+    await api.relay(Path("/nowhere/api.sock"), "first_party")
+    lines = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert lines[0] == {"ok": True, "result": {"method": "tasks.list"}}
+    assert [line["issue"]["code"] for line in lines[1:]] == ["service.invalid_request"] * 3
+    assert calls == [("harness:p3-judge", "first_party", "tasks.list", {"project_id": "campus_p3"})]
