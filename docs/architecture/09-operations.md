@@ -2,7 +2,7 @@
 
 [架构入口](00-overview.md) · [契约](02-contracts.md) · [安全](03-safety.md) · [路线图](../roadmap.md) · [实施任务](../operations-implementation.md)
 
-**状态：2026-09-25 设计基线；P0 来源与门禁已完成（`de597d0`），验收见 [P0 记录](../p0-readiness.md)；P1 已完成（`b49701b`，见 [P1 记录](../p1-readiness.md)）；P2 已完成（`3bdbd50`，见 [P2 记录](../p2-readiness.md)）；P3 已完成（`73fcf23`，见 [P3 记录](../p3-readiness.md)），P4–P5 仍待实施。** 除明确列出的 P0 来源代码与 P1、P2、P3 已实现部分（§10–§13），本页对象、API 名称和新增文件位置均为设计。已有底座是 M2 任务服务与 M3-SITL；具体差距见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。决策为 D049–D061。
+**状态：2026-09-25 设计基线；P0 来源与门禁已完成（`de597d0`），验收见 [P0 记录](../p0-readiness.md)；P1 已完成（`b49701b`，见 [P1 记录](../p1-readiness.md)）；P2 已完成（`3bdbd50`，见 [P2 记录](../p2-readiness.md)）；P3 已完成（`73fcf23`，见 [P3 记录](../p3-readiness.md)）；P4 实施中（设计 D063–D065，见 [P4 方案](../p4-implementation.md)），P5 待实施。** 除明确列出的 P0 来源代码与 P1、P2、P3 已实现部分（§10–§13），本页对象、API 名称和新增文件位置均为设计。已有底座是 M2 任务服务与 M3-SITL；具体差距见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。决策为 D049–D061 与 D063–D065。
 
 ## 1. 产品闭环与执行边界
 
@@ -113,6 +113,8 @@ P1 调度侧默认 1 Hz 更新、3 s 新鲜度预算、最多 1 s 未来时钟�
 第一版用分区、分时、预验证航线，不做近距离编队。任务级接力在已完成子任务或可证明安全的边界交接；不在空中更换现有任务代次。P3 的多无人机调度不需要地面可通行性；X1 再增加 SpatialAlignment 和 rover 自主接受 / 拒绝。
 
 ## 6. 业务发现与数据复用（P4）
+
+具体语义（分析作业、质量层、聚合键、复核、工单轮次与 `reinspection-v1` 结算规则）见 D063 与 [P4 方案](../p4-implementation.md) §3；存储见 D064，S2 素材与冻结指标见 D065。
 
 必须分别表示：飞行执行、采集合格、疑似异常、已确认异常、维修反馈、复检结论。`InspectionFinding` 的模型结论不是 `effect_verdict`，人工确认也不能追认一次失败的飞行。
 
