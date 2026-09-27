@@ -20,6 +20,7 @@ from drone_agent.fleet.analysis import (
     model_messages,
     parse_answer,
     pixels,
+    zoom_parts,
 )
 from drone_agent.fleet.business_models import load_profile, load_quality
 from drone_agent.providers.replay import RecordingProvider, ReplayProvider
@@ -107,3 +108,14 @@ def test_recorded_answers_replay_to_the_same_verdict():
     replayed = run(ReplayProvider(recording))
     assert (replayed.verdict, replayed.score) == (live.verdict, live.score)
     assert replayed.source == "recorded_model"
+
+
+def test_enlarged_parts_come_before_the_whole_capture_which_stays_the_last_image():
+    image = np.zeros((100, 200, 3), dtype=np.uint8)
+    parts = zoom_parts(image, 2, 0.25)
+    assert [name for name, _ in parts] == ["top-left", "top-right", "bottom-left", "bottom-right"]
+    assert all(part.shape[:2] == (57, 114) for _, part in parts) and zoom_parts(image, 1, 0.25) == []
+    profile = load_profile(ROOT, "configs/analysis/vlm_change_v4.yaml")[0]
+    content = model_messages(profile, ["ref"], "whole", "asset", [(n, f"part-{n}") for n, _ in parts])[1]["content"]
+    images = [c["image_url"]["url"] for c in content if c["type"] == "image_url"]
+    assert images == ["ref", *(f"part-{n}" for n, _ in parts), "whole"]

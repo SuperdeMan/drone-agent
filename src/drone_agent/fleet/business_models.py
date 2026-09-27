@@ -174,6 +174,9 @@ class ModelProfile(BusinessModel):
     output_schema: Literal["change-v1"] = "change-v1"
     references: int = Field(ge=1, le=3)
     max_long_side: int = Field(ge=128, le=2048)
+    zoom_grid: int = Field(default=1, ge=1, le=3, description="n > 1 also shows the current capture's n x n overlapping "
+                                                             "parts, enlarged / n > 1 时另附当前采集 n×n 个重叠局部的放大图")
+    zoom_overlap: float = Field(default=0.25, ge=0, le=0.5, description="overlap of adjacent parts / 相邻局部的重叠比例")
     detail: Literal["low", "default", "high"] = "default"
     image_format: Literal["jpeg", "png"] = "jpeg"
     jpeg_quality: int = Field(default=92, ge=50, le=100)

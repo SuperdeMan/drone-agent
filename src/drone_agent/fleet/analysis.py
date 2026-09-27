@@ -186,15 +186,41 @@ def encode(image: np.ndarray, profile: ModelProfile) -> tuple[str, str]:
     return f"data:{mime};base64," + base64.b64encode(data).decode(), hashlib.sha256(data).hexdigest()
 
 
-def model_messages(profile: ModelProfile, references: list[str], current: str, asset: str) -> list[dict]:
-    """References first, then the current capture, then the fixed instruction; no tools are ever offered.
+def zoom_parts(image: np.ndarray, grid: int, overlap: float) -> list[tuple[str, np.ndarray]]:
+    """The capture's `grid` x `grid` overlapping parts, row by row, each named by its position.
 
-    先参考图、再当前采集、最后是固定指令；从不提供工具。
+    采集的 `grid` × `grid` 个重叠局部，逐行排列，各以位置命名。
+    """
+    if grid <= 1:
+        return []
+    height, width = image.shape[:2]
+    part_h, part_w = height / (grid - (grid - 1) * overlap), width / (grid - (grid - 1) * overlap)
+    rows = ("top", "bottom") if grid == 2 else ("top", "middle", "bottom")
+    columns = ("left", "right") if grid == 2 else ("left", "centre", "right")
+    parts = []
+    for i, row in enumerate(rows):
+        for j, column in enumerate(columns):
+            top, left = round(i * part_h * (1 - overlap)), round(j * part_w * (1 - overlap))
+            bottom, right = min(height, round(top + part_h)), min(width, round(left + part_w))
+            parts.append((f"{row}-{column}", np.ascontiguousarray(image[top:bottom, left:right])))
+    return parts
+
+
+def model_messages(profile: ModelProfile, references: list[str], current: str, asset: str,
+                   parts: list[tuple[str, str]] = ()) -> list[dict]:
+    """References first, then any enlarged parts of the current capture, then the whole current capture (always the
+    last image), then the fixed instruction; no tools are ever offered.
+
+    先参考图，再是当前采集的放大局部（如有），然后是完整的当前采集（总是最后一张图），最后是固定指令；从不提供工具。
     """
     content: list[dict] = []
     for index, uri in enumerate(references, 1):
         content.append({"type": "text", "text": f"REFERENCE {index} of {len(references)}: the registered normal "
                                                 "appearance of this asset."})
+        content.append({"type": "image_url", "image_url": {"url": uri, "detail": profile.detail}})
+    for index, (name, uri) in enumerate(parts, 1):
+        content.append({"type": "text", "text": f"CURRENT PART {index} of {len(parts)}: the {name} part of the "
+                                                "capture to judge, enlarged."})
         content.append({"type": "image_url", "image_url": {"url": uri, "detail": profile.detail}})
     content.append({"type": "text", "text": "CURRENT: the capture to judge."})
     content.append({"type": "image_url", "image_url": {"url": current, "detail": profile.detail}})
@@ -262,8 +288,10 @@ async def analyze_model(*, profile: ModelProfile, threshold: float, provider, pr
         return refusal("model.unavailable", **base)
     if model != profile.model:
         return refusal("model.profile_mismatch", **base)
+    parts = [(name, encode(part, profile)[0]) for name, part in zoom_parts(current, profile.zoom_grid,
+                                                                           profile.zoom_overlap)]
     messages = model_messages(profile, [encode(image, profile)[0] for image in references],
-                              encode(current, profile)[0], asset)
+                              encode(current, profile)[0], asset, parts)
     tokens_in = tokens_out = calls = 0
     latency, reason, reported = 0.0, "model.error", ""
     for _ in range(profile.attempts):
