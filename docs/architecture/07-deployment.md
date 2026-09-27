@@ -6,7 +6,7 @@
 
 | 当前入口 | 用途 | 配置 / 指南 |
 |---|---|---|
-| M0 空闲 SITL 与检查镜像 | 环境冒烟、源码与契约检查；空闲 SITL 只在解锁时记录飞行日志，常驻不再累积 ULog（D062） | [compose.cloud.yaml](../../sim/compose.cloud.yaml) |
+| M0 空闲 SITL 与检查镜像 | 环境冒烟、源码与契约检查；空闲 SITL 关闭飞行日志记录，常驻不再累积 ULog（D062） | [compose.cloud.yaml](../../sim/compose.cloud.yaml) |
 | M1 场景批次 | 固定任务、故障注入、裁判与回放 | [compose.m1.yaml](../../sim/compose.m1.yaml) |
 | M3 局部自主批次 | `dev_stack.py m3`；ROS 2 自主层与外部模式，按需运行 | [compose.m3.yaml](../../sim/compose.m3.yaml) · [M3 记录](../m3-readiness.md) |
 | M2 场景批次 | 规划到报告的端到端验证，脚本 / 实调规划分开记录 | [compose.m2.yaml](../../sim/compose.m2.yaml) |

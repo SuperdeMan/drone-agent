@@ -126,9 +126,11 @@ def test_cloud_compose_has_resource_caps_and_no_host_entrypoints():
     assert value["services"]["checks"]["network_mode"] == "none"
 
 
-def test_idle_simulator_logs_only_when_armed_and_evaluations_keep_the_px4_default():
+def test_idle_simulator_does_not_log_and_evaluations_keep_the_px4_default():
     idle = yaml.safe_load((ROOT / "sim/compose.cloud.yaml").read_text(encoding="utf-8"))["services"]["sitl"]
-    assert idle["environment"]["PX4_PARAM_SDLOG_MODE"] == "0"
+    # Not 0: PX4 treats setting its firmware default as a reset, and SITL's later set-default of 1 wins (D062).
+    # 不能是 0：PX4 把设为固件默认值当作复位，SITL 随后的 set-default 1 会生效（D062）。
+    assert idle["environment"]["PX4_PARAM_SDLOG_MODE"] == "-1"
     for name in ("m1", "m2", "m3", "p1", "p2", "p3", "desk"):
         overlay = (ROOT / f"sim/compose.{name}.yaml").read_text(encoding="utf-8")
         assert "SDLOG" not in overlay, name

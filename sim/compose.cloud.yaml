@@ -15,11 +15,12 @@ services:
       HEADLESS: "1"
       PX4_SIM_MODEL: gz_x500
       PX4_GZ_WORLD: default
-      # D062: the idle simulator never arms, so log only while armed instead of PX4's log-from-boot default, which
-      # grew about 1 GB per hour here; evaluation overlays do not include this file and keep the default.
-      # D062：空闲仿真从不解锁，所以只在解锁时记录，而不用 PX4 从启动即记录的默认值（在这里约每小时增长 1 GB）；
-      # 评测覆盖文件不叠加本文件，保持默认值。
-      PX4_PARAM_SDLOG_MODE: "0"
+      # D062: the idle simulator never flies, so it does not log at all; PX4's log-from-boot default grew about 1 GB per
+      # hour here. -1, not 0: setting a parameter to its firmware default (0) is a reset in PX4, which the SITL
+      # startup's later set-default of 1 then overrides. Evaluation overlays do not include this file.
+      # D062：空闲仿真从不飞行，所以完全不记录；PX4 从启动即记录的默认值在这里约每小时增长 1 GB。用 -1 而不是 0：
+      # 把参数设为固件默认值（0）在 PX4 中等于复位，随后 SITL 启动脚本的 set-default 1 会覆盖它。评测覆盖文件不叠加本文件。
+      PX4_PARAM_SDLOG_MODE: "-1"
     volumes:
       - ${DRONE_ARTIFACTS:?owned artifact path required}:/artifacts
     networks: [simulation]
