@@ -60,7 +60,9 @@ const FINAL = ["completed", "failed", "outcome_unknown", "cancelled"];
 let tasks = null, task = null;
 Object.assign(REASON, {"asset.unregistered": "该机站点未登记此资产", "volume.unapproved": "体积不是已批准的仿真体积",
   "task.robot_excluded": "本任务已排除该机（此前失败）", "airspace.cell_held": "航迹单元被其他活动持有",
-  "airspace.envelope": "落入失联飞行器的包络", "airspace.hold_missing": "本活动未持有航迹单元"});
+  "airspace.envelope": "落入失联飞行器的包络", "airspace.hold_missing": "本活动未持有航迹单元",
+  "task.approval_expired": "预约有效期内无人审批，分配已撤回", "task.assignments_exhausted": "分配次数用尽",
+  "task.no_candidates": "没有候选机器人"});
 const TSTATE = {queued: "排队中", assigned: "已分配", completed: "已完成", failed: "失败", outcome_unknown: "结果未知",
   rejected: "已拒绝", cancel_requested: "已请求取消", cancelling: "取消收尾中", cancelled: "已取消"};
 const TTONE = {completed: "ok", assigned: "ok", queued: "warn", cancel_requested: "warn", cancelling: "warn", failed: "bad",

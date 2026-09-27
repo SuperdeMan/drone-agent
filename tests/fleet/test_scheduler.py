@@ -147,6 +147,38 @@ def test_a_robot_that_can_never_take_the_task_is_excluded_once_instead_of_retrie
     run(scenario())
 
 
+def test_an_assignment_nobody_approves_before_its_hold_expires_is_withdrawn_and_frees_the_robot(world):
+    from datetime import timedelta
+
+    w = world()
+
+    async def scenario():
+        await settled(w)
+        task = await w.task("asset_mid", candidates=["uav_a"], key="forgotten")
+        await w.drive_tasks(lambda: w.task_state(task) == "assigned", "assigned", approve=False, timeout_s=15)
+        old = w.task_mission(task)
+        held = w.service.ops.store.reservation(f"mission:{old}:v1")
+        assert held.state.value == "reserved"
+        # Past the soft hold with no approval (the P1 policy, 900 s). / 越过软预约期限且无人审批。
+        w.offset = held.expires_at - w.clock() + w.offset + timedelta(seconds=1)
+        await w.drive_tasks(lambda: w.task_final(task), "approval expired", approve=False, timeout_s=15)
+        row = w.task_row(task)
+        assert row["state"] == "failed" and row["reason"] == "task.approval_expired"
+        assert [(a["epoch"], a["state"], a["reason"]) for a in w.assignments(task)] == [(1, "withdrawn",
+                                                                                        "approval_expired")]
+        assert w.service.ops.store.reservation(f"mission:{old}:v1").state.value == "released"
+        assert w.service.ops.store.cancel_intent(old)["reason"] == "approval_expired"
+        late = await w.approve(old, expect=False)
+        assert not late.get("ok"), "a late approval of the expired assignment has no effect"
+        w.offset = timedelta(0)
+        await w.hold(1.0)
+        after = await w.task("asset_mid", candidates=["uav_a"], key="next")
+        await w.drive_tasks(lambda: w.task_state(after) == "assigned", "next assigned", approve=False, timeout_s=15)
+        assert w.task_robot(after) == "uav_a"
+
+    run(scenario())
+
+
 def test_a_blocked_unclaimed_assignment_is_withdrawn_and_reassigned_with_a_new_epoch(world):
     w = world()
 

@@ -483,6 +483,14 @@ class Scheduler:
             version = mission["current_version"]
             record = self.ledger.version(live["mission_id"], version)
             activity = activity_key(live["mission_id"], version)
+            if mission["status"] == "awaiting_approval":
+                hold = self.ops.store.reservation(activity)
+                if hold is None or hold.state.value == "released" or (hold.expires_at and hold.expires_at <= now):
+                    try:
+                        self._expire_approval(task, live, version)
+                    except StaleTask:
+                        pass
+                    continue
             eligibility = self.service.dispatch.judge(live["robot_id"], stage=Stage.PREVIEW,
                                                       needs=needs_of(record) if record and record["package"] else None,
                                                       activity=activity)
@@ -526,6 +534,32 @@ class Scheduler:
             self.store.update_task(task["task_id"], task["state_version"], actor=SCHEDULER,
                                    state=TaskState.QUEUED.value, robot_id=None, mission_id=None,
                                    reason="assignment_withdrawn")
+        self.touched.add(mission_id)
+        self.service.dirty.add(mission_id)
+
+    def _expire_approval(self, task: dict, live: dict, version: int) -> None:
+        """Nobody approved the assigned mission while its soft hold lasted: withdraw it and fail the task, so an
+        unapproved assignment never keeps the robot (D059 addendum); a person submits again if still needed.
+
+        在软预约有效期内没人审批已分配的任务：撤回它并使任务单失败，没人审批的分配因此不会一直占住机器人（D059 补记）；
+        仍需要时由人重新提交。
+        """
+        mission_id, epoch = live["mission_id"], live["epoch"]
+        with self.store.transaction():
+            current = self.store.task(task["task_id"])
+            if current["state_version"] != task["state_version"] or self._claimed(mission_id):
+                return
+            self.ops.store.record_cancel(mission_id, requested_by=f"scheduler:{self.worker}",
+                                         request_id=f"expire-{task['task_id']}-a{epoch}", reason="approval_expired")
+            self.store.end_assignment(task["task_id"], epoch, state=AssignmentState.WITHDRAWN.value,
+                                      reason="approval_expired")
+            self.service.dispatch.release_unclaimed(mission_id, version, "approval_expired")
+            self.store.event(f"task:{task['task_id']}", "assignment.approval_expired", self.worker,
+                             {"epoch": epoch, "robot_id": live["robot_id"], "mission_id": mission_id})
+            self.store.update_task(task["task_id"], task["state_version"], actor=SCHEDULER,
+                                   state=TaskState.FAILED.value, reason="task.approval_expired",
+                                   outcome={"result": "failed", "reason": "approval_expired", "epoch": epoch,
+                                            "robot_id": live["robot_id"], "mission_id": mission_id})
         self.touched.add(mission_id)
         self.service.dirty.add(mission_id)
 
