@@ -184,17 +184,23 @@ uv run python scripts/dev_stack.py deploy --sha HEAD --apply
 ```text
 ~/drone-agent/
 ├─ owner.json / stack.lock / current.json
-├─ incoming/<run_id>/        # 校验过的源码、控制文件和引导归档
+├─ incoming/<run_id>/        # 校验过的源码、控制文件和引导归档；部署当次解包到 releases/ 后不再读取
 ├─ releases/<run_id>/
 │  ├─ source/                # git archive 的应用 commit
 │  ├─ control/               # Compose、验证 Dockerfile、锁定依赖
 │  └─ manifest.json
 ├─ secrets/                  # 0700；m2/ 签名密钥、trust、CA 与 mTLS 证书，m2-model/ 实调 key（均 0600）
 ├─ cache/mesa-shaders-m3/    # M3 SITL 共享的 Mesa 着色器缓存（D045）；只影响渲染耗时，可随时删除重建
-└─ artifacts/<run_id>/       # 构建日志、冒烟 JSON、JUnit、部署回执；m1-*/、m2-*/、m3-*/ 为飞行批次
+└─ artifacts/<run_id>/       # 构建日志、冒烟 JSON、JUnit、部署回执；m1-*/、m2-*/、m3-*/ 为飞行批次；ULog 见下文压缩说明
 ```
 
 同一项目的变更使用独立 `flock` 串行化，不占用 car-agent 发布锁。重任务开始前检查共享服务器余量；当前部署要求至少 3 GiB 可用内存、8 GiB 可用磁盘。归档、旧部署、停止的测试容器和证据不自动清理；不改系统设置、安全组、Tailscale、systemd、CI/CD 或数据库 schema。
+
+**ULog 压缩存放（2026-09-27）**：`artifacts/` 下当时已有的 1030 个 PX4 ULog 已持项目锁用 zstd -3 无损压缩为 `*.ulg.zst`，共 17.2 GB → 4.9 GB。
+- 每个部署目录的 `ulog-compression.json` 记录各文件的相对路径、原始字节数与 SHA-256。回执和裁判摘要里的 `.ulg` 摘要都指原文件，用 `zstd -dc <文件>.ulg.zst | sha256sum` 即可对上；压缩时已逐个回算，并抽查过 P3 最终候选回执中的 10 个摘要。
+- `fetch` 照常可用：压缩文件按远端清单核对，回执里的 `.ulg` 条目因原名不存在而不参与第二见证比对。用 Flight Review 或 PlotJuggler 打开前先解压。
+- 此后新运行产生的 ULog 仍是原始格式，累积后可按同样的方式再压缩：持锁，逐文件回算摘要后再删原件。
+- 常驻空闲仿真已关闭 ULog 记录（D062），不再在容器内累积日志。
 
 应用测试结果只属于回执中的 `source_sha`；本地新增云端工具测试不计入该应用 commit 的云端测试数字。M0 历史证据保持原样，云端验证单独记录。
 
