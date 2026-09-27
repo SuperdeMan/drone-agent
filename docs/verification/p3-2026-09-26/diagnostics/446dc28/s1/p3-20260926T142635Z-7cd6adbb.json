@@ -1,0 +1,1708 @@
+{
+  "status": "passed",
+  "layer": "S1",
+  "aircraft": 2,
+  "source_sha": "446dc28a83dc2fe687e86a6707d8ac67c547dd61",
+  "deployment_id": "20260926T142058Z-e5ec980a",
+  "artifact_directory": "/home/ubuntu/drone-agent/artifacts/20260926T142058Z-e5ec980a/p3-20260926T142635Z-7cd6adbb",
+  "planner": "scripted",
+  "task_planning": "deterministic",
+  "subnet": "10.213.47.0/24",
+  "budget": {
+    "sitl_cpus": "2.5",
+    "sitl_mem": "3g"
+  },
+  "signer_key_id": "ed25519:1e70aaeb377272d5",
+  "certificate_fingerprints": {
+    "ca": "7153e9f8fc21bdc50e1bcbab3ccf247318342b055607308989652ae1aa5d20f7",
+    "service": "4798496b0b9d1eb5eb8144340b2b2d29426e8644638980cd2e6d5239384f3e2e",
+    "robot": "9c4d2f7e49ec06dab24cc5c164ec7e9d1fdc6c10315e4c0e2297d249eff7f502",
+    "robot-tls-uav_02": "90928158b4144a5140f987246640a83a177677ac0fe442062c51cef5e06e486a"
+  },
+  "selection": [
+    "p3_s1_parallel-7",
+    "p3_s1_parallel-19",
+    "p3_s1_parallel-41",
+    "p3_s1_contention-7",
+    "p3_s1_relay-7"
+  ],
+  "results": [
+    {
+      "artifacts": {
+        "aircraft_a/m-779fdd2a8455/v1/adapter-commands.json": "44fb3ac6f112b6e8f44ad58dd6c39bb0eae3f01ef3d672700262dc67eeb65ac6",
+        "aircraft_a/m-779fdd2a8455/v1/capabilities.json": "22536cb68c1171f6db1fbca34a3cc46a58bb0a467e1c615c8dfceb12324cea62",
+        "aircraft_a/m-779fdd2a8455/v1/evidence-inspect_asset_mid.json": "08c3ebea078654b8f2a5a36a9ddb5b8fc06837412495a383a3321dc80cc26bde",
+        "aircraft_a/m-779fdd2a8455/v1/executive-identity.json": "6a04c626a94a8aa2084817f994808b3444bfc511cff2be92e23d324e8a3d9b02",
+        "aircraft_a/m-779fdd2a8455/v1/executive.jsonl": "8603676e962d4db552c09118fefbfe0377ea2569c4e6c0dde5d7e0bd4fff18fb",
+        "aircraft_a/m-779fdd2a8455/v1/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_a/m-779fdd2a8455/v1/executive.mcap": "5e3920e66195cb39196d82e5178b9ebbeedf9dfe9cd1c5dad2ebac69e96d2716",
+        "aircraft_a/m-779fdd2a8455/v1/guardian-identity.json": "3a8fc6c403fdef936d0c139fb84991b590038b69ce1fc926c79bafa348f2e653",
+        "aircraft_a/m-779fdd2a8455/v1/guardian.jsonl": "197337f0abe34e8e845561336bf82886721e7546e009b69eaee508c0c88f2930",
+        "aircraft_a/m-779fdd2a8455/v1/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_a/m-779fdd2a8455/v1/guardian.mcap": "dd1a3f4f640f8cdb034de82883140bc5cbea678339c4f53694ff347eb935a843",
+        "aircraft_a/m-779fdd2a8455/v1/images/9302abd0db70aa5673339976bb2d84f393e5a27db4691dba56fdf3553b50e0a1.rgb": "9302abd0db70aa5673339976bb2d84f393e5a27db4691dba56fdf3553b50e0a1",
+        "aircraft_a/m-779fdd2a8455/v1/result.json": "b435e4999bcea1e62925d211d7c4d4c127d2bbeee3f80156048c1d3a241e5a90",
+        "aircraft_a/m-779fdd2a8455/v1/status.json": "a948c26b7b24bce045e5618f01630df46633d331684bed9ac4bec95b62bff886",
+        "aircraft_a/m-779fdd2a8455/v1/supervision.json": "bdbfb2890f1a25a9810a7099a924030884af115edda0dc8ccac440ab26ee2f39",
+        "aircraft_b/m-e7795f367b20/v1/adapter-commands.json": "3250cd486e3fede411495ff62b2be52acb5a6ba749a6706f665a04f3e8536522",
+        "aircraft_b/m-e7795f367b20/v1/capabilities.json": "ec126ef19bf33ac6c354334a7668ed7cb98fa95cd4df10b9e83957c9fd4b6142",
+        "aircraft_b/m-e7795f367b20/v1/evidence-inspect_asset_east.json": "b78a6c8821e603e4e80cdbc7e8bca1084a120539ec793188e56cd2a81140fef7",
+        "aircraft_b/m-e7795f367b20/v1/executive-identity.json": "fb09f3120859f901c32c04b1d85f739c14d1485c9eca5f4c2d2a191629b6784c",
+        "aircraft_b/m-e7795f367b20/v1/executive.jsonl": "8973dd87bc5fe77aa48c92ab957c63682b7d91f9176c8f6e8af7bd820740bf49",
+        "aircraft_b/m-e7795f367b20/v1/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_b/m-e7795f367b20/v1/executive.mcap": "6162135ffc55b2e87314dea6bbb0767d2523e440ddbe75b1711b4b3c49f19f86",
+        "aircraft_b/m-e7795f367b20/v1/guardian-identity.json": "be4ee36e936b81037e0e727ce982daf779d922329bd41f69a7e899a4fe70226c",
+        "aircraft_b/m-e7795f367b20/v1/guardian.jsonl": "e48e48fba3990227b3906a555180dac92316d4b32b0746bb090f135d27fb6fcf",
+        "aircraft_b/m-e7795f367b20/v1/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_b/m-e7795f367b20/v1/guardian.mcap": "5dd1323634b8d89191c278a3c654fd9fa97779cdc9ad3c45850b43d9a04d4d66",
+        "aircraft_b/m-e7795f367b20/v1/images/4e3259e7a1bef0ca3735a76c7c5920d24e4a65aa77c64434b0c966edf9ba3868.rgb": "4e3259e7a1bef0ca3735a76c7c5920d24e4a65aa77c64434b0c966edf9ba3868",
+        "aircraft_b/m-e7795f367b20/v1/result.json": "1a71c6cc78076c08faf324af16cf6ea06630d9cbf6b706132cf600f2a2b4b19d",
+        "aircraft_b/m-e7795f367b20/v1/status.json": "4ca94fb663fd0799c581e97b467ffb1c0f035d5c91802f79fb3c60a2e2144247",
+        "aircraft_b/m-e7795f367b20/v1/supervision.json": "56acdd113b4d64e02c658438b643bf27e8342c985f9267dbc63804341228af3b",
+        "control/dock_a.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "control/dock_b.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "dock/dock_a.jsonl": "0590d9a00841dd1f6f087e07a1809ef32336f4bcfe990411a771ffcc17438bcd",
+        "dock/dock_b.jsonl": "6c5a78c21b9caaf59f54e51143ab889aac306f1b764bf0f26d1417f1aca4fccb",
+        "inbox_a/history/m-779fdd2a8455-v1.json": "b16085a5edefc12cfc8079fb1501edfde3245cdf2bda11ccd215fc5da6ea63d0",
+        "inbox_a/package.json": "b16085a5edefc12cfc8079fb1501edfde3245cdf2bda11ccd215fc5da6ea63d0",
+        "inbox_b/history/m-e7795f367b20-v1.json": "edaf7f6b987e834573966286620618df9a3f4c34f6832c0c5736d1b4e882acc3",
+        "inbox_b/package.json": "edaf7f6b987e834573966286620618df9a3f4c34f6832c0c5736d1b4e882acc3",
+        "input/layout.json": "cede6dadd48037222d8b8d7fc8bd63273e13f903ed23d47be22bf11bc0bd1f42",
+        "input/planner-fixtures.json": "326914c13c86d2ac7f4a2a9541eeb362dd110f4bfce12ee03b4bff24c7f8c00a",
+        "input/scenario.json": "6dc79a20221e9ab2e2f2af2c172469e59146bb3a6dbf4843da8f634cb379670a",
+        "platform-b.yaml": "0995e1cfb573bc121f83c56816d358eeeff89e34a2375549e621761655a208ac",
+        "resources.jsonl": "f54b707e3a144b0014c1e85802b5efab0618bfc57cf2dd08ad0c0fe83e94f1ee",
+        "robot_a/authority.json": "7cb6376dcaf5890e248db06098cb5650009c88816c2ec2b8eca4ac7078c15160",
+        "robot_b/authority.json": "8cbf4cb7b6592ef14872fd9ca1dcd9193d89ed1a4b152ed8941c17c3ed01e05b",
+        "sensor_a/latest.json": "c7f5754600700f2f069061fd6d5a2402e607ae916cf8a630f0b9fe1f0d84e762",
+        "sensor_b/latest.json": "183302c037c42f3a9dc92d5b8eab81c864a500733a00a466294d2cda6449f09c",
+        "service-export/resources.json": "0ae1a1dbb7ae1aee2514e4d57839d94ff42d15489b037848cd9b3aa7ccbcd2a3",
+        "service-export/scheduling.json": "7a0f94bd2dcd92d3bb49735e1c02a1b9d412e9ca75c6c97cbfef8e7fa17b2c89",
+        "service-export/task-views.json": "2c844f1111fbb46ac08175795614a440b307332c30ebab6ff70ee635eb212f36",
+        "service-export/views.json": "bc39c00f7b3b31624c5adc8993a5615b97a6e290137823dd63810a7502b6079b",
+        "service-export/workflow-views.json": "57aa3e7ddcd0127ac42ece10fe3624ec483c836347f973ca9b5b8312f6fbd7c8",
+        "service/ledger.sqlite3": "377a036957bdbab9083c64d1ef7b85a7b5511f91e95128375ceeffadae191d5e",
+        "service/media/4e3259e7a1bef0ca3735a76c7c5920d24e4a65aa77c64434b0c966edf9ba3868.rgb": "4e3259e7a1bef0ca3735a76c7c5920d24e4a65aa77c64434b0c966edf9ba3868",
+        "service/media/9302abd0db70aa5673339976bb2d84f393e5a27db4691dba56fdf3553b50e0a1.rgb": "9302abd0db70aa5673339976bb2d84f393e5a27db4691dba56fdf3553b50e0a1",
+        "service/ready.json": "4852ddbca7032ed9226f015ca874d8228a057316f7c01c53a7a136369ef1f498",
+        "sitl.log": "0f0b593c4693b1f99965fe4794947577258fdaf9588cfb0d42e6b702668dbd8a",
+        "sitl/px4-0.log": "4de95d8c6646474bd8898e00e407f37daba8e960cbd01de3941d763bc7ae2d4d",
+        "sitl/px4-1.log": "bdaca06dea7b74664b74524017a117fce0b62bb68bf01468ba7673982da1266d",
+        "truth_a/truth.jsonl": "24f08fcb45b41de28ce5d57f6780eb652ca7c33f57dacbb78e9bc5a590536d8b",
+        "truth_b/truth.jsonl": "532bd9e8ce5d1daccbf131fae7c18746a143a4271ae45a6ff2371d5529d247ab",
+        "ulog_a/2026-09-26/14_27_57.ulg": "3a3d7ea3ec40422807c487ef034406e3486dcd236a4ba5fc4ab49c8afe904224",
+        "ulog_b/2026-09-26/14_28_03.ulg": "7ea3bc39e38362b266cc060f70bc75817522dde64d5583d92aad7bfeba475299",
+        "uplink_a/uplink-state.json": "ed3504e00cf493e0ee086bbe7adea0291df6ba1887383e6a3849c422ca8e11b9",
+        "uplink_a/uplink-status.json": "c272ce9ef40f213ff16f11a60a2e37e20a69c0b16325588910c974e0662280fb",
+        "uplink_b/uplink-state.json": "daf65a721e2da1bf5a747b3b4615e8e5fc10469a88a13cedd5136ca35bdc5a69",
+        "uplink_b/uplink-status.json": "31f3e0e30a2f180cc107f56e46a77c32c6d33355fcb41f2ca67a367d76a91ce4",
+        "world/api.jsonl": "0d1e12f1e51320a6188130c3e4d3a227c5997a678a818263d8866eb1b3c50471",
+        "world/injections.jsonl": "8a31d3ff5a4da4f11f6234e97fbeeac6fae13d2185058bab4089de83fa3f04a2",
+        "world/uav_01-flights.json": "1283cc81e0bf0592bcd01cb43d6047fa59a296d6e21a9c236548227e3ee72e09",
+        "world/uav_02-flights.json": "50a0f7b70b951a8c08b6bc5009454eb6e10db7b23744305cc638d5343c14fd67"
+      },
+      "claims": 2,
+      "classification": "as_expected",
+      "counts": {
+        "conflicting_reservation": 0,
+        "decision_mismatch": 0,
+        "double_ownership": 0,
+        "duplicate_dispatch": 0,
+        "duplicate_execution": 0,
+        "false_success": 0,
+        "lost_task": 0,
+        "project_escape": 0,
+        "stale_epoch_effect": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "expected": {
+        "first_robot": {
+          "asset_east": "uav_02",
+          "asset_mid": "uav_01"
+        },
+        "flights": 2,
+        "parallel": true,
+        "runs": {
+          "completed": 1
+        },
+        "tasks": {
+          "completed": 2
+        }
+      },
+      "false_success_reports": 0,
+      "flights": 2,
+      "judged_at": "2026-09-26T14:31:00.799516+00:00",
+      "layer": "S1",
+      "metrics": {
+        "airborne_max": null,
+        "assignment_latency_s": {
+          "max": 0.061,
+          "n": 2,
+          "p50": 0.05,
+          "p95": 0.061,
+          "p99": 0.061
+        },
+        "completion_s": {
+          "max": 85.662,
+          "n": 2,
+          "p50": 71.181,
+          "p95": 85.662,
+          "p99": 85.662
+        },
+        "decision_ms": {
+          "max": 2.85,
+          "n": 2,
+          "p50": 1.329,
+          "p95": 2.85,
+          "p99": 2.85
+        },
+        "decisions": 2,
+        "flights": 2,
+        "ladder": null,
+        "live_tasks_max": null,
+        "reject_reasons": {},
+        "tasks": {
+          "completed": 2
+        },
+        "wait_reasons": {}
+      },
+      "missions": {
+        "m-779fdd2a8455": {
+          "classification": "completed",
+          "false_success_reports": 0,
+          "flown_versions": [
+            1
+          ],
+          "mission_status": "completed",
+          "problems": [],
+          "registry_hash": "cf31b12b84bee6cd3e5924dbacedc171484e7dc7d2d092ee4430d11b7e6b58e9",
+          "report_targets": {
+            "asset_mid": "completed"
+          },
+          "robot_id": "uav_01",
+          "truly_inspected": [
+            "asset_mid"
+          ],
+          "truth_samples": 2836
+        },
+        "m-e7795f367b20": {
+          "classification": "completed",
+          "false_success_reports": 0,
+          "flown_versions": [
+            1
+          ],
+          "mission_status": "completed",
+          "problems": [],
+          "registry_hash": "3cd191ebaa85d89697b0ba6c2a3c8f83bc1147f636b844834e53a24fccf3e59a",
+          "report_targets": {
+            "asset_east": "completed"
+          },
+          "robot_id": "uav_02",
+          "truly_inspected": [
+            "asset_east"
+          ],
+          "truth_samples": 2837
+        }
+      },
+      "mode": "online",
+      "passed": true,
+      "problems": [],
+      "scenario": "p3_s1_parallel",
+      "schema_version": "0.1.0",
+      "seed": 7,
+      "source_sha": "446dc28a83dc2fe687e86a6707d8ac67c547dd61",
+      "judge_exit_code": 0,
+      "replay_agrees": true,
+      "flown": {
+        "uav_01": [
+          "m-779fdd2a8455-v1"
+        ],
+        "uav_02": [
+          "m-e7795f367b20-v1"
+        ]
+      },
+      "capacity": {
+        "verdict": {
+          "sufficient": true,
+          "real_time_factor_min": 0.994,
+          "supervision_p99_max_s": 0.10166909964755177,
+          "limits": {
+            "real_time_factor_min": 0.5,
+            "supervision_p99_max_s": 0.12
+          }
+        },
+        "resources": {
+          "sitl-p3": {
+            "samples": 94,
+            "cpu_cores_mean": 0.889,
+            "cpu_cores_p95": 0.994,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 652.2
+          },
+          "_host": {
+            "samples": 94,
+            "load1_max": 4.98,
+            "load1_median": 3.31,
+            "cpu_some_avg10_max": 41.36,
+            "cpu_some_avg10_median": 23.52
+          },
+          "collector-b": {
+            "samples": 78,
+            "cpu_cores_mean": 0.034,
+            "cpu_cores_p95": 0.036,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 12.2
+          },
+          "collector-a": {
+            "samples": 78,
+            "cpu_cores_mean": 0.034,
+            "cpu_cores_p95": 0.036,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 12.1
+          },
+          "mission-service": {
+            "samples": 49,
+            "cpu_cores_mean": 0.057,
+            "cpu_cores_p95": 0.109,
+            "throttled_fraction": 0.0246,
+            "memory_max_mib": 102.5
+          },
+          "uplink-b": {
+            "samples": 44,
+            "cpu_cores_mean": 0.006,
+            "cpu_cores_p95": 0.012,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 34.7
+          },
+          "uplink-a": {
+            "samples": 44,
+            "cpu_cores_mean": 0.006,
+            "cpu_cores_p95": 0.012,
+            "throttled_fraction": 0.0022,
+            "memory_max_mib": 34.7
+          },
+          "dock-sim-a": {
+            "samples": 43,
+            "cpu_cores_mean": 0.002,
+            "cpu_cores_p95": 0.002,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 33.6
+          },
+          "dock-sim-b": {
+            "samples": 43,
+            "cpu_cores_mean": 0.002,
+            "cpu_cores_p95": 0.002,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 33.6
+          },
+          "guardian-a": {
+            "samples": 31,
+            "cpu_cores_mean": 0.069,
+            "cpu_cores_p95": 0.08,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 50.4
+          },
+          "executive-a": {
+            "samples": 18,
+            "cpu_cores_mean": 0.018,
+            "cpu_cores_p95": 0.028,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 35.9
+          },
+          "executive-b": {
+            "samples": 20,
+            "cpu_cores_mean": 0.018,
+            "cpu_cores_p95": 0.032,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 35.6
+          },
+          "guardian-b": {
+            "samples": 23,
+            "cpu_cores_mean": 0.072,
+            "cpu_cores_p95": 0.08,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 50.5
+          }
+        },
+        "idle": {
+          "sitl-p3": {
+            "samples": 30,
+            "cpu_cores_mean": 0.918,
+            "cpu_cores_p95": 0.994,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 570.2
+          },
+          "_host": {
+            "samples": 30,
+            "load1_max": 3.36,
+            "load1_median": 2.46,
+            "cpu_some_avg10_max": 23.26,
+            "cpu_some_avg10_median": 16.56
+          },
+          "collector-b": {
+            "samples": 28,
+            "cpu_cores_mean": 0.034,
+            "cpu_cores_p95": 0.036,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 12.2
+          },
+          "collector-a": {
+            "samples": 28,
+            "cpu_cores_mean": 0.035,
+            "cpu_cores_p95": 0.037,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 12.1
+          }
+        },
+        "real_time_factor": {
+          "uav_01": {
+            "windows": 7,
+            "min": 0.994,
+            "median": 1.0
+          },
+          "uav_02": {
+            "windows": 7,
+            "min": 0.994,
+            "median": 1.0
+          }
+        },
+        "supervision": {
+          "uav_01:m-779fdd2a8455:v1": {
+            "max_s": 0.10179620888084173,
+            "p99_s": 0.10122647928074002,
+            "samples": 609
+          },
+          "uav_02:m-e7795f367b20:v1": {
+            "max_s": 0.10276685282588005,
+            "p99_s": 0.10166909964755177,
+            "samples": 514
+          }
+        },
+        "quiet_gate": {
+          "waited_s": 5.0,
+          "load1": 2.94,
+          "cpu_some_avg10": 13.7,
+          "quiet": true
+        },
+        "flight_span": [
+          "2026-09-26T14:29:29.592471+00:00",
+          "2026-09-26T14:30:49.134111+00:00"
+        ]
+      }
+    },
+    {
+      "artifacts": {
+        "aircraft_a/m-d58e48472d26/v1/adapter-commands.json": "666eaa704737428c1d6bfc1a0ef0683a72b4457c3b363cfb1a2c974eca1d014b",
+        "aircraft_a/m-d58e48472d26/v1/capabilities.json": "b93d6006ed84cf0df6834d12f4963d639456a26855c5b53398bc1433ad1664e6",
+        "aircraft_a/m-d58e48472d26/v1/evidence-inspect_asset_mid.json": "cc849023f97272710d649b84ecdb0e222494a86d0fa9ec6101817cf032ac636b",
+        "aircraft_a/m-d58e48472d26/v1/executive-identity.json": "f1a3ae746ebf9985a51c031920049b237ec6b3d116ebfca9c686774fcc7b0552",
+        "aircraft_a/m-d58e48472d26/v1/executive.jsonl": "8cb25bd1eafaadbcc3d039b7ee1b3609b0db74c5c2ea4a3308df72b906776515",
+        "aircraft_a/m-d58e48472d26/v1/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_a/m-d58e48472d26/v1/executive.mcap": "e100f67386e9b1b9beef22e867ac564b9af008ccdf95035f1e76322b0439a810",
+        "aircraft_a/m-d58e48472d26/v1/guardian-identity.json": "9d23b27a2abd0d70c8fb2d3e222bb53a20dede7ef00ad025d19c526b248a8865",
+        "aircraft_a/m-d58e48472d26/v1/guardian.jsonl": "0fba26416e1939351c7822b154aabf9ede51d0efc423faca165d4273ee8c7110",
+        "aircraft_a/m-d58e48472d26/v1/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_a/m-d58e48472d26/v1/guardian.mcap": "f7bc899a15845b2c2c4f293e90f1a8a542221b970a708c39361950f78b59abb5",
+        "aircraft_a/m-d58e48472d26/v1/images/87beb358806f0b24009241958b42d96b94698e855b9ab61e9299f99b594f64e0.rgb": "87beb358806f0b24009241958b42d96b94698e855b9ab61e9299f99b594f64e0",
+        "aircraft_a/m-d58e48472d26/v1/result.json": "45a4976b81e06412a3e1f633f27670083589f35bcb982cd999a75f83ed1ea885",
+        "aircraft_a/m-d58e48472d26/v1/status.json": "9bce9d7e0253097612005008e6e89170a232291f21b9ff8d00f554cdc3c50ce9",
+        "aircraft_a/m-d58e48472d26/v1/supervision.json": "11f97c45641885a8c2145150faf9b6eff6ffa7bdf6ab4d403badb04e577575d6",
+        "aircraft_b/m-e76c54ec453c/v1/adapter-commands.json": "681b6c35a6dab3f3730a9704761423d0ce861ce9af8282a098802355b55f8b0a",
+        "aircraft_b/m-e76c54ec453c/v1/capabilities.json": "d691e74b2e543b9b8ce55d9c44e26f893037fe21381875ad645ec90bb36e5df6",
+        "aircraft_b/m-e76c54ec453c/v1/evidence-inspect_asset_east.json": "7b85c34fb9ebc7d2f4446955bcd8bb82c5f951d2ad02426fb87233b50a76abad",
+        "aircraft_b/m-e76c54ec453c/v1/executive-identity.json": "c248a4ceb42c0701b56d2c63d790fbb0ee168fbb1da4e6042c9271a79f90b1d2",
+        "aircraft_b/m-e76c54ec453c/v1/executive.jsonl": "a7cb1e77418b2cd9e2dc928056dd0c3071688f7177c17f4302a92adcaed28430",
+        "aircraft_b/m-e76c54ec453c/v1/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_b/m-e76c54ec453c/v1/executive.mcap": "4869e32eb51979b841b1974df4f7da5ec7c4e8c3d4af02675280aab7d7304d05",
+        "aircraft_b/m-e76c54ec453c/v1/guardian-identity.json": "a6cac7c6baacdace63947ea2460e4199bc3d318c23cab1bf6ec874e6bc8b2a17",
+        "aircraft_b/m-e76c54ec453c/v1/guardian.jsonl": "fdf9cb456997fe09eb0d877ef1ca79d2204502f0101263df8aa8fe9a2516f822",
+        "aircraft_b/m-e76c54ec453c/v1/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_b/m-e76c54ec453c/v1/guardian.mcap": "6838a5226345b14dd3f4922432b6d3f036a9d86e929a9b323e3c1be54c03ec9f",
+        "aircraft_b/m-e76c54ec453c/v1/images/511ff220625ad814c68766f0c43b206524685221756e394b3dbb622dee8c1f3c.rgb": "511ff220625ad814c68766f0c43b206524685221756e394b3dbb622dee8c1f3c",
+        "aircraft_b/m-e76c54ec453c/v1/result.json": "f44c5c225a4591a1b656852903ef0125edcb947345ac21bd5a307b9f117b6c1a",
+        "aircraft_b/m-e76c54ec453c/v1/status.json": "a261aa86a116c8cb9a5cbc38d311c39859e774946a6eea5d2aa26ec6fc661150",
+        "aircraft_b/m-e76c54ec453c/v1/supervision.json": "bc15d5512f72e562e233c00b2ab0a0a046548597a0207e0e7e59ed2ce4f648dd",
+        "control/dock_a.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "control/dock_b.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "dock/dock_a.jsonl": "555919391ca3fb7e8bdf56c419fb6145b3a95993f211dc7c04615bd1907ca3d8",
+        "dock/dock_b.jsonl": "a5f4311e5d2a686685205432f268cea6280e026c474a942a971dde6325a53fc0",
+        "inbox_a/history/m-d58e48472d26-v1.json": "11ce7be607979c48d0a6d90eb4429bc644be9bd4ffcb0e17d9353d7e8c51bbbf",
+        "inbox_a/package.json": "11ce7be607979c48d0a6d90eb4429bc644be9bd4ffcb0e17d9353d7e8c51bbbf",
+        "inbox_b/history/m-e76c54ec453c-v1.json": "934308bbe2f5adb5cfc0b2f3b89b9245668df74d61c3ba5dd88b5de824023bc1",
+        "inbox_b/package.json": "934308bbe2f5adb5cfc0b2f3b89b9245668df74d61c3ba5dd88b5de824023bc1",
+        "input/layout.json": "cede6dadd48037222d8b8d7fc8bd63273e13f903ed23d47be22bf11bc0bd1f42",
+        "input/planner-fixtures.json": "326914c13c86d2ac7f4a2a9541eeb362dd110f4bfce12ee03b4bff24c7f8c00a",
+        "input/scenario.json": "65f8bebdc5d68e67c4c09db40932f609310bdd5cc2eeb2cd1522820338afaf79",
+        "platform-b.yaml": "0995e1cfb573bc121f83c56816d358eeeff89e34a2375549e621761655a208ac",
+        "resources.jsonl": "d74ad871d3d9a9eab322fee86070156be48ffe87ec9fe69b7c52c372fcfc7449",
+        "robot_a/authority.json": "37ce2e3ceab602f4b77dd2cb8416caba2511317050c6c55c1222c8563a2f8a1b",
+        "robot_b/authority.json": "d22ef71b446489970cd5930cfd35e51ccd192d68ab8d035ce774f8c64687aeb9",
+        "sensor_a/latest.json": "fa183e3099b73b9aba2c0a74289aa7423e6af06f90c689be743e2cabdcef1d1c",
+        "sensor_b/latest.json": "856f8ee579cbadd5a69c2129e6c7ce0ff6e9748bf6806273221d0941ddce8032",
+        "service-export/resources.json": "32f26b851ddcbb3b8bb9c1786708d228dd892831765ad638986c4160205ed2b2",
+        "service-export/scheduling.json": "e01e6a5094792fd902f359d0a5750341314538d8a597571d052f5fd7a93ea737",
+        "service-export/task-views.json": "0162cd92a04ebcf75e014f48d9778fb0c40bfa15c1471ef823b387758c040437",
+        "service-export/views.json": "d8f44016cd095da6624f734a7f7930a6a0ebd22117d85a463c76179ef67bbe6b",
+        "service-export/workflow-views.json": "9fab8f39dfa050924f9bb065cdce5e7d79fc7905c808d1a36d1009169fd9244c",
+        "service/ledger.sqlite3": "dc1534a7ab7897dab5132e23a26ed21fe5c1c9447d322676e9f41fca91e64693",
+        "service/media/511ff220625ad814c68766f0c43b206524685221756e394b3dbb622dee8c1f3c.rgb": "511ff220625ad814c68766f0c43b206524685221756e394b3dbb622dee8c1f3c",
+        "service/media/87beb358806f0b24009241958b42d96b94698e855b9ab61e9299f99b594f64e0.rgb": "87beb358806f0b24009241958b42d96b94698e855b9ab61e9299f99b594f64e0",
+        "service/ready.json": "574e340610e609ff7ec71d09b3e5dddc840da6c77712018a2e8b9dd42a7904e7",
+        "sitl.log": "b9b66c6677da35d029e81d8b3ba0450523689221ea8c5dc260ec8d859fabfd95",
+        "sitl/px4-0.log": "57618cf7c7f809b32be3ef4ce9a3c3753659f0620af82175b949fca59477716e",
+        "sitl/px4-1.log": "c2016c0fe13a6e5d20650477434ea3ef2c1b5db089733672734dec70f1a5356f",
+        "truth_a/truth.jsonl": "57d35f375bc3930123e35f69f6fee2028b897b50514984183af99c9acdb55236",
+        "truth_b/truth.jsonl": "d6d353ce3ea91ef7574e57de8574336ee9c4ec12d32fa457278a19b8a63eb519",
+        "ulog_a/2026-09-26/14_31_35.ulg": "752b2b8c18e0664dcab7aaf850dbc7b4fd71fba100ade447c760be72e81df78e",
+        "ulog_b/2026-09-26/14_31_41.ulg": "03556937c46057d527cc25cda25bccdd6adaecbf183695cb02066b32c5d5494e",
+        "uplink_a/uplink-state.json": "dcbb800f7c7d35b5fc65e8c2cab11addc9ac28186e67e2be02afdbd3ccef4534",
+        "uplink_a/uplink-status.json": "43ad1207bb74346219eed9bd84efaf51dda3548954fbe9b8e355569956662817",
+        "uplink_b/uplink-state.json": "921224960e9ad850d549194777571bd4376991bbcb7f452fd972f8318ea45798",
+        "uplink_b/uplink-status.json": "e9c10d8b56f59c77fe3ea4aa256a5dd1ef2300a6c76028c92914ea5846830399",
+        "world/api.jsonl": "5385460f03b96c5b29ef72273f0fcf1924ab1dda1945b0226c5169925f9ab912",
+        "world/injections.jsonl": "68803225c4e0c6e68310f934d8b23db12e8c3432472f83e0a56abaa104eb0dd5",
+        "world/uav_01-flights.json": "97df5d506486818a393293efdc68a85b7b818c03b310db77bc7b5c5ca05d23ea",
+        "world/uav_02-flights.json": "34af2e2ed63c41c0be0d3715427e070db7c55aaedbe19002a6bf8089df06bddd"
+      },
+      "claims": 2,
+      "classification": "as_expected",
+      "counts": {
+        "conflicting_reservation": 0,
+        "decision_mismatch": 0,
+        "double_ownership": 0,
+        "duplicate_dispatch": 0,
+        "duplicate_execution": 0,
+        "false_success": 0,
+        "lost_task": 0,
+        "project_escape": 0,
+        "stale_epoch_effect": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "expected": {
+        "first_robot": {
+          "asset_east": "uav_02",
+          "asset_mid": "uav_01"
+        },
+        "flights": 2,
+        "parallel": true,
+        "runs": {
+          "completed": 1
+        },
+        "tasks": {
+          "completed": 2
+        }
+      },
+      "false_success_reports": 0,
+      "flights": 2,
+      "judged_at": "2026-09-26T14:33:18.974699+00:00",
+      "layer": "S1",
+      "metrics": {
+        "airborne_max": null,
+        "assignment_latency_s": {
+          "max": 0.072,
+          "n": 2,
+          "p50": 0.058,
+          "p95": 0.072,
+          "p99": 0.072
+        },
+        "completion_s": {
+          "max": 66.015,
+          "n": 2,
+          "p50": 59.975,
+          "p95": 66.015,
+          "p99": 66.015
+        },
+        "decision_ms": {
+          "max": 4.582,
+          "n": 2,
+          "p50": 3.687,
+          "p95": 4.582,
+          "p99": 4.582
+        },
+        "decisions": 2,
+        "flights": 2,
+        "ladder": null,
+        "live_tasks_max": null,
+        "reject_reasons": {},
+        "tasks": {
+          "completed": 2
+        },
+        "wait_reasons": {}
+      },
+      "missions": {
+        "m-d58e48472d26": {
+          "classification": "completed",
+          "false_success_reports": 0,
+          "flown_versions": [
+            1
+          ],
+          "mission_status": "completed",
+          "problems": [],
+          "registry_hash": "cf31b12b84bee6cd3e5924dbacedc171484e7dc7d2d092ee4430d11b7e6b58e9",
+          "report_targets": {
+            "asset_mid": "completed"
+          },
+          "robot_id": "uav_01",
+          "truly_inspected": [
+            "asset_mid"
+          ],
+          "truth_samples": 1497
+        },
+        "m-e76c54ec453c": {
+          "classification": "completed",
+          "false_success_reports": 0,
+          "flown_versions": [
+            1
+          ],
+          "mission_status": "completed",
+          "problems": [],
+          "registry_hash": "3cd191ebaa85d89697b0ba6c2a3c8f83bc1147f636b844834e53a24fccf3e59a",
+          "report_targets": {
+            "asset_east": "completed"
+          },
+          "robot_id": "uav_02",
+          "truly_inspected": [
+            "asset_east"
+          ],
+          "truth_samples": 1497
+        }
+      },
+      "mode": "online",
+      "passed": true,
+      "problems": [],
+      "scenario": "p3_s1_parallel",
+      "schema_version": "0.1.0",
+      "seed": 19,
+      "source_sha": "446dc28a83dc2fe687e86a6707d8ac67c547dd61",
+      "judge_exit_code": 0,
+      "replay_agrees": true,
+      "flown": {
+        "uav_01": [
+          "m-d58e48472d26-v1"
+        ],
+        "uav_02": [
+          "m-e76c54ec453c-v1"
+        ]
+      },
+      "capacity": {
+        "verdict": {
+          "sufficient": true,
+          "real_time_factor_min": 0.977,
+          "supervision_p99_max_s": 0.10169612895697355,
+          "limits": {
+            "real_time_factor_min": 0.5,
+            "supervision_p99_max_s": 0.12
+          }
+        },
+        "resources": {
+          "sitl-p3": {
+            "samples": 55,
+            "cpu_cores_mean": 0.863,
+            "cpu_cores_p95": 1.129,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 673.5
+          },
+          "_host": {
+            "samples": 55,
+            "load1_max": 3.67,
+            "load1_median": 2.88,
+            "cpu_some_avg10_max": 43.6,
+            "cpu_some_avg10_median": 22.68
+          },
+          "mission-service": {
+            "samples": 40,
+            "cpu_cores_mean": 0.067,
+            "cpu_cores_p95": 0.163,
+            "throttled_fraction": 0.0423,
+            "memory_max_mib": 101.5
+          },
+          "collector-b": {
+            "samples": 39,
+            "cpu_cores_mean": 0.033,
+            "cpu_cores_p95": 0.035,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 12.0
+          },
+          "collector-a": {
+            "samples": 39,
+            "cpu_cores_mean": 0.033,
+            "cpu_cores_p95": 0.035,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 12.0
+          },
+          "uplink-b": {
+            "samples": 35,
+            "cpu_cores_mean": 0.007,
+            "cpu_cores_p95": 0.015,
+            "throttled_fraction": 0.0087,
+            "memory_max_mib": 34.7
+          },
+          "uplink-a": {
+            "samples": 34,
+            "cpu_cores_mean": 0.006,
+            "cpu_cores_p95": 0.012,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 34.7
+          },
+          "dock-sim-b": {
+            "samples": 34,
+            "cpu_cores_mean": 0.002,
+            "cpu_cores_p95": 0.002,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 33.6
+          },
+          "dock-sim-a": {
+            "samples": 34,
+            "cpu_cores_mean": 0.002,
+            "cpu_cores_p95": 0.002,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 33.6
+          },
+          "guardian-a": {
+            "samples": 26,
+            "cpu_cores_mean": 0.07,
+            "cpu_cores_p95": 0.078,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 50.1
+          },
+          "executive-b": {
+            "samples": 21,
+            "cpu_cores_mean": 0.027,
+            "cpu_cores_p95": 0.203,
+            "throttled_fraction": 0.0221,
+            "memory_max_mib": 36.0
+          },
+          "guardian-b": {
+            "samples": 24,
+            "cpu_cores_mean": 0.088,
+            "cpu_cores_p95": 0.098,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 50.0
+          },
+          "executive-a": {
+            "samples": 18,
+            "cpu_cores_mean": 0.018,
+            "cpu_cores_p95": 0.028,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 36.0
+          }
+        },
+        "idle": null,
+        "real_time_factor": {
+          "uav_01": {
+            "windows": 5,
+            "min": 0.977,
+            "median": 0.999
+          },
+          "uav_02": {
+            "windows": 5,
+            "min": 0.977,
+            "median": 0.999
+          }
+        },
+        "supervision": {
+          "uav_01:m-d58e48472d26:v1": {
+            "max_s": 0.10214045736938715,
+            "p99_s": 0.10164382960647345,
+            "samples": 534
+          },
+          "uav_02:m-e76c54ec453c:v1": {
+            "max_s": 0.10684285499155521,
+            "p99_s": 0.10169612895697355,
+            "samples": 506
+          }
+        },
+        "quiet_gate": {
+          "waited_s": 15.0,
+          "load1": 3.48,
+          "cpu_some_avg10": 7.01,
+          "quiet": true
+        },
+        "flight_span": [
+          "2026-09-26T14:32:08.341698+00:00",
+          "2026-09-26T14:33:07.682585+00:00"
+        ]
+      }
+    },
+    {
+      "artifacts": {
+        "aircraft_a/m-f73ef510bd3f/v1/adapter-commands.json": "b831220af868cfea3a4dfa0720120c1b2e104bfb5143a57ab7976951253d33c3",
+        "aircraft_a/m-f73ef510bd3f/v1/capabilities.json": "b93d6006ed84cf0df6834d12f4963d639456a26855c5b53398bc1433ad1664e6",
+        "aircraft_a/m-f73ef510bd3f/v1/evidence-inspect_asset_mid.json": "c92983841aef14721872a78ffa21582d08e61b94f410c6a4bea6d769746fae07",
+        "aircraft_a/m-f73ef510bd3f/v1/executive-identity.json": "72489d5531e7b5b92e2b79b02a7ec1190ffa690c55b7609e017c716d4765f872",
+        "aircraft_a/m-f73ef510bd3f/v1/executive.jsonl": "6a4ed765b5c9a9a52a5ae77d783d1639284089c33562d09c448fee62a0e5db7d",
+        "aircraft_a/m-f73ef510bd3f/v1/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_a/m-f73ef510bd3f/v1/executive.mcap": "c060928d3ef42755cb6f1febdfe9f1dac35810c5111ae436ea60a0bee3dec3c8",
+        "aircraft_a/m-f73ef510bd3f/v1/guardian-identity.json": "82dd67fc4d0c675dc3e4a70e35c24586e9e218458714d3842f51cb41e9d8a825",
+        "aircraft_a/m-f73ef510bd3f/v1/guardian.jsonl": "2f507cec3aff879895c3c46dfcd02e27bb953e26873fb64c6f2ec106c6e2a280",
+        "aircraft_a/m-f73ef510bd3f/v1/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_a/m-f73ef510bd3f/v1/guardian.mcap": "073884033b2605530c614f273c06bd4f5fb6e3456f49838d0285f440da07e237",
+        "aircraft_a/m-f73ef510bd3f/v1/images/de3a1550886910c95f69f4f046c5ba64ba0157c64d54bd5eafeca0bdcfa23623.rgb": "de3a1550886910c95f69f4f046c5ba64ba0157c64d54bd5eafeca0bdcfa23623",
+        "aircraft_a/m-f73ef510bd3f/v1/result.json": "357ce710df475f244e9e5a8c927b7703d786a35f445abae0bc6b525389c63f4c",
+        "aircraft_a/m-f73ef510bd3f/v1/status.json": "fcb3a129823361ed093d7ac5fac47467b41246a31af32641a3aef4005166e56e",
+        "aircraft_a/m-f73ef510bd3f/v1/supervision.json": "224f4eef5f7ea06bb16113a0bba2f7f5d003d2d2d80a7a858a03e06c0bec03b9",
+        "aircraft_b/m-3d03ea5615c5/v1/adapter-commands.json": "2350e4e298ca1311c132098c10f9487fd45a9fdd3f148ec090d48224d3393a59",
+        "aircraft_b/m-3d03ea5615c5/v1/capabilities.json": "25311fcdb594ef53542cbaf4dde622be6ae1a212ec58f21edf0e2b092353654f",
+        "aircraft_b/m-3d03ea5615c5/v1/evidence-inspect_asset_east.json": "2d3e44bbb64517b7eaece90a0a86fb974470aa6eb0cb349e0beefe94772f4dd1",
+        "aircraft_b/m-3d03ea5615c5/v1/executive-identity.json": "c8d6a83340c6bd392c62b0e2580b39625efa2199726d5c774fa9e99058662172",
+        "aircraft_b/m-3d03ea5615c5/v1/executive.jsonl": "93853f4e206487b9efdf10c3411ade12d50e094e15c1033a279b36184048c18b",
+        "aircraft_b/m-3d03ea5615c5/v1/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_b/m-3d03ea5615c5/v1/executive.mcap": "3e01dc329905e5dc13bf30b872e213ec45f8bd8ecbc9c2d2653d748510cd967a",
+        "aircraft_b/m-3d03ea5615c5/v1/guardian-identity.json": "869318a6429fa59e09b7c13606d7a30aa1ef56528e39616e971e3bcc01d93bf5",
+        "aircraft_b/m-3d03ea5615c5/v1/guardian.jsonl": "d2276cc384383418a8ac489373eb3b44ceb7362ee610d44bed8ec7dc31d04b2c",
+        "aircraft_b/m-3d03ea5615c5/v1/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_b/m-3d03ea5615c5/v1/guardian.mcap": "e9120bc0720ba9aea5a174adde2d987e32224ec27b74f678673985dcead7f44a",
+        "aircraft_b/m-3d03ea5615c5/v1/images/a10e1756bdf4ead85f77541aa0a3abb84193d5d957b34c070812510dd64e5dde.rgb": "a10e1756bdf4ead85f77541aa0a3abb84193d5d957b34c070812510dd64e5dde",
+        "aircraft_b/m-3d03ea5615c5/v1/result.json": "bf0d502b7a3bc863dd1ba0247aa4f0ab6d9dbcacc85832df5c9ae512371057fb",
+        "aircraft_b/m-3d03ea5615c5/v1/status.json": "60a351aa6225207acd7016271920890c8a80b83af939d7eed738b4b50ca2c464",
+        "aircraft_b/m-3d03ea5615c5/v1/supervision.json": "dd40b794967aeefc792d781f366e36c1e97b96114f9f388459cef12dc67a242f",
+        "control/dock_a.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "control/dock_b.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "dock/dock_a.jsonl": "b0a0720004411714627f4208656b1a21ee407b26edb0b3acf92330d246596a39",
+        "dock/dock_b.jsonl": "26f592773ea0635c76fe3192a77797dbddaec7e7a415e2259371fb7f84b5f08c",
+        "inbox_a/history/m-f73ef510bd3f-v1.json": "f0a78ba525c6cdccc5cedb91e1450b8434fecea8d0ab4cd4128cb3b737ca02cc",
+        "inbox_a/package.json": "f0a78ba525c6cdccc5cedb91e1450b8434fecea8d0ab4cd4128cb3b737ca02cc",
+        "inbox_b/history/m-3d03ea5615c5-v1.json": "f11570735dd770becf7fc958a5f0cd5e0569be42f42584e898f061c030120ace",
+        "inbox_b/package.json": "f11570735dd770becf7fc958a5f0cd5e0569be42f42584e898f061c030120ace",
+        "input/layout.json": "cede6dadd48037222d8b8d7fc8bd63273e13f903ed23d47be22bf11bc0bd1f42",
+        "input/planner-fixtures.json": "326914c13c86d2ac7f4a2a9541eeb362dd110f4bfce12ee03b4bff24c7f8c00a",
+        "input/scenario.json": "5f9c1ef3af6f3cec9bf687314a825dfb96bbea6ff1ed7cc3ef00f4850eef26aa",
+        "platform-b.yaml": "0995e1cfb573bc121f83c56816d358eeeff89e34a2375549e621761655a208ac",
+        "resources.jsonl": "8132598a56d8a66f29f7e8d0058e3d9251600fd3c19f30a6e48bbe97ae75ab28",
+        "robot_a/authority.json": "90b26876c97050f0f662fa9ad83a2dddfa957f657f654a27d3f57afe00e141c7",
+        "robot_b/authority.json": "ebc08c180ebb9306f06493732a16caa34d16fa354c42c5bd5e5293ae4ded328b",
+        "sensor_a/latest.json": "a34a4441b0e9d461f32634b19ab57bcfca6c7cfdbefecdf14e2e91e79e451720",
+        "sensor_b/latest.json": "aa7335cccc84b373d6cdb5f7298017bb50403b287abf37a6aeae1a4e629b48c8",
+        "service-export/resources.json": "159ea3e90bcf31fd7e3306dabdded134bffa6a0f041061e921e110f673069da2",
+        "service-export/scheduling.json": "54236969ab85ae0aea3b786b43128232ed29707f25651f85c4c93810d6602e86",
+        "service-export/task-views.json": "d3d3140cda3781a3e2958909b02cd3b1be80a591cdce8947b2dcde3316c6b617",
+        "service-export/views.json": "b8d2df1389e2ace8542ab2f8742de2425f6df322e74d9bbffc259edcef70af8b",
+        "service-export/workflow-views.json": "6a680b6c1a7cb7ba2ea9e39212e496caa215b23abf9689cbe30917c2d87e55a6",
+        "service/ledger.sqlite3": "09db500c2a9477253663791dbf76a5d5dbda6d907ace0f896cbe78aa43746cae",
+        "service/media/a10e1756bdf4ead85f77541aa0a3abb84193d5d957b34c070812510dd64e5dde.rgb": "a10e1756bdf4ead85f77541aa0a3abb84193d5d957b34c070812510dd64e5dde",
+        "service/media/de3a1550886910c95f69f4f046c5ba64ba0157c64d54bd5eafeca0bdcfa23623.rgb": "de3a1550886910c95f69f4f046c5ba64ba0157c64d54bd5eafeca0bdcfa23623",
+        "service/ready.json": "6e99d227798e43ce0f7b76410589cd82aaee0c79ad64d72a9520997f4d326255",
+        "sitl.log": "897152360c598250b4a6ff6a8dad2c166d82169e4ea2925f70342572ae148d9f",
+        "sitl/px4-0.log": "ebd3941621fb35f5b5d72d56fb3091c02f0626f1b83df7c2b9a616ac0b0f1080",
+        "sitl/px4-1.log": "4611eea9b41e341ca6298a0d85909ea05e51dd9180e344f8a95b46328c67c657",
+        "truth_a/truth.jsonl": "8ca0ce60c9215223b9a66067b17b1d58d3be725c0bfa6225836a258c0ef94258",
+        "truth_b/truth.jsonl": "51042ab7de489b69732c99d9397f11cca9fcbf4df3c985859f5f02082aee17b1",
+        "ulog_a/2026-09-26/14_33_43.ulg": "46cd2931a3fc6e44a03e2b331da965557a05facdca8d92baf1dc3a2c7238cf83",
+        "ulog_b/2026-09-26/14_33_49.ulg": "86d761f7df353349577781090a8a624f89369a01918cdf654025cb4d958130fa",
+        "uplink_a/uplink-state.json": "8b6b2fb1b5b7c80c4b42071af18ff22ad3394410487a26a67813e6e71e50d027",
+        "uplink_a/uplink-status.json": "98897fa1522942147f0752722b126d788a40e16abffdeca8ae85793c62f18950",
+        "uplink_b/uplink-state.json": "1945c9342c56e3baf40e8f108814c368ace9d4778b70ac2ed45d92d7b51d51d4",
+        "uplink_b/uplink-status.json": "d91b25756439a623a0d3165d2c0431fc3d862580c26c6e77ce5d22af44cb89ba",
+        "world/api.jsonl": "d49103c2e5d84869f8d5bd9b9b50bd5ccfbca753c5890c9bc62964cab5cd5478",
+        "world/injections.jsonl": "3239b5a5d921aa3e9dc490f6479fd0df700d66d1c7790df2f42a6682deac172f",
+        "world/uav_01-flights.json": "8916639341333a9d73139dd04c3ff8dc335b967ed68a1283400050417c22ae02",
+        "world/uav_02-flights.json": "3791697c8e9af8648458c6309e82909a9c33bd076abd684e21dd215dbca3847f"
+      },
+      "claims": 2,
+      "classification": "as_expected",
+      "counts": {
+        "conflicting_reservation": 0,
+        "decision_mismatch": 0,
+        "double_ownership": 0,
+        "duplicate_dispatch": 0,
+        "duplicate_execution": 0,
+        "false_success": 0,
+        "lost_task": 0,
+        "project_escape": 0,
+        "stale_epoch_effect": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "expected": {
+        "first_robot": {
+          "asset_east": "uav_02",
+          "asset_mid": "uav_01"
+        },
+        "flights": 2,
+        "parallel": true,
+        "runs": {
+          "completed": 1
+        },
+        "tasks": {
+          "completed": 2
+        }
+      },
+      "false_success_reports": 0,
+      "flights": 2,
+      "judged_at": "2026-09-26T14:35:28.684976+00:00",
+      "layer": "S1",
+      "metrics": {
+        "airborne_max": null,
+        "assignment_latency_s": {
+          "max": 0.058,
+          "n": 2,
+          "p50": 0.049,
+          "p95": 0.058,
+          "p99": 0.058
+        },
+        "completion_s": {
+          "max": 68.499,
+          "n": 2,
+          "p50": 62.062,
+          "p95": 68.499,
+          "p99": 68.499
+        },
+        "decision_ms": {
+          "max": 2.061,
+          "n": 2,
+          "p50": 1.356,
+          "p95": 2.061,
+          "p99": 2.061
+        },
+        "decisions": 2,
+        "flights": 2,
+        "ladder": null,
+        "live_tasks_max": null,
+        "reject_reasons": {},
+        "tasks": {
+          "completed": 2
+        },
+        "wait_reasons": {}
+      },
+      "missions": {
+        "m-3d03ea5615c5": {
+          "classification": "completed",
+          "false_success_reports": 0,
+          "flown_versions": [
+            1
+          ],
+          "mission_status": "completed",
+          "problems": [],
+          "registry_hash": "3cd191ebaa85d89697b0ba6c2a3c8f83bc1147f636b844834e53a24fccf3e59a",
+          "report_targets": {
+            "asset_east": "completed"
+          },
+          "robot_id": "uav_02",
+          "truly_inspected": [
+            "asset_east"
+          ],
+          "truth_samples": 1531
+        },
+        "m-f73ef510bd3f": {
+          "classification": "completed",
+          "false_success_reports": 0,
+          "flown_versions": [
+            1
+          ],
+          "mission_status": "completed",
+          "problems": [],
+          "registry_hash": "cf31b12b84bee6cd3e5924dbacedc171484e7dc7d2d092ee4430d11b7e6b58e9",
+          "report_targets": {
+            "asset_mid": "completed"
+          },
+          "robot_id": "uav_01",
+          "truly_inspected": [
+            "asset_mid"
+          ],
+          "truth_samples": 1530
+        }
+      },
+      "mode": "online",
+      "passed": true,
+      "problems": [],
+      "scenario": "p3_s1_parallel",
+      "schema_version": "0.1.0",
+      "seed": 41,
+      "source_sha": "446dc28a83dc2fe687e86a6707d8ac67c547dd61",
+      "judge_exit_code": 0,
+      "replay_agrees": true,
+      "flown": {
+        "uav_01": [
+          "m-f73ef510bd3f-v1"
+        ],
+        "uav_02": [
+          "m-3d03ea5615c5-v1"
+        ]
+      },
+      "capacity": {
+        "verdict": {
+          "sufficient": true,
+          "real_time_factor_min": 0.987,
+          "supervision_p99_max_s": 0.1017087772488594,
+          "limits": {
+            "real_time_factor_min": 0.5,
+            "supervision_p99_max_s": 0.12
+          }
+        },
+        "resources": {
+          "sitl-p3": {
+            "samples": 56,
+            "cpu_cores_mean": 0.856,
+            "cpu_cores_p95": 1.002,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 565.4
+          },
+          "_host": {
+            "samples": 56,
+            "load1_max": 6.93,
+            "load1_median": 4.52,
+            "cpu_some_avg10_max": 41.21,
+            "cpu_some_avg10_median": 22.12
+          },
+          "mission-service": {
+            "samples": 40,
+            "cpu_cores_mean": 0.063,
+            "cpu_cores_p95": 0.118,
+            "throttled_fraction": 0.0391,
+            "memory_max_mib": 102.1
+          },
+          "collector-b": {
+            "samples": 40,
+            "cpu_cores_mean": 0.031,
+            "cpu_cores_p95": 0.033,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 12.0
+          },
+          "collector-a": {
+            "samples": 40,
+            "cpu_cores_mean": 0.032,
+            "cpu_cores_p95": 0.034,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 11.9
+          },
+          "uplink-b": {
+            "samples": 35,
+            "cpu_cores_mean": 0.006,
+            "cpu_cores_p95": 0.012,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 34.7
+          },
+          "uplink-a": {
+            "samples": 35,
+            "cpu_cores_mean": 0.006,
+            "cpu_cores_p95": 0.011,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 35.0
+          },
+          "dock-sim-b": {
+            "samples": 35,
+            "cpu_cores_mean": 0.002,
+            "cpu_cores_p95": 0.002,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 33.8
+          },
+          "dock-sim-a": {
+            "samples": 35,
+            "cpu_cores_mean": 0.002,
+            "cpu_cores_p95": 0.002,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 33.6
+          },
+          "guardian-a": {
+            "samples": 27,
+            "cpu_cores_mean": 0.078,
+            "cpu_cores_p95": 0.085,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 50.0
+          },
+          "guardian-b": {
+            "samples": 25,
+            "cpu_cores_mean": 0.081,
+            "cpu_cores_p95": 0.094,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 50.2
+          },
+          "executive-a": {
+            "samples": 19,
+            "cpu_cores_mean": 0.017,
+            "cpu_cores_p95": 0.029,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 35.6
+          },
+          "executive-b": {
+            "samples": 18,
+            "cpu_cores_mean": 0.017,
+            "cpu_cores_p95": 0.03,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 35.9
+          }
+        },
+        "idle": null,
+        "real_time_factor": {
+          "uav_01": {
+            "windows": 5,
+            "min": 0.987,
+            "median": 0.999
+          },
+          "uav_02": {
+            "windows": 5,
+            "min": 0.987,
+            "median": 0.999
+          }
+        },
+        "supervision": {
+          "uav_01:m-f73ef510bd3f:v1": {
+            "max_s": 0.10222646780312061,
+            "p99_s": 0.1017087772488594,
+            "samples": 517
+          },
+          "uav_02:m-3d03ea5615c5:v1": {
+            "max_s": 0.1030033272691071,
+            "p99_s": 0.10140024963766336,
+            "samples": 499
+          }
+        },
+        "quiet_gate": {
+          "waited_s": 5.0,
+          "load1": 3.01,
+          "cpu_some_avg10": 14.44,
+          "quiet": true
+        },
+        "flight_span": [
+          "2026-09-26T14:34:18.229411+00:00",
+          "2026-09-26T14:35:17.807709+00:00"
+        ]
+      }
+    },
+    {
+      "artifacts": {
+        "aircraft_a/m-ad10f77f93ad/v1/adapter-commands.json": "b4292066baef21c6074f81231b65e2da2801cc44a6b58595c638cceb171a9430",
+        "aircraft_a/m-ad10f77f93ad/v1/capabilities.json": "6571cc9c11a4f5e26a201f8915664adaeed72b798b87b21d215dcaaf846d4605",
+        "aircraft_a/m-ad10f77f93ad/v1/evidence-inspect_asset_mid.json": "757a4a8a1e4c38e877fdd7c6db15d36cc9436505ecf58d7d8e2af43bf0cda1e4",
+        "aircraft_a/m-ad10f77f93ad/v1/executive-identity.json": "3ab1864397e9a65b81dc4e0f8da4cba06cf8ff901ef84877666eb2ed3f3cb1e7",
+        "aircraft_a/m-ad10f77f93ad/v1/executive.jsonl": "12e5ff23d764968630ce6908b1af40ca148e9246ea7dc82183e0f195b0e0a45c",
+        "aircraft_a/m-ad10f77f93ad/v1/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_a/m-ad10f77f93ad/v1/executive.mcap": "1ea725f98cf3cf338fa715122b9ca4866d2fc272fe834a0017dc5808e739841a",
+        "aircraft_a/m-ad10f77f93ad/v1/guardian-identity.json": "33982de3b3094494260af913516d5d7d6383465a23e770ee1eaccacfe6080f2c",
+        "aircraft_a/m-ad10f77f93ad/v1/guardian.jsonl": "1911a49f566a3d832083a2c9a57b39b7b9effa61b4fb96f2aa715df900adc311",
+        "aircraft_a/m-ad10f77f93ad/v1/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_a/m-ad10f77f93ad/v1/guardian.mcap": "66a0f560e1cd552515f37cbc59a4619b50d1729923fa3e927cb554f9a139d5bb",
+        "aircraft_a/m-ad10f77f93ad/v1/images/5555ff4b2d3fa66fdb9df185098ab4371ab4850b15edd16b09a9554a7c221793.rgb": "5555ff4b2d3fa66fdb9df185098ab4371ab4850b15edd16b09a9554a7c221793",
+        "aircraft_a/m-ad10f77f93ad/v1/result.json": "9e598c318e3346fca7f4b57d044607682e00fcc4e0f4d7d92e7e39fc7523840d",
+        "aircraft_a/m-ad10f77f93ad/v1/status.json": "d24814d92ed166bad5668272797d9551fd12a0ba00a3a4a4f85502f2b9fe94d7",
+        "aircraft_a/m-ad10f77f93ad/v1/supervision.json": "b3b7eb223c3a4e49ca1ccfef67f58d2ce24ab7827f0b278cc7d5f495de25e957",
+        "aircraft_b/m-162fdce9192f/v1/adapter-commands.json": "ffbf3d7083c0699fee3335b557d7f9cad918688c8f108138216c69bcde129d02",
+        "aircraft_b/m-162fdce9192f/v1/capabilities.json": "9dc6af746f78c7101a79245999328e9959a6e90e6dc6e1e73130b614cca70999",
+        "aircraft_b/m-162fdce9192f/v1/evidence-inspect_asset_mid.json": "144cbfbfb5693afff97d20daac39b72f2200a239a1fa65f8c79ee66fdb5bbebc",
+        "aircraft_b/m-162fdce9192f/v1/executive-identity.json": "d592d60c15205af97eade593c5c08636c3f88301d11d3672e186c5b7885d5a65",
+        "aircraft_b/m-162fdce9192f/v1/executive.jsonl": "c29da509bdf565847447c6395455dcc31a8f70b8a36255604d7060206de94961",
+        "aircraft_b/m-162fdce9192f/v1/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_b/m-162fdce9192f/v1/executive.mcap": "474b92e1b067b87e08696169a5dce2e2000d40aeda4a83d4ef517190bae2c1b0",
+        "aircraft_b/m-162fdce9192f/v1/guardian-identity.json": "76745987b74b52b10ee74043697829836bd978ea94ac40f4c986ab7010a1b46b",
+        "aircraft_b/m-162fdce9192f/v1/guardian.jsonl": "591b259bece21ab1bdacf0ebc57b478866359becae274e856e3aae076dfebf95",
+        "aircraft_b/m-162fdce9192f/v1/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_b/m-162fdce9192f/v1/guardian.mcap": "35de3133eb91e091e02c99da30252228a2b0b14115619f44448ad9b0b034a67c",
+        "aircraft_b/m-162fdce9192f/v1/images/88135aa00e69a45b3ba60d5c8bac0f70eb52fc3d9a4f92d257fd2a546f8986de.rgb": "88135aa00e69a45b3ba60d5c8bac0f70eb52fc3d9a4f92d257fd2a546f8986de",
+        "aircraft_b/m-162fdce9192f/v1/result.json": "d362338a7fa1daf41fa012b361592c399d924b317d9d663434481301cd40e415",
+        "aircraft_b/m-162fdce9192f/v1/status.json": "4d2fbe76ca980bc437d65e13e8c5dcdd0c08886152adac7adc8c77cab9ad0965",
+        "aircraft_b/m-162fdce9192f/v1/supervision.json": "436fbc604290593991d63984d38c184749a5db5d24bf133e67d0569e5bdcb5c7",
+        "control/dock_a.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "control/dock_b.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "dock/dock_a.jsonl": "c457b4bcc2241ce9cb107cd48d30b2a1de9a944d7cd3eb69652f575b67810f0a",
+        "dock/dock_b.jsonl": "4d2c52c77b59dc97805079f66656c04b3758627861215b9e3a30e855f7ed97f3",
+        "inbox_a/history/m-ad10f77f93ad-v1.json": "1299cc6e076494ec43530c30b6d8adb61399bcba819b148013e10d4b77d5df01",
+        "inbox_a/package.json": "1299cc6e076494ec43530c30b6d8adb61399bcba819b148013e10d4b77d5df01",
+        "inbox_b/history/m-162fdce9192f-v1.json": "9d10119c01040955965e7d3679c980b2dc6377d0e2ab4f21fcdd60cff3c5e944",
+        "inbox_b/package.json": "9d10119c01040955965e7d3679c980b2dc6377d0e2ab4f21fcdd60cff3c5e944",
+        "input/layout.json": "cede6dadd48037222d8b8d7fc8bd63273e13f903ed23d47be22bf11bc0bd1f42",
+        "input/planner-fixtures.json": "326914c13c86d2ac7f4a2a9541eeb362dd110f4bfce12ee03b4bff24c7f8c00a",
+        "input/scenario.json": "85c6d2682ffa2e254b24dfa8debf889a4902a7a94ba26cba6de62a91f240b2d3",
+        "platform-b.yaml": "0995e1cfb573bc121f83c56816d358eeeff89e34a2375549e621761655a208ac",
+        "resources.jsonl": "aa018b31fe2b54a2bbcdbe9f31d6d2d58080274faca090d98fb06c75e6ccd433",
+        "robot_a/authority.json": "309568033255e3fcd2f6cab20f948298d3b69b5d17d01088fa49e4f2d430bd76",
+        "robot_b/authority.json": "c81ce4fabdbda77fefb6aaf4965189f746f290f72bed5e2cfadc6f98c588f157",
+        "sensor_a/latest.json": "d2dde53e2c5c3c649a5159798595b76a6f770d935930ea2c08063f7b7cf503d5",
+        "sensor_b/latest.json": "184f6cf431ccaaad8b7efef50f22b00b1caab550564f2931fd87569fb66a5def",
+        "service-export/resources.json": "4e111898cb4d9a0d6b675e3e2875e304db1c0602743433d6164bd162584bfc68",
+        "service-export/scheduling.json": "917b357bb2c7adbfea0e131b75cf36766d6e1ad874ac348505c5ca9374541da1",
+        "service-export/task-views.json": "776f98c6965dbeb3f95814e1fd4d7e678bd8fb0bdd2ec5f0de80c3412d1b3f38",
+        "service-export/views.json": "00d4bf6738ff9f27fdcf4c11feb8a8404e7105d0e131047f2cde98718c1696ed",
+        "service/ledger.sqlite3": "518f4026ecf22b1e6df3776a85d1b9d7262f9a85990c5a771b10d5991d223eee",
+        "service/media/5555ff4b2d3fa66fdb9df185098ab4371ab4850b15edd16b09a9554a7c221793.rgb": "5555ff4b2d3fa66fdb9df185098ab4371ab4850b15edd16b09a9554a7c221793",
+        "service/media/88135aa00e69a45b3ba60d5c8bac0f70eb52fc3d9a4f92d257fd2a546f8986de.rgb": "88135aa00e69a45b3ba60d5c8bac0f70eb52fc3d9a4f92d257fd2a546f8986de",
+        "service/ready.json": "04c45b2f5e02ee9dc729cabc73b8e5e9bc15ce56129eba10cdf9fdb9ecb8ed0f",
+        "sitl.log": "b62fac3f962ff211df2ea8cc301cc417fb9e374ef73322660112a079b8143449",
+        "sitl/px4-0.log": "8d0446c22f5459bf8d453ab2fa87853ffefa3283211989d1c78212797fb48031",
+        "sitl/px4-1.log": "432d154da0f7bdd7d541598e339b9a1427b1c6f3b6183a224848a49bab40804b",
+        "truth_a/truth.jsonl": "7c0879872d4040e497c42507e0db4d48c4120e6496cf20df494d666a745c3205",
+        "truth_b/truth.jsonl": "469d9042caec498ec82c8d5fd73237d4649146810a7f566c61fdf1a500523f63",
+        "ulog_a/2026-09-26/14_35_57.ulg": "d057fe70b673d42c09aeb6c8ca678c73ce8cbd299d713064b224c825751abc1f",
+        "ulog_b/2026-09-26/14_36_03.ulg": "b5ea81104fc832294a4be1e9fc421fbc04f3a464c740b04b7803daf94e2e8df8",
+        "uplink_a/uplink-state.json": "b317160c4083cf070702fb39db22f2595956a4db8234200f11d1f6ebaf4efa18",
+        "uplink_a/uplink-status.json": "d45f9930dda516b070fc5a64314ca8f51d813d3055b0431f509d1aaf4c16acfa",
+        "uplink_b/uplink-state.json": "6ef8de14c3b584874a78060b71a7a92af0ed732d1745a2bba9756ef9dca31505",
+        "uplink_b/uplink-status.json": "58df8468be287a3f4b628704baa27fdc2c55ef05260fe676eb3e6979e1a394b7",
+        "world/api.jsonl": "78762b95d1af1ad2665ee90946a2affcfb83c05e3c1b063e52e9e0bda0fe931b",
+        "world/injections.jsonl": "8d70e126fd0f573bde9bb897a5e088e8417e405d106a097af28afebd9614673c",
+        "world/uav_01-flights.json": "f17893f85d919669cf654303d9e439c43e2688f43f986fb0c8139e731a88f25b",
+        "world/uav_02-flights.json": "7b8b5635d85a332f4279b545d2254ea67fcc62065699beb8f434fc2fddcb421f"
+      },
+      "claims": 2,
+      "classification": "as_expected",
+      "counts": {
+        "conflicting_reservation": 0,
+        "decision_mismatch": 0,
+        "double_ownership": 0,
+        "duplicate_dispatch": 0,
+        "duplicate_execution": 0,
+        "false_success": 0,
+        "lost_task": 0,
+        "project_escape": 0,
+        "stale_epoch_effect": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "expected": {
+        "completed_in_order": [
+          "uav_01",
+          "uav_02"
+        ],
+        "flights": 2,
+        "reasons": [
+          "airspace.cell_held"
+        ],
+        "tasks": {
+          "completed": 2
+        }
+      },
+      "false_success_reports": 0,
+      "flights": 2,
+      "judged_at": "2026-09-26T14:38:35.934886+00:00",
+      "layer": "S1",
+      "metrics": {
+        "airborne_max": null,
+        "assignment_latency_s": {
+          "max": 58.963,
+          "n": 2,
+          "p50": 0.23,
+          "p95": 58.963,
+          "p99": 58.963
+        },
+        "completion_s": {
+          "max": 118.99,
+          "n": 2,
+          "p50": 60.963,
+          "p95": 118.99,
+          "p99": 118.99
+        },
+        "decision_ms": {
+          "max": 2.316,
+          "n": 9,
+          "p50": 1.128,
+          "p95": 2.316,
+          "p99": 2.316
+        },
+        "decisions": 9,
+        "flights": 2,
+        "ladder": null,
+        "live_tasks_max": null,
+        "reject_reasons": {},
+        "tasks": {
+          "completed": 2
+        },
+        "wait_reasons": {
+          "airspace.cell_held": 14,
+          "dock.aircraft_absent": 1,
+          "energy.idle": 3,
+          "energy.insufficient": 3,
+          "energy.unknown": 1,
+          "presence.conflict": 2,
+          "reservation.conflict": 7,
+          "robot.airborne": 3,
+          "robot.phase_unknown": 2
+        }
+      },
+      "missions": {
+        "m-162fdce9192f": {
+          "classification": "completed",
+          "false_success_reports": 0,
+          "flown_versions": [
+            1
+          ],
+          "mission_status": "completed",
+          "problems": [],
+          "registry_hash": "3cd191ebaa85d89697b0ba6c2a3c8f83bc1147f636b844834e53a24fccf3e59a",
+          "report_targets": {
+            "asset_mid": "completed"
+          },
+          "robot_id": "uav_02",
+          "truly_inspected": [
+            "asset_mid"
+          ],
+          "truth_samples": 2418
+        },
+        "m-ad10f77f93ad": {
+          "classification": "completed",
+          "false_success_reports": 0,
+          "flown_versions": [
+            1
+          ],
+          "mission_status": "completed",
+          "problems": [],
+          "registry_hash": "cf31b12b84bee6cd3e5924dbacedc171484e7dc7d2d092ee4430d11b7e6b58e9",
+          "report_targets": {
+            "asset_mid": "completed"
+          },
+          "robot_id": "uav_01",
+          "truly_inspected": [
+            "asset_mid"
+          ],
+          "truth_samples": 2418
+        }
+      },
+      "mode": "online",
+      "passed": true,
+      "problems": [],
+      "scenario": "p3_s1_contention",
+      "schema_version": "0.1.0",
+      "seed": 7,
+      "source_sha": "446dc28a83dc2fe687e86a6707d8ac67c547dd61",
+      "judge_exit_code": 0,
+      "replay_agrees": true,
+      "flown": {
+        "uav_01": [
+          "m-ad10f77f93ad-v1"
+        ],
+        "uav_02": [
+          "m-162fdce9192f-v1"
+        ]
+      },
+      "capacity": {
+        "verdict": {
+          "sufficient": true,
+          "real_time_factor_min": 0.995,
+          "supervision_p99_max_s": 0.10180755564942956,
+          "limits": {
+            "real_time_factor_min": 0.5,
+            "supervision_p99_max_s": 0.12
+          }
+        },
+        "resources": {
+          "sitl-p3": {
+            "samples": 82,
+            "cpu_cores_mean": 0.864,
+            "cpu_cores_p95": 0.987,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 593.8
+          },
+          "_host": {
+            "samples": 82,
+            "load1_max": 4.95,
+            "load1_median": 3.62,
+            "cpu_some_avg10_max": 40.38,
+            "cpu_some_avg10_median": 20.73
+          },
+          "mission-service": {
+            "samples": 66,
+            "cpu_cores_mean": 0.045,
+            "cpu_cores_p95": 0.082,
+            "throttled_fraction": 0.0114,
+            "memory_max_mib": 102.1
+          },
+          "collector-a": {
+            "samples": 66,
+            "cpu_cores_mean": 0.032,
+            "cpu_cores_p95": 0.034,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 12.5
+          },
+          "collector-b": {
+            "samples": 66,
+            "cpu_cores_mean": 0.032,
+            "cpu_cores_p95": 0.034,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 12.4
+          },
+          "uplink-b": {
+            "samples": 61,
+            "cpu_cores_mean": 0.005,
+            "cpu_cores_p95": 0.01,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 34.7
+          },
+          "uplink-a": {
+            "samples": 61,
+            "cpu_cores_mean": 0.006,
+            "cpu_cores_p95": 0.011,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 34.9
+          },
+          "dock-sim-a": {
+            "samples": 61,
+            "cpu_cores_mean": 0.002,
+            "cpu_cores_p95": 0.002,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 33.7
+          },
+          "dock-sim-b": {
+            "samples": 61,
+            "cpu_cores_mean": 0.002,
+            "cpu_cores_p95": 0.002,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 33.7
+          },
+          "guardian-a": {
+            "samples": 26,
+            "cpu_cores_mean": 0.091,
+            "cpu_cores_p95": 0.103,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 50.5
+          },
+          "executive-a": {
+            "samples": 18,
+            "cpu_cores_mean": 0.018,
+            "cpu_cores_p95": 0.032,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 35.9
+          },
+          "guardian-b": {
+            "samples": 26,
+            "cpu_cores_mean": 0.084,
+            "cpu_cores_p95": 0.095,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 50.4
+          },
+          "executive-b": {
+            "samples": 18,
+            "cpu_cores_mean": 0.018,
+            "cpu_cores_p95": 0.032,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 36.0
+          }
+        },
+        "idle": null,
+        "real_time_factor": {
+          "uav_01": {
+            "windows": 11,
+            "min": 0.995,
+            "median": 1.0
+          },
+          "uav_02": {
+            "windows": 11,
+            "min": 0.995,
+            "median": 1.0
+          }
+        },
+        "supervision": {
+          "uav_01:m-ad10f77f93ad:v1": {
+            "max_s": 0.10271007381379604,
+            "p99_s": 0.10180755564942956,
+            "samples": 509
+          },
+          "uav_02:m-162fdce9192f:v1": {
+            "max_s": 0.1021783109754324,
+            "p99_s": 0.10150233283638954,
+            "samples": 536
+          }
+        },
+        "quiet_gate": {
+          "waited_s": 10.0,
+          "load1": 3.06,
+          "cpu_some_avg10": 9.86,
+          "quiet": true
+        },
+        "flight_span": [
+          "2026-09-26T14:36:31.959208+00:00",
+          "2026-09-26T14:38:24.791683+00:00"
+        ]
+      }
+    },
+    {
+      "artifacts": {
+        "aircraft_b/m-7a65aecbc0fe/v1/adapter-commands.json": "6e83d8590785e05e332b77486b3887770e93f9a5bddf38d8bbb72aba571cf03d",
+        "aircraft_b/m-7a65aecbc0fe/v1/capabilities.json": "95948a1824d4bdcc05ecfa5f7b67998453946c5d0930abcc8eda1019e71151bd",
+        "aircraft_b/m-7a65aecbc0fe/v1/evidence-inspect_asset_mid.json": "cc36af153e0227b0172457112b598dd1c12396fa44ce70cce7542b73deec59e9",
+        "aircraft_b/m-7a65aecbc0fe/v1/executive-identity.json": "4b9e83a3900a73de5bbec76c27d21d41cfa0f656abb10f55f7232ff2da54fdac",
+        "aircraft_b/m-7a65aecbc0fe/v1/executive.jsonl": "1f51207585ba2f64bf087caa0ac62c2fdf7a99f6d78427ad51faae83eae1f236",
+        "aircraft_b/m-7a65aecbc0fe/v1/executive.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_b/m-7a65aecbc0fe/v1/executive.mcap": "b67ed2dab49aebfe37cf2a6990a42d9cb0953116bcaee06a7580cbb5dcfb55f2",
+        "aircraft_b/m-7a65aecbc0fe/v1/guardian-identity.json": "e80aa552cd1d960887b37ec00521663abab155ed2ba329143f44955e49ee94b4",
+        "aircraft_b/m-7a65aecbc0fe/v1/guardian.jsonl": "c43c5c5b38e3b208831d8f2d5ef69dd95219cb685ea97de62f6878ecd805ed58",
+        "aircraft_b/m-7a65aecbc0fe/v1/guardian.jsonl.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "aircraft_b/m-7a65aecbc0fe/v1/guardian.mcap": "2f4acbdfcd75c8a2b10ba9bf83a1fd3a49535283776e62a556b94d95ba96fc06",
+        "aircraft_b/m-7a65aecbc0fe/v1/images/0c356367c6e6e5b715c4dcbd4b1d22f7564269197688c1f0002348cd06f3afe5.rgb": "0c356367c6e6e5b715c4dcbd4b1d22f7564269197688c1f0002348cd06f3afe5",
+        "aircraft_b/m-7a65aecbc0fe/v1/result.json": "ef71552942730686ffeac8d7e46acbab8297391781cf3e42d9eb25064502c9ca",
+        "aircraft_b/m-7a65aecbc0fe/v1/status.json": "9be94920cd6357e259ba6706f4d44e887b729172ea1539e807129eeb9da2175c",
+        "aircraft_b/m-7a65aecbc0fe/v1/supervision.json": "729dff5549516b85d2a41af6ba52f22363ceb356a4f735de42b81985419f4657",
+        "control/dock_a.json": "ffa31def251acf9fc845c592cd436427ca26cdbc31bacb9a8ca09e7cc5abf732",
+        "control/dock_b.json": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "dock/dock_a.jsonl": "c4c9367cb66c5c0e2c0623e2d7612979ba46ee993e39f064a94402365b477d4c",
+        "dock/dock_b.jsonl": "733b1295c961d6b603f6fe1d30050412c05573e5da69f786b15e06900420f511",
+        "inbox_b/history/m-7a65aecbc0fe-v1.json": "78bb38473524c88cd73dc87df42e724c81a9e3005ca577a3560e24c674e61513",
+        "inbox_b/package.json": "78bb38473524c88cd73dc87df42e724c81a9e3005ca577a3560e24c674e61513",
+        "input/layout.json": "cede6dadd48037222d8b8d7fc8bd63273e13f903ed23d47be22bf11bc0bd1f42",
+        "input/planner-fixtures.json": "326914c13c86d2ac7f4a2a9541eeb362dd110f4bfce12ee03b4bff24c7f8c00a",
+        "input/scenario.json": "aebe6f4910b616ae4654b4da4ef662f2b1b708a5daec0f239601d1ae08c0fa72",
+        "platform-b.yaml": "0995e1cfb573bc121f83c56816d358eeeff89e34a2375549e621761655a208ac",
+        "resources.jsonl": "418f26a3fbaa7c569095af9f4d7decf270e928e752dda94b6da40079738022f4",
+        "robot_b/authority.json": "35d31c8c31320a49d4a5092b96655e058b9f831da8a71eab68e58d7d7d4bba62",
+        "sensor_a/latest.json": "9cf39fcb558d02c9dadbdc791a036720d7bc9deea174698a85682b5b36633ed1",
+        "sensor_b/latest.json": "54611220ac7d33d52b0c28fa4c50185181472bd2ad10989663c489fd49c0d9cc",
+        "service-export/resources.json": "2b7d6929cd2aa7bc8991c891a14b777cba998a3869863fc74b12a52e75aa8dca",
+        "service-export/scheduling.json": "d747d1b2093a44785da5cb43f3053c968130ca2581a8698c4645d9ae7cfd2f10",
+        "service-export/task-views.json": "b14b824ce0765226ab5c29ad8f8c4a57ea759b72b61c7b03228d8a0b1dd91f4e",
+        "service-export/views.json": "17aea5ab9d4b107c6b71ef23cb49731fc40e7c02270d6b45de5bd0e0b00189e3",
+        "service/ledger.sqlite3": "45c5545eee4f3d6dd726928aa3413c4adcfa20fe7724cab55536d54edc3fcdf7",
+        "service/media/0c356367c6e6e5b715c4dcbd4b1d22f7564269197688c1f0002348cd06f3afe5.rgb": "0c356367c6e6e5b715c4dcbd4b1d22f7564269197688c1f0002348cd06f3afe5",
+        "service/ready.json": "acdefad55fca0a020a7387c224e0800177f76f3cbd541a2b65e2ca39e4598719",
+        "sitl.log": "402f1a93bc08a280d01349d8d123d7ef941c90ab57fd8f2d28d0cf6341efaa5d",
+        "sitl/px4-0.log": "7c8204ad0aea2a7fd851b36cad35cec729d33805d99ecec053620c68c1be9bcc",
+        "sitl/px4-1.log": "c24c834ce06600b56959f58dc2d08a415cd85490c6b6663bdbc32cb5801e995f",
+        "truth_a/truth.jsonl": "52f8660c91e727630a8aab78fb125b044fcd70ade27fe0ba177a582e24ac29b6",
+        "truth_b/truth.jsonl": "9f7f42f67c9de5f9a304f2dda5ece41055ec5bc45f2caae9ff67a281b43a5e6e",
+        "ulog_a/2026-09-26/14_39_05.ulg": "e46d070cf7f35e5a08096986955752b8545f30565a05f2c52757086742c3b8ec",
+        "ulog_b/2026-09-26/14_39_11.ulg": "c1f0f6b3666132072af9a6a7d257417b486c35481882e12aeca7e3b7a3f6eab1",
+        "uplink_a/uplink-status.json": "ecd57f70d8a588333d858a722684e3840ea2ae3380834e3ac0be758d4c3edd62",
+        "uplink_b/uplink-state.json": "01b824bc815b4a89c3da51afdc2c9392085cf4f63147eaa018aefdc6ef063f2c",
+        "uplink_b/uplink-status.json": "62e48b421be8e8c65784a45319b81e98ed1d8dae9715c3e261694eab22c0ac78",
+        "world/api.jsonl": "76a0fb4244aafced4fa7ffd8a4b656056333a930ea60a41f2263c64a7cb4e65b",
+        "world/injections.jsonl": "81293dd99029bfac3514af2f8b7e55fc0ca454776a1cf53bdaefd7f810cac2a8",
+        "world/uav_01-flights.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "world/uav_02-flights.json": "aa52488f6489adc6810282bc21e573245221606f6df0c2278c15b0aa1df67f4b"
+      },
+      "claims": 1,
+      "classification": "as_expected",
+      "counts": {
+        "conflicting_reservation": 0,
+        "decision_mismatch": 0,
+        "double_ownership": 0,
+        "duplicate_dispatch": 0,
+        "duplicate_execution": 0,
+        "false_success": 0,
+        "lost_task": 0,
+        "project_escape": 0,
+        "stale_epoch_effect": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "expected": {
+        "completed_by": {
+          "asset_mid": "uav_02"
+        },
+        "first_robot": {
+          "asset_mid": "uav_01"
+        },
+        "flights": 1,
+        "max_epoch": 2,
+        "tasks": {
+          "completed": 1
+        },
+        "withdrawn": 1
+      },
+      "false_success_reports": 0,
+      "flights": 1,
+      "judged_at": "2026-09-26T14:41:07.552945+00:00",
+      "layer": "S1",
+      "metrics": {
+        "airborne_max": null,
+        "assignment_latency_s": {
+          "max": 0.372,
+          "n": 1,
+          "p50": 0.372,
+          "p95": 0.372,
+          "p99": 0.372
+        },
+        "completion_s": {
+          "max": 85.034,
+          "n": 1,
+          "p50": 85.034,
+          "p95": 85.034,
+          "p99": 85.034
+        },
+        "decision_ms": {
+          "max": 1.78,
+          "n": 2,
+          "p50": 1.073,
+          "p95": 1.78,
+          "p99": 1.78
+        },
+        "decisions": 2,
+        "flights": 1,
+        "ladder": null,
+        "live_tasks_max": null,
+        "reject_reasons": {},
+        "tasks": {
+          "completed": 1
+        },
+        "wait_reasons": {}
+      },
+      "missions": {
+        "m-7a65aecbc0fe": {
+          "classification": "completed",
+          "false_success_reports": 0,
+          "flown_versions": [
+            1
+          ],
+          "mission_status": "completed",
+          "problems": [],
+          "registry_hash": "3cd191ebaa85d89697b0ba6c2a3c8f83bc1147f636b844834e53a24fccf3e59a",
+          "report_targets": {
+            "asset_mid": "completed"
+          },
+          "robot_id": "uav_02",
+          "truly_inspected": [
+            "asset_mid"
+          ],
+          "truth_samples": 1817
+        },
+        "m-891513ca8e21": {
+          "classification": "not_completed",
+          "false_success_reports": 0,
+          "flown_versions": [],
+          "mission_status": "cancelled",
+          "problems": [],
+          "registry_hash": "cf31b12b84bee6cd3e5924dbacedc171484e7dc7d2d092ee4430d11b7e6b58e9",
+          "report_targets": null,
+          "robot_id": "uav_01",
+          "truly_inspected": [],
+          "truth_samples": 1816
+        }
+      },
+      "mode": "online",
+      "passed": true,
+      "problems": [],
+      "scenario": "p3_s1_relay",
+      "schema_version": "0.1.0",
+      "seed": 7,
+      "source_sha": "446dc28a83dc2fe687e86a6707d8ac67c547dd61",
+      "judge_exit_code": 0,
+      "replay_agrees": true,
+      "flown": {
+        "uav_01": [],
+        "uav_02": [
+          "m-7a65aecbc0fe-v1"
+        ]
+      },
+      "capacity": {
+        "verdict": {
+          "sufficient": true,
+          "real_time_factor_min": 0.995,
+          "supervision_p99_max_s": 0.10168328788131475,
+          "limits": {
+            "real_time_factor_min": 0.5,
+            "supervision_p99_max_s": 0.12
+          }
+        },
+        "resources": {
+          "sitl-p3": {
+            "samples": 64,
+            "cpu_cores_mean": 0.875,
+            "cpu_cores_p95": 1.04,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 656.2
+          },
+          "_host": {
+            "samples": 64,
+            "load1_max": 4.31,
+            "load1_median": 3.23,
+            "cpu_some_avg10_max": 43.01,
+            "cpu_some_avg10_median": 20.15
+          },
+          "mission-service": {
+            "samples": 49,
+            "cpu_cores_mean": 0.043,
+            "cpu_cores_p95": 0.15,
+            "throttled_fraction": 0.0224,
+            "memory_max_mib": 101.2
+          },
+          "collector-b": {
+            "samples": 49,
+            "cpu_cores_mean": 0.032,
+            "cpu_cores_p95": 0.034,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 12.1
+          },
+          "collector-a": {
+            "samples": 49,
+            "cpu_cores_mean": 0.033,
+            "cpu_cores_p95": 0.035,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 12.1
+          },
+          "uplink-b": {
+            "samples": 44,
+            "cpu_cores_mean": 0.006,
+            "cpu_cores_p95": 0.009,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 34.7
+          },
+          "uplink-a": {
+            "samples": 44,
+            "cpu_cores_mean": 0.004,
+            "cpu_cores_p95": 0.004,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 34.9
+          },
+          "dock-sim-b": {
+            "samples": 44,
+            "cpu_cores_mean": 0.002,
+            "cpu_cores_p95": 0.002,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 33.8
+          },
+          "dock-sim-a": {
+            "samples": 44,
+            "cpu_cores_mean": 0.002,
+            "cpu_cores_p95": 0.002,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 33.6
+          },
+          "executive-b": {
+            "samples": 21,
+            "cpu_cores_mean": 0.017,
+            "cpu_cores_p95": 0.03,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 35.9
+          },
+          "guardian-b": {
+            "samples": 23,
+            "cpu_cores_mean": 0.086,
+            "cpu_cores_p95": 0.093,
+            "throttled_fraction": 0.0,
+            "memory_max_mib": 50.3
+          }
+        },
+        "idle": null,
+        "real_time_factor": {
+          "uav_01": {
+            "windows": 5,
+            "min": 0.995,
+            "median": 1.0
+          },
+          "uav_02": {
+            "windows": 5,
+            "min": 0.995,
+            "median": 1.0
+          }
+        },
+        "supervision": {
+          "uav_02:m-7a65aecbc0fe:v1": {
+            "max_s": 0.10540449665859342,
+            "p99_s": 0.10168328788131475,
+            "samples": 527
+          }
+        },
+        "quiet_gate": {
+          "waited_s": 10.0,
+          "load1": 2.53,
+          "cpu_some_avg10": 9.49,
+          "quiet": true
+        },
+        "flight_span": [
+          "2026-09-26T14:40:02.619680+00:00",
+          "2026-09-26T14:40:56.608754+00:00"
+        ]
+      }
+    }
+  ],
+  "other_containers_before": {
+    "count": 30,
+    "sha256": "6e479b61759aeebd53f00261441e982f4338b8062285ab70bea4a6c22922370f"
+  },
+  "other_containers_after": {
+    "count": 30,
+    "sha256": "6e479b61759aeebd53f00261441e982f4338b8062285ab70bea4a6c22922370f"
+  },
+  "images": {
+    "sim": "sha256:a9928547f178a583023c532d36e13b161146a2bd2a3c6729a093dca46dc0b3fd",
+    "aircraft": "sha256:744c1765e34647196404c76dc41371723a85d288b2b4e672c9759c3ca8323085",
+    "ground": "sha256:b0f7cc4bafd45515f92f362ec2a915c256e40fbdf6ac531367980257b60db2a0"
+  }
+}
