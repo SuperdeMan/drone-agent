@@ -31,8 +31,11 @@ services:
     image: ${DRONE_M2_GROUND_IMAGE:?}
     pull_policy: never
     init: true
+    # The workspace owner, so the owner-only model key is readable without any capability. / 工作区属主，无需任何
+    # capability 即可读取仅属主可读的模型 key。
+    user: ${DRONE_P4_UID:?}:${DRONE_P4_GID:?}
     read_only: true
-    tmpfs: ["/tmp:size=64m"]
+    tmpfs: ["/tmp:size=64m,mode=1777"]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     cpus: 1.0

@@ -410,9 +410,15 @@ def data_command(connection: Connection, args: argparse.Namespace) -> dict:
     destination = state["workspace"] + "/incoming/" + run_id
     if not re.fullmatch(r"/home/[a-z_][a-z0-9_-]*/drone-agent/incoming/" + re.escape(run_id), destination):
         raise ValueError("unexpected remote upload destination")
+    target = destination + "/" + archive.name
     if not args.resume:
         ssh(connection, {"action": "prepare", "run_id": run_id})
-    command = f"put -a {sftp_literal(str(archive))} {sftp_literal(destination + '/' + archive.name)}\n"
+    # Resume appends to a partial copy; a fresh upload, or a resume before any byte arrived, starts from the top.
+    # 续传在部分副本之后追加；全新上传或尚未收到任何字节时的续传从头开始。
+    partial = bool(args.resume) and subprocess.run(
+        ["sftp", "-b", "-", *connection.arguments(), connection.target], input=f"ls {sftp_literal(target)}\n".encode(),
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300).returncode == 0
+    command = f"{'put -a' if partial else 'put'} {sftp_literal(str(archive))} {sftp_literal(target)}\n"
     print("Uploading the S2 dataset via resumable SFTP...", file=sys.stderr, flush=True)
     result = subprocess.run(["sftp", "-b", "-", *connection.arguments(), connection.target], input=command.encode(),
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=7200)

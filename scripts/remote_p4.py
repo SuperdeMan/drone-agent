@@ -137,7 +137,7 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed) -> dict:
                DRONE_M2_GROUND_IMAGE=images["ground"], DRONE_M2_PACKAGE="none.json", DRONE_M2_VERSION="0",
                DRONE_M2_EPOCH="0", DRONE_M2_FLIGHT=str(case / "idle-flight"), DRONE_M2_TRANSPORT="grpc",
                DRONE_M2_FLEET_TARGET="mission-service:8450", DRONE_P4_DATA=str(case / "input"),
-               DRONE_P4_OUTPUT=str(case / "judge"))
+               DRONE_P4_OUTPUT=str(case / "judge"), DRONE_P4_UID=str(os.getuid()), DRONE_P4_GID=str(os.getgid()))
     prefix = ["docker", "compose", "-p", "drone-agent-cloud", "-f", str(source / "sim/compose.m2.yaml"),
               "-f", str(source / "sim/compose.p1.yaml"), "-f", str(source / "sim/compose.p4.yaml")]
     transcript, injections, snapshots, flights, appearance = [], [], [], [], []
@@ -489,7 +489,6 @@ def run_s2(root: Path, deployment: Path, request: dict) -> dict:
     base.mkdir(parents=True, exist_ok=False)
     output = base / "s2"
     output.mkdir()
-    os.chmod(output, 0o777)
     images = M2["build_images"](source, base, tag, checks)
     checked = verify_data(data, source / MANIFEST)
     if checked["status"] != "passed":
@@ -519,7 +518,7 @@ def run_s2(root: Path, deployment: Path, request: dict) -> dict:
             DRONE_M2_SIM_IMAGE=images["sim"], DRONE_M2_AIRCRAFT_IMAGE=images["aircraft"],
             DRONE_M2_GROUND_IMAGE=images["ground"], DRONE_M2_PACKAGE="none.json", DRONE_M2_VERSION="0",
             DRONE_M2_EPOCH="0", DRONE_M2_FLIGHT=str(base / "idle"), DRONE_P4_DATA=str(data),
-            DRONE_P4_OUTPUT=str(output))
+            DRONE_P4_OUTPUT=str(output), DRONE_P4_UID=str(os.getuid()), DRONE_P4_GID=str(os.getgid()))
         prefix = ["docker", "compose", "-p", "drone-agent-cloud", "-f", str(source / "sim/compose.m2.yaml"),
                   "-f", str(source / "sim/compose.p1.yaml"), "-f", str(source / "sim/compose.p4.yaml"),
                   "--profile", "s2"]
@@ -530,7 +529,8 @@ def run_s2(root: Path, deployment: Path, request: dict) -> dict:
     else:
         with log.open("wb") as stream:
             result = subprocess.run(["docker", "run", "--rm", "--network", "none", "--read-only", "--tmpfs",
-                                     "/tmp:size=64m", "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true",
+                                     "/tmp:size=64m,mode=1777", "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true",
+                                     "--user", f"{os.getuid()}:{os.getgid()}",
                                      "--memory", "1g", "--cpus", "1.0", "-e", f"DRONE_SOURCE_SHA={sha}",
                                      "-e", "PYTHONDONTWRITEBYTECODE=1", "-v", f"{data}:/data:ro",
                                      "-v", f"{output}:/output", images["ground"], *arguments],
@@ -549,8 +549,9 @@ def run_s2(root: Path, deployment: Path, request: dict) -> dict:
     summary["run"] = json.loads(header.read_text())
 
     def evaluate(*command: str) -> dict:
-        found = subprocess.run(["docker", "run", "--rm", "--network", "none", "--read-only", "-v",
-                                f"{output}:/output:ro", images["ground"], "python3", "-m", "drone_agent.eval.p4_s2",
+        found = subprocess.run(["docker", "run", "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL",
+                                "--user", f"{os.getuid()}:{os.getgid()}", "-v", f"{output}:/output:ro",
+                                images["ground"], "python3", "-m", "drone_agent.eval.p4_s2",
                                 "--root", "/workspace", *command], capture_output=True, timeout=600)
         if found.returncode:
             raise RuntimeError(f"S2 {command[0]} failed: {found.stderr.decode(errors='replace')[-800:]}")
@@ -588,7 +589,6 @@ def run_retrieval(root: Path, deployment: Path, request: dict) -> dict:
     base.mkdir(parents=True, exist_ok=False)
     output = base / "s2"
     output.mkdir()
-    os.chmod(output, 0o777)
     checked = verify_data(data, source / MANIFEST)
     if checked["status"] != "passed":
         raise RuntimeError("the installed S2 dataset no longer matches the manifest")
@@ -603,7 +603,8 @@ def run_retrieval(root: Path, deployment: Path, request: dict) -> dict:
     started = time.monotonic()
     with (base / "s2-run.log").open("wb") as log:
         result = subprocess.run(["docker", "run", "--rm", "--network", "none", "--read-only", "--tmpfs",
-                                 "/tmp:size=64m", "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true",
+                                 "/tmp:size=64m,mode=1777", "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true",
+                                 "--user", f"{os.getuid()}:{os.getgid()}",
                                  "--memory", "2g", "--cpus", "2.0", "-e", "PYTHONDONTWRITEBYTECODE=1",
                                  "-v", f"{data}:/data:ro", "-v", f"{output}:/output", image, "python3", "-m",
                                  "drone_agent.eval.p4_retrieval", "--manifest", f"/workspace/{MANIFEST}",
