@@ -1,0 +1,573 @@
+{
+  "schema_version": "0.1.0",
+  "milestone": "P3",
+  "source_sha": "73fcf23f1f5149324747358b7c214e9fc34c6205",
+  "records_sha": "527c715895fec2bb013e57e50b44105321dfed65",
+  "status": "passed",
+  "criteria": {
+    "scope": {
+      "status": "passed",
+      "m1_regression": "not_required_onboard_runtime_wire_and_policies_unchanged",
+      "base_sha": "3bdbd503325d292efa298f28b6292dd2bf341cc0",
+      "changed": 176,
+      "outside_p3_scope": [],
+      "onboard_changed": []
+    },
+    "checks": {
+      "status": "passed",
+      "deployment_id": "20260927T035341Z-096c26a8",
+      "tests": {
+        "tests": 1226,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "wire_checks": [
+        true,
+        true
+      ]
+    },
+    "adversarial": {
+      "status": "passed",
+      "missions": {
+        "status": "passed",
+        "deterministic": {
+          "cases": 42,
+          "passed": 42,
+          "authorized_packages": 0,
+          "per_category": {
+            "wrong_coordinates": 7,
+            "capability": 6,
+            "parameters": 8,
+            "order": 7,
+            "prompt_injection": 7,
+            "scope_expansion": 7
+          }
+        },
+        "nl_scripted": {
+          "cases": 32,
+          "passed": 32,
+          "authorized_packages": 0,
+          "per_category": {
+            "wrong_coordinates": 5,
+            "capability": 5,
+            "parameters": 5,
+            "order": 5,
+            "prompt_injection": 6,
+            "scope_expansion": 6
+          }
+        },
+        "nl_replay": {
+          "cases": 0,
+          "passed": 0,
+          "authorized_packages": 0,
+          "per_category": {
+            "wrong_coordinates": 0,
+            "capability": 0,
+            "parameters": 0,
+            "order": 0,
+            "prompt_injection": 0,
+            "scope_expansion": 0
+          },
+          "unrecorded": 32
+        }
+      },
+      "workflow_drafts": {
+        "cases": 12,
+        "passed": 12,
+        "escapes": 0,
+        "activatable_drafts": 0,
+        "activation_path": "none: drafts are returned and audited only"
+      }
+    },
+    "s0_matrix": {
+      "status": "passed",
+      "cases": 45,
+      "expected": 45,
+      "passed": 45,
+      "counts": {
+        "double_ownership": 0,
+        "duplicate_execution": 0,
+        "lost_task": 0,
+        "conflicting_reservation": 0,
+        "false_success": 0,
+        "stale_epoch_effect": 0,
+        "decision_mismatch": 0,
+        "project_escape": 0,
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "ffecedfaefdfd1d31bb0eca1d6d81c3f652d196d9c87dfde09e42a383108ebf5"
+    },
+    "s0_ladder": {
+      "status": "passed",
+      "cases": 3,
+      "expected": 3,
+      "passed": 3,
+      "counts": {
+        "double_ownership": 0,
+        "duplicate_execution": 0,
+        "lost_task": 0,
+        "conflicting_reservation": 0,
+        "false_success": 0,
+        "stale_epoch_effect": 0,
+        "decision_mismatch": 0,
+        "project_escape": 0,
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "07024a3057f70e53c0a7163ef1373e1c9c5f35bdc90d0d893cf4d5d2eb7f5dad",
+      "rungs": {
+        "p3_l10": {
+          "tasks": {
+            "completed": 15,
+            "rejected": 5
+          },
+          "decisions": 96,
+          "decision_ms": {
+            "n": 96,
+            "p50": 2.859,
+            "p95": 5.897,
+            "p99": 7.034,
+            "max": 7.034
+          },
+          "assignment_latency_s": {
+            "n": 15,
+            "p50": 0.483,
+            "p95": 13.605,
+            "p99": 13.605,
+            "max": 13.605
+          },
+          "completion_s": {
+            "n": 15,
+            "p50": 10.318,
+            "p95": 22.27,
+            "p99": 22.27,
+            "max": 22.27
+          },
+          "wait_reasons": {
+            "airspace.cell_held": 87,
+            "asset.unregistered": 628,
+            "dock.aircraft_absent": 103,
+            "dock.maintenance": 71,
+            "energy.charging": 33,
+            "energy.cooling": 56,
+            "energy.idle": 119,
+            "energy.insufficient": 152,
+            "energy.unknown": 103,
+            "presence.conflict": 17,
+            "reservation.conflict": 222,
+            "robot.airborne": 114
+          },
+          "reject_reasons": {
+            "asset.unregistered": 5
+          },
+          "live_tasks_max": 6,
+          "airborne_max": 5,
+          "flights": 15,
+          "ladder": {
+            "nodes": 10,
+            "budget": 6,
+            "total": 20,
+            "duration_s": 36.81,
+            "layout_sha256": "50653cb0a74400e81d6083478edd403a9c58c35e1f3520300f4015d93a95033f",
+            "host": {
+              "platform": "Windows-11-10.0.26200-SP0",
+              "machine": "AMD64",
+              "processor": "Intel64 Family 6 Model 170 Stepping 4, GenuineIntel",
+              "cpus": 18,
+              "python": "3.12.10"
+            },
+            "tick_ms": null
+          }
+        },
+        "p3_l30": {
+          "tasks": {
+            "completed": 50,
+            "rejected": 10
+          },
+          "decisions": 146,
+          "decision_ms": {
+            "n": 146,
+            "p50": 12.21,
+            "p95": 25.312,
+            "p99": 34.313,
+            "max": 77.718
+          },
+          "assignment_latency_s": {
+            "n": 50,
+            "p50": 0.881,
+            "p95": 23.424,
+            "p99": 31.047,
+            "max": 31.047
+          },
+          "completion_s": {
+            "n": 50,
+            "p50": 19.636,
+            "p95": 41.731,
+            "p99": 54.798,
+            "max": 54.798
+          },
+          "wait_reasons": {
+            "airspace.cell_held": 78,
+            "asset.unregistered": 2472,
+            "dock.aircraft_absent": 211,
+            "dock.maintenance": 72,
+            "energy.charging": 44,
+            "energy.cooling": 53,
+            "energy.idle": 224,
+            "energy.insufficient": 268,
+            "energy.unknown": 211,
+            "presence.conflict": 32,
+            "reservation.conflict": 450,
+            "robot.airborne": 238
+          },
+          "reject_reasons": {
+            "asset.unregistered": 10
+          },
+          "live_tasks_max": 8,
+          "airborne_max": 8,
+          "flights": 50,
+          "ladder": {
+            "nodes": 30,
+            "budget": 8,
+            "total": 60,
+            "duration_s": 144.97,
+            "layout_sha256": "33f08fae4687d671f896954106b786b42f16c813fc04ee6fed101b7dac419f3c",
+            "host": {
+              "platform": "Windows-11-10.0.26200-SP0",
+              "machine": "AMD64",
+              "processor": "Intel64 Family 6 Model 170 Stepping 4, GenuineIntel",
+              "cpus": 18,
+              "python": "3.12.10"
+            },
+            "tick_ms": null
+          }
+        },
+        "p3_l100": {
+          "tasks": {
+            "completed": 168,
+            "rejected": 27,
+            "outcome_unknown": 5
+          },
+          "decisions": 375,
+          "decision_ms": {
+            "n": 375,
+            "p50": 25.105,
+            "p95": 53.064,
+            "p99": 62.91,
+            "max": 77.951
+          },
+          "assignment_latency_s": {
+            "n": 174,
+            "p50": 1.398,
+            "p95": 17.752,
+            "p99": 35.59,
+            "max": 65.271
+          },
+          "completion_s": {
+            "n": 168,
+            "p50": 25.244,
+            "p95": 60.592,
+            "p99": 96.497,
+            "max": 121.331
+          },
+          "wait_reasons": {
+            "airspace.cell_held": 170,
+            "asset.unregistered": 17174,
+            "dock.aircraft_absent": 579,
+            "dock.maintenance": 730,
+            "energy.charging": 89,
+            "energy.cooling": 86,
+            "energy.idle": 350,
+            "energy.insufficient": 439,
+            "energy.unknown": 579,
+            "presence.conflict": 57,
+            "reservation.conflict": 1046,
+            "robot.airborne": 604
+          },
+          "reject_reasons": {
+            "asset.unregistered": 27,
+            "task.robot_excluded": 1
+          },
+          "live_tasks_max": 8,
+          "airborne_max": 8,
+          "flights": 209,
+          "ladder": {
+            "nodes": 100,
+            "budget": 8,
+            "total": 200,
+            "duration_s": 695.81,
+            "layout_sha256": "3f8da718aa628cfb0bee790e14a7e835bbf638bb4cc50aa6265545c6721277a2",
+            "host": {
+              "platform": "Windows-11-10.0.26200-SP0",
+              "machine": "AMD64",
+              "processor": "Intel64 Family 6 Model 170 Stepping 4, GenuineIntel",
+              "cpus": 18,
+              "python": "3.12.10"
+            },
+            "tick_ms": null
+          }
+        }
+      },
+      "physical_aircraft": 0
+    },
+    "p1_regression": {
+      "status": "passed",
+      "cases": 42,
+      "expected": 42,
+      "passed": 42,
+      "counts": {
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0,
+        "project_escape": 0,
+        "false_success": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "65dd52be3774b0e08631abe8af7cd80b14a122b3b47dc34e24c93de2ed373538"
+    },
+    "p2_regression": {
+      "status": "passed",
+      "cases": 45,
+      "expected": 45,
+      "passed": 45,
+      "counts": {
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "post_cancel_successor": 0,
+        "false_success": 0,
+        "false_order": 0,
+        "project_escape": 0,
+        "lost_run": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "0eb6420b3be7bfcaf089392f2c0b8040dd89d4cc0430074f9aa4af062ae78063"
+    },
+    "capacity": {
+      "status": "passed",
+      "problems": [],
+      "budget": {
+        "sitl_cpus": "2.5",
+        "sitl_mem": "3g"
+      },
+      "cases": 5,
+      "real_time_factor_min": 0.989,
+      "supervision_p99_max_s": 0.1019698129966855
+    },
+    "s1": {
+      "status": "passed",
+      "cases": 5,
+      "expected": 5,
+      "missing": [],
+      "problems": [],
+      "counts": {
+        "double_ownership": 0,
+        "duplicate_execution": 0,
+        "lost_task": 0,
+        "conflicting_reservation": 0,
+        "false_success": 0,
+        "stale_epoch_effect": 0,
+        "decision_mismatch": 0,
+        "project_escape": 0,
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0
+      },
+      "flights": 9,
+      "aircraft": [
+        "uav_01",
+        "uav_02"
+      ]
+    },
+    "p2_s1_regression": {
+      "status": "passed",
+      "cases": 5,
+      "expected": 5,
+      "missing": [],
+      "problems": [],
+      "counts": {
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "post_cancel_successor": 0,
+        "false_success": 0,
+        "false_order": 0,
+        "project_escape": 0,
+        "lost_run": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "flights": 8
+    },
+    "m2_regression": {
+      "status": "passed",
+      "cases": 18,
+      "expected": 18,
+      "missing": [],
+      "problems": [],
+      "planner": [
+        "scripted"
+      ],
+      "false_success_reports": 0
+    },
+    "desk": {
+      "status": "passed",
+      "problems": [],
+      "catalogs": [
+        "p1_s1_v1",
+        "p2_s1_v1",
+        "p3_desk_v1"
+      ],
+      "migrations": [
+        "current",
+        "current",
+        "current"
+      ],
+      "robots": [
+        "uav_01"
+      ]
+    },
+    "desk_session": {
+      "status": "passed",
+      "problems": [],
+      "missions": 1,
+      "flights": 1,
+      "task_state": "completed",
+      "epoch": 1
+    },
+    "historical": {
+      "status": "passed",
+      "problems": [],
+      "m3": {
+        "sha256": "b7c4a6fe95a9e5ee63b043b9a84843f54f1693a5e5ab00f9e43f26917e0d12eb",
+        "status": "not_passed",
+        "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+        "counts_as_candidate_validation": false
+      },
+      "p0": {
+        "sha256": "e361b3734e9ed5ba1774187382af3dbff96e1189a0e677eaa708ed86face4320",
+        "status": "passed",
+        "source_sha": "de597d0eb7430260285e0965dc07f7f904ab5e70",
+        "counts_as_candidate_validation": false
+      },
+      "p1": {
+        "sha256": "b9a091a415a606590ba34bcfe68c54b9a2a37c52c56d98adb1cb8e257bda67fb",
+        "status": "passed",
+        "source_sha": "b49701b6386ee7ea88dc05221879786f717d1947",
+        "counts_as_candidate_validation": false
+      },
+      "p2": {
+        "sha256": "959b4730dc4e61a7ea3288f35c6912243afd2628f813dec4a071f638720cf4d6",
+        "status": "passed",
+        "source_sha": "3bdbd503325d292efa298f28b6292dd2bf341cc0",
+        "counts_as_candidate_validation": false
+      }
+    }
+  },
+  "capabilities": [
+    {
+      "capability": "multi_site_scheduling_v1",
+      "milestone": "P3",
+      "implemented": true,
+      "software_validation": "passed",
+      "source_sha": "73fcf23f1f5149324747358b7c214e9fc34c6205",
+      "layers": {
+        "S0": {
+          "scenarios": 15,
+          "seeds": 3,
+          "logical_uavs": 5,
+          "physical_flight": false
+        },
+        "ladder": {
+          "logical_nodes": [
+            10,
+            30,
+            100
+          ],
+          "physical_aircraft": 0
+        },
+        "S1": {
+          "px4_sitl_aircraft": 2,
+          "same_world": true,
+          "logical_docks": 2
+        }
+      },
+      "airspace": "simulated grid cells and lost-contact envelopes; no real airspace filing",
+      "coordination": "deconfliction by exclusive cells; close-proximity cooperation is not claimed",
+      "hardware_validation": "not_applicable"
+    },
+    {
+      "milestone": "P2",
+      "software_validation": "historical_passed",
+      "source_sha": "3bdbd503325d292efa298f28b6292dd2bf341cc0",
+      "counts_as_candidate_validation": false
+    },
+    {
+      "milestone": "M3",
+      "status": "not_passed",
+      "reason": "JIL missing; not a P3 dependency"
+    },
+    {
+      "milestone": "H1",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "H2",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "H3",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "P4",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "P5",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "X1",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "X2",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "X3",
+      "status": "planned",
+      "software_validation": "missing"
+    }
+  ],
+  "inputs": {
+    "deployment.json": "b158b323f2601ca1348c622e77facc239f68d5f363afae9e40528aecc8cc65c2",
+    "resident-desk-activation.json": "d42b3db1f453e87a3ec7e7be931cf927efcec80e54ec7dd09359afc76f984fd0",
+    "desk/http-probe.json": "85296d6418cbb840b800d697278719017b0c368ab403bc2c994001f0ab13ed07",
+    "desk/tasks-probe.json": "9332e3a544f9c6f1b77409e2ffcae37d27c6890384ac33ee872cb82c335c6e8f",
+    "desk/session.json": "8961ecfe209a09b4bf2059ecda137c0259b3c0133f7d298e5285d080d2ec52cb",
+    "s1/p3-20260927T035906Z-0ea9b22c.json": "fa72adece9c5dcb9272b3dee7636441fbbeca910b15f0529bdf768c173787a05",
+    "p2-s1/p2-all.json": "e0d2aa0866c420d59b57e8729bd7ee77b804d32624f540a95fd6b3bda7fd25e6",
+    "e2e/m2-nominal-outage.json": "111eba5116203f72a09f582f3569c611a388b2d15c9a9c3e1a5e24a51dbd0d49",
+    "e2e/m2-replan-refused-scope.json": "dbd080a44897eb51d06c94b906fc425ab6664b92d51d887a74bf090758a68521",
+    "desk/flights/m-85ebf60b9316-v1.json": "5357fdd761414baeafc4045d9b9a5443cf964befc170987f14426a92a0161c65"
+  }
+}
