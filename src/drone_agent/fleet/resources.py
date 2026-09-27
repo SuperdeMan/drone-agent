@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from enum import StrEnum
+from functools import cached_property
 from pathlib import Path
 from typing import Literal
 
@@ -273,8 +274,14 @@ class OperationsCatalog(ResourceModel):
             raise ValueError("the default binding must name a robot of its project")
         return self
 
-    @property
+    @cached_property
     def sha256(self) -> str:
+        """The catalog digest, computed once per instance: the catalog is frozen, and `evaluate` reads the digest for
+        every candidate, so recomputing it made each scheduling decision grow with the square of the fleet size.
+
+        目录摘要每个实例只算一次：目录是冻结的，而 `evaluate` 为每个候选读取摘要，重复计算使每次调度判定随机队规模的
+        平方增长。
+        """
         return digest(self.model_dump(mode="json"))
 
     def project_of(self, robot_id: str) -> str | None:

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
+from functools import cached_property
 from pathlib import Path
 from typing import Literal
 
@@ -141,8 +142,12 @@ class SchedulingCatalog(SchedulingModel):
             raise ValueError("site identifiers must be lower-case slugs")
         return self
 
-    @property
+    @cached_property
     def sha256(self) -> str:
+        """The catalog digest, computed once per instance (frozen; every snapshot records it).
+
+        目录摘要每个实例只算一次（目录冻结；每个快照都记录它）。
+        """
         return digest(self.model_dump(mode="json"))
 
     def origin(self, site_id: str) -> tuple[float, float]:
