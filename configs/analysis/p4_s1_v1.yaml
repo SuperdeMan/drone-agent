@@ -1,0 +1,22 @@
+# P4 business catalog of the PX4 SITL site and the resident desk (D063), for the operations catalog p1_s1_v1 and the
+# workflow catalog p4_s1_v1. Only deterministic and model analyses may settle a round; the labelled scripted fixture
+# of the desk templates can open a finding for a reviewer to decide but can never close an order. Model analyses are
+# budgeted per project and UTC day; cost figures are estimates at the stated price, not invoices.
+#
+# PX4 SITL 站点与常驻任务台的 P4 业务目录（D063），对应运营目录 p1_s1_v1 与工作流目录 p4_s1_v1。只有确定性与模型分析可以
+# 结算轮次；任务台模板中带标注的脚本夹具可以开启发现供 reviewer 决定，但永远不能关单。模型分析按项目与 UTC 日设预算；费用
+# 按所列价格估算，不是账单。
+format: drone.business-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p4_s1_v1
+operations_catalog: p1_s1_v1
+workflow_catalog: p4_s1_v1
+default_quality: configs/analysis/quality_sim_v1.yaml
+families:
+  appearance: [damage, missing_part, contamination, deformation, discoloration, foreign_object, other_change]
+generic_defect: other_change
+closure: {version: reinspection-v1, allowed_sources: [deterministic, live_model, recorded_model]}
+reuse: {version: reuse-v1, max_age_s: 604800, analyzers: [signature_s1_v1, vlm_change_v1]}
+runner: {concurrency: 2, lease_s: 60, max_attempts: 2, daily_tokens: 2000000}
+max_references: 3
+prices: {currency: USD, input_per_mtok: 0.30, output_per_mtok: 1.20, source: "MiniMax-M3 standard tier as listed by third-party price trackers, September 2026 (e.g. devtk.ai/en/models/minimax-m3)"}

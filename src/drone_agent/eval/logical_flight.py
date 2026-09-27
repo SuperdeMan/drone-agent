@@ -69,7 +69,7 @@ class FlightFake:
     external_takeover = False
 
     def __init__(self, reg, artifacts: Path, frames=None, *, battery: Battery | None = None,
-                 drain_per_sample: float = 0.0):
+                 drain_per_sample: float = 0.0, camera=None):
         self.registry, self.artifacts = reg, artifacts
         self.robot_id = reg.capability.robot_id
         self.capabilities = reg.capability.model_copy(deep=True)
@@ -82,6 +82,9 @@ class FlightFake:
         self.writes, self.frames = [], list(frames or [])
         self.sim_clock = None
         self.battery, self.drain_per_sample = battery, drain_per_sample
+        # Harness-only view of the simulated world (P4): raw frame bytes for an asset, or None for the default frame.
+        # 只在编排中使用的模拟世界视图（P4）：某资产的原始帧字节，或 None 表示默认帧。
+        self.camera = camera
 
     def snapshot(self):
         if self.path:
@@ -128,10 +131,12 @@ class FlightFake:
             self.mode, self.airborne, self.path = "LAND", False, [[0, 0, 0]] * 3
 
     def capture(self, node):
-        signature = self.frames.pop(0) if self.frames else \
-            self.registry.data["assets"][node.params["asset_id"]]["visual_signature"]
+        raw = self.camera(node.params["asset_id"]) if self.camera is not None and not self.frames else None
+        if raw is None:
+            signature = self.frames.pop(0) if self.frames else \
+                self.registry.data["assets"][node.params["asset_id"]]["visual_signature"]
+            raw = image(signature)
         observation = self.snapshot()
-        raw = image(signature)
         digest = hashlib.sha256(raw).hexdigest()
         relative = f"images/{digest}-{uuid.uuid4().hex[:6]}.rgb"
         (self.artifacts / "images").mkdir(exist_ok=True)

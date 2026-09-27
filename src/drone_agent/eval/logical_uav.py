@@ -102,6 +102,9 @@ class LogicalUav:
         # 只在编排中使用的拍摄覆盖：每次飞行先按这些特征拍摄（None 为无特征平帧）。
         self.frames: list[str | None] = []
         self.climb_blocked = False  # harness-only motor fault for every next flight / 只在编排中使用的电机故障
+        # Harness-only camera of the simulated world (P4 appearance states); None keeps the default frames.
+        # 只在编排中使用的模拟世界相机（P4 外观状态）；None 保持默认帧。
+        self.camera = None
         self.uplink = Uplink(FaultyClient(LocalFleetClient(hub, self.robot_id), self.link), robot_id=self.robot_id,
                              trust=trust, capability=registry.capability, inbox=directory / "inbox",
                              mailbox=directory / "mailbox", aircraft=directory / "aircraft",
@@ -165,7 +168,8 @@ class LogicalUav:
                  "epoch": epoch, "started_at": utcnow().isoformat(), "ended_at": None, "result": None, "error": None,
                  "battery_at_start": round(self.battery.fraction, 4)}
         self.flights.append(entry)
-        adapter = FlightFake(self.registry, artifacts, self.frames, battery=self.battery, drain_per_sample=self.drain)
+        adapter = FlightFake(self.registry, artifacts, self.frames, battery=self.battery, drain_per_sample=self.drain,
+                             camera=self.camera)
         adapter.climb_blocked = self.climb_blocked
         adapter.sim_clock = lambda: time.monotonic() - self.started
         snapshot, holder = adapter.snapshot, {"guardian": None, "last": 0.0}

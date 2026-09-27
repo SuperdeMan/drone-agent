@@ -66,6 +66,8 @@ class Activity(StrEnum):
     AWAIT_REPAIR = "await_repair"
     REQUEST_REINSPECTION = "request_reinspection"
     BUILD_REPORT = "build_report"
+    # P4 (D063): settle one reinspection round of a business work order. / P4（D063）：结算业务工单的一轮复检。
+    SETTLE_REINSPECTION = "settle_reinspection"
 
 
 class RunState(StrEnum):
@@ -127,6 +129,7 @@ class WaitReason(StrEnum):
     REPAIR = "repair"
     DELIVERY = "delivery"
     ASSIGNMENT = "assignment"  # a P3 task waits for the scheduler (D059) / P3 任务等待调度器（D059）
+    ANALYSIS = "analysis"  # a P4 analysis job is queued or running (D063) / P4 分析作业排队或运行中（D063）
 
 
 def activity_key(run_id: str, node_id: str, occurrence: int = 1) -> str:
@@ -203,8 +206,33 @@ class AwaitMissionParams(WorkflowModel):
 
 
 class AnalyzeParams(WorkflowModel):
+    """P2: an inline labelled analysis. P4 (`findings: true`): a durable analysis job whose suspected result joins a
+    finding; `purpose: reinspection` analyzes a work order's reinspection capture instead (D063). The P4 fields are
+    left out of the canonical form while unused, so every P2 and P3 template keeps its digest.
+
+    P2：内联的带标注分析。P4（`findings: true`）：持久分析作业，疑似结果归入发现；`purpose: reinspection` 则分析工单的
+    复检采集（D063）。P4 字段未使用时不进入规范形式，因此每个 P2 与 P3 模板的摘要保持不变。
+    """
+
     inspection_from: str = Field(pattern=NODE_ID, description="an await_mission node / await_mission 节点")
     analyzer: str = Field(pattern=ID, description="an analyzer of the catalog / 目录中的分析器")
+    findings: bool = False
+    purpose: Literal["inspection", "reinspection"] = "inspection"
+
+    @model_validator(mode="after")
+    def _purpose(self):
+        if self.purpose == "reinspection" and not self.findings:
+            raise ValueError("a reinspection analysis is a P4 job (findings: true)")
+        return self
+
+    @model_serializer(mode="wrap")
+    def _canonical(self, handler):
+        data = handler(self)
+        if not self.findings:
+            data.pop("findings", None)
+        if self.purpose == "inspection":
+            data.pop("purpose", None)
+        return data
 
 
 class ReviewParams(WorkflowModel):
@@ -212,8 +240,27 @@ class ReviewParams(WorkflowModel):
     timeout_s: int | None = Field(default=None, ge=60, le=MAX_WAIT_S)
 
 
+class ReinspectionTarget(WorkflowModel):
+    """The pinned template a P4 order's repair feedback starts (D063 §8). / P4 工单维修反馈所启动的固定模板（D063 §8）。"""
+
+    workflow_id: str = Field(pattern=ID)
+    version: int = Field(ge=1)
+    asset_input: str = Field(pattern=ID)
+
+
 class WorkOrderParams(WorkflowModel):
+    """P2: a simulated order of one review node. P4: the one order of a confirmed finding, with its reinspection
+    template (D063). / P2：一个复核节点的模拟工单。P4：已确认发现的唯一工单，带其复检模板（D063）。"""
+
     review_from: str = Field(pattern=NODE_ID, description="a human_review node / human_review 节点")
+    reinspection: ReinspectionTarget | None = None
+
+    @model_serializer(mode="wrap")
+    def _canonical(self, handler):
+        data = handler(self)
+        if self.reinspection is None:
+            data.pop("reinspection", None)
+        return data
 
 
 class AwaitRepairParams(WorkflowModel):
@@ -233,6 +280,16 @@ class ReinspectionParams(WorkflowModel):
 
 class ReportParams(WorkflowModel):
     """The report covers the whole run. / 报告覆盖整个运行。"""
+
+
+class SettleParams(WorkflowModel):
+    """Settle the run's reinspection round from its analysis and the round's review (`reinspection-v1`, D063 §9).
+
+    按分析与本轮复核结算运行的复检轮次（`reinspection-v1`，D063 §9）。
+    """
+
+    analysis_from: str = Field(pattern=NODE_ID, description="the reinspection analyze_evidence node / 复检分析节点")
+    review_from: str = Field(pattern=NODE_ID, description="the round's human_review node / 本轮复核节点")
 
 
 class Predicate(WorkflowModel):
@@ -321,8 +378,17 @@ class ReportNode(_Node):
     params: ReportParams = ReportParams()
 
 
+class SettleNode(_Node):
+    """It must settle whatever its inputs did, so it reads them through `after` with `requires: done` instead of as
+    references (a failed reference would skip it). / 无论输入结果如何都必须结算，因此经 `after` 与 `requires: done` 读取
+    输入，而不作为引用（引用失败会使其被跳过）。"""
+
+    activity: Literal["settle_reinspection"]
+    params: SettleParams
+
+
 Node = Annotated[SubmitMissionNode | AwaitMissionNode | AnalyzeNode | ReviewNode | WorkOrderNode | AwaitRepairNode
-                 | ReinspectionNode | ReportNode, Field(discriminator="activity")]
+                 | ReinspectionNode | ReportNode | SettleNode, Field(discriminator="activity")]
 
 
 # ── triggers and schedules / 触发器与排班 ──
@@ -566,9 +632,55 @@ class WorkflowSpec(WorkflowModel):
                 repair = nodes[node.params.repair_from]
                 if repair.params.order_from != node.params.order_from:
                     raise ValueError(f"{node.node_id} must reinspect the order its repair node awaits")
+        self._business_rules(nodes)
         for trigger in self.triggers:
             self._check_trigger(trigger)
         return self
+
+    def _business_rules(self, nodes: dict) -> None:
+        """P4 (D063): a P4 order pins its reinspection template; only a reinspection template settles a round, from
+        its reinspection analysis and the round's review, and that review only asks about an unsuspected capture.
+
+        P4（D063）：P4 工单固定其复检模板；只有复检模板结算轮次，依据其复检分析与本轮复核，且该复核只针对未疑似的采集。
+        """
+        def analysis_of(review_id: str):
+            return nodes[nodes[review_id].params.analysis_from]
+
+        rechecks = [n for n in self.nodes if isinstance(n, AnalyzeNode) and n.params.purpose == "reinspection"]
+        settles = [n for n in self.nodes if isinstance(n, SettleNode)]
+        for node in self.nodes:
+            if isinstance(node, WorkOrderNode):
+                analysis = analysis_of(node.params.review_from)
+                if analysis.params.findings and (node.params.reinspection is None
+                                                 or analysis.params.purpose != "inspection"):
+                    raise ValueError(f"{node.node_id}: a P4 order comes from an inspection analysis and pins its "
+                                     f"reinspection template")
+                if not analysis.params.findings and node.params.reinspection is not None:
+                    raise ValueError(f"{node.node_id}: only a P4 order (findings) has a reinspection template")
+            if isinstance(node, (AwaitRepairNode, ReinspectionNode)) and \
+                    nodes[node.params.order_from].params.reinspection is not None:
+                raise ValueError(f"{node.node_id}: a P4 order starts its reinspection from repair feedback")
+            if isinstance(node, ReviewNode) and analysis_of(node.node_id).params.purpose == "reinspection":
+                condition = Predicate(node=node.params.analysis_from, output="suspected", equals=False)
+                if condition not in node.when:
+                    raise ValueError(f"{node.node_id}: a reinspection review only asks about an unsuspected capture")
+        if not rechecks and not settles:
+            return
+        if len(rechecks) != 1 or len(settles) != 1:
+            raise ValueError("a reinspection template has exactly one reinspection analysis and one settle node")
+        if not any(t.kind == "internal" for t in self.triggers):
+            raise ValueError("a reinspection template is started only by its order (internal trigger)")
+        settle, recheck = settles[0], rechecks[0]
+        review = nodes.get(settle.params.review_from)
+        if settle.params.analysis_from != recheck.node_id or not isinstance(review, ReviewNode) \
+                or review.params.analysis_from != recheck.node_id:
+            raise ValueError(f"{settle.node_id} settles from the reinspection analysis and its review")
+        if settle.requires != "done" or not {recheck.node_id, review.node_id} <= set(settle.after):
+            raise ValueError(f"{settle.node_id} runs after its analysis and review whatever they did (requires: done)")
+        for node in self.nodes:
+            if isinstance(node, WorkOrderNode) and nodes[node.params.review_from].params.analysis_from \
+                    == recheck.node_id:
+                raise ValueError(f"{node.node_id}: a reinspection never opens an order")
 
     def _check_trigger(self, trigger) -> None:
         required = {name for name, spec in self.inputs.items() if spec.required}
@@ -667,7 +779,18 @@ class SignatureAnalyzer(WorkflowModel):
         return self
 
 
-Analyzer = Annotated[ScriptedAnalyzer | SignatureAnalyzer, Field(discriminator="kind")]
+class ModelAnalyzer(WorkflowModel):
+    """A vision-model analyzer of P4 jobs: a pinned model profile and quality profile (D063 §1).
+
+    P4 作业的视觉模型分析器：固定的模型画像与质量画像（D063 §1）。
+    """
+
+    kind: Literal["model"]
+    profile: str = Field(min_length=1, description="configs/analysis model profile / 模型画像")
+    quality: str = Field(min_length=1, description="configs/analysis quality profile / 质量画像")
+
+
+Analyzer = Annotated[ScriptedAnalyzer | SignatureAnalyzer | ModelAnalyzer, Field(discriminator="kind")]
 
 
 class FixtureAnswer(WorkflowModel):
@@ -711,6 +834,20 @@ class WorkflowCatalog(WorkflowModel):
             for node in workflow.nodes:
                 if isinstance(node, AnalyzeNode) and node.params.analyzer not in self.analyzers:
                     raise ValueError(f"{workflow.workflow_id}.{node.node_id} names an unknown analyzer")
+                if isinstance(node, AnalyzeNode) and not node.params.findings and \
+                        isinstance(self.analyzers[node.params.analyzer], ModelAnalyzer):
+                    raise ValueError(f"{workflow.workflow_id}.{node.node_id}: a model analyzer runs only as a P4 job")
+                if isinstance(node, WorkOrderNode) and node.params.reinspection is not None:
+                    target_ref = node.params.reinspection
+                    target = self.spec(workflow.project_id, target_ref.workflow_id, target_ref.version)
+                    if target is None or not any(isinstance(n, SettleNode) for n in target.nodes):
+                        raise ValueError(f"{workflow.workflow_id}.{node.node_id} names no reinspection template "
+                                         f"with a settle node")
+                    spec = target.inputs.get(target_ref.asset_input)
+                    others = {name for name, s in target.inputs.items() if s.required} - {target_ref.asset_input}
+                    if spec is None or others:
+                        raise ValueError(f"{target.workflow_id} must take exactly the asset input "
+                                         f"{target_ref.asset_input}")
                 if isinstance(node, ReinspectionNode):
                     target = self.spec(workflow.project_id, node.params.workflow_id, node.params.version)
                     if target is None:
@@ -768,6 +905,12 @@ class WorkflowCatalog(WorkflowModel):
                 raw = (root / path).read_bytes()
                 AnalysisFixture.model_validate(yaml.safe_load(raw))
                 fixtures[name] = hashlib.sha256(raw).hexdigest()
+            if isinstance(analyzer, ModelAnalyzer):
+                # P4 (D063): both profiles are pinned by digest like fixtures. / P4（D063）：两个画像与夹具一样按摘要固定。
+                from drone_agent.fleet.business_models import load_profile, load_quality
+
+                _, fixtures[f"{name}#profile"] = load_profile(root, analyzer.profile)
+                _, fixtures[f"{name}#quality"] = load_quality(root, analyzer.quality)
         for workflow in self.workflows:
             if workflow.project_id not in operations.projects:
                 raise ValueError(f"{workflow.workflow_id} names an unknown project {workflow.project_id}")
@@ -879,13 +1022,20 @@ class InspectionOutput(WorkflowModel):
 
 
 class AnalysisOutput(WorkflowModel):
-    """analyze_evidence: a candidate finding with its source, never a flight verdict. / 带来源的候选发现，从不是飞行判定。"""
+    """analyze_evidence: a candidate finding with its source, never a flight verdict. A P4 job also names the finding
+    its suspected result joined (D063). / 带来源的候选发现，从不是飞行判定。P4 作业还给出疑似结果所归入的发现（D063）。"""
 
     analysis_id: str
     verdict: Literal["suspected", "normal"]
     suspected: bool
     confidence: float = Field(ge=0, le=1)
-    source: Literal["scripted", "deterministic"]
+    source: Literal["scripted", "deterministic", "live_model", "recorded_model"]
+    finding_id: str | None = None
+    new_finding: bool | None = None
+
+    @model_serializer(mode="wrap")
+    def _canonical(self, handler):
+        return {key: value for key, value in handler(self).items() if value is not None}
 
 
 class ReviewOutput(WorkflowModel):
@@ -911,11 +1061,20 @@ class ReinspectionOutput(WorkflowModel):
     run_id: str
 
 
+class SettleOutput(WorkflowModel):
+    """settle_reinspection: the round's conclusion; only `passed` closed the order. / 本轮结论；只有 `passed` 关单。"""
+
+    order_id: str
+    round: int = Field(ge=1)
+    status: Literal["passed", "failed", "unknown"]
+    reasons: tuple[str, ...] = ()
+
+
 OUTPUTS: dict[Activity, type[WorkflowModel]] = {
     Activity.SUBMIT_MISSION: MissionOutput, Activity.AWAIT_MISSION: InspectionOutput,
     Activity.ANALYZE_EVIDENCE: AnalysisOutput, Activity.HUMAN_REVIEW: ReviewOutput,
     Activity.CREATE_WORK_ORDER: OrderOutput, Activity.AWAIT_REPAIR: RepairOutput,
-    Activity.REQUEST_REINSPECTION: ReinspectionOutput,
+    Activity.REQUEST_REINSPECTION: ReinspectionOutput, Activity.SETTLE_REINSPECTION: SettleOutput,
 }
 
 

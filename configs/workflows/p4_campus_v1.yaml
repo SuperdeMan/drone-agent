@@ -1,0 +1,126 @@
+# P4 workflow catalog for the S0 world (D063), written for the operations catalog p1_campus_v1. `appearance_watch` on
+# site_b analyses with the deterministic colour-signature plugin, `vlm_watch` on site_c with the model analyzer answered by
+# the labelled scripted vision double, `dual_watch` on site_a runs both on the same capture, and `harbor_watch` belongs
+# to the isolation fixture project. A suspected result joins a finding; a reviewer's confirmation opens one order per
+# finding whose repair feedback starts the pinned reinspection template, and only its settle node may close the order.
+# Every mission still needs a human approval; the logical aircraft are not physical flights.
+#
+# S0 世界的 P4 工作流目录（D063），对应运营目录 p1_campus_v1。site_b 的 `appearance_watch` 用确定性颜色特征插件分析，site_c 的
+# `vlm_watch` 用由带标注脚本视觉替身作答的模型分析器，site_a 的 `dual_watch` 对同一采集运行两者，`harbor_watch` 属于隔离夹具
+# 项目。疑似结果归入发现；reviewer 确认后每个发现开一张工单，其维修反馈启动固定的复检模板，只有其结算节点可以关单。每个任务
+# 仍需人工审批；逻辑飞行器不是物理飞行。
+format: drone.workflow-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p4_campus_v1
+operations_catalog: p1_campus_v1
+analyzers:
+  # 40x40 of a 160x120 frame is 0.0833; a damage band over 8 rows of the marker leaves 0.0667.
+  # 160x120 画面中 40x40 的标记占 0.0833；覆盖标记 8 行的损伤带之后为 0.0667。
+  signature_s0_v1:
+    kind: deterministic
+    method: color_signature
+    bands: {asset_red: [0.075, 0.095], asset_blue: [0.075, 0.095]}
+  vlm_s0_v1: {kind: model, profile: configs/analysis/vlm_scripted_s0_v1.yaml, quality: configs/analysis/quality_sim_v1.yaml}
+  thermal_s0_v1: {kind: model, profile: configs/analysis/vlm_thermal_s0_v1.yaml, quality: configs/analysis/quality_sim_v1.yaml}
+workflows:
+  - workflow_id: appearance_watch
+    version: 1
+    project_id: campus_ops
+    title: "Site B appearance watch: inspect, analyse, review the finding, one order per finding / B 站外观巡检：巡检、分析、复核发现、每个发现一张工单"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_b, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s0_v1, findings: true}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - node_id: work_order
+        activity: create_work_order
+        when: [{node: review, output: decision, equals: confirmed}]
+        params: {review_from: review, reinspection: {workflow_id: appearance_reinspection, version: 1, asset_input: asset}}
+      - {node_id: report, activity: build_report, requires: done, after: [work_order]}
+    budget: {max_missions: 1}
+  - workflow_id: appearance_reinspection
+    version: 1
+    project_id: campus_ops
+    title: "Site B reinspection after repair feedback: a new flight, the analysis, the round's review and the settlement / B 站维修反馈后的复检：新飞行、分析、本轮复核与结算"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: reinspection, kind: internal}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_b, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s0_v1, findings: true, purpose: reinspection}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: false}], params: {analysis_from: analyze}}
+      - {node_id: settle, activity: settle_reinspection, requires: done, after: [analyze, review], params: {analysis_from: analyze, review_from: review}}
+      - {node_id: report, activity: build_report, requires: done, after: [settle]}
+    budget: {max_missions: 1}
+  - workflow_id: vlm_watch
+    version: 1
+    project_id: campus_ops
+    title: "Site C appearance watch with the model analyzer (scripted double in S0) / C 站外观巡检（模型分析器，S0 中为脚本替身）"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_c, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: vlm_s0_v1, findings: true}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - node_id: work_order
+        activity: create_work_order
+        when: [{node: review, output: decision, equals: confirmed}]
+        params: {review_from: review, reinspection: {workflow_id: vlm_reinspection, version: 1, asset_input: asset}}
+      - {node_id: report, activity: build_report, requires: done, after: [work_order]}
+    budget: {max_missions: 1}
+  - workflow_id: vlm_reinspection
+    version: 1
+    project_id: campus_ops
+    title: "Site C reinspection with the model analyzer / C 站复检（模型分析器）"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: reinspection, kind: internal}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_c, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: vlm_s0_v1, findings: true, purpose: reinspection}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: false}], params: {analysis_from: analyze}}
+      - {node_id: settle, activity: settle_reinspection, requires: done, after: [analyze, review], params: {analysis_from: analyze, review_from: review}}
+      - {node_id: report, activity: build_report, requires: done, after: [settle]}
+    budget: {max_missions: 1}
+  - workflow_id: dual_watch
+    version: 1
+    project_id: campus_ops
+    title: "Site A: two analyzers on one capture, one finding / A 站：同一采集上的两个分析器，一个发现"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_a, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze_signature, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s0_v1, findings: true}}
+      - {node_id: analyze_model, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: vlm_s0_v1, findings: true}}
+      - {node_id: review, activity: human_review, when: [{node: analyze_signature, output: suspected, equals: true}], params: {analysis_from: analyze_signature}}
+      - {node_id: report, activity: build_report, requires: done, after: [review, analyze_model]}
+    budget: {max_missions: 1}
+  - workflow_id: harbor_watch
+    version: 1
+    project_id: harbor_ops
+    title: "Isolation fixture: harbor appearance watch / 隔离夹具：港区外观巡检"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_h, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s0_v1, findings: true}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - {node_id: report, activity: build_report, requires: done, after: [review]}
+    budget: {max_missions: 1}

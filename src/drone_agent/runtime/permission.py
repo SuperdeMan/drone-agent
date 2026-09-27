@@ -53,6 +53,11 @@ WORKFLOW_RUN = "workflow.run"
 WORKFLOW_REVIEW = "workflow.review"
 WORKFLOW_DRAFT = "workflow.draft"
 WORKFLOW_EVENT = "workflow.event"
+# P4 business loop (D063): read findings, orders and analyses; run reuse analyses; register reference appearances.
+# P4 业务闭环（D063）：读取发现、工单与分析；提交复用分析；登记参考外观。
+ANALYSIS_READ = "analysis.read"
+ANALYSIS_RUN = "analysis.run"
+ANALYSIS_REFERENCE = "analysis.reference"
 
 ALL_SCOPES: frozenset[str] = frozenset(
     {
@@ -74,6 +79,9 @@ ALL_SCOPES: frozenset[str] = frozenset(
         WORKFLOW_REVIEW,
         WORKFLOW_DRAFT,
         WORKFLOW_EVENT,
+        ANALYSIS_READ,
+        ANALYSIS_RUN,
+        ANALYSIS_REFERENCE,
     }
 )
 
@@ -98,7 +106,7 @@ class TrustLevel(StrEnum):
 TRUST_LEVEL_CAPS: dict[TrustLevel, frozenset[str]] = {
     TrustLevel.FIRST_PARTY: frozenset({MISSION_SUBMIT, MISSION_READ, MISSION_APPROVE, MISSION_OPERATE, CAMERA_READ,
                                        RESOURCE_READ, RESOURCE_MAINTAIN, WORKFLOW_READ, WORKFLOW_RUN, WORKFLOW_REVIEW,
-                                       WORKFLOW_DRAFT}),
+                                       WORKFLOW_DRAFT, ANALYSIS_READ, ANALYSIS_RUN, ANALYSIS_REFERENCE}),
     TrustLevel.THIRD_PARTY: frozenset({MISSION_SUBMIT, MISSION_READ}),
     TrustLevel.TOOL: frozenset({MISSION_READ}),
     TrustLevel.ANONYMOUS: frozenset({MISSION_READ, CAMERA_READ}),
@@ -119,14 +127,14 @@ class Role(StrEnum):
     ADMIN = "admin"
 
 
-_READ = frozenset({MISSION_READ, RESOURCE_READ, CAMERA_READ, WORKFLOW_READ})
+_READ = frozenset({MISSION_READ, RESOURCE_READ, CAMERA_READ, WORKFLOW_READ, ANALYSIS_READ})
 # Scopes one role grants inside its project. / 单个角色在其项目内授予的 scope。
 ROLE_SCOPES: dict[Role, frozenset[str]] = {
     Role.VIEWER: _READ,
-    Role.OPERATOR: _READ | {MISSION_SUBMIT, MISSION_OPERATE, WORKFLOW_RUN, WORKFLOW_DRAFT},
+    Role.OPERATOR: _READ | {MISSION_SUBMIT, MISSION_OPERATE, WORKFLOW_RUN, WORKFLOW_DRAFT, ANALYSIS_RUN},
     Role.APPROVER: _READ | {MISSION_APPROVE},
     Role.REVIEWER: _READ | {WORKFLOW_REVIEW},
-    Role.ADMIN: _READ | {RESOURCE_MAINTAIN},
+    Role.ADMIN: _READ | {RESOURCE_MAINTAIN, ANALYSIS_REFERENCE},
 }
 
 

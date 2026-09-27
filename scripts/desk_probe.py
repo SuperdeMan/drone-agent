@@ -12,7 +12,12 @@ Run it on a tailnet device against the origin that `dev_stack.py desk-cloud --st
   reviewed and given repair feedback as the page does, until every run is final and each flight was judged;
 - `tasks` (P3): the project's queue with each robot's assignment and preview verdict, the assets the page offers,
   the airspace holds, the refusal of injection, control and assignment frames, and optionally one task submitted as
-  the page does, its assigned mission approved, until the task is final and its flight was judged.
+  the page does, its assigned mission approved, until the task is final and its flight was judged;
+- `business` (P4): the business panel (findings, orders, report, references, reuse policy), the refusal of
+  injection, control and verdict frames and of a decision on an unknown finding, and optionally one watch run as the
+  page drives it: a reference registered from the newest verified capture, missions approved one by one, the finding
+  reviewed, repair feedback given and the round decided when its capture is unsuspected, until the order's round
+  settles and every flight was judged.
 Receipts never contain the tailnet host name or the operator's login, and the probe decides nothing: it records
 what the desk, the service and the judge reported.
 
@@ -24,7 +29,9 @@ what the desk, the service and the judge reported.
 控制帧的拒绝；`workflow`（P2）记录项目的模板与排班、配置的规划器给出的一份未生效草案、对注入、控制与激活帧的拒绝，
 并可按页面方式启动一次运行、逐任务审批、复核并给出维修反馈，直到每个运行终结且每次飞行都有裁判结果；`tasks`（P3）记录
 项目的队列（各机器人的分配与预览判定）、页面提供的资产、空域持有、对注入、控制与分配帧的拒绝，并可按页面方式提交一个任务单、
-审批其被分配的任务，直到任务单终结且其飞行有裁判结果。回执从不包含
+审批其被分配的任务，直到任务单终结且其飞行有裁判结果；`business`（P4）记录业务面板（发现、工单、报告、参考外观与复用策略）、
+对注入、控制与判定帧以及对未知发现作决定的拒绝，并可按页面方式驱动一次巡检运行：以最新的已证实采集登记参考外观、逐任务审批、
+复核发现、给出维修反馈，并在采集未疑似时对本轮作出决定，直到工单本轮结算且每次飞行都有裁判结果。回执从不包含
 tailnet 主机名或操作者登录名；探针不做任何判定，只记录任务台、服务与裁判报告的内容。
 """
 
@@ -662,6 +669,220 @@ def tasks(origin: str, args) -> tuple[dict, str | None]:
     return receipt, login
 
 
+BUSINESS_FORBIDDEN = (*FORBIDDEN_FRAMES, {"type": "finding_close", "finding_id": "fd-probe"},
+                      {"type": "order_close", "order_id": "wo-probe"},
+                      {"type": "analysis_verdict", "job_id": "jb-probe", "verdict": "normal"})
+ORDER_SETTLED = ("reinspection_failed", "reinspection_unknown", "closed")
+
+
+def panel_view(view: dict) -> dict:
+    return {"roles": view.get("roles"), "catalog": view.get("catalog"),
+            "report": {k: len(v) for k, v in ((view.get("report") or {}).get("columns") or {}).items()},
+            "findings": len(view.get("findings", [])), "orders": len(view.get("orders", [])),
+            "jobs": len(view.get("jobs", [])), "references": len(view.get("references", [])),
+            "reuse": view.get("reuse")}
+
+
+def business(origin: str, args) -> tuple[dict, str | None]:
+    """The P4 business panel over hri.v0 exactly as the page drives it; the probe only records.
+
+    按页面方式驱动 P4 业务面板；探针只记录。
+    """
+    started = time.monotonic()
+    client = Client(origin)
+    hello = client.next("hello", 30)
+    login = (hello.get("identity") or "").removeprefix("tailnet:") or None
+    receipt = {"hello": {"identity_scheme": (hello.get("identity") or "none").split(":")[0],
+                         "can_write": hello["can_write"], "planner": hello.get("planner")},
+               "project": args.project,
+               "projects": [{k: p.get(k) for k in ("project_id", "legacy", "roles", "robots", "scheduling", "business")}
+                            for p in hello.get("projects", [])],
+               "panel": None, "refused": [], "unknown_subject": None, "reference": None, "timeline": [], "runs": {},
+               "missions": {}, "findings": {}, "orders": {}, "sent": [], "errors": []}
+
+    def panel() -> dict:
+        client.send({"type": "business_watch", "project_id": args.project})
+        reply = client.next(("business", "error"), 30)
+        return reply.get("view") or {"error": reply.get("issue")}
+
+    def mission(mission_id: str) -> dict:
+        client.send({"type": "watch", "mission_id": mission_id})
+        while True:
+            reply = client.next(("mission", "error"), 60)
+            if reply["type"] == "error" or reply["view"]["mission"]["mission_id"] == mission_id:
+                return reply.get("view") or {}
+
+    def subject(kind: str, subject_id: str) -> dict:
+        # The page pushes the watched subject whenever it changes; read until this one arrives.
+        # 页面在被监视对象变化时推送；一直读到所请求的对象。
+        client.send({"type": f"{kind}_watch", "project_id": args.project, f"{kind}_id": subject_id})
+        while True:
+            reply = client.next((kind, "error"), 60)
+            if reply["type"] == "error":
+                return {}
+            if reply["view"][kind][f"{kind}_id"] == subject_id:
+                return reply["view"]
+
+    receipt["panel"] = panel_view(panel())
+    for frame in BUSINESS_FORBIDDEN:
+        client.send(frame)
+        reply = client.next("error", 30)
+        receipt["refused"].append({"frame": frame["type"], "error": reply.get("message")})
+    client.send({"type": "finding_review", "project_id": args.project, "finding_id": "fd-" + "0" * 16,
+                 "decision": "confirmed", "request_id": "probe-" + uuid.uuid4().hex[:16], "note": "desk probe"})
+    reply = client.next("error", 30)
+    receipt["unknown_subject"] = {"code": (reply.get("issue") or {}).get("code"), "message": reply.get("message")}
+    if not args.start:
+        client.close()
+        receipt["duration_s"] = round(time.monotonic() - started, 1)
+        return receipt, login
+    if args.reference:
+        # The newest verified capture of the asset in this project becomes its reference appearance (admin).
+        # 本项目中该资产最新的已证实采集登记为参考外观（admin）。
+        client.send({"type": "list"})
+        items = client.next("missions", 30).get("items", [])
+        for item in sorted(items, key=lambda m: m["updated_at"], reverse=True):
+            if item.get("project_id") != args.project or item["status"] != "completed":
+                continue
+            detail = mission(item["mission_id"])
+            if (detail.get("request") or {}).get("asset_ids") != [args.asset_input]:
+                continue
+            verified = [e for e in detail.get("evidence", [])
+                        if (e.get("verification") or {}).get("final_verdict") == "verified"]
+            if not verified:
+                continue
+            client.send({"type": "reference_register", "project_id": args.project, "mission_id": item["mission_id"],
+                         "evidence_id": verified[-1]["evidence_id"], "note": "desk probe reference appearance"})
+            reply = client.next(("business", "error"), 60)
+            receipt["reference"] = {"mission_id": item["mission_id"], "error": reply.get("issue"),
+                                    "references": len((reply.get("view") or {}).get("references", []))}
+            break
+    client.send({"type": "workflow_start", "project_id": args.project, "workflow_id": args.workflow,
+                 "request_id": "probe-" + uuid.uuid4().hex[:16], "inputs": {"asset": args.asset_input}})
+    first = client.next(("workflow", "error"), 60)
+    if first["type"] == "error":
+        receipt["errors"].append(first)
+        client.close()
+        return receipt, login
+    runs, missions, approved, decided, repaired = {first["view"]["run"]["run_id"]: first["view"]}, {}, set(), set(), set()
+    receipt["root_run"] = first["view"]["run"]["run_id"]
+    findings: dict[str, dict] = {}
+    orders: dict[str, dict] = {}
+    deadline = time.monotonic() + args.timeout
+    while time.monotonic() < deadline:
+        try:
+            for run_id in list(runs):
+                client.send({"type": "workflow_watch", "project_id": args.project, "run_id": run_id})
+                while True:
+                    reply = client.next(("workflow", "error"), 60)
+                    if reply["type"] == "error":
+                        break
+                    runs[reply["view"]["run"]["run_id"]] = reply["view"]
+                    if reply["view"]["run"]["run_id"] == run_id:
+                        break
+            view = panel()
+            for row in view.get("findings", []):
+                findings[row["finding_id"]] = subject("finding", row["finding_id"])
+            for row in view.get("orders", []):
+                orders[row["order_id"]] = subject("order", row["order_id"])
+                for item in orders[row["order_id"]].get("rounds", []):
+                    if item.get("reinspection_run") and item["reinspection_run"] not in runs:
+                        runs[item["reinspection_run"]] = {"run": {"run_id": item["reinspection_run"],
+                                                                  "state": "pending"}, "missions": [], "nodes": []}
+            state = {"t": round(time.monotonic() - started, 1),
+                     "runs": {r: v["run"]["state"] for r, v in runs.items()},
+                     "findings": {f: (v.get("finding") or {}).get("state") for f, v in findings.items()},
+                     "orders": {o: [(v.get("order") or {}).get("state"), (v.get("order") or {}).get("round")]
+                                for o, v in orders.items()}}
+            if not receipt["timeline"] or {k: v for k, v in receipt["timeline"][-1].items() if k != "t"} != \
+                    {k: v for k, v in state.items() if k != "t"}:
+                receipt["timeline"].append(state)
+            for run_id, run in list(runs.items()):
+                for item in run["missions"]:
+                    detail = mission(item["mission_id"])
+                    missions[item["mission_id"]] = detail
+                    latest = (detail.get("versions") or [{}])[-1]
+                    key = (item["mission_id"], latest.get("version"))
+                    if latest.get("status") == "awaiting_approval" and key not in approved:
+                        client.send({"type": "approve", "mission_id": item["mission_id"],
+                                     "version": latest["version"], "package_hash": latest["package_hash"]})
+                        approved.add(key)
+                        receipt["sent"].append({"t": round(time.monotonic() - started, 1), "action": "approve",
+                                                "mission_id": item["mission_id"], "version": latest["version"]})
+            for finding_id, found in findings.items():
+                if (found.get("finding") or {}).get("state") == "candidate" and finding_id not in decided:
+                    client.send({"type": "finding_review", "project_id": args.project, "finding_id": finding_id,
+                                 "decision": args.review, "request_id": "probe-" + uuid.uuid4().hex[:16],
+                                 "note": "desk probe review"})
+                    decided.add(finding_id)
+                    receipt["sent"].append({"t": round(time.monotonic() - started, 1), "action": "finding_review",
+                                            "finding_id": finding_id, "decision": args.review})
+            for order_id, found in orders.items():
+                order = found.get("order") or {}
+                if order.get("state") == "open" and order_id not in repaired:
+                    client.send({"type": "order_repair", "project_id": args.project, "order_id": order_id,
+                                 "request_id": "probe-" + uuid.uuid4().hex[:16], "note": "desk probe repair feedback"})
+                    repaired.add(order_id)
+                    receipt["sent"].append({"t": round(time.monotonic() - started, 1), "action": "order_repair",
+                                            "order_id": order_id})
+                for item in found.get("rounds", []):
+                    # The round's review is only offered for an unsuspected capture; decide it as the page would.
+                    # 本轮复核只对未疑似的采集开放；像页面一样作出决定。
+                    key = (order_id, item["round"])
+                    reinspection = runs.get(item.get("reinspection_run") or "", {})
+                    waiting = any(n["activity"] == "human_review" and n["state"] == "waiting"
+                                  for n in reinspection.get("nodes", []))
+                    if item["state"] == "reinspecting" and not item.get("review") and waiting and key not in decided:
+                        client.send({"type": "order_review", "project_id": args.project, "order_id": order_id,
+                                     "round": item["round"], "decision": args.review,
+                                     "request_id": "probe-" + uuid.uuid4().hex[:16], "note": "desk probe round"})
+                        decided.add(key)
+                        receipt["sent"].append({"t": round(time.monotonic() - started, 1), "action": "order_review",
+                                                "order_id": order_id, "round": item["round"]})
+            flown = [m for m in missions.values() if m and m["mission"]["status"] in TERMINAL]
+            judged = all((m.get("cloud") or {}).get("judge") for m in flown
+                         if m["mission"]["status"] not in NEVER_FLIES)
+            settled = all((v.get("order") or {}).get("state") in ORDER_SETTLED for v in orders.values())
+            if runs and all(v["run"]["state"] in RUN_FINAL for v in runs.values()) and judged \
+                    and len(flown) == len(missions) and (not orders or (settled and repaired)):
+                break
+        except (ConnectionError, OSError, ssl.SSLError, TimeoutError) as error:
+            receipt["errors"].append({"t": round(time.monotonic() - started, 1), "error": type(error).__name__})
+            client.close()
+            time.sleep(3)
+            client = Client(origin)
+            client.next("hello", 30)
+            continue
+        time.sleep(5)
+    client.close()
+    receipt["duration_s"] = round(time.monotonic() - started, 1)
+    receipt["panel_after"] = panel_view(view) if "view" in locals() else None
+    receipt["runs"] = {run_id: {"run": {k: v["run"].get(k) for k in ("run_id", "workflow_id", "version", "state",
+                                                                    "trigger_source", "started_by", "outcome")},
+                                "nodes": [[n["node_id"], n["activity"], n["state"], n["reason"]] for n in v["nodes"]]}
+                       for run_id, v in runs.items()}
+    receipt["findings"] = {finding_id: {
+        "finding": {k: (v.get("finding") or {}).get(k) for k in ("finding_id", "asset_key", "family", "state",
+                                                                  "jobs")},
+        "review": {k: (v.get("review") or {}).get(k) for k in ("decision", "reviewer")} if v.get("review") else None,
+        "jobs": [{k: j.get(k) for k in ("analyzer", "purpose", "state", "verdict", "source", "score", "reasons",
+                                        "defect_type", "description", "model_id", "prompt_version", "usage",
+                                        "latency_ms", "cost", "attempts")} for j in v.get("jobs", [])]}
+        for finding_id, v in findings.items()}
+    receipt["orders"] = {order_id: {
+        "order": {k: (v.get("order") or {}).get(k) for k in ("order_id", "state", "round", "closure")},
+        "rounds": [{k: r.get(k) for k in ("round", "state", "reinspection_run", "run_state", "conclusion")}
+                   | {"review": (r.get("review") or {}).get("decision")} for r in v.get("rounds", [])]}
+        for order_id, v in orders.items()}
+    receipt["missions"] = {mission_id: {
+        "status": m["mission"]["status"], "binding": m.get("binding"),
+        "request": {k: m["request"][k] for k in ("channel", "requested_by", "asset_ids")},
+        "versions": [{k: v.get(k) for k in ("version", "status", "origin", "approval", "provenance")}
+                     for v in m["versions"]],
+        "report": m.get("report"), "cloud": m.get("cloud")} for mission_id, m in missions.items() if m}
+    return receipt, login
+
+
 def fixed_session(origin: str, args) -> dict:
     """Exercise the mounted M1 page protocol and record its independent result. / 验证挂载的 M1 页面协议并记录独立结果。"""
     status, _, body = fetch(origin, "/fixed/")
@@ -735,7 +956,7 @@ def fixed_session(origin: str, args) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("http", "session", "watch", "spoof", "fixed", "resources", "workflow", "tasks"):
+    for name in ("http", "session", "watch", "spoof", "fixed", "resources", "workflow", "tasks", "business"):
         command = commands.add_parser(name)
         command.add_argument("--origin", required=True, help="https://<node>.<tailnet>.ts.net:8448")
         command.add_argument("--output", type=Path)
@@ -766,6 +987,16 @@ def main() -> None:
     queue.add_argument("--asset", default="asset_red")
     queue.add_argument("--volume", default="campus_training")
     queue.add_argument("--timeout", type=float, default=2700)
+    loop = commands.choices["business"]
+    loop.add_argument("--project", default="campus_s1")
+    loop.add_argument("--start", action="store_true",
+                      help="also start one watch run and act as the page does until its order's round settles")
+    loop.add_argument("--reference", action="store_true",
+                      help="first register the newest verified capture of the asset as its reference (admin)")
+    loop.add_argument("--workflow", default="desk_watch")
+    loop.add_argument("--asset-input", default="asset_red")
+    loop.add_argument("--review", choices=("confirmed", "dismissed"), default="confirmed")
+    loop.add_argument("--timeout", type=float, default=3600)
     for command in (run, follow_existing):
         command.add_argument("--approve", action="store_true")
         command.add_argument("--pause-step")
@@ -787,6 +1018,8 @@ def main() -> None:
         result, login = workflow(args.origin, args)
     elif args.command == "tasks":
         result, login = tasks(args.origin, args)
+    elif args.command == "business":
+        result, login = business(args.origin, args)
     elif args.command == "watch":
         result, login = watch(args.origin, args)
     else:

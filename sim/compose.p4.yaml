@@ -1,0 +1,55 @@
+# P4 cases (D063, D065), layered on compose.m2.yaml and compose.p1.yaml with the same networks, images, secrets and
+# logical dock backend. S1: the mission service loads the p4_s1_v1 workflow and business catalogs and the P4 harness
+# member list, so its ledger gains the workflow and business tables inside the case directory; analyses are the
+# deterministic colour-signature plugin, so no model is configured (`--vision none`). The runner places and removes a
+# damage patch model in the Gazebo world through the world's own create / remove services; nothing here can reach the
+# guardian. The judge runs the M2 flight judge per mission plus the P1, P2 and P4 checks. S2 (profile `s2`): one
+# evaluation container reads the frozen VisA data read-only and reaches the model endpoint only through `model-proxy`
+# on the internal `model` network (D036).
+#
+# P4 用例（D063、D065），叠加在 compose.m2.yaml 与 compose.p1.yaml 之上，网络、镜像、密钥与逻辑机场后端相同。S1：任务服务
+# 加载 p4_s1_v1 工作流与业务目录及 P4 编排成员列表，因此其账本在用例目录内加上工作流与业务表；分析使用确定性颜色特征插件，
+# 不配置模型（`--vision none`）。执行器经 Gazebo 世界自身的 create / remove 服务放置与移除损伤贴片模型；这里没有任何东西
+# 能触达 guardian。裁判对每个任务运行 M2 飞行裁判，另加 P1、P2 与 P4 检查。S2（profile `s2`）：一个评测容器只读挂载冻结的
+# VisA 数据，只经内部 `model` 网络上的 `model-proxy` 到达模型端点（D036）。
+services:
+  mission-service:
+    command: [python3, -m, drone_agent.fleet.main, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
+              --planner, "${DRONE_M2_PLANNER:?}", --fixtures, /input/planner-fixtures.json, --state, /state,
+              --tls, /tls, --signing-key, /secrets/approval-signing.key, --api, /run/mission/api.sock,
+              --listen, "0.0.0.0:8450", --transport, "${DRONE_M2_TRANSPORT:-grpc}",
+              --zenoh-listen, "tls/0.0.0.0:7447", --execution-backend, px4_sitl,
+              --catalog, /workspace/configs/sites/p1_s1_v1.yaml,
+              --members, /workspace/configs/sites/p4_members_s1.yaml,
+              --workflows, /workspace/configs/workflows/p4_s1_v1.yaml,
+              --business, /workspace/configs/analysis/p4_s1_v1.yaml, --vision, none]
+  judge:
+    command: [python3, -m, drone_agent.eval.judge_p4, /run, --layer, s1, --root, /workspace,
+              --output, /output/result.json]
+  s2-eval:
+    profiles: [s2]
+    image: ${DRONE_M2_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=64m"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 1.0
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 64
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+      VISION_PROVIDER: minimax-vl
+      MINIMAX_API_KEY_FILE: /model/minimax.key
+      HTTPS_PROXY: http://model-proxy:3128
+      NO_PROXY: localhost,127.0.0.1
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ${DRONE_P4_DATA:?}:/data:ro
+      - ${DRONE_P4_OUTPUT:?}:/output
+      - ${DRONE_M2_MODEL:?}:/model:ro
+    depends_on: [model-proxy]
+    networks: [model]

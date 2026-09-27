@@ -208,7 +208,7 @@ uv run python scripts/dev_stack.py deploy --sha HEAD --apply
 
 ## P 系列（2026-09-26，D049–D061）
 
-P0 的 `verify_p0_release.py` 用法与证据见 [P0 记录](p0-readiness.md)。P1 的资源、虚拟机场与领取闸门（D055）及账本 schema v2（D056）已实现；P2 的持久工作流（D057）与工作流扩展表（D058）已实现；P3 的多站多机调度（D059）、调度扩展表（D060）与两机同世界 SITL（D061）已实现，命令如下；P4–P5 的脚本名仍是计划。
+P0 的 `verify_p0_release.py` 用法与证据见 [P0 记录](p0-readiness.md)。P1 的资源、虚拟机场与领取闸门（D055）及账本 schema v2（D056）已实现；P2 的持久工作流（D057）与工作流扩展表（D058）已实现；P3 的多站多机调度（D059）、调度扩展表（D060）与两机同世界 SITL（D061）已实现；P4 的业务闭环（D063）、业务扩展表（D064）与 S2 评测协议（D065）已实现，命令如下；P5 的脚本名仍是计划。
 
 | 用途 | 命令 | 说明 |
 |---|---|---|
@@ -228,6 +228,11 @@ P0 的 `verify_p0_release.py` 用法与证据见 [P0 记录](p0-readiness.md)。
 | P3 S1 用例 | `uv run python scripts/dev_stack.py p3 --scenario all [--seeds 7] [--keep-going]` | 云端 `compose.p3.yaml`：一个 Gazebo 世界、PX4 实例 0 / 1（`uav_01` / `uav_02`）各自的机载栈、证书与逻辑机场；执行器先停本项目空闲 SITL、选空闲私网段、等安静窗口，批次首例先做 60 s 空闲容量探针；经常驻 API 中继调用服务，两架飞行互不等待；每例记录各容器 CPU / 内存 / 节流与主机负载，按飞行窗口算实时因子并读 guardian 监督周期 p99（D061 限值不满足即不通过）；共 5 例 |
 | 常驻任务台（P3） | `desk-cloud --apply` | 服务另带 `p3_desk_v1` 调度目录；激活前在同一账本副本上依次运行 D056、D058 与 D060 演练，服务启动时带备份加上调度表 |
 | P3 发布门禁 | `uv run python scripts/verify_p3_release.py ...` | 见 [P3 方案](p3-implementation.md) 与验收记录 |
+| P4 S0 矩阵 | `uv run python -m drone_agent.eval.p4_world --output <目录>` | 本机即可运行；P4-F01–F15 × 3 种子：P2 世界加外观世界、业务引擎与脚本视觉替身，只经正式 API 驱动；独立裁判 `eval/judge_p4.py` 在线与回放各判一次，并带 P1 / P2 检查 |
+| P4 S1 用例 | `uv run python scripts/dev_stack.py p4 --scenario all [--keep-going]` | 云端 `compose.m2.yaml` + `compose.p1.yaml` + `compose.p4.yaml`；编排经 Gazebo 世界的 `create` / `remove` 服务放置与移除损伤贴片（换电重启世界后按需恢复），按人的方式审批、复核发现与本轮、报告维修；关单 × 3 种子、未修复一轮、去重，共 5 例；裁判逐任务跑 M2 飞行裁判，再做 P1 / P2 / P4 检查与世界真值核对 |
+| S2 数据安装 | `uv run python scripts/dev_stack.py p4-data --data <本机数据目录> [--apply] [--resume <上传ID>]` | 本机按已提交清单核对后，只把清单中的文件打成确定性归档，经可续传 SFTP 上传；云端拒绝链接与目录穿越，逐文件核对后只读安装到 `~/drone-agent/data/visa_pcb_v1`，从不覆盖已安装的数据 |
+| S2 评测 | `uv run python scripts/dev_stack.py p4-s2 --split calibration\|test --mode live\|replay\|scripted\|retrieval [--threshold τ] [--replay-of <部署>/p4-<运行>]` | `live` 只经白名单代理到达模型端点并逐样本录制；`replay` 与 `scripted` 无网络；校准运行给出阈值表，测试运行给出冻结指标，回放与所回放的实调运行逐样本比较；`retrieval` 在 M3 同版本 CLIP 的无网络评测镜像中给出检索报告（不设门槛） |
+| 常驻任务台（P4） | `desk-cloud --apply` | 服务改带 `p4_s1_v1` 工作流目录并另带 `p4_s1_v1` 业务目录与实调视觉角色；激活前在同一账本副本上依次运行 D056、D058、D060 与 D064 演练，服务启动时带备份加上业务表 |
 
 P1/P2 联调复用现有云端单机 mission_upload 与项目锁，不需要 Jetson。P3 的两机同世界拓扑与容量预算见 D061；S0 的 10/30/100 逻辑节点规模与 S1 物理实例数分别记录。保持 guardian 独立配额、项目隔离与按需 SITL，不自动改动其他项目或系统配置。
 

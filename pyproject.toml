@@ -17,6 +17,12 @@ dependencies = [
     "grpcio>=1.66",
     "jsonschema>=4.23,<5",
     "mcap>=1.2,<2",
+    # P4 (D063): the deterministic quality layer measures exposure and sharpness on arrays, and the analyzers decode
+    # authorized imagery and encode model inputs. Both run on the ground only; onboard processes never import them.
+    # P4（D063）：确定性质量层在数组上测量曝光与清晰度，分析器解码授权素材并编码模型输入。二者只在地面运行，机载进程
+    # 从不导入。
+    "numpy>=1.26,<3",
+    "pillow>=11,<13",
     "pydantic>=2.7",
     "pyyaml>=6.0",
     # P2 (D057): workflow schedules resolve IANA time zones from this pinned database on every platform, so the same

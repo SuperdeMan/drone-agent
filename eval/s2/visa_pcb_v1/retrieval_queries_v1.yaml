@@ -1,0 +1,83 @@
+# Text queries of the P4 S2 retrieval report (D065 §7), in the prompt-set format of the M3 event detector so the same
+# build step encodes them with the same pinned CLIP text encoder, vocabulary and merges (configs/perception/
+# event_prompts_v1.yaml carries the same pins). Each class is one query; `relevant` and `replan_trigger` are required
+# by that format and mean nothing here. `match` names the ground truth from the frozen manifest: a defect type from
+# the official VisA annotations or a registered board. The report has no threshold; changing a query is a new version.
+#
+# P4 S2 检索报告的文本查询（D065 §7），采用 M3 事件检测提示集的格式，使同一构建步骤用同一固定的 CLIP 文本编码器、词表与
+# 合并规则编码（configs/perception/event_prompts_v1.yaml 带有相同固定值）。每个类别是一个查询；`relevant` 与
+# `replan_trigger` 为该格式必需，在此无意义。`match` 给出取自冻结清单的真值：VisA 官方标注中的缺陷类型或一块登记电路板。
+# 报告不设门槛；改动查询即为新版本。
+schema_version: 0.1.0
+prompt_set: visa_pcb_retrieval_v1
+model:
+  repo: Xenova/clip-vit-base-patch32
+  revision: d15189d7028b43f1d3e65039190477f6af591c2a
+  vision: {file: onnx/vision_model_quantized.onnx, sha256: 583fd1110a514667812fee7d684952aaf82a99b959760c8d7dca7e0ab9839299}
+  text: {file: onnx/text_model.onnx, sha256: 3f6571f5bad13a97c469c1622e1cfc4d9aef78b79fdbfcff804ca357bfada8cc}
+  vocab: {file: vocab.json, sha256: 5047b556ce86ccaf6aa22b3ffccfc52d391ea4accdab9c2f2407da5b742d4363}
+  merges: {file: merges.txt, sha256: 9fd691f7c8039210e0fced15865466c65820d09b63988b0174bfe25de299051a}
+runtime:
+  fact_validity_s: 0.0
+  trigger_probability: 1.0
+classes:
+  defect_any:
+    relevant: true
+    replan_trigger: false
+    match: {truth: anomalous}
+    prompts: ["a close-up photo of a defective circuit board", "a close-up photo of a damaged electronic module"]
+  defect_bent:
+    relevant: true
+    replan_trigger: false
+    match: {defect: bent}
+    prompts: ["a close-up photo of a circuit board with a bent pin"]
+  defect_melt:
+    relevant: true
+    replan_trigger: false
+    match: {defect: melt}
+    prompts: ["a close-up photo of a circuit board with melted plastic"]
+  defect_missing:
+    relevant: true
+    replan_trigger: false
+    match: {defect: missing}
+    prompts: ["a close-up photo of a circuit board with a missing component"]
+  defect_scratch:
+    relevant: true
+    replan_trigger: false
+    match: {defect: scratch}
+    prompts: ["a close-up photo of a circuit board with a scratch"]
+  defect_dirt:
+    relevant: true
+    replan_trigger: false
+    match: {defect: dirt}
+    prompts: ["a close-up photo of a dirty circuit board"]
+  defect_extra:
+    relevant: true
+    replan_trigger: false
+    match: {defect: extra}
+    prompts: ["a close-up photo of a circuit board with a foreign object on it"]
+  defect_damage:
+    relevant: true
+    replan_trigger: false
+    match: {defect: damage}
+    prompts: ["a close-up photo of a circuit board with a broken part"]
+  board_1:
+    relevant: true
+    replan_trigger: false
+    match: {asset: board_1}
+    prompts: ["a photo of an ultrasonic sensor module with two round transducers"]
+  board_2:
+    relevant: true
+    replan_trigger: false
+    match: {asset: board_2}
+    prompts: ["a photo of the component side of an ultrasonic sensor module"]
+  board_3:
+    relevant: true
+    replan_trigger: false
+    match: {asset: board_3}
+    prompts: ["a photo of an infrared obstacle sensor module"]
+  board_4:
+    relevant: true
+    replan_trigger: false
+    match: {asset: board_4}
+    prompts: ["a photo of a battery charger module"]

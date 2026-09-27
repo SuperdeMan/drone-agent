@@ -61,12 +61,15 @@ def test_residents_share_only_internal_networks_and_mount_secrets_read_only():
     assert "secrets/m2" not in text and "docker.sock" not in text and ".ssh" not in text
 
 
-def test_the_desk_service_loads_the_operations_workflow_and_scheduling_catalogs():
+def test_the_desk_service_loads_the_operations_workflow_scheduling_and_business_catalogs():
     command = COMPOSE["services"]["desk-service"]["command"]
-    for flag, path in (("--catalog", "configs/sites/p1_s1_v1.yaml"), ("--workflows", "configs/workflows/p2_s1_v1.yaml"),
-                       ("--scheduling", "configs/scheduling/p3_desk_v1.yaml")):
+    for flag, path in (("--catalog", "configs/sites/p1_s1_v1.yaml"), ("--workflows", "configs/workflows/p4_s1_v1.yaml"),
+                       ("--scheduling", "configs/scheduling/p3_desk_v1.yaml"),
+                       ("--business", "configs/analysis/p4_s1_v1.yaml")):
         assert command[command.index(flag) + 1] == "/workspace/" + path
         assert (ROOT / path).is_file()
+    assert command[command.index("--vision") + 1] == "live"
+    assert COMPOSE["services"]["desk-service"]["environment"]["VISION_PROVIDER"] == "minimax-vl"
 
 
 @pytest.mark.parametrize("path,proxy,service", [("sim/compose.desk.yaml", "desk-model-proxy", "desk-service"),

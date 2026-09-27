@@ -302,10 +302,11 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed) -> dict:
         return {"passed": False, "error": str(error), "scenario": scenario["id"], "seed": seed}
 
 
-def fly(case, compose, api, wait, package: Path, hook) -> dict:
-    """Fly one handed-out package once with a fresh guardian and executive; `hook` sees each observation.
+def fly(case, compose, api, wait, package: Path, hook, *, judge: str = JUDGE) -> dict:
+    """Fly one handed-out package once with a fresh guardian and executive; `hook` sees each observation and `judge`
+    is the read-only identity that checks the service mirror.
 
-    用新的 guardian 与 executive 把一个已交付任务包飞一次；`hook` 看到每个观测。
+    用新的 guardian 与 executive 把一个已交付任务包飞一次；`hook` 看到每个观测，`judge` 是核对服务镜像的只读身份。
     """
     mission_id, version = package.stem.rsplit("-v", 1)
     flight = case / "aircraft" / mission_id / f"v{version}"
@@ -345,7 +346,7 @@ def fly(case, compose, api, wait, package: Path, hook) -> dict:
     onboard = {name: M2["rows"](flight / f"{name}.jsonl") for name in ("executive", "guardian")}
 
     def mirrored():
-        response = api("view", actor=JUDGE, record=False, mission_id=mission_id)
+        response = api("view", actor=judge, record=False, mission_id=mission_id)
         record = next((v for v in (response.get("result") or {}).get("versions", [])
                        if v["version"] == int(version)), {})
         journals = record.get("journals", {})

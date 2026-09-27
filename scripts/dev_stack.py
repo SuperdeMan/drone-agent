@@ -364,6 +364,64 @@ def desk_members(connection: Connection, *, apply: bool) -> dict:
     return ssh(connection, {"action": "desk_members", "run_id": new_run_id(), "members": members}, timeout=120)
 
 
+S2_DATASET = "visa_pcb_v1"
+
+
+def data_command(connection: Connection, args: argparse.Namespace) -> dict:
+    """Upload and install the frozen S2 dataset (D065): verified here against the committed manifest, packed as a
+    deterministic archive of exactly the manifest's files, resumably uploaded, verified again file by file in the cloud.
+
+    上传并安装冻结的 S2 数据集（D065）：先在本机按已提交清单核对，打包为只含清单文件的确定性归档，可续传上传，在云端再逐文件
+    核对。
+    """
+    body = json.loads((ROOT / "eval/s2" / S2_DATASET / "manifest.json").read_text(encoding="utf-8"))
+    data = args.data.resolve()
+    files = sorted({sample["file"]: sample["sha256"] for sample in body["samples"]}.items())
+    bad = [name for name, expected in files
+           if not (data / name).is_file() or REMOTE["digest"](data / name) != expected]
+    if bad:
+        raise ValueError(f"the local dataset differs from the manifest ({len(bad)} files, e.g. {bad[0]})")
+    run_id = args.resume or new_run_id()
+    if not REMOTE["RUN_ID"].fullmatch(run_id):
+        raise ValueError("invalid upload identity")
+    if not str(args.artifacts.resolve()).isascii():
+        raise ValueError("transport artifacts need an ASCII path")
+    packet = args.artifacts.resolve() / f"p4-data-{run_id}"
+    archive = packet / f"{S2_DATASET}.tar"
+    if not archive.is_file():
+        if args.resume:
+            raise ValueError("nothing to resume: the local archive is missing")
+        packet.mkdir(parents=True, exist_ok=False)
+        with tarfile.open(archive, "w", format=tarfile.PAX_FORMAT) as stream:
+            for name, _ in files:
+                info = stream.gettarinfo(str(data / name), arcname=name)
+                info.uid = info.gid = 0
+                info.uname = info.gname = ""
+                info.mtime = 0
+                info.mode = 0o644
+                with (data / name).open("rb") as handle:
+                    stream.addfile(info, handle)
+    digest = REMOTE["digest"](archive)
+    plan = {"status": "plan", "dataset": S2_DATASET, "files": len(files), "archive": str(archive),
+            "bytes": archive.stat().st_size, "sha256": digest, "upload_id": run_id}
+    if not args.apply:
+        return plan
+    state = ssh(connection, {"action": "status"})
+    destination = state["workspace"] + "/incoming/" + run_id
+    if not re.fullmatch(r"/home/[a-z_][a-z0-9_-]*/drone-agent/incoming/" + re.escape(run_id), destination):
+        raise ValueError("unexpected remote upload destination")
+    if not args.resume:
+        ssh(connection, {"action": "prepare", "run_id": run_id})
+    command = f"put -a {sftp_literal(str(archive))} {sftp_literal(destination + '/' + archive.name)}\n"
+    print("Uploading the S2 dataset via resumable SFTP...", file=sys.stderr, flush=True)
+    result = subprocess.run(["sftp", "-b", "-", *connection.arguments(), connection.target], input=command.encode(),
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=7200)
+    if result.returncode:
+        raise RuntimeError(f"SFTP upload failed; retry p4-data --resume {run_id} --apply; SSH stderr withheld")
+    print("Verifying and installing the dataset...", file=sys.stderr, flush=True)
+    return ssh(connection, {"action": "p4_data", "run_id": run_id, "sha256": digest}, timeout=1800)
+
+
 def deploy_command(connection: Connection, args: argparse.Namespace) -> dict:
     state = ssh(connection, {"action": "status"})
     if args.resume:
@@ -473,6 +531,28 @@ def main() -> None:
     p3_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
     p3_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
     p3_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
+    p4_parser = commands.add_parser("p4", help="run P4 S1 cases (the business loop on PX4 SITL) in the cloud")
+    p4_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
+    p4_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
+    p4_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
+    data_parser = commands.add_parser("p4-data", help="upload and install the frozen S2 dataset in the cloud (D065)")
+    data_parser.add_argument("--data", type=Path, required=True, help="the locally built dataset directory")
+    data_parser.add_argument("--resume", help="upload id of an interrupted upload")
+    data_parser.add_argument("--artifacts", type=Path, default=Path(tempfile.gettempdir()) / "drone-agent-cloud")
+    data_parser.add_argument("--apply", action="store_true")
+    s2_parser = commands.add_parser("p4-s2", help="run one S2 model evaluation in the cloud (D065)")
+    s2_parser.add_argument("--split", choices=["calibration", "test"], required=True)
+    s2_parser.add_argument("--mode", choices=["live", "replay", "scripted", "retrieval"], required=True,
+                           help="live calls the model once per sample and records it; replay needs --replay-of; "
+                                "retrieval reports the pinned CLIP on the test split")
+    s2_parser.add_argument("--threshold", type=float, help="tau for a calibration run; test runs use the profile's")
+    s2_parser.add_argument("--replay-of", help="<deployment id>/p4-<run id> of the live run to replay")
+    s2_parser.add_argument("--limit", type=int, default=0, help="first N samples only (smoke runs)")
+    s2_parser.add_argument("--concurrency", type=int, default=3)
+    s2_parser.add_argument("--currency", default="CNY")
+    s2_parser.add_argument("--price-input", type=float, default=0.0, help="per million input tokens")
+    s2_parser.add_argument("--price-output", type=float, default=0.0, help="per million output tokens")
+    s2_parser.add_argument("--price-source", default="", help="where the prices come from; empty reports no cost")
     m3_parser = commands.add_parser("m3", help="run M3-SITL scenarios (external mode, autonomy, recovery v2) in the cloud")
     m3_parser.add_argument("--scenario", default="ext_inspect", help="all, class:<name> or comma-separated ids")
     m3_parser.add_argument("--seeds", default="7,19,41")
@@ -552,7 +632,17 @@ def main() -> None:
                     },
                     timeout=21600,
                 )
-            elif args.command in ("p1", "p2", "p3"):
+            elif args.command == "p4-data":
+                result = data_command(connection, args)
+            elif args.command == "p4-s2":
+                request = {"action": "p4_s2", "run_id": new_run_id(), "split": args.split, "mode": args.mode,
+                           "threshold": args.threshold, "replay_of": args.replay_of, "limit": args.limit,
+                           "concurrency": args.concurrency}
+                if args.price_source:
+                    request.update(currency=args.currency, price_input=args.price_input,
+                                   price_output=args.price_output, price_source=args.price_source)
+                result = ssh(connection, request, timeout=5 * 3600)
+            elif args.command in ("p1", "p2", "p3", "p4"):
                 result = ssh(
                     connection,
                     {

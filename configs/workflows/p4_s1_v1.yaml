@@ -1,0 +1,161 @@
+# P4 workflow catalog for the PX4 SITL site and the resident desk (D063), written for the operations catalog p1_s1_v1.
+# It keeps the P2 templates of p2_s1_v1 byte for byte, so runs pinned to them stay valid, and adds the P4 templates:
+# `appearance_watch` / `appearance_reinspection` analyse with the colour-signature plugin measured on the S1 renders
+# (the S1 runner places and removes a damage patch in the Gazebo world), and `desk_watch` / `desk_reinspection` run the
+# labelled scripted fixture and the live vision model on the same capture for the resident desk. Every mission still
+# needs a human approval; only a reviewer's decisions confirm a finding or a repair.
+#
+# PX4 SITL 站点与常驻任务台的 P4 工作流目录（D063），对应运营目录 p1_s1_v1。它逐字节保留 p2_s1_v1 的 P2 模板，使固定它们的
+# 运行保持有效，并加上 P4 模板：`appearance_watch` / `appearance_reinspection` 用在 S1 渲染上测定的颜色特征插件分析（S1 执行器在
+# Gazebo 世界中放置与移除损伤贴片），`desk_watch` / `desk_reinspection` 为常驻任务台在同一采集上运行带标注的脚本夹具与实调视觉
+# 模型。每个任务仍需人工审批；只有 reviewer 的决定能确认发现或修复。
+format: drone.workflow-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p4_s1_v1
+operations_catalog: p1_s1_v1
+analyzers:
+  scripted_fixture_v1: {kind: scripted, fixture: configs/workflows/analysis_fixture_v1.yaml}
+  # S1 renders of the unpatched red marker measured 0.124-0.130 of a 160x120 frame; the patch hides 40% of it.
+  # 未加贴片的红色标记在 160x120 的 S1 渲染中占 0.124-0.130；贴片遮住其中 40%。
+  signature_s1_v1:
+    kind: deterministic
+    method: color_signature
+    bands: {asset_red: [0.105, 0.16], asset_blue: [0.105, 0.16]}
+  vlm_change_v1: {kind: model, profile: configs/analysis/vlm_change_v1.yaml, quality: configs/analysis/quality_sim_v1.yaml}
+workflows:
+  - workflow_id: asset_check
+    version: 1
+    project_id: campus_s1
+    title: "Asset check: inspect, analyze, human review, simulated work order, repair and reinspection / 资产检查：巡检、分析、人工复核、模拟工单、维修与复检"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+      - trigger_id: daily_0900
+        kind: schedule
+        schedule: {every: day, at: "09:00", timezone: Asia/Shanghai}
+        start_window_s: 600
+        inputs: {asset: asset_red}
+      - {trigger_id: asset_alarm, kind: event, source: "event:campus-alarm", event_type: asset.alarm, inputs_from_event: [asset]}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_01, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: scripted_fixture_v1}}
+      - node_id: review
+        activity: human_review
+        when: [{node: analyze, output: suspected, equals: true}]
+        params: {analysis_from: analyze}
+      - node_id: work_order
+        activity: create_work_order
+        when: [{node: review, output: decision, equals: confirmed}]
+        params: {review_from: review}
+      - {node_id: await_repair, activity: await_repair, params: {order_from: work_order}}
+      - node_id: reinspect
+        activity: request_reinspection
+        params: {order_from: work_order, repair_from: await_repair, workflow_id: asset_reinspection, version: 1, asset_input: asset}
+      - {node_id: report, activity: build_report, requires: done, after: [reinspect]}
+    budget: {max_missions: 1}
+  - workflow_id: campus_round
+    version: 1
+    project_id: campus_s1
+    title: "Campus round: both registered markers in series, then analysis and review / 园区巡回：两处登记标记依次巡检，再分析与复核"
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect_red, activity: submit_mission, params: {robot_id: uav_01, volume_id: campus_training, asset: asset_red}}
+      - {node_id: await_red, activity: await_mission, params: {mission_from: inspect_red}}
+      - {node_id: inspect_blue, activity: submit_mission, requires: done, after: [await_red], params: {robot_id: uav_01, volume_id: campus_training, asset: asset_blue}}
+      - {node_id: await_blue, activity: await_mission, params: {mission_from: inspect_blue}}
+      - {node_id: analyze_red, activity: analyze_evidence, params: {inspection_from: await_red, analyzer: scripted_fixture_v1}}
+      - {node_id: analyze_blue, activity: analyze_evidence, params: {inspection_from: await_blue, analyzer: scripted_fixture_v1}}
+      - {node_id: review_red, activity: human_review, when: [{node: analyze_red, output: suspected, equals: true}], params: {analysis_from: analyze_red}}
+      - {node_id: review_blue, activity: human_review, when: [{node: analyze_blue, output: suspected, equals: true}], params: {analysis_from: analyze_blue}}
+      - {node_id: order_red, activity: create_work_order, when: [{node: review_red, output: decision, equals: confirmed}], params: {review_from: review_red}}
+      - {node_id: order_blue, activity: create_work_order, when: [{node: review_blue, output: decision, equals: confirmed}], params: {review_from: review_blue}}
+      - {node_id: report, activity: build_report, requires: done, after: [order_red, order_blue]}
+    budget: {max_missions: 2}
+  - workflow_id: asset_reinspection
+    version: 1
+    project_id: campus_s1
+    title: "Reinspection after repair feedback: a new flight and analysis; closing the order is P4 / 维修反馈后的复检：新飞行与分析；关单属于 P4"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: reinspection, kind: internal}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_01, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: scripted_fixture_v1}}
+      - {node_id: report, activity: build_report, requires: done, after: [analyze]}
+    budget: {max_missions: 1}
+  - workflow_id: appearance_watch
+    version: 1
+    project_id: campus_s1
+    title: "Appearance watch: inspect, analyse, review the finding, one order per finding / 外观巡检：巡检、分析、复核发现、每个发现一张工单"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_01, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s1_v1, findings: true}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - node_id: work_order
+        activity: create_work_order
+        when: [{node: review, output: decision, equals: confirmed}]
+        params: {review_from: review, reinspection: {workflow_id: appearance_reinspection, version: 1, asset_input: asset}}
+      - {node_id: report, activity: build_report, requires: done, after: [work_order]}
+    budget: {max_missions: 1}
+  - workflow_id: appearance_reinspection
+    version: 1
+    project_id: campus_s1
+    title: "Reinspection after repair feedback: a new flight, the analysis, the round's review and the settlement / 维修反馈后的复检：新飞行、分析、本轮复核与结算"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: reinspection, kind: internal}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_01, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s1_v1, findings: true, purpose: reinspection}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: false}], params: {analysis_from: analyze}}
+      - {node_id: settle, activity: settle_reinspection, requires: done, after: [analyze, review], params: {analysis_from: analyze, review_from: review}}
+      - {node_id: report, activity: build_report, requires: done, after: [settle]}
+    budget: {max_missions: 1}
+  - workflow_id: desk_watch
+    version: 1
+    project_id: campus_s1
+    title: "Desk watch: the scripted fixture and the live vision model on one capture / 任务台巡检：同一采集上的脚本夹具与实调视觉模型"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_01, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: scripted_fixture_v1, findings: true}}
+      - {node_id: analyze_model, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: vlm_change_v1, findings: true}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - node_id: work_order
+        activity: create_work_order
+        when: [{node: review, output: decision, equals: confirmed}]
+        params: {review_from: review, reinspection: {workflow_id: desk_reinspection, version: 1, asset_input: asset}}
+      - {node_id: report, activity: build_report, requires: done, after: [work_order, analyze_model]}
+    budget: {max_missions: 1}
+  - workflow_id: desk_reinspection
+    version: 1
+    project_id: campus_s1
+    title: "Desk reinspection with the scripted fixture / 任务台复检（脚本夹具）"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: reinspection, kind: internal}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_01, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: scripted_fixture_v1, findings: true, purpose: reinspection}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: false}], params: {analysis_from: analyze}}
+      - {node_id: settle, activity: settle_reinspection, requires: done, after: [analyze, review], params: {analysis_from: analyze, review_from: review}}
+      - {node_id: report, activity: build_report, requires: done, after: [settle]}
+    budget: {max_missions: 1}

@@ -12,6 +12,9 @@
 # ledger gains the workflow tables with a verified backup; workflow missions are approved one by one like any other.
 # P3 (D059/D060): the service also loads the p3_desk_v1 scheduling catalog (the ledger gains the scheduling tables the
 # same way); the scheduler assigns tasks to the one aircraft and each assigned mission is still approved by a person.
+# P4 (D063/D064): the workflow catalog becomes p4_s1_v1 (the P2 templates byte for byte plus the P4 ones) and the
+# service also loads the p4_s1_v1 business catalog (the ledger gains the business tables the same way); the vision
+# role is MiniMax-M3 through the same proxy and key, and without a key model analyses refuse `model.unavailable`.
 #
 # 常驻 M2 任务台（D035）。常驻：`desk`（页面，只发布 127.0.0.1:8769，位于私有 Tailscale Serve 8448 之后）、
 # `desk-service`（任务服务）与 `desk-uplink`（机载 uplink）；它们只共享内部 `desk_uplink` 网络与 API 套接字
@@ -22,7 +25,9 @@
 # 进入仓库）；`desk-dock` 是逻辑机场的常驻后端：完全没有网络，只有 API 套接字、飞行的 Gazebo 真值（只读，作为机位
 # 传感器）与它自己的日志。P2（D057/D058）：服务还加载 p2_s1_v1 工作流目录，账本先经校验备份再加上工作流表；工作流任务
 # 与其他任务一样逐个审批。P3（D059/D060）：服务还加载 p3_desk_v1 调度目录（账本以同样方式加上调度表）；调度器把任务单分配
-# 给这一架飞行器，每个已分配任务仍由人审批。
+# 给这一架飞行器，每个已分配任务仍由人审批。P4（D063/D064）：工作流目录改为 p4_s1_v1（逐字节保留 P2 模板并加上 P4 模板），
+# 服务还加载 p4_s1_v1 业务目录（账本以同样方式加上业务表）；视觉角色经同一代理与 key 使用 MiniMax-M3，没有 key 时模型分析以
+# `model.unavailable` 拒判。
 name: drone-agent-cloud
 services:
   desk:
@@ -82,6 +87,7 @@ services:
     environment:
       DRONE_SOURCE_SHA: ${DRONE_DESK_SHA:?}
       MINIMAX_API_KEY_FILE: /model/minimax.key
+      VISION_PROVIDER: minimax-vl
       HTTPS_PROXY: http://desk-model-proxy:3128
       NO_PROXY: localhost,127.0.0.1
       PYTHONDONTWRITEBYTECODE: "1"
@@ -89,8 +95,9 @@ services:
               --planner, auto, --state, /state, --tls, /tls, --signing-key, /secrets/approval-signing.key,
               --api, /api/api.sock, --listen, "0.0.0.0:8450", --execution-backend, px4_sitl,
               --catalog, /workspace/configs/sites/p1_s1_v1.yaml, --members, /members/members.yaml,
-              --workflows, /workspace/configs/workflows/p2_s1_v1.yaml,
-              --scheduling, /workspace/configs/scheduling/p3_desk_v1.yaml]
+              --workflows, /workspace/configs/workflows/p4_s1_v1.yaml,
+              --scheduling, /workspace/configs/scheduling/p3_desk_v1.yaml,
+              --business, /workspace/configs/analysis/p4_s1_v1.yaml, --vision, live]
     volumes:
       - ${DRONE_DESK_ROOT:?}/service:/state
       - ${DRONE_DESK_ROOT:?}/api:/api

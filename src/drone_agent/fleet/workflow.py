@@ -87,7 +87,7 @@ HOLDING = ("reserved", "occupied", "uncertain")
 EFFECTS = (Activity.SUBMIT_MISSION, Activity.CREATE_WORK_ORDER, Activity.REQUEST_REINSPECTION)
 # Consumer refusals that a retry cannot change. / 重试无法改变的消费者拒绝。
 PERMANENT = ("service.not_found", "service.invalid_request", "dispatch.backend_mismatch", "workflow.invalid_draft",
-             "workflow.invalid_inputs", "auth.project_denied")
+             "workflow.invalid_inputs", "auth.project_denied", "business.not_confirmed", "business.not_configured")
 
 
 @dataclass
@@ -177,6 +177,11 @@ class WorkflowEngine:
             spec = self.catalog.spec(run["project_id"], run["workflow_id"], run["version"])
             if not any(isinstance(t, InternalTrigger) for t in spec.triggers):
                 return "authority.binding_revoked"
+            # A P4 reinspection is started by a person's repair feedback, who must still be an operator (D063 §8).
+            # P4 复检由人的维修反馈启动，该人须仍为 operator（D063 §8）。
+            if not run["started_by"].startswith("workflow:") and \
+                    not self.ops.directory.allows(first_party(run["started_by"]), run["project_id"], WORKFLOW_RUN):
+                return "authority.role_revoked"
         else:
             return "authority.unknown_trigger"
         return None
@@ -335,6 +340,18 @@ class WorkflowEngine:
             raise ServiceError("service.invalid_request", "decision must be confirmed or dismissed")
         if not isinstance(request_id, str) or not REQUEST_ID.fullmatch(request_id):
             raise ServiceError("service.invalid_request", "request_id must be 1-120 safe characters")
+        business = getattr(self.service, "business", None)
+        if spec.node(node_spec.params.analysis_from).params.findings:
+            # P4 (D063 §7): the node reviews its finding or round; the record belongs to that subject.
+            # P4（D063 §7）：节点复核其发现或轮次；记录属于该对象。
+            nodes = self.store.nodes(run["run_id"])
+            subject = business.review_subject(run, spec, node_spec, self._outputs(nodes)) if business else None
+            current = self.store.run(run["run_id"])
+            if subject is None or nodes[node_id]["state"] != NodeState.WAITING.value \
+                    or RunState(current["state"]) in CANCELLING_RUN | TERMINAL_RUN:
+                raise ServiceError("workflow.not_waiting", f"{node_id} is {nodes[node_id]['state']}")
+            business.record_node_review(caller, project_id, run, subject, decision, request_id, str(note)[:300])
+            return self._view(self.store.run(run["run_id"]))
         key = activity_key(run["run_id"], node_id)
         with self.store.transaction():
             known = self.store.review(key)
@@ -538,11 +555,48 @@ class WorkflowEngine:
             self._move(run, node, epoch, NodeState.WAITING,
                        reason=(WaitReason.REVIEW if activity is Activity.HUMAN_REVIEW else WaitReason.REPAIR).value,
                        deadline=self.clock() + timedelta(seconds=timeout) if timeout else None)
+        elif activity is Activity.ANALYZE_EVIDENCE and node_spec.params.findings:
+            self._queue_analysis(run, node_spec, node, outputs, epoch)
         elif activity is Activity.ANALYZE_EVIDENCE:
             self._analyze(run, node_spec, node, outputs, epoch)
+        elif activity is Activity.SETTLE_REINSPECTION:
+            self._settle(run, spec, node_spec, node, nodes, epoch)
         else:
             self._move(run, node, epoch, NodeState.COMPLETED, result=self._report(run, spec, nodes))
         return True
+
+    def _queue_analysis(self, run, node_spec, node, outputs, epoch) -> None:
+        """P4: queue the node's analysis job and wait for it, in one transaction (D063 §3).
+
+        P4：在一个事务中排队节点的分析作业并等待它（D063 §3）。
+        """
+        business = getattr(self.service, "business", None)
+        if business is None:
+            self._move(run, node, epoch, NodeState.FAILED, reason="business.not_configured")
+            return
+        with self.store.transaction():
+            self.store.fence(run["run_id"], self.worker, epoch)
+            try:
+                job = business.queue_node_analysis(run, node_spec, outputs[node_spec.params.inspection_from])
+            except ServiceError as error:
+                self._move(run, node, epoch, NodeState.FAILED, reason=error.issue.code)
+                return
+            self._move(run, node, epoch, NodeState.WAITING, reason=WaitReason.ANALYSIS.value,
+                       detail={"job_id": job["job_id"], "state": job["state"], "attempts": job["attempts"]})
+
+    def _settle(self, run, spec, node_spec, node, nodes, epoch) -> None:
+        """P4: settle the run's reinspection round and record the conclusion as the node's output (D063 §9).
+
+        P4：结算运行的复检轮次，并把结论记为节点输出（D063 §9）。
+        """
+        business = getattr(self.service, "business", None)
+        if business is None:
+            self._move(run, node, epoch, NodeState.FAILED, reason="business.not_configured")
+            return
+        with self.store.transaction():
+            self.store.fence(run["run_id"], self.worker, epoch)
+            output = business.settle_node(run, spec, node_spec, nodes)
+            self._move(run, node, epoch, NodeState.COMPLETED, result=output.model_dump(mode="json"))
 
     def _asset(self, run: dict, submit: SubmitMissionNode) -> str:
         asset = submit.params.asset
@@ -563,6 +617,12 @@ class WorkflowEngine:
             analyze_id = spec.node(node_spec.params.review_from).params.analysis_from
             analysis = outputs[analyze_id]
             inspection = outputs[spec.node(analyze_id).params.inspection_from]
+            if node_spec.params.reinspection is not None:
+                # P4 (D063 §8): the order belongs to the finding; the service re-checks its confirmation.
+                # P4（D063 §8）：工单属于发现；服务会重新核对其确认。
+                return {"project_id": project, "finding_id": analysis.get("finding_id"),
+                        "review_id": review["review_id"], "analysis_id": analysis["analysis_id"],
+                        "reinspection": node_spec.params.reinspection.model_dump(mode="json")}
             return {"project_id": project, "asset_id": inspection["asset_id"], "review_id": review["review_id"],
                     "analysis_id": analysis["analysis_id"],
                     "finding": {"verdict": analysis["verdict"], "confidence": analysis["confidence"],
@@ -629,6 +689,12 @@ class WorkflowEngine:
                                                 guard=guard)
             return None if view is None else MissionOutput(mission_id=view["mission"]["mission_id"]).model_dump(
                 mode="json")
+        if row["kind"] == Activity.CREATE_WORK_ORDER.value and "finding_id" in payload:
+            business = getattr(self.service, "business", None)
+            if business is None:
+                raise ServiceError("business.not_configured", "no business catalog is configured")
+            order = business.create_node_order(run, payload, key, guard)
+            return None if order is None else OrderOutput(order_id=order["order_id"]).model_dump(mode="json")
         if row["kind"] == Activity.CREATE_WORK_ORDER.value:
             order, _ = self.store.create_order(idempotency_key=key, project_id=payload["project_id"],
                                                run_id=run["run_id"], asset_id=payload["asset_id"],
@@ -675,6 +741,10 @@ class WorkflowEngine:
         if row["kind"] == Activity.SUBMIT_MISSION.value:
             mission_id = self.ledger.request_by_key(run_principal(run["run_id"]), key)
             return MissionOutput(mission_id=mission_id).model_dump(mode="json") if mission_id else None
+        if row["kind"] == Activity.CREATE_WORK_ORDER.value and "finding_id" in payload:
+            business = getattr(self.service, "business", None)
+            order = business.store.order_by_key(key) if business is not None else None
+            return OrderOutput(order_id=order["order_id"]).model_dump(mode="json") if order else None
         if row["kind"] == Activity.CREATE_WORK_ORDER.value:
             order = self.store.order_by_key(key)
             return OrderOutput(order_id=order["order_id"]).model_dump(mode="json") if order else None
@@ -692,8 +762,23 @@ class WorkflowEngine:
         activity = Activity(node_spec.activity)
         deadline = datetime.fromisoformat(node["deadline_at"]) if node["deadline_at"] else None
         state, reason, detail, result = NodeState.WAITING, node["reason"], node["detail"], None
+        business = getattr(self.service, "business", None)
+        subject = business.review_subject(run, spec, node_spec, outputs) \
+            if business is not None and activity is Activity.HUMAN_REVIEW else None
         if activity is Activity.AWAIT_MISSION:
             state, reason, detail, result = self._await(run, spec, node_spec, outputs)
+        elif activity is Activity.ANALYZE_EVIDENCE:
+            # Only a P4 analysis node waits: for its job (D063 §3). / 只有 P4 分析节点会等待：等待其作业（D063 §3）。
+            if business is None:
+                state, reason = NodeState.FAILED, "business.not_configured"
+            else:
+                state, reason, detail, result = business.poll_analysis(run, node_spec)
+        elif activity is Activity.HUMAN_REVIEW and subject is not None:
+            result = business.poll_review(subject)
+            if result is not None:
+                state = NodeState.COMPLETED
+            elif deadline is not None and self.clock() >= deadline:
+                state, reason = NodeState.FAILED, "review.timeout"
         elif activity is Activity.HUMAN_REVIEW:
             review = self.store.review(activity_key(run["run_id"], node_spec.node_id))
             if review is not None:
@@ -928,7 +1013,29 @@ class WorkflowEngine:
                                   for c in self.store.children(run["run_id"])],
                 "nodes": {node_id: {"state": node["state"], "reason": node["reason"]}
                           for node_id, node in nodes.items()},
+                **self._business_report(run),
                 "note": "scripted and deterministic analyses are labelled test backends, not model findings"}
+
+    def _business_report(self, run: dict) -> dict:
+        """P4 records of this run: jobs with their sources, findings, orders and the round it settles (D063).
+
+        本运行的 P4 记录：带来源的作业、发现、工单与其结算的轮次（D063）。
+        """
+        business = getattr(self.service, "business", None)
+        if business is None:
+            return {}
+        jobs = business.store.jobs(requested_by=run_principal(run["run_id"]))
+        findings = sorted({job["finding_id"] for job in jobs if job["finding_id"]})
+        orders = [o for o in business.store.orders(run["project_id"]) if o["body"].get("run_id") == run["run_id"]]
+        found = business.orders.round_of(run)
+        settled = business.store.round(*found) if found else None
+        return {"business": {
+            "jobs": [business.jobs_view_summary(job) for job in jobs],
+            "findings": [{k: f[k] for k in ("finding_id", "state", "asset_key", "family", "jobs")}
+                         for f in (business.store.finding(fid) for fid in findings)],
+            "orders": [{k: o[k] for k in ("order_id", "finding_id", "state", "round")} for o in orders],
+            "round": {"order_id": settled["order_id"], "round": settled["round"], "state": settled["state"],
+                      "conclusion": settled["conclusion"]} if settled else None}}
 
     # ── run state and cancellation / 运行状态与取消 ──
 
@@ -954,6 +1061,7 @@ class WorkflowEngine:
             summary = self.outcome(nodes)
             self.store.set_run_state(run["run_id"], worker=self.worker, epoch=epoch,
                                      state=RunState(summary["result"]), outcome=summary)
+            self._run_ended(run["run_id"])
             return
         target = RunState.WAITING if NodeState.RUNNING not in states and NodeState.WAITING in states \
             else RunState.RUNNING
@@ -1007,6 +1115,16 @@ class WorkflowEngine:
             self.store.set_run_state(run_id, worker=self.worker, epoch=epoch, state=RunState.CANCELLED,
                                      outcome={**self.outcome(nodes), "result": "cancelled"},
                                      allowed_from=(RunState.CANCELLING,))
+            self._run_ended(run_id)
+
+    def _run_ended(self, run_id: str) -> None:
+        """A P4 reinspection run that ended unsettled leaves its round unknown (D063 §9).
+
+        未经结算就结束的 P4 复检运行使其轮次为 unknown（D063 §9）。
+        """
+        business = getattr(self.service, "business", None)
+        if business is not None:
+            business.run_ended(self.store.run(run_id))
 
     # ── views / 视图 ──
 
@@ -1086,4 +1204,5 @@ class WorkflowEngine:
                 "children": [self._summary(c) for c in self.store.children(run["run_id"])],
                 "outbox": [{k: r[k] for k in ("node_id", "kind", "state", "attempts", "result")}
                            for r in self.store.outbox(run["run_id"])],
+                "business": self._business_report(run).get("business"),
                 "events": self.store.events(f"workflow:{run['run_id']}", 80)}

@@ -129,7 +129,8 @@ Read [CLAUDE.md](CLAUDE.md) before contributing ([AGENTS.md](AGENTS.md) is the c
 | P1 | Projects, sites, virtual docks and the dispatch claim gate | Complete for the software / SITL scope |
 | P2 | Durable business workflows | Complete for the software / SITL scope |
 | P3 | Multi-site, multi-drone scheduling | Complete for the software / SITL scope (two PX4 SITL aircraft in one world) |
-| P4–P5 | Multimodal business loop and platform v0.1 | Next product work (P4, then P5); includes 72 h system endurance |
+| P4 | Multimodal business loop | In progress: design D063–D065, implementation and cloud validation under way |
+| P5 | Platform v0.1 | Next after P4; includes 72 h system endurance |
 | H1–H3 | JIL, bench / restricted flights and field operations | Separate hardware validation track |
 | X1–X3 | Air-ground collaboration, vendor hardware and model / kernel research | Conditional extensions |
 

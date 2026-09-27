@@ -26,7 +26,7 @@ S0（逻辑世界）、S1（PX4 SITL）、S2（授权素材 + 模型）分开计
 | `console/mission.*` | 业务面板：发现与证据簇、复核、工单轮次与结论、维修反馈、分析作业（来源、模型、提示、用量）、参考外观登记；没有审批或关单捷径 |
 | `eval/logical_flight.py` | 可选的外观状态与逐次采集变化（默认关闭，P1–P3 的 S0 影像字节不变） |
 
-新增：`fleet/business_models.py`（业务目录、画像、作业 / 发现 / 复核 / 工单 / 轮次契约与原因码）、`fleet/business_store.py`（D064 迁移、演练与读写）、`fleet/findings.py`（聚合与复核）、`fleet/work_orders.py`（工单、轮次、复检结算规则）、`fleet/analysis_jobs.py`（异步执行器、租约、预算）、`fleet/media_index.py`（采集索引、复用与重放检查）、`configs/analysis/`（业务目录、模型与质量画像）、`configs/workflows/p4_*`、`configs/scenarios/p4_suite.yaml`、`eval/p4_world.py`、`eval/judge_p4.py`、`eval/p4_prepare.py`、`eval/scripted_vision.py`、`eval/p4_dataset.py`、`eval/p4_s2.py`、`eval/p4_retrieval.py`、`eval/s2/visa_pcb_v1/`、`sim/compose.p4.yaml`、`scripts/remote_p4.py`、`scripts/verify_p4_release.py`。依赖增加 `pillow`（解码素材与编码模型输入）与 `numpy`（质量层，已在 autonomy 组，提为主依赖）；检索评测另用 `retrieval` 依赖组固定 `onnxruntime==1.30.0`（与 M3 相同版本）。机载 executive / guardian / 适配器 / uplink、wire、技能、平台与恢复策略不改。
+新增：`fleet/business_models.py`（业务目录、画像、作业 / 发现 / 复核 / 工单 / 轮次契约与原因码）、`fleet/business_store.py`（D064 迁移、演练与读写）、`fleet/business.py`（业务引擎：作业提交、复用、参考外观、项目视图与服务装配）、`fleet/findings.py`（聚合与复核）、`fleet/work_orders.py`（工单、轮次、复检结算规则）、`fleet/analysis_jobs.py`（异步执行器、租约、预算）、`fleet/media_index.py`（采集索引、复用与重放检查）、`configs/analysis/`（业务目录、模型与质量画像）、`configs/workflows/p4_*`、`configs/scenarios/p4_suite.yaml`、`eval/p4_world.py`、`eval/judge_p4.py`、`eval/p4_prepare.py`、`eval/scripted_vision.py`、`eval/p4_dataset.py`、`eval/p4_s2.py`、`eval/p4_retrieval.py`、`eval/s2/visa_pcb_v1/`（清单、协议与检索查询集）、`sim/compose.p4.yaml`、`sim/m3.Dockerfile` 的 `retrievalqueries` / `retrieval` 评测目标、`scripts/remote_p4.py`、`scripts/verify_p4_release.py`。依赖增加 `pillow`（解码素材与编码模型输入）与 `numpy`（质量层，已在 autonomy 组，提为主依赖）；检索评测复用 M3 镜像中固定的 `onnxruntime==1.30.0` 与 CLIP 编码器，不另设依赖组。机载 executive / guardian / 适配器 / uplink、wire、技能、平台与恢复策略不改。
 
 ## 3. 语义要点（D063）
 
@@ -44,7 +44,7 @@ S0（逻辑世界）、S1（PX4 SITL）、S2（授权素材 + 模型）分开计
 
 **人工复核**：对象为发现或复检轮次，只接受该项目 reviewer 角色的第一方身份；首个决定有效，同一请求号重复返回原记录。P4 模式的 `human_review` 节点等待其对象的复核；对象已有复核时采用原记录（输出原复核人），不代替人生成决定。
 
-**工单与轮次**：每个发现至多一张工单，只能由 `confirmed` 且有 reviewer 复核的发现创建；工单固定复检模板（同一目录、带内部触发、含 `settle_reinspection`）。状态 `open → repair_reported → reinspection_requested → closed`，或转 `reinspection_failed` / `reinspection_unknown`（二者都接受新的维修反馈）。`orders.repair`（operator）在一个事务中写入新一轮的反馈、把工单转为 `reinspection_requested`，并以触发身份 `internal:<工单>` / `r<轮次>` 启动复检运行（每轮至多一个，发起者为反馈人，效果前重查其仍为 operator）。父运行在建单后以报告结束，不再等待维修。
+**工单与轮次**：每个发现至多一张工单，只能由 `confirmed` 且有 reviewer 复核的发现创建；工单固定复检模板（同一目录、带内部触发、含 `settle_reinspection`）。状态 `open → reinspection_requested → closed`，或转 `reinspection_failed` / `reinspection_unknown`（二者都接受新的维修反馈；`repair_reported` 只是审计事件，见 D063 实施注记）。`orders.repair`（operator）在一个事务中写入新一轮的反馈、把工单转为 `reinspection_requested`，并以触发身份 `internal:<工单>` / `r<轮次>` 启动复检运行（每轮至多一个，发起者为反馈人，效果前重查其仍为 operator）。父运行在建单后以报告结束，不再等待维修。
 
 **复检结算（`reinspection-v1`）**：复检模板末尾的 `settle_reinspection`（`requires: done`）按以下条件判定本轮，结论与原因码入账：
 
@@ -68,7 +68,7 @@ S0（逻辑世界）、S1（PX4 SITL）、S2（授权素材 + 模型）分开计
 
 **素材**：Amazon VisA（CC BY 4.0，官方归档 `VisA_20220922.tar`，SHA-256 在清单中固定）的 `pcb1`–`pcb4`。四种电路板视为四个登记设备 `board_1`–`board_4`，参考外观取各自的正常图。图片不进仓库（体积与署名要求），仓库只放清单（样本 ID、拆分、类别、期望输出、源文件路径与摘要、派生变换与参数、输出摘要）与署名说明；本机数据目录默认 `D:/drone-agent-data/visa`（`DRONE_S2_DATA` 可改），云端上传到项目工作区的数据目录。
 
-**拆分与泄漏控制**：按固定盐值对源文件名取摘要确定性分配参考 / 校准 / 测试；以感知哈希（dHash，汉明距离 ≤ 4）把近重复图归为一组，同组整体进入同一拆分（对应「同资产相邻帧不跨拆分」）；派生样本继承源图的拆分；参考图不出现在校准或测试中。
+**拆分与泄漏控制**：按固定盐值对源文件名取摘要确定性分配参考 / 校准 / 测试；以感知哈希（256 位 dHash，汉明距离 ≤ 10，见 D065 实施注记）把近重复图归为一组，同组整体进入同一拆分（对应「同资产相邻帧不跨拆分」）；派生样本继承源图的拆分；参考图不出现在校准或测试中。
 
 **类别与期望**：
 
@@ -156,7 +156,7 @@ S1（`scripts/remote_p4.py`，PX4 SITL 上的 `uav_01` + 逻辑机场 `dock_s1`�
 | `p4_s1_not_repaired` × 7 | 第 1 轮反馈不移除 → `failed`；第 2 轮移除 → 关单；3 次飞行 |
 | `p4_s1_dedup` × 7 | 维修前两次巡检 → 一个发现、一张工单；复检关单；3 次飞行 |
 
-每个任务另跑 M2 飞行裁判与 P1 派遣检查。S2 见 §4；常驻任务台（`p1_s1_v1` + `p4_s1_v1` 工作流与业务目录 + `p3_desk_v1` 调度）以实调 MiniMax-M3 与确定性分析器分析同一媒体，走到工单与未修复的复检，不关单。
+每个任务另跑 M2 飞行裁判与 P1 派遣检查。S2 见 §4；常驻任务台（`p1_s1_v1` + `p4_s1_v1` 工作流与业务目录 + `p3_desk_v1` 调度）由带标注的脚本夹具开启发现、实调 MiniMax-M3 在同一采集上给出并列候选，走到工单与复检；脚本来源不在关单允许来源内，该轮不能通过，不关单。
 
 裁判计数：`duplicate_finding`、`duplicate_order`、`unreviewed_order`、`non_human_decision`、`false_closure`（关单而任一结算条件不成立，裁判按导出数据独立复算）、`unverified_analysis`、`verdict_mutation`、`post_cancel_effect`、`lost_job`、`default_verdict`、`project_escape`；P1 的派遣 / 释放与 P2 的工作流计数在同一用例上一并核对。
 

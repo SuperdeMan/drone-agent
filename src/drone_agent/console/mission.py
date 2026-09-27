@@ -12,6 +12,7 @@ hri.v0 over `WS /ws/session` carries JSON text frames:
         {"type":"resources","view":{...}}   {"type":"resource","detail":{...}}     (P1 catalog mode, D055)
         {"type":"workflows","view":{...}}   {"type":"workflow","view":{...}}   {"type":"workflow_draft","result":{...}}
         {"type":"tasks","view":{...}}   {"type":"task","view":{...}}     (P3 scheduling, D059)
+        {"type":"business","view":{...}}   {"type":"finding","view":{...}}   {"type":"order","view":{...}}   (P4, D063)
   up:   {"type":"text","rid":...,"text":...,"volume_id":...,"asset_ids":[...],"project_id"?,"robot_id"?}  submit
         {"type":"resources","project_id":...}   {"type":"resource","project_id":...,"resource_id":...}
         {"type":"maintenance","project_id":...,"dock_id":...,"action":"set|release","reason":...}  (admin)
@@ -26,6 +27,13 @@ hri.v0 over `WS /ws/session` carries JSON text frames:
         {"type":"task_submit","project_id":...,"asset_id":...,"volume_id":...,"candidates":[...],"priority":N,
          "request_id":...}
         {"type":"task_cancel","project_id":...,"task_id":...,"request_id":...,"reason":...}
+        {"type":"business_watch","project_id":...}   {"type":"finding_watch"|"order_watch","project_id":...,
+         "finding_id"|"order_id":...}   (P4, D063)
+        {"type":"finding_review","project_id":...,"finding_id":...,"decision":...,"request_id":...,"note":...}
+        {"type":"order_repair","project_id":...,"order_id":...,"request_id":...,"note":...}
+        {"type":"order_review","project_id":...,"order_id":...,"round":N,"decision":...,"request_id":...,"note":...}
+        {"type":"reference_register","project_id":...,"mission_id":...,"evidence_id":...,"note":...}   (admin)
+        {"type":"analysis_submit","project_id":...,"mission_id":...,"evidence_id":...,"analyzer":...,"request_id":...}
         {"type":"watch","mission_id":...}   {"type":"list"}   {"type":"media","mission_id":...,"evidence_id":...}
         {"type":"approve","mission_id":...,"version":N,"package_hash":...}
         {"type":"decline","mission_id":...,"version":N,"reason":...}
@@ -39,7 +47,11 @@ a workflow catalog (P2) it shows the project's templates, runs with every wait a
 orders and drafts; a run's missions are still approved one by one in the mission view, and a draft never runs.
 With a scheduling catalog (P3) it shows the task queue, each robot's assignment and preview verdict, every waiting and
 excluded candidate with its reasons, and the airspace holds; the scheduler assigns, a person still approves each
-assigned mission in the mission view, and nothing here chooses a robot for the scheduler.
+assigned mission in the mission view, and nothing here chooses a robot for the scheduler. With a business catalog
+(P4) it shows findings with every analysis and its labelled source, orders with their rounds, the three-column
+business report and the reference appearances; a reviewer confirms or dismisses a finding and each round's
+unsuspected capture, an operator reports a repair (which only starts a reinspection), and an admin registers a verified
+capture as a reference.
 
 A2A: `GET /.well-known/agent-card.json` and JSON-RPC 2.0 at `POST /a2a` (`message/send`, `tasks/get`) with a
 bearer token whose SHA-256 is configured. External agents are third-party: they may submit requests, which
@@ -56,7 +68,9 @@ guardian：审批在服务中变成已签名任务包，操作变成飞行器会
 的项目及其站点、机场与机器人，附状态年龄、来源与不可派遣原因；页面没有故障注入或飞控接口。带工作流目录时（P2），页面
 展示项目的模板、带全部等待与失败原因的运行、复核、工单与草案；运行的任务仍在任务视图中逐个审批，草案从不运行。带调度
 目录时（P3），页面展示任务单队列、各机器人的分配与预览判定、每个等待与被排除候选及其原因，以及空域持有；由调度器分配，
-每个已分配任务仍由人在任务视图中审批，这里不替调度器选机。A2A 调用方是第三方：可以提交
+每个已分配任务仍由人在任务视图中审批，这里不替调度器选机。带业务目录时（P4），页面展示发现及其每次分析与来源标注、工单及其
+轮次、三列业务报告与参考外观；reviewer 确认或驳回发现与每轮未疑似的采集，operator 报告维修（只启动复检），admin 把已证实的
+采集登记为参考外观。A2A 调用方是第三方：可以提交
 请求（等待人工审批）并读取状态与报告；控制级键、飞行 scope、审批与操作请求一律拒绝并记审计。
 
 常驻任务台（D035）另从 `--supervisor` 只读展示仿真监管者的公开记录：飞行主机状态（`host`），以及每个
@@ -165,6 +179,10 @@ class Session:
         self.last_tasks: str | None = None
         self.watched_task: tuple[str, str] | None = None
         self.last_task: str | None = None
+        self.business_project: str | None = None
+        self.last_business: str | None = None
+        self.watched_subject: tuple[str, str, str] | None = None
+        self.last_subject: str | None = None
         self.last_host: str | None = None
         self.busy = False
 
@@ -281,6 +299,80 @@ class Session:
         if force or text != self.last_task:
             self.last_task = text
             await self.send({"type": "task", "view": view})
+
+    async def push_business(self, force: bool = False) -> None:
+        if not self.business_project:
+            return
+        view = await self.call("business.summary", project_id=self.business_project)
+        if view is None:
+            self.business_project = None
+            return
+        text = json.dumps(view, sort_keys=True, default=str)
+        if force or text != self.last_business:
+            self.last_business = text
+            await self.send({"type": "business", "view": view})
+
+    async def push_subject(self, force: bool = False) -> None:
+        if not self.watched_subject:
+            return
+        kind, project_id, subject_id = self.watched_subject
+        method, key = {"finding": ("findings.get", "finding_id"), "order": ("orders.get", "order_id")}[kind]
+        view = await self.call(method, project_id=project_id, **{key: subject_id})
+        if view is None:
+            self.watched_subject = None
+            return
+        text = json.dumps(view, sort_keys=True, default=str)
+        if force or text != self.last_subject:
+            self.last_subject = text
+            await self.send({"type": kind, "view": view})
+
+    async def business(self, kind: str, message: dict) -> None:
+        """P4 frames: named API calls the service checks against the caller's project role. A model's answer is only
+        ever a candidate; only a reviewer's decision confirms a finding or a repair, and a repair report only starts a
+        reinspection.
+
+        P4 帧：由服务按调用方项目角色检查的具名 API 调用。模型回答只能是候选；只有 reviewer 的决定能确认发现或修复，维修
+        反馈只会启动复检。
+        """
+        project = str(message.get("project_id", ""))[:120]
+        text = {key: str(message.get(key, ""))[:300] for key in ("finding_id", "order_id", "decision", "note",
+                                                                 "request_id", "mission_id", "evidence_id",
+                                                                 "analyzer")}
+        if kind == "business_watch":
+            self.business_project = project or None
+            await self.push_business(force=True)
+            return
+        if kind in ("finding_watch", "order_watch"):
+            subject = kind.split("_")[0]
+            self.watched_subject = (subject, project, text[f"{subject}_id"])
+            await self.push_subject(force=True)
+            return
+        try:
+            number = int(message.get("round", 0))
+        except (TypeError, ValueError):
+            number = 0
+        calls = {
+            "finding_review": ("findings.review", {"finding_id": text["finding_id"], "decision": text["decision"],
+                                                   "request_id": text["request_id"], "note": text["note"]}),
+            "order_repair": ("orders.repair", {"order_id": text["order_id"], "request_id": text["request_id"],
+                                               "note": text["note"]}),
+            "order_review": ("orders.review", {"order_id": text["order_id"], "round": number,
+                                               "decision": text["decision"], "request_id": text["request_id"],
+                                               "note": text["note"]}),
+            "reference_register": ("references.register", {"mission_id": text["mission_id"],
+                                                           "evidence_id": text["evidence_id"], "note": text["note"]}),
+            "analysis_submit": ("analysis.submit", {"mission_id": text["mission_id"],
+                                                    "evidence_id": text["evidence_id"], "analyzer": text["analyzer"],
+                                                    "request_id": text["request_id"]}),
+        }
+        method, params = calls[kind]
+        result = await self.call(method, project_id=project, **params)
+        if result is not None and kind == "finding_review":
+            self.watched_subject = ("finding", project, text["finding_id"])
+        elif result is not None and kind in ("order_repair", "order_review"):
+            self.watched_subject = ("order", project, text["order_id"])
+        await self.push_subject(force=True)
+        await self.push_business(force=True)
 
     def task_key(self, request_id: str) -> str:
         """A task key in the scheduler's safe alphabet: a digest of the caller and the page's request id, so a login
@@ -437,6 +529,9 @@ class Session:
             await self.workflow(kind, message)
         elif kind in ("tasks_watch", "task_watch", "task_submit", "task_cancel"):
             await self.task(kind, message)
+        elif kind in ("business_watch", "finding_watch", "order_watch", "finding_review", "order_repair",
+                      "order_review", "reference_register", "analysis_submit"):
+            await self.business(kind, message)
         elif kind in ("approve", "decline", "operate"):
             params = {"approve": ("mission_id", "version", "package_hash"),
                       "decline": ("mission_id", "version", "reason"),
@@ -578,6 +673,8 @@ class MissionConsole:
                 await session.push_run()
                 await session.push_tasks()
                 await session.push_task()
+                await session.push_business()
+                await session.push_subject()
 
         watcher = asyncio.create_task(watch())
         try:

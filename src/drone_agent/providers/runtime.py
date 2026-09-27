@@ -68,6 +68,15 @@ _PROVIDER_SPECS: dict[str, dict] = {
         "auth_style": "bearer", "token_param": "max_tokens", "thinking_style": "qwen",
         "model_env": "VISION_MODEL", "model": "qwen3-vl-plus", "vision": True,
     },
+    # P4 (D063, D065): MiniMax-M3 reads images through the same OpenAI-compatible endpoint and key as the planner;
+    # a deployment selects it with VISION_PROVIDER=minimax-vl. / P4（D063、D065）：MiniMax-M3 经与规划器相同的
+    # OpenAI 兼容端点与 key 读取图像；部署以 VISION_PROVIDER=minimax-vl 选择。
+    "minimax-vl": {
+        "label": "MiniMax vision", "key_env": "MINIMAX_API_KEY", "base_url_env": "MINIMAX_BASE_URL",
+        "base_url": "https://api.minimaxi.com/v1/chat/completions",
+        "auth_style": "bearer", "token_param": "max_completion_tokens", "thinking_style": "mimo",
+        "model_env": "MINIMAX_VISION_MODEL", "model": "MiniMax-M3", "vision": True,
+    },
 }
 
 

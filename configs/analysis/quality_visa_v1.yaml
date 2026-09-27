@@ -1,0 +1,19 @@
+# Generic quality profile for the S2 VisA boards (P4, D063 §2, D065). Chosen on the calibration split only: originals
+# measured luminance 41.7-146.1, clipped fraction <= 0.052 and sharpness >= 37.7; Gaussian-blurred copies <= 7.8,
+# under-exposed <= 7.3 luminance, over-exposed >= 244.5. Horizontal motion blur (26-42) overlaps the sharpest-edge
+# measure of the originals and is left to the model's `image_usable`; the text band of injected samples clips 16-21%
+# of the pixels, so the clipped limit leaves them to the model as well. Changing a limit is a new version.
+#
+# S2 VisA 电路板的通用质量画像（P4，D063 §2，D065）。只用校准集选定：原图亮度 41.7-146.1、截断比例 <= 0.052、清晰度
+# >= 37.7；高斯模糊副本 <= 7.8，欠曝亮度 <= 7.3，过曝 >= 244.5。水平运动模糊（26-42）与原图最锐边缘的测量值重叠，交给
+# 模型的 `image_usable`；注入样本的文字条使 16-21% 的像素截断，因此截断上限也把它们留给模型。改动任何限值即为新版本。
+format: drone.quality-profile/v1
+schema_version: "0.1.0"
+profile_id: quality_visa
+version: 1
+note: "S2 VisA PCB photographs, limits chosen on the calibration split / S2 VisA 电路板照片，限值只用校准集选定"
+min_width: 256
+min_height: 256
+luminance: [20.0, 220.0]
+max_clipped_fraction: 0.25
+min_sharpness: 20.0

@@ -8,7 +8,10 @@ A2A identity can submit and read but never approve, decline or operate, whatever
 operations catalog (P1, D055) the service also checks the caller's project role on every mission, resource and
 media call; project-scoped methods carry an explicit `project_id`, and a `dock:` identity can only report. With a
 workflow catalog (P2, D057) `workflows.*` methods start, cancel and schedule runs, record reviews and repair
-feedback, and an `event:` identity bound in a template can only raise that template's events.
+feedback, and an `event:` identity bound in a template can only raise that template's events. With a business
+catalog (P4, D063) `business.*`, `findings.*`, `orders.*`, `analysis.*` and `references.*` read findings, orders,
+analyses and reference appearances; a reviewer decides findings and rounds, an operator reports repairs and submits
+reuse analyses, and an admin registers references. No method closes an order or sets a verdict directly.
 
 本机任务服务 API：经私有 Unix 套接字每行一个 JSON 请求。调用方是控制台、A2A 网关与编排脚本；各自传入
 已认证的身份（`tailnet:<login>`、`local:<user>`、`a2a:<client>` 或 `harness:<run>`）及其信任级别。套接字
@@ -16,7 +19,9 @@ feedback, and an `event:` identity bound in a template can only raise that templ
 再判定一次，因此无论网关发送什么，A2A 身份都只能提交与读取，永远不能审批、驳回或操作。调用方还包括机场后端
 （`dock:<backend>`）。带运营目录时（P1，D055），服务还对每个任务、资源与媒体调用检查调用方的项目角色；按项目
 的方法显式携带 `project_id`，`dock:` 身份只能报告。带工作流目录时（P2，D057），`workflows.*` 方法启动、取消与排班运行，
-记录复核与维修反馈；模板中绑定的 `event:` 身份只能触发该模板的事件。
+记录复核与维修反馈；模板中绑定的 `event:` 身份只能触发该模板的事件。带业务目录时（P4，D063），`business.*`、`findings.*`、
+`orders.*`、`analysis.*` 与 `references.*` 读取发现、工单、分析与参考外观；reviewer 决定发现与轮次，operator 报告维修并提交复用
+分析，admin 登记参考外观。没有任何方法直接关单或设定结论。
 """
 
 from __future__ import annotations
@@ -35,6 +40,9 @@ from drone_agent.eval.viewer import png_data_uri
 from drone_agent.fleet.service import MissionService, ServiceError
 from drone_agent.runtime.issues import ISSUE_CODES, IssueLayer, issue
 from drone_agent.runtime.permission import (
+    ANALYSIS_READ,
+    ANALYSIS_REFERENCE,
+    ANALYSIS_RUN,
     MISSION_APPROVE,
     MISSION_OPERATE,
     MISSION_READ,
@@ -102,7 +110,27 @@ METHODS: dict[str, tuple[str, frozenset[str]]] = {
     "tasks.list": (MISSION_READ, frozenset({"project_id"})),
     "tasks.get": (MISSION_READ, frozenset({"project_id", "task_id"})),
     "tasks.cancel": (MISSION_OPERATE, frozenset({"project_id", "task_id", "request_id", "reason"})),
+    # P4 (D063): findings, orders, analyses and reference appearances; reviews and repair feedback keep the P2 scopes.
+    # P4（D063）：发现、工单、分析与参考外观；复核与维修反馈沿用 P2 的 scope。
+    "business.summary": (ANALYSIS_READ, frozenset({"project_id"})),
+    "findings.list": (ANALYSIS_READ, frozenset({"project_id"})),
+    "findings.get": (ANALYSIS_READ, frozenset({"project_id", "finding_id"})),
+    "findings.review": (WORKFLOW_REVIEW, frozenset({"project_id", "finding_id", "decision", "request_id", "note"})),
+    "orders.list": (ANALYSIS_READ, frozenset({"project_id"})),
+    "orders.get": (ANALYSIS_READ, frozenset({"project_id", "order_id"})),
+    "orders.repair": (WORKFLOW_RUN, frozenset({"project_id", "order_id", "request_id", "note"})),
+    "orders.review": (WORKFLOW_REVIEW, frozenset({"project_id", "order_id", "round", "decision", "request_id",
+                                                  "note"})),
+    "analysis.list": (ANALYSIS_READ, frozenset({"project_id"})),
+    "analysis.get": (ANALYSIS_READ, frozenset({"project_id", "job_id"})),
+    "analysis.submit": (ANALYSIS_RUN, frozenset({"project_id", "mission_id", "evidence_id", "analyzer",
+                                                 "request_id"})),
+    "analysis.media": (ANALYSIS_READ, frozenset({"project_id", "asset"})),
+    "references.list": (ANALYSIS_READ, frozenset({"project_id"})),
+    "references.register": (ANALYSIS_REFERENCE, frozenset({"project_id", "mission_id", "evidence_id", "note"})),
+    "references.revoke": (ANALYSIS_REFERENCE, frozenset({"project_id", "reference_id"})),
 }
+BUSINESS_PREFIXES = ("business.", "findings.", "orders.", "analysis.", "references.")
 CHANNELS = {"tailnet": RequestChannel.CONSOLE, "local": RequestChannel.CONSOLE, "a2a": RequestChannel.A2A,
             "harness": RequestChannel.HARNESS}
 # The only methods a backend may call, by the kind of backend. / 后端只能调用的方法，按后端种类区分。
@@ -226,6 +254,8 @@ async def _call(service: MissionService, method: str, params: dict, who: Caller)
         return await _workflow_call(service, method, params, who)
     if method.startswith("tasks."):
         return _task_call(service, method, params, who)
+    if method.startswith(BUSINESS_PREFIXES):
+        return _business_call(service, method, params, who)
     if method == "audit":
         if ISSUE_CODES.get(params["code"]) is not IssueLayer.AUTH:
             raise ServiceError("service.invalid_request", "only authentication issues are audited here")
@@ -248,7 +278,51 @@ async def _call(service: MissionService, method: str, params: dict, who: Caller)
              if getattr(service, "workflows", None) is not None else None,
              "scheduling": {"catalog_id": service.scheduler.catalog.catalog_id,
                             "sha256": service.scheduler.catalog.sha256}
-             if getattr(service, "scheduler", None) is not None else None}
+             if getattr(service, "scheduler", None) is not None else None,
+             "business": {"catalog_id": service.business.catalog.catalog_id,
+                          "sha256": service.business.catalog.sha256,
+                          "vision": service.business.vision[1].provider_id + "/" + service.business.vision[1].model
+                          if service.business.vision is not None else None}
+             if getattr(service, "business", None) is not None else None}
+
+
+def _business_call(service: MissionService, method: str, params: dict, who: Caller):
+    engine = getattr(service, "business", None)
+    if engine is None:
+        raise ServiceError("service.invalid_request", "no business catalog is configured")
+    project = params["project_id"]
+    if method == "business.summary":
+        return engine.summary(who, project)
+    if method == "findings.list":
+        return engine.findings.list(who, project)
+    if method == "findings.get":
+        return engine.findings.get(who, project, params["finding_id"])
+    if method == "findings.review":
+        return engine.findings.review(who, project, params["finding_id"], params["decision"], params["request_id"],
+                                      params["note"])
+    if method == "orders.list":
+        return engine.orders.list(who, project)
+    if method == "orders.get":
+        return engine.orders.get(who, project, params["order_id"])
+    if method == "orders.repair":
+        return engine.orders.repair(who, project, params["order_id"], params["request_id"], params["note"])
+    if method == "orders.review":
+        return engine.orders.review(who, project, params["order_id"], params["round"], params["decision"],
+                                    params["request_id"], params["note"])
+    if method == "analysis.list":
+        return engine.jobs_list(who, project)
+    if method == "analysis.get":
+        return engine.job_get(who, project, params["job_id"])
+    if method == "analysis.submit":
+        return engine.submit(who, project, params["mission_id"], params["evidence_id"], params["analyzer"],
+                             params["request_id"])
+    if method == "analysis.media":
+        return engine.media(who, project, params["asset"])
+    if method == "references.list":
+        return engine.references_list(who, project)
+    if method == "references.register":
+        return engine.reference_register(who, project, params["mission_id"], params["evidence_id"], params["note"])
+    return engine.reference_revoke(who, project, params["reference_id"])
 
 
 def _task_call(service: MissionService, method: str, params: dict, who: Caller):

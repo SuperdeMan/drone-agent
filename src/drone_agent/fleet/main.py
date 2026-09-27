@@ -11,6 +11,9 @@ migrated to schema v2 with a verified backup first (D056), and every new mission
 `--workflows` (P2, D057) adds a workflow catalog on top: the workflow tables are added with a verified backup first
 (D058) and the workflow engine runs in the background pass. `--scheduling` (P3, D059) adds a scheduling catalog: the
 scheduling tables are added the same way (D060) and the scheduler assigns tasks in the background pass.
+`--business` (P4, D063) adds a business catalog: the business tables are added the same way (D064) and analysis jobs
+run in the background pass; `--vision live` builds the vision role's provider (every exchange recorded), `none`
+leaves model analyses refusing `model.unavailable`.
 
 任务服务进程：mTLS 车队端点、私有 API 套接字与后台刷新。
 
@@ -22,7 +25,8 @@ scheduling tables are added the same way (D060) and the scheduler assigns tasks 
 `--catalog`（P1，D055）加载运营目录，`--members` 加载其受信成员列表；账本随后先做经校验的备份再迁移到 schema
 v2（D056），每个新任务都绑定到项目与机器人。`--workflows`（P2，D057）再加载工作流目录：先做经校验的备份再加上工作流表
 （D058），工作流引擎在后台处理中运行。`--scheduling`（P3，D059）再加载调度目录：以同样方式加上调度表（D060），调度器在后台
-处理中分配任务单。
+处理中分配任务单。`--business`（P4，D063）再加载业务目录：以同样方式加上业务表（D064），分析作业在后台处理中运行；
+`--vision live` 构建视觉角色的 provider（每次交互都录制），`none` 时模型分析以 `model.unavailable` 拒判。
 """
 
 from __future__ import annotations
@@ -136,6 +140,15 @@ async def main_async(args) -> None:
         scheduling = build_scheduling(ledger, args.scheduling, operations, backups=args.state / "backups")
     if workflows is not None and scheduling is None and workflows.catalog.assigned_nodes():
         raise SystemExit("the workflow catalog assigns robots (P3) and needs --scheduling")
+    business = None
+    if args.business is not None:
+        from drone_agent.fleet.business import build_business
+
+        business = build_business(args.root, ledger, args.business, operations, workflows,
+                                  backups=args.state / "backups")
+    elif workflows is not None and any(getattr(n.params, "findings", False) for w in workflows.catalog.workflows
+                                       for n in w.nodes if n.activity == "analyze_evidence"):
+        raise SystemExit("the workflow catalog has P4 analysis nodes and needs --business")
     service = MissionService(root=args.root, scene=args.scene, ledger=ledger, hub=hub,
                              signing_key=SigningKey.load(args.signing_key),
                              approval_policy=ApprovalPolicy.from_yaml(args.root / "configs/approval_policy.yaml"),
@@ -156,6 +169,23 @@ async def main_async(args) -> None:
         from drone_agent.fleet.scheduler import Scheduler
 
         service.scheduler = Scheduler(service, scheduling)
+    vision_label = None
+    if business is not None:
+        from drone_agent.fleet.business import BusinessEngine
+
+        vision = None
+        if args.vision == "live":
+            from drone_agent.providers import ProviderUnavailable, build_provider
+
+            try:
+                # Unguarded: jobs run concurrently, so per-call source bookkeeping must not be shared (D063).
+                # 不加 guard：作业并发运行，逐次调用的来源记账不能共享（D063）。
+                vision = build_provider("vision", guarded=False)
+                vision_label = f"live:{vision[1].provider_id}/{vision[1].model}"
+            except ProviderUnavailable as error:
+                vision_label = f"unavailable: {error}"
+        service.business = BusinessEngine(service, business, root=args.root, vision=vision,
+                                          recordings=args.state / "recordings" / "analysis")
     tls = args.tls
     credentials = {"cert_pem": (tls / "service.crt").read_bytes(), "key_pem": (tls / "service.key").read_bytes(),
                    "ca_pem": (tls / "ca.crt").read_bytes()}
@@ -179,7 +209,10 @@ async def main_async(args) -> None:
              "workflows": {"catalog_id": workflows.catalog.catalog_id, "catalog_sha256": workflows.catalog.sha256,
                            "migration": workflows.migration} if workflows is not None else None,
              "scheduling": {"catalog_id": scheduling.catalog.catalog_id, "catalog_sha256": scheduling.catalog.sha256,
-                            "migration": scheduling.migration} if scheduling is not None else None}
+                            "migration": scheduling.migration} if scheduling is not None else None,
+             "business": {"catalog_id": business.catalog.catalog_id, "catalog_sha256": business.catalog.sha256,
+                          "migration": business.migration, "vision": vision_label or args.vision}
+             if business is not None else None}
     (args.state / "ready.json").write_bytes(canonical(ready))
     print(json.dumps(ready), flush=True)
     stop = asyncio.Event()
@@ -214,11 +247,17 @@ def main() -> None:
     parser.add_argument("--workflows", type=Path, help="P2 workflow catalog (D057); needs --catalog; migrates (D058)")
     parser.add_argument("--scheduling", type=Path,
                         help="P3 scheduling catalog (D059); needs --catalog; migrates (D060)")
+    parser.add_argument("--business", type=Path,
+                        help="P4 business catalog (D063); needs --workflows; migrates (D064)")
+    parser.add_argument("--vision", choices=["live", "none"], default="none",
+                        help="vision provider of model analyses (P4); none refuses them explicitly")
     args = parser.parse_args()
     if args.workflows is not None and args.catalog is None:
         parser.error("--workflows needs --catalog")
     if args.scheduling is not None and args.catalog is None:
         parser.error("--scheduling needs --catalog")
+    if args.business is not None and args.workflows is None:
+        parser.error("--business needs --workflows")
     if args.planner == "scripted" and not args.fixtures:
         parser.error("--planner scripted requires --fixtures")
     asyncio.run(main_async(args))

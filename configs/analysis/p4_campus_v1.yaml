@@ -1,0 +1,19 @@
+# P4 business catalog of the S0 world (D063), for the operations catalog p1_campus_v1 and the workflow catalog
+# p4_campus_v1. Findings cluster by one appearance family; the S0 closure policy also accepts `scripted` analyses because
+# its model analyzer is the labelled scripted double (a production catalog lists only the sources it may close on).
+#
+# S0 世界的 P4 业务目录（D063），对应运营目录 p1_campus_v1 与工作流目录 p4_campus_v1。发现按单一外观缺陷族聚合；S0 的关单
+# 策略还接受 `scripted` 分析，因为其模型分析器是带标注的脚本替身（生产目录只列出允许据以关单的来源）。
+format: drone.business-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p4_campus_v1
+operations_catalog: p1_campus_v1
+workflow_catalog: p4_campus_v1
+default_quality: configs/analysis/quality_sim_v1.yaml
+families:
+  appearance: [damage, missing_part, contamination, deformation, discoloration, foreign_object, other_change]
+generic_defect: other_change
+closure: {version: reinspection-v1, allowed_sources: [deterministic, scripted, live_model, recorded_model]}
+reuse: {version: reuse-v1, max_age_s: 604800, analyzers: [signature_s0_v1, vlm_s0_v1, thermal_s0_v1]}
+runner: {concurrency: 2, lease_s: 8, max_attempts: 2, daily_tokens: 2000000}
+max_references: 3

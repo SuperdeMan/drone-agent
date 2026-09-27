@@ -1,0 +1,18 @@
+# Harness memberships for the P4 S0 world (D063) on the operations catalog p1_campus_v1. Real operator logins never
+# live in the repository. Two reviewers exist so that concurrent decisions on one finding can be tested; the admin
+# registers reference appearances and approves nothing; event sources are not members at all.
+#
+# P4 S0 世界的编排成员资格（D063），对应运营目录 p1_campus_v1。真实操作者登录名从不进入仓库。设两名复核人以测试同一发现
+# 上的并发决定；admin 登记参考外观、不审批任何东西；事件源根本不是成员。
+format: drone.project-members/v1
+schema_version: "0.1.0"
+members:
+  - {principal: "harness:p4-operator", project_id: campus_ops, roles: [operator, approver]}
+  - {principal: "harness:p4-reviewer", project_id: campus_ops, roles: [reviewer]}
+  - {principal: "harness:p4-reviewer2", project_id: campus_ops, roles: [reviewer]}
+  - {principal: "harness:p4-viewer", project_id: campus_ops, roles: [viewer]}
+  - {principal: "harness:p4-admin", project_id: campus_ops, roles: [admin]}
+  - {principal: "harness:p4-harbor", project_id: harbor_ops, roles: [operator, approver, reviewer, admin]}
+  - {principal: "harness:p4-judge", project_id: campus_ops, roles: [viewer]}
+  - {principal: "harness:p4-judge", project_id: harbor_ops, roles: [viewer]}
+  - {principal: "harness:p4-judge", project_id: legacy_m2, roles: [viewer]}

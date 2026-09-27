@@ -378,8 +378,8 @@ def store_model_key(root: Path, request: dict) -> dict:
 def dispatch(request: dict) -> dict:
     action = request.get("action")
     if action not in {*READ_ONLY_ACTIONS, "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1", "m2",
-                       "m3", "p1", "p2", "p3", "m2_key", "live_start", "live_operate", "console_apply", "desk_apply",
-                       "desk_members"}:
+                       "m3", "p1", "p2", "p3", "p4", "p4_data", "p4_s2", "m2_key", "live_start", "live_operate",
+                       "console_apply", "desk_apply", "desk_members"}:
         raise ValueError("unsupported cloud action")
     if action not in READ_ONLY_ACTIONS and not RUN_ID.fullmatch(request.get("run_id", "")):
         raise ValueError("invalid run identity")
@@ -482,6 +482,14 @@ def dispatch(request: dict) -> dict:
             if not script.is_file():
                 raise ValueError("deploy a version with the P3 S1 runner first")
             return runpy.run_path(str(script))["run_p3"](root, deployment, request)
+        if action in ("p4", "p4_data", "p4_s2"):
+            import runpy
+
+            script = deployment / "source/scripts/remote_p4.py"
+            if not script.is_file():
+                raise ValueError("deploy a version with the P4 runner first")
+            entry = {"p4": "run_p4", "p4_data": "install_data", "p4_s2": "run_s2"}[action]
+            return runpy.run_path(str(script))[entry](root, deployment, request)
         if action == "verify":
             return operation_receipt(deployment, request["run_id"], smoke(root, deployment, request["run_id"]))
         if action == "test":

@@ -1,0 +1,12 @@
+# Harness memberships for the P4 S1 cases (D063) on the operations catalog p1_s1_v1. Real operator logins never live in
+# the repository; the resident desk's members come from cloud secrets.
+#
+# P4 S1 用例的编排成员资格（D063），对应运营目录 p1_s1_v1。真实操作者登录名从不进入仓库；常驻任务台的成员来自云端 secrets。
+format: drone.project-members/v1
+schema_version: "0.1.0"
+members:
+  - {principal: "harness:p4-operator", project_id: campus_s1, roles: [operator, approver]}
+  - {principal: "harness:p4-reviewer", project_id: campus_s1, roles: [reviewer]}
+  - {principal: "harness:p4-admin", project_id: campus_s1, roles: [admin]}
+  - {principal: "harness:p4-judge", project_id: campus_s1, roles: [viewer]}
+  - {principal: "harness:p4-judge", project_id: legacy_m2, roles: [viewer]}

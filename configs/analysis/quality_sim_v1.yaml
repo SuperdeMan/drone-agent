@@ -1,0 +1,16 @@
+# Generic quality profile for simulated captures (P4, D063 §2): the S0 logical camera (160x120 grey frames with a
+# registered colour marker) and the S1 Gazebo downward camera. The limits refuse frames that are too small, too dark or
+# too bright, or whose sharpest edges are blurred; they never judge the asset. Changing a limit is a new version.
+#
+# 仿真采集的通用质量画像（P4，D063 §2）：S0 逻辑相机（160x120 灰底加登记颜色标记）与 S1 Gazebo 下视相机。限值拒绝过小、过暗
+# 或过亮、以及最锐边缘也模糊的画面；它们从不判定资产本身。改动任何限值即为新版本。
+format: drone.quality-profile/v1
+schema_version: "0.1.0"
+profile_id: quality_sim
+version: 1
+note: "simulated captures: S0 logical frames and S1 Gazebo renders / 仿真采集：S0 逻辑帧与 S1 Gazebo 渲染"
+min_width: 160
+min_height: 120
+luminance: [20.0, 235.0]
+max_clipped_fraction: 0.35
+min_sharpness: 8.0

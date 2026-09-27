@@ -1,0 +1,98 @@
+# P4 business-loop matrix (D063 §12). `s0` cases run in the S0 world (eval/p4_world.py): the P2 world with the
+# p4_campus_v1 workflow and business catalogs loaded into the same formal mission service, an appearance world for the
+# registered assets and the labelled scripted vision double. `s1` cases run in the cloud against PX4 SITL with the
+# p4_s1_v1 catalogs (scripts/remote_p4.py); the harness places and removes a damage patch model in the Gazebo world.
+# Each case runs for every seed; `expected` is what the independent judge (eval/judge_p4.py, with the P1 dispatch and
+# flight checks and the P2 workflow checks; for S1 the M2 flight judge) requires on top of the invariants it always
+# checks: one open finding per cluster, one order per finding, orders and closures only on a first-party reviewer's
+# decision, every closure passing reinspection-v1 recomputed by the judge, analyses only of verified evidence, no
+# report changed by an analysis, every job settled with a source or a reasoned refusal, nothing opened after a cancel,
+# no project escape. S0 results never count as physical flights or as model behaviour.
+#
+# P4 业务闭环矩阵（D063 §12）。`s0` 用例在 S0 世界（eval/p4_world.py）中运行：P2 世界，并把 p4_campus_v1 工作流与业务目录
+# 加载到同一正式任务服务，另有登记资产的外观世界与带标注的脚本视觉替身。`s1` 用例在云端以 p4_s1_v1 目录对 PX4 SITL 运行
+# （scripts/remote_p4.py）；编排在 Gazebo 世界中放置与移除损伤贴片模型。每个用例跑全部种子；`expected` 是独立裁判
+# （eval/judge_p4.py，另含 P1 派遣与飞行检查、P2 工作流检查；S1 另加 M2 飞行裁判）在始终检查的不变量之外的要求：每个聚合键
+# 一个未结发现、每个发现一张工单、工单与关单只依据第一方 reviewer 的决定、每次关单都通过裁判复算的 reinspection-v1、分析只
+# 针对已证实证据、分析不改任何报告、每个作业都以带来源的结论或带原因的拒判了结、取消后不开启任何东西、不越出项目。S0 结果
+# 从不计为物理飞行或模型行为。
+format: p4.suite/v1
+seeds: [7, 19, 41]
+s0:
+  - id: p4_f01_close
+    fault: P4-F01
+    description: "A damaged marker is inspected, the finding confirmed and one order opened; repair feedback starts the reinspection of the repaired marker, whose unsuspected capture a reviewer confirms, and the settlement closes the order. / 受损标记经巡检、发现被确认并开一张工单；维修反馈启动对已修复标记的复检，复核人确认未疑似的采集，结算关单。"
+    expected: {flights: 2, runs: {completed: 2}, findings: {resolved: 1}, orders: {closed: 1}, rounds: ["passed|"], reviews: 2, jobs: {completed: 2}}
+  - id: p4_f02_dedup
+    fault: P4-F02
+    description: "Two inspections of the same damage before any repair join one finding; the second run adopts the first decision instead of a new one, both runs converge on one order, repeated feedback opens one round. / 维修前对同一损伤的两次巡检归入一个发现；第二个运行采用第一个决定而不产生新决定，两个运行汇于一张工单，重复反馈只开一轮。"
+    expected: {flights: 3, runs: {completed: 3}, findings: {resolved: 1}, finding_jobs: [2], orders: {closed: 1}, rounds: ["passed|"], reviews: 2}
+  - id: p4_f03_dismissed
+    fault: P4-F03
+    description: "A reviewer dismisses the finding: no order; the damage seen again opens a new candidate, dismissed again. / 复核人驳回发现：不建单；再次看到损伤开启新的候选，再被驳回。"
+    expected: {flights: 2, runs: {completed: 2}, findings: {dismissed: 2}, orders: {}, reviews: 2}
+  - id: p4_f04_authority
+    fault: P4-F04
+    description: "A model answer smuggling decision fields is refused as malformed; viewer, operator, admin and other-project reviews, an operator on the review node, agent, dock and anonymous calls are all refused; only the reviewer confirms. / 夹带决定字段的模型回答以不合格拒判；viewer、operator、admin 与他项目的复核、operator 对复核节点的操作、agent、机场与匿名调用全部被拒；只有 reviewer 确认。"
+    expected: {flights: 3, runs: {completed: 1, failed: 2}, findings: {confirmed: 1}, orders: {open: 1}, refusals: [model.malformed, analysis.no_reference], references: 1, reviews: 1, probes: true}
+  - id: p4_f05_not_repaired
+    fault: P4-F05
+    description: "Repair feedback without an actual repair: the reinspection is still suspected and the round fails; after the real repair a second round passes and closes the order. / 没有实际修复的维修反馈：复检仍疑似，本轮失败；真正修复后第二轮通过并关单。"
+    expected: {flights: 3, runs: {completed: 3}, findings: {resolved: 1}, finding_jobs: [2], orders: {closed: 1}, rounds: ["failed|reinspection.still_anomalous", "passed|"], reviews: 2}
+  - id: p4_f06_evidence_missing
+    fault: P4-F06
+    description: "The reinspection flight returns flat frames that never verify: no analysis runs and the round is unknown, the order stays open for new feedback. / 复检飞行只拍到无法证实的平帧：不运行分析，本轮 unknown，工单保持待新反馈。"
+    expected: {flights: 4, runs: {completed: 1, outcome_unknown: 1}, findings: {confirmed: 1}, orders: {reinspection_unknown: 1}, rounds: ["unknown|reinspection.evidence_missing"], injections: [flat_frames]}
+  - id: p4_f07_replay
+    fault: P4-F07
+    description: "The camera replays an old normal frame byte for byte during the reinspection: the capture is a new acquisition with seen media; even a fooled reviewer's confirmation does not close the order. / 复检时相机逐字节重放一张旧的正常帧：采集是新的采集身份但媒体已出现过；即使复核人被骗确认也不关单。"
+    expected: {flights: 3, runs: {completed: 3}, findings: {confirmed: 1}, orders: {reinspection_unknown: 1}, rounds: ["unknown|reinspection.replayed_media"], injections: [camera_replay]}
+  - id: p4_f08_cancel_reinspection
+    fault: P4-F08
+    description: "The reinspection run is cancelled before its flight: the round is unknown, the order waits for new feedback, nothing is analysed. / 复检运行在飞行前被取消：本轮 unknown，工单等待新反馈，不做任何分析。"
+    expected: {flights: 1, runs: {completed: 1, cancelled: 1}, findings: {confirmed: 1}, orders: {reinspection_unknown: 1}, rounds: ["unknown|reinspection.run_ended"], jobs: {completed: 1}}
+  - id: p4_f09_reuse
+    fault: P4-F09
+    description: "Two analyzers on one capture and a reuse analysis join one finding; a thermal profile, an unknown analyzer, a viewer and another project's operator are refused before any job. / 同一采集上的两个分析器与一次复用分析归入一个发现；热红外画像、未知分析器、viewer 与他项目 operator 在作业产生前被拒。"
+    expected: {flights: 2, runs: {completed: 1, failed: 1}, findings: {confirmed: 1}, finding_jobs: [3], orders: {}, references: 1, probes: true}
+  - id: p4_f10_model_faults
+    fault: P4-F10
+    description: "Timeouts, prose, refusals, provider errors, a missing key and an exhausted budget each end the job with that reason; nothing becomes a finding by default. / 超时、散文、拒答、provider 错误、缺 key 与预算耗尽各自以对应原因结束作业；没有任何东西缺省成为发现。"
+    expected: {flights: 3, runs: {completed: 1, failed: 2}, findings: {dismissed: 1}, orders: {}, refusals: [model.timeout, model.malformed, model.refusal, model.error, model.unavailable, model.budget_exhausted, analysis.no_reference], injections: [vision_mode]}
+  - id: p4_f11_cancel
+    fault: P4-F11
+    description: "The run is cancelled while its model is being asked: the answer is recorded, but no finding or order follows. / 在询问模型期间取消运行：回答被记录，但不产生发现或工单。"
+    expected: {flights: 2, runs: {failed: 1, cancelled: 1}, findings: {}, orders: {}}
+  - id: p4_f12_crash
+    fault: P4-F12
+    description: "The process dies with a model job running (it is taken again after its lease) and again after a result was recorded but before the node moved; exactly one result each. / 进程在模型作业运行中死亡（租约到期后被再次领取），又在结果入账后、节点推进前死亡；每个作业恰好一个结果。"
+    expected: {flights: 3, runs: {completed: 1, failed: 2}, findings: {confirmed: 1}, orders: {open: 1}, crash_windows: 2, max_job_attempts: 2}
+  - id: p4_f13_concurrent_reviews
+    fault: P4-F13
+    description: "Two reviewers decide the same finding at once with opposite decisions; the first wins and the repeated request returns it. / 两名复核人同时对同一发现作出相反决定；首个有效，重复请求返回原记录。"
+    expected: {flights: 1, runs: {completed: 1}, findings: {confirmed: 1}, orders: {open: 1}, reviews: 1, one_concurrent_review: true}
+  - id: p4_f14_isolation
+    fault: P4-F14
+    description: "Cross-project reads, reviews, reuse, reference registration and media lookups, a viewer's repair feedback and a stranger's listing are all refused without data. / 跨项目读取、复核、复用、参考登记与媒体查询，viewer 的维修反馈与陌生身份的列表全部被拒且不泄漏数据。"
+    expected: {flights: 2, runs: {completed: 2}, findings: {confirmed: 1, dismissed: 1}, orders: {}, probes: true}
+  - id: p4_f15_verdict_boundary
+    fault: P4-F15
+    description: "An inspection that never verifies queues no analysis; a suspected analysis leaves the mission report's columns exactly as they were. / 从未证实的巡检不排队任何分析；疑似分析使任务报告的各列保持原样。"
+    expected: {flights: 4, runs: {completed: 1, outcome_unknown: 1}, findings: {confirmed: 1}, orders: {open: 1}, no_jobs_for_unverified: true, injections: [flat_frames, report_before_analysis, report_after_analysis]}
+s1:
+  - id: p4_s1_close
+    seeds: [7, 19, 41]
+    description: "PX4 SITL: a damage patch on the red marker is inspected, confirmed and ordered; at repair feedback the harness removes the patch, the reinspection is unsuspected, confirmed and the order closes. / PX4 SITL：红色标记上的损伤贴片经巡检、确认并建单；维修反馈时编排移除贴片，复检未疑似并被确认，工单关闭。"
+    patch: {asset: asset_red, remove_at_round: 1}
+    expected: {flights: 2, orders: {closed: 1}, rounds: ["passed|"]}
+  - id: p4_s1_not_repaired
+    seeds: [7]
+    description: "PX4 SITL: the first feedback comes without removing the patch and its round fails; the patch is removed at the second feedback and that round closes the order. / PX4 SITL：第一次反馈时不移除贴片，本轮失败；第二次反馈时移除贴片，该轮关单。"
+    patch: {asset: asset_red, remove_at_round: 2}
+    expected: {flights: 3, orders: {closed: 1}, rounds: ["failed|reinspection.still_anomalous", "passed|"]}
+  - id: p4_s1_dedup
+    seeds: [7]
+    description: "PX4 SITL: two inspections of the patched marker before repair join one finding and one order; the reinspection closes it. / PX4 SITL：维修前对带贴片标记的两次巡检归入一个发现与一张工单；复检后关单。"
+    patch: {asset: asset_red, remove_at_round: 1}
+    inspections: 2
+    expected: {flights: 3, orders: {closed: 1}, finding_jobs: [2], rounds: ["passed|"]}

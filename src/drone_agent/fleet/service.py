@@ -160,6 +160,9 @@ class MissionService:
         # P3 (D059): the scheduler, attached by the process entry when a scheduling catalog is loaded.
         # P3（D059）：调度器；加载了调度目录时由进程入口挂上。
         self.scheduler = None
+        # P4 (D063): the business engine, attached by the process entry when a business catalog is loaded.
+        # P4（D063）：业务引擎；加载了业务目录时由进程入口挂上。
+        self.business = None
         hub.listeners.append(self._ingested)
 
     # ── P1 bindings and project checks / P1 绑定与项目检查 ──
@@ -985,6 +988,8 @@ class MissionService:
                 self.tick_workflows()
             if self.scheduler is not None:
                 self.tick_scheduler()
+            if self.business is not None:
+                await self.tick_analysis()
             for mission_id in sorted(self.dirty):
                 self.dirty.discard(mission_id)
                 try:
@@ -1018,6 +1023,13 @@ class MissionService:
             self.dirty.update(self.scheduler.tick())
         except Exception as error:  # keep serving; the problem is visible / 继续服务；问题可见
             self.ledger.record_issue(issue("service.degraded", f"scheduler: {type(error).__name__}: {error}"[:300]))
+
+    async def tick_analysis(self) -> None:
+        """One P4 background pass: run analysis jobs (D063). / 一次 P4 后台处理：运行分析作业（D063）。"""
+        try:
+            await self.business.tick()
+        except Exception as error:  # keep serving; the problem is visible / 继续服务；问题可见
+            self.ledger.record_issue(issue("service.degraded", f"analysis: {type(error).__name__}: {error}"[:300]))
 
     # ── views / 视图 ──
 
@@ -1170,7 +1182,8 @@ class MissionService:
         return [{"project_id": p, "name": catalog.projects[p].name if p in catalog.projects else "legacy M2 history",
                  "legacy": p == legacy, "roles": sorted(r.value for r in self.ops.directory.roles(caller, p)),
                  "robots": sorted(r for r in catalog.robots if catalog.project_of(r) == p),
-                 "scheduling": p in catalog.projects and set(catalog.projects[p].sites) <= placed}
+                 "scheduling": p in catalog.projects and set(catalog.projects[p].sites) <= placed,
+                 "business": p in catalog.projects and getattr(self, "business", None) is not None}
                 for p in self.ops.directory.projects(caller)]
 
     def _dock_row(self, dock_id: str) -> dict:

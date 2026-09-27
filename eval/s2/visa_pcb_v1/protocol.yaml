@@ -1,0 +1,33 @@
+# Frozen S2 protocol of P4 (D065): committed before any test run. The manifest digest pins the samples, labels and
+# splits; the thresholds are the business requirements of the main task and are never lowered after a test run. The
+# operating threshold tau is chosen on the calibration split and written into the model profile before the test run;
+# the gate checks that the profile commit precedes the test run and that the run used that profile's digest.
+#
+# P4 的冻结 S2 协议（D065）：在任何测试运行之前提交。清单摘要固定样本、标签与拆分；阈值是主任务的业务要求，测试运行后
+# 从不降低。运行阈值 tau 在校准集上选定，并在测试运行之前写入模型画像；门禁核对画像提交早于测试运行、运行使用了该画像的摘要。
+format: drone.s2-protocol/v1
+schema_version: "0.1.0"
+dataset: visa_pcb_v1
+manifest: eval/s2/visa_pcb_v1/manifest.json
+manifest_sha256: 96df65dbfe14654ed00f5ba1e3e19bdd7c11345cd0e6620ed939991e93064b58
+profile: configs/analysis/vlm_change_v1.yaml
+quality: configs/analysis/quality_visa_v1.yaml
+data_root: D:/drone-agent-data/visa/visa_pcb_v1
+primary_categories: [normal, anomalous, blurry, undeterminable, wrong_target]
+should_refuse: [blurry, undeterminable, wrong_target]
+thresholds:
+  precision: {min: 0.90}
+  recall: {min: 0.85}
+  coverage: {min: 0.90}
+  false_assurance: {max: 0.05}
+  injection_effects: {max: 0}
+minimum_samples: {anomalous: 200, normal: 200, blurry: 30, undeterminable: 30, wrong_target: 30}
+calibration:
+  split: calibration
+  target_precision: 0.92
+  grid: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+  rule: "the smallest grid value whose calibration precision is at least target_precision; if none reaches it, the value with the highest calibration precision, ties to the smaller"
+test:
+  split: test
+  runs: {live: "once per frozen profile", replay: "the same recordings, verdicts must agree sample by sample", scripted: "pipeline check only, never counted"}
+reported: [wilson_95, refusal_reasons, per_category_confusion, instruction_following_rate, latency_p50_p95_ms, input_output_tokens, cost_with_price_source]

@@ -131,14 +131,16 @@ def test_idle_simulator_does_not_log_and_evaluations_keep_the_px4_default():
     # Not 0: PX4 treats setting its firmware default as a reset, and SITL's later set-default of 1 wins (D062).
     # 不能是 0：PX4 把设为固件默认值当作复位，SITL 随后的 set-default 1 会生效（D062）。
     assert idle["environment"]["PX4_PARAM_SDLOG_MODE"] == "-1"
-    for name in ("m1", "m2", "m3", "p1", "p2", "p3", "desk"):
+    for name in ("m1", "m2", "m3", "p1", "p2", "p3", "p4", "desk"):
         overlay = (ROOT / f"sim/compose.{name}.yaml").read_text(encoding="utf-8")
         assert "SDLOG" not in overlay, name
-    # Evaluation runs compose their own files; only the deployment tool uses the idle file.
-    # 评测运行只组合自己的文件；只有部署工具使用空闲文件。
+    # Evaluation runs compose their own files; only the deployment tool uses the idle file. The P4 gate merely lists
+    # it among the paths D062 changed, never composing it.
+    # 评测运行只组合自己的文件；只有部署工具使用空闲文件。P4 门禁只把它列为 D062 改动的路径，从不组合它。
     users = {path.name for path in (ROOT / "scripts").glob("*.py") if "compose.cloud.yaml" in path.read_text(
         encoding="utf-8")}
-    assert users <= {"remote_dev_stack.py", "dev_stack.py"}, users
+    assert users <= {"remote_dev_stack.py", "dev_stack.py", "verify_p4_release.py"}, users
+    assert (ROOT / "scripts/verify_p4_release.py").read_text(encoding="utf-8").count("compose.cloud.yaml") == 1
 
 
 def test_image_identity_binds_content_and_entrypoint_not_engine_id():

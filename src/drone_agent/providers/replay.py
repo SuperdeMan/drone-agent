@@ -106,10 +106,16 @@ class Recording(ContractModel):
 
 
 class RecordingProvider(BaseProvider):
-    """Wraps a provider and records every exchange in call order. / 包装 provider 并按调用顺序录制每次交互。"""
+    """Wraps a provider and records every exchange in call order. `redact` may shorten what is stored (e.g. image data
+    replaced by its digest); the request digest always covers the full request, so replay is unaffected.
 
-    def __init__(self, inner: BaseProvider):
+    包装 provider 并按调用顺序录制每次交互。`redact` 可以缩短存储的内容（如以摘要代替图像数据）；请求摘要始终覆盖完整请求，
+    因此不影响回放。
+    """
+
+    def __init__(self, inner: BaseProvider, redact=None):
         self.inner = inner
+        self.redact = redact
         self.exchanges: list[Exchange] = []
 
     async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
@@ -117,8 +123,8 @@ class RecordingProvider(BaseProvider):
         started = time.monotonic()
         content, used, finish, usage = await self.inner.complete(
             messages, model, temperature, max_tokens, thinking=thinking, timeout_s=timeout_s)
-        self.exchanges.append(Exchange(request_digest=digest(body), request=body, content=content, model_used=used,
-                                       finish=finish, usage=tuple(usage),
+        self.exchanges.append(Exchange(request_digest=digest(body), request=self.redact(body) if self.redact else body,
+                                       content=content, model_used=used, finish=finish, usage=tuple(usage),
                                        latency_ms=round((time.monotonic() - started) * 1000, 1)))
         return content, used, finish, usage
 

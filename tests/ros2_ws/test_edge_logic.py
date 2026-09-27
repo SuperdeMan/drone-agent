@@ -98,16 +98,20 @@ def test_only_a_confident_trigger_class_raises_the_replan_trigger():
     assert not any(classes[name]["replan_trigger"] for name in ("marker_green", "marker_red", "marker_blue"))
 
 
-def test_the_prompt_set_pins_match_the_image_build_arguments():
+@pytest.mark.parametrize("path", ["configs/perception/event_prompts_v1.yaml",
+                                  "eval/s2/visa_pcb_v1/retrieval_queries_v1.yaml"])
+def test_the_prompt_set_pins_match_the_image_build_arguments(path):
+    # The P4 retrieval queries (D065 §7) go through the same pinned encoders. / P4 检索查询经同一固定编码器。
+    prompts = yaml.safe_load((ROOT / path).read_text(encoding="utf-8"))
     dockerfile = (ROOT / "sim/m3.Dockerfile").read_text(encoding="utf-8")
     args = dict(re.findall(r"^ARG (\w+)=(\S+)$", dockerfile, re.MULTILINE))
-    model = PROMPTS["model"]
+    model = prompts["model"]
     assert args["CLIP_REVISION"] == model["revision"]
     assert args["CLIP_VISION_SHA256"] == model["vision"]["sha256"]
     assert args["CLIP_TEXT_SHA256"] == model["text"]["sha256"]
     assert args["CLIP_VOCAB_SHA256"] == model["vocab"]["sha256"]
     assert args["CLIP_MERGES_SHA256"] == model["merges"]["sha256"]
-    for spec in PROMPTS["classes"].values():
+    for spec in prompts["classes"].values():
         for prompt in spec["prompts"]:
             # Every prompt passes the ASCII rule before the real vocabulary is consulted. / 每条提示都满足 ASCII 规则。
             assert re.fullmatch(r"[a-z0-9 ,.'-]+", prompt), prompt

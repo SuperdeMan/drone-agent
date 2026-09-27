@@ -69,6 +69,36 @@ const TTONE = {completed: "ok", assigned: "ok", queued: "warn", cancel_requested
   outcome_unknown: "bad", rejected: "bad", cancelled: "bad"};
 const ASTATE = {active: "有效", withdrawn: "已撤回（未领取）", ended: "已结束"};
 const TVERDICT = {assign: "分配", wait: "等待", reject: "拒绝"};
+// P4 business loop (D063): findings, orders, analyses and references as the service records them. Model and scripted
+// answers are candidates with their source; only a reviewer's decision confirms a finding or a repair.
+// P4 业务闭环（D063）：按服务记录展示发现、工单、分析与参考外观。模型与脚本回答只是带来源的候选；只有 reviewer 的决定能
+// 确认发现或修复。
+let business = null, subject = null;
+const FSTATE = {candidate: "候选·待复核", confirmed: "已确认", dismissed: "已驳回", resolved: "已修复关闭"};
+const FTONE = {candidate: "warn", confirmed: "bad", resolved: "ok"};
+Object.assign(ORDER, {reinspection_failed: "复检未通过·待再修", reinspection_unknown: "复检不确定·待再修", closed: "已关单"});
+const OTONE = {open: "warn", reinspection_requested: "warn", reinspection_failed: "bad", reinspection_unknown: "bad", closed: "ok"};
+const RSTATE = {reinspecting: "复检中", passed: "通过", failed: "未通过", unknown: "不确定"};
+const JSTATE = {queued: "排队", running: "分析中", completed: "完成", refused: "拒判", cancelled: "已取消"};
+const BVERDICT = {suspected: "疑似异常", normal: "未见异常", refused: "拒判"};
+const REPAIRABLE = ["open", "reinspection_failed", "reinspection_unknown"];
+Object.assign(REASON, {"reinspection.still_anomalous": "复检仍疑似异常", "reinspection.review_dismissed": "复核驳回修复",
+  "reinspection.review_missing": "缺少本轮复核", "reinspection.evidence_missing": "缺少复检证据",
+  "reinspection.before_feedback": "采集早于维修反馈", "reinspection.not_new_acquisition": "不是新的采集",
+  "reinspection.replayed_media": "媒体与旧采集相同（疑似重放）", "reinspection.analysis_refused": "复检分析拒判",
+  "reinspection.source_not_allowed": "该分析来源不能用于关单", "reinspection.capture_time_unknown": "采集时间未知",
+  "reinspection.run_ended": "复检运行已结束", "quality.blurry": "图像模糊", "quality.exposure": "曝光异常",
+  "quality.resolution": "分辨率不足", "quality.media_missing": "媒体缺失", "quality.media_mismatch": "媒体摘要不符",
+  "quality.capture_time_unknown": "采集时间未知", "analysis.undeterminable": "无法判定", "analysis.no_reference": "没有登记参考外观",
+  "analysis.not_verified": "证据未证实", "analysis.run_cancelled": "运行已取消", "analysis.attempts_exhausted": "尝试次数用尽",
+  "analysis.error": "分析异常", "target.mismatch": "与登记目标不符", "model.unavailable": "模型不可用",
+  "model.uncalibrated": "模型阈值未标定", "model.timeout": "模型超时", "model.error": "模型调用失败",
+  "model.malformed": "模型回答格式不合规", "model.refusal": "模型拒答", "model.budget_exhausted": "当日模型预算用尽",
+  "model.profile_mismatch": "画像摘要不符", "model.score_at_or_above_threshold": "分数达到阈值",
+  "model.score_below_threshold": "分数低于阈值", "model.blurred": "模型：模糊", "model.dark": "模型：过暗",
+  "model.overexposed": "模型：过曝", "model.occluded": "模型：遮挡", "model.out_of_frame": "模型：目标出画",
+  "model.other": "模型：其他原因", "reuse.stale": "采集过旧", "reuse.modality_mismatch": "模态不符",
+  "reuse.resolution": "分辨率不符", "reuse.source_unknown": "来源未知", "reuse.analyzer_not_allowed": "分析器不允许复用"});
 
 function notice(text) { byId("notice").textContent = text || ""; byId("notice").hidden = !text; }
 function chip(status) { return `<span class="chip ${TONE[status] || ""}">${esc(STATUS[status] || status)}</span>`; }
@@ -97,6 +127,8 @@ function connect() {
     else if (message.type === "workflow_draft") renderDraft(message.result);
     else if (message.type === "tasks") { tasks = message.view; renderTasks(); }
     else if (message.type === "task") { task = message.view; if (mode === "task") renderTask(); }
+    else if (message.type === "business") { business = message.view; renderBusiness(); if (current && mode === "mission") renderEvidence(); }
+    else if (message.type === "finding" || message.type === "order") { subject = {kind: message.type, ...message.view}; if (mode === message.type) renderSubject(); }
     else if (message.type === "media") { photos[message.evidence_id] = message.png; renderEvidence(); }
     else if (message.type === "host") { host = message.status; renderHost(); }
     else if (message.type === "resources") { resources = message.view; renderResources(); }
@@ -132,6 +164,8 @@ function selectProject() {
   send({type: "workflows", project_id: byId("project").value});
   tasks = null; renderTasks();
   if (project?.scheduling) send({type: "tasks_watch", project_id: byId("project").value});
+  business = null; renderBusiness();
+  if (project?.business) send({type: "business_watch", project_id: byId("project").value});
 }
 byId("project").onchange = selectProject;
 
@@ -371,6 +405,101 @@ function renderTask() {
   for (const button of byId("detail").querySelectorAll("[data-mission]")) button.onclick = () => { mode = "mission"; selected = null; send({type: "watch", mission_id: button.dataset.mission}); };
 }
 
+function bchip(names, tones, state) { return `<span class="chip ${tones[state] || ""}">${esc(names[state] || state)}</span>`; }
+function brole(role) { return hello?.can_write && (business?.roles || []).includes(role); }
+function timeline(events) {
+  return `<h3>时间线</h3><div class="events">${(events || []).slice().reverse().slice(0, 40).map(e => `<div class="event"><time>${esc(e.created_at.slice(11, 19))}</time>
+    <span>${esc(e.kind)} ${esc(e.actor || "")} ${esc(JSON.stringify(e.body).slice(0, 140))}</span></div>`).join("")}</div>`;
+}
+
+function renderBusiness() {
+  const shown = Boolean(business);
+  byId("business").hidden = byId("businessEyebrow").hidden = !shown;
+  if (!shown) return;
+  const columns = business.report.columns;
+  byId("businessReport").innerHTML = `<div class="columns">${[["closed", "已关单", "completed"], ["open", "未关单", "not_completed"],
+    ["unknown", "复检不确定", "uncertain"]].map(([key, label, tone]) => `<div class="column ${tone}"><b>${esc(label)} · ${esc(columns[key].length)}</b></div>`).join("")}</div>
+    <p>已关单只接受：维修反馈之后的新的已证实采集、允许来源的未疑似分析，以及 reviewer 对本轮的确认。</p>`;
+  byId("businessFindings").innerHTML = business.findings.map(f => `<button data-finding="${esc(f.finding_id)}" aria-current="${f.finding_id === subject?.finding?.finding_id}">
+    <span>${esc(f.asset_key)} · ${esc(f.family)}<br><small>${esc(f.finding_id)} · ${esc(f.jobs)} 次分析 · ${esc(f.updated_at.slice(11, 19))}</small></span>${bchip(FSTATE, FTONE, f.state)}</button>`).join("")
+    || '<div class="empty">暂无发现。</div>';
+  byId("businessOrders").innerHTML = business.orders.map(o => `<button data-order="${esc(o.order_id)}" aria-current="${o.order_id === subject?.order?.order_id}">
+    <span>${esc(o.asset_key)}<br><small>${esc(o.order_id)} · 第 ${esc(o.round)} 轮 · ${esc(o.updated_at.slice(11, 19))}</small></span>${bchip(ORDER, OTONE, o.state)}</button>`).join("")
+    || '<div class="empty">暂无工单。</div>';
+  byId("businessJobs").innerHTML = business.jobs.slice(0, 12).map(j => `<div class="res"><b>${esc(j.analyzer)}</b> · ${esc(JSTATE[j.state] || j.state)}
+    · ${esc(BVERDICT[j.verdict] || "—")} · ${esc(SOURCE[j.source] || j.source || "—")}${j.score != null ? " · 分数 " + esc(j.score) : ""}
+    ${j.reasons.length ? `<div class="why">${esc(reasons(j.reasons))}</div>` : ""}</div>`).join("") || '<div class="empty">暂无分析。</div>';
+  byId("businessReferences").innerHTML = business.references.map(r => `<div class="res"><b>${esc(r.asset_key)}</b> · ${esc(r.state)}
+    <div class="why">${esc(r.registered_by)} · ${esc(r.registered_at.slice(0, 19))} · ${esc(r.evidence_id.slice(0, 24))}…</div></div>`).join("") || '<div class="empty">未登记。</div>';
+  for (const button of byId("business").querySelectorAll("[data-finding]")) button.onclick = () => watchSubject("finding", button.dataset.finding);
+  for (const button of byId("business").querySelectorAll("[data-order]")) button.onclick = () => watchSubject("order", button.dataset.order);
+}
+
+function watchSubject(kind, id) {
+  mode = kind; resourceDetail = null;
+  send({type: kind + "_watch", project_id: business.project_id, [kind + "_id"]: id});
+}
+
+function renderSubject() {
+  if (!subject) return;
+  if (subject.kind === "finding") renderFinding(); else renderOrder();
+  for (const button of byId("detail").querySelectorAll("[data-mission]")) button.onclick = () => { mode = "mission"; selected = null; send({type: "watch", mission_id: button.dataset.mission}); };
+  for (const button of byId("detail").querySelectorAll("[data-finding]")) button.onclick = () => watchSubject("finding", button.dataset.finding);
+  for (const button of byId("detail").querySelectorAll("[data-order]")) button.onclick = () => watchSubject("order", button.dataset.order);
+  for (const button of byId("detail").querySelectorAll("[data-run]")) button.onclick = () => watchRun(button.dataset.run);
+}
+
+function renderFinding() {
+  const f = subject.finding, project = f.project_id, body = f.body || {};
+  let html = `<div class="eyebrow">发现 ${esc(f.finding_id)} · 聚合键 ${esc(f.cluster_key)}</div><h2>${esc(f.asset_key)} · ${esc(f.family)}</h2>
+    <div>${bchip(FSTATE, FTONE, f.state)} <small class="chip">${esc(f.jobs)} 次分析</small></div>
+    ${body.description ? `<p>首次描述（来自分析器，只是候选）：${esc(body.description)}</p>` : ""}`;
+  if (subject.review) html += `<p>复核：${esc(subject.review.decision === "confirmed" ? "确认" : "驳回")} · ${esc(subject.review.reviewer)} · ${esc(subject.review.created_at.slice(0, 19))}${subject.review.note ? " · " + esc(subject.review.note) : ""}</p>`;
+  if (f.state === "candidate") html += `<div class="approval"><b>待复核</b><p>分析结论只是候选。确认后按「每个发现一张工单」建单；驳回后该发现关闭，同一缺陷再次出现会开新发现。</p>
+    <div class="buttons"><button class="ghost" data-decide="confirmed" ${brole("reviewer") ? "" : "disabled"}>确认异常并建单</button>
+    <button class="ghost danger" data-decide="dismissed" ${brole("reviewer") ? "" : "disabled"}>驳回</button></div></div>`;
+  if (subject.order) html += `<p>工单：<button class="ghost" data-order="${esc(subject.order.order_id)}">${esc(subject.order.order_id)}</button> ${bchip(ORDER, OTONE, subject.order.state)}</p>`;
+  html += `<h3>分析（来源已标注；脚本 / 确定性结果不是模型识别）</h3><table><tr><th>分析器</th><th>来源</th><th>结论</th><th>分数</th><th>原因 / 描述</th><th>证据</th></tr>
+    ${subject.jobs.map(j => `<tr><td>${esc(j.analyzer)}<br><small>${esc(j.purpose)}</small></td><td>${esc(SOURCE[j.source] || j.source || "—")}</td>
+    <td>${esc(BVERDICT[j.verdict] || JSTATE[j.state] || j.state)}</td><td>${esc(j.score ?? "—")}</td>
+    <td>${esc(reasons(j.reasons))}${j.description ? "<br>" + esc(j.description) : ""}</td>
+    <td><button class="ghost" data-mission="${esc(j.mission_id)}">${esc(j.mission_id)}</button></td></tr>`).join("")}</table>`;
+  byId("detail").innerHTML = html + timeline(subject.events);
+  for (const button of byId("detail").querySelectorAll("[data-decide]")) button.onclick = () => {
+    const note = prompt(button.dataset.decide === "confirmed" ? "确认说明（写入复核记录）" : "驳回说明（写入复核记录）") ?? "";
+    send({type: "finding_review", project_id: project, finding_id: f.finding_id, decision: button.dataset.decide, request_id: "ui-" + rid(), note});
+  };
+}
+
+function renderOrder() {
+  const o = subject.order, project = o.project_id;
+  let html = `<div class="eyebrow">工单 ${esc(o.order_id)} · 建单 ${esc(o.created_by)}</div><h2>${esc(o.asset_key)}</h2>
+    <div>${bchip(ORDER, OTONE, o.state)} <small class="chip">第 ${esc(o.round)} 轮</small></div>
+    <p>发现：<button class="ghost" data-finding="${esc(subject.finding.finding_id)}">${esc(subject.finding.finding_id)}</button> ${bchip(FSTATE, FTONE, subject.finding.state)}</p>`;
+  if (REPAIRABLE.includes(o.state)) html += `<div class="buttons"><button class="ghost" id="repairOrder" ${brole("operator") ? "" : "disabled"}>记录维修反馈并启动复检</button></div>
+    <p>维修反馈不关单：复检飞行仍需逐次审批签名；关单需要反馈之后的新采集、未疑似的分析与 reviewer 对本轮的确认。</p>`;
+  if (o.closure) html += `<p>关单：${esc(o.closure.rule)} · 证据 ${esc((o.closure.evidence_id || "").slice(0, 24))}… · 采集 ${esc((o.closure.captured_at || "").slice(0, 19))} · 分析来源 ${esc(SOURCE[o.closure.job_source] || o.closure.job_source)}</p>`;
+  html += `<h3>轮次</h3><table><tr><th>轮</th><th>维修反馈</th><th>复检运行</th><th>状态</th><th>本轮复核</th><th>结论原因</th></tr>${subject.rounds.map(r => {
+    const decide = r.state === "reinspecting" && !r.review
+      ? `<button class="ghost" data-round="${esc(r.round)}" data-decision="confirmed" ${brole("reviewer") ? "" : "disabled"}>确认修复</button>
+         <button class="ghost danger" data-round="${esc(r.round)}" data-decision="dismissed" ${brole("reviewer") ? "" : "disabled"}>驳回</button>` : "—";
+    return `<tr><td>${esc(r.round)}</td><td>${esc(r.feedback.reported_by)}<br><small>${esc((r.feedback.reported_at || "").slice(0, 19))} · ${esc(r.feedback.note)}</small></td>
+      <td>${r.reinspection_run ? `<button class="ghost" data-run="${esc(r.reinspection_run)}">${esc(r.reinspection_run)}</button> ${r.run_state ? wchip(r.run_state) : ""}` : "—"}</td>
+      <td>${esc(RSTATE[r.state] || r.state)}</td><td>${r.review ? esc((r.review.decision === "confirmed" ? "确认修复" : "驳回") + " · " + r.review.reviewer) : decide}</td>
+      <td>${esc(reasons((r.conclusion || {}).reasons || []) || "—")}</td></tr>`;
+  }).join("") || '<tr><td colspan="6">尚无维修反馈。</td></tr>'}</table>
+    <p>本轮复核只接受未疑似的复检采集；复检仍疑似时本轮直接判为未通过。</p>`;
+  byId("detail").innerHTML = html + timeline(subject.events);
+  if (byId("repairOrder")) byId("repairOrder").onclick = () => {
+    const note = prompt("维修反馈说明（只启动复检，不关单）") ?? "";
+    if (note) send({type: "order_repair", project_id: project, order_id: o.order_id, request_id: "ui-" + rid(), note});
+  };
+  for (const button of byId("detail").querySelectorAll("[data-round]")) button.onclick = () => {
+    const note = prompt(button.dataset.decision === "confirmed" ? "确认修复的说明（写入复核记录）" : "驳回说明（写入复核记录）") ?? "";
+    send({type: "order_review", project_id: project, order_id: o.order_id, round: Number(button.dataset.round), decision: button.dataset.decision, request_id: "ui-" + rid(), note});
+  };
+}
+
 function renderDraft(result) {
   const spec = result.spec;
   byId("draftResult").innerHTML = `<p>草案 ${esc(result.status === "planned" ? "已生成（未生效）" : result.status === "refused" ? "被拒答" : "无效")} · 来源 ${esc(SOURCE[result.use?.source] || result.use?.source)}
@@ -515,11 +644,26 @@ function renderReport() {
 
 function renderEvidence() {
   const items = current?.evidence || [];
+  // P4: a verified capture of this project can become a reference (admin) or be analysed again (reuse-v1).
+  // P4：本项目已证实的采集可登记为参考外观（管理员）或再次分析（reuse-v1）。
+  const project = current?.binding?.project_id, reuse = business && business.project_id === project ? business.reuse.analyzers : null;
   byId("evidence").innerHTML = items.length ? items.map(e => `<button data-id="${esc(e.evidence_id)}">v${esc(e.version)} ${esc(e.step_id)} · ${esc(e.captured_at.slice(11, 19))}
     · ${esc(SOURCE[e.provenance?.source] || SOURCE.legacy_unknown)}
     · ${e.verification ? esc(e.verification.final_verdict) + (e.verification.agrees ? "" : " · 机载/服务不一致") : "待复核"}</button>
-    ${photos[e.evidence_id] ? `<div class="photo"><img alt="机载相机证据" src="${esc(photos[e.evidence_id])}"></div>` : ""}`).join("") : '<div class="empty">暂无证据。</div>';
-  for (const button of byId("evidence").querySelectorAll("button")) button.onclick = () => send({type: "media", mission_id: current.mission.mission_id, evidence_id: button.dataset.id});
+    ${photos[e.evidence_id] ? `<div class="photo"><img alt="机载相机证据" src="${esc(photos[e.evidence_id])}"></div>` : ""}
+    ${reuse && e.verification?.final_verdict === "verified" ? `<div class="row"><select data-analyzer="${esc(e.evidence_id)}">${reuse.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join("")}</select>
+      <span><button class="ghost" data-reuse="${esc(e.evidence_id)}" ${brole("operator") ? "" : "disabled"}>复用分析</button>
+      <button class="ghost" data-reference="${esc(e.evidence_id)}" ${brole("admin") ? "" : "disabled"}>登记为参考外观</button></span></div>` : ""}`).join("") : '<div class="empty">暂无证据。</div>';
+  for (const button of byId("evidence").querySelectorAll("button[data-id]")) button.onclick = () => send({type: "media", mission_id: current.mission.mission_id, evidence_id: button.dataset.id});
+  for (const button of byId("evidence").querySelectorAll("[data-reuse]")) button.onclick = () => {
+    const analyzer = byId("evidence").querySelector(`[data-analyzer="${button.dataset.reuse}"]`).value;
+    send({type: "analysis_submit", project_id: project, mission_id: current.mission.mission_id, evidence_id: button.dataset.reuse, analyzer, request_id: "ui-" + rid()});
+    notice("已提交复用分析；结果以候选结论出现在发现与分析列表中。");
+  };
+  for (const button of byId("evidence").querySelectorAll("[data-reference]")) button.onclick = () => {
+    const note = prompt("登记说明：这张已证实的采集代表该资产的正常外观（写入审计）") ?? "";
+    if (note) send({type: "reference_register", project_id: project, mission_id: current.mission.mission_id, evidence_id: button.dataset.reference, note});
+  };
 }
 
 function renderHost() {

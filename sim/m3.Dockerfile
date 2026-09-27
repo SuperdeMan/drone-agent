@@ -144,3 +144,23 @@ RUN /usr/bin/python3 /workspace/sim/m3_setup.py \
       'exec make px4_sitl gz_x500_vision' > /opt/drone-sim/entrypoint-m3.sh
 LABEL org.drone-agent.role=sim-m3
 ENTRYPOINT ["bash", "/opt/drone-sim/entrypoint-m3.sh"]
+
+# P4 S2 retrieval report (D065 §7): the versioned VisA query set through the same pinned CLIP text encoder, then a
+# no-network evaluation image with the same ONNX Runtime and vision encoder as the onboard detector. Never an
+# aircraft or simulation image.
+# P4 S2 检索报告（D065 §7）：版本化的 VisA 查询集经同一固定 CLIP 文本编码器编码，再构成与机载检测相同 ONNX Runtime 与
+# 视觉编码器的无网络评测镜像。它从不作为机载或仿真镜像。
+FROM edgeprompts AS retrievalqueries
+COPY --from=checks /workspace/eval/s2/visa_pcb_v1/retrieval_queries_v1.yaml /tmp/queries.yaml
+RUN PYTHONPATH=/opt/da_edge/pydeps:/tmp/src /usr/bin/python3 -m da_edge_inference.build_prompts \
+      --config /tmp/queries.yaml --model-dir /tmp/clip --output /opt/da_edge/retrieval_queries.json
+
+FROM edgeruntime AS retrieval
+COPY --from=checks /opt/drone-venv /opt/drone-venv
+COPY --from=checks /workspace /workspace
+COPY --from=retrievalqueries /opt/da_edge/retrieval_queries.json /opt/da_edge/retrieval_queries.json
+WORKDIR /workspace
+ENV PATH=/opt/drone-venv/bin:${PATH}
+ENV PYTHONPATH=/workspace/src:/workspace/ros2_ws/src/da_edge_inference:/opt/da_edge/pydeps
+LABEL org.drone-agent.role=evaluation-retrieval
+ENTRYPOINT []
