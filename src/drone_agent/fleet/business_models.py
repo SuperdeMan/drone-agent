@@ -178,7 +178,9 @@ class ModelProfile(BusinessModel):
     image_format: Literal["jpeg", "png"] = "jpeg"
     jpeg_quality: int = Field(default=92, ge=50, le=100)
     temperature: float = Field(default=0.0, ge=0, le=1)
-    max_tokens: int = Field(ge=64, le=4096)
+    thinking: bool = Field(default=False, description="let the model reason before its answer; only the final JSON is "
+                                                     "parsed / 允许模型先推理再作答；只解析最终 JSON")
+    max_tokens: int = Field(ge=64, le=8192)
     timeout_s: float = Field(gt=0, le=300)
     attempts: int = Field(ge=1, le=3)
     threshold: float | None = Field(default=None, ge=0, le=1, description="tau; None only in calibration / τ")

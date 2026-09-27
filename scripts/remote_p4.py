@@ -60,6 +60,8 @@ DATASET = "visa_pcb_v1"
 ARCHIVE = f"{DATASET}.tar"
 MANIFEST = f"eval/s2/{DATASET}/manifest.json"
 PROTOCOL = f"eval/s2/{DATASET}/protocol.yaml"
+PROFILE = "configs/analysis/vlm_change_v1.yaml"
+PROFILES = re.compile(r"^configs/analysis/vlm_change_v[0-9]{1,2}\.yaml$")
 REPLAY_SOURCE = re.compile(r"^([0-9]{8}T[0-9]{6}Z-[0-9a-f]{8})/(p4-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8})$")
 
 
@@ -470,6 +472,9 @@ def run_s2(root: Path, deployment: Path, request: dict) -> dict:
     threshold = request.get("threshold")
     if threshold is not None and not (isinstance(threshold, (int, float)) and 0.0 < float(threshold) < 1.0):
         raise ValueError("threshold must be in (0, 1)")
+    profile = request.get("profile") or PROFILE
+    if not PROFILES.fullmatch(profile) or not (source / profile).is_file():
+        raise ValueError("profile must be a committed configs/analysis/vlm_change_v<N>.yaml")
     data = root / "data" / DATASET
     if not data.is_dir():
         raise ValueError("install the S2 dataset first (dev_stack.py p4-data)")
@@ -497,7 +502,7 @@ def run_s2(root: Path, deployment: Path, request: dict) -> dict:
         shutil.copytree(replay_of / "run", output / "source")
     arguments = ["python3", "-m", "drone_agent.eval.p4_s2", "--root", "/workspace", "run", "--manifest",
                  f"/workspace/{MANIFEST}", "--data", "/data", "--split", split, "--mode", mode, "--output",
-                 "/output/run", "--concurrency", str(int(request.get("concurrency") or 3))]
+                 "/output/run", "--concurrency", str(int(request.get("concurrency") or 3)), "--profile", profile]
     if threshold is not None:
         arguments += ["--threshold", str(float(threshold))]
     if request.get("limit"):

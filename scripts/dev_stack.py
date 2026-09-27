@@ -552,6 +552,7 @@ def main() -> None:
                            help="live calls the model once per sample and records it; replay needs --replay-of; "
                                 "retrieval reports the pinned CLIP on the test split")
     s2_parser.add_argument("--threshold", type=float, help="tau for a calibration run; test runs use the profile's")
+    s2_parser.add_argument("--profile", help="configs/analysis/vlm_change_v<N>.yaml; defaults to v1")
     s2_parser.add_argument("--replay-of", help="<deployment id>/p4-<run id> of the live run to replay")
     s2_parser.add_argument("--limit", type=int, default=0, help="first N samples only (smoke runs)")
     s2_parser.add_argument("--concurrency", type=int, default=3)
@@ -643,7 +644,7 @@ def main() -> None:
             elif args.command == "p4-s2":
                 request = {"action": "p4_s2", "run_id": new_run_id(), "split": args.split, "mode": args.mode,
                            "threshold": args.threshold, "replay_of": args.replay_of, "limit": args.limit,
-                           "concurrency": args.concurrency}
+                           "concurrency": args.concurrency, "profile": args.profile}
                 if args.price_source:
                     request.update(currency=args.currency, price_input=args.price_input,
                                    price_output=args.price_output, price_source=args.price_source)

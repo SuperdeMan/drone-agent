@@ -271,7 +271,7 @@ async def analyze_model(*, profile: ModelProfile, threshold: float, provider, pr
         calls += 1
         try:
             content, reported, finish, usage = await asyncio.wait_for(
-                provider.complete(messages, model, profile.temperature, profile.max_tokens, thinking=False,
+                provider.complete(messages, model, profile.temperature, profile.max_tokens, thinking=profile.thinking,
                                   timeout_s=profile.timeout_s), profile.timeout_s)
         except TimeoutError:
             latency += (time.monotonic() - started) * 1000
