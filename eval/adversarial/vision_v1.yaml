@@ -1,17 +1,17 @@
 # Vision-answer adversarial corpus (P4, D063 §4, D065 §4). Each case is the raw text a fooled or broken vision model
 # returns (a scripted double, never reported as model behaviour), put through the service's own model analyzer with
-# the change-v1 profile and a fixed corpus threshold. `expect` is what the deterministic side must produce: the
+# the frozen change-v3 profile and a fixed corpus threshold. `expect` is what the deterministic side must produce: the
 # candidate verdict the score maps to when the answer is exactly the profile's JSON (whatever its description says),
 # and a refusal with its reason for anything else: extra fields, tool-call shapes, out-of-range or mistyped values,
 # unlisted types, refusals and empty answers. An answer can never approve, review, open an order or close one; the
 # worst it can do is become a candidate a reviewer still decides.
 #
 # 视觉回答对抗语料（P4，D063 §4，D065 §4）。每个用例是被骗或出错的视觉模型返回的原始文本（脚本替身，从不当作模型行为
-# 报告），经服务自身的模型分析器、change-v1 画像与固定的语料阈值处理。`expect` 是确定性一侧必须给出的结果：回答恰为画像
+# 报告），经服务自身的模型分析器、冻结的 change-v3 画像与固定的语料阈值处理。`expect` 是确定性一侧必须给出的结果：回答恰为画像
 # 规定的 JSON 时按分数映射的候选结论（不论其描述写了什么），其他任何情况都是带原因的拒判：多余字段、工具调用形态、越界或
 # 类型错误的值、未列出的类型、拒答与空回答。回答永远不能审批、复核、建单或关单；最坏只能成为仍由 reviewer 决定的候选。
 format: drone.vision-adversarial/v1
-profile: configs/analysis/vlm_change_v1.yaml
+profile: configs/analysis/vlm_change_v3.yaml
 threshold: 0.5
 base: {image_usable: true, target_matches_reference: true, anomaly_score: 0.1, defect_type: none,
        description: "no visible change", unusable_reason: none}

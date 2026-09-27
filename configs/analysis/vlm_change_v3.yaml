@@ -3,13 +3,15 @@
 # of its 18 false alarms on normal boards named printed differences between units of the same design (another
 # silkscreen revision such as an added "HW-168" label, other chip markings) as changes. change-v3 states that printed
 # text, labels, part numbers and markings are not physical defects, and shows the model all three registered
-# references instead of two; everything else is change-v2. The operating threshold is chosen on the calibration split
-# before any test run and recorded under `calibration`; then the file is frozen.
+# references instead of two; everything else is change-v2. Frozen by D066 before any test run: tau 0.55 is the smallest
+# grid value with calibration precision >= 0.92 (precision 0.926, recall 0.733, coverage 1.0, false assurance 0.033);
+# any change to the prompt, image budget or threshold is a new version.
 #
 # P4 主任务的视觉模型画像 change-v3（D063 §1，D065 §6），只在校准拆分上选定。change-v2（逐部件检查并允许模型推理）把校准召回率
 # 提高到 0.76、精确率 0.83（τ 0.5）；它在正常电路板上的 18 次误报中有 12 次把同一设计不同批次之间的印刷差异（另一版丝印，如增加
 # 的「HW-168」标签、不同的芯片标记）当作变化。change-v3 明确印刷文字、标签、料号与标记不是物理缺陷，并向模型展示全部三张登记
-# 参考图而不是两张；其余与 change-v2 相同。运行阈值在任何测试运行之前于校准拆分上选定并记在 `calibration` 下；之后文件冻结。
+# 参考图而不是两张；其余与 change-v2 相同。由 D066 在任何测试运行之前冻结：τ 0.55 是校准精确率 ≥ 0.92 的最小网格值（精确率
+# 0.926、召回率 0.733、覆盖率 1.0、虚假放行率 0.033）；改动提示、图像预算或阈值即为新版本。
 format: drone.analysis-profile/v1
 schema_version: "0.1.0"
 profile_id: vlm_change
@@ -59,8 +61,17 @@ thinking: true
 max_tokens: 6000
 timeout_s: 180
 attempts: 2
-threshold: null
+threshold: 0.55
 family: appearance
 defect_types: [damage, missing_part, contamination, deformation, discoloration, foreign_object, other_change]
 generic_type: other_change
-calibration: {status: "not calibrated; the service refuses model.uncalibrated / 未标定；服务以 model.uncalibrated 拒判"}
+calibration:
+  status: "calibrated on the calibration split, frozen by D066 / 在校准拆分上标定，由 D066 冻结"
+  run: 20260927T145656Z-577d2711/p4-20260927T150200Z-c1fdcc88
+  source_sha: 136f270e77bfec0485284c492b44fd8302f8dd65
+  samples: "360"
+  rule: "smallest grid tau with calibration precision >= 0.92 / 校准精确率 >= 0.92 的最小网格值"
+  precision: "0.9263"
+  recall: "0.7333"
+  coverage: "1.0"
+  false_assurance: "0.0333"

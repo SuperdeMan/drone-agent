@@ -60,7 +60,7 @@ DATASET = "visa_pcb_v1"
 ARCHIVE = f"{DATASET}.tar"
 MANIFEST = f"eval/s2/{DATASET}/manifest.json"
 PROTOCOL = f"eval/s2/{DATASET}/protocol.yaml"
-PROFILE = "configs/analysis/vlm_change_v1.yaml"
+PROFILE = "configs/analysis/vlm_change_v3.yaml"
 PROFILES = re.compile(r"^configs/analysis/vlm_change_v[0-9]{1,2}\.yaml$")
 REPLAY_SOURCE = re.compile(r"^([0-9]{8}T[0-9]{6}Z-[0-9a-f]{8})/(p4-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8})$")
 

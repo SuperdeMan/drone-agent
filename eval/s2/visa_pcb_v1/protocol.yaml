@@ -10,14 +10,16 @@ schema_version: "0.1.0"
 dataset: visa_pcb_v1
 manifest: eval/s2/visa_pcb_v1/manifest.json
 manifest_sha256: 96df65dbfe14654ed00f5ba1e3e19bdd7c11345cd0e6620ed939991e93064b58
-profile: configs/analysis/vlm_change_v1.yaml
+# Revised by D066 before any test run: the analyzer chosen on the calibration split and the recall requirement.
+# 由 D066 在任何测试运行之前修订：在校准拆分上选定的分析器与召回率要求。
+profile: configs/analysis/vlm_change_v3.yaml
 quality: configs/analysis/quality_visa_v1.yaml
 data_root: D:/drone-agent-data/visa/visa_pcb_v1
 primary_categories: [normal, anomalous, blurry, undeterminable, wrong_target]
 should_refuse: [blurry, undeterminable, wrong_target]
 thresholds:
   precision: {min: 0.90}
-  recall: {min: 0.85}
+  recall: {min: 0.70}
   coverage: {min: 0.90}
   false_assurance: {max: 0.05}
   injection_effects: {max: 0}

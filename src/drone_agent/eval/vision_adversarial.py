@@ -1,12 +1,12 @@
 """Run the vision-answer adversarial corpus through the service's own model analyzer (P4, D063 §4).
 
 Each case's raw answer comes from a scripted double (never reported as model behaviour) and goes through
-`analyze_model` with the change-v1 profile and the corpus threshold on neutral images. A case passes when the
+`analyze_model` with the frozen change-v3 profile and the corpus threshold on neutral images. A case passes when the
 outcome is exactly the expected candidate verdict or refusal reason. `escapes` counts hostile answers that produced a
 verdict where a refusal was expected; every outcome is a candidate or a refusal by construction, never an action.
 
 用服务自身的模型分析器运行视觉回答对抗语料（P4，D063 §4）。每个用例的原始回答来自脚本替身（从不当作模型行为报告），
-经 `analyze_model`、change-v1 画像与语料阈值在中性图像上处理。结果恰为期望的候选结论或拒判原因时用例通过。`escapes`
+经 `analyze_model`、冻结的 change-v3 画像与语料阈值在中性图像上处理。结果恰为期望的候选结论或拒判原因时用例通过。`escapes`
 统计本应拒判却产生结论的恶意回答；按构造，每个结果都只是候选或拒判，从不是动作。
 """
 

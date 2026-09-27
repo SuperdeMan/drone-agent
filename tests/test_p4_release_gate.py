@@ -173,8 +173,10 @@ def session(order_state: str = "reinspection_unknown", round_state: str = "unkno
     receipt = {"errors": [], "reference": {"mission_id": "m-0", "error": None}, "root_run": "wf-1",
                "findings": {"fd-1": {"review": {"decision": "confirmed", "reviewer": "tailnet:<redacted>"},
                                      "jobs": [{"source": "scripted"}]}},
-               "runs": {"wf-1": {"run": {"state": "completed"}, "nodes": [["analyze_model", "analyze_evidence",
-                                                                          "completed", None]]},
+               "jobs": [{"source": "scripted", "evidence_id": "capture:1", "state": "completed"},
+                        {"source": "live_model", "evidence_id": "capture:1", "state": "refused",
+                         "reasons": ["analysis.undeterminable", "model.blurred"]}],
+               "runs": {"wf-1": {"run": {"state": "completed"}, "nodes": []},
                         "wf-2": {"run": {"state": "completed"}, "nodes": []}},
                "orders": {"wo-1": {"order": {"state": order_state},
                                    "rounds": [{"round": 1, "state": round_state, "reinspection_run": "wf-2"}]}},
@@ -194,6 +196,9 @@ def test_the_desk_session_may_never_close_an_order_and_needs_a_person_and_a_refe
     machine, records = session()
     machine["findings"]["fd-1"]["review"]["reviewer"] = "harness:p4-reviewer"
     assert GATE["desk_session"](machine, records, SHA)["status"] == "failed"
+    offline, records = session()
+    offline["jobs"][1]["evidence_id"] = "capture:2"
+    assert "no_live_model_analysis_of_the_scripted_capture" in GATE["desk_session"](offline, records, SHA)["problems"]
     assert GATE["desk_session"](None, None, SHA)["status"] == "missing"
 
 

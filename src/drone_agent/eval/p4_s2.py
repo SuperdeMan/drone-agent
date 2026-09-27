@@ -342,7 +342,7 @@ def main() -> None:
     go.add_argument("--data", type=Path, required=True)
     go.add_argument("--split", choices=["calibration", "test"], required=True)
     go.add_argument("--mode", choices=["live", "replay", "scripted"], required=True)
-    go.add_argument("--profile", default="configs/analysis/vlm_change_v1.yaml")
+    go.add_argument("--profile", default="configs/analysis/vlm_change_v3.yaml")
     go.add_argument("--quality", default="configs/analysis/quality_visa_v1.yaml")
     go.add_argument("--threshold", type=float, default=None)
     go.add_argument("--recordings", type=Path, help="recordings of the live run to replay")

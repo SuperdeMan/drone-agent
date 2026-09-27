@@ -857,6 +857,12 @@ def business(origin: str, args) -> tuple[dict, str | None]:
     client.close()
     receipt["duration_s"] = round(time.monotonic() - started, 1)
     receipt["panel_after"] = panel_view(view) if "view" in locals() else None
+    # Every analysis of the project with its labelled source, so a live model's refusal is recorded too.
+    # 项目的每次分析及其来源标注，实调模型的拒判也被记录。
+    receipt["jobs"] = [{k: j.get(k) for k in ("job_id", "analyzer", "purpose", "state", "verdict", "source",
+                                               "evidence_id", "mission_id", "score", "reasons", "model_id",
+                                               "prompt_version", "usage", "latency_ms", "cost", "finding_id")}
+                       for j in (view.get("jobs", []) if "view" in locals() else [])]
     receipt["runs"] = {run_id: {"run": {k: v["run"].get(k) for k in ("run_id", "workflow_id", "version", "state",
                                                                     "trigger_source", "started_by", "outcome")},
                                 "nodes": [[n["node_id"], n["activity"], n["state"], n["reason"]] for n in v["nodes"]]}

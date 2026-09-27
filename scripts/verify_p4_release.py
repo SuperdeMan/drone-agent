@@ -89,7 +89,7 @@ COUNTS = ("duplicate_finding", "duplicate_order", "unreviewed_order", "non_human
           "project_escape", "duplicate_dispatch", "post_cancel_dispatch", "false_success", "wrong_dispatch",
           "wrong_release")
 P3_COUNTS = P3["COUNTS"]
-PROFILE = "configs/analysis/vlm_change_v1.yaml"
+PROFILE = "configs/analysis/vlm_change_v3.yaml"
 QUALITY = "configs/analysis/quality_visa_v1.yaml"
 MANIFEST = "eval/s2/visa_pcb_v1/manifest.json"
 PROTOCOL = "eval/s2/visa_pcb_v1/protocol.yaml"
@@ -333,10 +333,14 @@ def desk_session(receipt: dict | None, flights: list[dict] | None, sha: str) -> 
     if not any(j.get("source") == "scripted" for j in jobs):
         problems.append("scripted_fixture_analysis_missing")
     runs = receipt.get("runs") or {}
-    root = runs.get(receipt.get("root_run")) or {}
-    model = [n for n in root.get("nodes") or [] if n[0] == "analyze_model"]
-    if not model or model[0][2] != "completed":
-        problems.append("live_model_analysis_node_did_not_complete")
+    # The live model analysed the same capture as the scripted fixture; its verdict or refusal is its own record.
+    # 实调模型分析了与脚本夹具相同的采集；它的结论或拒判是它自己的记录。
+    analysed = receipt.get("jobs") or []
+    scripted = {j.get("evidence_id") for j in analysed if j.get("source") == "scripted"}
+    live = [j for j in analysed if j.get("source") == "live_model" and j.get("evidence_id") in scripted
+            and j.get("state") in ("completed", "refused")]
+    if not live:
+        problems.append("no_live_model_analysis_of_the_scripted_capture")
     orders = receipt.get("orders") or {}
     if len(orders) != 1:
         problems.append("not_exactly_one_order")
@@ -373,10 +377,10 @@ def desk_session(receipt: dict | None, flights: list[dict] | None, sha: str) -> 
                 problems.append(f"{mission_id}:authoritative_flight_binding_mismatch")
     if public_flights < 2:
         problems.append("fewer_than_two_desk_flights")
-    live = [j for j in jobs if j.get("source") == "live_model"]
     return {"status": "failed" if problems else "passed", "problems": problems, "missions": len(missions),
             "flights": public_flights, "findings": len(findings),
-            "live_model_jobs_joined_to_findings": len(live),
+            "live_model": [{k: j.get(k) for k in ("verdict", "score", "reasons", "model_id", "latency_ms")}
+                           for j in live],
             "orders": {k: (v.get("order") or {}).get("state") for k, v in orders.items()}}
 
 
