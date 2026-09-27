@@ -15,6 +15,11 @@ services:
       HEADLESS: "1"
       PX4_SIM_MODEL: gz_x500
       PX4_GZ_WORLD: default
+      # D062: the idle simulator never arms, so log only while armed instead of PX4's log-from-boot default, which
+      # grew about 1 GB per hour here; evaluation overlays do not include this file and keep the default.
+      # D062：空闲仿真从不解锁，所以只在解锁时记录，而不用 PX4 从启动即记录的默认值（在这里约每小时增长 1 GB）；
+      # 评测覆盖文件不叠加本文件，保持默认值。
+      PX4_PARAM_SDLOG_MODE: "0"
     volumes:
       - ${DRONE_ARTIFACTS:?owned artifact path required}:/artifacts
     networks: [simulation]

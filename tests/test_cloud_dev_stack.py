@@ -126,6 +126,19 @@ def test_cloud_compose_has_resource_caps_and_no_host_entrypoints():
     assert value["services"]["checks"]["network_mode"] == "none"
 
 
+def test_idle_simulator_logs_only_when_armed_and_evaluations_keep_the_px4_default():
+    idle = yaml.safe_load((ROOT / "sim/compose.cloud.yaml").read_text(encoding="utf-8"))["services"]["sitl"]
+    assert idle["environment"]["PX4_PARAM_SDLOG_MODE"] == "0"
+    for name in ("m1", "m2", "m3", "p1", "p2", "p3", "desk"):
+        overlay = (ROOT / f"sim/compose.{name}.yaml").read_text(encoding="utf-8")
+        assert "SDLOG" not in overlay, name
+    # Evaluation runs compose their own files; only the deployment tool uses the idle file.
+    # 评测运行只组合自己的文件；只有部署工具使用空闲文件。
+    users = {path.name for path in (ROOT / "scripts").glob("*.py") if "compose.cloud.yaml" in path.read_text(
+        encoding="utf-8")}
+    assert users <= {"remote_dev_stack.py", "dev_stack.py"}, users
+
+
 def test_image_identity_binds_content_and_entrypoint_not_engine_id():
     first = {"Id": "engine-a", "Architecture": "amd64", "Os": "linux", "RootFS": {"Layers": ["sha256:layer"]},
              "Config": {"Entrypoint": ["bash", "/opt/drone-sim/entrypoint.sh"], "Env": ["HEADLESS=1"]}}
