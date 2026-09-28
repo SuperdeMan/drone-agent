@@ -201,6 +201,19 @@ uv run python scripts/dev_stack.py deploy --sha HEAD --apply
 - `fetch` 照常可用：压缩文件按远端清单核对，回执里的 `.ulg` 条目因原名不存在而不参与第二见证比对。用 Flight Review 或 PlotJuggler 打开前先解压。
 - 此后新运行产生的 ULog 仍是原始格式，累积后可按同样的方式再压缩：持锁，逐文件回算摘要后再删原件。
 - 常驻空闲仿真已关闭 ULog 记录（D062），不再在容器内累积日志。
+- 2026-09-28 按同样方式又压缩了 59 个：1.09 GB → 0.30 GB；原件摘要与已提交的 P4 回执逐个对上。
+
+**构建缓存与共享主机（2026-09-28）**：
+- BuildKit 构建缓存由本项目与 car-agent 共用。按构建步骤与父层归属后，不被镜像引用的缓存里本项目占大头。当天已按记录 ID 删掉本项目已被取代版本的 292 条、18.64 GB。做法：
+  - 同时设 `--max-used-space` 与 `--reserved-space` 作保底；
+  - 先用匹配不到任何记录的条件试运行，再单删一条，最后批量删。
+- 双方约定的主机级上限：car-agent 按其授权安装 systemd timer，每小时执行 `docker buildx prune --all --max-used-space 20GB`，任一项目的锁被占用就跳过这一轮。同时约定 journald 上限 1G，`/var/lib/apport/coredump` 中超过 7 天的 core 自动删除。
+- 暂缓的根因修复：`sim/m1.Dockerfile` 的 sim 阶段与 `sim/p3.Dockerfile` 在每次提交都会变的镜像之上执行 `apt-get update` 后安装 `bc`，每次都留下约 275 MB 的软件包索引。
+  - 修法是把 `bc` 的安装挪到检查镜像，并在同一步删掉 `/var/lib/apt/lists`。
+  - `sim/m1.Dockerfile` 属于门禁的机载冻结清单，改动需完整 M1 回归，因此等下次机载改动本来就要跑 M1 回归时一并修。
+- 主机约束：
+  - 不调用 `docker buildx history`：2026-09-27 它触发过 dockerd panic，同机全部容器随之停止。
+  - dockerd 没有开启 live-restore，任何 daemon 重启都会停掉两边的全部容器；涉及 daemon 配置的改动须放在双方约定的维护窗口里。
 
 应用测试结果只属于回执中的 `source_sha`；本地新增云端工具测试不计入该应用 commit 的云端测试数字。M0 历史证据保持原样，云端验证单独记录。
 
