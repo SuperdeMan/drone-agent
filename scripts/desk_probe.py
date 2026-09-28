@@ -777,6 +777,7 @@ def business(origin: str, args) -> tuple[dict, str | None]:
         return receipt, login
     runs, missions, approved, decided = {first["view"]["run"]["run_id"]: first["view"]}, {}, set(), set()
     repaired: dict[str, int] = {}
+    session_runs = {first["view"]["run"]["run_id"]}
     receipt["root_run"] = first["view"]["run"]["run_id"]
     findings: dict[str, dict] = {}
     orders: dict[str, dict] = {}
@@ -801,6 +802,10 @@ def business(origin: str, args) -> tuple[dict, str | None]:
                     if item.get("reinspection_run") and item["reinspection_run"] not in runs:
                         runs[item["reinspection_run"]] = {"run": {"run_id": item["reinspection_run"],
                                                                   "state": "pending"}, "missions": [], "nodes": []}
+                    # Earlier rounds' runs are read for the order's history; only this session's are acted on.
+                    # 读取更早轮次的运行作为工单历史；只对本会话启动的运行采取行动。
+                    if item.get("reinspection_run") and item["round"] >= repaired.get(row["order_id"], 1 << 30):
+                        session_runs.add(item["reinspection_run"])
             state = {"t": round(time.monotonic() - started, 1),
                      "runs": {r: v["run"]["state"] for r, v in runs.items()},
                      "findings": {f: (v.get("finding") or {}).get("state") for f, v in findings.items()},
@@ -810,6 +815,8 @@ def business(origin: str, args) -> tuple[dict, str | None]:
                     {k: v for k, v in state.items() if k != "t"}:
                 receipt["timeline"].append(state)
             for run_id, run in list(runs.items()):
+                if run_id not in session_runs:
+                    continue
                 for item in run["missions"]:
                     detail = mission(item["mission_id"])
                     missions[item["mission_id"]] = detail
@@ -875,6 +882,7 @@ def business(origin: str, args) -> tuple[dict, str | None]:
     client.close()
     receipt["duration_s"] = round(time.monotonic() - started, 1)
     receipt["panel_after"] = panel_view(view) if "view" in locals() else None
+    receipt["session_runs"] = sorted(session_runs)
     # Every analysis of the project with its labelled source, so a live model's refusal is recorded too.
     # 项目的每次分析及其来源标注，实调模型的拒判也被记录。
     receipt["jobs"] = [{k: j.get(k) for k in ("job_id", "analyzer", "purpose", "state", "verdict", "source",
