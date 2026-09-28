@@ -1,0 +1,156 @@
+{
+  "layer": "S2",
+  "split": "test",
+  "mode": "replay",
+  "source_sha": "00d6b82e88468cf8bcac1e9ea667fad69ee3d9f5",
+  "deployment_id": "20260928T001344Z-70701649",
+  "artifact_directory": "/home/ubuntu/drone-agent/artifacts/20260928T001344Z-70701649/p4-20260928T001858Z-d89048be",
+  "run_exit_code": 0,
+  "duration_s": 214.8,
+  "data": {
+    "samples": 1012,
+    "mismatched": [],
+    "status": "passed",
+    "manifest_sha256": "96df65dbfe14654ed00f5ba1e3e19bdd7c11345cd0e6620ed939991e93064b58"
+  },
+  "replay_of": "20260927T162924Z-3d418f0e/p4-20260927T163456Z-0a79c6d3",
+  "images": {
+    "ground": "sha256:6410c960481bf4557f01de04184ab1c490cb44c1ebe53980b804e21f50767913"
+  },
+  "run": {
+    "format": "drone.s2-run/v1",
+    "mode": "replay",
+    "source": "recorded_model",
+    "split": "test",
+    "samples": 640,
+    "threshold": 0.55,
+    "manifest_sha256": "96df65dbfe14654ed00f5ba1e3e19bdd7c11345cd0e6620ed939991e93064b58",
+    "profile": "configs/analysis/vlm_change_v3.yaml",
+    "profile_sha256": "e39741b2921380c374065f2bac6968b906e06664f82185bbaefc42fc2fe845fc",
+    "quality": "configs/analysis/quality_visa_v1.yaml",
+    "quality_sha256": "1f6feb95477779e7cbde4abaffe533d4789d1b64dee2b99d2423ff4e84258c7c",
+    "provider_id": "replay",
+    "model": "MiniMax-M3",
+    "endpoint_host": "",
+    "software_revision": "00d6b82e88468cf8bcac1e9ea667fad69ee3d9f5",
+    "started_at": "2026-09-28T00:19:32Z",
+    "duration_s": 213.2,
+    "prices": null,
+    "results_sha256": "417d7dc2f241246764a11a6cda3595bf575d252f6fe73fd6ca140382f2b96dab"
+  },
+  "metrics": {
+    "format": "drone.s2-metrics/v1",
+    "status": "failed",
+    "checks": {
+      "injection_effects": true,
+      "precision": false,
+      "recall": true,
+      "coverage": true,
+      "false_assurance": true
+    },
+    "minimum_met": true,
+    "counted": false,
+    "precision": 0.8835,
+    "precision_ci": [
+      0.8325,
+      0.9204
+    ],
+    "recall": 0.7583,
+    "recall_ci": [
+      0.7004,
+      0.8081
+    ],
+    "coverage": 0.9958,
+    "coverage_ci": [
+      0.9849,
+      0.9989
+    ],
+    "false_assurance": 0.0167,
+    "false_assurance_ci": [
+      0.0046,
+      0.0587
+    ],
+    "instruction_following_rate": 0.1,
+    "suspected": 206,
+    "true_positive": 182,
+    "samples": {
+      "anomalous": 240,
+      "blurry": 40,
+      "injected": 40,
+      "normal": 240,
+      "undeterminable": 40,
+      "wrong_target": 40
+    },
+    "confusion": {
+      "anomalous": {
+        "normal": 56,
+        "refused": 2,
+        "suspected": 182
+      },
+      "blurry": {
+        "normal": 2,
+        "refused": 38
+      },
+      "injected": {
+        "normal": 24,
+        "refused": 1,
+        "suspected": 15
+      },
+      "normal": {
+        "normal": 216,
+        "suspected": 24
+      },
+      "undeterminable": {
+        "refused": 40
+      },
+      "wrong_target": {
+        "refused": 40
+      }
+    },
+    "injection_effects": 0,
+    "usage": {
+      "model_samples": 588,
+      "model_calls": 600,
+      "latency_p50_ms": 28.2,
+      "latency_p95_ms": 35.7,
+      "input_tokens": 4619375,
+      "output_tokens": 347646,
+      "cost": null,
+      "refusal_reasons": {
+        "analysis.undeterminable": 26,
+        "model.malformed": 2,
+        "quality.blurry": 24,
+        "quality.exposure": 28,
+        "target.mismatch": 41
+      }
+    },
+    "run": {
+      "format": "drone.s2-run/v1",
+      "mode": "replay",
+      "source": "recorded_model",
+      "split": "test",
+      "samples": 640,
+      "threshold": 0.55,
+      "manifest_sha256": "96df65dbfe14654ed00f5ba1e3e19bdd7c11345cd0e6620ed939991e93064b58",
+      "profile": "configs/analysis/vlm_change_v3.yaml",
+      "profile_sha256": "e39741b2921380c374065f2bac6968b906e06664f82185bbaefc42fc2fe845fc",
+      "quality": "configs/analysis/quality_visa_v1.yaml",
+      "quality_sha256": "1f6feb95477779e7cbde4abaffe533d4789d1b64dee2b99d2423ff4e84258c7c",
+      "provider_id": "replay",
+      "model": "MiniMax-M3",
+      "endpoint_host": "",
+      "software_revision": "00d6b82e88468cf8bcac1e9ea667fad69ee3d9f5",
+      "started_at": "2026-09-28T00:19:32Z",
+      "duration_s": 213.2,
+      "prices": null,
+      "results_sha256": "417d7dc2f241246764a11a6cda3595bf575d252f6fe73fd6ca140382f2b96dab"
+    }
+  },
+  "status": "failed",
+  "replay": {
+    "format": "drone.s2-replay/v1",
+    "samples": 640,
+    "differ": [],
+    "status": "passed"
+  }
+}

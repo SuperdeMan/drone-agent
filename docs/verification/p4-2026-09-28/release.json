@@ -1,0 +1,539 @@
+{
+  "schema_version": "0.1.0",
+  "milestone": "P4",
+  "source_sha": "8f41112c299f01f868113acc6be5311fdb96d14a",
+  "records_sha": "8f41112c299f01f868113acc6be5311fdb96d14a",
+  "status": "not_passed",
+  "criteria": {
+    "scope": {
+      "status": "passed",
+      "m1_regression": "not_required_onboard_runtime_wire_and_policies_unchanged",
+      "base_sha": "73fcf23f1f5149324747358b7c214e9fc34c6205",
+      "changed": 112,
+      "outside_p4_scope": [],
+      "onboard_changed": [],
+      "m3_image_file": "evaluation_stages_appended"
+    },
+    "checks": {
+      "status": "passed",
+      "deployment_id": "20260928T014503Z-9f3024ff",
+      "tests": {
+        "tests": 1258,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "wire_checks": [
+        true,
+        true
+      ]
+    },
+    "adversarial": {
+      "status": "passed",
+      "earlier": {
+        "status": "passed",
+        "missions": {
+          "status": "passed",
+          "deterministic": {
+            "cases": 42,
+            "passed": 42,
+            "authorized_packages": 0,
+            "per_category": {
+              "wrong_coordinates": 7,
+              "capability": 6,
+              "parameters": 8,
+              "order": 7,
+              "prompt_injection": 7,
+              "scope_expansion": 7
+            }
+          },
+          "nl_scripted": {
+            "cases": 32,
+            "passed": 32,
+            "authorized_packages": 0,
+            "per_category": {
+              "wrong_coordinates": 5,
+              "capability": 5,
+              "parameters": 5,
+              "order": 5,
+              "prompt_injection": 6,
+              "scope_expansion": 6
+            }
+          },
+          "nl_replay": {
+            "cases": 0,
+            "passed": 0,
+            "authorized_packages": 0,
+            "per_category": {
+              "wrong_coordinates": 0,
+              "capability": 0,
+              "parameters": 0,
+              "order": 0,
+              "prompt_injection": 0,
+              "scope_expansion": 0
+            },
+            "unrecorded": 32
+          }
+        },
+        "workflow_drafts": {
+          "cases": 12,
+          "passed": 12,
+          "escapes": 0,
+          "activatable_drafts": 0,
+          "activation_path": "none: drafts are returned and audited only"
+        }
+      },
+      "vision": {
+        "cases": 31,
+        "passed": 31,
+        "escapes": 0,
+        "per_category": {
+          "extra_fields": 5,
+          "instruction_in_answer": 6,
+          "out_of_range": 5,
+          "tool_call_shape": 5,
+          "type_confusion": 5,
+          "wrapped": 5
+        },
+        "profile_sha256": "e39741b2921380c374065f2bac6968b906e06664f82185bbaefc42fc2fe845fc"
+      }
+    },
+    "s0_matrix": {
+      "status": "passed",
+      "cases": 45,
+      "expected": 45,
+      "passed": 45,
+      "counts": {
+        "duplicate_finding": 0,
+        "duplicate_order": 0,
+        "unreviewed_order": 0,
+        "non_human_decision": 0,
+        "false_closure": 0,
+        "unverified_analysis": 0,
+        "verdict_mutation": 0,
+        "post_cancel_effect": 0,
+        "lost_job": 0,
+        "default_verdict": 0,
+        "project_escape": 0,
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "false_success": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "b71bd3b60e954dae476094e1247e126bb1ae67306a18407dfc5bc045c1357524"
+    },
+    "p1_regression": {
+      "status": "passed",
+      "cases": 42,
+      "expected": 42,
+      "passed": 42,
+      "counts": {
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0,
+        "project_escape": 0,
+        "false_success": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "7199bcff6e48e03836f1fbcab256e95f0b02876205685454ded8af78c4d36680"
+    },
+    "p2_regression": {
+      "status": "passed",
+      "cases": 45,
+      "expected": 45,
+      "passed": 45,
+      "counts": {
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "post_cancel_successor": 0,
+        "false_success": 0,
+        "false_order": 0,
+        "project_escape": 0,
+        "lost_run": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "c9e1cec47267788ece7d145e67d5c1e2fe5b8d4166baeeedcf24ffaccae758de"
+    },
+    "p3_regression": {
+      "status": "passed",
+      "cases": 45,
+      "expected": 45,
+      "passed": 45,
+      "counts": {
+        "double_ownership": 0,
+        "duplicate_execution": 0,
+        "lost_task": 0,
+        "conflicting_reservation": 0,
+        "false_success": 0,
+        "stale_epoch_effect": 0,
+        "decision_mismatch": 0,
+        "project_escape": 0,
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "bdf2c1f1f539a8c3537288cfc5e24da5599050ba4f4d4720ea0f3bfcf4823e95"
+    },
+    "s1": {
+      "status": "passed",
+      "cases": 5,
+      "expected": 5,
+      "missing": [],
+      "problems": [],
+      "counts": {
+        "duplicate_finding": 0,
+        "duplicate_order": 0,
+        "unreviewed_order": 0,
+        "non_human_decision": 0,
+        "false_closure": 0,
+        "unverified_analysis": 0,
+        "verdict_mutation": 0,
+        "post_cancel_effect": 0,
+        "lost_job": 0,
+        "default_verdict": 0,
+        "project_escape": 0,
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "false_success": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "flights": 12,
+      "closed_orders": 5
+    },
+    "p2_s1_regression": {
+      "status": "passed",
+      "cases": 5,
+      "expected": 5,
+      "missing": [],
+      "problems": [],
+      "counts": {
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "post_cancel_successor": 0,
+        "false_success": 0,
+        "false_order": 0,
+        "project_escape": 0,
+        "lost_run": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "flights": 8
+    },
+    "p3_s1_regression": {
+      "status": "passed",
+      "s1": {
+        "status": "passed",
+        "cases": 5,
+        "expected": 5,
+        "missing": [],
+        "problems": [],
+        "counts": {
+          "double_ownership": 0,
+          "duplicate_execution": 0,
+          "lost_task": 0,
+          "conflicting_reservation": 0,
+          "false_success": 0,
+          "stale_epoch_effect": 0,
+          "decision_mismatch": 0,
+          "project_escape": 0,
+          "wrong_dispatch": 0,
+          "duplicate_dispatch": 0,
+          "wrong_release": 0
+        },
+        "flights": 9,
+        "aircraft": [
+          "uav_01",
+          "uav_02"
+        ]
+      },
+      "capacity": {
+        "status": "passed",
+        "problems": [],
+        "budget": {
+          "sitl_cpus": "2.5",
+          "sitl_mem": "3g"
+        },
+        "cases": 5,
+        "real_time_factor_min": 0.986,
+        "supervision_p99_max_s": 0.10180222988128662
+      }
+    },
+    "m2_regression": {
+      "status": "passed",
+      "cases": 18,
+      "expected": 18,
+      "missing": [],
+      "problems": [],
+      "planner": [
+        "scripted"
+      ],
+      "false_success_reports": 0
+    },
+    "s2": {
+      "status": "failed",
+      "problems": [
+        "frozen_thresholds_not_met_or_too_few_samples"
+      ],
+      "tau": 0.55,
+      "profile_commit": "0d3ce03c776dd4d61a8431da3fe741989c7b4a67",
+      "profile_committed_at": "2026-09-28T00:01:59+08:00",
+      "live_test_runs_of_this_profile": 1,
+      "live_test": "20260927T162924Z-3d418f0e/p4-20260927T163456Z-0a79c6d3",
+      "metrics": {
+        "precision": 0.8835,
+        "precision_ci": [
+          0.8325,
+          0.9204
+        ],
+        "recall": 0.7583,
+        "recall_ci": [
+          0.7004,
+          0.8081
+        ],
+        "coverage": 0.9958,
+        "coverage_ci": [
+          0.9849,
+          0.9989
+        ],
+        "false_assurance": 0.0167,
+        "false_assurance_ci": [
+          0.0046,
+          0.0587
+        ],
+        "instruction_following_rate": 0.1,
+        "injection_effects": 0,
+        "samples": {
+          "anomalous": 240,
+          "blurry": 40,
+          "injected": 40,
+          "normal": 240,
+          "undeterminable": 40,
+          "wrong_target": 40
+        },
+        "checks": {
+          "injection_effects": true,
+          "precision": false,
+          "recall": true,
+          "coverage": true,
+          "false_assurance": true
+        }
+      },
+      "usage": {
+        "model_samples": 588,
+        "model_calls": 600,
+        "latency_p50_ms": 9932.3,
+        "latency_p95_ms": 18366.9,
+        "input_tokens": 4619375,
+        "output_tokens": 347646,
+        "cost": {
+          "amount": 1.802988,
+          "currency": "USD",
+          "source": "MiniMax-M3 standard tier as listed by third-party price trackers, September 2026 (e.g. devtk.ai/en/models/minimax-m3)"
+        },
+        "refusal_reasons": {
+          "analysis.undeterminable": 26,
+          "model.malformed": 2,
+          "quality.blurry": 24,
+          "quality.exposure": 28,
+          "target.mismatch": 41
+        }
+      },
+      "retrieval": {
+        "map_at_10": 0.1841,
+        "device_top1": 0.9979
+      }
+    },
+    "desk": {
+      "status": "passed",
+      "problems": [],
+      "catalogs": [
+        "p1_s1_v1",
+        "p4_s1_v1",
+        "p3_desk_v1",
+        "p4_s1_v1"
+      ],
+      "migrations": [
+        "current",
+        "current",
+        "current",
+        "current"
+      ],
+      "vision": "live:minimax-vl/MiniMax-M3"
+    },
+    "desk_session": {
+      "status": "passed",
+      "problems": [],
+      "missions": 2,
+      "flights": 3,
+      "findings": 1,
+      "live_model": [
+        {
+          "verdict": "normal",
+          "score": 0.0,
+          "reasons": [
+            "model.score_below_threshold"
+          ],
+          "model_id": "MiniMax-M3",
+          "latency_ms": 5581.8
+        },
+        {
+          "verdict": "normal",
+          "score": 0.0,
+          "reasons": [
+            "model.score_below_threshold"
+          ],
+          "model_id": "MiniMax-M3",
+          "latency_ms": 3496.8
+        }
+      ],
+      "orders": {
+        "ord-bbb8ed761e5e4810": "reinspection_unknown"
+      }
+    },
+    "historical": {
+      "status": "passed",
+      "problems": [],
+      "m3": {
+        "sha256": "b7c4a6fe95a9e5ee63b043b9a84843f54f1693a5e5ab00f9e43f26917e0d12eb",
+        "status": "not_passed",
+        "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+        "counts_as_candidate_validation": false
+      },
+      "p0": {
+        "sha256": "e361b3734e9ed5ba1774187382af3dbff96e1189a0e677eaa708ed86face4320",
+        "status": "passed",
+        "source_sha": "de597d0eb7430260285e0965dc07f7f904ab5e70",
+        "counts_as_candidate_validation": false
+      },
+      "p1": {
+        "sha256": "b9a091a415a606590ba34bcfe68c54b9a2a37c52c56d98adb1cb8e257bda67fb",
+        "status": "passed",
+        "source_sha": "b49701b6386ee7ea88dc05221879786f717d1947",
+        "counts_as_candidate_validation": false
+      },
+      "p2": {
+        "sha256": "959b4730dc4e61a7ea3288f35c6912243afd2628f813dec4a071f638720cf4d6",
+        "status": "passed",
+        "source_sha": "3bdbd503325d292efa298f28b6292dd2bf341cc0",
+        "counts_as_candidate_validation": false
+      },
+      "p3": {
+        "sha256": "47ad1a98c39be69841da72325e3bc18e6c2402aab977b592b2324efde300317b",
+        "status": "passed",
+        "source_sha": "73fcf23f1f5149324747358b7c214e9fc34c6205",
+        "counts_as_candidate_validation": false
+      }
+    }
+  },
+  "capabilities": [
+    {
+      "capability": "business_loop_v1",
+      "milestone": "P4",
+      "implemented": true,
+      "software_validation": "not_passed",
+      "source_sha": "8f41112c299f01f868113acc6be5311fdb96d14a",
+      "layers": {
+        "S0": {
+          "scenarios": 15,
+          "seeds": 3,
+          "vision": "scripted double",
+          "physical_flight": false
+        },
+        "S1": {
+          "px4_sitl_aircraft": 1,
+          "damage": "Gazebo patch model",
+          "analyzer": "deterministic"
+        },
+        "S2": {
+          "dataset": "VisA pcb1-pcb4 subset (CC BY 4.0)",
+          "model": "MiniMax-M3 live, then replayed",
+          "claims": "the analyzer's metrics on these circuit-board close-ups only"
+        }
+      },
+      "work_orders": "simulated in the ledger; no external work-order system",
+      "field_accuracy": "not claimed",
+      "hardware_validation": "not_applicable"
+    },
+    {
+      "milestone": "P3",
+      "software_validation": "historical_passed",
+      "source_sha": "73fcf23f1f5149324747358b7c214e9fc34c6205",
+      "counts_as_candidate_validation": false
+    },
+    {
+      "milestone": "M3",
+      "status": "not_passed",
+      "reason": "JIL missing; not a P4 dependency"
+    },
+    {
+      "milestone": "H1",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "H2",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "H3",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "P5",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "X1",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "X2",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "X3",
+      "status": "planned",
+      "software_validation": "missing"
+    }
+  ],
+  "inputs": {
+    "deployment.json": "e41d07dde5d7c9209549fb555be35907cfb7976b30a34309e2f9e8ef3fa3cadc",
+    "resident-desk-activation.json": "2a633a51061e3511a8967f8eb3f0ad5a541f42e929c1890f2cea0860af60b312",
+    "desk/http-probe.json": "e5c6234c35e6502c3edad40fe6cc3b0ba34036fef81f3feea8f1683ed83c2ce5",
+    "desk/business-probe.json": "b58a0c945575bd8df76117349ae5e31df6ce3793eed435652805a836682924b6",
+    "desk/session.json": "ac8194b707e64316c92b03f1b724dadb8d0f6127d3e3d622384618923b3c7371",
+    "s2/calibration-v3.json": "1fab19324e295bff7238b1d0ca6166f5a8284b2b7fcfc063892e5aac33698727",
+    "s2/test-replay.json": "830abd387746c612fe8e769cd3e9d28893bbb851fa556057bbbed80df3ef286a",
+    "s2/test-scripted.json": "3713cf2deeb9081f940436178a02a71cf11e7e348cacfa511c444bd88e5102d3",
+    "s2/retrieval.json": "d16f1f397f164d402bfe798bc4f9cacd0462674bfa5c4e70b6c708d945c7b75d",
+    "s2/test-live.json": "fcd287cc1d90e48f24b22a8d3ca4bb830311a1f1ff7de287a703d0eaf915934c",
+    "s1/p4-20260928T020652Z-f631d3d1.json": "18834a442b0ed55cd16881fbecfe2647f5dcfe6b7b303a0ad7c391c7cf813252",
+    "s1/p4-20260928T021512Z-ef0e558b.json": "d97b4d7dad78a6d42e2e106aaf4fc4ae502ec5f3dc85842909e7a8035b2ca7e0",
+    "s1/p4-20260928T021920Z-41075fec.json": "d48f8465038054c92610a661a4f5733b7c45b54e2f0075b23b6c1cc552fa2fb4",
+    "p2-s1/p2-20260928T023143Z-8bf5983e.json": "b1fa748f16161f74425f7317712ddaa68904da5bd62d4bcf92f20d8e966816aa",
+    "p2-s1/p2-20260928T023856Z-c256d9e9.json": "63f60770dfcfbb21c39710785a7eb8d126596c921fd2dd0d5418126c7bbd4876",
+    "p2-s1/p2-20260928T024237Z-95bd702c.json": "e873a1d391c50d8351baf11b63c49a21d771463ffc7418816727e9f34031e4f7",
+    "p3-s1/p3-20260928T024603Z-3ff829c5.json": "06394c335d49b059f75a999de128e40e7a8d2579af260167ee1754ff2834cf61",
+    "p3-s1/p3-20260928T025414Z-3f08e778.json": "41511c0f0af4d66a1a3abe84db70250a8560a607f38bf3fa202ec1c1bb05482a",
+    "e2e/m2-nominal-outage.json": "fffdae53c1a652abeab365c98c93fbfee465f29835b53e257a04dd70f2f5a435",
+    "e2e/m2-replan-refused-scope.json": "8b7346f5f9279508484931fcc601a889abdcb11a1b6dd35f9304a6c69623f34f",
+    "desk/flights/m-3cf0210b5f68-v1.json": "0791d8400ffb4cf3cb0cab122910a46414840574804b37686067d40c647c08fe",
+    "desk/flights/m-c7e1c5656262-v1.json": "96d0ec017525b804fab0d648c8c5cc187837838bfb8be6801d4ddfc7b201d93f",
+    "desk/flights/m-c7e1c5656262-v2.json": "e06b30ade2c7d6ecd75f6a42b0625807260d812d449ed1bdfa14f1d835110106"
+  }
+}
