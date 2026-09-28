@@ -83,7 +83,11 @@ P4_PATHS = ("src/drone_agent/fleet/", "src/drone_agent/console/", "src/drone_age
             "sim/compose.desk.yaml", "sim/m3.Dockerfile", "tests/", "pyproject.toml", "uv.lock",
             # D062 (2026-09-27): the idle deployment simulator stops logging; not an evaluation file.
             # D062（2026-09-27）：空闲部署仿真器停止记录；不是评测文件。
-            "sim/compose.cloud.yaml")
+            "sim/compose.cloud.yaml",
+            # D067 (2026-09-28): the simulation collector skips interpreter finalization on exit; what it collects is
+            # unchanged and the M2 regression exercises it.
+            # D067（2026-09-28）：仿真采集器退出时跳过解释器收尾；采集内容不变，M2 回归覆盖它。
+            "sim/collect.py")
 COUNTS = ("duplicate_finding", "duplicate_order", "unreviewed_order", "non_human_decision", "false_closure",
           "unverified_analysis", "verdict_mutation", "post_cancel_effect", "lost_job", "default_verdict",
           "project_escape", "duplicate_dispatch", "post_cancel_dispatch", "false_success", "wrong_dispatch",

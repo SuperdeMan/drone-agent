@@ -34,6 +34,8 @@ def timestamp(header):
 
 
 def image_callback(msg):
+    if stopped.is_set():
+        return
     pixel_format = msg.DESCRIPTOR.fields_by_name["pixel_format_type"].enum_type.values_by_number[msg.pixel_format_type].name
     if pixel_format != "RGB_INT8" or msg.step != msg.width * 3:
         return
@@ -59,7 +61,8 @@ def pose_callback(msg):
                 "orientation": [pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w],
             }
             with lock:
-                output.write(json.dumps(row) + "\n")
+                if not output.closed:
+                    output.write(json.dumps(row) + "\n")
 
 
 opts = SubscribeOptions()
@@ -70,4 +73,11 @@ for sig in (signal.SIGINT, signal.SIGTERM):
     signal.signal(sig, lambda *_: stopped.set())
 while not stopped.wait(0.2):
     time.monotonic()
-output.close()
+with lock:
+    output.close()
+# gz-transport keeps calling back from its own threads; a thread that takes the GIL during interpreter
+# finalization is exited by CPython 3.12, which aborts through the C++ frames (SIGABRT and a core dump on the host).
+# The truth file is closed, so leave without finalization.
+# gz-transport 的线程会继续回调；解释器收尾期间取 GIL 的线程会被 CPython 3.12 强制退出，穿过 C++ 帧时触发 abort
+# （SIGABRT，宿主机留下 core）。真值文件已关闭，因此跳过解释器收尾直接退出。
+os._exit(0)
