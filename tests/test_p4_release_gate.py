@@ -170,7 +170,7 @@ def session(order_state: str = "reinspection_unknown", round_state: str = "unkno
     missions = {m: {"status": "completed", "binding": {"project_id": "campus_s1", "robot_id": "uav_01",
                                                        "dock_id": "dock_s1"}, "request": {"channel": "workflow"},
                     "cloud": {"flights": [flight], "judge": judge}} for m in ("m-1", "m-2")}
-    receipt = {"errors": [], "reference": {"mission_id": "m-0", "error": None}, "root_run": "wf-1",
+    receipt = {"errors": [], "reference": {"registered": ["m-0"], "error": None, "references": 3}, "root_run": "wf-1",
                "findings": {"fd-1": {"review": {"decision": "confirmed", "reviewer": "tailnet:<redacted>"},
                                      "jobs": [{"source": "scripted"}]}},
                "jobs": [{"source": "scripted", "evidence_id": "capture:1", "state": "completed"},

@@ -673,6 +673,7 @@ BUSINESS_FORBIDDEN = (*FORBIDDEN_FRAMES, {"type": "finding_close", "finding_id":
                       {"type": "order_close", "order_id": "wo-probe"},
                       {"type": "analysis_verdict", "job_id": "jb-probe", "verdict": "normal"})
 ORDER_SETTLED = ("reinspection_failed", "reinspection_unknown", "closed")
+REPAIRABLE = ("open", "reinspection_failed", "reinspection_unknown")
 
 
 def panel_view(view: dict) -> dict:
@@ -737,26 +738,36 @@ def business(origin: str, args) -> tuple[dict, str | None]:
         receipt["duration_s"] = round(time.monotonic() - started, 1)
         return receipt, login
     if args.reference:
-        # The newest verified capture of the asset in this project becomes its reference appearance (admin).
-        # 本项目中该资产最新的已证实采集登记为参考外观（admin）。
+        # The newest verified captures of the asset in this project that are not references yet become reference
+        # appearances (admin): at least one, and until the analyzer's k are active.
+        # 本项目中该资产最新的、尚未登记的已证实采集登记为参考外观（admin）：至少一份，直到分析器所需的 k 份有效。
         client.send({"type": "list"})
         items = client.next("missions", 30).get("items", [])
+        known = {r["evidence_id"] for r in panel().get("references", []) if r.get("state") == "active"}
+        receipt["reference"] = {"registered": [], "error": None, "references": len(known)}
         for item in sorted(items, key=lambda m: m["updated_at"], reverse=True):
+            if receipt["reference"]["registered"] and receipt["reference"]["references"] >= args.references:
+                break
             if item.get("project_id") != args.project or item["status"] != "completed":
                 continue
             detail = mission(item["mission_id"])
             if (detail.get("request") or {}).get("asset_ids") != [args.asset_input]:
                 continue
             verified = [e for e in detail.get("evidence", [])
-                        if (e.get("verification") or {}).get("final_verdict") == "verified"]
+                        if (e.get("verification") or {}).get("final_verdict") == "verified"
+                        and e["evidence_id"] not in known]
             if not verified:
                 continue
             client.send({"type": "reference_register", "project_id": args.project, "mission_id": item["mission_id"],
                          "evidence_id": verified[-1]["evidence_id"], "note": "desk probe reference appearance"})
             reply = client.next(("business", "error"), 60)
-            receipt["reference"] = {"mission_id": item["mission_id"], "error": reply.get("issue"),
-                                    "references": len((reply.get("view") or {}).get("references", []))}
-            break
+            if reply["type"] == "error":
+                receipt["reference"]["error"] = reply.get("issue")
+                break
+            known.add(verified[-1]["evidence_id"])
+            receipt["reference"]["registered"].append(item["mission_id"])
+            receipt["reference"]["references"] = len([r for r in reply["view"].get("references", [])
+                                                      if r.get("state") == "active"])
     client.send({"type": "workflow_start", "project_id": args.project, "workflow_id": args.workflow,
                  "request_id": "probe-" + uuid.uuid4().hex[:16], "inputs": {"asset": args.asset_input}})
     first = client.next(("workflow", "error"), 60)
@@ -764,7 +775,8 @@ def business(origin: str, args) -> tuple[dict, str | None]:
         receipt["errors"].append(first)
         client.close()
         return receipt, login
-    runs, missions, approved, decided, repaired = {first["view"]["run"]["run_id"]: first["view"]}, {}, set(), set(), set()
+    runs, missions, approved, decided = {first["view"]["run"]["run_id"]: first["view"]}, {}, set(), set()
+    repaired: dict[str, int] = {}
     receipt["root_run"] = first["view"]["run"]["run_id"]
     findings: dict[str, dict] = {}
     orders: dict[str, dict] = {}
@@ -819,10 +831,14 @@ def business(origin: str, args) -> tuple[dict, str | None]:
                                             "finding_id": finding_id, "decision": args.review})
             for order_id, found in orders.items():
                 order = found.get("order") or {}
-                if order.get("state") == "open" and order_id not in repaired:
+                # A person reports the repair once this run's inspection has ended; an order the asset already had
+                # (the desk's reinspection cannot close one) gets a new round.
+                # 本次巡检运行结束后由人报告维修；该资产已有的工单（任务台的复检无法关单）开启新的一轮。
+                ended = runs[receipt["root_run"]]["run"]["state"] in RUN_FINAL
+                if order.get("state") in REPAIRABLE and order_id not in repaired and ended:
                     client.send({"type": "order_repair", "project_id": args.project, "order_id": order_id,
                                  "request_id": "probe-" + uuid.uuid4().hex[:16], "note": "desk probe repair feedback"})
-                    repaired.add(order_id)
+                    repaired[order_id] = order["round"] + 1
                     receipt["sent"].append({"t": round(time.monotonic() - started, 1), "action": "order_repair",
                                             "order_id": order_id})
                 for item in found.get("rounds", []):
@@ -842,7 +858,9 @@ def business(origin: str, args) -> tuple[dict, str | None]:
             flown = [m for m in missions.values() if m and m["mission"]["status"] in TERMINAL]
             judged = all((m.get("cloud") or {}).get("judge") for m in flown
                          if m["mission"]["status"] not in NEVER_FLIES)
-            settled = all((v.get("order") or {}).get("state") in ORDER_SETTLED for v in orders.values())
+            # Settled only once each round this session started has settled. / 本会话开启的每一轮都结算后才算结束。
+            settled = all((v.get("order") or {}).get("state") in ORDER_SETTLED for v in orders.values()) and all(
+                (orders[o].get("order") or {}).get("round", 0) >= number for o, number in repaired.items())
             if runs and all(v["run"]["state"] in RUN_FINAL for v in runs.values()) and judged \
                     and len(flown) == len(missions) and (not orders or (settled and repaired)):
                 break
@@ -998,7 +1016,8 @@ def main() -> None:
     loop.add_argument("--start", action="store_true",
                       help="also start one watch run and act as the page does until its order's round settles")
     loop.add_argument("--reference", action="store_true",
-                      help="first register the newest verified capture of the asset as its reference (admin)")
+                      help="first register the newest unregistered verified captures of the asset as references (admin)")
+    loop.add_argument("--references", type=int, default=3, help="register until this many references are active")
     loop.add_argument("--workflow", default="desk_watch")
     loop.add_argument("--asset-input", default="asset_red")
     loop.add_argument("--review", choices=("confirmed", "dismissed"), default="confirmed")

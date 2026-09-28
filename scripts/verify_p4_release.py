@@ -322,7 +322,8 @@ def desk_session(receipt: dict | None, flights: list[dict] | None, sha: str) -> 
     problems = []
     if receipt.get("errors"):
         problems.append("desk_probe_reported_errors")
-    if not receipt.get("reference") or (receipt["reference"] or {}).get("error"):
+    reference = receipt.get("reference") or {}
+    if not reference.get("registered") or reference.get("error"):
         problems.append("no_reference_appearance_registered")
     findings = receipt.get("findings") or {}
     decided = [f for f in findings.values() if (f.get("review") or {}).get("decision") == "confirmed"

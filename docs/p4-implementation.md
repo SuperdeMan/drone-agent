@@ -36,7 +36,7 @@ S0（逻辑世界）、S1（PX4 SITL）、S2（授权素材 + 模型）分开计
 
 **分析作业**：幂等键为工作流活动键或 `api:<调用方>:<请求号>`；固定输入清单（证据、任务与版本、媒体摘要、采集时刻、影像来源）、参考图（ID 与摘要）、分析器与画像摘要、目录摘要。执行器在任务服务进程内异步运行：按租约领取、代次 fencing（迟到写入被拒）、并发上限、单次超时、有界尝试、按项目的每日 token 预算。超时、无 key、模型拒答、输出不合 schema、预算耗尽、质量不合格、缺参考、目标不符、不可判都以带原因的 `refused` 结束，从不给缺省结论。结果写来源、用量、时延与按固定价格的费用估算，并按 D054 追加为任务版本来源 `analysis:<作业>`；只有服务复核为 `verified` 的证据可以进入作业。
 
-**模型分析器**：消息只含 k 张登记参考图、当前图与固定文本；没有工具；系统提示声明图像及其中文字都是数据。回答必须恰为画像的 JSON（`image_usable`、`target_matches_reference`、`anomaly_score`、`defect_type`、`description`、`unusable_reason`），多余或缺失字段即 `model.malformed`（至多再试一次）。确定性映射：不可用 → `analysis.undeterminable`；目标不符 → `target.mismatch`；`anomaly_score ≥ τ` → `suspected`；否则 `normal`。温度 0、关闭思考。
+**模型分析器**：消息只含 k 张登记参考图、当前图与固定文本；没有工具；系统提示声明图像及其中文字都是数据。回答必须恰为画像的 JSON（`image_usable`、`target_matches_reference`、`anomaly_score`、`defect_type`、`description`、`unusable_reason`），多余或缺失字段即 `model.malformed`（至多再试一次）。确定性映射：不可用 → `analysis.undeterminable`；目标不符 → `target.mismatch`；`anomaly_score ≥ τ` → `suspected`；否则 `normal`。温度 0；是否允许模型先推理由画像决定（冻结的 change-v3 允许，只解析最终 JSON），画像还可选择附上当前图的放大局部（change-v4 试过，校准更差，未采用）。
 
 **登记参考外观**：admin 把一份本项目、本资产、经服务复核的采集登记为参考（`references.register` / `revoke`，写审计）；分析取该资产最近 k 份有效参考并固定其 ID 与摘要；没有参考即 `analysis.no_reference`。S2 的参考图由冻结清单给出。
 
