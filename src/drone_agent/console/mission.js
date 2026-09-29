@@ -477,7 +477,7 @@ function counts() {
 }
 
 function renderShell() {
-  const total = attention().length, c = counts();
+  const total = attention().filter(i => !i.hint).length, c = counts();
   for (const ws of WORKSPACES) {
     const link = byId(NAV[ws]);
     link.hidden = !offered(ws);
@@ -525,8 +525,10 @@ function attention() {
   for (const d of allDocks()) {
     if (d.status?.lock) out.push({tone: "warn", icon: "锁", title: "机场维护锁定 · " + d.dock_id, meta: DIM[d.status.lock.state] || d.status.lock.state, href: "fleet/" + d.dock_id});
   }
+  // Robots that cannot be dispatched are a hint, not an action: a pending approval's soft hold alone blocks one.
+  // 不可派遣的机器人是提示而非待办：仅一个待审批任务的软预约就会让它不可派遣。
   for (const r of allRobots()) {
-    if (r.eligibility.verdict !== "eligible") out.push({tone: "warn", icon: "机", title: `${VERDICT[r.eligibility.verdict] || r.eligibility.verdict} · ${r.robot_id}`, meta: reasons(r.eligibility.reasons) || "—", href: "fleet/" + r.robot_id});
+    if (r.eligibility.verdict !== "eligible") out.push({hint: true, tone: "warn", icon: "机", title: `${VERDICT[r.eligibility.verdict] || r.eligibility.verdict} · ${r.robot_id}`, meta: reasons(r.eligibility.reasons) || "—", href: "fleet/" + r.robot_id});
   }
   return out;
 }
@@ -557,10 +559,12 @@ function renderOverview() {
     tiles.push(kpi("#business", "候选发现", c.business, "个", `关单 ${columns.closed.length} · 未关 ${columns.open.length} · 不确定 ${columns.unknown.length}`, c.business ? "warn" : ""));
   }
   paint("ovKpis", tiles.join(""));
-  const items = attention();
-  byId("ovAttnSub").textContent = items.length ? items.length + " 项" : "";
-  paint("ovAttention", items.length ? `<ul class="attn">${items.map(i => `<li><a href="#${esc(i.href)}"><span class="ico ${i.tone}">${esc(i.icon)}</span>
-    <span><b>${esc(i.title)}</b><small>${esc(i.meta)}</small></span><span class="go">处理 →</span></a></li>`).join("")}</ul>` : '<div class="empty">暂无待处理事项。</div>');
+  const items = attention(), todo = items.filter(i => !i.hint), hints = items.filter(i => i.hint);
+  const entry = (i, go) => `<li><a href="#${esc(i.href)}"><span class="ico ${i.tone}">${esc(i.icon)}</span>
+    <span><b>${esc(i.title)}</b><small>${esc(i.meta)}</small></span><span class="go">${go}</span></a></li>`;
+  byId("ovAttnSub").textContent = todo.length ? todo.length + " 项" : "";
+  paint("ovAttention", (todo.length ? `<ul class="attn">${todo.map(i => entry(i, "处理 →")).join("")}</ul>` : '<div class="empty">暂无待处理事项。</div>')
+    + (hints.length ? `<h4 class="label" style="margin-top:14px">资源提示</h4><ul class="attn">${hints.map(i => entry(i, "查看 →")).join("")}</ul>` : ""));
   paint("ovMissions", list.slice(0, 7).map(missionItem).join("") || '<div class="empty">暂无任务。</div>');
   byId("ovFleetCard").hidden = !resources;
   if (resources) paint("ovFleet", resources.sites.map(site => `<div class="site"><div class="site-head">${esc(site.site_id)}</div>
@@ -625,7 +629,7 @@ function missionHtml(view) {
   // produced one. / 左侧为计划，右侧为结果及其审计；单栏时，一旦飞行产生了结果就先显示结果。
   const plan = `<div class="stack plan">${[packageCard(v), planningCard(v), approvalCard(v), dispatchCard(view), eventsCard(v), operationsCard(view)].join("")}</div>`;
   const outcome = `<div class="stack outcome">${[reportCard(view), evidenceCard(view), cloudCard(view), provenanceCard(v), issuesCard(view)].join("")}</div>`;
-  const produced = !!(view.report || (view.evidence || []).length || view.cloud?.judge);
+  const produced = bucket(view.mission.status) === "done" && !!(view.report || (view.evidence || []).length || view.cloud?.judge);
   return html + `<div class="d-grid">${produced ? outcome + plan : plan + outcome}</div>`;
 }
 
@@ -730,7 +734,10 @@ function reportCard(view) {
   const report = view.report;
   if (!report) return card("报告", '<div class="empty">飞行结束后生成三列报告：已完成只接受「执行成功 ∧ 效果已证实」。</div>');
   const targets = Object.entries(report.targets || {});
-  const columns = `<div class="report-cols">${Object.keys(COLUMN).map(c => `<div class="rc ${c}"><small>${COLUMN[c]}</small><b>${esc(report.summary?.[c] ?? 0)}</b>
+  // While the mission is still going the report is the service's running record, not the final one.
+  // 任务未结束时，报告是服务的当前记录，不是最终报告。
+  const running = bucket(view.mission.status) !== "done" ? '<p class="hint" style="margin-top:0">任务尚未结束：以下为当前记录，随飞行与证据复核更新。</p>' : "";
+  const columns = running + `<div class="report-cols">${Object.keys(COLUMN).map(c => `<div class="rc ${c}${report.summary?.[c] ? "" : " zero"}"><small>${COLUMN[c]}</small><b>${esc(report.summary?.[c] ?? 0)}</b>
     <ul>${targets.filter(([, col]) => col === c).map(([t]) => `<li>${esc(t)}</li>`).join("")}</ul></div>`).join("")}</div>`;
   const rows = table(["步骤", "列", "判定"], (report.rows || []).map(r => [`v${r.mission_version} ${r.step_id}`, COLUMN[r.column] || r.column,
     raw(`<code>${esc(r.execution_status || "—")} / ${esc(r.effect_verdict || "—")}${r.service_verdict ? " · 服务 " + esc(r.service_verdict) : ""}</code>`)]));
@@ -891,7 +898,7 @@ function renderRun() {
       ${detail ? `<div class="flow-note">${detail}</div>` : ""}${review}</div></li>`;
   }).join("")}</ol>`;
   const main = [card("节点", nodes, "每个等待与失败都有原因")];
-  if (run.missions.length) main.push(card("子任务（每个仍需人工审批）", table(["任务", "节点", "状态", "预约"], run.missions.map(m => [link("missions/" + m.mission_id, m.mission_id), m.node_id, raw(chip(m.status)), m.reservations.map(x => x.state).join(", ") || "—"]))));
+  if (run.missions.length) main.push(card("子任务（每个仍需人工审批）", table(["任务", "节点", "状态", "预约"], run.missions.map(m => [link("missions/" + m.mission_id, m.mission_id), m.node_id, raw(chip(m.status)), m.reservations.map(x => RESERVATION[x.state] || x.state).join(", ") || "—"]))));
   if (run.analyses.length) main.push(card("分析", table(["资产", "分析器", "来源", "结论"], run.analyses.map(a => [a.asset_id, a.analyzer, SOURCE[a.source] || a.source, a.verdict])), "来源已标注；脚本 / 确定性结果不是模型识别"));
   if (run.orders.length) main.push(card("工单", table(["工单", "资产", "状态"], run.orders.map(o => [o.order_id, o.asset_id, ORDER[o.state] || o.state]))));
   if (run.children.length) main.push(card("复检运行", run.children.map(c => `<div class="item"><span class="item-main"><a class="mono" href="#workflows/${esc(c.run_id)}">${esc(c.run_id)}</a></span>${wchip(c.state)}</div>`).join("")));
@@ -1093,7 +1100,7 @@ function renderBusiness() {
   const columns = business.report.columns;
   byId("businessCatalog").textContent = business.catalog?.catalog_id || "";
   paint("businessReport", `<div class="report-cols">${[["closed", "已关单", "completed"], ["open", "未关单", "not_completed"], ["unknown", "复检不确定", "uncertain"]].map(([key, label, tone]) =>
-    `<div class="rc ${tone}"><small>${esc(label)}</small><b>${esc(columns[key].length)}</b></div>`).join("")}</div>
+    `<div class="rc ${tone}${columns[key].length ? "" : " zero"}"><small>${esc(label)}</small><b>${esc(columns[key].length)}</b></div>`).join("")}</div>
     <p class="hint">已关单只接受：维修反馈之后的新的已证实采集、允许来源的未疑似分析，以及 reviewer 对本轮的确认。</p>`);
   byId("findingsSub").textContent = business.findings.length ? business.findings.length + " 个" : "";
   byId("ordersSub").textContent = business.orders.length ? business.orders.length + " 张" : "";
@@ -1104,7 +1111,7 @@ function renderBusiness() {
     <span class="item-title">${esc(o.asset_key)}</span><span class="item-meta">${esc(o.order_id)} · 第 ${esc(o.round)} 轮 · ${esc(stamp(o.updated_at))}</span></span>${bchip(ORDER, OTONE, o.state)}</a>`).join("")
     || '<div class="empty">暂无工单。</div>');
   paint("businessJobs", table(["分析器", "状态", "结论", "来源", "分数", "原因"], business.jobs.slice(0, 20).map(j => [raw(`<code>${esc(j.analyzer)}</code>`), JSTATE[j.state] || j.state,
-    raw(j.verdict ? bchip(BVERDICT, BTONE, j.verdict) : "—"), SOURCE[j.source] || j.source || "—", j.score ?? "—", reasons(j.reasons) || "—"]), "暂无分析。"));
+    raw(j.verdict ? bchip(BVERDICT, BTONE, j.verdict) : "—"), raw(`<span class="nowrap">${esc(SOURCE[j.source] || j.source || "—")}</span>`), j.score ?? "—", reasons(j.reasons) || "—"]), "暂无分析。"));
   paint("businessReferences", business.references.map(r => `<div class="item"><span class="item-main"><span class="item-title">${esc(r.asset_key)} · ${esc(r.state)}</span>
     <span class="item-meta">${esc(r.registered_by)} · ${esc(stamp(r.registered_at))} · ${esc(String(r.evidence_id).slice(0, 24))}…</span></span></div>`).join("") || '<div class="empty">未登记。</div>');
   renderShell();
@@ -1138,10 +1145,10 @@ function findingHtml() {
   const seen = new Set();
   const shots = subject.jobs.filter(j => j.evidence_id && !seen.has(j.evidence_id) && seen.add(j.evidence_id)).map(j => `<figure class="shot" style="margin:0"><div class="frame">${photos[j.evidence_id] ? `<img alt="分析所用的采集" src="${esc(photos[j.evidence_id])}">` : "加载图像…"}</div>
     <figcaption class="cap"><span class="item-meta">${esc(String(j.evidence_id).slice(0, 26))}… · <a href="#missions/${esc(j.mission_id)}">${esc(j.mission_id)}</a></span></figcaption></figure>`).join("");
-  const jobs = table(["分析器", "来源", "结论", "分数", "原因 / 描述", "证据"], subject.jobs.map(j => [raw(`<code>${esc(j.analyzer)}</code><br><small>${esc(j.purpose)}</small>`), SOURCE[j.source] || j.source || "—",
+  const jobs = table(["分析器", "来源", "结论", "分数", "原因 / 描述", "证据"], subject.jobs.map(j => [raw(`<code>${esc(j.analyzer)}</code><br><small>${esc(j.purpose)}</small>`), raw(`<span class="nowrap">${esc(SOURCE[j.source] || j.source || "—")}</span>`),
     raw(j.verdict ? bchip(BVERDICT, BTONE, j.verdict) : esc(JSTATE[j.state] || j.state)), j.score ?? "—", raw(`${esc(reasons(j.reasons))}${j.description ? "<br>" + esc(j.description) : ""}`),
     j.mission_id ? link("missions/" + j.mission_id, j.mission_id) : "—"]));
-  return html + `<div class="stack" style="margin-top:14px">${shots ? card("采集", `<div class="gallery large">${shots}</div>`, "只读原始证据") : ""}${card("分析", jobs, "来源已标注；脚本 / 确定性结果不是模型识别")}${eventsList(subject.events, "finding-events-" + f.finding_id)}</div>`;
+  return html + `<div class="stack" style="margin-top:14px">${shots ? card("采集", `<div class="gallery${seen.size <= 2 ? " large" : ""}">${shots}</div>`, "只读原始证据") : ""}${card("分析", jobs, "来源已标注；脚本 / 确定性结果不是模型识别")}${eventsList(subject.events, "finding-events-" + f.finding_id)}</div>`;
 }
 
 function orderHtml() {

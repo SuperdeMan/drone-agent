@@ -6,7 +6,8 @@
 
 It opens the origin in the installed Edge or Chrome through Playwright (no browser download), waits for the hello
 frame and visits every workspace the service offers together with the first object of each list, recording for each
-view whether its region rendered, horizontal overflow and console errors, in every requested theme and viewport.
+view whether its region rendered, horizontal overflow and console errors, in every requested theme and viewport; it
+also renders the fixed M1 page under `/fixed/` without starting anything.
 With `--mission` it types a request into the composer, approves the exact package in the page and follows the flight
 until the supervisor publishes the independent judge's record. It reaches the service only through the page, so the
 page's own frames are what is exercised. The receipt names no tailnet host or operator login; screenshots show the
@@ -17,7 +18,7 @@ installs Playwright for this script only (PEP 723), outside the project's depend
 
 任务台的浏览器级核验（D068）：以人看到的样子、经真实入口检查页面。经 Playwright 用本机已装的 Edge 或 Chrome 打开入口（不下载
 浏览器），等待 hello 帧后，逐个访问服务提供的工作区及各列表的第一个对象，在每种主题与视口下记录区域是否渲染、是否横向溢出与
-控制台报错。加 `--mission` 时在输入框中写下请求、在页面中批准确切的任务包，并跟随飞行直到监管者公布独立裁判记录。它只经页面
+控制台报错；另渲染 `/fixed/` 下的固定 M1 页面，不启动任何任务。加 `--mission` 时在输入框中写下请求、在页面中批准确切的任务包，并跟随飞行直到监管者公布独立裁判记录。它只经页面
 访问服务，因此验证的正是页面自己的帧。回执不含 tailnet 主机名与操作者登录名；截图会显示登录名，只留在本机输出目录。回执只记录
 页面显示了什么，不做判定。
 """
@@ -110,6 +111,23 @@ async def tour(page, shots: Path, label: str) -> dict:
     return {"offered": offered, "views": views}
 
 
+async def fixed(browser, origin: str, shots: Path, scheme: str, errors: list) -> dict:
+    """The fixed M1 page under the unified entry: it reads state only; nothing is started. / 统一入口下的固定 M1 页面：只读状态，不启动任何任务。"""
+    page = await browser.new_page(viewport={"width": 1440, "height": 900}, color_scheme=scheme)
+    page.on("console", lambda m: errors.append(m.text[:300]) if m.type == "error" else None)
+    page.on("pageerror", lambda e: errors.append(str(e)[:300]))
+    response = await page.goto(origin + "/fixed/", wait_until="domcontentloaded")
+    await page.wait_for_function("() => document.getElementById('connection').className.includes('good')", timeout=30000)
+    await page.wait_for_timeout(2000)
+    info = await page.evaluate("""() => ({steps: document.querySelectorAll('#steps .step').length,
+      map: !!document.querySelector('#map #ground'), overflow_px: document.documentElement.scrollWidth - window.innerWidth,
+      modes: [...document.querySelectorAll('nav.modes a')].map(a => [a.getAttribute('href'), a.getAttribute('aria-current')]),
+      result: document.getElementById('resultTitle').textContent, phase: document.getElementById('phase').textContent})""")
+    await page.screenshot(path=str(shots / f"fixed-{scheme}.png"), full_page=True)
+    await page.close()
+    return {"status": response.status if response else None, **info}
+
+
 async def fly(page, args, shots: Path) -> dict:
     """Submit, approve and follow one mission through the page. / 经页面提交、批准并跟随一个任务。"""
     await page.evaluate("location.hash = '#missions/new'")
@@ -167,6 +185,7 @@ async def main() -> None:
     parser.add_argument("--channel", default="msedge", choices=("msedge", "chrome"), help="installed browser to drive")
     parser.add_argument("--themes", default="light,dark")
     parser.add_argument("--viewports", default="1440x900,390x844")
+    parser.add_argument("--no-fixed", action="store_true", help="skip the fixed M1 page (an entry without /fixed/)")
     parser.add_argument("--mission", action="store_true", help="submit, approve and follow one mission in the page")
     parser.add_argument("--text", default="检查起飞点东侧的红色设备标记，带回一张清晰照片。")
     parser.add_argument("--volume", default="campus_training")
@@ -198,6 +217,10 @@ async def main() -> None:
                 receipt["tours"][label] = await tour(page, shots, label)
                 receipt["console_errors"] += [f"{label}: {e}" for e in errors]
                 await page.close()
+            if not args.no_fixed:
+                errors = []
+                receipt.setdefault("fixed", {})[theme] = await fixed(browser, origin, shots, theme, errors)
+                receipt["console_errors"] += [f"fixed-{theme}: {e}" for e in errors]
         if args.mission:
             errors = []
             page = await open_desk(browser, origin, 1440, 900, "light", errors)

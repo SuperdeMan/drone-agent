@@ -125,6 +125,21 @@ test('approval binds the package hash and needs the approver role of the mission
   assert.deepEqual(ui.sent.at(-1), {type: 'approve', mission_id: 'm-000000000003', version: 1, package_hash: 'f'.repeat(64)});
 });
 
+test('a report is provisional while the mission runs and leads the detail only once it ended', () => {
+  const ui = setup();
+  const report = {targets: {asset_red: 'not_completed'}, summary: {completed: 0, not_completed: 1, uncertain: 0}, rows: [], facts: []};
+  ui.run(`hello = {can_write: true, projects: []}; nav = {ws: 'missions', id: 'm-000000000005', kind: null};
+    current = ${JSON.stringify(missionView({mission: {mission_id: 'm-000000000005', status: 'running', current_version: 1, replans: 0}, report}))}; renderMission();`);
+  let out = ui.html('detail');
+  assert.match(out, /任务尚未结束：以下为当前记录/);
+  assert.ok(out.indexOf('stack plan') < out.indexOf('stack outcome'), 'the plan leads while flying');
+  assert.match(out, /class="rc completed zero"/, 'an empty column is not coloured');
+  ui.run(`current.mission.status = 'completed'; current.report.summary = {completed: 1, not_completed: 0, uncertain: 0}; renderMission();`);
+  out = ui.html('detail');
+  assert.doesNotMatch(out, /任务尚未结束/);
+  assert.ok(out.indexOf('stack outcome') < out.indexOf('stack plan'), 'the outcome leads once the mission ended');
+});
+
 test('the lifecycle only mirrors the service status', () => {
   const ui = setup();
   const done = ui.run(`stepper('completed')`), declined = ui.run(`stepper('declined')`), rejected = ui.run(`stepper('rejected')`);
@@ -378,6 +393,10 @@ test('the overview lists only facts the service reported, each linked to its det
   assert.match(out, /待审批 · photo/);
   assert.match(out, /复检不确定·待再修/);
   assert.doesNotMatch(out, /<script>/);
+  assert.match(out, /资源提示[\s\S]*不可派遣 · uav_01/, 'a blocked robot is a hint, listed after the actions');
+  // approval, review, finding, business order, simulated order and dock lock; the robot is a hint.
+  // 审批、复核、发现、业务工单、模拟工单与机场锁；机器人只是提示。
+  assert.equal(ui.nodes.get('countOverview').textContent, '6', 'hints are not counted as pending actions');
   assert.equal(ui.nodes.get('countMissions').textContent, '1');
   assert.equal(ui.nodes.get('countBusiness').textContent, '1');
   assert.match(ui.html('ovKpis'), /待审批任务/);

@@ -90,7 +90,7 @@ uv run python scripts/desk_probe.py session --origin <origin> --text "<请求>" 
 
 探针按页面相同的 hri.v0 协议驱动任务并记录服务、监管者与裁判报告的内容，回执对 tailnet 主机名与操作者登录名脱敏；它本身不做判定。`watch --mission <任务ID>` 可接上已有任务直到裁判结果公布。当前版本与验收结果见 [任务台验收记录](tailnet-desk-readiness.md)。
 
-页面本身的浏览器级核验（D068）用 `scripts/desk_browser.py`：它经 Playwright 驱动本机已装的 Edge 或 Chrome，逐个工作区渲染并记录区域是否显示、横向溢出与控制台报错（默认浅色 / 深色 × 桌面 / 手机两种视口）；加 `--mission` 时在页面里写下请求、批准任务包并跟随飞行到裁判结果公布。Playwright 由 uv 按脚本内依赖临时安装，不进入项目依赖。回执脱敏；截图含登录名，只留在本机输出目录。
+页面本身的浏览器级核验（D068）用 `scripts/desk_browser.py`：它经 Playwright 驱动本机已装的 Edge 或 Chrome，逐个工作区渲染并记录区域是否显示、横向溢出与控制台报错（默认浅色 / 深色 × 桌面 / 手机两种视口），并只读地渲染 `/fixed/` 固定页；加 `--mission` 时在页面里写下请求、批准任务包并跟随飞行到裁判结果公布。Playwright 由 uv 按脚本内依赖临时安装，不进入项目依赖。回执脱敏；截图含登录名，只留在本机输出目录。
 
 ```powershell
 uv run scripts/desk_browser.py --origin <origin> --output outputs/desk-browser/<时间>
