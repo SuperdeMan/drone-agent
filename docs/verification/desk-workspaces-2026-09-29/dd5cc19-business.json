@@ -1,0 +1,114 @@
+{
+  "schema_version": "0.1.0",
+  "probe": "business",
+  "hello": {
+    "identity_scheme": "tailnet",
+    "can_write": true,
+    "planner": "live:minimax/MiniMax-M3"
+  },
+  "project": "campus_s1",
+  "projects": [
+    {
+      "project_id": "campus_s1",
+      "legacy": false,
+      "roles": [
+        "admin",
+        "approver",
+        "operator",
+        "reviewer"
+      ],
+      "robots": [
+        "uav_01"
+      ],
+      "scheduling": true,
+      "business": true
+    },
+    {
+      "project_id": "legacy_m2",
+      "legacy": true,
+      "roles": [
+        "viewer"
+      ],
+      "robots": [],
+      "scheduling": false,
+      "business": false
+    }
+  ],
+  "panel": {
+    "roles": [
+      "admin",
+      "approver",
+      "operator",
+      "reviewer"
+    ],
+    "catalog": {
+      "catalog_id": "p4_s1_v1",
+      "sha256": "27102eb7e161b754391359deaa386a3cac60f24ceecd57096c88e762724f1a27"
+    },
+    "report": {
+      "closed": 0,
+      "open": 0,
+      "unknown": 1
+    },
+    "findings": 1,
+    "orders": 1,
+    "jobs": 9,
+    "references": 5,
+    "reuse": {
+      "schema_version": "0.1.0",
+      "version": "reuse-v1",
+      "max_age_s": 604800,
+      "analyzers": [
+        "signature_s1_v1",
+        "vlm_change_v3"
+      ]
+    }
+  },
+  "refused": [
+    {
+      "frame": "inject",
+      "error": "unknown type 'inject'"
+    },
+    {
+      "frame": "docks.report",
+      "error": "unknown type 'docks.report'"
+    },
+    {
+      "frame": "arm",
+      "error": "unknown type 'arm'"
+    },
+    {
+      "frame": "flight",
+      "error": "unknown type 'flight'"
+    },
+    {
+      "frame": "simulator.inject",
+      "error": "unknown type 'simulator.inject'"
+    },
+    {
+      "frame": "finding_close",
+      "error": "unknown type 'finding_close'"
+    },
+    {
+      "frame": "order_close",
+      "error": "unknown type 'order_close'"
+    },
+    {
+      "frame": "analysis_verdict",
+      "error": "unknown type 'analysis_verdict'"
+    }
+  ],
+  "unknown_subject": {
+    "code": "service.not_found",
+    "message": "fd-0000000000000000"
+  },
+  "reference": null,
+  "timeline": [],
+  "runs": {},
+  "missions": {},
+  "findings": {},
+  "orders": {},
+  "sent": [],
+  "errors": [],
+  "duration_s": 0.2
+}

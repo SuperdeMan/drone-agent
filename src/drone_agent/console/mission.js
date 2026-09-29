@@ -77,7 +77,7 @@ const WTONE = {completed: "ok", running: "info", waiting: "warn", cancel_request
 const NODE_TONE = {completed: "ok", running: "info", waiting: "warn", cancel_requested: "warn", cancelling: "warn", failed: "bad",
   outcome_unknown: "bad", cancelled: "neutral", skipped: "neutral"};
 const WAIT = {approval: "等待审批", device: "等待设备", environment: "等待环境", flight: "飞行中", evidence: "等待证据复核",
-  review: "等待人工复核", repair: "等待维修反馈", delivery: "投递中"};
+  review: "等待人工复核", repair: "等待维修反馈", delivery: "投递中", assignment: "等待调度分配", analysis: "分析中"};
 const SKIP = {condition_false: "条件不满足", upstream_skipped: "上游已跳过", upstream_failed: "上游失败", upstream_unknown: "上游结果未知",
   cancelled: "随运行取消"};
 const ACTIVITY = {submit_mission: "提交任务", await_mission: "等待任务结果", analyze_evidence: "分析证据", human_review: "人工复核",
@@ -110,6 +110,7 @@ Object.assign(ORDER, {reinspection_failed: "复检未通过·待再修", reinspe
 const OTONE = {open: "warn", reinspection_requested: "info", repair_reported: "info", reinspection_failed: "bad", reinspection_unknown: "bad", closed: "ok"};
 const RSTATE = {reinspecting: "复检中", passed: "通过", failed: "未通过", unknown: "不确定"};
 const JSTATE = {queued: "排队", running: "分析中", completed: "完成", refused: "拒判", cancelled: "已取消"};
+const PURPOSE = {inspection: "巡检", reinspection: "复检", reuse: "复用"};
 const BVERDICT = {suspected: "疑似异常", normal: "未见异常", refused: "拒判"};
 const BTONE = {suspected: "warn", normal: "ok", refused: "neutral"};
 const REPAIRABLE = ["open", "reinspection_failed", "reinspection_unknown"];
@@ -1145,7 +1146,7 @@ function findingHtml() {
   const seen = new Set();
   const shots = subject.jobs.filter(j => j.evidence_id && !seen.has(j.evidence_id) && seen.add(j.evidence_id)).map(j => `<figure class="shot" style="margin:0"><div class="frame">${photos[j.evidence_id] ? `<img alt="分析所用的采集" src="${esc(photos[j.evidence_id])}">` : "加载图像…"}</div>
     <figcaption class="cap"><span class="item-meta">${esc(String(j.evidence_id).slice(0, 26))}… · <a href="#missions/${esc(j.mission_id)}">${esc(j.mission_id)}</a></span></figcaption></figure>`).join("");
-  const jobs = table(["分析器", "来源", "结论", "分数", "原因 / 描述", "证据"], subject.jobs.map(j => [raw(`<code>${esc(j.analyzer)}</code><br><small>${esc(j.purpose)}</small>`), raw(`<span class="nowrap">${esc(SOURCE[j.source] || j.source || "—")}</span>`),
+  const jobs = table(["分析器", "来源", "结论", "分数", "原因 / 描述", "证据"], subject.jobs.map(j => [raw(`<code>${esc(j.analyzer)}</code><br><small>${esc(PURPOSE[j.purpose] || j.purpose)}</small>`), raw(`<span class="nowrap">${esc(SOURCE[j.source] || j.source || "—")}</span>`),
     raw(j.verdict ? bchip(BVERDICT, BTONE, j.verdict) : esc(JSTATE[j.state] || j.state)), j.score ?? "—", raw(`${esc(reasons(j.reasons))}${j.description ? "<br>" + esc(j.description) : ""}`),
     j.mission_id ? link("missions/" + j.mission_id, j.mission_id) : "—"]));
   return html + `<div class="stack" style="margin-top:14px">${shots ? card("采集", `<div class="gallery${seen.size <= 2 ? " large" : ""}">${shots}</div>`, "只读原始证据") : ""}${card("分析", jobs, "来源已标注；脚本 / 确定性结果不是模型识别")}${eventsList(subject.events, "finding-events-" + f.finding_id)}</div>`;

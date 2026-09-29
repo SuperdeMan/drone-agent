@@ -95,7 +95,10 @@ uv run python scripts/desk_probe.py session --origin <origin> --text "<请求>" 
 ```powershell
 uv run scripts/desk_browser.py --origin <origin> --output outputs/desk-browser/<时间>
 uv run scripts/desk_browser.py --origin <origin> --output outputs/desk-browser/<时间> --themes light --viewports 1440x900 --mission --text "<请求>" --asset asset_red --robot uav_01 --approve
+uv run scripts/desk_browser.py --origin <origin> --output outputs/desk-browser/<时间> --themes "" --no-fixed --loop desk_watch --repair
 ```
+
+`--loop` 在页面中启动工作流、在任务视图中逐个批准其飞行、以 reviewer 身份对发现作决定；加 `--repair` 时再报告维修并批准复检飞行，直到本轮结算。它产生真实的飞行、发现与工单记录，只在需要核验业务链路时使用。
 
 改页面时可先在本机预览：`uv run python scripts/desk_preview.py --seed` 在 `http://127.0.0.1:8770` 用 S0 逻辑世界配上任务台同款目录提供全部工作区（逻辑飞行，如实标注；没有监管者与裁判），客户端测试用 `node --test tests/console/test_mission_client.cjs tests/console/test_live_client.cjs`。
 

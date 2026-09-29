@@ -178,6 +178,108 @@ async def fly(page, args, shots: Path) -> dict:
     return record
 
 
+async def open_hash(page, hash_: str, ready: str, timeout: float = 60) -> None:
+    await page.evaluate(f"location.hash = {json.dumps(hash_)}")
+    await page.wait_for_function(ready, timeout=timeout * 1000)
+
+
+async def approve_in_page(page, mission_id: str, record: dict, shots: Path) -> str:
+    """Open the mission view and sign the exact package shown there. / 打开任务视图并签名其中显示的确切任务包。"""
+    await open_hash(page, "#missions/" + mission_id, f"() => current && current.mission.mission_id === {json.dumps(mission_id)}")
+    await page.wait_for_selector("#approve:not([disabled])", timeout=30000)
+    await page.screenshot(path=str(shots / f"loop-approve-{len(record['approved'])}.png"), full_page=True)
+    await page.click("#approve")
+    await page.wait_for_function("() => current.mission.status !== 'awaiting_approval'", timeout=30000)
+    record["approved"].append(mission_id)
+    return await page.evaluate("current.mission.status")
+
+
+async def follow_run(page, run_id: str, record: dict, shots: Path, until: str, deadline: float) -> dict:
+    """Approve the run's missions in the page until `until` holds for the run view. / 在页面中审批运行的任务，直到条件成立。"""
+    while time.monotonic() < deadline:
+        await open_hash(page, "#workflows/" + run_id, f"() => run && run.run.run_id === {json.dumps(run_id)}")
+        await page.wait_for_timeout(1500)
+        state = await page.evaluate("""() => ({state: run.run.state, waiting: run.waiting,
+          missions: run.missions.map(m => [m.mission_id, m.status]),
+          finding: (run.nodes.find(n => n.result && n.result.finding_id) || {result: {}}).result.finding_id || null})""")
+        if not record["timeline"] or record["timeline"][-1]["run"] != run_id or \
+                {k: v for k, v in record["timeline"][-1].items() if k not in ("t", "run")} != state:
+            record["timeline"].append({"t": round(time.monotonic() - record["started"], 1), "run": run_id, **state})
+        for mission_id, status in state["missions"]:
+            if status == "awaiting_approval" and mission_id not in record["approved"]:
+                await approve_in_page(page, mission_id, record, shots)
+                break
+        else:
+            if await page.evaluate(until):
+                return state
+            await page.wait_for_timeout(3000)
+    raise TimeoutError(f"run {run_id} did not reach the awaited state")
+
+
+async def loop(page, args, shots: Path) -> dict:
+    """P2 / P4 through the page: start a template, approve its flight, decide the finding as a reviewer, and with
+    `--repair` report a repair and approve the reinspection flight until the round settles.
+
+    经页面走 P2 / P4：启动模板、审批其飞行、以 reviewer 身份对发现作决定；加 `--repair` 时报告维修并审批复检飞行，直到本轮结算。
+    """
+    record = {"started": time.monotonic(), "template": args.loop, "approved": [], "timeline": []}
+    deadline = time.monotonic() + args.flight_timeout
+    await open_hash(page, "#workflows", "() => workflows !== null")
+    await page.select_option("#wfTemplate", args.loop)
+    await page.wait_for_timeout(800)
+    if args.loop_asset:
+        await page.select_option('#wfStart select[data-input="asset"]', args.loop_asset)
+    known = await page.evaluate("() => workflows.runs.map(r => r.run_id)")
+    await page.click('#wfStart [data-act="start"]')
+    await page.wait_for_function("""(known) => /^#workflows\\/wr-/.test(location.hash) && !known.includes(location.hash.slice(11))
+      && run && run.run.run_id === location.hash.slice(11)""", arg=known, timeout=60000)
+    record["run_id"] = await page.evaluate("run.run.run_id")
+    state = await follow_run(page, record["run_id"], record, shots, "() => (run.nodes.find(n => n.result && n.result.finding_id) "
+                             "|| null) !== null || ['completed', 'failed', 'outcome_unknown', 'cancelled'].includes(run.run.state)",
+                             deadline)
+    record["finding_id"] = state["finding"]
+    if not state["finding"]:
+        record["result"] = "no finding"
+        return record
+    await open_hash(page, "#business/finding/" + state["finding"],
+                    f"() => subject && subject.finding && subject.finding.finding_id === {json.dumps(state['finding'])}")
+    await page.wait_for_timeout(2500)
+    await page.screenshot(path=str(shots / "loop-finding.png"), full_page=True)
+    finding = await page.evaluate("() => ({state: subject.finding.state, jobs: subject.jobs.map(j => [j.analyzer, j.source, j.verdict]), "
+                                  "images: document.querySelectorAll('#bizDetail .shot img').length})")
+    record["finding"] = finding
+    if finding["state"] == "candidate":
+        await page.click(f'[data-act="decide"][data-decision="{args.review}"]')
+        await page.wait_for_selector("dialog#ask[open]")
+        await page.fill("#askText", "browser probe review")
+        await page.click("#askOk")
+        await page.wait_for_function("() => subject.finding.state !== 'candidate'", timeout=30000)
+    await page.wait_for_timeout(2000)
+    record["decided"] = await page.evaluate("() => ({state: subject.finding.state, order: subject.order ? subject.order.order_id : null})")
+    order = record["decided"]["order"]
+    if not (args.repair and order):
+        return record
+    await open_hash(page, "#business/order/" + order, f"() => subject && subject.order && subject.order.order_id === {json.dumps(order)}")
+    await page.wait_for_selector("#repairOrder:not([disabled])", timeout=30000)
+    rounds = await page.evaluate("subject.rounds.length")
+    await page.click("#repairOrder")
+    await page.wait_for_selector("dialog#ask[open]")
+    await page.fill("#askText", "browser probe repair feedback")
+    await page.click("#askOk")
+    await page.wait_for_function(f"() => subject.rounds.length > {rounds} && subject.rounds[subject.rounds.length - 1].reinspection_run",
+                                 timeout=60000)
+    reinspection = await page.evaluate("subject.rounds[subject.rounds.length - 1].reinspection_run")
+    record["reinspection_run"] = reinspection
+    await follow_run(page, reinspection, record, shots, "() => ['completed', 'failed', 'outcome_unknown', 'cancelled']"
+                     ".includes(run.run.state)", deadline)
+    await open_hash(page, "#business/order/" + order, f"() => subject && subject.order && subject.order.order_id === {json.dumps(order)}")
+    await page.wait_for_timeout(2500)
+    await page.screenshot(path=str(shots / "loop-order.png"), full_page=True)
+    record["order"] = await page.evaluate("""() => ({state: subject.order.state, round: subject.order.round,
+      rounds: subject.rounds.map(r => ({round: r.round, state: r.state, reasons: (r.conclusion || {}).reasons || []}))})""")
+    return record
+
+
 async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--origin", required=True, help="the desk origin, e.g. from `dev_stack.py desk-cloud --status`")
@@ -192,6 +294,10 @@ async def main() -> None:
     parser.add_argument("--asset", action="append")
     parser.add_argument("--robot")
     parser.add_argument("--approve", action="store_true")
+    parser.add_argument("--loop", metavar="TEMPLATE", help="start this workflow in the page and follow it to its finding")
+    parser.add_argument("--loop-asset", default="asset_red")
+    parser.add_argument("--review", choices=("confirmed", "dismissed"), default="confirmed")
+    parser.add_argument("--repair", action="store_true", help="with --loop: report a repair and approve the reinspection")
     parser.add_argument("--plan-timeout", type=float, default=180)
     parser.add_argument("--flight-timeout", type=float, default=900)
     args = parser.parse_args()
@@ -226,6 +332,14 @@ async def main() -> None:
             page = await open_desk(browser, origin, 1440, 900, "light", errors)
             receipt["mission"] = await fly(page, args, shots)
             receipt["console_errors"] += [f"mission: {e}" for e in errors]
+            await page.close()
+        if args.loop:
+            errors = []
+            page = await open_desk(browser, origin, 1440, 900, "light", errors)
+            result = await loop(page, args, shots)
+            result.pop("started", None)
+            receipt["loop"] = result
+            receipt["console_errors"] += [f"loop: {e}" for e in errors]
             await page.close()
         await browser.close()
     receipt["finished_at"] = datetime.now(UTC).isoformat()

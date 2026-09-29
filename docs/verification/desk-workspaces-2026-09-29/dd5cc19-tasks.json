@@ -1,0 +1,123 @@
+{
+  "schema_version": "0.1.0",
+  "probe": "tasks",
+  "hello": {
+    "identity_scheme": "tailnet",
+    "can_write": true,
+    "planner": "live:minimax/MiniMax-M3"
+  },
+  "project": "campus_s1",
+  "projects": [
+    {
+      "project_id": "campus_s1",
+      "legacy": false,
+      "roles": [
+        "admin",
+        "approver",
+        "operator",
+        "reviewer"
+      ],
+      "robots": [
+        "uav_01"
+      ],
+      "scheduling": true
+    },
+    {
+      "project_id": "legacy_m2",
+      "legacy": true,
+      "roles": [
+        "viewer"
+      ],
+      "robots": [],
+      "scheduling": false
+    }
+  ],
+  "queue": {
+    "error": null,
+    "roles": [
+      "admin",
+      "approver",
+      "operator",
+      "reviewer"
+    ],
+    "catalog": {
+      "catalog_id": "p3_desk_v1",
+      "sha256": "853f0b1a2046d9520056c6fe012da8944c9368466d3d03997cb0e62048b83a6d",
+      "ranking": "p3-rank-v1",
+      "policy": "p3-sched-v1"
+    },
+    "assets": {
+      "asset_blue": {
+        "volume_id": "campus_training",
+        "robots": [
+          "uav_01"
+        ]
+      },
+      "asset_red": {
+        "volume_id": "campus_training",
+        "robots": [
+          "uav_01"
+        ]
+      }
+    },
+    "robots": [
+      {
+        "robot_id": "uav_01",
+        "site_id": "site_s1",
+        "dock_id": "dock_s1",
+        "assignments": [],
+        "eligibility": {
+          "verdict": "eligible",
+          "reasons": []
+        }
+      }
+    ],
+    "tasks": 5,
+    "airspace": {
+      "frame": "campus_s1",
+      "cell_m": 4.0,
+      "holds": 0,
+      "envelopes": 0
+    }
+  },
+  "refused": [
+    {
+      "frame": "inject",
+      "error": "unknown type 'inject'"
+    },
+    {
+      "frame": "docks.report",
+      "error": "unknown type 'docks.report'"
+    },
+    {
+      "frame": "arm",
+      "error": "unknown type 'arm'"
+    },
+    {
+      "frame": "flight",
+      "error": "unknown type 'flight'"
+    },
+    {
+      "frame": "simulator.inject",
+      "error": "unknown type 'simulator.inject'"
+    },
+    {
+      "frame": "task_assign",
+      "error": "unknown type 'task_assign'"
+    },
+    {
+      "frame": "task_approve_all",
+      "error": "unknown type 'task_approve_all'"
+    },
+    {
+      "frame": "scheduler_tick",
+      "error": "unknown type 'scheduler_tick'"
+    }
+  ],
+  "timeline": [],
+  "task": null,
+  "missions": {},
+  "sent": [],
+  "errors": [],
+  "duration_s": 0.2
+}
