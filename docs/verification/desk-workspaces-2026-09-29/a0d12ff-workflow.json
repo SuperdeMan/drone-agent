@@ -1,0 +1,153 @@
+{
+  "schema_version": "0.1.0",
+  "probe": "workflow",
+  "hello": {
+    "identity_scheme": "tailnet",
+    "can_write": true,
+    "planner": "live:minimax/MiniMax-M3"
+  },
+  "project": "campus_s1",
+  "templates": [
+    {
+      "workflow_id": "appearance_reinspection",
+      "version": 1,
+      "sha256": "87383fccb10fa2af4aea4221e9df4e8622d764891c568b129448483c4e261ed8",
+      "triggers": [
+        {
+          "trigger_id": "reinspection",
+          "kind": "internal",
+          "state": null
+        }
+      ]
+    },
+    {
+      "workflow_id": "appearance_watch",
+      "version": 1,
+      "sha256": "ab8208bca485ddc7e8bd8e16d3707e9b7fa3255237423e70ade9671cb5d5c5d0",
+      "triggers": [
+        {
+          "trigger_id": "manual",
+          "kind": "manual",
+          "state": null
+        }
+      ]
+    },
+    {
+      "workflow_id": "asset_check",
+      "version": 1,
+      "sha256": "5b22878866b02acffe58ae32eeee651ff9b3d45e3b8f5ab8b1d1b1115d03b4ff",
+      "triggers": [
+        {
+          "trigger_id": "manual",
+          "kind": "manual",
+          "state": null
+        },
+        {
+          "trigger_id": "daily_0900",
+          "kind": "schedule",
+          "state": "disabled"
+        },
+        {
+          "trigger_id": "asset_alarm",
+          "kind": "event",
+          "state": null
+        }
+      ]
+    },
+    {
+      "workflow_id": "asset_reinspection",
+      "version": 1,
+      "sha256": "f645271806569e4ffe3156aabb1370d8ecde44ef7aa6d57b92e3b68472a6722a",
+      "triggers": [
+        {
+          "trigger_id": "reinspection",
+          "kind": "internal",
+          "state": null
+        }
+      ]
+    },
+    {
+      "workflow_id": "campus_round",
+      "version": 1,
+      "sha256": "d46bc0e9e687aada9bfdbe05fdcc14191ea784881d0735f5bfaeaabd02a45afb",
+      "triggers": [
+        {
+          "trigger_id": "manual",
+          "kind": "manual",
+          "state": null
+        }
+      ]
+    },
+    {
+      "workflow_id": "desk_reinspection",
+      "version": 1,
+      "sha256": "2bfa2d55f839c3ebe65dc64e36301be5eac0013e5eb85556bcad71b80be1201a",
+      "triggers": [
+        {
+          "trigger_id": "reinspection",
+          "kind": "internal",
+          "state": null
+        }
+      ]
+    },
+    {
+      "workflow_id": "desk_watch",
+      "version": 1,
+      "sha256": "12419401c3d683bfe39deb8abce745659a1cf7ac62c57b7d646d9889cf944942",
+      "triggers": [
+        {
+          "trigger_id": "manual",
+          "kind": "manual",
+          "state": null
+        }
+      ]
+    }
+  ],
+  "draft": null,
+  "refused": [
+    {
+      "frame": "inject",
+      "error": "unknown type 'inject'"
+    },
+    {
+      "frame": "docks.report",
+      "error": "unknown type 'docks.report'"
+    },
+    {
+      "frame": "arm",
+      "error": "unknown type 'arm'"
+    },
+    {
+      "frame": "flight",
+      "error": "unknown type 'flight'"
+    },
+    {
+      "frame": "simulator.inject",
+      "error": "unknown type 'simulator.inject'"
+    },
+    {
+      "frame": "workflow_activate",
+      "error": "unknown type 'workflow_activate'"
+    },
+    {
+      "frame": "workflow_approve_all",
+      "error": "unknown type 'workflow_approve_all'"
+    }
+  ],
+  "timeline": [],
+  "runs": {},
+  "missions": {},
+  "sent": [],
+  "errors": [],
+  "roles": [
+    "admin",
+    "approver",
+    "operator",
+    "reviewer"
+  ],
+  "catalog": {
+    "catalog_id": "p4_s1_v1",
+    "sha256": "f5e591a070dcbfd0d2df6bdf938f6b3fded7972fb502a1b13967a68925d13c8d"
+  },
+  "duration_s": 0.2
+}
