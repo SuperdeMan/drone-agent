@@ -1135,17 +1135,28 @@ class MissionService:
     # ── project-scoped reads (P1) / 按项目限定的读取（P1）──
 
     def missions(self, caller: Caller | None = None, limit: int = 50) -> list[dict]:
-        """Recent missions the caller may read; M2 mode lists everything as before. / 调用方可读的近期任务。"""
+        """Recent missions the caller may read; M2 mode lists everything as before. Each row also names its request
+        (the text cut to 160 characters and the channel), which `view` already shows the same caller (D068).
+
+        调用方可读的近期任务；M2 模式照旧列出全部。每行另带其请求（截断到 160 字的原文与通道），同一调用方经 `view` 本来就能
+        看到这些内容（D068）。
+        """
         fields = ("mission_id", "status", "current_version", "robot_id", "created_at", "updated_at")
         rows = self.ledger.missions(limit if self.ops is None else 500)
+
+        def row(mission: dict, **extra) -> dict:
+            body = (self.ledger.request(mission["request_id"]) or {}).get("body") or {}
+            return {**{k: mission[k] for k in fields}, **extra, "text": str(body.get("text", ""))[:160],
+                    "channel": body.get("channel")}
+
         if self.ops is None:
-            return [{k: m[k] for k in fields} for m in rows]
+            return [row(m) for m in rows]
         readable = set(self.ops.directory.projects(caller)) if caller is not None else set()
         found = []
         for mission in rows:
             project = self.project_of(mission["mission_id"])
             if project in readable and self.ops.directory.allows(caller, project, MISSION_READ):
-                found.append({**{k: mission[k] for k in fields}, "project_id": project})
+                found.append(row(mission, project_id=project))
             if len(found) >= limit:
                 break
         return found

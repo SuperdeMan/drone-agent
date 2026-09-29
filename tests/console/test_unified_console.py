@@ -26,7 +26,7 @@ def unified(tmp_path):
 async def test_modes_and_assets_share_one_origin_without_starting_flights(tmp_path):
     app, calls = unified(tmp_path)
     status, body = await http(app, "GET", "/")
-    assert status == 200 and b'href="/fixed/"' in body
+    assert status == 200 and b'href="/fixed/"' in body and b"FLIGHT DESK" in body and b"__NAV__" not in body
     status, body = await http(app, "GET", "/fixed/")
     assert status == 200 and b'src="/fixed/live.js"' in body and b'content="/fixed"' in body
     assert b'aria-current="page">' in body and b'__NAV__' not in body

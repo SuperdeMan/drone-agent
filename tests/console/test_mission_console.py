@@ -18,6 +18,7 @@ from tests.fleet.harness import RED_REQUEST, ROOT, SCENE, build_loop
 
 ORIGIN = "https://desk.example-tailnet.ts.net"
 TOKEN = "a2a-test-token-0123456789"
+PAGE_DIR = ROOT / "src/drone_agent/console"
 
 
 def console(loop, **overrides) -> MissionConsole:
@@ -111,6 +112,34 @@ async def test_tailnet_operator_submits_approves_and_the_package_is_signed(tmp_p
     assert (approval["approver"], approval["signer_key_id"]) == ("tailnet:alice@example.test", loop.key.key_id)
     assert view["mission"]["status"] == "queued"
     await session.close()
+
+
+async def test_hello_names_the_revision_and_the_list_names_each_request(tmp_path):
+    """D068: the page shows its deployed revision and each listed mission's request. / 页面显示部署版本与每个任务的请求。"""
+    loop = build_loop(tmp_path)
+    session = Socket(console(loop, source_sha="a" * 40), headers(origin=ORIGIN, tailscale_user_login="alice@example.test"))
+    await session.next()
+    assert (await session.next("hello"))["source_sha"] == "a" * 40
+    session.send({"type": "text", "rid": "r1", "text": RED_REQUEST, "volume_id": "campus_training", "asset_ids": []})
+    await session.next("mission")
+    session.send({"type": "list"})
+    [item] = (await session.next("missions"))["items"]
+    assert (item["text"], item["channel"], item["status"]) == (RED_REQUEST[:160], "console", "awaiting_approval")
+    await session.close()
+
+
+def test_the_page_script_names_no_control_or_injection_frames():
+    # The same words the resident desk probe looks for (scripts/desk_probe.py). / 与常驻任务台探针检查的词相同。
+    script = (PAGE_DIR / "mission.js").read_text(encoding="utf-8")
+    assert [w for w in ("inject", "docks.report", "simulator", '"arm"', "takeoff") if w in script] == []
+
+
+def test_both_pages_share_one_set_of_design_tokens():
+    def tokens(name: str) -> str:
+        page = (PAGE_DIR / name).read_text(encoding="utf-8")
+        return page[page.index("/* tokens:start */"):page.index("/* tokens:end */")]
+
+    assert tokens("mission.html") == tokens("live.html") and "--brand" in tokens("mission.html")
 
 
 @pytest.mark.parametrize("extra", [{}, {"tailscale_user_login": ""}])

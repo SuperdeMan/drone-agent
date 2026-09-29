@@ -51,6 +51,20 @@ async def test_projects_and_resources_are_scoped_to_membership(tmp_path):
     assert (await call(service, JUDGE, "list"))["result"] == []
 
 
+async def test_the_mission_list_names_each_request_only_to_its_readers(tmp_path):
+    """D068: list rows carry the request text and channel that `view` already shows the same caller.
+
+    D068：列表行带有请求原文与通道，同一调用方经 `view` 本来就能看到它们。
+    """
+    world = P1World(tmp_path / "case", ROOT, seed=7)
+    mission_id = await world.submit("uav_a", "red")
+    [row] = (await call(world.service, OPERATOR, "list"))["result"]
+    view = (await call(world.service, OPERATOR, "view", mission_id=mission_id))["result"]
+    assert (row["mission_id"], row["project_id"], row["channel"]) == (mission_id, "campus_ops", "harness")
+    assert row["text"] == view["request"]["text"][:160] and row["text"]
+    assert (await call(world.service, "harness:p1-harbor", "list"))["result"] == [], "another project's reader sees nothing"
+
+
 async def test_backend_identities_only_report_and_people_cannot_report(tmp_path):
     world = P1World(tmp_path / "case", ROOT, seed=7)
     service, dock = world.service, world.docks["dock_a"]

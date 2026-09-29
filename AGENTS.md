@@ -13,7 +13,7 @@
 
 ## 最低纪律（摘要，全文见 CLAUDE.md）
 
-- **验证**：任何代码改动后 `uv run ruff check .` + `uv run pytest -q` 必须绿；契约测试不许跳过或放宽。
+- **验证**：任何代码改动后 `uv run ruff check .` + `uv run pytest -q` 必须绿；契约测试不许跳过或放宽。改 `console/` 页面后另跑 `node --test tests/console/*.cjs`（D068）。
 - **联调**：默认使用云服务器，入口 `scripts/dev_stack.py`，见 `docs/cloud-development.md`；不自动启动本地真栈。真机控制链仍在设备侧。
 - **语言**：文档中文，README 中英双版（`README.md` 英文、`README.zh-CN.md` 中文，同步更新）；标识符与 commit message 英文（Conventional Commits）；注释与 docstring 中英双语（英文在前，`# English / 中文`），改一处两种语言一起改。
 - **安全红线**：LLM/VLM 只产出 `MissionSpec` / 后续 `WorkflowSpec` 类型化草案与业务判断，永不触达控制出口；只有 `guardian` 持有飞控连接；`UNKNOWN` 不是成功；不禁用飞控失效保护；不提供 kill 接口。

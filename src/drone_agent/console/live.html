@@ -2,27 +2,137 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <meta name="console-nonce" content="__NONCE__">
 <meta name="console-base" content="__BASE__">
 <title>drone-agent · 云端飞行台</title>
 <style>
-:root{--bg:#eeeae1;--ink:#213329;--muted:#6b786b;--line:#cbd0c1;--green:#315b3e;--lime:#d4ed95;--orange:#a85d2d;--dark:#14271e;--mono:"Cascadia Code",Consolas,monospace;--font:Bahnschrift,"Microsoft YaHei UI","PingFang SC",sans-serif}*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;color:var(--ink);background:var(--bg);font-family:var(--font)}button,select{font:inherit}button{cursor:pointer;color:inherit}button:disabled{cursor:default;opacity:.4}button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid #af6c2b;outline-offset:3px}header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:22px 4vw;gap:20px}.brand{font:700 22px var(--mono);letter-spacing:-1px}.brand span{font:10px var(--mono);letter-spacing:2px;color:var(--muted);margin-left:22px}.connection{display:flex;align-items:center;gap:9px;font-size:12px}.connection i{width:7px;height:7px;border-radius:50%;background:var(--orange)}.connection.good i{background:#4e7f40}.connection small{font:10px var(--mono);color:var(--muted)}main{max-width:1600px;margin:auto;padding:30px 4vw 36px}.intro{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:26px}h1{font-size:32px;letter-spacing:1px;font-weight:600;margin:0 0 9px}p{font-size:12px;line-height:1.9;color:var(--muted);margin:0}.intro aside{text-align:right;font:10px/1.9 var(--mono);color:var(--muted)}.notice{padding:11px 15px;margin-bottom:20px;border-left:3px solid var(--orange);background:#e5dfd0;font-size:12px;line-height:1.7}.notice[hidden]{display:none}.layout{display:grid;grid-template-columns:225px minmax(380px,1fr) 272px;gap:25px;align-items:start}.eyebrow{font:10px var(--mono);letter-spacing:1.7px;color:var(--muted);margin-bottom:15px}.mission{border:1px solid var(--line);padding:18px}.mission h2{font-weight:600;font-size:17px;margin:0 0 12px}.mission p{font-size:11px}.parameters{display:flex;align-items:center;justify-content:space-between;margin:19px 0 15px;font-size:11px}select{border:1px solid #b0bca7;background:transparent;padding:5px 8px;color:var(--ink);font:11px var(--mono)}.start{width:100%;border:0;background:var(--green);color:#f4f5e8;padding:13px;font-size:12px}.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.controls button{border:1px solid #98a78e;background:transparent;padding:10px 3px;font-size:12px}.controls .cancel{grid-column:1/-1;border-color:#bca189;color:#884c2c}.control-note{font-size:10px;margin-top:11px;line-height:1.8}.steps{margin-top:24px;border-top:1px solid var(--line);padding-top:18px}.step{display:flex;align-items:center;gap:10px;padding:9px 0;color:var(--muted);font-size:12px}.step i{width:22px;height:22px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;font:10px var(--mono)}.step small{font-size:10px;margin-left:auto}.step.active{color:var(--ink);font-weight:600}.step.active i{border-color:var(--green)}.step.done{color:var(--green)}.step.done i{background:var(--green);border-color:var(--green);color:var(--bg)}.step.unknown{color:var(--orange)}.field{position:relative;background:var(--dark);color:#e8eedb;overflow:hidden}.field-head{display:flex;justify-content:space-between;padding:20px 21px;gap:14px;color:#9bad95;font:10px var(--mono);letter-spacing:1.3px}.field-head b{font-weight:400;color:var(--lime)}#map{width:100%;aspect-ratio:700/475;display:block}#map text{font:10px var(--mono);fill:#8ea48e}.legend{padding:2px 20px 19px;display:flex;flex-wrap:wrap;gap:17px;font-size:10px;color:#a5b6a0}.legend span:before{content:"";display:inline-block;vertical-align:middle;width:16px;border-top:2px solid var(--lime);margin-right:6px}.legend span:nth-child(2):before{border-top:1px dashed #7e967b}.legend span:last-child:before{border-color:#d47b64}.metrics{display:grid;grid-template-columns:1fr 1fr 1.2fr;border-top:1px solid #3d5140;margin:0 20px;padding:17px 0 20px}.metrics small{font-size:10px;color:#a0b199}.metrics strong{display:block;margin-top:8px;font:22px var(--mono);font-weight:400}.metrics em{font:10px var(--mono);font-style:normal;color:#9dae96;margin-left:4px}.metrics .phase{font:13px var(--font);color:var(--lime);padding-top:6px}.flight-meta{display:flex;gap:14px;flex-wrap:wrap;padding:12px 17px;border:1px solid var(--line);border-top:0;font:10px var(--mono);color:var(--muted)}.map-note{font-size:10px;margin-top:10px}.panel{border-top:1px solid var(--line);padding-top:16px;margin-bottom:24px}.panel-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;gap:10px;margin-bottom:12px}.panel-head small{font:10px var(--mono);font-weight:400;color:var(--muted)}.camera-tabs{display:flex;gap:12px;margin:0 0 11px}.camera-tabs button{font-size:11px;padding:3px 0;border:0;border-bottom:1px solid transparent;background:transparent;color:var(--muted)}.camera-tabs button[aria-pressed=true]{color:var(--green);border-color:var(--green)}.camera{aspect-ratio:4/3;background:#d8ddcf;border:1px solid #bbc5b4;display:grid;place-items:center;overflow:hidden;position:relative}.camera img{width:100%;height:100%;object-fit:contain}.camera p{font-size:11px;text-align:center;padding:14px}.camera-meta{font:10px/1.8 var(--mono);color:var(--muted);margin-top:8px;overflow-wrap:anywhere}.result-title{font-size:23px;font-weight:600;margin:4px 0 14px;color:var(--green)}.result-title.warn{color:var(--orange)}dl{margin:0}dl div{display:flex;justify-content:space-between;font-size:11px;line-height:2.4;gap:8px}dt{color:var(--muted)}dd{margin:0;font-family:var(--mono)}.evidence{margin-top:12px;width:100%;padding:10px;background:transparent;border:1px solid #97a78a;font-size:11px}.evidence-link{display:block;margin-top:10px;font-size:12px;color:var(--green);line-height:1.8}.event-section{margin-top:26px;border-top:1px solid var(--line);padding-top:20px}.events{max-height:190px;overflow:auto;scrollbar-width:thin}.event{display:grid;grid-template-columns:82px 1fr;gap:14px;border-bottom:1px solid #d9ddcf;padding:10px 0;font-size:11px}.event time{font:10px var(--mono);color:var(--muted)}.event.alert{color:var(--orange)}.event .minor{color:var(--muted)}.empty{color:var(--muted);font-size:12px;padding:17px 0}.operator-result{font-size:11px;line-height:1.8;padding-top:13px;color:var(--green);min-height:32px}.guide{display:grid;grid-template-columns:repeat(3,1fr);gap:35px;border-top:1px solid var(--line);padding-top:24px;margin-top:27px}.guide strong{font-size:12px;font-weight:600}.guide p{font-size:11px;margin-top:8px}.guide span{font:10px var(--mono);color:var(--muted);margin-right:8px}footer{display:flex;justify-content:space-between;gap:15px;font:10px/1.8 var(--mono);color:var(--muted);margin-top:26px;overflow-wrap:anywhere}
-@media(max-width:1130px){.layout{grid-template-columns:190px minmax(340px,1fr);gap:22px}.right{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:25px}.camera{max-width:360px}.intro aside{display:none}}
-@media(max-width:680px){header{padding:19px 5vw}.brand{font-size:17px}.brand span{display:none}.connection{font-size:11px}.connection small{display:none}main{padding:24px 5vw}.intro{margin-bottom:21px}h1{font-size:26px}.layout{display:block}.mission{padding:15px}.mission p{max-width:none}.parameters{margin:12px 0}.controls{grid-template-columns:repeat(3,1fr)}.controls .cancel{grid-column:auto}.control-note{font-size:10px}.steps{display:flex;gap:12px;flex-wrap:wrap;padding:14px 0;margin-top:17px}.step{font-size:11px;padding:0}.step small{display:none}.step i{width:20px;height:20px}.right{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}.panel-head{font-size:11px}.panel-head small{display:none}.metrics strong{font-size:18px}.metrics .phase{font-size:11px}.field-head{padding:16px;font-size:9px}.guide{grid-template-columns:1fr;gap:16px}.result-title{font-size:18px}footer{display:block}.camera-meta{font-size:9px}}
+/* Shared design tokens (D068), kept identical to mission.html by a test. / 共享设计变量（D068），由测试保证与 mission.html 一致。 */
+/* tokens:start */
+:root{color-scheme:light;
+--bg:#f2f0e9;--surface:#fbfaf6;--surface-2:#f0eee6;--surface-3:#e6e3d8;--line:#dedacd;--line-strong:#c8c3b2;
+--ink:#1c2a21;--ink-2:#435047;--muted:#6a756b;--faint:#8e978c;
+--brand:#2d5a3b;--brand-ink:#f3f6ea;--brand-text:#2d5a3b;--brand-soft:#e1ebda;--accent:#c6e58a;
+--ok:#2b7044;--ok-bg:#e1eede;--ok-line:#b4d1b0;--warn:#945619;--warn-bg:#f6e9d4;--warn-line:#e1c496;
+--bad:#a03a2a;--bad-bg:#f6e0da;--bad-line:#e0b0a4;--info:#2d5c77;--info-bg:#e0eaf0;--info-line:#b1cadb;
+--neutral:#5c685e;--neutral-bg:#eae8e0;--neutral-line:#d4d1c5;
+--field:#14271d;--field-2:#1b3326;--field-ink:#e6ecde;--field-muted:#9cae96;--field-line:#2f4636;
+--shadow:0 1px 2px rgba(28,42,33,.05),0 2px 10px rgba(28,42,33,.04);--shadow-lg:0 14px 36px rgba(20,30,24,.2);
+--radius:10px;--radius-sm:7px;
+--font:"Segoe UI Variable Text","Segoe UI","Microsoft YaHei UI","PingFang SC","Hiragino Sans GB","Noto Sans CJK SC",system-ui,sans-serif;
+--display:Bahnschrift,"Segoe UI Variable Display","DIN Alternate","Microsoft YaHei UI","PingFang SC",system-ui,sans-serif;
+--mono:"Cascadia Mono","Cascadia Code",Consolas,"SFMono-Regular",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;
+--bg:#0d1310;--surface:#141c17;--surface-2:#18221c;--surface-3:#202b24;--line:#26322a;--line-strong:#35443b;
+--ink:#e2e9de;--ink-2:#b7c2b5;--muted:#8b988b;--faint:#6c786c;
+--brand:#a6d27a;--brand-ink:#10200f;--brand-text:#b4da88;--brand-soft:#1c2d1e;--accent:#c6e58a;
+--ok:#8fd09c;--ok-bg:#14281a;--ok-line:#2a4a32;--warn:#e7b46c;--warn-bg:#2c2214;--warn-line:#4e3b1f;
+--bad:#f19a87;--bad-bg:#321a15;--bad-line:#5b2d24;--info:#8ec4e5;--info-bg:#122532;--info-line:#24435a;
+--neutral:#a9b4a8;--neutral-bg:#1c2520;--neutral-line:#313d35;
+--field:#0f1d15;--field-2:#15271c;--field-ink:#e6ecde;--field-muted:#93a68d;--field-line:#2a3f31;
+--shadow:0 1px 2px rgba(0,0,0,.35);--shadow-lg:0 16px 44px rgba(0,0,0,.55)}}
+/* tokens:end */
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.55 var(--font);-webkit-font-smoothing:antialiased}
+button,select{font:inherit;color:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.45}
+:focus-visible{outline:2px solid var(--brand-text);outline-offset:2px}
+/* Header shared with the operations desk. / 与运营台一致的顶栏。 */
+.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:18px;min-height:56px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;white-space:nowrap}
+.brand svg{width:28px;height:28px;flex:none}
+.brand b{font:600 17px var(--display);letter-spacing:.2px}
+.brand small{font:500 10px var(--mono);letter-spacing:1.6px;color:var(--muted);padding:2px 6px;border:1px solid var(--line);border-radius:5px}
+.connection{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2);white-space:nowrap}
+.connection i{width:8px;height:8px;border-radius:50%;background:var(--warn)}.connection.good i{background:var(--ok)}
+.connection small{font:11px var(--mono);color:var(--muted)}
+main{max-width:1560px;margin:auto;padding:20px 24px 40px}
+.page-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:16px}
+h1{font:600 22px/1.25 var(--display);margin:0 0 4px;letter-spacing:.2px}
+.page-head p{font-size:12.5px;color:var(--muted);margin:0}
+.page-head aside{text-align:right;font:11px/1.8 var(--mono);color:var(--muted)}
+.notice{padding:10px 14px;margin-bottom:14px;border:1px solid var(--warn-line);background:var(--warn-bg);border-radius:8px;font-size:12.5px;line-height:1.6}
+.layout{display:grid;grid-template-columns:260px minmax(380px,1fr) 300px;gap:18px;align-items:start}
+.stack{display:grid;gap:14px;align-content:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+.eyebrow{font:11px var(--mono);letter-spacing:.4px;color:var(--muted);margin-bottom:8px}
+.mission h2{font-weight:600;font-size:16px;margin:0 0 6px}
+.mission p{font-size:12px;line-height:1.7;color:var(--ink-2);margin:0}
+.parameters{display:flex;align-items:center;justify-content:space-between;margin:14px 0 12px;font-size:12.5px;color:var(--ink-2)}
+select{height:32px;padding:0 8px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);font:12px var(--mono)}
+.start{width:100%;height:38px;border:1px solid var(--brand);border-radius:8px;background:var(--brand);color:var(--brand-ink);font-size:13px;font-weight:600}
+.start:hover:not(:disabled){filter:brightness(1.08)}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.controls button{height:34px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);font-size:12.5px;font-weight:600}
+.controls button:hover:not(:disabled){background:var(--surface-2)}
+.controls .cancel{grid-column:1/-1;border-color:var(--bad-line);color:var(--bad)}
+.control-note{font-size:11.5px!important;margin-top:10px!important;color:var(--muted)!important}
+.operator-result{font-size:12px;line-height:1.7;padding-top:10px;color:var(--ok);min-height:30px}
+.steps{display:grid;gap:2px}
+.step{display:flex;align-items:center;gap:10px;padding:7px 4px;color:var(--muted);font-size:12.5px;border-radius:6px}
+.step i{width:24px;height:24px;display:grid;place-items:center;border:2px solid var(--line-strong);border-radius:50%;font:600 10px var(--mono);font-style:normal;flex:none}
+.step small{font-size:11.5px;margin-left:auto}
+.step.active{color:var(--ink);font-weight:600;background:var(--info-bg)}.step.active i{border-color:var(--info);color:var(--info)}
+.step.done{color:var(--ok)}.step.done i{background:var(--ok);border-color:var(--ok);color:var(--brand-ink)}
+.step.unknown{color:var(--warn)}.step.unknown i{border-color:var(--warn)}
+/* The map field stays dark in both themes. / 地图区在两种主题下都保持深色。 */
+.field{position:relative;background:var(--field);color:var(--field-ink);overflow:hidden;border-radius:var(--radius) var(--radius) 0 0}
+.field-head{display:flex;justify-content:space-between;padding:16px 18px;gap:14px;color:var(--field-muted);font:11px var(--mono);letter-spacing:1px}
+.field-head b{font-weight:500;color:var(--accent)}
+#map{width:100%;aspect-ratio:700/475;display:block}#map text{font:10px var(--mono);fill:#8ea48e}
+.legend{padding:2px 18px 16px;display:flex;flex-wrap:wrap;gap:16px;font-size:11px;color:#a5b6a0}
+.legend span:before{content:"";display:inline-block;vertical-align:middle;width:16px;border-top:2px solid var(--accent);margin-right:6px}
+.legend span:nth-child(2):before{border-top:1px dashed #7e967b}.legend span:last-child:before{border-color:#d47b64}
+.metrics{display:grid;grid-template-columns:1fr 1fr 1.2fr;border-top:1px solid var(--field-line);margin:0 18px;padding:14px 0 18px}
+.metrics small{font-size:11px;color:var(--field-muted)}
+.metrics strong{display:block;margin-top:6px;font:500 24px var(--display);letter-spacing:.3px}
+.metrics em{font:11px var(--mono);font-style:normal;color:var(--field-muted);margin-left:4px}
+.metrics .phase{font:600 14px var(--font);color:var(--accent);padding-top:6px}
+.flight-meta{display:flex;gap:16px;flex-wrap:wrap;padding:10px 16px;border:1px solid var(--line);border-top:0;border-radius:0 0 var(--radius) var(--radius);background:var(--surface);font:11px var(--mono);color:var(--muted)}
+.map-note{font-size:11.5px;color:var(--muted);margin:8px 2px 0}
+.panel-head{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;gap:10px;margin-bottom:10px}
+.panel-head small{font:11px var(--mono);font-weight:400;color:var(--muted)}
+.camera-tabs{display:flex;gap:6px;margin:0 0 10px}
+.camera-tabs button{height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--line);background:transparent;font-size:12px;color:var(--ink-2)}
+.camera-tabs button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.camera{aspect-ratio:4/3;background:var(--field);border-radius:8px;display:grid;place-items:center;overflow:hidden;position:relative}
+.camera img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.camera p{font-size:12px;text-align:center;padding:14px;color:var(--field-muted);margin:0}
+.camera-meta{font:11px/1.8 var(--mono);color:var(--muted);margin-top:8px;overflow-wrap:anywhere}
+.result-title{font:600 22px var(--display);margin:2px 0 12px;color:var(--ok)}.result-title.warn{color:var(--warn)}
+dl{margin:0;display:grid;gap:4px}dl div{display:flex;justify-content:space-between;font-size:12.5px;line-height:2;gap:8px}dt{color:var(--muted)}dd{margin:0;font-family:var(--mono);font-size:12px}
+.evidence{margin-top:12px;width:100%;height:34px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);font-size:12.5px;font-weight:600}
+.evidence:hover:not(:disabled){background:var(--surface-2)}
+.evidence-link{display:block;margin-top:10px;font-size:12.5px;color:var(--brand-text);line-height:1.8}
+.result-note{font-size:11.5px;margin:10px 0 0;color:var(--muted);line-height:1.7}
+.event-section{margin-top:18px}
+.events{max-height:230px;overflow:auto;scrollbar-width:thin}
+.event{display:grid;grid-template-columns:82px 1fr;gap:12px;border-bottom:1px dashed var(--line);padding:8px 2px;font-size:12px}
+.event:last-child{border-bottom:0}
+.event time{font:11px var(--mono);color:var(--muted)}.event.alert{color:var(--bad)}
+.empty{color:var(--muted);font-size:12.5px;padding:12px 2px}
+.guide{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:18px}
+.guide div{padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface-2)}
+.guide strong{font-size:13px;font-weight:600}.guide p{font-size:12px;line-height:1.7;margin:6px 0 0;color:var(--ink-2)}
+.guide span{font:11px var(--mono);color:var(--muted);margin-right:8px}
+footer{display:flex;justify-content:space-between;gap:15px;font:11px/1.8 var(--mono);color:var(--muted);margin-top:22px;overflow-wrap:anywhere}
+@media(max-width:1180px){.layout{grid-template-columns:230px minmax(340px,1fr)}.right{grid-column:1/-1;grid-template-columns:1fr 1fr}.page-head aside{display:none}}
+@media(max-width:760px){.top{position:static;flex-wrap:wrap;gap:10px;padding:10px 16px}.brand small{display:none}.connection small{display:none}main{padding:16px}
+.layout{display:block}.layout>*+*{margin-top:14px}.controls{grid-template-columns:repeat(3,1fr)}.controls .cancel{grid-column:auto}.right{display:grid;grid-template-columns:1fr}
+.metrics strong{font-size:18px}.metrics .phase{font-size:12px}.field-head{padding:14px;font-size:10px}.guide{grid-template-columns:1fr}.result-title{font-size:18px}footer{display:block}}
 </style>
 </head>
 <body>
-<header><div class="brand">drone-agent<span>FLIGHT DESK / M1</span></div><div class="connection" id="connection"><i></i><span id="connectionText">连接云端中</span><small id="latency"></small></div></header>
-__NAV__
+<header class="top"><a class="brand" href="__BASE__/" aria-label="drone-agent 固定巡检"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" style="fill:var(--brand)"/><g style="fill:none;stroke:var(--brand-ink)" stroke-width="1.7" stroke-linecap="round"><circle cx="9.5" cy="9.5" r="3.4"/><circle cx="22.5" cy="9.5" r="3.4"/><circle cx="9.5" cy="22.5" r="3.4"/><circle cx="22.5" cy="22.5" r="3.4"/><path d="M12 12l2.6 2.6M20 12l-2.6 2.6M12 20l2.6-2.6M20 20l-2.6-2.6"/></g><rect x="13.6" y="13.6" width="4.8" height="4.8" rx="1.2" style="fill:var(--accent)"/></svg><b>drone-agent</b><small>FLIGHT DESK / M1</small></a>__NAV__<div class="connection" id="connection"><i></i><span id="connectionText">连接云端中</span><small id="latency"></small></div></header>
 <main>
-<div class="intro"><div><h1>云端飞行台</h1><p>发起一次园区巡检，看它起飞、取证与归航。</p></div><aside>PX4 SITL × GAZEBO<br><span id="version">正在读取运行版本</span></aside></div>
+<div class="page-head"><div><h1>固定巡检</h1><p>发起一次园区巡检，看它起飞、取证与归航；页面只读取云端状态并提交有界操作。</p></div><aside>PX4 SITL × GAZEBO<br><span id="version">正在读取运行版本</span></aside></div>
 <div class="notice" id="notice" hidden role="status"></div>
 <div class="layout">
-<aside><div class="eyebrow">01 / 固定巡检任务</div><section class="mission"><h2>红色目标巡检</h2><p>飞至 4 米，经两个航点接近目标，采集照片后返回起飞点降落。</p><div class="parameters"><label for="seed">场景种子</label><select id="seed"><option>7</option><option>19</option><option>41</option></select></div><button class="start" id="start" disabled>开始云端任务 ↗</button><div class="controls"><button id="pause" disabled>暂停</button><button id="resume" disabled>恢复</button><button class="cancel" id="cancel" disabled>取消并安全收尾</button></div><p class="control-note">暂停在巡检与返航航线稳定时可用，最长 120 秒。关闭页面不会取消任务。</p><div id="operatorResult" class="operator-result" role="status"></div></section><div class="steps" id="steps"></div></aside>
+<aside class="stack"><section class="card mission"><div class="eyebrow">01 / 固定巡检任务</div><h2>红色目标巡检</h2><p>飞至 4 米，经两个航点接近目标，采集照片后返回起飞点降落。</p><div class="parameters"><label for="seed">场景种子</label><select id="seed"><option>7</option><option>19</option><option>41</option></select></div><button class="start" id="start" disabled>开始云端任务 ↗</button><div class="controls"><button id="pause" disabled>暂停</button><button id="resume" disabled>恢复</button><button class="cancel" id="cancel" disabled>取消并安全收尾</button></div><p class="control-note">暂停在巡检与返航航线稳定时可用，最长 120 秒。关闭页面不会取消任务。</p><div id="operatorResult" class="operator-result" role="status"></div></section>
+<section class="card"><div class="panel-head">执行步骤<small>效果证实才算完成</small></div><div class="steps" id="steps"></div></section></aside>
 <section aria-label="实时飞行状态"><div class="field"><div class="field-head"><span>MAP_ENU · CAMPUS_V1</span><b id="viewStatus">等待任务</b></div><svg id="map" viewBox="0 0 700 475" role="img" aria-label="机载观测位置和巡检航线的实时示意"><defs><radialGradient id="ambient"><stop stop-color="#314a35"/><stop offset="1" stop-color="#14271e"/></radialGradient></defs><rect width="700" height="475" fill="url(#ambient)"/><g id="ground"></g><g id="track"></g><g id="craft"></g></svg><div class="legend"><span>机载观测轨迹</span><span>登记航线</span><span>红色目标</span></div><div class="metrics"><div><small>高度 / 机载观测</small><strong><span id="altitude">—</span><em>m</em></strong></div><div><small>电量 / 仿真值</small><strong><span id="battery">—</span><em>%</em></strong></div><div><small>执行阶段</small><strong class="phase" id="phase">等待开始</strong></div></div></div><div class="flight-meta"><span id="mode">MODE —</span><span id="armed">解锁 —</span><span id="airborne">在空 —</span><span id="sample">SAMPLE —</span></div><p class="map-note">轨迹按本次连接收到的机载观测绘制；完整采样记录在任务结束后的证据页中。</p></section>
-<aside class="right"><section class="panel"><div class="panel-head">机载相机<small>160 × 120 · RGB</small></div><div class="camera-tabs"><button id="cameraLive" aria-pressed="true">最新画面</button><button id="cameraCapture" aria-pressed="false" disabled>已拍证据</button></div><div class="camera"><img id="cameraImage" alt="云端仿真机载相机采集的画面" hidden><p id="cameraEmpty">任务启动后<br>显示机载相机画面</p></div><div class="camera-meta" id="cameraMeta">cam_0 · 等待采样</div></section><section class="panel"><div class="panel-head">任务结果<small>独立裁判</small></div><div class="result-title" id="resultTitle">等待任务</div><dl><div><dt>已证实步骤</dt><dd id="verified">0 / 5</dd></div><div><dt>错误成功报告</dt><dd id="falseSuccess">—</dd></div><div><dt>离线重判</dt><dd id="replay">等待结果</dd></div><div><dt>验收结果</dt><dd id="passed">等待裁判</dd></div></dl><button class="evidence" id="evidence" disabled>拉取并核对完整证据</button><a class="evidence-link" id="evidenceLink" hidden target="_blank" rel="noopener">打开完整证据页 ↗</a><p style="font-size:10px;margin-top:11px" id="resultNote">收到命令不等于任务完成；最终结果由飞行证据与独立裁判确认。</p></section></aside>
+<aside class="right stack"><section class="card panel"><div class="panel-head">机载相机<small>160 × 120 · RGB</small></div><div class="camera-tabs"><button id="cameraLive" aria-pressed="true">最新画面</button><button id="cameraCapture" aria-pressed="false" disabled>已拍证据</button></div><div class="camera"><img id="cameraImage" alt="云端仿真机载相机采集的画面" hidden><p id="cameraEmpty">任务启动后<br>显示机载相机画面</p></div><div class="camera-meta" id="cameraMeta">cam_0 · 等待采样</div></section><section class="card panel"><div class="panel-head">任务结果<small>独立裁判</small></div><div class="result-title" id="resultTitle">等待任务</div><dl><div><dt>已证实步骤</dt><dd id="verified">0 / 5</dd></div><div><dt>错误成功报告</dt><dd id="falseSuccess">—</dd></div><div><dt>离线重判</dt><dd id="replay">等待结果</dd></div><div><dt>验收结果</dt><dd id="passed">等待裁判</dd></div></dl><button class="evidence" id="evidence" disabled>拉取并核对完整证据</button><a class="evidence-link" id="evidenceLink" hidden target="_blank" rel="noopener">打开完整证据页 ↗</a><p class="result-note" id="resultNote">收到命令不等于任务完成；最终结果由飞行证据与独立裁判确认。</p></section></aside>
 </div>
-<section class="event-section"><div class="eyebrow">02 / 任务与安全事件</div><div class="events" id="events"><div class="empty">开始后显示来自 executive 与 guardian 的事件。</div></div></section>
+<section class="card event-section"><div class="panel-head">任务与安全事件<small>executive · guardian</small></div><div class="events" id="events"><div class="empty">开始后显示来自 executive 与 guardian 的事件。</div></div></section>
 <section class="guide"><div><strong><span>01</span>启动与连接</strong><p>任务在云端仿真运行，首次启动可能需要准备镜像。刷新页面会重新读取当前任务。</p></div><div><strong><span>02</span>暂停与取消</strong><p>暂停后需点击恢复；超时进入安全返航。取消后继续等待“已落地、已上锁”和最终结果。</p></div><div><strong><span>03</span>核对结果</strong><p>正常结束应为任务完成；主动取消应为安全中止。完整证据页可复核轨迹、影像与三元判定。</p></div></section>
-<footer><span id="runId">RUN · 尚未开始</span><span>固定任务 · 云端仿真<br>自然语言任务请使用统一飞行台的 M2 模式。</span></footer>
+<footer><span id="runId">RUN · 尚未开始</span><span>固定任务 · 云端仿真<br>自然语言任务与运营工作区请使用统一飞行台的运营台。</span></footer>
 </main><script src="__BASE__/live.js"></script></body></html>

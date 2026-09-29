@@ -50,6 +50,8 @@ Review the plan and admission checks, then approve the package. **Local mode pla
 
 Without `MINIMAX_API_KEY`, the desk uses labelled scripted answers for the exact requests in the [M2 scenario set](configs/scenarios/m2_suite.yaml). With a key in the process environment, it uses live MiniMax-M3 planning. The page identifies the planner; key setup is documented in the [cloud development guide](docs/cloud-development.md).
 
+To see every operations workspace locally (fleet and docks, workflows, scheduling, findings and work orders), run `uv run python scripts/desk_preview.py --seed` and open <http://127.0.0.1:8770>. It serves the desk over the logical S0 world with the resident desk's catalogs; flights are logical, labelled as such, and nothing in the preview is validation evidence.
+
 ### Run the flight loop in simulation
 
 Integration uses a configured Linux cloud workspace. After following the [setup guide](docs/cloud-development.md), inspect the target and retrieve the resident mission desk URL:
@@ -60,7 +62,7 @@ uv run python scripts/dev_stack.py status
 uv run python scripts/dev_stack.py desk-cloud --status
 ```
 
-The unified cloud flight desk provides **M2 natural-language missions** and **M1 fixed inspections** at one origin. Approved M2 missions fly in PX4/Gazebo and produce evidence reports; M1 retains live tracks, camera frames, pause/resume and cancellation. The two modes fly sequentially; switching pages never cancels a flight. See the [flight desk guide](docs/tailnet-desk.md) and the [M2 review and validation record](docs/m2-review-2026-09-24.md).
+The unified cloud flight desk provides the **operations desk** (workspaces for missions and approvals, workflows, scheduling, fleet and docks, and findings and work orders; D068) and **M1 fixed inspections** at one origin. Approved M2 missions fly in PX4/Gazebo and produce evidence reports; M1 retains live tracks, camera frames, pause/resume and cancellation. The two modes fly sequentially; switching pages never cancels a flight. See the [flight desk guide](docs/tailnet-desk.md) and the [M2 review and validation record](docs/m2-review-2026-09-24.md).
 
 PX4 SITL and Gazebo run on Linux; use an ASCII repository path for native components. The [simulation guide](sim/README.md) also documents the explicit local fallback.
 

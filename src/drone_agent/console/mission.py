@@ -5,8 +5,8 @@
 """Mission console v0 and A2A gateway: an ASGI app that only speaks to the mission-service API.
 
 hri.v0 over `WS /ws/session` carries JSON text frames:
-  down: {"type":"hello","protocol":"hri.v0","identity":...,"can_write":bool,"volumes":[...],"assets":[...],
-         "planner":...}
+  down: {"type":"hello","protocol":"hri.v0","identity":...,"can_write":bool,"source_sha":...,"volumes":[...],
+         "assets":[...],"planner":...}
         {"type":"missions","items":[...]}   {"type":"mission","view":{...,"cloud":{...}}}   {"type":"media",...}
         {"type":"host","status":{...}}      {"type":"error","message":...,"issue":{...}}
         {"type":"resources","view":{...}}   {"type":"resource","detail":{...}}     (P1 catalog mode, D055)
@@ -62,6 +62,9 @@ On the resident desk (D035) the page also shows the simulation supervisor's publ
 `--supervisor`: the flight host state (`host`) and, per mission, the cloud flights and the independent judge
 (`view.cloud`). They are displayed, never used to decide anything here.
 
+The page groups all of this into workspaces addressed by the URL hash (D068): overview, missions, workflows,
+scheduling, fleet and business, over the same session and frames; it refreshes the mission list with `list`.
+
 任务控制台 v0 与 A2A 网关：只与任务服务 API 通信的 ASGI 应用。写操作需要身份：Tailscale Serve 注入的
 `Tailscale-User-Login`（后端只监听回环）或本机桥用户；没有身份的会话只读。这里没有任何路径能触达
 guardian：审批在服务中变成已签名任务包，操作变成飞行器会复核的操作请求。带运营目录时（P1），页面还列出调用方
@@ -75,6 +78,9 @@ guardian：审批在服务中变成已签名任务包，操作变成飞行器会
 
 常驻任务台（D035）另从 `--supervisor` 只读展示仿真监管者的公开记录：飞行主机状态（`host`），以及每个
 任务的云端飞行与独立裁判（`view.cloud`）。它们只用于展示，这里不据此做任何决定。
+
+页面把以上内容按地址 hash 定位的工作区组织（D068）：总览、任务、工作流、调度、机队与业务，共用同一会话与帧；任务列表用
+`list` 刷新。
 """
 
 from __future__ import annotations
@@ -207,7 +213,7 @@ class Session:
 
     async def hello(self) -> None:
         payload = {"type": "hello", "protocol": PROTOCOL, "identity": self.identity or None,
-                   "can_write": bool(self.identity), **self.console.scope}
+                   "can_write": bool(self.identity), "source_sha": self.console.source_sha, **self.console.scope}
         if "planner" not in payload:
             health = await self.call("health")
             payload["planner"] = (health or {}).get("planner")
