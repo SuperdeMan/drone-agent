@@ -1,0 +1,19 @@
+# P5 business catalog of the S0 world (D071, D072), for the operations catalog p5_campus_v1 and the workflow catalog
+# p5_campus_v1. Obstacles and equipment damage cluster in the one appearance family (an obstacle is a foreign object
+# or another change of the registered marking); only deterministic and model analyses may settle a round.
+#
+# S0 世界的 P5 业务目录（D071、D072），对应运营目录与工作流目录 p5_campus_v1。障碍与设备损伤聚合在同一外观缺陷族（障碍是
+# 登记标线上的异物或其他变化）；只有确定性与模型分析可以结算轮次。
+format: drone.business-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p5_campus_v1
+operations_catalog: p5_campus_v1
+workflow_catalog: p5_campus_v1
+default_quality: configs/analysis/quality_sim_v1.yaml
+families:
+  appearance: [damage, missing_part, contamination, deformation, discoloration, foreign_object, other_change]
+generic_defect: other_change
+closure: {version: reinspection-v1, allowed_sources: [deterministic, live_model, recorded_model]}
+reuse: {version: reuse-v1, max_age_s: 604800, analyzers: [signature_p5_s0_v1]}
+runner: {concurrency: 2, lease_s: 8, max_attempts: 2, daily_tokens: 2000000}
+max_references: 3

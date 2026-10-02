@@ -334,12 +334,15 @@ def fetch_command(connection: Connection, args: argparse.Namespace, *, transport
     return record
 
 
-def desk_members(connection: Connection, *, apply: bool) -> dict:
-    """The desk member list: this tailnet user as the campus_s1 operator, approver, admin and (P2) reviewer, plus the
-    supervisor's read-only identity. The login comes from the desk's own hello over the tailnet and is never printed.
+def desk_members(connection: Connection, *, apply: bool, stage: str | None = None) -> dict:
+    """The desk member list: this tailnet user as operator, approver, admin and (P2) reviewer of every desk project
+    (campus_s1 and, from P5, fleet_s0 and vendor_s3), the supervisor's read-only identity, and the P5 soak harness
+    identities (one role each, plus a member of another project only). The login comes from the desk's own hello over
+    the tailnet and is never printed. `stage="next"` stages the list for the next activation.
 
-    任务台成员列表：当前 tailnet 用户为 campus_s1 的 operator、approver、admin 与（P2）reviewer，另加监管者的只读身份。
-    登录名取自经 tailnet 的任务台 hello，从不打印。
+    任务台成员列表：当前 tailnet 用户为每个任务台项目（campus_s1，P5 起另有 fleet_s0 与 vendor_s3）的 operator、approver、
+    admin 与（P2）reviewer，监管者的只读身份，以及 P5 长稳编排身份（各一个角色，另有一个只属于其他项目的成员）。登录名取自经
+    tailnet 的任务台 hello，从不打印。`stage="next"` 把列表暂存给下一次激活。
     """
     status = ssh(connection, {"action": "desk_status"}, timeout=120)
     origin = status.get("origin") or ""
@@ -353,15 +356,48 @@ def desk_members(connection: Connection, *, apply: bool) -> dict:
         client.close()
     if not identity.startswith("tailnet:") or len(identity) <= len("tailnet:"):
         raise ValueError("this device has no tailnet identity at the desk")
-    members = {"format": "drone.project-members/v1", "members": [
-        {"principal": identity, "project_id": "campus_s1", "roles": ["operator", "approver", "admin", "reviewer"]},
-        {"principal": identity, "project_id": "legacy_m2", "roles": ["viewer"]},
-        {"principal": "harness:desk-supervisor", "project_id": "campus_s1", "roles": ["viewer"]},
-        {"principal": "harness:desk-supervisor", "project_id": "legacy_m2", "roles": ["viewer"]}]}
+    projects = ("campus_s1", "fleet_s0", "vendor_s3")
+    entries = [{"principal": identity, "project_id": p, "roles": ["operator", "approver", "admin", "reviewer"]}
+               for p in projects]
+    entries += [{"principal": identity, "project_id": "legacy_m2", "roles": ["viewer"]}]
+    entries += [{"principal": "harness:desk-supervisor", "project_id": p, "roles": ["viewer"]}
+                for p in (*projects, "legacy_m2")]
+    for role in ("operator", "approver", "reviewer", "viewer"):
+        entries += [{"principal": f"harness:soak-{role}", "project_id": p, "roles": [role]} for p in projects]
+    entries += [{"principal": "harness:soak-other", "project_id": "vendor_s3", "roles": ["viewer"]}]
+    members = {"format": "drone.project-members/v1", "members": entries}
+    target = "secrets/desk/members.next.yaml" if stage == "next" else "secrets/desk/members.yaml"
     if not apply:
-        return {"status": "plan", "entries": len(members["members"]), "writes": "secrets/desk/members.yaml (0600)",
+        return {"status": "plan", "entries": len(entries), "writes": f"{target} (0600)",
                 "principal_schemes": ["harness", "tailnet"]}
-    return ssh(connection, {"action": "desk_members", "run_id": new_run_id(), "members": members}, timeout=120)
+    request = {"action": "desk_members", "run_id": new_run_id(), "members": members}
+    if stage:
+        request["stage"] = stage
+    return ssh(connection, request, timeout=120)
+
+
+def desk_operation(connection: Connection, args: argparse.Namespace) -> dict:
+    """The P5 desk operations (D070, D073): a world change, the soak, a backup and the restore drill.
+
+    P5 任务台运维（D070、D073）：世界变更、长稳、备份与恢复演练。
+    """
+    if args.command == "desk-soak" and args.status:
+        return ssh(connection, {"action": "desk_soak_status"}, timeout=120)
+    if args.command == "desk-world":
+        request = {"action": "desk_world", "section": args.section, "asset": args.asset, "state": args.state,
+                   "reason": args.reason}
+    elif args.command == "desk-soak":
+        action = "desk_soak_start" if args.start else "desk_soak_stop" if args.stop else "desk_soak_judge"
+        request = {"action": action, "reason": args.reason}
+        if args.hours is not None:
+            request["hours"] = args.hours
+        if args.soak_id:
+            request["soak_id"] = args.soak_id
+    else:
+        request = {"action": "desk_backup" if args.command == "desk-backup" else "desk_restore_drill"}
+    if not args.apply:
+        return {"status": "plan", "request": request}
+    return ssh(connection, {**request, "run_id": new_run_id()}, timeout=3600)
 
 
 S2_DATASET = "visa_pcb_v1"
@@ -498,7 +534,29 @@ def main() -> None:
     cloud_console_action.add_argument("--apply", action="store_true")
     cloud_console_action.add_argument("--status", action="store_true")
     members_parser = commands.add_parser("desk-members", help="store the desk member list in cloud secrets (P1, D055)")
+    members_parser.add_argument("--next", action="store_true",
+                                help="stage the list for the next activation (needed when it names new projects)")
     members_parser.add_argument("--apply", action="store_true")
+    world_parser = commands.add_parser("desk-world", help="change one asset of the desk world file (P5, D070)")
+    world_parser.add_argument("--section", choices=["s0", "s1", "s3"], required=True)
+    world_parser.add_argument("--asset", required=True)
+    world_parser.add_argument("--state", choices=["normal", "damaged", "obstructed"], required=True)
+    world_parser.add_argument("--reason", default="")
+    world_parser.add_argument("--apply", action="store_true")
+    soak_parser = commands.add_parser("desk-soak", help="start, follow, stop or judge the P5 soak (D073)")
+    soak_action = soak_parser.add_mutually_exclusive_group(required=True)
+    soak_action.add_argument("--start", action="store_true")
+    soak_action.add_argument("--status", action="store_true")
+    soak_action.add_argument("--stop", action="store_true")
+    soak_action.add_argument("--judge", action="store_true")
+    soak_parser.add_argument("--hours", type=float, help="a shorter rehearsal; the gate only accepts the full plan")
+    soak_parser.add_argument("--soak-id", help="judge this soak instead of the current one")
+    soak_parser.add_argument("--reason", default="")
+    soak_parser.add_argument("--apply", action="store_true")
+    backup_parser = commands.add_parser("desk-backup", help="take an online backup of the desk ledger (D073)")
+    backup_parser.add_argument("--apply", action="store_true")
+    drill_parser = commands.add_parser("desk-restore-drill", help="restore the latest backup offline and read it back")
+    drill_parser.add_argument("--apply", action="store_true")
     desk_parser = commands.add_parser("desk-cloud", help="plan or activate the resident M2 mission desk (D035)")
     desk_action = desk_parser.add_mutually_exclusive_group()
     desk_action.add_argument("--apply", action="store_true")
@@ -541,6 +599,10 @@ def main() -> None:
     p4_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
     p4_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
     p4_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
+    p5_parser = commands.add_parser("p5", help="run P5 S1 cases (the road obstacle template on PX4 SITL) in the cloud")
+    p5_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
+    p5_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
+    p5_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
     data_parser = commands.add_parser("p4-data", help="upload and install the frozen S2 dataset in the cloud (D065)")
     data_parser.add_argument("--data", type=Path, required=True, help="the locally built dataset directory")
     data_parser.add_argument("--resume", help="upload id of an interrupted upload")
@@ -588,8 +650,11 @@ def main() -> None:
                 print(json.dumps(result, ensure_ascii=False, indent=2))
                 return
             if args.command == "desk-members":
-                result = desk_members(connection, apply=args.apply)
+                result = desk_members(connection, apply=args.apply, stage="next" if args.next else None)
                 print(json.dumps(result, ensure_ascii=False, indent=2))
+                return
+            if args.command in ("desk-world", "desk-soak", "desk-backup", "desk-restore-drill"):
+                print(json.dumps(desk_operation(connection, args), ensure_ascii=False, indent=2))
                 return
             if args.command == "desk-cloud":
                 action = "desk_status" if args.status else "desk_apply" if args.apply else "desk_plan"
@@ -649,7 +714,7 @@ def main() -> None:
                     request.update(currency=args.currency, price_input=args.price_input,
                                    price_output=args.price_output, price_source=args.price_source)
                 result = ssh(connection, request, timeout=5 * 3600)
-            elif args.command in ("p1", "p2", "p3", "p4"):
+            elif args.command in ("p1", "p2", "p3", "p4", "p5"):
                 result = ssh(
                     connection,
                     {

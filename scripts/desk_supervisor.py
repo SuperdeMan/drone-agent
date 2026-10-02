@@ -8,14 +8,19 @@ disarmed, and the simulation operator landing a surrendered or overrun flight. A
 `stack.lock`, so it never overlaps a deployment, a batch or another live run. Once a mission reaches a final
 state its flights are copied into their own case and judged independently, online and from the recordings.
 It reads no web or network input; its public records are for display only. A restart adopts the flight in
-progress instead of flying again.
+progress instead of flying again. P5 (D069, D070): the aircraft flies with the P5 S1 map, which each flight record
+names for its judge, and before the guardian starts the supervisor places the damage patches and the road obstacle the
+host's desk world file asks for into the fresh Gazebo world (the page and the service containers never read that file);
+every placement, or its failure, is recorded with the flight.
 
 常驻任务台的仿真机载监管者（D035）。它监视 uplink 验签后写入的机器人 inbox，在仿真器中把每个任务的最新
 已接受版本飞一次，编排语义与 M2 端到端用例相同：每个版本都从飞控断电重启开始（地勤换电），以任务包（二者
 各自再次验签）和下一个代次启动 guardian 与 executive，有界监视到落地上锁，guardian 放弃控制权或超时时由
 仿真操作员降落。飞行持有项目 `stack.lock`，不与部署、批次或其他实时运行重叠。任务到达终态后，把其各次飞行
 复制到独立用例并在线、按录制各做一次独立裁判。它不读取网页或网络输入；公开记录只用于展示。重启时接管进行
-中的飞行，而不是重飞。
+中的飞行，而不是重飞。P5（D069、D070）：飞行器按 P5 S1 地图飞行，每条飞行记录都为其裁判写明该地图；在 guardian 启动
+之前，监管者按主机上的任务台世界文件把损伤贴片与道路障碍物放入新的 Gazebo 世界（页面与服务容器从不读取该文件），每次放置
+或其失败都随飞行记录。
 """
 
 from __future__ import annotations
@@ -45,6 +50,56 @@ JUDGE_RECHECK_S = 10
 TERMINAL = ("completed", "incomplete", "declined", "delivery_rejected", "rejected")
 FLOWN = ("finished", "overrun", "failed", "interrupted")
 PX4_COMMANDER = "/opt/PX4-Autopilot/build/px4_sitl_default/bin/px4-commander"
+# The map the onboard processes of this desk load (sim/compose.desk.yaml); the flight judge needs the same one.
+# 本任务台机载进程加载的地图（sim/compose.desk.yaml）；飞行裁判需要同一张。
+SCENE = "configs/scenarios/p5_site_s1_v1.yaml"
+WORLD_FORMAT = "drone.desk-world/v1"
+# Damage patches cover 40% of a 2 m marker like the P4 S1 one; the obstacle covers 40% of the road marking (D071).
+# 损伤贴片像 P4 S1 那样遮住 2 m 标记的 40%；障碍物遮住道路标线的 40%（D071）。
+MARKERS = {"asset_red": (4.0, 4.0), "asset_blue": (-4.0, 6.0)}
+ROAD = {"road_north": (2.0, 8.0)}
+
+
+def world_model(asset_id: str, state: str) -> tuple[str, str] | None:
+    """(model name, SDF) for one asset state of the S1 world, or None when the world has no such change.
+
+    S1 世界中一个资产状态的（模型名，SDF）；世界中没有该变化时为 None。
+    """
+    if state == "damaged" and asset_id in MARKERS:
+        x, y = MARKERS[asset_id]
+        name = f"damage_patch_{asset_id}"
+        return name, ('<?xml version="1.0"?><sdf version="1.9"><model name="' + name + '"><static>true</static>'
+                      f'<pose>{x} {y} 0.065 0 0 0</pose><link name="patch"><visual name="patch_visual"><geometry><box>'
+                      '<size>2.2 0.8 0.02</size></box></geometry><material><ambient>0.08 0.08 0.08 1</ambient>'
+                      '<diffuse>0.08 0.08 0.08 1</diffuse></material></visual></link></model></sdf>')
+    if state == "obstructed" and asset_id in ROAD:
+        x, y = ROAD[asset_id]
+        name = f"road_obstacle_{asset_id}"
+        return name, ('<?xml version="1.0"?><sdf version="1.9"><model name="' + name + '"><static>true</static>'
+                      f'<pose>{x} {y} 0.19 0 0 0</pose><link name="obstacle"><visual name="obstacle_visual"><geometry>'
+                      '<box><size>1.6 2.0 0.3</size></box></geometry><material><ambient>0.12 0.1 0.08 1</ambient>'
+                      '<diffuse>0.12 0.1 0.08 1</diffuse></material></visual></link></model></sdf>')
+    return None
+
+
+def read_world(path: Path) -> tuple[dict, str | None]:
+    """The S1 section of the desk world file and the file's digest; absent or invalid means an unchanged world.
+
+    任务台世界文件的 S1 一节与文件摘要；缺失或无效即世界不变。
+    """
+    import hashlib
+
+    if path.is_symlink() or not path.is_file():
+        return {}, None
+    data = path.read_bytes()
+    try:
+        value = json.loads(data)
+    except ValueError:
+        return {}, hashlib.sha256(data).hexdigest()
+    if not isinstance(value, dict) or value.get("format") != WORLD_FORMAT or not isinstance(value.get("s1"), dict):
+        return {}, hashlib.sha256(data).hexdigest()
+    return {k: v for k, v in value["s1"].items() if isinstance(k, str) and isinstance(v, str)}, \
+        hashlib.sha256(data).hexdigest()
 
 
 def now() -> str:
@@ -91,13 +146,19 @@ class Desk:
         self.public = self.supervisor / "public"
         self.service, self.api = self.base / "service", self.base / "api" / "api.sock"
         self.secrets, self.model = root / "secrets" / "desk", root / "secrets" / "m2-model"
+        # P5: the host-written world file and the harness fault switches (never mounted into the service or page).
+        # P5：主机写入的世界文件与编排故障开关（从不挂载进服务或页面）。
+        self.world_dir, self.faults = self.base / "world", self.base / "faults"
+        self.world = self.world_dir / "appearance.json"
+        self.fleet, self.vendor = self.base / "fleet", self.base / "vendor"
 
     def folders(self) -> list[Path]:
         return [self.base, self.history, self.mailbox, self.uplink, self.aircraft, self.state, self.ipc, self.flights,
                 self.cases, self.idle / "aircraft", self.idle / "case", self.public / "missions",
                 self.supervisor / "docker-client", self.base / "deployments", self.base / "fixed-pages",
                 self.base / "dock",
-                self.service, self.api.parent]
+                self.service, self.api.parent, self.world_dir, self.faults, self.fleet, self.vendor,
+                self.vendor / "socket", self.vendor / "log"]
 
 
 class Stack:
@@ -327,6 +388,34 @@ class Supervisor:
                     return {"status": "failed", "manual_cleanup": cleanup, "detail": "guardian exited before a result"}
             time.sleep(0.2)
 
+    def place_world(self, stack: Stack, extra: dict) -> dict:
+        """Put the world file's S1 changes into the fresh Gazebo world through its own create service.
+
+        经 Gazebo 世界自身的 create 服务，把世界文件中的 S1 变化放入新的世界。
+        """
+        wanted, digest = read_world(self.desk.world)
+        record = {"read_at": now(), "world_sha256": digest, "placed": []}
+        for asset_id, state in sorted(wanted.items()):
+            if state == "normal":
+                continue
+            model = world_model(asset_id, state)
+            if model is None:
+                record["placed"].append({"asset_id": asset_id, "state": state, "model": None, "ok": False,
+                                         "detail": "no such change in the S1 world"})
+                continue
+            name, sdf = model
+            ok = False
+            for _ in range(2):
+                result = stack("exec", "-T", "desk-sitl", "gz", "service", "-s", "/world/default/create",
+                               "--reqtype", "gz.msgs.EntityFactory", "--reptype", "gz.msgs.Boolean", "--timeout",
+                               "5000", "--req", f"sdf: '{sdf}'", check=False, quiet=True, timeout=60, **extra)
+                ok = result.returncode == 0 and b"data: true" in result.stdout
+                if ok:
+                    break
+            record["placed"].append({"asset_id": asset_id, "state": state, "model": name, "ok": ok,
+                                     "at": now()})
+        return record
+
     def finish(self, stack: Stack, extra: dict, flight: Path) -> None:
         """Stop the flight processes and the simulator, then restore the idle M0 simulator.
 
@@ -346,7 +435,7 @@ class Supervisor:
         for folder in ("sensor", "truth", "ulog"):
             (flight / folder).mkdir(parents=True, exist_ok=True)
         entry = {"version": version, "status": "preparing", "epoch": None, "started_at": now(), "ended_at": None,
-                 "detail": None, "manual_cleanup": False}
+                 "detail": None, "manual_cleanup": False, "scene": SCENE, "world": None}
         self.save_flight(mission, entry, package.name)
         write_json(desk.supervisor / "active.json", {"mission_id": mission, "version": version, "package": package.name,
                                                     "started_at": entry["started_at"]})
@@ -359,6 +448,8 @@ class Supervisor:
             for service in ("desk-sitl", "desk-collector"):
                 stack("up", "-d", "--no-build", "--pull", "never", "--force-recreate", service, **extra)
             self.wait(lambda: (flight / "sensor/latest.json").exists(), 100, "Gazebo RGB frame")
+            entry["world"] = self.place_world(stack, extra)
+            self.save_flight(mission, entry, package.name)
             self.wait(lambda: b"home set" in stack("logs", "--no-color", "--no-log-prefix", "desk-sitl", check=False,
                                                    quiet=True, timeout=60, **extra).stdout, 90, "PX4 home", period=1.0)
             time.sleep(WARMUP_S)
@@ -401,7 +492,8 @@ class Supervisor:
             raise ValueError("invalid active flight record")
         flight, aircraft = self.desk.flights / f"{mission}-v{version}", self.desk.aircraft / mission / f"v{version}"
         entry = {k: v for k, v in (read_json(flight / "flight.json") or {}).items()
-                 if k in ("version", "status", "epoch", "started_at", "ended_at", "detail", "manual_cleanup")}
+                 if k in ("version", "status", "epoch", "started_at", "ended_at", "detail", "manual_cleanup", "scene",
+                          "world")}
         entry.setdefault("version", version)
         stack = Stack(self.desk, self.record, log=flight / "compose.log")
         extra = {"flight": flight, "aircraft": aircraft, "package": package, "epoch": entry.get("epoch") or 0}
@@ -488,9 +580,15 @@ class Supervisor:
             (pending / "service").mkdir()
             shutil.copyfile(desk.service / "ready.json", pending / "service/ready.json")
             write_json(pending / "service-export/view.json", view)
+            # The map the last flown version used; flights recorded before P5 name none and used the M2 campus.
+            # 最后飞行版本使用的地图；P5 之前记录的飞行没有写明，使用的是 M2 园区。
+            scene = next((f.get("scene") for f in sorted(self.mission_record(mission)["flights"],
+                                                         key=lambda f: f["version"], reverse=True)
+                          if f["version"] in flown), None)
             write_json(pending / "input/scenario.json", {
                 "scenario": "desk", "seed": 0, "source_sha": self.record["source_sha"], "mission_id": mission,
-                "text": view["request"]["text"], "expected": {"classification": "any"}})
+                "text": view["request"]["text"], "expected": {"classification": "any"},
+                **({"scene": scene} if scene else {})})
             if case.exists():
                 shutil.rmtree(case)
             pending.rename(case)

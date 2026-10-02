@@ -1,0 +1,63 @@
+# P5 72-hour soak plan (D073), frozen before the run: the workload, the faults, the probes, the sampling and the
+# judge's thresholds. Times are offsets from T0, which exists only in the soak's manifest; each kind repeats every
+# `every_h` hours (or `every_min` minutes) from its offset until the end. The service's own schedules carry the
+# continuous S0 and S3 load; the harness starts the S1 runs, the cycles, the bursts and the probes, acts as the people
+# (as `harness:soak-*`, every action counted as harness intervention) and injects the faults. Nothing here reaches a
+# guardian, a flight controller or the service's internals: the harness only calls the API, writes the desk world file
+# and the fault switches, and stops, kills, restarts or disconnects whole containers.
+#
+# P5 72 小时长稳计划（D073），运行前冻结：负载、故障、探测、采样与裁判阈值。时间是相对 T0 的偏移，T0 只存在于长稳的 manifest
+# 中；每类从其偏移开始每 `every_h` 小时（或 `every_min` 分钟）重复，直到结束。服务自身的排班承担持续的 S0 与 S3 负载；编排启动
+# S1 运行、各类循环、积压突发与探测，扮演人（以 `harness:soak-*` 身份，每个动作都计为编排介入）并注入故障。这里没有任何东西
+# 触达 guardian、飞控或服务内部：编排只调用 API、写任务台世界文件与故障开关，并对整个容器执行停止、强杀、重启或断网。
+format: drone.soak-plan/v1
+schema_version: "0.1.0"
+plan_id: p5_soak_v1
+duration_h: 72
+seed: 20261002
+identities:
+  operator: "harness:soak-operator"
+  approver: "harness:soak-approver"
+  reviewer: "harness:soak-reviewer"
+  viewer: "harness:soak-viewer"
+  other: "harness:soak-other"
+  outsider: "harness:soak-outsider"
+  roads: "event:road-reports"
+# Enabled by the operator identity at T0 and disabled at the end; the judge reconciles every occurrence in between.
+# 由 operator 身份在 T0 启用、结束时停用；裁判对其间每个发生时刻逐一对账。
+schedules:
+  - {layer: S0, project_id: fleet_s0, workflow_id: fleet_watch, trigger_id: rounds_fa, interval_min: 30, start_window_s: 300}
+  - {layer: S0, project_id: fleet_s0, workflow_id: fleet_watch, trigger_id: rounds_fb, interval_min: 30, start_window_s: 300}
+  - {layer: S3, project_id: vendor_s3, workflow_id: vendor_watch, trigger_id: rounds, interval_min: 30, start_window_s: 300}
+workload:
+  s1_watch: {layer: S1, every_h: 3, offset_min: 20, project_id: campus_s1, workflow_id: appearance_watch, assets: [asset_red, asset_blue]}
+  s1_damage: {layer: S1, every_h: 24, offset_min: 270, project_id: campus_s1, workflow_id: appearance_watch, asset: asset_red, state: damaged}
+  s1_road: {layer: S1, every_h: 24, offset_min: 990, project_id: campus_s1, workflow_id: road_watch, trigger_id: road_report, event_type: road.report, asset: road_north, state: obstructed}
+  s0_damage: {layer: S0, every_h: 3, offset_min: 50, project_id: fleet_s0, workflow_id: fleet_watch, assets: [asset_blue, asset_blue_b], state: damaged}
+  s3_damage: {layer: S3, every_h: 12, offset_min: 140, project_id: vendor_s3, workflow_id: vendor_watch, asset: asset_blue, state: damaged}
+  burst: {layer: S0, every_h: 24, offset_min: 540, runs: [[fleet_s0, fleet_watch, asset_blue], [fleet_s0, fleet_watch, road_north], [fleet_s0, fleet_watch, asset_blue_b], [fleet_s0, fleet_watch, road_north_b], [fleet_s0, fleet_watch, asset_blue], [fleet_s0, fleet_watch, road_north], [fleet_s0, fleet_watch, asset_blue_b], [fleet_s0, fleet_watch, road_north_b], [fleet_s0, fleet_watch, asset_blue], [fleet_s0, fleet_watch, road_north_b], [vendor_s3, vendor_watch, asset_blue], [vendor_s3, vendor_watch, road_north], [vendor_s3, vendor_watch, asset_blue], [vendor_s3, vendor_watch, road_north], [vendor_s3, vendor_watch, asset_blue]]}
+  s2_probe: {layer: S2, every_h: 6, offset_min: 60, split: calibration, samples: 8, profile: configs/analysis/vlm_change_v3.yaml}
+  planning: {layer: S1, every_h: 2, offset_min: 5, project_id: campus_s1, robot_id: uav_01, volume_id: campus_training, text: "Inspect the red equipment marker east of the pad and bring back a photo."}
+  authz: {every_min: 30, offset_min: 7}
+# About 5% of the scheduled S0 runs are cancelled at a stage the seed chooses. / 约 5% 的 S0 排班运行在种子选定的阶段取消。
+cancel: {layer: S0, permille: 50, stages: [before_approval, after_approval, in_flight]}
+faults:
+  service_restart: {every_h: 8, offset_min: 420, service: desk-service, mode: restart}
+  service_kill: {every_h: 24, offset_min: 780, service: desk-service, mode: kill}
+  fleet_uplink: {every_h: 6, offset_min: 320, service: desk-fleet, network: desk_uplink, duration_min: 5}
+  s1_uplink: {every_h: 24, offset_min: 1200, service: desk-uplink, network: desk_uplink, duration_min: 3}
+  vendor_link: {every_h: 6, offset_min: 230, down_s: 120}
+  vendor_protocol: {every_h: 4, offset_min: 75, duration_min: 25, kinds: [duplicate, reorder, lost_ack]}
+  model_unreachable: {every_h: 12, offset_min: 360, service: desk-model-proxy, network: desk_egress, duration_min: 15}
+  model_throttle: {every_h: 12, offset_min: 600, duration_min: 15}
+  residents_restart: {every_h: 24, offset_min: 1320, services: [desk-dock, desk-fleet], defer_max_min: 30}
+sampling: {every_s: 60}
+criteria:
+  min_duration_h: 72
+  service_ready_s: 120
+  dock_session_s: 60
+  backlog_drain_h: 6
+  s1_flights_completed: 12
+  s3_tasks: 100
+  s2_probes: 10
+  cycle_timeout_h: 3

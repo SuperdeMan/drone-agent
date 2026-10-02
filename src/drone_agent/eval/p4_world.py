@@ -54,14 +54,17 @@ ATTEMPTS = 3
 class P4World(P2World):
     """One P4 S0 case: the P2 world with the business loop and an appearance world. / 一个 P4 S0 用例。"""
 
-    def __init__(self, case: Path, repo: Path, *, seed: int, business: Path | None = None):
+    def __init__(self, case: Path, repo: Path, *, seed: int, business: Path | None = None,
+                 workflows: Path | None = None, members: Path | None = None, catalog: Path | None = None,
+                 signatures: dict[str, str] | None = None):
         self.business_path = business or repo / BUSINESS
-        self.appearance = AppearanceWorld({"asset_red": "red", "asset_blue": "blue"})
+        self.appearance = AppearanceWorld(signatures or {"asset_red": "red", "asset_blue": "blue"})
         self.vision_provider = ScriptedVisionProvider()
         self.vision_on = True
         self.analysis_paused = False
         self.runner_override: dict | None = None
-        super().__init__(case, repo, seed=seed, workflows=repo / WORKFLOWS, members=repo / MEMBERS)
+        super().__init__(case, repo, seed=seed, workflows=workflows or repo / WORKFLOWS,
+                         members=members or repo / MEMBERS, catalog=catalog)
         for robot_id, uav in self.uavs.items():
             uav.camera = self.appearance.camera(robot_id)
 

@@ -1,0 +1,23 @@
+# P5 business catalog of the resident desk (D069, D071), for the operations and workflow catalogs p5_desk_v1. The rules
+# are those of p4_s1_v1: only deterministic and model analyses may settle a round, the labelled scripted fixture of the
+# desk templates can open a finding for a reviewer but never close an order, and model analyses are budgeted per
+# project and UTC day (cost figures are estimates at the stated price, not invoices). Road obstacles and equipment
+# damage cluster in the one appearance family; the reuse list adds the road and logical-frame analyzers.
+#
+# 常驻任务台的 P5 业务目录（D069、D071），对应运营与工作流目录 p5_desk_v1。规则与 p4_s1_v1 相同：只有确定性与模型分析可以
+# 结算轮次；任务台模板中带标注的脚本夹具可以开启发现供 reviewer 决定，但永远不能关单；模型分析按项目与 UTC 日设预算（费用按
+# 所列价格估算，不是账单）。道路障碍与设备损伤聚合在同一外观缺陷族；复用列表加上道路与逻辑帧分析器。
+format: drone.business-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p5_desk_v1
+operations_catalog: p5_desk_v1
+workflow_catalog: p5_desk_v1
+default_quality: configs/analysis/quality_sim_v1.yaml
+families:
+  appearance: [damage, missing_part, contamination, deformation, discoloration, foreign_object, other_change]
+generic_defect: other_change
+closure: {version: reinspection-v1, allowed_sources: [deterministic, live_model, recorded_model]}
+reuse: {version: reuse-v1, max_age_s: 604800, analyzers: [signature_s1_v1, vlm_change_v3, road_signature_s1_v1, signature_desk_s0_v1]}
+runner: {concurrency: 2, lease_s: 60, max_attempts: 2, daily_tokens: 2000000}
+max_references: 3
+prices: {currency: USD, input_per_mtok: 0.30, output_per_mtok: 1.20, source: "MiniMax-M3 standard tier as listed by third-party price trackers, September 2026 (e.g. devtk.ai/en/models/minimax-m3)"}

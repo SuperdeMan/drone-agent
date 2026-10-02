@@ -1,0 +1,55 @@
+# P5 S1 workflow catalog (D071) for the operations catalog p5_s1_v1: the second business template on PX4 SITL. The S1
+# runner raises a road report while an obstacle model covers the road marking, removes the obstacle when the clearance
+# really happened, and acts as the people would. The colour-signature band of the road marking was measured on P5 S1
+# renders (see the calibration note in docs/p5-readiness.md); it is a property of this simulated world, not an obstacle
+# detector.
+#
+# P5 S1 工作流目录（D071），对应运营目录 p5_s1_v1：PX4 SITL 上的第二业务模板。S1 执行器在障碍物模型覆盖道路标线时发出道路报告，
+# 在确实清障时移除障碍物，并像人一样行动。道路标线的颜色特征区间在 P5 S1 渲染上测得（见 docs/p5-readiness.md 的标定说明）；
+# 它是这个模拟世界的属性，不是障碍检测器。
+format: drone.workflow-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p5_s1_v1
+operations_catalog: p5_s1_v1
+analyzers:
+  road_signature_s1_v1:
+    kind: deterministic
+    method: color_signature
+    bands: {road_north: [0.20, 0.32]}
+workflows:
+  - workflow_id: road_watch
+    version: 1
+    project_id: campus_s1
+    title: "Road obstacle watch: inspect the road segment, review the candidate, one clearance order per finding / 道路障碍巡检：巡检道路段、复核候选、每个发现一张清障工单"
+    inputs:
+      segment: {kind: asset_id, choices: [road_north]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+      - {trigger_id: road_report, kind: event, source: "event:road-reports", event_type: road.report, inputs_from_event: [segment]}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_01, volume_id: campus_training, asset: {input: segment}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: road_signature_s1_v1, findings: true}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - node_id: clearance_order
+        activity: create_work_order
+        when: [{node: review, output: decision, equals: confirmed}]
+        params: {review_from: review, reinspection: {workflow_id: road_reinspection, version: 1, asset_input: segment}}
+      - {node_id: report, activity: build_report, requires: done, after: [clearance_order]}
+    budget: {max_missions: 1}
+  - workflow_id: road_reinspection
+    version: 1
+    project_id: campus_s1
+    title: "Road reinspection after clearance feedback / 清障反馈后的道路复检"
+    inputs:
+      segment: {kind: asset_id, choices: [road_north]}
+    triggers:
+      - {trigger_id: reinspection, kind: internal}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_01, volume_id: campus_training, asset: {input: segment}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: road_signature_s1_v1, findings: true, purpose: reinspection}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: false}], params: {analysis_from: analyze}}
+      - {node_id: settle, activity: settle_reinspection, requires: done, after: [analyze, review], params: {analysis_from: analyze, review_from: review}}
+      - {node_id: report, activity: build_report, requires: done, after: [settle]}
+    budget: {max_missions: 1}

@@ -43,20 +43,22 @@ def build_images(source: Path, base: Path, tag: str, checks: str) -> dict:
     return images
 
 
-def provision(root: Path, image: str, name: str = "m2") -> dict:
+def provision(root: Path, image: str, name: str = "m2", also: tuple[str, ...] = ()) -> dict:
     """Keys and certificates stay in this project's secrets directory; only public facts return.
 
-    `name` separates trust roots: `m2` for the end-to-end cases, `desk` for the resident desk (D035).
+    `name` separates trust roots: `m2` for the end-to-end cases, `desk` for the resident desk (D035); `also` adds a
+    client certificate for each further robot (the P5 desk's logical fleet).
 
     密钥与证书留在本项目的 secrets 目录；只返回公开事实。`name` 分隔信任根：端到端用例为 `m2`，常驻任务台为
-    `desk`（D035）。
+    `desk`（D035）；`also` 为每台其他机器人增加客户端证书（P5 任务台的逻辑机队）。
     """
     secrets = root / "secrets" / name
     secrets.mkdir(parents=True, exist_ok=True)
     os.chmod(root / "secrets", 0o700)
+    extra = [part for robot in also for part in ("--also-robot", robot)]
     output = HELPERS["run"](["docker", "run", "--rm", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
                              "-v", f"{secrets}:/secrets", image, "python3", "-m", "drone_agent.fleet.provision",
-                             "--output", "/secrets"])
+                             "--output", "/secrets", *extra])
     return json.loads(output.strip().splitlines()[-1])
 
 

@@ -111,11 +111,10 @@ async def test_the_unscoped_submit_uses_the_default_binding_and_still_needs_memb
 
 
 async def test_a_robot_on_another_backend_cannot_be_bound(tmp_path):
-    service = s1_service(tmp_path, backend="logical_sim")
-    refused = await call(service, OPERATOR, "missions.submit", project_id="campus_s1", robot_id="uav_01",
-                         text="Inspect the red equipment marker east of the pad and bring back a photo.",
-                         volume_id="campus_training", asset_ids=[], idempotency_key="k-1")
-    assert refused["issue"]["code"] == "dispatch.backend_mismatch"
+    # D069: a catalog robot on a backend the deployment does not allow stops the service at start, before any binding.
+    # D069：目录中的机器人使用部署不允许的后端时，服务在启动时就拒绝，任何绑定都不会发生。
+    with pytest.raises(ValueError, match="does not allow: px4_sitl"):
+        s1_service(tmp_path, backend="logical_sim")
 
 
 @pytest.mark.parametrize("scenario_id", ["p1_f01_nominal", "p1_f13_projects"])

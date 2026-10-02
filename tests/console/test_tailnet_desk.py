@@ -45,7 +45,14 @@ def test_residents_share_only_internal_networks_and_mount_secrets_read_only():
     services = COMPOSE["services"]
     assert services["desk-service"]["networks"] == ["desk_uplink", "desk_model"]
     assert services["desk-uplink"]["networks"] == ["desk_uplink"]
-    for name in ("desk-service", "desk-uplink", "desk-model-proxy"):
+    # P5: the logical fleet reaches the service like an uplink; the vendor simulator has no network at all.
+    # P5：逻辑机队像 uplink 一样访问服务；厂商模拟器完全没有网络。
+    assert services["desk-fleet"]["networks"] == ["desk_uplink"] and services["desk-vendor"]["network_mode"] == "none"
+    assert all(v.endswith(":ro") for v in services["desk-fleet"]["volumes"] if "SECRETS" in v or "/world" in v)
+    assert "${DRONE_DESK_ROOT:?}/faults/vendor:/faults:ro" in services["desk-vendor"]["volumes"]
+    for name in ("desk-service", "desk-model-proxy", "desk", "desk-uplink"):
+        assert not any("/world" in v or "/faults/vendor" in v for v in services[name].get("volumes", []))
+    for name in ("desk-service", "desk-uplink", "desk-model-proxy", "desk-fleet", "desk-vendor"):
         service = services[name]
         assert "ports" not in service and "profiles" not in service
         assert service["read_only"] is True and service["cap_drop"] == ["ALL"]
@@ -63,12 +70,19 @@ def test_residents_share_only_internal_networks_and_mount_secrets_read_only():
 
 def test_the_desk_service_loads_the_operations_workflow_scheduling_and_business_catalogs():
     command = COMPOSE["services"]["desk-service"]["command"]
-    for flag, path in (("--catalog", "configs/sites/p1_s1_v1.yaml"), ("--workflows", "configs/workflows/p4_s1_v1.yaml"),
-                       ("--scheduling", "configs/scheduling/p3_desk_v1.yaml"),
-                       ("--business", "configs/analysis/p4_s1_v1.yaml")):
+    for flag, path in (("--catalog", "configs/sites/p5_desk_v1.yaml"),
+                       ("--workflows", "configs/workflows/p5_desk_v1.yaml"),
+                       ("--scheduling", "configs/scheduling/p5_desk_v1.yaml"),
+                       ("--business", "configs/analysis/p5_desk_v1.yaml")):
         assert command[command.index(flag) + 1] == "/workspace/" + path
         assert (ROOT / path).is_file()
     assert command[command.index("--vision") + 1] == "live"
+    assert command[command.index("--execution-backend") + 1] == "px4_sitl,logical_sim,vendor_protocol_sim"
+    assert command[command.index("--vendor-link") + 1] == "dock_vd=/vendor/vendor.sock"
+    # The aircraft flies with the P5 S1 map everywhere onboard. / 机载各处都按 P5 S1 地图飞行。
+    for name in ("desk-uplink", "desk-guardian", "desk-executive"):
+        flight = COMPOSE["services"][name]["command"]
+        assert flight[flight.index("--scene") + 1] == "/workspace/configs/scenarios/p5_site_s1_v1.yaml"
     assert COMPOSE["services"]["desk-service"]["environment"]["VISION_PROVIDER"] == "minimax-vl"
 
 
@@ -84,7 +98,9 @@ def test_only_the_allowlisted_proxy_reaches_the_outbound_network(path, proxy, se
     assert sorted(name for name, nets in on.items() if model in nets) == sorted([proxy, service])
     command = compose["services"][proxy]["command"]
     assert [command[i + 1] for i, part in enumerate(command) if part == "--allow"] == ["api.minimaxi.com:443"]
-    assert "volumes" not in compose["services"][proxy] and "ports" not in compose["services"][proxy]
+    # The desk proxy only reads its own harness throttle switch (P5, D073). / 任务台代理只读取自己的编排限流开关。
+    expected = ["${DRONE_DESK_ROOT:?}/faults/model:/faults:ro"] if "desk" in path else None
+    assert compose["services"][proxy].get("volumes") == expected and "ports" not in compose["services"][proxy]
     assert compose["services"][service]["environment"]["HTTPS_PROXY"] == f"http://{proxy}:3128"
     assert compose["services"][service]["depends_on"] == [proxy]
 
@@ -142,7 +158,8 @@ def test_status_is_unhealthy_when_page_and_service_revisions_differ(tmp_path, mo
 
 
 @pytest.mark.parametrize("defect", [None, "public", "extra_network", "writable_api", "root_user", "service_egress",
-                                    "proxy_mount", "dock_network", "dock_writes_truth", "members_writable"])
+                                    "proxy_mount", "dock_network", "dock_writes_truth", "members_writable",
+                                    "fleet_writes_world", "vendor_network", "service_reads_world"])
 def test_container_verification_reads_actual_publication_mounts_and_user(tmp_path, monkeypatch, defect):
     desk = SUP["Desk"](tmp_path)
     ports = {"8769/tcp": [{"HostIp": "127.0.0.1", "HostPort": "8769"}]}
@@ -154,11 +171,18 @@ def test_container_verification_reads_actual_publication_mounts_and_user(tmp_pat
                             ("/fixed/records", desk.root / "artifacts", False),
                             ("/fixed/releases", desk.root / "releases", False),
                             ("/fixed/outputs", desk.base / "fixed-pages", True)],
-                  "desk-model-proxy": [],
+                  "desk-model-proxy": [("/faults", desk.faults / "model", False)],
                   "desk-dock": [("/api", desk.base / "api", False), ("/truth", desk.flights, False),
                                 ("/dock", desk.base / "dock", True)],
+                  "desk-fleet": [("/api", desk.base / "api", False), ("/fleet", desk.fleet, True),
+                                 ("/world", desk.world_dir, False), ("/trust", desk.secrets / "trust", False),
+                                 ("/tls/uav_fa", desk.secrets / "robot-tls-uav_fa", False),
+                                 ("/tls/uav_fb", desk.secrets / "robot-tls-uav_fb", False)],
+                  "desk-vendor": [("/vendor", desk.vendor / "socket", True), ("/log", desk.vendor / "log", True),
+                                  ("/world", desk.world_dir, False), ("/faults", desk.faults / "vendor", False)],
                   "desk-service": [("/state", desk.service, True),
-                                   ("/members/members.yaml", desk.secrets / "members.yaml", False)],
+                                   ("/members/members.yaml", desk.secrets / "members.yaml", False),
+                                   ("/vendor", desk.vendor / "socket", False)],
                   }.get(service, [("/state", desk.service, True)])
         networks = {f"drone-agent-cloud_{name}": {} for name in DESK["NETWORKS"][service]} or {"none": {}}
         value = {
@@ -188,6 +212,13 @@ def test_container_verification_reads_actual_publication_mounts_and_user(tmp_pat
             value["Mounts"][1]["RW"] = True
         if service == "desk-model-proxy" and defect == "proxy_mount":
             value["Mounts"] = [{"Destination": "/secrets", "Source": str(desk.secrets), "RW": False, "Type": "bind"}]
+        if service == "desk-fleet" and defect == "fleet_writes_world":
+            value["Mounts"][2]["RW"] = True
+        if service == "desk-vendor" and defect == "vendor_network":
+            value["NetworkSettings"]["Networks"] = {"drone-agent-cloud_desk_uplink": {}}
+        if service == "desk-service" and defect == "service_reads_world":
+            value["Mounts"].append({"Destination": "/world", "Source": str(desk.world_dir), "RW": False,
+                                    "Type": "bind"})
         return value
 
     def command(argv, **_kwargs):
@@ -202,7 +233,8 @@ def test_container_verification_reads_actual_publication_mounts_and_user(tmp_pat
         with pytest.raises(ValueError):
             function(desk, "a" * 40)
     else:
-        assert set(function(desk, "a" * 40)) == {"desk-model-proxy", "desk-service", "desk-dock", "desk-uplink", "desk"}
+        assert set(function(desk, "a" * 40)) == {"desk-model-proxy", "desk-service", "desk-dock", "desk-uplink", "desk",
+                                                  "desk-fleet", "desk-vendor"}
 
 
 # ── the simulation supervisor / 仿真监管者 ──
@@ -228,6 +260,7 @@ class FakeStack:
     """Records compose calls and plays the simulator, guardian and judge. / 记录 compose 调用并扮演仿真器、guardian 与裁判。"""
 
     calls: list = []
+    placed: list = []
     guardian_running = True
     land_grounds = True
 
@@ -247,6 +280,9 @@ class FakeStack:
         elif args[0] == "up" and "desk-executive" in args:
             status(flight["aircraft"], in_air=False, armed=False)
             (flight["aircraft"] / "result.json").write_text("{}")
+        elif args[0] == "exec" and "gz" in args:
+            FakeStack.placed.append(args)
+            return SimpleNamespace(stdout=b"data: true\n", returncode=0)
         elif args[0] == "exec" and FakeStack.land_grounds:
             status(flight["aircraft"], in_air=False, armed=False)
             (flight["aircraft"] / "result.json").write_text("{}")
@@ -287,7 +323,7 @@ def supervisor(tmp_path, monkeypatch):
     monkeypatch.setitem(globals_["HELPERS"], "current", lambda root: root / "releases" / "m0")
     monkeypatch.setitem(globals_["HELPERS"], "compose", lambda root, deployment, args, **_k: m0.append(args[0]))
     monkeypatch.setitem(globals_["HELPERS"], "capacity", lambda: {"memory": {"MemAvailable": 8 * 1024**3}})
-    FakeStack.calls, FakeStack.guardian_running, FakeStack.land_grounds = [], True, True
+    FakeStack.calls, FakeStack.placed, FakeStack.guardian_running, FakeStack.land_grounds = [], [], True, True
     value = SUP["Supervisor"](desk, RECORD)
     value.try_lock = lambda: SimpleNamespace(close=lambda: None)
     value.m0_calls = m0
@@ -419,3 +455,74 @@ def test_a_mission_that_has_not_ended_or_is_not_mirrored_is_not_judged(superviso
     supervisor.checked.clear()
     supervisor.judge_ready()
     assert not (desk.cases / MISSION).exists()
+
+
+def test_each_flight_places_the_world_file_changes_and_names_its_map_for_the_judge(supervisor, monkeypatch):
+    desk = supervisor.desk
+    package(desk)
+    desk.world.write_text(json.dumps({"format": "drone.desk-world/v1", "s1": {"asset_red": "damaged",
+                                                                             "road_north": "obstructed",
+                                                                             "asset_blue": "normal",
+                                                                             "unknown_asset": "damaged"},
+                                      "s0": {"asset_blue": "damaged"}}))
+    supervisor.step()
+    flight = json.loads((desk.flights / f"{MISSION}-v1/flight.json").read_text())
+    assert flight["scene"] == "configs/scenarios/p5_site_s1_v1.yaml"
+    placed = {p["asset_id"]: p for p in flight["world"]["placed"]}
+    assert placed["asset_red"]["ok"] and placed["asset_red"]["model"] == "damage_patch_asset_red"
+    assert placed["road_north"]["ok"] and placed["road_north"]["model"] == "road_obstacle_road_north"
+    assert not placed["unknown_asset"]["ok"] and "asset_blue" not in placed
+    assert len(FakeStack.placed) == 2 and all("/world/default/create" in call for call in FakeStack.placed)
+    started = [args[-1] for args, _ in FakeStack.calls if args[0] == "up"]
+    assert started.index("desk-guardian") > 1  # the world is set before the guardian starts / 世界先于 guardian 设置
+    (desk.service / "ready.json").write_text(json.dumps({"signer_key_id": "ed25519:test"}))
+    views = {MISSION: {"mission": {"status": "completed"}, "request": {"text": "inspect the red marker"},
+                       "versions": [{"version": 1, "journals": {}}]}}
+    monkeypatch.setitem(SUP["Supervisor"].judge_ready.__globals__, "api", lambda desk, method, mission_id: views[mission_id])
+    supervisor.judge_ready()
+    scenario = json.loads((desk.cases / MISSION / "after-v1/input/scenario.json").read_text())
+    assert scenario["scene"] == "configs/scenarios/p5_site_s1_v1.yaml"
+
+
+def test_a_missing_or_foreign_world_file_changes_nothing(tmp_path):
+    path = tmp_path / "appearance.json"
+    assert SUP["read_world"](path) == ({}, None)
+    path.write_text(json.dumps({"format": "other", "s1": {"asset_red": "damaged"}}))
+    wanted, digest = SUP["read_world"](path)
+    assert wanted == {} and len(digest) == 64
+    assert SUP["world_model"]("asset_red", "obstructed") is None and SUP["world_model"]("road_north", "damaged") is None
+
+
+def test_member_lists_name_only_desk_projects_and_can_be_staged(tmp_path, monkeypatch):
+    monkeypatch.setitem(DESK["store_members"].__globals__["SUPERVISOR"], "Desk", lambda root: SUP["Desk"](tmp_path))
+    entries = [{"principal": "harness:soak-operator", "project_id": p, "roles": ["operator"]}
+               for p in ("campus_s1", "fleet_s0", "vendor_s3")]
+    staged = DESK["store_members"](tmp_path, {"members": {"format": "drone.project-members/v1", "members": entries},
+                                              "stage": "next"})
+    desk = SUP["Desk"](tmp_path)
+    assert staged["status"] == "staged" and (desk.secrets / "members.next.yaml").is_file()
+    assert not (desk.secrets / "members.yaml").exists()
+    with pytest.raises(ValueError):
+        DESK["store_members"](tmp_path, {"members": {"format": "drone.project-members/v1", "members": [
+            {"principal": "harness:x", "project_id": "harbor_ops", "roles": ["viewer"]}]}})
+
+
+def test_world_changes_are_checked_against_the_assets_each_simulator_has(tmp_path, monkeypatch):
+    monkeypatch.setitem(DESK["world"].__globals__["SUPERVISOR"], "Desk", lambda root: SUP["Desk"](tmp_path))
+    result = DESK["world"](tmp_path, {"section": "s1", "asset": "road_north", "state": "obstructed",
+                                      "run_id": "20261002T000000Z-0000abcd"})
+    assert result["world"]["s1"] == {"road_north": "obstructed"}
+    for bad in ({"section": "s1", "asset": "road_north", "state": "damaged"},
+                {"section": "s2", "asset": "asset_red", "state": "damaged"},
+                {"section": "s0", "asset": "asset_purple", "state": "damaged"}):
+        with pytest.raises(ValueError):
+            DESK["world"](tmp_path, {**bad, "run_id": "20261002T000000Z-0000abcd"})
+    history = (SUP["Desk"](tmp_path).world_dir / "history.jsonl").read_text().splitlines()
+    assert len(history) == 1 and json.loads(history[0])["actor"] == "dev_stack:desk-world"
+
+
+def test_the_soak_unit_runs_the_harness_from_the_activated_release():
+    unit = DESK["soak_unit_text"](Path("/home/ubuntu/drone-agent"),
+                                  Path("/home/ubuntu/drone-agent/releases") / DEPLOYMENT, "ubuntu")
+    assert unit.startswith(DESK["SOAK_MARKER"] + "\n") and "scripts/desk_soak.py run" in unit
+    assert "desk_supervisor" not in unit and "ProtectHome=read-only" in unit and "RestartSec=10" in unit

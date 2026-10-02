@@ -112,7 +112,7 @@ class RunProvenance(SourceModel):
 class SourceContext(SourceModel):
     """Built only by trusted process configuration, never from API parameters. / 只由受信进程配置构造，不读取 API 参数。"""
 
-    execution_backend: Literal["none", "logical_sim", "px4_sitl"] = "none"
+    execution_backend: Literal["none", "logical_sim", "px4_sitl", "vendor_protocol_sim"] = "none"
     run_id: str
     software_sha: str | None = Field(default=None, pattern=r"^[0-9a-f]{40}$")
     dirty_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
@@ -122,7 +122,9 @@ class SourceContext(SourceModel):
 
     def header(self, mission_id: str, version: int, planning: ModelUse) -> RunHeader:
         """Bind the trusted context to a newly created version. / 把受信上下文绑定到新建任务版本。"""
-        image = {"none": "unknown", "logical_sim": "test_fixture", "px4_sitl": "sim_render"}[self.execution_backend]
+        # The S3 simulator renders its captures like the logical camera (D072). / S3 模拟器像逻辑相机一样渲染采集（D072）。
+        image = {"none": "unknown", "logical_sim": "test_fixture", "px4_sitl": "sim_render",
+                 "vendor_protocol_sim": "test_fixture"}[self.execution_backend]
         return RunHeader(**self.model_dump(), mission_id=mission_id, mission_version=version,
                          default_image_source=image, planning=planning)
 

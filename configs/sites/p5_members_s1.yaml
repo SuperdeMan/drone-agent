@@ -1,0 +1,10 @@
+# Test identities of the P5 S1 cases (D071). Real logins never enter the repository.
+# P5 S1 用例的测试身份（D071）。真实登录名从不进入仓库。
+format: drone.project-members/v1
+schema_version: "0.1.0"
+members:
+  - {principal: "harness:p5-operator", project_id: campus_s1, roles: [operator, approver]}
+  - {principal: "harness:p5-reviewer", project_id: campus_s1, roles: [reviewer]}
+  - {principal: "harness:p5-admin", project_id: campus_s1, roles: [admin]}
+  - {principal: "harness:p5-judge", project_id: campus_s1, roles: [viewer]}
+  - {principal: "harness:p5-judge", project_id: legacy_m2, roles: [viewer]}

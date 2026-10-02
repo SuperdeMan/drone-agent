@@ -1,0 +1,48 @@
+# P5 S0 catalog (D069, D071, D072): `campus_ops` has one logical site with the road segment (the second business
+# template), `vendor_ops` one vendor-managed dock simulated at its protocol (the S3 contract cases) and `harbor_ops`
+# is the isolation fixture. Every logical UAV runs the real onboard executive / guardian / uplink with a logical
+# flight adapter; the vendor aircraft is flown only by the S3 simulator behind the gateway. Nothing here is a real
+# device. Memberships are a separate trusted input (p5_members_s0.yaml for tests).
+#
+# P5 S0 目录（D069、D071、D072）：`campus_ops` 有一个带道路段的逻辑站点（第二业务模板），`vendor_ops` 有一个在协议层模拟的
+# 厂商托管机场（S3 合同用例），`harbor_ops` 是隔离夹具。每台逻辑 UAV 运行真实的机载 executive / guardian / uplink 与逻辑飞行
+# 适配器；厂商飞行器只由网关背后的 S3 模拟器飞行。这里没有任何真实设备。成员资格是单独的受信输入（测试用 p5_members_s0.yaml）。
+format: drone.operations-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p5_campus_v1
+legacy_project: {project_id: legacy_m2, first_party_roles: [viewer]}
+default_binding: null
+projects:
+  campus_ops: {name: "Campus road and equipment inspection, logical site / 园区道路与设备巡检（逻辑站点）", sites: [site_fa]}
+  vendor_ops: {name: "Vendor-managed dock, protocol simulator / 厂商托管机场（协议模拟）", sites: [site_vd]}
+  harbor_ops: {name: "Isolation fixture project / 隔离验证夹具项目", sites: [site_h]}
+sites:
+  site_fa: {project_id: campus_ops, scene: configs/scenarios/p5_site_fa_v1.yaml, max_wind_mps: 8.0}
+  site_vd: {project_id: vendor_ops, scene: configs/scenarios/p5_site_vd_v1.yaml, max_wind_mps: 8.0}
+  site_h: {project_id: harbor_ops, scene: configs/scenarios/p1_site_h_v1.yaml, max_wind_mps: 8.0}
+docks:
+  dock_fa:
+    site_id: site_fa
+    vendor: drone-agent
+    model: logical-dock-v1
+    serves: [uav_fa]
+    actions: [open_lid, close_lid, start_charge]
+    backend: {kind: logical_sim, principal: "dock:p5-s0-sim"}
+  dock_vd:
+    site_id: site_vd
+    vendor: simulated-dock-vendor
+    model: dock-sim-v1
+    serves: [uav_v1]
+    backend: {kind: vendor_protocol_sim, principal: "dock:p5-vendor-gw", profile: configs/vendors/dock_task_v1.yaml}
+  dock_h:
+    site_id: site_h
+    vendor: drone-agent
+    model: logical-dock-v1
+    serves: [uav_h]
+    actions: [open_lid, close_lid, start_charge]
+    backend: {kind: logical_sim, principal: "dock:p5-s0-harbor"}
+robots:
+  uav_fa: {site_id: site_fa, dock_id: dock_fa, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: logical_sim}
+  uav_v1: {site_id: site_vd, dock_id: dock_vd, platform: configs/platforms/vendor_dock_sim.yaml, execution_backend: vendor_protocol_sim}
+  uav_h: {site_id: site_h, dock_id: dock_h, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: logical_sim}
+policy: {version: p1-dispatch-v1, freshness_s: 3.0, future_skew_s: 1.0, reconcile_reports: 2, soft_reservation_s: 900, claim_ack_timeout_s: 30, result_grace_s: 5}

@@ -43,6 +43,7 @@ from drone_agent.runtime.permission import (
     ANALYSIS_READ,
     ANALYSIS_REFERENCE,
     ANALYSIS_RUN,
+    AUDIT_READ,
     MISSION_APPROVE,
     MISSION_OPERATE,
     MISSION_READ,
@@ -129,6 +130,9 @@ METHODS: dict[str, tuple[str, frozenset[str]]] = {
     "references.list": (ANALYSIS_READ, frozenset({"project_id"})),
     "references.register": (ANALYSIS_REFERENCE, frozenset({"project_id", "mission_id", "evidence_id", "note"})),
     "references.revoke": (ANALYSIS_REFERENCE, frozenset({"project_id", "reference_id"})),
+    # P5 (D070): one project's audit trail, newest first; `before` is the cursor of the previous page or null.
+    # P5（D070）：一个项目的审计记录，最新在前；`before` 为上一页的游标或 null。
+    "audit.list": (AUDIT_READ, frozenset({"project_id", "before", "limit"})),
 }
 BUSINESS_PREFIXES = ("business.", "findings.", "orders.", "analysis.", "references.")
 CHANNELS = {"tailnet": RequestChannel.CONSOLE, "local": RequestChannel.CONSOLE, "a2a": RequestChannel.A2A,
@@ -190,9 +194,32 @@ async def dispatch(service: MissionService, request: dict) -> dict:
                 raise ServiceError("service.not_found", params["mission_id"])
         return {"ok": True, "result": await _call(service, method, params, who)}
     except ServiceError as error:
+        if error.issue.code == "auth.project_denied":
+            _record_denied(service, who, method, params)
         return {"ok": False, "issue": error.issue.model_dump(mode="json")}
     except (ValueError, KeyError, TypeError) as error:
         return _error("service.invalid_request", str(error)[:300])
+
+
+def _record_denied(service: MissionService, who: Caller, method: str, params: dict) -> None:
+    """A member's refused attempt joins its project's audit trail (D070); a non-member's never names a project.
+
+    成员被拒的尝试进入其项目审计（D070）；非成员的尝试从不指明项目。
+    """
+    try:
+        project = params.get("project_id")
+        if project is None and params.get("mission_id"):
+            project = service.project_of(str(params["mission_id"]))
+        ops = service.ops
+        readable = ops.directory.projects(who) if ops is not None else []
+        if ops is None or not isinstance(project, str) or project not in ops.catalog.projects or \
+                project not in readable:
+            return
+        target = {k: str(params[k])[:80] for k in ("mission_id", "run_id", "task_id", "finding_id", "order_id",
+                                                   "dock_id", "workflow_id") if k in params}
+        ops.store.event(f"audit:{project}", "access.denied", who.identity, {"method": method, **target})
+    except Exception:  # auditing a refusal must never change the refusal / 审计拒绝从不改变拒绝本身
+        return
 
 
 async def _call(service: MissionService, method: str, params: dict, who: Caller):
@@ -256,6 +283,13 @@ async def _call(service: MissionService, method: str, params: dict, who: Caller)
         return _task_call(service, method, params, who)
     if method.startswith(BUSINESS_PREFIXES):
         return _business_call(service, method, params, who)
+    if method == "audit.list":
+        from drone_agent.fleet.audit import ProjectAudit
+
+        before = params["before"]
+        if before is not None and not isinstance(before, str):
+            raise ServiceError("service.invalid_request", "before is a cursor string or null")
+        return ProjectAudit(service).list(who, str(params["project_id"]), before=before, limit=int(params["limit"]))
     if method == "audit":
         if ISSUE_CODES.get(params["code"]) is not IssueLayer.AUTH:
             raise ServiceError("service.invalid_request", "only authentication issues are audited here")
@@ -270,6 +304,7 @@ async def _call(service: MissionService, method: str, params: dict, who: Caller)
     return {"status": "ready", "signer_key_id": service.key.key_id, "robot_id": service.robot_id,
              "planner": getattr(service.planner, "label", None) if service.planner else None,
              "execution_backend": service.source.execution_backend,
+             "execution_backends": sorted(service.backends),
              "source_sha": os.environ.get("DRONE_SOURCE_SHA", "uncommitted"),
              "catalog": {"catalog_id": service.ops.catalog.catalog_id, "sha256": service.ops.catalog.sha256}
              if service.ops is not None else None,

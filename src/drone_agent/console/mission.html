@@ -307,6 +307,7 @@ main{padding:16px 16px 40px}.report-cols{grid-template-columns:minmax(0,1fr)}.st
  <a href="#tasks" id="navTasks" title="调度" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span class="l">调度</span><b class="count" id="countTasks" hidden></b></a>
  <a href="#fleet" id="navFleet" title="机队与机场" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="2.6"/><circle cx="18" cy="6" r="2.6"/><circle cx="6" cy="18" r="2.6"/><circle cx="18" cy="18" r="2.6"/><path d="M8 8l2.2 2.2M16 8l-2.2 2.2M8 16l2.2-2.2M16 16l-2.2-2.2"/><rect x="10" y="10" width="4" height="4" rx="1"/></svg><span class="l">机队与机场</span><b class="count" id="countFleet" hidden></b></a>
  <a href="#business" id="navBusiness" title="发现与工单" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.2"/><path d="m15.2 15.2 5 5M10.5 7.6v3.4M10.5 13.4v.1"/></svg><span class="l">发现与工单</span><b class="count" id="countBusiness" hidden></b></a>
+ <a href="#audit" id="navAudit" title="运行审计" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 3.5h9l3.5 3.5v13.5H6z"/><path d="M15 3.5V7h3.5M9 11h6M9 14.5h6M9 18h3.5"/></svg><span class="l">运行审计</span></a>
  <div class="rail-foot" id="railFoot"></div>
 </nav>
 <main id="main">
@@ -422,6 +423,14 @@ main{padding:16px 16px 40px}.report-cols{grid-template-columns:minmax(0,1fr)}.st
   <div id="bizDetail" hidden aria-live="polite"></div>
  </div>
 </div>
+</section>
+<section class="ws" id="ws-audit" aria-label="运行审计" hidden>
+ <div class="page-head"><div><h1>运行审计</h1><p>本项目里谁做了什么：提交、审批、取消、复核、维修反馈、工单、排班、机场维护与派遣，以及成员被拒的尝试。记录来自服务账本，只读。</p></div></div>
+ <section class="card"><div class="card-head"><h2>审计记录</h2><span class="sub" id="auditSub"></span></div>
+  <div class="filters" id="auditFilters"></div>
+  <div id="auditList"><div class="empty">选择项目后显示。</div></div>
+  <div id="auditPager"></div>
+ </section>
 </section>
 </main>
 </div>

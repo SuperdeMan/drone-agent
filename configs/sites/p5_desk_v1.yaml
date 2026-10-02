@@ -1,0 +1,59 @@
+# P5 platform catalog of the resident desk (D069): one mission service serves three projects, each robot with its own
+# execution backend. `campus_s1` is the P1 S1 site on the P5 map (the M2 campus plus the `road_north` road segment)
+# whose logical dock serves the PX4 SITL aircraft `uav_01`; `fleet_s0` has two logical sites, each a logical UAV running
+# the real onboard executive / guardian / uplink with a logical flight adapter in the resident fleet container, with its
+# logical dock; `vendor_s3` has one vendor-managed dock simulated at its protocol behind the gateway. Nothing here is a
+# real device. Missions created before P1 stay in `legacy_m2`. Memberships are the desk's trusted secret input.
+#
+# 常驻任务台的 P5 平台目录（D069）：一个任务服务同时服务三个项目，每台机器人各有执行后端。`campus_s1` 是换成 P5 地图（M2 园区
+# 加 `road_north` 道路段）的 P1 S1 站点，其逻辑机场服务 PX4 SITL 飞行器 `uav_01`；`fleet_s0` 有两个逻辑站点，各有一台在常驻机队
+# 容器中运行真实机载 executive / guardian / uplink 与逻辑飞行适配器的逻辑 UAV 及其逻辑机场；`vendor_s3` 有一个在协议层模拟、位于
+# 网关之后的厂商托管机场。这里没有任何真实设备。P1 之前创建的任务仍属 `legacy_m2`。成员资格是任务台受信的密钥输入。
+format: drone.operations-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p5_desk_v1
+legacy_project: {project_id: legacy_m2, first_party_roles: [viewer]}
+default_binding: {project_id: campus_s1, robot_id: uav_01}
+projects:
+  campus_s1: {name: "Campus inspection, PX4 SITL site / 园区巡检（PX4 SITL 站点）", sites: [site_s1]}
+  fleet_s0: {name: "Logical fleet, two sites / 逻辑机队（两个站点）", sites: [site_fa, site_fb]}
+  vendor_s3: {name: "Vendor-managed dock, protocol simulator / 厂商托管机场（协议模拟）", sites: [site_vd]}
+sites:
+  site_s1: {project_id: campus_s1, scene: configs/scenarios/p5_site_s1_v1.yaml, max_wind_mps: 8.0}
+  site_fa: {project_id: fleet_s0, scene: configs/scenarios/p5_site_fa_v1.yaml, max_wind_mps: 8.0}
+  site_fb: {project_id: fleet_s0, scene: configs/scenarios/p5_site_fb_v1.yaml, max_wind_mps: 8.0}
+  site_vd: {project_id: vendor_s3, scene: configs/scenarios/p5_site_vd_v1.yaml, max_wind_mps: 8.0}
+docks:
+  dock_s1:
+    site_id: site_s1
+    vendor: drone-agent
+    model: logical-dock-v1
+    serves: [uav_01]
+    actions: [open_lid, close_lid, start_charge]
+    backend: {kind: logical_sim, principal: "dock:p1-s1-sim"}
+  dock_fa:
+    site_id: site_fa
+    vendor: drone-agent
+    model: logical-dock-v1
+    serves: [uav_fa]
+    actions: [open_lid, close_lid, start_charge]
+    backend: {kind: logical_sim, principal: "dock:p5-desk-fleet"}
+  dock_fb:
+    site_id: site_fb
+    vendor: drone-agent
+    model: logical-dock-v1
+    serves: [uav_fb]
+    actions: [open_lid, close_lid, start_charge]
+    backend: {kind: logical_sim, principal: "dock:p5-desk-fleet"}
+  dock_vd:
+    site_id: site_vd
+    vendor: simulated-dock-vendor
+    model: dock-sim-v1
+    serves: [uav_v1]
+    backend: {kind: vendor_protocol_sim, principal: "dock:p5-desk-vendor", profile: configs/vendors/dock_task_v1.yaml}
+robots:
+  uav_01: {site_id: site_s1, dock_id: dock_s1, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: px4_sitl}
+  uav_fa: {site_id: site_fa, dock_id: dock_fa, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: logical_sim}
+  uav_fb: {site_id: site_fb, dock_id: dock_fb, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: logical_sim}
+  uav_v1: {site_id: site_vd, dock_id: dock_vd, platform: configs/platforms/vendor_dock_sim.yaml, execution_backend: vendor_protocol_sim}
+policy: {version: p1-dispatch-v1, freshness_s: 3.0, future_skew_s: 1.0, reconcile_reports: 2, soft_reservation_s: 900, claim_ack_timeout_s: 30, result_grace_s: 5}

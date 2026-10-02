@@ -1,0 +1,25 @@
+# P5 S1 catalog (D071): the P1 S1 site with the P5 map, i.e. the M2 campus plus the `road_north` road segment, served by
+# the same logical dock for the PX4 SITL aircraft `uav_01`. The P5 simulation world carries the same road marking.
+#
+# P5 S1 目录（D071）：P1 S1 站点换成 P5 地图（M2 园区加 `road_north` 道路段），仍由同一逻辑机场服务 PX4 SITL 上的 `uav_01`。
+# P5 仿真世界带有同一道路段标线。
+format: drone.operations-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p5_s1_v1
+legacy_project: {project_id: legacy_m2, first_party_roles: [viewer]}
+default_binding: {project_id: campus_s1, robot_id: uav_01}
+projects:
+  campus_s1: {name: "Campus inspection, PX4 SITL site / 园区巡检（PX4 SITL 站点）", sites: [site_s1]}
+sites:
+  site_s1: {project_id: campus_s1, scene: configs/scenarios/p5_site_s1_v1.yaml, max_wind_mps: 8.0}
+docks:
+  dock_s1:
+    site_id: site_s1
+    vendor: drone-agent
+    model: logical-dock-v1
+    serves: [uav_01]
+    actions: [open_lid, close_lid, start_charge]
+    backend: {kind: logical_sim, principal: "dock:p1-s1-sim"}
+robots:
+  uav_01: {site_id: site_s1, dock_id: dock_s1, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: px4_sitl}
+policy: {version: p1-dispatch-v1, freshness_s: 3.0, future_skew_s: 1.0, reconcile_reports: 2, soft_reservation_s: 900, claim_ack_timeout_s: 30, result_grace_s: 5}

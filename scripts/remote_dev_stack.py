@@ -29,7 +29,10 @@ RUN_ID = re.compile(r"^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 RUN_DIR = re.compile(r"^[mp][0-9]+-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 CASE_DIR = re.compile(r"^[a-z][a-z0-9_]*-[0-9]+$")
 READ_ONLY_ACTIONS = frozenset({"status", "runs", "inspect", "live_status", "console_plan", "console_status",
-                               "desk_plan", "desk_status"})
+                               "desk_plan", "desk_status", "desk_soak_status"})
+# P5 desk operations that never wait for the mutation lock (a long batch may hold it for hours).
+# 从不等待变更锁的 P5 任务台操作（长批次可能持锁数小时）。
+DESK_OPERATIONS = frozenset({"desk_world", "desk_soak_stop", "desk_soak_judge", "desk_backup", "desk_restore_drill"})
 
 
 def digest(path: Path) -> str:
@@ -378,8 +381,8 @@ def store_model_key(root: Path, request: dict) -> dict:
 def dispatch(request: dict) -> dict:
     action = request.get("action")
     if action not in {*READ_ONLY_ACTIONS, "prepare", "deploy", "verify", "test", "start", "stop", "logs", "m1", "m2",
-                       "m3", "p1", "p2", "p3", "p4", "p4_data", "p4_s2", "m2_key", "live_start", "live_operate",
-                       "console_apply", "desk_apply", "desk_members"}:
+                       "m3", "p1", "p2", "p3", "p4", "p4_data", "p4_s2", "p5", "m2_key", "live_start", "live_operate",
+                       "console_apply", "desk_apply", "desk_members", "desk_soak_start", *DESK_OPERATIONS}:
         raise ValueError("unsupported cloud action")
     if action not in READ_ONLY_ACTIONS and not RUN_ID.fullmatch(request.get("run_id", "")):
         raise ValueError("invalid run identity")
@@ -406,7 +409,8 @@ def dispatch(request: dict) -> dict:
             return console["plan"](root, deployment)
         with locked(root):
             return console["apply"](root, deployment, request)
-    if action in {"desk_plan", "desk_status", "desk_apply", "desk_members"}:
+    if action in {"desk_plan", "desk_status", "desk_apply", "desk_members", "desk_soak_status", "desk_soak_start",
+                  *DESK_OPERATIONS}:
         import runpy
 
         deployment = current(root)
@@ -418,7 +422,15 @@ def dispatch(request: dict) -> dict:
             return desk["status"](root)
         if action == "desk_plan":
             return desk["plan"](root, deployment)
+        if action == "desk_soak_status":
+            return desk["soak_status"](root)
+        if action in DESK_OPERATIONS:
+            entry = {"desk_world": "world", "desk_soak_stop": "soak_stop", "desk_soak_judge": "soak_judge",
+                     "desk_backup": "backup", "desk_restore_drill": "restore_drill"}[action]
+            return desk[entry](root, request)
         with locked(root):
+            if action == "desk_soak_start":
+                return desk["soak_start"](root, deployment, request)
             if action == "desk_members":
                 return desk["store_members"](root, request)
             return desk["apply"](root, deployment, request)
@@ -490,6 +502,13 @@ def dispatch(request: dict) -> dict:
                 raise ValueError("deploy a version with the P4 runner first")
             entry = {"p4": "run_p4", "p4_data": "install_data", "p4_s2": "run_s2"}[action]
             return runpy.run_path(str(script))[entry](root, deployment, request)
+        if action == "p5":
+            import runpy
+
+            script = deployment / "source/scripts/remote_p5.py"
+            if not script.is_file():
+                raise ValueError("deploy a version with the P5 S1 runner first")
+            return runpy.run_path(str(script))["run_p5"](root, deployment, request)
         if action == "verify":
             return operation_receipt(deployment, request["run_id"], smoke(root, deployment, request["run_id"]))
         if action == "test":

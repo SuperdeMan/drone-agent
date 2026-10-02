@@ -1,0 +1,19 @@
+# P5 business catalog of the PX4 SITL site (D071), for the operations and workflow catalogs p5_s1_v1. Road obstacles
+# cluster in the appearance family; only deterministic and model analyses may settle a round; no model is configured
+# in the S1 cases.
+#
+# PX4 SITL 站点的 P5 业务目录（D071），对应运营与工作流目录 p5_s1_v1。道路障碍聚合在外观缺陷族；只有确定性与模型分析可以
+# 结算轮次；S1 用例不配置模型。
+format: drone.business-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p5_s1_v1
+operations_catalog: p5_s1_v1
+workflow_catalog: p5_s1_v1
+default_quality: configs/analysis/quality_sim_v1.yaml
+families:
+  appearance: [damage, missing_part, contamination, deformation, discoloration, foreign_object, other_change]
+generic_defect: other_change
+closure: {version: reinspection-v1, allowed_sources: [deterministic, live_model, recorded_model]}
+reuse: {version: reuse-v1, max_age_s: 604800, analyzers: [road_signature_s1_v1]}
+runner: {concurrency: 2, lease_s: 60, max_attempts: 2, daily_tokens: 2000000}
+max_references: 3

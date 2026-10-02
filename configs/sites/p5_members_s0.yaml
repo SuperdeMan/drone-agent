@@ -1,0 +1,18 @@
+# Test identities of the P5 S0 world (D069). Real logins never enter the repository.
+# P5 S0 世界的测试身份（D069）。真实登录名从不进入仓库。
+format: drone.project-members/v1
+schema_version: "0.1.0"
+members:
+  - {principal: "harness:p5-operator", project_id: campus_ops, roles: [operator, approver]}
+  - {principal: "harness:p5-operator", project_id: vendor_ops, roles: [operator, approver]}
+  - {principal: "harness:p5-reviewer", project_id: campus_ops, roles: [reviewer]}
+  - {principal: "harness:p5-reviewer", project_id: vendor_ops, roles: [reviewer]}
+  - {principal: "harness:p5-viewer", project_id: campus_ops, roles: [viewer]}
+  - {principal: "harness:p5-viewer", project_id: vendor_ops, roles: [viewer]}
+  - {principal: "harness:p5-admin", project_id: campus_ops, roles: [admin]}
+  - {principal: "harness:p5-admin", project_id: vendor_ops, roles: [admin]}
+  - {principal: "harness:p5-harbor", project_id: harbor_ops, roles: [operator, approver, reviewer, admin]}
+  - {principal: "harness:p5-judge", project_id: campus_ops, roles: [viewer]}
+  - {principal: "harness:p5-judge", project_id: vendor_ops, roles: [viewer]}
+  - {principal: "harness:p5-judge", project_id: harbor_ops, roles: [viewer]}
+  - {principal: "harness:p5-judge", project_id: legacy_m2, roles: [viewer]}

@@ -148,13 +148,49 @@ const ISSUE = {"service.invalid_request": "请求无效", "service.not_found": "
   "business.not_confirmed": "发现尚未确认", "business.not_configured": "未配置业务目录", "reuse.analyzer_not_allowed": "分析器不允许复用"};
 
 // ── state / 状态 ──
-const WORKSPACES = ["overview", "missions", "workflows", "tasks", "fleet", "business"];
+const WORKSPACES = ["overview", "missions", "workflows", "tasks", "fleet", "business", "audit"];
 const NAV = {overview: "navOverview", missions: "navMissions", workflows: "navWorkflows", tasks: "navTasks", fleet: "navFleet",
-  business: "navBusiness"};
+  business: "navBusiness", audit: "navAudit"};
+// P5 project audit (D070): who did what, as the service recorded it; refused attempts of members included.
+// P5 项目审计（D070）：按服务记录展示谁做了什么，包括成员被拒的尝试。
+const AUDIT = {"mission.submitted": "提交任务", "mission.approved": "审批签名", "mission.auto_approved": "策略批准原样重试",
+  "mission.declined": "驳回", "mission.pause": "暂停", "mission.resume": "恢复", "mission.cancel": "取消（经机载通道）",
+  "cancel.requested": "请求取消", "cancel.relayed": "转发取消到飞行", "delivery.claimed": "领取闸门交付", "delivery.void": "投递作废",
+  "activity.departed": "离开机位", "action.requested": "请求机场动作", "action.ack": "机场受理动作", "action.ack_ignored": "忽略机场回执",
+  "lock.set": "设置维护锁", "lock.released": "解除维护锁", "session.new": "机场新会话", "status.rejected": "拒收机场报告",
+  "run.started": "启动工作流", "run.cancel_requested": "请求取消运行", "run.state": "运行结束", "review.recorded": "复核节点决定",
+  "schedule.enabled": "启用排班", "schedule.disabled": "停用排班", "draft.proposed": "生成模板草案（未生效）", "event.refused": "拒收事件",
+  "task.created": "提交任务单", "task.state": "任务单状态", "assignment.created": "分配", "assignment.withdrawn": "撤回分配",
+  "assignment.approval_expired": "无人审批，撤回分配", "assignment.refused": "分配被拒", "withdrawal.refused": "撤回被拒",
+  "finding.opened": "开启候选发现", "finding.attached": "并入已有发现", "finding.reviewed": "复核发现", "order.created": "建立工单",
+  "order.repair_reported": "维修反馈", "order.reinspection_requested": "请求复检", "order.round_reviewed": "复核本轮",
+  "order.round_passed": "本轮通过·关单", "order.round_failed": "本轮未通过", "order.round_unknown": "本轮不确定",
+  "reference.registered": "登记参考外观", "reference.revoked": "撤销参考外观", "job.queued": "分析排队", "job.completed": "分析完成",
+  "job.refused": "分析拒判", "reuse.refused": "复用被拒", "access.denied": "越权尝试（已拒绝）"};
+const AUDIT_GROUPS = [["all", "全部"], ["mission", "任务与审批"], ["workflow", "工作流"], ["business", "发现与工单"],
+  ["dispatch", "资源与派遣"], ["task", "调度"], ["denied", "越权尝试"]];
+function auditGroup(e) {
+  const a = e.action || "", kind = e.object?.kind;
+  if (a === "access.denied") return "denied";
+  if (a.startsWith("mission.")) return "mission";
+  if (["run.", "review.", "schedule.", "draft.", "event."].some(p => a.startsWith(p))) return "workflow";
+  if (["finding.", "order.", "reference.", "job.", "reuse."].some(p => a.startsWith(p))) return "business";
+  if (a.startsWith("task.") || a.startsWith("assignment.") || a.startsWith("withdrawal.")) return "task";
+  return kind === "mission" || kind === "dock" ? "dispatch" : "mission";
+}
+function auditObject(o) {
+  if (!o) return "—";
+  const to = {mission: "missions/", workflow: "workflows/", task: "tasks/", finding: "business/finding/", order: "business/order/", dock: "fleet/"}[o.kind];
+  return to ? link(to + o.id, o.id + (o.version ? " v" + o.version : "")) : `${o.kind} ${o.id}`;
+}
+const VENDOR_STATUS = {sent: "已下发", in_progress: "执行中", paused: "暂停", ok: "完成", partially_done: "部分完成", failed: "失败",
+  canceled: "已取消", rejected: "被拒", timeout: "超时", undone: "执行前已撤销", unreachable: "厂商无应答（未执行）",
+  prepare_rejected: "厂商拒绝准备（未执行）", execute_rejected: "厂商拒绝执行（未执行）"};
 let socket = null, retry = 500, hello = null, projectId = null, planning = null, expect = null;
 let missions = [], current = null, selected = null, photos = {}, asked = new Set(), host = null, filter = "all";
 let resources = null, resourceDetail = null, workflows = null, run = null, wfChoice = null;
 let tasks = null, task = null, business = null, subject = null;
+let audit = null, auditBefore = null, auditFilter = "all";
 let nav = {ws: "overview", id: null, kind: null};
 
 // ── small helpers / 小工具 ──
@@ -318,6 +354,7 @@ function receive(message) {
   else if (kind === "task") onTask(message.view);
   else if (kind === "business") { business = message.view; renderBusiness(); renderOverview(); renderMission(); }
   else if (kind === "finding" || kind === "order") onSubject(kind, message.view);
+  else if (kind === "audit") { audit = message.view; renderAudit(); }
   else if (kind === "media") {
     if (typeof message.png === "string" && message.png.startsWith("data:image/png;base64,")) photos[message.evidence_id] = message.png;
     renderMission(); renderSubject();
@@ -373,11 +410,13 @@ function selectProject() {
   const p = project();
   byId("robot").innerHTML = (p?.robots || []).map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
   resources = resourceDetail = null; workflows = run = null; tasks = task = null; business = subject = null;
+  audit = null; auditBefore = null;
   if (p) {
     send({type: "resources", project_id: p.project_id});
     send({type: "workflows", project_id: p.project_id});
     if (p.scheduling) send({type: "tasks_watch", project_id: p.project_id});
     if (p.business) send({type: "business_watch", project_id: p.project_id});
+    if (nav.ws === "audit") send({type: "audit_watch", project_id: p.project_id, before: null});
   }
   renderAll();
 }
@@ -417,6 +456,7 @@ function offered(ws) {
   if (ws === "fleet") return true;
   if (ws === "workflows") return !!workflows;
   if (ws === "tasks") return !!p.scheduling;
+  if (ws === "audit") return true;
   return ws === "business" && !!p.business;
 }
 function go(hash) {
@@ -445,6 +485,7 @@ function watch() {
   if (!hello) return;
   const p = project();
   if (nav.ws === "missions" && nav.id && nav.id !== "new") send({type: "watch", mission_id: nav.id}, true);
+  if (p && nav.ws === "audit") send({type: "audit_watch", project_id: p.project_id, before: auditBefore}, true);
   if (!p || !nav.id) return;
   if (nav.ws === "workflows") send({type: "workflow_watch", project_id: p.project_id, run_id: nav.id}, true);
   if (nav.ws === "tasks") send({type: "task_watch", project_id: p.project_id, task_id: nav.id}, true);
@@ -455,7 +496,7 @@ function watch() {
 // ── shell and overview / 外壳与总览 ──
 function renderAll() {
   renderShell(); renderHost(); renderOverview(); renderMissionList(); renderMission(); renderWorkflows(); renderRun();
-  renderTasks(); renderTask(); renderResources(); renderResourceDetail(); renderBusiness(); renderSubject();
+  renderTasks(); renderTask(); renderResources(); renderResourceDetail(); renderBusiness(); renderSubject(); renderAudit();
 }
 
 function scoped(list) {
@@ -629,7 +670,7 @@ function missionHtml(view) {
   // The plan on the left, the outcome and its audit on the right; on one column the outcome comes first once a flight
   // produced one. / 左侧为计划，右侧为结果及其审计；单栏时，一旦飞行产生了结果就先显示结果。
   const plan = `<div class="stack plan">${[packageCard(v), planningCard(v), approvalCard(v), dispatchCard(view), eventsCard(v), operationsCard(view)].join("")}</div>`;
-  const outcome = `<div class="stack outcome">${[reportCard(view), evidenceCard(view), cloudCard(view), provenanceCard(v), issuesCard(view)].join("")}</div>`;
+  const outcome = `<div class="stack outcome">${[reportCard(view), vendorCard(view, v), evidenceCard(view), cloudCard(view), provenanceCard(v), issuesCard(view)].join("")}</div>`;
   const produced = bucket(view.mission.status) === "done" && !!(view.report || (view.evidence || []).length || view.cloud?.judge);
   return html + `<div class="d-grid">${produced ? outcome + plan : plan + outcome}</div>`;
 }
@@ -716,11 +757,29 @@ function cloudCard(view) {
   return card("云端飞行与独立裁判", flights + verdict);
 }
 
+// P5 vendor-managed dock (D072): what the platform can see of a vendor task, and what it cannot.
+// P5 厂商托管机场（D072）：平台对厂商任务能看到的内容，以及看不到的部分。
+function vendorCard(view, v) {
+  const vendor = view.vendor;
+  if (!vendor) return "";
+  const entry = (vendor.versions || []).find(x => x.version === v.version) || {}, s = entry.summary || {};
+  const commands = Object.entries(s.commands || {}).map(([method, c]) => [raw(`<code>${esc(method)}</code>`), c.attempts,
+    c.reply === null || c.reply === undefined ? "未答复" : c.reply === 0 ? "已受理（不代表完成）" : "拒绝 " + c.reply]);
+  const media = Object.values(s.media || {}).map(m => (m.accepted ? "已入账 " : "拒收 ") + (m.evidence_id || m.reason || ""));
+  const terminal = s.terminal ? (VENDOR_STATUS[s.terminal.status] || s.terminal.status) + (s.terminal.physical ? "" : "（没有起飞）") : "尚无终态";
+  return card("厂商任务", kv([["协议档案", `${vendor.profile.profile_id} · ${vendor.profile.protocol}`],
+    ["固件核对", "未对照任何厂商固件核对（协议模拟）"], ["安全判定", "厂商本地系统负责，平台不可见"],
+    ["飞行 ID", entry.flight_id || "—"], ["任务摘要", short(entry.task_sha256, 16)], ["进度", (VENDOR_STATUS[s.status] || s.status || "—") + (s.reached ? " · 第 " + s.reached + " 步" : "")],
+    ["终态", terminal], ["回到机场", s.grounded_at ? when(s.grounded_at) : "未确认"], ["媒体", media.join("；") || (s.media_missing ? "宽限期内未收到" : "—")],
+    ["链路", s.link === "down" ? "断开" : "正常"]]) + (commands.length ? table(["命令", "发送次数", "答复"], commands) : ""),
+    "ACK 只是受理；完成以终态与服务复核过的媒体为准");
+}
+
 function eventsCard(v) {
   const events = v.events || [];
   const journals = Object.entries(v.journals || {}).map(([k, j]) => tag(`${k} ${j.rows} · ${j.chain}`)).join(" ") || tag("尚未同步");
   const body = events.length ? `<ol class="timeline" data-k="events-${esc(current.mission.mission_id)}-${esc(v.version)}">${events.slice().reverse().map(e => `<li class="${ALERTS.includes(e.kind) ? "alert" : ""}">${show(when(e.timestamp))}
-    <span>${esc(e.journal)} · ${esc(e.kind)} ${esc(e.data.step_id || e.data.state || "")} ${e.data.outcome ? esc(e.data.outcome.execution_status + " / " + e.data.outcome.effect_verdict) : ""}</span></li>`).join("")}</ol>`
+    <span>${esc(e.journal)} · ${esc(e.kind)} ${esc(e.data.step_id || e.data.state || e.data.method || "")} ${esc(e.data.status || "")} ${e.data.outcome ? esc(e.data.outcome.execution_status + " / " + e.data.outcome.effect_verdict) : ""}</span></li>`).join("")}</ol>`
     : '<div class="empty">飞行开始后显示来自 executive 与 guardian 账本的事件。</div>';
   return card("机载事件", body, raw(journals));
 }
@@ -1171,9 +1230,30 @@ function orderHtml() {
   return html + `<div class="stack" style="margin-top:14px">${card("轮次", rounds + '<p class="hint">本轮复核只接受未疑似的复检采集；复检仍疑似时本轮直接判为未通过。</p>')}${eventsList(subject.events, "order-events-" + o.order_id)}</div>`;
 }
 
+// ── project audit (P5, D070) / 项目审计（P5，D070）──
+function renderAudit() {
+  if (!byId("auditList")) return;
+  const entries = audit?.entries || [];
+  const total = {all: entries.length};
+  for (const e of entries) total[auditGroup(e)] = (total[auditGroup(e)] || 0) + 1;
+  paint("auditFilters", AUDIT_GROUPS.map(([key, label]) =>
+    `<button type="button" data-act="auditFilter" data-v="${key}" aria-pressed="${auditFilter === key}">${label}<b>${total[key] || 0}</b></button>`).join(""));
+  const shown = entries.filter(e => auditFilter === "all" || auditGroup(e) === auditFilter);
+  byId("auditSub").textContent = audit ? (auditBefore ? "更早的记录" : "最新记录") + " · " + entries.length + " 条" : "";
+  paint("auditList", audit ? table(["时间", "身份", "动作", "对象", "细节"], shown.map(e => [when(e.at), raw(`<span class="nowrap">${esc(e.actor || "—")}</span>`),
+    raw(badge(AUDIT[e.action] || e.action, e.action === "access.denied" ? "bad" : e.action.startsWith("mission.approved") ? "ok" : "")),
+    auditObject(e.object), raw(`<small>${esc(Object.entries(e.detail || {}).filter(([, v]) => v !== null && v !== "").map(([k, v]) => k + "=" + v).join(" · ").slice(0, 200))}</small>`)]),
+    entries.length ? "没有符合筛选的记录。" : "该项目还没有审计记录。") : blank("加载审计记录…", "只有本项目成员能看到本项目的记录。"));
+  paint("auditPager", `<div class="buttons" style="margin:0"><button class="btn small" type="button" data-act="auditLatest" ${auditBefore ? "" : "disabled"}>回到最新</button>
+    <button class="btn small" type="button" data-act="auditOlder" ${audit?.next ? "" : "disabled"}>更早的记录</button></div>`);
+}
+
 // ── actions: every click becomes a named frame the service checks / 操作：每次点击都变成由服务检查的具名帧 ──
 const ACTIONS = {
   dismiss: () => notice(""),
+  auditFilter: d => { auditFilter = d.v; renderAudit(); },
+  auditOlder: () => { if (audit?.next && project()) { auditBefore = audit.next; send({type: "audit_watch", project_id: projectId, before: auditBefore}); } },
+  auditLatest: () => { if (project()) { auditBefore = null; send({type: "audit_watch", project_id: projectId, before: null}); } },
   submit: () => submitMission(),
   filter: d => { filter = d.v; renderMissionList(); },
   version: d => { selected = Number(d.v); renderMission(); },

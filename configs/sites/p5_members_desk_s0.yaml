@@ -1,0 +1,46 @@
+# Test identities for the desk platform catalog p5_desk_v1 in S0 (the desk smoke test, the soak harness test and the
+# authorization matrix, D069, D070, D073). Real logins never enter the repository; the resident desk's own list is a
+# secret written by `dev_stack.py desk-members`.
+#
+# 任务台平台目录 p5_desk_v1 在 S0 中的测试身份（任务台冒烟测试、长稳编排测试与授权矩阵，D069、D070、D073）。真实登录名从不进入
+# 仓库；常驻任务台自己的列表是由 `dev_stack.py desk-members` 写入的密钥。
+format: drone.project-members/v1
+schema_version: "0.1.0"
+members:
+  - {principal: "harness:p5-operator", project_id: campus_s1, roles: [operator, approver]}
+  - {principal: "harness:p5-operator", project_id: fleet_s0, roles: [operator, approver]}
+  - {principal: "harness:p5-operator", project_id: vendor_s3, roles: [operator, approver]}
+  - {principal: "harness:p5-reviewer", project_id: campus_s1, roles: [reviewer]}
+  - {principal: "harness:p5-reviewer", project_id: fleet_s0, roles: [reviewer]}
+  - {principal: "harness:p5-reviewer", project_id: vendor_s3, roles: [reviewer]}
+  - {principal: "harness:p5-viewer", project_id: campus_s1, roles: [viewer]}
+  - {principal: "harness:p5-viewer", project_id: fleet_s0, roles: [viewer]}
+  - {principal: "harness:p5-viewer", project_id: vendor_s3, roles: [viewer]}
+  - {principal: "harness:p5-admin", project_id: campus_s1, roles: [admin]}
+  - {principal: "harness:p5-admin", project_id: fleet_s0, roles: [admin]}
+  - {principal: "harness:p5-admin", project_id: vendor_s3, roles: [admin]}
+  - {principal: "harness:p5-approver", project_id: campus_s1, roles: [approver]}
+  - {principal: "harness:p5-approver", project_id: fleet_s0, roles: [approver]}
+  - {principal: "harness:p5-approver", project_id: vendor_s3, roles: [approver]}
+  - {principal: "harness:p5-harbor", project_id: vendor_s3, roles: [viewer]}
+  - {principal: "harness:p5-judge", project_id: campus_s1, roles: [viewer]}
+  - {principal: "harness:p5-judge", project_id: fleet_s0, roles: [viewer]}
+  - {principal: "harness:p5-judge", project_id: vendor_s3, roles: [viewer]}
+  - {principal: "harness:p5-judge", project_id: legacy_m2, roles: [viewer]}
+  - {principal: "harness:desk-supervisor", project_id: campus_s1, roles: [viewer]}
+  - {principal: "harness:desk-supervisor", project_id: fleet_s0, roles: [viewer]}
+  - {principal: "harness:desk-supervisor", project_id: vendor_s3, roles: [viewer]}
+  - {principal: "harness:desk-supervisor", project_id: legacy_m2, roles: [viewer]}
+  - {principal: "harness:soak-operator", project_id: campus_s1, roles: [operator]}
+  - {principal: "harness:soak-operator", project_id: fleet_s0, roles: [operator]}
+  - {principal: "harness:soak-operator", project_id: vendor_s3, roles: [operator]}
+  - {principal: "harness:soak-approver", project_id: campus_s1, roles: [approver]}
+  - {principal: "harness:soak-approver", project_id: fleet_s0, roles: [approver]}
+  - {principal: "harness:soak-approver", project_id: vendor_s3, roles: [approver]}
+  - {principal: "harness:soak-reviewer", project_id: campus_s1, roles: [reviewer]}
+  - {principal: "harness:soak-reviewer", project_id: fleet_s0, roles: [reviewer]}
+  - {principal: "harness:soak-reviewer", project_id: vendor_s3, roles: [reviewer]}
+  - {principal: "harness:soak-viewer", project_id: campus_s1, roles: [viewer]}
+  - {principal: "harness:soak-viewer", project_id: fleet_s0, roles: [viewer]}
+  - {principal: "harness:soak-viewer", project_id: vendor_s3, roles: [viewer]}
+  - {principal: "harness:soak-other", project_id: vendor_s3, roles: [viewer]}

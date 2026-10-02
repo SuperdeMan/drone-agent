@@ -9,7 +9,10 @@ frame and visits every workspace the service offers together with the first obje
 view whether its region rendered, horizontal overflow and console errors, in every requested theme and viewport; it
 also renders the fixed M1 page under `/fixed/` without starting anything.
 With `--mission` it types a request into the composer, approves the exact package in the page and follows the flight
-until the supervisor publishes the independent judge's record. It reaches the service only through the page, so the
+until the supervisor publishes the independent judge's record. With `--loop` it runs a workflow template in the page;
+P5's main scenario (D070) adds `--world`: the damage is placed in the Gazebo world before the run and removed when the
+repair is reported, both outside the page through `dev_stack.py desk-world`; the round's review is decided in the page
+and the project's audit workspace is read back for the whole chain. It reaches the service only through the page, so the
 page's own frames are what is exercised. The receipt names no tailnet host or operator login; screenshots show the
 login and stay in the local output directory. The receipt records what the page displayed; it decides nothing.
 
@@ -19,8 +22,9 @@ installs Playwright for this script only (PEP 723), outside the project's depend
 任务台的浏览器级核验（D068）：以人看到的样子、经真实入口检查页面。经 Playwright 用本机已装的 Edge 或 Chrome 打开入口（不下载
 浏览器），等待 hello 帧后，逐个访问服务提供的工作区及各列表的第一个对象，在每种主题与视口下记录区域是否渲染、是否横向溢出与
 控制台报错；另渲染 `/fixed/` 下的固定 M1 页面，不启动任何任务。加 `--mission` 时在输入框中写下请求、在页面中批准确切的任务包，并跟随飞行直到监管者公布独立裁判记录。它只经页面
-访问服务，因此验证的正是页面自己的帧。回执不含 tailnet 主机名与操作者登录名；截图会显示登录名，只留在本机输出目录。回执只记录
-页面显示了什么，不做判定。
+访问服务，因此验证的正是页面自己的帧。加 `--loop` 时在页面中运行一个工作流模板；P5 主场景（D070）另加 `--world`：运行前把损伤
+放入 Gazebo 世界，报告维修时移除，二者都经 `dev_stack.py desk-world` 在页面之外完成；本轮复核在页面中决定，并读回项目审计工作区
+中的整条链路。回执不含 tailnet 主机名与操作者登录名；截图会显示登录名，只留在本机输出目录。回执只记录页面显示了什么，不做判定。
 """
 
 from __future__ import annotations
@@ -28,6 +32,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import subprocess
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -216,6 +221,60 @@ async def follow_run(page, run_id: str, record: dict, shots: Path, until: str, d
     raise TimeoutError(f"run {run_id} did not reach the awaited state")
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def set_world(asset: str, state: str, record: dict) -> None:
+    """Change the S1 world outside the page (the page has no world or flight interface). / 在页面之外修改 S1 世界。"""
+    started = time.monotonic()
+    result = subprocess.run(["uv", "run", "python", str(ROOT / "scripts/dev_stack.py"), "desk-world", "--section", "s1",
+                             "--asset", asset, "--state", state, "--reason", "browser main scenario", "--apply"],
+                            cwd=ROOT, capture_output=True, timeout=300)
+    output = result.stdout.decode("utf-8", errors="replace").strip()
+    try:
+        change = (json.loads(output) or {}).get("change") or {}
+    except ValueError:
+        change = {}
+    record.setdefault("world", []).append({"asset_id": asset, "state": state, "ok": result.returncode == 0,
+                                           "at": change.get("at"), "seconds": round(time.monotonic() - started, 1)})
+    if result.returncode:
+        raise RuntimeError(f"the world could not be changed: {result.stderr.decode('utf-8', errors='replace')[-300:]}")
+
+
+async def decide_round(page, run_id: str, record: dict, shots: Path, deadline: float) -> None:
+    """Confirm the reinspection's unobstructed capture in the page once its review waits. / 复检复核等待时在页面中确认。"""
+    while time.monotonic() < deadline:
+        await open_hash(page, "#workflows/" + run_id, f"() => run && run.run.run_id === {json.dumps(run_id)}")
+        await page.wait_for_timeout(1500)
+        button = '[data-act="review"][data-node="review"][data-decision="confirmed"]'
+        if await page.locator(button).count():
+            await page.screenshot(path=str(shots / "loop-round-review.png"), full_page=True)
+            await page.click(button)
+            await page.wait_for_selector("dialog#ask[open]")
+            await page.fill("#askText", "browser probe: the reinspection capture shows no damage")
+            await page.click("#askOk")
+            record["round_reviewed_in_page"] = True
+            return
+        if await page.evaluate("() => ['completed', 'failed', 'outcome_unknown', 'cancelled'].includes(run.run.state)"):
+            return
+        await page.wait_for_timeout(3000)
+    raise TimeoutError(f"the reinspection {run_id} never waited for its review")
+
+
+async def read_audit(page, record: dict, shots: Path) -> list[dict]:
+    """The project's audit workspace as the page shows it, restricted to this chain. / 页面所示的项目审计，限于本链路。"""
+    await open_hash(page, "#audit", "() => audit !== null")
+    await page.wait_for_timeout(2500)
+    await page.screenshot(path=str(shots / "loop-audit.png"), full_page=True)
+    entries = await page.evaluate("() => audit.entries")
+    ids = {record.get("run_id"), record.get("reinspection_run"), record.get("finding_id"),
+           (record.get("decided") or {}).get("order"), *record.get("approved", [])} - {None}
+    chain = [e for e in entries if (e.get("object") or {}).get("id") in ids or any(
+        str(v) in ids for v in (e.get("detail") or {}).values() if isinstance(v, str))]
+    return [{"at": e.get("at"), "action": e.get("action"), "actor_scheme": str(e.get("actor") or "").split(":")[0],
+             "actor": e.get("actor"), "object": e.get("object")} for e in chain]
+
+
 async def loop(page, args, shots: Path) -> dict:
     """P2 / P4 through the page: start a template, approve its flight, decide the finding as a reviewer, and with
     `--repair` report a repair and approve the reinspection flight until the round settles.
@@ -224,6 +283,8 @@ async def loop(page, args, shots: Path) -> dict:
     """
     record = {"started": time.monotonic(), "template": args.loop, "approved": [], "timeline": []}
     deadline = time.monotonic() + args.flight_timeout
+    if args.world:
+        set_world(args.world, "obstructed" if args.world.startswith("road") else "damaged", record)
     await open_hash(page, "#workflows", "() => workflows !== null")
     await page.select_option("#wfTemplate", args.loop)
     await page.wait_for_timeout(800)
@@ -262,6 +323,8 @@ async def loop(page, args, shots: Path) -> dict:
     await open_hash(page, "#business/order/" + order, f"() => subject && subject.order && subject.order.order_id === {json.dumps(order)}")
     await page.wait_for_selector("#repairOrder:not([disabled])", timeout=30000)
     rounds = await page.evaluate("subject.rounds.length")
+    if args.world:
+        set_world(args.world, "normal", record)
     await page.click("#repairOrder")
     await page.wait_for_selector("dialog#ask[open]")
     await page.fill("#askText", "browser probe repair feedback")
@@ -271,12 +334,20 @@ async def loop(page, args, shots: Path) -> dict:
     reinspection = await page.evaluate("subject.rounds[subject.rounds.length - 1].reinspection_run")
     record["reinspection_run"] = reinspection
     await follow_run(page, reinspection, record, shots, "() => ['completed', 'failed', 'outcome_unknown', 'cancelled']"
-                     ".includes(run.run.state)", deadline)
+                     ".includes(run.run.state) || run.nodes.some(n => n.activity === 'human_review' && n.state === "
+                     "'waiting')", deadline)
+    if args.world:
+        await decide_round(page, reinspection, record, shots, deadline)
+        await follow_run(page, reinspection, record, shots, "() => ['completed', 'failed', 'outcome_unknown', "
+                         "'cancelled'].includes(run.run.state)", deadline)
     await open_hash(page, "#business/order/" + order, f"() => subject && subject.order && subject.order.order_id === {json.dumps(order)}")
     await page.wait_for_timeout(2500)
     await page.screenshot(path=str(shots / "loop-order.png"), full_page=True)
     record["order"] = await page.evaluate("""() => ({state: subject.order.state, round: subject.order.round,
       rounds: subject.rounds.map(r => ({round: r.round, state: r.state, reasons: (r.conclusion || {}).reasons || []}))})""")
+    if args.world:
+        record["finding_after"] = await page.evaluate("() => subject.finding ? subject.finding.state : null")
+        record["audit"] = await read_audit(page, record, shots)
     return record
 
 
@@ -298,6 +369,9 @@ async def main() -> None:
     parser.add_argument("--loop-asset", default="asset_red")
     parser.add_argument("--review", choices=("confirmed", "dismissed"), default="confirmed")
     parser.add_argument("--repair", action="store_true", help="with --loop: report a repair and approve the reinspection")
+    parser.add_argument("--world", metavar="ASSET",
+                        help="with --loop --repair (P5 main scenario): damage this S1 asset before the run, remove the "
+                             "damage when the repair is reported, decide the round and read the audit workspace")
     parser.add_argument("--plan-timeout", type=float, default=180)
     parser.add_argument("--flight-timeout", type=float, default=900)
     args = parser.parse_args()

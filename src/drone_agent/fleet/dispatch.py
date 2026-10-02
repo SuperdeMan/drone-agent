@@ -62,6 +62,9 @@ class Operations:
     registries: dict[str, Registry]
     capabilities: dict[str, CapabilityDescriptor]
     migration: dict = field(default_factory=dict)
+    # P5 (D072): the pinned protocol profile of each vendor-managed dock, with its file digest.
+    # P5（D072）：每个厂商托管机场固定的协议档案及其文件摘要。
+    profiles: dict[str, tuple] = field(default_factory=dict)
 
     def registry(self, robot_id: str) -> Registry:
         return self.registries[self.catalog.robots[robot_id].site_id]
@@ -89,7 +92,11 @@ def build_operations(root: Path, ledger: BusinessLedger, catalog_path: Path, mem
     registries = {site_id: Registry(root, scene=root / site.scene) for site_id, site in catalog.sites.items()}
     capabilities = {robot_id: static_capability(root, robot.platform, robot_id)
                     for robot_id, robot in catalog.robots.items()}
-    return Operations(catalog, directory, store, registries, capabilities, migration)
+    from drone_agent.fleet.vendor import load_profile
+
+    profiles = {dock_id: load_profile(root, dock.backend.profile)
+                for dock_id, dock in catalog.docks.items() if dock.vendor_managed}
+    return Operations(catalog, directory, store, registries, capabilities, migration, profiles)
 
 
 def needs_of(record: dict) -> DispatchNeeds:
@@ -303,6 +310,9 @@ class Dispatch:
             eligibility = self.judge(binding["robot_id"], stage=Stage.PREPARE, needs=needs_of(record),
                                      activity=activity)
             self.record(eligibility, mission_id, version)
+            if self.catalog.docks[binding["dock_id"]].vendor_managed:
+                # The vendor opens its own lid when it executes the task (D072). / 厂商执行任务时自己开盖（D072）。
+                continue
             if eligibility.verdict is Verdict.ELIGIBLE and self.store.action_for(activity, "open_lid") is None:
                 action = self.store.request_action(binding["dock_id"], "open_lid", activity)
                 self.store.event(f"dock:{binding['dock_id']}", "action.requested", "service",
@@ -407,14 +417,15 @@ class Dispatch:
 
         Only a claimed or uncertain hold stops the chores: a soft reservation of a mission still waiting for its claim
         needs the charge to become eligible, so it must not block charging, and once it asked for the lid to open the
-        lid stays open (P2 finding, D057).
+        lid stays open (P2 finding, D057). Vendor-managed docks are skipped (D072).
 
         机场最近活动结束后关盖并开始充电。只有已领取或不确定的持有会停止这些动作：仍在等待领取的任务的软预约需要充电后
-        才能可派遣，因此不能阻止充电；它一旦请求开盖，舱盖就保持打开（P2 发现，D057）。
+        才能可派遣，因此不能阻止充电；它一旦请求开盖，舱盖就保持打开（P2 发现，D057）。厂商托管机场跳过（D072）。
         """
-        for dock_id in self.catalog.docks:
+        for dock_id, entry in self.catalog.docks.items():
             dock = self.store.dock_status(dock_id)
-            if dock is None:
+            if dock is None or entry.vendor_managed:
+                # A vendor-managed dock closes and charges by itself (D072). / 厂商托管机场自己关盖与充电（D072）。
                 continue
             holder = self.store.holders([f"{dock_id}.pad"]).get(f"{dock_id}.pad")
             held = self.store.reservation(holder) if holder else None

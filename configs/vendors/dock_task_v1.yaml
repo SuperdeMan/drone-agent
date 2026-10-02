@@ -1,0 +1,43 @@
+# Vendor dock task protocol, pinned version for the S3 contract tests (P5, D072). The structure follows publicly
+# documented dock-cloud task flows (prepare, execute, progress events, return home); the field names are this
+# project's own and nothing here has been checked against any vendor firmware or SDK. An acknowledgement only means
+# the vendor accepted the request; physical results come from progress, media and dock state. The platform can send
+# no low-level control at all; the vendor's local system owns flight safety, return home, geofencing and battery
+# protection, and its logs and safety events are not visible.
+#
+# 厂商机场任务协议，S3 合同测试固定的版本（P5，D072）。结构参照公开的机场云任务流程（准备、执行、进度事件、返航），
+# 字段名是本项目自定，未对照任何厂商固件或 SDK 核对。ACK 只表示厂商受理了请求；物理结果来自进度、媒体与机场状态。平台
+# 不能发送任何低层控制；飞行安全、返航、地理围栏与电池保护由厂商本地系统负责，其日志与安全事件不可见。
+format: drone.vendor-profile/v1
+schema_version: "0.1.0"
+profile_id: dock_task_v1
+protocol:
+  name: sim-dock-task
+  version: "1.0"
+  modeled_on: "public dock-cloud wayline task flows (prepare / execute / progress / return home); structure only, field names are this project's own"
+  verified_against_firmware: false
+task_types: [waypoint_inspection]
+commands:
+  prepare: {method: flighttask_prepare, resend_s: 2.0, give_up_s: 60.0}
+  execute: {method: flighttask_execute, resend_s: 2.0, give_up_s: 120.0}
+  cancel_before_takeoff: {method: flighttask_undo, resend_s: 2.0, give_up_s: 60.0}
+  cancel_in_flight: {method: return_home, resend_s: 2.0, give_up_s: 300.0}
+ack_semantics: accepted_only
+events:
+  progress: flighttask_progress
+  media: file_upload_callback
+  return_home: return_home_info
+  state: dock_state
+  statuses: [sent, in_progress, paused, canceled, failed, ok, partially_done, rejected, timeout]
+dedup_window_s: 600
+reconnect: {replays_last_progress: true}
+media_grace_s: 30
+state_period_s: 1.0
+visibility:
+  telemetry: [position, battery, flight_mode, dock_lid, aircraft_in_dock, charging, wind]
+  logs: none
+  safety_events: none
+safety_responsibility: vendor
+payloads: [rgb_camera]
+cross_dock: false
+low_level_control: none

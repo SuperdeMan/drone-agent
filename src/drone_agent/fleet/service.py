@@ -127,7 +127,7 @@ class MissionService:
     def __init__(self, *, root: Path, scene: Path, ledger: BusinessLedger, hub: FleetHub, signing_key: SigningKey,
                  approval_policy: ApprovalPolicy, planner=None, robot_id: str = "uav_01", airspace=None,
                  clock=utcnow, vision=None, provenance_context: SourceContext | None = None,
-                 operations: Operations | None = None):
+                 operations: Operations | None = None, backends: tuple[str, ...] | None = None):
         self.registry = Registry(root, scene=scene)
         self.ledger, self.hub, self.key, self.policy = ledger, hub, signing_key, approval_policy
         self.planner, self.robot_id, self.clock, self.vision = planner, robot_id, clock, vision
@@ -136,6 +136,14 @@ class MissionService:
         self.coordinator = PassthroughCoordinator(robot_id, self.catalog)
         self.defaults = self.registry.data.get("mission_defaults", {})
         self.source = provenance_context or source_context(root, scene, self.registry.sha256)
+        # D069: the execution backends this deployment allows; each catalog robot declares one of them.
+        # D069：本部署允许的执行后端；目录中的每台机器人声明其中之一。
+        self.backends = frozenset(backends or (self.source.execution_backend,))
+        if self.source.execution_backend not in self.backends or "real_device" in self.backends:
+            raise ValueError("the primary backend must be allowed and real devices never are")
+        if operations is not None and not operations.catalog.backends() <= self.backends:
+            raise ValueError("the catalog declares execution backends this deployment does not allow: "
+                             + ", ".join(sorted(operations.catalog.backends() - self.backends)))
         self.ops, self.dispatch = operations, None
         self.sources: dict[str, SourceContext] = {}
         if operations is not None:
@@ -163,12 +171,20 @@ class MissionService:
         # P4 (D063): the business engine, attached by the process entry when a business catalog is loaded.
         # P4（D063）：业务引擎；加载了业务目录时由进程入口挂上。
         self.business = None
+        # P5 (D072): the vendor gateway, attached when the catalog has vendor-managed docks.
+        # P5（D072）：厂商任务网关；目录中有厂商托管机场时挂上。
+        self.vendor = None
         hub.listeners.append(self._ingested)
 
     # ── P1 bindings and project checks / P1 绑定与项目检查 ──
 
     def _binding(self, mission_id: str) -> dict | None:
         return self.ops.store.binding(mission_id) if self.ops is not None else None
+
+    def _vendor(self, mission_id: str) -> bool:
+        """Whether the mission runs on a vendor-managed dock (D072). / 任务是否在厂商托管机场上运行（D072）。"""
+        binding = self._binding(mission_id)
+        return bool(binding) and binding["execution_backend"] == "vendor_protocol_sim"
 
     def _robot_of(self, mission_id: str) -> str:
         binding = self._binding(mission_id)
@@ -217,6 +233,17 @@ class MissionService:
             if delivery["kind"] == "mission_package" and delivery["version"] == version and delivery["acked_at"] \
                     and not delivery["ack_accepted"]:
                 return "delivery_rejected", datetime.fromisoformat(delivery["acked_at"])
+        if self._vendor(mission_id):
+            # The vendor's terminal progress; one that never flew counts like a robot's rejection (D072).
+            # 厂商的终态进度；从未起飞的终态如同机器人拒收（D072）。
+            from drone_agent.fleet.vendor_gateway import summarize
+
+            rows = self._journals(mission_id, version).get("vendor", [])
+            terminal = summarize(rows).terminal if rows and verify_chain(rows)[0] else None
+            if terminal is None:
+                return None
+            return ("mission_result" if terminal["physical"] else "delivery_rejected",
+                    datetime.fromisoformat(terminal["at"]))
         finished = self._finished_at(mission_id, version)
         return ("mission_result", finished) if finished else None
 
@@ -230,10 +257,13 @@ class MissionService:
         for item in found:
             self.ledger.record_issue(item, mission_id=mission_id, request_id=request_id or None)
 
-    def _record_version(self, mission_id: str, version: int, *, status: str, origin: str, **records) -> None:
+    def _record_version(self, mission_id: str, version: int, *, status: str, origin: str, sealed: dict | None = None,
+                        **records) -> None:
         """Persist the version and its trusted source in the same database write.
 
-        在同一次数据库写入中保存版本及其受信来源。
+        `sealed` adds immutable companion records to the same namespace (the P5 vendor task, D072).
+
+        在同一次数据库写入中保存版本及其受信来源。`sealed` 在同一命名空间追加不可覆盖的配套记录（P5 厂商任务，D072）。
         """
         planning = records.pop("planning", None) or planning_use(self.planner, records.get("planner"))
         if origin == "replan":
@@ -243,7 +273,11 @@ class MissionService:
         decision = dict(records.pop("decision", None) or {})
         binding = self._binding(mission_id)
         source = self.sources.get(binding["site_id"], self.source) if binding else self.source
-        decision[NAMESPACE] = {"run": seal(source.header(mission_id, version, planning))}
+        if binding and binding["execution_backend"] != source.execution_backend:
+            # The robot's own backend from the trusted binding (D069). / 来自受信绑定的机器人自身后端（D069）。
+            source = source.model_copy(update={"execution_backend": binding["execution_backend"]})
+        decision[NAMESPACE] = {"run": seal(source.header(mission_id, version, planning)),
+                               **{key: seal(value) for key, value in (sealed or {}).items()}}
         self.ledger.record_version(mission_id, version, status=status, origin=origin, decision=decision, **records)
 
     def provenance(self, mission_id: str) -> list[dict]:
@@ -309,7 +343,7 @@ class MissionService:
             raise ServiceError("auth.project_denied", f"{MISSION_SUBMIT} in {project_id}")
         if catalog.project_of(robot_id) != project_id:
             raise ServiceError("service.not_found", robot_id)
-        if catalog.robots[robot_id].execution_backend != self.source.execution_backend:
+        if catalog.robots[robot_id].execution_backend not in self.backends:
             raise ServiceError("dispatch.backend_mismatch",
                                f"{robot_id} runs {catalog.robots[robot_id].execution_backend}")
         mission_id = "m-" + uuid.uuid4().hex[:12]
@@ -369,12 +403,25 @@ class MissionService:
                     "collaboration": coordinator.collaboration(spec)}
         package = result.compile.package if result.compile else None
         status = "awaiting_approval" if result.blocked_at is None else "rejected"
+        sealed, found = None, list(result.issues)
+        if status == "awaiting_approval" and self._vendor(mission_id):
+            # The vendor task is pinned with the version, so the approver sees its digest (D072).
+            # 厂商任务与版本一起固定，审批人能看到其摘要（D072）。
+            from drone_agent.fleet.vendor import VendorError, compile_task
+
+            dock_id = self.ops.catalog.robots[robot].dock_id
+            try:
+                sealed = {"vendor_task": compile_task(package, self._registry(robot), *self.ops.profiles[dock_id],
+                                                      robot_id=robot, dock_id=dock_id)}
+            except VendorError as error:
+                status = "rejected"
+                found.append(issue("vendor.task_uncompilable", str(error)[:200], mission_id=mission_id))
         self._record_version(mission_id, 1, status=status, origin=request.channel.value, spec=spec,
                              planner=planner, planning=planning, compile=result.compile, admission=result.admission,
                              package=package, package_hash=package.package_hash if package else None,
-                             decision=decision)
+                             decision=decision, sealed=sealed)
         self.ledger.update_mission(mission_id, status=status, robot_id=robot, current_version=1)
-        self._issues(result.issues, mission_id, request.request_id)
+        self._issues(found, mission_id, request.request_id)
         if status == "awaiting_approval" and self._binding(mission_id) is not None:
             # A soft hold while the human decides; approval refreshes or retakes it (D055). / 人工决定期间的软预约。
             _, conflicts = self.dispatch.reserve(mission_id, 1)
@@ -435,7 +482,7 @@ class MissionService:
         catalog = self.ops.catalog
         if catalog.project_of(robot_id) != project_id:
             raise ServiceError("service.not_found", robot_id)
-        if catalog.robots[robot_id].execution_backend != self.source.execution_backend:
+        if catalog.robots[robot_id].execution_backend not in self.backends:
             raise ServiceError("dispatch.backend_mismatch",
                                f"{robot_id} runs {catalog.robots[robot_id].execution_backend}")
         registry = self._registry(robot_id)
@@ -610,6 +657,8 @@ class MissionService:
         self._check(caller, mission_id, MISSION_OPERATE)
         if not requested_by or requested_by.startswith(("a2a:", "policy:")):
             raise ServiceError("auth.identity_missing", "an identified operator must operate")
+        if action != "cancel" and self._vendor(mission_id):
+            raise ServiceError("vendor.action_unsupported", f"a vendor-managed dock takes no {action}")
         mission = self._mission(mission_id)
         if any(d["payload"].get("request_id") == request_id for d in self.ledger.deliveries(mission_id)
                if d["kind"] == "operator_request"):
@@ -772,6 +821,8 @@ class MissionService:
     def refresh(self, mission_id: str) -> dict:
         """Recompute derived state from the ledger; idempotent. / 从账本重新计算派生状态；幂等。"""
         self._mission(mission_id)
+        if self._vendor(mission_id):
+            return self._refresh_vendor(mission_id)
         if self._binding(mission_id) is not None:
             self._dispatch_state(mission_id)
         for delivery in self.ledger.deliveries(mission_id):
@@ -833,6 +884,139 @@ class MissionService:
         else:
             self._advance(self._mission(mission_id), bool(report and report.all_targets_completed), outcomes)
             self._deliver_ready(mission_id)
+        return self._view(mission_id)
+
+    def _vendor_verifications(self, mission_id: str, version: int, package: MissionPackage) -> dict[str, EffectVerdict]:
+        """The service's own verdict on each step's latest vendor media; there is no onboard verdict to agree with.
+
+        服务对每步最新厂商媒体的判定；没有可供比对的机载判定。
+        """
+        latest: dict[str, tuple[Evidence, dict]] = {}
+        for row in self.ledger.evidence(mission_id, version):
+            if not row["media_path"]:
+                continue
+            evidence = Evidence.model_validate(row["body"])
+            step = evidence.produced_by_skill_instance
+            if step not in latest or evidence.time_window.timestamp > latest[step][0].time_window.timestamp:
+                latest[step] = (evidence, row)
+        stored = {r["evidence_id"]: r["body"] for r in self.ledger.verifications(mission_id)}
+        registry = self._registry(self._robot_of(mission_id))
+        found = {}
+        for step, (evidence, row) in latest.items():
+            result = verify(evidence, self.hub.media(row["media_path"]), row["width"], row["height"], package,
+                            registry, None)
+            body = result.model_dump(mode="json")
+            previous = stored.get(evidence.evidence_id)
+            if previous is None or {k: v for k, v in previous.items() if k != "verified_at"} != {
+                    k: v for k, v in body.items() if k != "verified_at"}:
+                self.ledger.record_verification(body)
+            found[step] = result.final_verdict
+        return found
+
+    def _issue_once(self, mission_id: str, code: str, message: str = "") -> None:
+        if not any(i["code"] == code for i in self.ledger.issues(mission_id)):
+            self.ledger.record_issue(issue(code, message, mission_id=mission_id), mission_id=mission_id)
+
+    def _refresh_vendor(self, mission_id: str) -> dict:
+        """A vendor-managed task: state from the gateway's vendor journal, the effect only from verified media (D072).
+
+        No automatic retry flies again; a terminal that never flew ends the version like a robot's rejection, an undo
+        before execution cancels it.
+
+        厂商托管任务：状态来自网关的厂商账本，效果只来自复核过的媒体（D072）。不会自动重飞；从未起飞的终态如同机器人拒收结束版本，
+        执行前的撤销使其取消。
+        """
+        from drone_agent.fleet.vendor_gateway import sealed_task, summarize, vendor_outcomes
+
+        self._dispatch_state(mission_id)
+        for delivery in self.ledger.deliveries(mission_id):
+            record = self.ledger.version(mission_id, delivery["version"])
+            if delivery["kind"] != "mission_package" or delivery["acked_at"] is None or record["status"] != "queued":
+                continue
+            if delivery["ack_accepted"]:
+                self.ledger.update_version(mission_id, delivery["version"], status="delivered")
+            else:
+                reason = delivery["ack_reason"] or ""
+                self.ledger.update_version(mission_id, delivery["version"], status="delivery_rejected")
+                self._issue_once(mission_id, reason if reason in ISSUE_CODES else "service.transport_error", reason)
+        packages, outcomes, verdicts, summaries = {}, {}, {}, {}
+        for record in self.ledger.versions(mission_id):
+            if record["status"] not in (*DELIVERED, "withdrawn"):
+                continue
+            version = record["version"]
+            self._evidence_sources(mission_id, version)
+            rows = self._journals(mission_id, version).get("vendor", [])
+            package = MissionPackage.model_validate(record["package"])
+            if rows and not verify_chain(rows)[0]:
+                # Never decide from a broken mirror. / 不从损坏的镜像作出决定。
+                packages[version] = package
+                outcomes[version] = {node.task_id: StepOutcome(
+                    mission_id=mission_id, mission_version=version, step_id=node.task_id, robot_id=node.robot_id,
+                    execution_status=ExecutionStatus.UNKNOWN, effect_verdict=EffectVerdict.UNKNOWN)
+                    for node in package.nodes}
+                continue
+            summary = summaries[version] = summarize(rows)
+            terminal, status = summary.terminal, record["status"]
+            if status == "withdrawn" and not rows:
+                continue
+            if terminal and not terminal["physical"]:
+                status = "withdrawn" if terminal["status"] == "undone" else "delivery_rejected"
+            elif status in ("queued", "delivered") and summary.executing:
+                status = "running"
+            if terminal and terminal["physical"] and status in ("queued", "delivered", "running"):
+                status = "finished"
+            if status != record["status"]:
+                self.ledger.update_version(mission_id, version, status=status)
+            packages[version] = package
+            if status in ("delivery_rejected", "withdrawn"):
+                outcomes[version] = {}  # nothing flew: every target not run / 没有飞行：每个目标都未执行
+                continue
+            step = self._vendor_verifications(mission_id, version, package)
+            verdicts.update({(version, node): verdict for node, verdict in step.items()})
+            task = sealed_task(record)
+            outcomes[version] = vendor_outcomes(task, summary, self._robot_of(mission_id), step) if task else {}
+        report = None
+        if packages:
+            report = build_report(mission_id, packages, outcomes, verdicts, self.ledger.facts(mission_id),
+                                  provenance=self.provenance(mission_id))
+            previous = self.ledger.report(mission_id)
+            body = report.model_dump(mode="json")
+            if previous is None or {k: v for k, v in previous.items() if k != "generated_at"} != {
+                    k: v for k, v in body.items() if k != "generated_at"}:
+                self.ledger.record_report(mission_id, report)
+        mission = self._mission(mission_id)
+        record = self.ledger.version(mission_id, mission["current_version"])
+        summary = summaries.get(mission["current_version"])
+        status = record["status"] if record else None
+        if status == "withdrawn" and mission["status"] != "cancelled":
+            self.ledger.update_mission(mission_id, status="cancelled")
+        elif status == "delivery_rejected" and mission["status"] != "delivery_rejected":
+            if summary is not None and summary.terminal:
+                self._issue_once(mission_id, f"vendor.{summary.terminal['status']}", "nothing flew")
+            self.ledger.update_mission(mission_id, status="delivery_rejected")
+        elif status in ("queued", "delivered", "running") and mission["status"] != status:
+            self.ledger.update_mission(mission_id, status=status)
+        elif status == "finished" and summary is not None and summary.terminal is not None:
+            terminal = summary.terminal
+            pending = terminal["status"] == "ok" and not summary.media_missing and \
+                not any(m["accepted"] for m in summary.media.values())
+            if report is not None and report.all_targets_completed:
+                target = "completed"
+            elif pending:
+                target = "verifying"
+            else:
+                target = "incomplete"
+                if summary.cancel is not None:
+                    self._issue_once(mission_id, "replan.cancelled_by_operator", "cancelled through the vendor")
+                elif terminal["status"] == "ok":
+                    self._issue_once(mission_id, "vendor.evidence_missing", "no verified vendor media")
+                else:
+                    code = {"partially_done": "vendor.outcome_partial"}.get(
+                        terminal["status"], f"vendor.outcome_{terminal['status']}")
+                    self._issue_once(mission_id, code if code in ISSUE_CODES else "vendor.outcome_failed",
+                                     terminal["status"])
+            if mission["status"] != target:
+                self.ledger.update_mission(mission_id, status=target)
         return self._view(mission_id)
 
     def _advance(self, mission: dict, completed: bool, outcomes: dict[int, dict[str, StepOutcome]]) -> None:
@@ -990,6 +1174,8 @@ class MissionService:
                 self.tick_scheduler()
             if self.business is not None:
                 await self.tick_analysis()
+            if self.vendor is not None:
+                await self.tick_vendor()
             for mission_id in sorted(self.dirty):
                 self.dirty.discard(mission_id)
                 try:
@@ -1030,6 +1216,13 @@ class MissionService:
             await self.business.tick()
         except Exception as error:  # keep serving; the problem is visible / 继续服务；问题可见
             self.ledger.record_issue(issue("service.degraded", f"analysis: {type(error).__name__}: {error}"[:300]))
+
+    async def tick_vendor(self) -> None:
+        """One P5 background pass of the vendor gateway (D072). / 一次 P5 厂商网关后台处理（D072）。"""
+        try:
+            self.dirty.update(await self.vendor.tick())
+        except Exception as error:  # keep serving; the problem is visible / 继续服务；问题可见
+            self.ledger.record_issue(issue("service.degraded", f"vendor: {type(error).__name__}: {error}"[:300]))
 
     # ── views / 视图 ──
 
@@ -1116,9 +1309,37 @@ class MissionService:
                                                         "execution_backend", "catalog_sha256")} if binding else \
                 {"project_id": self.ops.catalog.legacy_project.project_id, "legacy": True}
             value["dispatch"] = self._dispatch_view(mission_id)
+            if self._vendor(mission_id):
+                value["vendor"] = self._vendor_view(mission_id, versions)
         if self.scheduler is not None:
             value["task"] = self.scheduler.mission_task(mission_id)
         return value
+
+    def _vendor_view(self, mission_id: str, versions: list[dict]) -> dict:
+        """What the platform knows of a vendor task: the pinned task, the protocol journal, and what it cannot see.
+
+        平台对厂商任务所知的内容：固定的任务、协议账本，以及它看不到的部分。
+        """
+        from drone_agent.fleet.vendor_gateway import sealed_task, summarize
+
+        dock_id = self._binding(mission_id)["dock_id"]
+        profile, profile_sha = self.ops.profiles[dock_id]
+        found = []
+        for entry in versions:
+            record = self.ledger.version(mission_id, entry["version"])
+            task = sealed_task(record)
+            rows = self._journals(mission_id, entry["version"]).get("vendor", [])
+            entry["vendor_task_sha256"] = task.sha256 if task else None
+            entry["events"] = entry["events"] + [{"journal": "vendor", "seq": r["seq"], "kind": r["kind"],
+                                                  "timestamp": r["timestamp"], "data": r["data"]} for r in rows]
+            found.append({"version": entry["version"], "flight_id": task.flight_id if task else None,
+                          "task_sha256": task.sha256 if task else None, "steps": len(task.steps) if task else 0,
+                          "summary": summarize(rows).as_view() if rows else None})
+        return {"profile": {"profile_id": profile.profile_id, "sha256": profile_sha,
+                            "protocol": f"{profile.protocol.name}/{profile.protocol.version}",
+                            "verified_against_firmware": False},
+                "safety": "vendor_responsibility", "visibility": profile.visibility.model_dump(mode="json"),
+                "versions": found}
 
     def summary(self, mission_id: str, caller: Caller | None = None) -> dict:
         """The read-only view an external agent may receive (D033). / 外部 agent 可以得到的只读视图（D033）。"""

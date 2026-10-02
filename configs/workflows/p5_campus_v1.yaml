@@ -1,0 +1,104 @@
+# P5 S0 workflow catalog (D071, D072) for the operations catalog p5_campus_v1. `road_watch` / `road_reinspection` are the
+# second business template (campus road obstacle candidate review): a road report event, a person or a disabled
+# patrol schedule starts an inspection of the road segment; a suspected obstacle is only a candidate a reviewer decides;
+# a confirmed one becomes one clearance order; clearance feedback starts a reinspection that settles under
+# reinspection-v1. `vendor_watch` / `vendor_reinspection` run the same loop on the vendor-managed dock (S3). Only
+# existing activities and parameters are used; every flight still needs its own human approval (D032).
+#
+# P5 S0 工作流目录（D071、D072），对应运营目录 p5_campus_v1。`road_watch` / `road_reinspection` 是第二业务模板（园区道路障碍
+# 候选复核）：道路报告事件、人工或默认停用的巡逻排班启动对道路段的巡检；疑似障碍只是由 reviewer 决定的候选；确认后成为一张
+# 清障工单；清障反馈启动复检，按 reinspection-v1 结算。`vendor_watch` / `vendor_reinspection` 在厂商托管机场上运行同一闭环
+# （S3）。只用既有活动与参数；每次飞行仍需各自的人工审批（D032）。
+format: drone.workflow-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p5_campus_v1
+operations_catalog: p5_campus_v1
+analyzers:
+  # The logical frame's marker covers 40x40 of 160x120 (0.0833); an obstacle or damage band over 8 rows leaves 0.0667.
+  # 逻辑帧的标记占 160x120 中的 40x40（0.0833）；覆盖 8 行的障碍或损伤带之后为 0.0667。
+  signature_p5_s0_v1:
+    kind: deterministic
+    method: color_signature
+    bands: {asset_red: [0.075, 0.095], asset_blue: [0.075, 0.095], road_north: [0.075, 0.095]}
+workflows:
+  - workflow_id: road_watch
+    version: 1
+    project_id: campus_ops
+    title: "Road obstacle watch: inspect the road segment, review the candidate, one clearance order per finding / 道路障碍巡检：巡检道路段、复核候选、每个发现一张清障工单"
+    inputs:
+      segment: {kind: asset_id, choices: [road_north]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+      - {trigger_id: road_report, kind: event, source: "event:road-reports", event_type: road.report, inputs_from_event: [segment]}
+      - trigger_id: patrol
+        kind: schedule
+        schedule: {every: interval, minutes: 360}
+        start_window_s: 600
+        inputs: {segment: road_north}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_fa, volume_id: campus_training, asset: {input: segment}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_p5_s0_v1, findings: true}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - node_id: clearance_order
+        activity: create_work_order
+        when: [{node: review, output: decision, equals: confirmed}]
+        params: {review_from: review, reinspection: {workflow_id: road_reinspection, version: 1, asset_input: segment}}
+      - {node_id: report, activity: build_report, requires: done, after: [clearance_order]}
+    budget: {max_missions: 1}
+  - workflow_id: road_reinspection
+    version: 1
+    project_id: campus_ops
+    title: "Road reinspection after clearance feedback: a new flight, the analysis, the round's review and the settlement / 清障反馈后的道路复检：新飞行、分析、本轮复核与结算"
+    inputs:
+      segment: {kind: asset_id, choices: [road_north]}
+    triggers:
+      - {trigger_id: reinspection, kind: internal}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_fa, volume_id: campus_training, asset: {input: segment}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_p5_s0_v1, findings: true, purpose: reinspection}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: false}], params: {analysis_from: analyze}}
+      - {node_id: settle, activity: settle_reinspection, requires: done, after: [analyze, review], params: {analysis_from: analyze, review_from: review}}
+      - {node_id: report, activity: build_report, requires: done, after: [settle]}
+    budget: {max_missions: 1}
+  - workflow_id: vendor_watch
+    version: 1
+    project_id: vendor_ops
+    title: "Vendor dock watch: a vendor-managed task, its media analysed, the candidate reviewed / 厂商机场巡检：厂商托管任务、分析其媒体、复核候选"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue, road_north]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+      - trigger_id: rounds
+        kind: schedule
+        schedule: {every: interval, minutes: 30}
+        start_window_s: 300
+        inputs: {asset: asset_red}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_v1, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_p5_s0_v1, findings: true}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - node_id: work_order
+        activity: create_work_order
+        when: [{node: review, output: decision, equals: confirmed}]
+        params: {review_from: review, reinspection: {workflow_id: vendor_reinspection, version: 1, asset_input: asset}}
+      - {node_id: report, activity: build_report, requires: done, after: [work_order]}
+    budget: {max_missions: 1}
+  - workflow_id: vendor_reinspection
+    version: 1
+    project_id: vendor_ops
+    title: "Vendor dock reinspection after repair feedback / 维修反馈后的厂商机场复检"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue, road_north]}
+    triggers:
+      - {trigger_id: reinspection, kind: internal}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_v1, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_p5_s0_v1, findings: true, purpose: reinspection}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: false}], params: {analysis_from: analyze}}
+      - {node_id: settle, activity: settle_reinspection, requires: done, after: [analyze, review], params: {analysis_from: analyze, review_from: review}}
+      - {node_id: report, activity: build_report, requires: done, after: [settle]}
+    budget: {max_missions: 1}

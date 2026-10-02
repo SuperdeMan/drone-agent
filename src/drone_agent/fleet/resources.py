@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import AwareDatetime, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, ConfigDict, Field, model_serializer, model_validator
 
 from drone_agent.contracts import CapabilityDescriptor, RobotStatus
 from drone_agent.contracts.common import ContractModel
@@ -187,30 +187,73 @@ class SiteEntry(ResourceModel):
 
 
 class DockBackendBinding(ResourceModel):
-    """The only backend kind P1 accepts is a logical simulator (D055). / P1 只接受逻辑模拟后端（D055）。"""
+    """A logical dock simulator (D055), or a vendor-managed dock simulated at its protocol (P5, D072).
 
-    kind: Literal["logical_sim"]
+    A vendor dock names the protocol profile its gateway speaks; the profile path is left out of the canonical form
+    while unused, so every P1–P4 catalog keeps its digest. Real devices are never accepted.
+
+    逻辑机场模拟器（D055），或在协议层模拟的厂商托管机场（P5，D072）。厂商机场写明其网关所用的协议档案；未使用时档案路径
+    不进入规范形式，因此每个 P1–P4 目录的摘要保持不变。从不接受真实设备。
+    """
+
+    kind: Literal["logical_sim", "vendor_protocol_sim"]
     principal: str = Field(pattern=DOCK_PRINCIPAL)
+    profile: str | None = Field(default=None, min_length=1,
+                                description="vendor protocol profile file / 厂商协议档案文件")
+
+    @model_validator(mode="after")
+    def _profile(self):
+        if (self.kind == "vendor_protocol_sim") != (self.profile is not None):
+            raise ValueError("a vendor dock names its protocol profile, and only a vendor dock does")
+        return self
+
+    @model_serializer(mode="wrap")
+    def _canonical(self, handler):
+        data = handler(self)
+        if self.profile is None:
+            data.pop("profile", None)
+        return data
 
 
 class DockEntry(ResourceModel):
-    """A dock, the robots it serves and the backend bound to report for it. / 机场、其服务的机器人与绑定的报告后端。"""
+    """A dock, the robots it serves and the backend bound to report for it.
+
+    A vendor-managed dock (P5, D072) runs its own lid and charging, so the platform requests none of its actions.
+
+    机场、其服务的机器人与绑定的报告后端。厂商托管机场（P5，D072）自己负责舱盖与补能，平台不请求它的任何动作。
+    """
 
     site_id: str = Field(pattern=ID)
     vendor: str = Field(min_length=1)
     model: str = Field(min_length=1)
     serves: tuple[str, ...] = Field(min_length=1)
-    actions: tuple[DockAction, ...] = Field(min_length=1)
+    actions: tuple[DockAction, ...] = ()
     backend: DockBackendBinding
+
+    @model_validator(mode="after")
+    def _actions(self):
+        if self.vendor_managed and self.actions:
+            raise ValueError("the platform requests no action of a vendor-managed dock")
+        if not self.vendor_managed and not self.actions:
+            raise ValueError("a platform-managed dock lists the actions it accepts")
+        return self
+
+    @property
+    def vendor_managed(self) -> bool:
+        """The vendor's local system runs the lid and the charging (D072). / 舱盖与补能由厂商本地系统负责（D072）。"""
+        return self.backend.kind == "vendor_protocol_sim"
 
 
 class RobotEntry(ResourceModel):
-    """A robot fixed to one dock, with the execution backend of this deployment. / 固定于一个机场的机器人及其执行后端。"""
+    """A robot fixed to one dock, with its execution backend (D069: declared per robot by the trusted catalog).
+
+    固定于一个机场的机器人及其执行后端（D069：由受信目录按机器人声明）。
+    """
 
     site_id: str = Field(pattern=ID)
     dock_id: str = Field(pattern=ID)
     platform: str = Field(min_length=1)
-    execution_backend: Literal["logical_sim", "px4_sitl"]
+    execution_backend: Literal["logical_sim", "px4_sitl", "vendor_protocol_sim"]
 
 
 class DispatchPolicy(ResourceModel):
@@ -266,6 +309,10 @@ class OperationsCatalog(ResourceModel):
             dock = self.docks.get(robot.dock_id)
             if dock is None or robot_id not in dock.serves:
                 raise ValueError(f"{robot_id} is not served by its dock")
+            if dock.vendor_managed != (robot.execution_backend == "vendor_protocol_sim"):
+                # A vendor task runs only on the vendor's aircraft in the vendor's dock (D072).
+                # 厂商任务只在厂商机场的厂商飞行器上运行（D072）。
+                raise ValueError(f"{robot_id} and its dock must both be vendor-managed or neither")
         if set(self.robots) & set(self.docks):
             raise ValueError("robot and dock identifiers must be distinct")
         binding = self.default_binding
@@ -297,9 +344,15 @@ class OperationsCatalog(ResourceModel):
         """Docks this backend principal may report for. / 该后端身份可以报告的机场。"""
         return sorted(dock_id for dock_id, dock in self.docks.items() if dock.backend.principal == principal)
 
+    def backends(self) -> frozenset[str]:
+        """Every execution backend the catalog declares (D069). / 目录声明的全部执行后端（D069）。"""
+        return frozenset(robot.execution_backend for robot in self.robots.values())
+
     def check_files(self, root: Path) -> None:
-        """Every site map and platform file must exist in the checkout. / 每个站点地图与平台文件都必须存在。"""
-        for path in [site.scene for site in self.sites.values()] + [r.platform for r in self.robots.values()]:
+        """Every site map, platform and vendor profile file must exist in the checkout. / 每个站点地图、平台与厂商档案文件都必须存在。"""
+        profiles = [dock.backend.profile for dock in self.docks.values() if dock.backend.profile]
+        for path in [site.scene for site in self.sites.values()] + [r.platform for r in self.robots.values()] + \
+                profiles:
             if Path(path).is_absolute() or ".." in Path(path).parts or not (root / path).is_file():
                 raise ValueError(f"catalog file {path} is missing or outside the repository")
 
@@ -416,7 +469,7 @@ class DockStatus(ResourceModel):
     """The service projection of the last accepted report. / 最新接受报告的服务投影。"""
 
     dock_id: str
-    source: Literal["logical_sim"]
+    source: Literal["logical_sim", "vendor_protocol_sim"]
     session: SessionState
     complete_reports: int = Field(ge=0)
     report: DockStatusReport
@@ -508,17 +561,20 @@ def evaluate(catalog: OperationsCatalog, robot_id: str, *, stage: Stage, now: da
 
     `holders` maps each of the robot's resources to the activity key actively holding it. At the claim stage the
     lid must be open and `lid_confirmed` (this activity's open action completed per a later report), and this
-    activity must hold every resource. `extra` carries reasons a caller judged on the same snapshot (the P3 airspace
-    cells, D059); they enter the digest and the one verdict rule.
+    activity must hold every resource. A vendor-managed dock opens its own lid once the vendor executes the task
+    (D072), so only a jammed or unknown lid counts there. `extra` carries reasons a caller judged on the same snapshot
+    (the P3 airspace cells, D059); they enter the digest and the one verdict rule.
 
     判定一个快照；相同输入总得到相同的判定与原因。`holders` 把机器人的每项资源映射到当前有效持有它的活动键。
     领取阶段要求舱盖为 open 且 `lid_confirmed`（本活动的开盖动作已由后续报告证实完成），并且本活动持有全部资源。
-    `extra` 是调用方在同一快照上判定的原因（P3 空域单元，D059）；它们进入摘要并适用同一条判定规则。
+    厂商托管机场在厂商执行任务时自己开盖（D072），因此那里只有卡滞或未知的舱盖才计入。`extra` 是调用方在同一快照上
+    判定的原因（P3 空域单元，D059）；它们进入摘要并适用同一条判定规则。
     """
     policy, robot = catalog.policy, catalog.robots.get(robot_id)
     reasons: set[str] = set(extra)
     holders = dict(holders or {})
     dock_id = robot.dock_id if robot else None
+    vendor_lid = dock_id is not None and dock_id in catalog.docks and catalog.docks[dock_id].vendor_managed
     if robot is None:
         reasons.add("robot.unbound")
     if dock is None or dock.dock_id != dock_id:
@@ -538,9 +594,9 @@ def evaluate(catalog: OperationsCatalog, robot_id: str, *, stage: Stage, now: da
             reasons.add("dock.lid_jammed")
         elif report.lid is LidState.UNKNOWN:
             reasons.add("dock.lid_unknown")
-        elif stage is Stage.CLAIM and report.lid is not LidState.OPEN:
+        elif stage is Stage.CLAIM and not vendor_lid and report.lid is not LidState.OPEN:
             reasons.add("dock.lid_not_open")
-        elif stage is Stage.CLAIM and not lid_confirmed:
+        elif stage is Stage.CLAIM and not vendor_lid and not lid_confirmed:
             reasons.add("dock.lid_open_unconfirmed")
         if report.aircraft is Presence.ABSENT:
             reasons.add("dock.aircraft_absent")

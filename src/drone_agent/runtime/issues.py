@@ -40,6 +40,7 @@ class IssueLayer(StrEnum):
     DISPATCH = "dispatch"  # P1 resources, reservations and the delivery claim (D055) / P1 资源、预约与交付领取（D055）
     WORKFLOW = "workflow"  # P2 workflow triggers, runs and business records (D057) / P2 工作流触发、运行与业务记录（D057）
     SCHEDULING = "scheduling"  # P3 tasks, assignments and airspace holds (D059) / P3 任务、分配与空域持有（D059）
+    VENDOR = "vendor"  # P5 vendor-managed dock tasks (D072) / P5 厂商托管机场任务（D072）
 
 
 class Severity(StrEnum):
@@ -176,6 +177,19 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "task.not_cancellable": IssueLayer.SCHEDULING,
     "task.rejected": IssueLayer.SCHEDULING,
     "task.withdrawn": IssueLayer.SCHEDULING,
+    # P5 vendor-managed docks (D072) / P5 厂商托管机场（D072）
+    "vendor.action_unsupported": IssueLayer.VENDOR,
+    "vendor.task_uncompilable": IssueLayer.VENDOR,
+    "vendor.task_mismatch": IssueLayer.VENDOR,
+    "vendor.prepare_rejected": IssueLayer.VENDOR,
+    "vendor.execute_rejected": IssueLayer.VENDOR,
+    "vendor.unreachable": IssueLayer.VENDOR,
+    "vendor.evidence_missing": IssueLayer.VENDOR,
+    "vendor.outcome_failed": IssueLayer.VENDOR,
+    "vendor.outcome_partial": IssueLayer.VENDOR,
+    "vendor.outcome_timeout": IssueLayer.VENDOR,
+    "vendor.outcome_rejected": IssueLayer.VENDOR,
+    "vendor.outcome_canceled": IssueLayer.VENDOR,
 }
 
 # Console actions a client may offer; anything else is dropped, never executed.

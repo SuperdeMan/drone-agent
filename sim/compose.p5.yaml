@@ -1,0 +1,43 @@
+# P5 S1 cases (D071), layered on compose.m2.yaml, compose.p1.yaml and compose.p4.yaml with the same networks, images,
+# secrets and logical dock backend; the runner points the simulator at the P5 image (the M2 world plus the road
+# marking). The uplink, guardian and executive load the P5 S1 map (the M2 campus plus `observe_road` and `road_north`), as
+# the aircraft resolves routes and the image profile from its own map. The mission service loads the p5_s1_v1 catalogs
+# and the P5 harness member list; analyses are the deterministic colour-signature plugin, so no model is configured. The runner places and removes the obstacle model in
+# the Gazebo world through the world's own create / remove services; nothing here can reach the guardian. The judge runs
+# the M2 flight judge per mission plus the P1, P2 and P4 checks with the P5 catalogs.
+#
+# P5 S1 用例（D071），叠加在 compose.m2.yaml、compose.p1.yaml 与 compose.p4.yaml 之上，网络、镜像、密钥与逻辑机场后端相同；
+# 执行器把仿真器指向 P5 镜像（M2 世界加道路标线）。uplink、guardian 与 executive 加载 P5 S1 地图（M2 园区加 `observe_road` 与
+# `road_north`），因为飞行器按自己的地图解析航线与图像档案。任务服务加载 p5_s1_v1 目录与 P5 编排成员列表；分析使用确定性颜色特征
+# 插件，不配置模型。执行器经 Gazebo 世界自身的 create / remove 服务放置与移除障碍物模型；这里没有任何东西能触达 guardian。裁判对每个
+# 任务运行 M2 飞行裁判，另以 P5 目录做 P1、P2 与 P4 检查。
+services:
+  mission-service:
+    command: [python3, -m, drone_agent.fleet.main, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
+              --planner, "${DRONE_M2_PLANNER:?}", --fixtures, /input/planner-fixtures.json, --state, /state,
+              --tls, /tls, --signing-key, /secrets/approval-signing.key, --api, /run/mission/api.sock,
+              --listen, "0.0.0.0:8450", --transport, "${DRONE_M2_TRANSPORT:-grpc}",
+              --zenoh-listen, "tls/0.0.0.0:7447", --execution-backend, px4_sitl,
+              --catalog, /workspace/configs/sites/p5_s1_v1.yaml,
+              --members, /workspace/configs/sites/p5_members_s1.yaml,
+              --workflows, /workspace/configs/workflows/p5_s1_v1.yaml,
+              --business, /workspace/configs/analysis/p5_s1_v1.yaml, --vision, none]
+  judge:
+    command: [python3, -m, drone_agent.eval.judge_p5, /run, --layer, s1, --root, /workspace,
+              --output, /output/result.json]
+  uplink:
+    command: [python3, -m, drone_agent.runtime.uplink, --scene, /workspace/configs/scenarios/p5_site_s1_v1.yaml,
+              --transport, "${DRONE_M2_TRANSPORT:-grpc}", --service, "${DRONE_M2_FLEET_TARGET:-mission-service:8450}",
+              --server-name, mission-service, --tls, /tls,
+              --trust, /trust/trust.json, --inbox, /inbox, --mailbox, /mailbox, --aircraft, /aircraft,
+              --state, /uplink]
+  guardian:
+    command: [python3, -m, drone_agent.runtime.launch, guardian, --simulation,
+              --scene, /workspace/configs/scenarios/p5_site_s1_v1.yaml, --trust, /trust/trust.json,
+              --robot-state, /robot/authority.json, --package, "/inbox/history/${DRONE_M2_PACKAGE:?}",
+              --fault, "/input/fault-v${DRONE_M2_VERSION:?}.json"]
+  executive:
+    command: [python3, -m, drone_agent.runtime.launch, executive,
+              --scene, /workspace/configs/scenarios/p5_site_s1_v1.yaml, --trust, /trust/trust.json,
+              --package, "/inbox/history/${DRONE_M2_PACKAGE:?}", --epoch, "${DRONE_M2_EPOCH:?}",
+              --operator-mailbox, /mailbox/operator.json]

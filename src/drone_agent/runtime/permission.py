@@ -58,6 +58,8 @@ WORKFLOW_EVENT = "workflow.event"
 ANALYSIS_READ = "analysis.read"
 ANALYSIS_RUN = "analysis.run"
 ANALYSIS_REFERENCE = "analysis.reference"
+# P5 project audit (D070): every project role reads its project's audit trail. / P5 项目审计（D070）：全部项目角色可读本项目审计。
+AUDIT_READ = "audit.read"
 
 ALL_SCOPES: frozenset[str] = frozenset(
     {
@@ -82,6 +84,7 @@ ALL_SCOPES: frozenset[str] = frozenset(
         ANALYSIS_READ,
         ANALYSIS_RUN,
         ANALYSIS_REFERENCE,
+        AUDIT_READ,
     }
 )
 
@@ -106,7 +109,8 @@ class TrustLevel(StrEnum):
 TRUST_LEVEL_CAPS: dict[TrustLevel, frozenset[str]] = {
     TrustLevel.FIRST_PARTY: frozenset({MISSION_SUBMIT, MISSION_READ, MISSION_APPROVE, MISSION_OPERATE, CAMERA_READ,
                                        RESOURCE_READ, RESOURCE_MAINTAIN, WORKFLOW_READ, WORKFLOW_RUN, WORKFLOW_REVIEW,
-                                       WORKFLOW_DRAFT, ANALYSIS_READ, ANALYSIS_RUN, ANALYSIS_REFERENCE}),
+                                       WORKFLOW_DRAFT, ANALYSIS_READ, ANALYSIS_RUN, ANALYSIS_REFERENCE,
+                                       AUDIT_READ}),
     TrustLevel.THIRD_PARTY: frozenset({MISSION_SUBMIT, MISSION_READ}),
     TrustLevel.TOOL: frozenset({MISSION_READ}),
     TrustLevel.ANONYMOUS: frozenset({MISSION_READ, CAMERA_READ}),
@@ -127,7 +131,7 @@ class Role(StrEnum):
     ADMIN = "admin"
 
 
-_READ = frozenset({MISSION_READ, RESOURCE_READ, CAMERA_READ, WORKFLOW_READ, ANALYSIS_READ})
+_READ = frozenset({MISSION_READ, RESOURCE_READ, CAMERA_READ, WORKFLOW_READ, ANALYSIS_READ, AUDIT_READ})
 # Scopes one role grants inside its project. / 单个角色在其项目内授予的 scope。
 ROLE_SCOPES: dict[Role, frozenset[str]] = {
     Role.VIEWER: _READ,

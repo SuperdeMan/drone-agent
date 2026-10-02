@@ -182,11 +182,19 @@ class OperationsStore:
                    (subject, kind, actor, _dump(body or {}), self._now()))
 
     def events(self, subject: str | None = None, *, prefix: str | None = None, limit: int = 200) -> list[dict]:
+        """Audit rows of one subject or of every subject starting with `prefix`, oldest first.
+
+        The prefix is a binary range, so the `(subject, id)` index serves it however many rows the table holds (a
+        `LIKE` pattern scanned the whole table and treated `_` as a wildcard; D070).
+
+        一个主题或以 `prefix` 开头的全部主题的审计行，按时间正序。前缀按二进制区间查询，无论表有多少行都能用上 `(subject, id)`
+        索引（`LIKE` 模式会扫全表，并把 `_` 当通配符；D070）。
+        """
         if subject is not None:
             rows = self._rows("SELECT * FROM op_events WHERE subject=? ORDER BY id DESC LIMIT ?", (subject, limit))
         elif prefix is not None:
-            rows = self._rows("SELECT * FROM op_events WHERE subject LIKE ? ORDER BY id DESC LIMIT ?",
-                              (prefix + "%", limit))
+            rows = self._rows("SELECT * FROM op_events WHERE subject >= ? AND subject < ? ORDER BY id DESC LIMIT ?",
+                              (prefix, prefix + "\U0010ffff", limit))
         else:
             rows = self._rows("SELECT * FROM op_events ORDER BY id DESC LIMIT ?", (limit,))
         return [{**row, "body": _load(row["body"])} for row in reversed(rows)]

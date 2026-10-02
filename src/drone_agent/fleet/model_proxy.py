@@ -4,12 +4,15 @@ The mission service holds the approval signing key and the model key and joins i
 process joins that internal network and one egress network, accepts `CONNECT host:port` only for the exact
 host:port pairs it was started with, and then copies bytes both ways. TLS stays end to end, so it never sees a
 request, an answer or a key. Anything else (another target, another method, an oversized or malformed head) is
-refused. Every decision is logged as one JSON line with the target and the outcome, never content.
+refused. Every decision is logged as one JSON line with the target and the outcome, never content. `--throttle-file`
+(P5 soak, D073) is a harness-only switch written by the host: while it names a future `until`, every allowed CONNECT is
+answered 429, which is how a rate-limited endpoint looks to the service.
 
 允许列表 CONNECT 代理：任务服务唯一的出站路径，只通往模型端点（D036）。任务服务持有审批签名密钥与模型 key，
 只接入内部网络。本进程接入该内部网络与一个出站网络，只接受启动时给定的精确「主机:端口」的 `CONNECT`，随后
 双向转发字节。TLS 端到端，因此它看不到请求、回答或 key。其他一切（别的目标、别的方法、过大或畸形的请求头）
-都被拒绝。每个决定记录为一行 JSON，只含目标与结果，从不含内容。
+都被拒绝。每个决定记录为一行 JSON，只含目标与结果，从不含内容。`--throttle-file`（P5 长稳，D073）是由主机写入、只在编排中使用
+的开关：其中的 `until` 尚未到达时，每个允许的 CONNECT 都回答 429，这正是限流的端点在服务看来的样子。
 """
 
 from __future__ import annotations
@@ -19,12 +22,14 @@ import asyncio
 import json
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 
 MAX_HEAD = 8192
 HEAD_TIMEOUT_S = 10.0
 IDLE_S = 300.0
 ENTRY = re.compile(r"^[a-z0-9.-]+:[0-9]{1,5}$")
-REASONS = {400: "Bad Request", 403: "Forbidden", 405: "Method Not Allowed", 502: "Bad Gateway"}
+REASONS = {400: "Bad Request", 403: "Forbidden", 405: "Method Not Allowed", 429: "Too Many Requests",
+           502: "Bad Gateway"}
 
 
 def parse_allow(entries: list[str]) -> frozenset[str]:
@@ -48,8 +53,23 @@ def request_target(head: bytes) -> tuple[str, str] | None:
 
 
 class ModelProxy:
-    def __init__(self, allow: frozenset[str], *, log=print, connect_timeout_s: float = 10.0, idle_s: float = IDLE_S):
+    def __init__(self, allow: frozenset[str], *, log=print, connect_timeout_s: float = 10.0, idle_s: float = IDLE_S,
+                 throttle: Path | None = None):
         self.allow, self.log, self.connect_timeout_s, self.idle_s = allow, log, connect_timeout_s, idle_s
+        self.throttle = throttle
+
+    def throttled(self) -> bool:
+        """Whether the harness switch names a future `until`; unreadable means not throttled.
+
+        编排开关是否给出尚未到达的 `until`；不可读即未限流。
+        """
+        if self.throttle is None:
+            return False
+        try:
+            until = datetime.fromisoformat(json.loads(self.throttle.read_text(encoding="utf-8"))["until"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return False
+        return until.tzinfo is not None and datetime.now(timezone.utc) < until
 
     def note(self, target: str, decision: str) -> None:
         self.log(json.dumps({"at": datetime.now(timezone.utc).isoformat(), "target": target[:255],
@@ -57,7 +77,9 @@ class ModelProxy:
 
     @staticmethod
     async def refuse(writer: asyncio.StreamWriter, status: int) -> None:
-        writer.write(f"HTTP/1.1 {status} {REASONS[status]}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".encode())
+        retry = "Retry-After: 60\r\n" if status == 429 else ""
+        writer.write(f"HTTP/1.1 {status} {REASONS[status]}\r\n{retry}Content-Length: 0\r\nConnection: close\r\n\r\n"
+                     .encode())
         try:
             await writer.drain()
         except ConnectionError:
@@ -81,6 +103,9 @@ class ModelProxy:
             if target.lower() not in self.allow:
                 self.note(target, "target_refused")
                 return await self.refuse(writer, 403)
+            if self.throttled():
+                self.note(target, "throttled")
+                return await self.refuse(writer, 429)
             host, _, port = target.lower().rpartition(":")
             try:
                 upstream = await asyncio.wait_for(asyncio.open_connection(host, int(port)), self.connect_timeout_s)
@@ -127,9 +152,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--listen", default="0.0.0.0:3128")
     parser.add_argument("--allow", action="append", required=True, help="exact host:port to tunnel to (repeatable)")
+    parser.add_argument("--throttle-file", type=Path, help="harness-only switch: answer 429 until its `until` (D073)")
     args = parser.parse_args()
     host, _, port = args.listen.rpartition(":")
-    proxy = ModelProxy(parse_allow(args.allow), log=lambda line: print(line, flush=True))
+    proxy = ModelProxy(parse_allow(args.allow), log=lambda line: print(line, flush=True), throttle=args.throttle_file)
     asyncio.run(serve(proxy, host, int(port)))
 
 

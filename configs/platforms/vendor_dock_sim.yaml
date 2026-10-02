@@ -1,0 +1,36 @@
+# The aircraft of the simulated vendor-managed dock (P5, D072). It honestly declares only what a vendor waypoint task
+# can do: mission upload with takeoff, the registered inspection, return home and landing. No external mode, no
+# Offboard, no local skills; recovery is the vendor's own return home. This file describes a protocol simulator, not a
+# real product.
+#
+# 模拟厂商托管机场的飞行器（P5，D072）。它如实只声明厂商航点任务能做的：任务上传方式的起飞、登记巡检、返航与降落。没有
+# 外部模式、没有 Offboard、没有本地技能；恢复是厂商自己的返航。本文件描述的是协议模拟器，不是真实产品。
+schema_version: "0.1.0"
+platform_id: vendor_dock_sim
+versions:
+  vendor_profile: configs/vendors/dock_task_v1.yaml
+capability:
+  robot_id: uav_v1
+  embodiment: aerial_multirotor
+  interface_version: "0.1.0"
+  control_modes: [mission_upload]
+  skills:
+    - { skill_id: skill.flight.takeoff, version: "0.1.0" }
+    - { skill_id: skill.flight.return_home, version: "0.1.0" }
+    - { skill_id: skill.flight.land, version: "0.1.0" }
+    - { skill_id: skill.inspect.asset, version: "0.1.0" }
+  sensors:
+    - { sensor_id: gnss_0, kind: gnss, frame_id: uav_v1/base_link, nominal_accuracy: { position_m: 1.5 } }
+    - { sensor_id: cam_0, kind: rgb_camera, frame_id: uav_v1/cam_0 }
+  payloads: []
+  limits:
+    max_speed_mps: 8.0
+    max_altitude_m_agl: 60.0
+    endurance_s: 1500
+    max_wind_mps: 8.0
+    can_hover: true
+  recovery_behaviors: [rtl]
+  vendor: simulated-dock-vendor
+  model: dock-sim-v1
+  vendor_constraints: [vendor_managed_safety]
+recovery_policy_ref: multirotor_campus@v1

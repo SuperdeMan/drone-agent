@@ -93,7 +93,7 @@ class LogicalUav:
     """
 
     def __init__(self, directory: Path, registry: Registry, hub, trust: TrustStore, policy: Path, *,
-                 battery: Battery, drain_per_sample: float = 0.002):
+                 battery: Battery, drain_per_sample: float = 0.002, client=None):
         self.dir, self.registry, self.trust, self.policy = directory, registry, trust, policy
         self.robot_id = registry.capability.robot_id
         self.battery, self.drain = battery, drain_per_sample
@@ -105,7 +105,10 @@ class LogicalUav:
         # Harness-only camera of the simulated world (P4 appearance states); None keeps the default frames.
         # 只在编排中使用的模拟世界相机（P4 外观状态）；None 保持默认帧。
         self.camera = None
-        self.uplink = Uplink(FaultyClient(LocalFleetClient(hub, self.robot_id), self.link), robot_id=self.robot_id,
+        # The resident fleet (P5) passes its own mTLS client; S0 worlds use the in-process hub.
+        # 常驻机队（P5）传入自己的 mTLS 客户端；S0 世界使用进程内 hub。
+        inner = client if client is not None else LocalFleetClient(hub, self.robot_id)
+        self.uplink = Uplink(FaultyClient(inner, self.link), robot_id=self.robot_id,
                              trust=trust, capability=registry.capability, inbox=directory / "inbox",
                              mailbox=directory / "mailbox", aircraft=directory / "aircraft",
                              state_path=directory / "uplink/uplink-state.json")

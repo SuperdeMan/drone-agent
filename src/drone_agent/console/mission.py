@@ -13,6 +13,7 @@ hri.v0 over `WS /ws/session` carries JSON text frames:
         {"type":"workflows","view":{...}}   {"type":"workflow","view":{...}}   {"type":"workflow_draft","result":{...}}
         {"type":"tasks","view":{...}}   {"type":"task","view":{...}}     (P3 scheduling, D059)
         {"type":"business","view":{...}}   {"type":"finding","view":{...}}   {"type":"order","view":{...}}   (P4, D063)
+        {"type":"audit","view":{...}}     (P5 project audit, D070)
   up:   {"type":"text","rid":...,"text":...,"volume_id":...,"asset_ids":[...],"project_id"?,"robot_id"?}  submit
         {"type":"resources","project_id":...}   {"type":"resource","project_id":...,"resource_id":...}
         {"type":"maintenance","project_id":...,"dock_id":...,"action":"set|release","reason":...}  (admin)
@@ -34,6 +35,7 @@ hri.v0 over `WS /ws/session` carries JSON text frames:
         {"type":"order_review","project_id":...,"order_id":...,"round":N,"decision":...,"request_id":...,"note":...}
         {"type":"reference_register","project_id":...,"mission_id":...,"evidence_id":...,"note":...}   (admin)
         {"type":"analysis_submit","project_id":...,"mission_id":...,"evidence_id":...,"analyzer":...,"request_id":...}
+        {"type":"audit_watch","project_id":...,"before":cursor|null}   (P5, D070; read-only)
         {"type":"watch","mission_id":...}   {"type":"list"}   {"type":"media","mission_id":...,"evidence_id":...}
         {"type":"approve","mission_id":...,"version":N,"package_hash":...}
         {"type":"decline","mission_id":...,"version":N,"reason":...}
@@ -189,6 +191,8 @@ class Session:
         self.last_business: str | None = None
         self.watched_subject: tuple[str, str, str] | None = None
         self.last_subject: str | None = None
+        self.audit: tuple[str, str | None] | None = None
+        self.last_audit: str | None = None
         self.last_host: str | None = None
         self.busy = False
 
@@ -331,6 +335,23 @@ class Session:
         if force or text != self.last_subject:
             self.last_subject = text
             await self.send({"type": kind, "view": view})
+
+    async def push_audit(self, force: bool = False) -> None:
+        """The watched project's audit page (P5, D070); read-only, checked by the service like every call.
+
+        所关注项目的审计页（P5，D070）；只读，与每次调用一样由服务检查。
+        """
+        if not self.audit:
+            return
+        project_id, before = self.audit
+        view = await self.call("audit.list", project_id=project_id, before=before, limit=100)
+        if view is None:
+            self.audit = None
+            return
+        text = json.dumps(view.get("entries"), sort_keys=True, default=str)
+        if force or text != self.last_audit:
+            self.last_audit = text
+            await self.send({"type": "audit", "view": view})
 
     async def business(self, kind: str, message: dict) -> None:
         """P4 frames: named API calls the service checks against the caller's project role. A model's answer is only
@@ -538,6 +559,11 @@ class Session:
         elif kind in ("business_watch", "finding_watch", "order_watch", "finding_review", "order_repair",
                       "order_review", "reference_register", "analysis_submit"):
             await self.business(kind, message)
+        elif kind == "audit_watch":
+            before = message.get("before")
+            self.audit = (str(message.get("project_id", ""))[:120],
+                          str(before)[:400] if isinstance(before, str) and before else None)
+            await self.push_audit(force=True)
         elif kind in ("approve", "decline", "operate"):
             params = {"approve": ("mission_id", "version", "package_hash"),
                       "decline": ("mission_id", "version", "reason"),
@@ -681,6 +707,7 @@ class MissionConsole:
                 await session.push_task()
                 await session.push_business()
                 await session.push_subject()
+                await session.push_audit()
 
         watcher = asyncio.create_task(watch())
         try:

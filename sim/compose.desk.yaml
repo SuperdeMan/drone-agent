@@ -15,6 +15,14 @@
 # P4 (D063/D064): the workflow catalog becomes p4_s1_v1 (the P2 templates byte for byte plus the P4 ones) and the
 # service also loads the p4_s1_v1 business catalog (the ledger gains the business tables the same way); the vision
 # role is MiniMax-M3 through the same proxy and key, and without a key model analyses refuse `model.unavailable`.
+# P5 (D069-D073): the service is the platform v0.1. It loads the p5_desk_v1 catalogs (the P4 templates byte for byte
+# plus the road template, the logical fleet and the vendor dock) and allows three execution backends; the aircraft
+# flies with the P5 S1 map in the P5 simulation image. `desk-fleet` runs the two logical aircraft (the real onboard
+# processes with a logical flight adapter, each with its own client certificate on `desk_uplink`) and their docks
+# through the API socket; `desk-vendor` is the vendor protocol simulator with no network, reached only through its
+# socket by the service's gateway. The host-written world file (read-only) tells the simulators what the world shows;
+# the harness fault switches (read-only, one folder per consumer) can throttle the model proxy or drop the vendor link.
+# Neither is mounted into the service or the page.
 #
 # 常驻 M2 任务台（D035）。常驻：`desk`（页面，只发布 127.0.0.1:8769，位于私有 Tailscale Serve 8448 之后）、
 # `desk-service`（任务服务）与 `desk-uplink`（机载 uplink）；它们只共享内部 `desk_uplink` 网络与 API 套接字
@@ -27,7 +35,11 @@
 # 与其他任务一样逐个审批。P3（D059/D060）：服务还加载 p3_desk_v1 调度目录（账本以同样方式加上调度表）；调度器把任务单分配
 # 给这一架飞行器，每个已分配任务仍由人审批。P4（D063/D064）：工作流目录改为 p4_s1_v1（逐字节保留 P2 模板并加上 P4 模板），
 # 服务还加载 p4_s1_v1 业务目录（账本以同样方式加上业务表）；视觉角色经同一代理与 key 使用 MiniMax-M3，没有 key 时模型分析以
-# `model.unavailable` 拒判。
+# `model.unavailable` 拒判。P5（D069–D073）：服务即平台 v0.1。它加载 p5_desk_v1 目录（逐字节保留 P4 模板并加上道路模板、逻辑
+# 机队与厂商机场）并允许三种执行后端；飞行器在 P5 仿真镜像中按 P5 S1 地图飞行。`desk-fleet` 运行两台逻辑飞行器（真实机载进程
+# 加逻辑飞行适配器，各自以客户端证书接入 `desk_uplink`）并经 API 套接字运行其机场；`desk-vendor` 是没有网络的厂商协议模拟器，
+# 只由服务的网关经其套接字访问。主机写入的世界文件（只读）告诉模拟器世界呈现什么；编排故障开关（只读，每个使用方一个目录）可以
+# 使模型代理限流或断开厂商链路。二者都不挂载进服务或页面。
 name: drone-agent-cloud
 services:
   desk:
@@ -93,14 +105,17 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
     command: [python3, -m, drone_agent.fleet.main, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
               --planner, auto, --state, /state, --tls, /tls, --signing-key, /secrets/approval-signing.key,
-              --api, /api/api.sock, --listen, "0.0.0.0:8450", --execution-backend, px4_sitl,
-              --catalog, /workspace/configs/sites/p1_s1_v1.yaml, --members, /members/members.yaml,
-              --workflows, /workspace/configs/workflows/p4_s1_v1.yaml,
-              --scheduling, /workspace/configs/scheduling/p3_desk_v1.yaml,
-              --business, /workspace/configs/analysis/p4_s1_v1.yaml, --vision, live]
+              --api, /api/api.sock, --listen, "0.0.0.0:8450",
+              --execution-backend, "px4_sitl,logical_sim,vendor_protocol_sim",
+              --catalog, /workspace/configs/sites/p5_desk_v1.yaml, --members, /members/members.yaml,
+              --workflows, /workspace/configs/workflows/p5_desk_v1.yaml,
+              --scheduling, /workspace/configs/scheduling/p5_desk_v1.yaml,
+              --business, /workspace/configs/analysis/p5_desk_v1.yaml, --vision, live,
+              --vendor-link, "dock_vd=/vendor/vendor.sock"]
     volumes:
       - ${DRONE_DESK_ROOT:?}/service:/state
       - ${DRONE_DESK_ROOT:?}/api:/api
+      - ${DRONE_DESK_ROOT:?}/vendor/socket:/vendor:ro
       - ${DRONE_DESK_SECRETS:?}/service-tls:/tls:ro
       - ${DRONE_DESK_SECRETS:?}/approval-signing.key:/secrets/approval-signing.key:ro
       - ${DRONE_DESK_SECRETS:?}/members.yaml:/members/members.yaml:ro
@@ -123,7 +138,10 @@ services:
     pids_limit: 32
     environment:
       PYTHONDONTWRITEBYTECODE: "1"
-    command: [python3, -m, drone_agent.fleet.model_proxy, --listen, "0.0.0.0:3128", --allow, "api.minimaxi.com:443"]
+    command: [python3, -m, drone_agent.fleet.model_proxy, --listen, "0.0.0.0:3128", --allow, "api.minimaxi.com:443",
+              --throttle-file, /faults/throttle.json]
+    volumes:
+      - ${DRONE_DESK_ROOT:?}/faults/model:/faults:ro
     networks: [desk_model, desk_egress]
   desk-uplink:
     image: ${DRONE_DESK_AIRCRAFT_IMAGE:?}
@@ -141,7 +159,7 @@ services:
     pids_limit: 64
     environment:
       PYTHONDONTWRITEBYTECODE: "1"
-    command: [python3, -m, drone_agent.runtime.uplink, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
+    command: [python3, -m, drone_agent.runtime.uplink, --scene, /workspace/configs/scenarios/p5_site_s1_v1.yaml,
               --service, "desk-service:8450", --server-name, mission-service, --tls, /tls,
               --trust, /trust/trust.json, --inbox, /inbox, --mailbox, /mailbox, --aircraft, /aircraft,
               --state, /uplink]
@@ -178,6 +196,60 @@ services:
       - ${DRONE_DESK_ROOT:?}/api:/api:ro
       - ${DRONE_DESK_ROOT:?}/flights:/truth:ro
       - ${DRONE_DESK_ROOT:?}/dock:/dock
+  desk-fleet:
+    image: ${DRONE_DESK_AIRCRAFT_IMAGE:?}
+    pull_policy: never
+    restart: unless-stopped
+    init: true
+    user: ${DRONE_DESK_UID:?}:${DRONE_DESK_GID:?}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:size=16m"]
+    cpus: 0.5
+    mem_limit: 384m
+    memswap_limit: 384m
+    pids_limit: 64
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    command: [python3, -m, drone_agent.eval.s0_fleet, --principal, "dock:p5-desk-fleet", --api, /api/api.sock,
+              --service, "desk-service:8450", --server-name, mission-service, --tls, /tls, --trust, /trust/trust.json,
+              --state, /fleet, --world, /world/appearance.json]
+    volumes:
+      - ${DRONE_DESK_ROOT:?}/api:/api:ro
+      - ${DRONE_DESK_ROOT:?}/fleet:/fleet
+      - ${DRONE_DESK_ROOT:?}/world:/world:ro
+      - ${DRONE_DESK_SECRETS:?}/robot-tls-uav_fa:/tls/uav_fa:ro
+      - ${DRONE_DESK_SECRETS:?}/robot-tls-uav_fb:/tls/uav_fb:ro
+      - ${DRONE_DESK_SECRETS:?}/trust:/trust:ro
+    networks: [desk_uplink]
+  desk-vendor:
+    image: ${DRONE_DESK_GROUND_IMAGE:?}
+    pull_policy: never
+    restart: unless-stopped
+    init: true
+    user: ${DRONE_DESK_UID:?}:${DRONE_DESK_GID:?}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:size=8m"]
+    cpus: 0.2
+    mem_limit: 192m
+    memswap_limit: 192m
+    pids_limit: 32
+    network_mode: none
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    command: [python3, -m, drone_agent.eval.vendor_sim, --socket, /vendor/vendor.sock,
+              --scene, /workspace/configs/scenarios/p5_site_vd_v1.yaml, --dock, dock_vd, --robot, uav_v1,
+              --control, /faults/vendor.json, --world, /world/appearance.json, --log, /log]
+    volumes:
+      - ${DRONE_DESK_ROOT:?}/vendor/socket:/vendor
+      - ${DRONE_DESK_ROOT:?}/vendor/log:/log
+      - ${DRONE_DESK_ROOT:?}/world:/world:ro
+      - ${DRONE_DESK_ROOT:?}/faults/vendor:/faults:ro
   desk-sitl:
     profiles: [flight]
     image: ${DRONE_DESK_SIM_IMAGE:?}
@@ -223,7 +295,7 @@ services:
     environment:
       DRONE_SOURCE_SHA: ${DRONE_DESK_SHA:?}
     command: [python3, -m, drone_agent.runtime.launch, guardian, --simulation,
-              --scene, /workspace/configs/scenarios/m2_campus_v2.yaml, --trust, /trust/trust.json,
+              --scene, /workspace/configs/scenarios/p5_site_s1_v1.yaml, --trust, /trust/trust.json,
               --robot-state, /robot/authority.json, --package, "/inbox/history/${DRONE_DESK_PACKAGE:?}"]
     volumes:
       - ${DRONE_DESK_FLIGHT:?}/sensor:/sensor:ro
@@ -245,7 +317,7 @@ services:
     environment:
       DRONE_SOURCE_SHA: ${DRONE_DESK_SHA:?}
     command: [python3, -m, drone_agent.runtime.launch, executive,
-              --scene, /workspace/configs/scenarios/m2_campus_v2.yaml, --trust, /trust/trust.json,
+              --scene, /workspace/configs/scenarios/p5_site_s1_v1.yaml, --trust, /trust/trust.json,
               --package, "/inbox/history/${DRONE_DESK_PACKAGE:?}", --epoch, "${DRONE_DESK_EPOCH:?}",
               --operator-mailbox, /mailbox/operator.json]
     volumes:

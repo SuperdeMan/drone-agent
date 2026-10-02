@@ -13,7 +13,8 @@ migrated to schema v2 with a verified backup first (D056), and every new mission
 scheduling tables are added the same way (D060) and the scheduler assigns tasks in the background pass.
 `--business` (P4, D063) adds a business catalog: the business tables are added the same way (D064) and analysis jobs
 run in the background pass; `--vision live` builds the vision role's provider (every exchange recorded), `none`
-leaves model analyses refusing `model.unavailable`.
+leaves model analyses refusing `model.unavailable`. `--vendor-link DOCK=SOCKET` (P5, D072) connects the in-process
+gateway of each vendor-managed dock of the catalog to its vendor endpoint; the gateway then runs in the background pass.
 
 任务服务进程：mTLS 车队端点、私有 API 套接字与后台刷新。
 
@@ -27,6 +28,7 @@ v2（D056），每个新任务都绑定到项目与机器人。`--workflows`（P
 （D058），工作流引擎在后台处理中运行。`--scheduling`（P3，D059）再加载调度目录：以同样方式加上调度表（D060），调度器在后台
 处理中分配任务单。`--business`（P4，D063）再加载业务目录：以同样方式加上业务表（D064），分析作业在后台处理中运行；
 `--vision live` 构建视觉角色的 provider（每次交互都录制），`none` 时模型分析以 `model.unavailable` 拒判。
+`--vendor-link DOCK=SOCKET`（P5，D072）把目录中每个厂商托管机场的进程内网关连接到其厂商端点；网关随后在后台处理中运行。
 """
 
 from __future__ import annotations
@@ -154,8 +156,8 @@ async def main_async(args) -> None:
                              approval_policy=ApprovalPolicy.from_yaml(args.root / "configs/approval_policy.yaml"),
                              planner=planner, robot_id=args.robot_id,
                              provenance_context=source_context(args.root, args.scene, registry.sha256,
-                                                               backend=args.execution_backend),
-                             operations=operations)
+                                                               backend=args.execution_backend[0]),
+                             operations=operations, backends=tuple(args.execution_backend))
     if workflows is not None:
         from drone_agent.fleet.workflow import WorkflowEngine
         from drone_agent.planner.workflow_draft import WorkflowDraftPlanner
@@ -186,6 +188,19 @@ async def main_async(args) -> None:
                 vision_label = f"unavailable: {error}"
         service.business = BusinessEngine(service, business, root=args.root, vision=vision,
                                           recordings=args.state / "recordings" / "analysis")
+    vendor = None
+    if args.vendor_link:
+        from drone_agent.fleet.vendor_gateway import SocketLink, VendorGateway
+
+        if operations is None or "vendor_protocol_sim" not in args.execution_backend:
+            raise SystemExit("--vendor-link needs --catalog and the vendor_protocol_sim backend")
+        links = dict(args.vendor_link)
+        if len(links) != len(args.vendor_link):
+            raise SystemExit("one --vendor-link per dock")
+        service.vendor = VendorGateway(service, {dock: SocketLink(path) for dock, path in links.items()})
+        vendor = {"docks": sorted(links)}
+    elif operations is not None and any(d.vendor_managed for d in operations.catalog.docks.values())             and "vendor_protocol_sim" in args.execution_backend:
+        raise SystemExit("the catalog has vendor-managed docks and needs one --vendor-link each")
     tls = args.tls
     credentials = {"cert_pem": (tls / "service.crt").read_bytes(), "key_pem": (tls / "service.key").read_bytes(),
                    "ca_pem": (tls / "ca.crt").read_bytes()}
@@ -212,7 +227,8 @@ async def main_async(args) -> None:
                             "migration": scheduling.migration} if scheduling is not None else None,
              "business": {"catalog_id": business.catalog.catalog_id, "catalog_sha256": business.catalog.sha256,
                           "migration": business.migration, "vision": vision_label or args.vision}
-             if business is not None else None}
+             if business is not None else None,
+             "execution_backends": list(args.execution_backend), "vendor": vendor}
     (args.state / "ready.json").write_bytes(canonical(ready))
     print(json.dumps(ready), flush=True)
     stop = asyncio.Event()
@@ -225,6 +241,31 @@ async def main_async(args) -> None:
         api.close()
         await (fleet.stop() if args.transport == "zenoh" else fleet.stop(2))
         ledger.close()
+
+
+def backends(value: str) -> tuple[str, ...]:
+    """The allowed execution backends of one deployment, primary first (D069).
+
+    A logical or vendor-protocol backend needs a catalog that binds robots to it; `real_device` is not a choice.
+
+    一个部署允许的执行后端，主后端在前（D069）。逻辑或厂商协议后端需要目录把机器人绑定到它；`real_device` 不可选。
+    """
+    found = tuple(item.strip() for item in value.split(",") if item.strip())
+    allowed = ("none", "px4_sitl", "logical_sim", "vendor_protocol_sim")
+    if not found or len(set(found)) != len(found) or any(item not in allowed for item in found):
+        raise argparse.ArgumentTypeError(f"expected distinct backends among {', '.join(allowed)}")
+    return found
+
+
+def vendor_link(value: str) -> tuple[str, Path]:
+    """`DOCK=SOCKET`: a vendor-managed dock of the catalog and its endpoint's Unix socket (D072).
+
+    `DOCK=SOCKET`：目录中的一个厂商托管机场及其端点的 Unix 套接字（D072）。
+    """
+    dock, separator, path = value.partition("=")
+    if not separator or not dock or not path:
+        raise argparse.ArgumentTypeError("expected DOCK=SOCKET")
+    return dock, Path(path)
 
 
 def main() -> None:
@@ -240,7 +281,9 @@ def main() -> None:
     parser.add_argument("--api", type=Path, default=Path("/run/mission/api.sock"))
     parser.add_argument("--robot-id", default="uav_01")
     parser.add_argument("--planner", choices=["auto", "live", "scripted", "none"], default="live")
-    parser.add_argument("--execution-backend", choices=["none", "px4_sitl"], default="none")
+    parser.add_argument("--execution-backend", type=backends, default=("none",),
+                        help="allowed execution backends, comma separated, the first one primary (D069): none, "
+                             "px4_sitl, logical_sim, vendor_protocol_sim; real devices are never accepted")
     parser.add_argument("--fixtures", type=Path, help="scripted planner fixture file (scripted mode)")
     parser.add_argument("--catalog", type=Path, help="P1 operations catalog (D055); migrates the ledger (D056)")
     parser.add_argument("--members", type=Path, help="trusted project member list for --catalog")
@@ -251,6 +294,8 @@ def main() -> None:
                         help="P4 business catalog (D063); needs --workflows; migrates (D064)")
     parser.add_argument("--vision", choices=["live", "none"], default="none",
                         help="vision provider of model analyses (P4); none refuses them explicitly")
+    parser.add_argument("--vendor-link", type=vendor_link, action="append", default=[],
+                        help="DOCK=SOCKET for each vendor-managed dock of the catalog (P5, D072)")
     args = parser.parse_args()
     if args.workflows is not None and args.catalog is None:
         parser.error("--workflows needs --catalog")
@@ -258,6 +303,8 @@ def main() -> None:
         parser.error("--scheduling needs --catalog")
     if args.business is not None and args.workflows is None:
         parser.error("--business needs --workflows")
+    if len(args.execution_backend) > 1 and args.catalog is None:
+        parser.error("several execution backends need --catalog to bind robots to them")
     if args.planner == "scripted" and not args.fixtures:
         parser.error("--planner scripted requires --fixtures")
     asyncio.run(main_async(args))

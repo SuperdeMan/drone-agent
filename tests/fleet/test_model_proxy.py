@@ -89,3 +89,34 @@ def test_the_allowlist_is_exact_host_and_port():
             parse_allow(bad)
     assert request_target(b"CONNECT api.minimaxi.com:443 HTTP/1.1\r\n\r\n") == ("CONNECT", "api.minimaxi.com:443")
     assert request_target(b"CONNECT api.minimaxi.com:443 SPDY/3\r\n\r\n") is None
+
+
+async def test_the_harness_throttle_answers_429_until_its_end_and_never_connects(tmp_path):
+    from datetime import datetime, timedelta, timezone
+
+    connected = []
+
+    async def upstream(reader, writer):
+        connected.append(True)
+        writer.close()
+
+    server, upstream_port = await started(upstream)
+    switch = tmp_path / "throttle.json"
+    lines: list[str] = []
+    model_proxy = ModelProxy(parse_allow([f"127.0.0.1:{upstream_port}"]), log=lines.append, throttle=switch)
+    front, port = await started(model_proxy.handle)
+    head = f"CONNECT 127.0.0.1:{upstream_port} HTTP/1.1\r\nHost: x\r\n\r\n".encode()
+    try:
+        switch.write_text(json.dumps({"until": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()}))
+        status, _ = await exchange(port, head)
+        assert status.startswith(b"HTTP/1.1 429") and b"Retry-After: 60" in status and not connected
+        assert json.loads(lines[-1])["decision"] == "throttled"
+        switch.write_text(json.dumps({"until": (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()}))
+        status, _ = await exchange(port, head)
+        assert status.startswith(b"HTTP/1.1 200")
+        switch.write_text("not json")
+        status, _ = await exchange(port, head)
+        assert status.startswith(b"HTTP/1.1 200")
+    finally:
+        front.close()
+        server.close()

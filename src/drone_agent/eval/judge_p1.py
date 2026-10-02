@@ -54,6 +54,8 @@ def _at(value: str) -> datetime:
 class Case:
     """Everything recorded for one case, loaded once. / 一个用例的全部记录，只加载一次。"""
 
+    catalog_path = CATALOG
+
     def __init__(self, case: Path, root: Path):
         self.case, self.root = case, root
         self.scenario = json.loads((case / "input/scenario.json").read_text(encoding="utf-8"))
@@ -71,7 +73,7 @@ class Case:
             rows = _jsonl(path)
             if rows:
                 self.truth[rows[0]["robot_id"]] = rows
-        self.catalog = load_catalog(root / CATALOG)
+        self.catalog = load_catalog(root / self.catalog_path)
         self.bindings = {row["mission_id"]: row for row in self.ops["op_bindings"]}
         self.events = self.ops["op_events"]
 

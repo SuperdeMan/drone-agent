@@ -95,6 +95,8 @@ class P1World:
     # The service's execution label; a judge smoke test of the S1 layout may use the S1 catalog's label.
     # 服务的执行标签；S1 布局的裁判冒烟测试可以使用 S1 目录的标签。
     backend = "logical_sim"
+    # Further backends the service allows (P5: the vendor protocol simulator, D069). / 服务另外允许的后端（P5，D069）。
+    extra_backends: tuple[str, ...] = ()
 
     def __init__(self, case: Path, repo: Path, *, seed: int, catalog: Path | None = None,
                  members: Path | None = None):
@@ -115,13 +117,15 @@ class P1World:
         self.uavs: dict[str, LogicalUav] = {}
         self.docks: dict[str, DockSimulator] = {}
         for robot_id, entry in ops.catalog.robots.items():
+            if entry.execution_backend == "vendor_protocol_sim":
+                continue  # the S3 simulator flies it, never a logical aircraft (P5) / 由 S3 模拟器飞行（P5）
             battery = Battery(1.0)
             registry = quick_registry(repo, repo / ops.catalog.sites[entry.site_id].scene, ops.capabilities[robot_id])
             uav = LogicalUav(case / "robots" / robot_id, registry, self.hub, self.trust, repo / POLICY, battery=battery)
             self.uavs[robot_id] = uav
             self.docks[entry.dock_id] = DockSimulator(entry.dock_id, battery=battery, presence=uav.presence, seed=seed)
         self.backends: list[DockBackend] = []
-        for principal in sorted({d.backend.principal for d in ops.catalog.docks.values()}):
+        for principal in sorted({d.backend.principal for d in ops.catalog.docks.values() if not d.vendor_managed}):
             docks = {dock_id: self.docks[dock_id] for dock_id in ops.catalog.docks_of(principal)}
             self.backends.append(DockBackend(principal, docks, self._backend_call(principal)))
         self.last_step = time.monotonic()
@@ -143,7 +147,7 @@ class P1World:
                               planner=scripted_planner(repo), clock=self.clock,
                               provenance_context=source_context(repo, repo / M2_SCENE, registry.sha256,
                                                                 backend=self.backend),
-                              operations=operations)
+                              operations=operations, backends=(self.backend, *self.extra_backends))
 
     def restart_service(self) -> None:
         """A service process restart: a new service object over the same ledger and hub. / 服务进程重启。"""

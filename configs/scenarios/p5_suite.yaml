@@ -1,0 +1,109 @@
+# P5 matrices (D071, D072). `s0` cases run the second business template (campus road obstacle candidate review) in the
+# S0 world (eval/p5_world.py: the P4 world with the p5_campus_v1 catalogs); `s3` cases run the vendor protocol contract
+# in the same world, where the vendor robot's tasks go through the formal service, its approvals and claim gate to the
+# real vendor gateway and the S3 simulator; `s1` cases run the road template against PX4 SITL in the P5 world (the M2
+# world plus the road marking) with the p5_s1_v1 catalogs (scripts/remote_p5.py), the harness placing and removing an
+# obstacle model through the Gazebo world's services. Each case runs for every seed; `expected` is what the independent
+# judge (eval/judge_p5.py) requires on top of the invariants it always checks. S0 and S3 results never count as
+# physical flights, as model behaviour or as compatibility with any real vendor firmware.
+#
+# P5 矩阵（D071、D072）。`s0` 用例在 S0 世界（eval/p5_world.py：加载 p5_campus_v1 目录的 P4 世界）中运行第二业务模板（园区
+# 道路障碍候选复核）；`s3` 用例在同一世界中运行厂商协议合同，厂商机器人的任务经正式服务、审批与领取闸门到达真实厂商网关与 S3
+# 模拟器；`s1` 用例以 p5_s1_v1 目录在 P5 世界（M2 世界加道路段标线）中对 PX4 SITL 运行道路模板（scripts/remote_p5.py），编排经
+# Gazebo 世界服务放置与移除障碍物模型。每个用例跑全部种子；`expected` 是独立裁判（eval/judge_p5.py）在始终检查的不变量之外
+# 的要求。S0 与 S3 结果从不计为物理飞行、模型行为或与任何真实厂商固件的兼容。
+format: p5.suite/v1
+seeds: [7, 19, 41]
+s0:
+  - id: p5_r01_clear
+    fault: P5-R01
+    description: "A road report arrives while an obstacle covers the road marking; the candidate is confirmed and one clearance order opened; clearance feedback (the obstacle removed) starts the reinspection, the round is confirmed and the order closes. / 道路标线上有障碍时收到道路报告；候选被确认并开一张清障工单；清障反馈（障碍已移除）启动复检，本轮确认后关单。"
+    expected: {flights: 2, runs: {completed: 2}, findings: {resolved: 1}, orders: {closed: 1}, rounds: ["passed|"], reviews: 2, jobs: {completed: 2}}
+  - id: p5_r02_event_dedup
+    fault: P5-R02
+    description: "The same road report is delivered twenty times: one run, one inspection, nothing suspected. / 同一道路报告投递二十次：一个运行、一次巡检、没有疑似。"
+    expected: {flights: 1, runs: {completed: 1}, findings: {}, orders: {}, injections: [events_sent]}
+  - id: p5_r03_already_cleared
+    fault: P5-R03
+    description: "The obstacle is gone before the aircraft arrives: the analysis is normal and no finding opens. / 飞行器到达前障碍已被移走：分析正常，不开发现。"
+    expected: {flights: 1, runs: {completed: 1}, findings: {}, orders: {}, jobs: {completed: 1}}
+  - id: p5_r04_dismissed
+    fault: P5-R04
+    description: "A reviewer dismisses the candidate obstacle: no clearance order. / 复核人驳回候选障碍：不建清障工单。"
+    expected: {flights: 1, runs: {completed: 1}, findings: {dismissed: 1}, orders: {}, reviews: 1}
+  - id: p5_r05_not_cleared
+    fault: P5-R05
+    description: "Clearance feedback while the obstacle is still there: the round fails; after the real clearance a second round closes the order. / 障碍仍在时的清障反馈：本轮失败；真正清除后第二轮关单。"
+    expected: {flights: 3, runs: {completed: 3}, findings: {resolved: 1}, finding_jobs: [2], orders: {closed: 1}, rounds: ["failed|reinspection.still_anomalous", "passed|"], reviews: 2}
+  - id: p5_r06_event_authority
+    fault: P5-R06
+    description: "An unbound event source, an unregistered road segment, a wrong event type, an operator posing as the event source and an agent are all refused; only the bound source's valid report starts a run. / 未绑定的事件源、未登记的路段、错误的事件类型、冒充事件源的 operator 与 agent 全部被拒；只有绑定事件源的有效报告启动运行。"
+    expected: {flights: 1, runs: {completed: 1}, findings: {}, probes: true}
+  - id: p5_r07_cancel_reinspection
+    fault: P5-R07
+    description: "The reinspection run is cancelled before its settlement: the round is unknown, the order stays open for new feedback, nothing starts after the cancel. / 复检运行在结算前被取消：本轮未知，工单保持可接受新反馈，取消后不再开始任何东西。"
+    expected: {flights: 1, runs: {completed: 1, cancelled: 1}, findings: {confirmed: 1}, orders: {reinspection_unknown: 1}, rounds: ["unknown|reinspection.run_ended"], jobs: {completed: 1}}
+  - id: p5_r08_isolation
+    fault: P5-R08
+    description: "Another project's operator reads, reviews and reports clearance on this project's finding, order and run; a viewer writes: all refused without data. / 他项目的 operator 读取、复核并对本项目的发现、工单与运行报告清障；viewer 写操作：全部被拒且不泄漏数据。"
+    expected: {flights: 1, runs: {completed: 1}, findings: {confirmed: 1}, orders: {open: 1}, reviews: 1, probes: true}
+s3:
+  - id: p5_v01_nominal
+    fault: P5-V01
+    description: "A vendor task without faults: one execution, the vendor's media verified by the service, the report completed and the reservation released by reconciliation. / 无故障的厂商任务：一次执行，服务复核厂商媒体，报告完成，预约经对账释放。"
+    expected: {executions: 1, missions: {completed: 1}, runs: {completed: 1}, released: true}
+  - id: p5_v02_duplicates
+    fault: P5-V02
+    description: "Every reply and event arrives twice: one execution, every duplicate journaled once. / 每个答复与事件都到达两次：一次执行，每个重复只入账一次。"
+    expected: {executions: 1, missions: {completed: 1}, runs: {completed: 1}, released: true}
+  - id: p5_v03_reorder
+    fault: P5-V03
+    description: "Progress events arrive out of order: the state only moves forward and the terminal status stands. / 进度事件乱序到达：状态只前进，终态不被覆盖。"
+    expected: {executions: 1, missions: {completed: 1}, runs: {completed: 1}, released: true}
+  - id: p5_v04_lost_acks
+    fault: P5-V04
+    description: "The replies to prepare and execute are lost: the gateway resends with the same transactions and the vendor executes once. / 准备与执行的答复丢失：网关以同一事务重发，厂商只执行一次。"
+    expected: {executions: 1, missions: {completed: 1}, runs: {completed: 1}, released: true, resent: [flighttask_prepare, flighttask_execute]}
+  - id: p5_v05_reconnect_replay
+    fault: P5-V05
+    description: "The link drops on the way back and the reconnect replays the last progress: the task reconciles to its terminal. / 回程中链路断开，重连重放最近进度：任务对账到终态。"
+    expected: {executions: 1, missions: {completed: 1}, runs: {completed: 1}, released: true, link_drops: 1}
+  - id: p5_v06_terminal_lost
+    fault: P5-V06
+    description: "The link drops and the terminal event is lost for good: the task never counts as completed and its reservation is not released. / 链路断开且终态事件永久丢失：任务从不算完成，其预约不释放。"
+    expected: {executions: 1, missions: {running: 1}, released: false, link_drops: 1}
+  - id: p5_v07_cancel_before_takeoff
+    fault: P5-V07
+    description: "A cancel after the claim but before execute: the gateway undoes the prepared task, the vendor never flies it, the mission is cancelled and nothing follows. / 领取之后、执行之前取消：网关撤销已准备的任务，厂商从未执行，任务取消，之后什么都不发生。"
+    expected: {executions: 0, missions: {cancelled: 1}, runs: {cancelled: 1}, released: true}
+  - id: p5_v08_cancel_in_flight
+    fault: P5-V08
+    description: "A cancel in flight whose first return-home reply is lost: the same transaction is resent, the vendor returns and lands, the task ends cancelled, not completed, and no successor flies. / 飞行中取消且首个返航答复丢失：以同一事务重发，厂商返航降落，任务以取消结束、不算完成，不派后继。"
+    expected: {executions: 1, missions: {incomplete: 1}, runs: {cancelled: 1}, released: true, resent: [return_home], terminal: canceled}
+  - id: p5_v09_media
+    fault: P5-V09
+    description: "The vendor reports completion but its media never arrives (odd seeds) or does not match its digest (even seeds): the inspection is not completed and the run's outcome stays unknown. / 厂商报告完成但媒体没有到达（奇数种子）或摘要不符（偶数种子）：巡检不算完成，运行结果保持未知。"
+    expected: {executions: 1, missions: {incomplete: 1}, runs: {outcome_unknown: 1}, released: true, issue: vendor.evidence_missing}
+  - id: p5_v10_prepare_rejected
+    fault: P5-V10
+    description: "The vendor rejects the preparation: nothing flies, the delivery ends rejected, the reservation is released and no retry flies. / 厂商拒绝准备：没有飞行，投递以拒收结束，预约释放，不自动重飞。"
+    expected: {executions: 0, missions: {delivery_rejected: 1}, runs: {failed: 1}, released: true}
+  - id: p5_v11_restart
+    fault: P5-V11
+    description: "The service (and the gateway in it) restarts mid-flight: the gateway rebuilds the task from the vendor journal, sends no new execution and reconciles the result. / 飞行中重启服务（及其中的网关）：网关从厂商账本重建任务，不发送新的执行，并对账结果。"
+    expected: {executions: 1, missions: {completed: 1}, runs: {completed: 1}, released: true, injections: [service_restart]}
+  - id: p5_v12_no_low_level
+    fault: P5-V12
+    description: "Profiles declaring low-level control, an extra command or firmware verification do not load; low-level commands cannot be built; a nominal task still completes. / 声明低层控制、额外命令或固件已核对的档案不能加载；低层命令无法构造；正常任务照常完成。"
+    expected: {executions: 1, missions: {completed: 1}, runs: {completed: 1}, released: true, refusals: 6}
+s1:
+  - id: p5_s1_road
+    seeds: [7, 19, 41]
+    description: "PX4 SITL: a road report arrives while an obstacle model covers the road marking; the candidate is confirmed and a clearance order opened; at the clearance feedback the harness removes the obstacle, the reinspection is unsuspected, confirmed and the order closes. / PX4 SITL：障碍物模型覆盖道路标线时收到道路报告；候选被确认并开清障工单；清障反馈时编排移除障碍物，复检未疑似并被确认，工单关闭。"
+    obstacle: {asset: road_north, remove_at_round: 1}
+    expected: {flights: 2, orders: {closed: 1}, rounds: ["passed|"]}
+  - id: p5_s1_road_not_cleared
+    seeds: [7]
+    description: "PX4 SITL: the first clearance feedback comes with the obstacle still there and its round fails; the obstacle is removed at the second feedback and that round closes the order. / PX4 SITL：第一次清障反馈时障碍物仍在，本轮失败；第二次反馈时移除障碍物，该轮关单。"
+    obstacle: {asset: road_north, remove_at_round: 2}
+    expected: {flights: 3, orders: {closed: 1}, rounds: ["failed|reinspection.still_anomalous", "passed|"]}

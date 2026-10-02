@@ -37,6 +37,7 @@ from drone_agent.eval.judge_p1 import Case as P1Case
 from drone_agent.eval.judge_p1 import _jsonl, check_claims, check_dispatch_counts, check_flights, check_releases
 from drone_agent.fleet.resources import load_catalog, load_members
 from drone_agent.fleet.workflow_models import load_workflows
+from drone_agent.mission.registry import M2_SCENE
 from drone_agent.runtime.ledger import read_log
 
 WORKFLOWS = "configs/workflows/p2_campus_v1.yaml"
@@ -104,6 +105,7 @@ class S1Case(Case):
     """
 
     workflows_path, members_path = S1_WORKFLOWS, S1_MEMBERS
+    catalog_path = S1_CATALOG
 
     def __init__(self, case: Path, root: Path):
         self.case, self.root = case, root
@@ -131,7 +133,7 @@ class S1Case(Case):
                 flight["ended_at"] = result["timestamp"] if result else flight.get("ended_at")
         self.truth = {"uav_01": [{**row, "robot_id": "uav_01", "in_air": row["position"][2] > 0.3}
                                  for row in _jsonl(case / "truth/truth.jsonl")]}
-        self.catalog = load_catalog(root / S1_CATALOG)
+        self.catalog = load_catalog(root / self.catalog_path)
         self.bindings = {row["mission_id"]: row for row in self.ops["op_bindings"]}
         self.events = self.ops["op_events"]
 
@@ -146,9 +148,14 @@ def mission_cases(c: S1Case, work: Path) -> dict[str, Path]:
         sub = work / mission_id
         for folder in ("input", "service-export", "service", "truth", "inbox/history", "aircraft"):
             (sub / folder).mkdir(parents=True, exist_ok=True)
+        # A site map other than the M2 campus is named, as the aircraft flew with it (P5); M2 maps stay implicit.
+        # 非 M2 园区的站点地图要写明，因为飞行器按它飞行（P5）；M2 地图保持缺省。
+        robot = c.catalog.robots.get(((view or {}).get("binding") or {}).get("robot_id", ""))
+        scene = c.catalog.sites[robot.site_id].scene if robot else M2_SCENE
         (sub / "input/scenario.json").write_text(json.dumps({
             "scenario": f"{c.scenario['scenario']}/{mission_id}", "seed": c.scenario["seed"],
-            "source_sha": c.scenario.get("source_sha"), "expected": {"classification": "any"}}), encoding="utf-8")
+            "source_sha": c.scenario.get("source_sha"), "expected": {"classification": "any"},
+            **({"scene": scene} if scene != M2_SCENE else {})}), encoding="utf-8")
         (sub / "service-export/view.json").write_text(json.dumps(view), encoding="utf-8")
         for name in ("service/ready.json", "truth/truth.jsonl"):
             if (c.case / name).is_file():
