@@ -1,0 +1,48 @@
+{
+  "source_sha": "4c3de145e485ce5ab9f119c1e93b803f1d6d2739",
+  "run": "m2-20261002T181645Z-ebc1d069",
+  "case": "service_outage-7",
+  "counted_for_release": false,
+  "classification": "unsafe_or_incorrect",
+  "problems": [
+    "flown_versions 2 != 1",
+    "replans 1 != 0"
+  ],
+  "mission_status": "completed",
+  "false_success_reports": 0,
+  "observed_stall": {
+    "from": "2026-10-02T18:26:16.508948+00:00",
+    "to": "2026-10-02T18:26:16.995725+00:00",
+    "wall_s": 0.486777,
+    "sim_delta_s": 0.044,
+    "altitude_m": -0.0066
+  },
+  "guardian": {
+    "intervention": "observation_stale",
+    "at": "2026-10-02T18:26:16.989967+00:00",
+    "observation_validity_s": 0.5,
+    "then": [
+      "hold accepted 18:26:17.008",
+      "rtl accepted 18:26:27.009",
+      "recovered_to landed_disarmed 18:26:32.489"
+    ],
+    "supervision_p99_s": 0.10203500790521502,
+    "supervision_max_s": 0.1022232142277062
+  },
+  "outcome": "v1 takeoff step unknown and not completed; the service replanned v2 under D032 (policy:m2_approval@v1 within the original approval) and v2 inspected asset_red; report completed",
+  "host": {
+    "load_1m_at_18_26_25": 3.81,
+    "cpus": 4,
+    "car_agent_build_or_release_in_window": false,
+    "other_containers_identity_unchanged": true,
+    "context": "the P5 72-hour soak was running on the same host (resident desk service, logical fleet, vendor simulator)"
+  },
+  "interpretation": "Simulator clock stalled for 0.49 s of wall time during arming/takeoff while the guardian kept its supervision budget; the guardian reacted as designed. M2 cases use no operations catalog and the onboard runtime is unchanged since the P4 candidate. Same symptom as P0 271c5ac, P2 service_outage-19 and the M3 M1-regression stall. Preserve the failed expectation and rerun the unchanged batch on the same candidate; no threshold changes.",
+  "inputs": {
+    "truth/truth.jsonl": "81f635a628b84cc44380fc1cc237c37aeb3bdc7e1b65100ef7fc1f827decf4e4",
+    "judge/result.json": "8c7f2a1297f252caf095559bfccb28f268d445bd24c1c9a1048b38f5f69fb603",
+    "service-export/view.json": "b0893fdf52f0eaa4e197190df98bf1b4be7adb71941496c0644b39f348a9d171",
+    "aircraft/m-97aebdb3bb6f/v1/guardian.jsonl": "acfa9b0f8fb814413cca4ab83f70fe025348a23d3610b278688c030de12352ae",
+    "sitl-before-v2.log": "2b793ba11952d1e1198a501512d7cdade9311d554e1ffc8fe386151900e8dd52"
+  }
+}
