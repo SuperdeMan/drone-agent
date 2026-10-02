@@ -1,0 +1,38 @@
+{
+  "source_sha": "4c3de145e485ce5ab9f119c1e93b803f1d6d2739",
+  "context": "local gate dry-run without the soak result (2026-10-02 19:35 UTC); not a release record",
+  "case": "p3_f09_withdraw_race-41",
+  "criterion": "p3_regression (P3 S0 matrix rerun by the P5 gate)",
+  "matrix": "44/45",
+  "classification": "unexpected",
+  "counts": "all eleven zero",
+  "problems": [
+    "harness_error:ScenarioTimeout: timed out waiting for queued on uav_a",
+    "withdrawn 0 != 1"
+  ],
+  "timeline": {
+    "dock_a_report_cooling": "2026-10-02T19:35:06.718828+00:00",
+    "second_task_created_and_decided": "2026-10-02T19:35:06.961564+00:00",
+    "scheduler": "uav_a blocked (energy.cooling, from the last dock report); uav_b eligible and assigned",
+    "dock_a_report_ready": "2026-10-02T19:35:07.077092+00:00",
+    "report_interval_s": 0.358
+  },
+  "cause": "Harness precondition race: part (ii) of F09 waits for the dock simulator's own energy state to read ready, not for the service to have received that report. When the task is created inside one report period, the scheduler correctly sees cooling and assigns uav_b, so the withdrawal the case expects never starts. The service behaved as designed.",
+  "reruns": {
+    "command": "python -m drone_agent.eval.p3_world --scenario p3_f09_withdraw_race --seeds 41",
+    "results": [
+      "as_expected",
+      "as_expected",
+      "as_expected",
+      "as_expected"
+    ]
+  },
+  "history": "P3 gate (73fcf23) and P4 gate (8f41112) ran this matrix 45/45",
+  "decision": "No candidate change for a test-harness timing race; the release gate reruns the matrix on the spot after the soak, on an otherwise idle machine. Follow-up after P5: make F09 wait for the service-side dock energy (resources.list) before creating the second task.",
+  "inputs": {
+    "judge/result.json": "ebd776a3191bd70ec0ec1788a7216eefb4859b48a539c0257570e73587a14c94",
+    "service-export/scheduling.json": "134670bd3653c43027ac7de9d3ee4ab6d2b20327e0257a620ecff77fcd103b7e",
+    "world/docks.jsonl": "12d8f378e3b9143d7498418381135a1ea6284cb880942d2a5e22f67f98d7b0cf",
+    "world/injections.jsonl": "e97a9abc9b047a5672baa6dfd6e9eac482adc60b80259684927276b460f1397a"
+  }
+}
