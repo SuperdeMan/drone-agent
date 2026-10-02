@@ -115,6 +115,11 @@ class Fleet:
         self.uavs: dict[str, LogicalUav] = {}
         self.docks: dict[str, DockSimulator] = {}
         self.captures: list[dict] = []
+        # Every capture carries a nonce that only grows, from a random start per process, so two captures never share
+        # bytes across flushes and restarts (a repeated image would be a replay to the business rules, D063).
+        # 每次拍摄带一个只增不减的 nonce，每个进程从随机值开始，因此刷新与重启前后两次拍摄的字节从不相同（重复影像在业务规则
+        # 看来是重放，D063）。
+        self.nonce = int.from_bytes(os.urandom(3), "big")
         seed = int.from_bytes(os.urandom(4), "big")
         for robot_id, entry in sorted(catalog.robots.items()):
             dock = catalog.docks[entry.dock_id]
@@ -153,9 +158,10 @@ class Fleet:
         """The logical camera: the asset's frame as the world file says now. / 逻辑相机：按世界文件当前所述渲染资产帧。"""
         def capture(asset_id: str) -> bytes:
             state = read_world(self.args.world, "s0").get(asset_id, "normal")
+            self.nonce += 1
             self.captures.append({"at": utcnow().isoformat(), "robot_id": robot_id, "asset_id": asset_id,
-                                  "state": state})
-            return frame(signatures.get(asset_id), damaged=state != "normal", nonce=len(self.captures))
+                                  "state": state, "nonce": self.nonce})
+            return frame(signatures.get(asset_id), damaged=state != "normal", nonce=self.nonce)
         return capture
 
     def flush(self) -> None:

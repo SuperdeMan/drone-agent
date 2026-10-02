@@ -24,6 +24,7 @@ import argparse
 import asyncio
 import base64
 import contextlib
+import copy
 import hashlib
 import json
 import math
@@ -434,7 +435,12 @@ async def serve(sim: VendorDockSim, socket_path: Path, *, control: Path | None, 
     经 Unix 套接字一次服务一个网关；链路故障关闭并拒绝连接。
     """
     client: dict = {"writer": None}
-    known_faults: dict = {}
+    # The switch found at start was applied by an earlier process: keep its flags, never replay its link drop.
+    # 启动时已有的开关由之前的进程应用过：保留其标志，但绝不重放其断链。
+    known_faults: dict = copy.deepcopy(load_faults(control))
+    for name, value in known_faults.items():
+        if hasattr(sim.faults, name):
+            setattr(sim.faults, name, copy.deepcopy(value))
 
     async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         if not sim.link_up:
@@ -474,12 +480,15 @@ async def serve(sim: VendorDockSim, socket_path: Path, *, control: Path | None, 
         if tick % 10 == 0:
             faults = load_faults(control)
             if faults != known_faults:
+                # Copies: the simulator consumes counters such as `drop_replies` in place.
+                # 使用副本：模拟器会就地消耗 `drop_replies` 这类计数。
                 for name, value in faults.items():
                     if hasattr(sim.faults, name):
-                        setattr(sim.faults, name, value)
-                if faults.get("drop_link_now") and faults.get("drop_link_now") != known_faults.get("drop_link_now")                         and sim.link_up:
+                        setattr(sim.faults, name, copy.deepcopy(value))
+                token = faults.get("drop_link_now")
+                if token and token != known_faults.get("drop_link_now") and sim.link_up:
                     sim.drop_link("harness")
-                known_faults = faults
+                known_faults = copy.deepcopy(faults)
             sim.damaged = load_damaged(world)
             if log is not None:
                 log.mkdir(parents=True, exist_ok=True)
@@ -518,6 +527,9 @@ def main() -> None:
     home = scene["landing_sites"]["home_pad"]["position"]
     sim = VendorDockSim(args.dock, args.robot, signatures=signatures, home=tuple(home), speed=args.speed,
                         seed=args.seed or int.from_bytes(os.urandom(2), "big"))
+    # A capture counter from a random start, so a restarted endpoint never repeats an earlier image.
+    # 拍摄计数从随机值开始，重启后的端点不会重复之前的影像。
+    sim.captures = int.from_bytes(os.urandom(3), "big")
     if args.log is not None and (args.log / "state.json").is_file():
         # A restarted endpoint still refuses to execute a flight it already executed. / 重启后的端点仍拒绝重复执行。
         with contextlib.suppress(OSError, ValueError):

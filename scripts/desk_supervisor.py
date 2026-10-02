@@ -157,8 +157,8 @@ class Desk:
                 self.cases, self.idle / "aircraft", self.idle / "case", self.public / "missions",
                 self.supervisor / "docker-client", self.base / "deployments", self.base / "fixed-pages",
                 self.base / "dock",
-                self.service, self.api.parent, self.world_dir, self.faults, self.fleet, self.vendor,
-                self.vendor / "socket", self.vendor / "log"]
+                self.service, self.api.parent, self.world_dir, self.faults, self.faults / "model",
+                self.faults / "vendor", self.fleet, self.vendor, self.vendor / "socket", self.vendor / "log"]
 
 
 class Stack:

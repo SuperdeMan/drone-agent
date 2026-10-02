@@ -43,7 +43,7 @@ from playwright.async_api import async_playwright
 # Where each workspace shows its list, and how to find the first object of that list in the page's own state.
 # 各工作区的列表区域，以及如何从页面自身状态中找到该列表的第一个对象。
 LISTS = {"overview": "ovAttention", "missions": "missionList", "workflows": "workflowRuns", "tasks": "taskQueue",
-         "fleet": "resourceList", "business": "businessFindings"}
+         "fleet": "resourceList", "business": "businessFindings", "audit": "auditList"}
 DETAILS = {"missions": "detail", "workflows": "runDetail", "tasks": "taskDetail", "fleet": "fleetDetail",
            "business": "bizDetail"}
 FIRST = {"missions": "(missions[0] || {}).mission_id || null",

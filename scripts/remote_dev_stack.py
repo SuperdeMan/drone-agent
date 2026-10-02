@@ -113,11 +113,14 @@ def foreign_identity() -> dict:
     """
     ids = run(["docker", "ps", "-q"]).split()
     template = ('{"id":{{json .Id}},"image":{{json .Image}},"started_at":{{json .State.StartedAt}},'
-                '"restart_count":{{.RestartCount}},"project":{{json (index .Config.Labels "com.docker.compose.project")}}}')
+                '"restart_count":{{.RestartCount}},"project":{{json (index .Config.Labels "com.docker.compose.project")}},'
+                '"component":{{json (index .Config.Labels "io.drone-agent.component")}}}')
     details = [json.loads(line) for line in run(["docker", "inspect", "--format", template, *ids]).splitlines()] if ids else []
     rows = []
     for item in details:
-        if item["project"] == PROJECT:
+        # This project's own containers, including the P5 soak's S2 probes, are not another application's.
+        # 本项目自己的容器（含 P5 长稳的 S2 探针）不是其他应用的容器。
+        if item["project"] == PROJECT or item.get("component") == "soak-s2":
             continue
         rows.append({key: item[key] for key in ("id", "image", "started_at", "restart_count")})
     rows.sort(key=lambda row: row["id"])

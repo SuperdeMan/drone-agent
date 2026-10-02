@@ -288,7 +288,8 @@ def wait_sessions(desk, timeout: float = 120.0) -> dict:
                 resources = SUPERVISOR["api"](desk, "resources.list", project_id=project)
             except (OSError, RuntimeError, ValueError):
                 resources = {}
-            for dock in resources.get("docks", []) if isinstance(resources, dict) else []:
+            sites = resources.get("sites", []) if isinstance(resources, dict) else []
+            for dock in (dock for site in sites for dock in site.get("docks", [])):
                 found[dock.get("dock_id")] = (dock.get("status") or {}).get("session")
         if all(found.get(dock) == "active" for dock in DOCKS):
             return found

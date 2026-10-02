@@ -35,9 +35,9 @@ class FakeApi:
         if self.clock() < self.ready_at:
             return {"ok": False, "issue": {"code": "harness.unreachable"}, "latency_s": 0.0}
         result = {"health": {"status": "ready", "source_sha": "a" * 40},
-                  "resources.list": {"docks": [{"dock_id": "dock_fa", "status": {"session": "active"}}]},
-                  "robots": [{"robot_id": r, "status_at": self.clock().isoformat()} for r in ("uav_fa", "uav_fb",
-                                                                                           "uav_01")],
+                  "resources.list": {"sites": [{"docks": [{"dock_id": "dock_fa", "status": {"session": "active"}}]}]},
+                  "robots": [{"robot_id": r, "status": {"comms": {"last_seen": self.clock().isoformat()}}}
+                             for r in ("uav_fa", "uav_fb", "uav_01")],
                   "workflows.list": {"runs": []}, "list": []}.get(method)
         return {"ok": True, "result": result, "latency_s": 0.01}
 
@@ -149,3 +149,93 @@ def test_the_end_disables_schedules_clears_switches_and_restores_the_world(tmp_p
     assert (harness.base / "finished.json").is_file()
     throttle = json.loads((desk.faults / "model" / "throttle.json").read_text())
     assert datetime.fromisoformat(throttle["until"]) < clock.value
+
+
+def test_the_judge_explains_each_container_start_by_an_injected_fault_only():
+    from types import SimpleNamespace
+
+    from drone_agent.eval.judge_p5_soak import unexplained_restarts
+
+    def sample(service_start, dock_start):
+        return {"residents": {"desk-service": {"started_at": service_start}, "desk-dock": {"started_at": dock_start}}}
+
+    r = SimpleNamespace(
+        plan={"faults": {"service_kill": {"service": "desk-service"}}},
+        occurrences=[{"id": "service_kill-000", "kind": "service_kill"},
+                     {"id": "residents_restart-000", "kind": "residents_restart"}],
+        state={"occurrences": {
+            "service_kill-000": {"injected": True, "started_at": "2026-10-03T01:00:00+00:00"},
+            "residents_restart-000": {"restarted": [{"service": "desk-dock", "at": "2026-10-03T02:00:00+00:00",
+                                                     "ok": True}]}}},
+        samples=[sample("2026-10-03T00:00:00+00:00", "2026-10-03T00:00:00+00:00"),
+                 sample("2026-10-03T01:00:20+00:00", "2026-10-03T00:00:00+00:00"),
+                 sample("2026-10-03T01:00:20+00:00", "2026-10-03T02:00:03+00:00"),
+                 sample("2026-10-03T03:30:00+00:00", "2026-10-03T02:00:03+00:00")])
+    assert unexplained_restarts(r) == {"desk-service": ["2026-10-03T03:30:00+00:00"]}
+
+
+class StartingApi(FakeApi):
+    """Refuses every start until `accept_at`; then starts one run per request id. / 在 accept_at 之前拒绝启动。"""
+
+    def __init__(self, clock, accept_at):
+        super().__init__(clock)
+        self.accept_at, self.started = accept_at, {}
+
+    def call(self, actor, method, trust="first_party", timeout=130.0, **params):
+        if method == "workflows.start":
+            self.calls.append((actor, method, params))
+            if self.clock() < self.accept_at:
+                return {"ok": False, "issue": {"code": "service.degraded"}, "latency_s": 0.0}
+            run = self.started.setdefault(params["request_id"], f"wr-{len(self.started):04d}")
+            return {"ok": True, "result": {"run": {"run_id": run}}, "latency_s": 0.0}
+        if method == "workflows.get":
+            return {"ok": True, "result": {"run": {"state": "completed"}}, "latency_s": 0.0}
+        return super().call(actor, method, trust, timeout, **params)
+
+
+def watch_plan() -> dict:
+    value = plan()
+    value["faults"] = {}
+    value["workload"] = {"s1_watch": {"layer": "S1", "every_h": 2, "offset_min": 0, "project_id": "campus_s1",
+                                      "workflow_id": "appearance_watch", "assets": ["asset_red"]}}
+    return value
+
+
+def harness_with(tmp_path, monkeypatch, accept_after_s):
+    desk = SUP["Desk"](tmp_path)
+    for folder in desk.folders():
+        folder.mkdir(parents=True, exist_ok=True)
+    base = desk.base / "soak" / "soak-test"
+    base.mkdir(parents=True)
+    value = watch_plan()
+    (base / "manifest.json").write_text(json.dumps({"soak_id": "soak-test", "t0": T0.isoformat(),
+                                                    "end": (T0 + timedelta(hours=1)).isoformat(), "plan": value}))
+    (base / "occurrences.json").write_text(json.dumps(SOAK["expand"](value, T0)))
+    monkeypatch.setitem(SOAK["HELPERS"], "capacity", lambda: {"load": [0, 0, 0], "memory": {}})
+    clock = Clock()
+    api = StartingApi(clock, T0 + timedelta(seconds=accept_after_s))
+    harness = SOAK["Soak"](desk, base, api=api, containers=FakeContainers(), clock=clock)
+    harness.last_people = float("inf")
+    return harness, clock, api
+
+
+def test_a_refused_start_is_retried_with_the_same_request_id_until_it_starts(tmp_path, monkeypatch):
+    harness, clock, api = harness_with(tmp_path, monkeypatch, accept_after_s=120)
+    advance(harness, clock, 1)
+    assert harness.state["occurrences"]["s1_watch-000"]["status"] == "watching"
+    assert not harness.state["occurrences"]["s1_watch-000"].get("runs")
+    for _ in range(5):
+        advance(harness, clock, 30)
+    status = harness.state["occurrences"]["s1_watch-000"]
+    assert status["status"] == "done" and status["runs"] == ["wr-0000"]
+    requests = {p["request_id"] for _, m, p in api.calls if m == "workflows.start"}
+    assert requests == {"soak-test-s1_watch-000"} and len(api.started) == 1
+
+
+def test_a_start_still_refused_after_the_grace_period_fails_the_occurrence(tmp_path, monkeypatch):
+    harness, clock, api = harness_with(tmp_path, monkeypatch, accept_after_s=10 ** 6)
+    advance(harness, clock, 1)
+    for _ in range(25):
+        advance(harness, clock, 30)
+    status = harness.state["occurrences"]["s1_watch-000"]
+    assert status["status"] == "failed" and status["reason"] == "start_refused" and status["start_failures"] == 1

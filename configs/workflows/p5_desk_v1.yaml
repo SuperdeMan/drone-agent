@@ -26,8 +26,9 @@ analyzers:
     method: color_signature
     bands: {asset_red: [0.105, 0.16], asset_blue: [0.105, 0.16]}
   vlm_change_v3: {kind: model, profile: configs/analysis/vlm_change_v3.yaml, quality: configs/analysis/quality_sim_v1.yaml}
-  # The P5 S1 road marking (see p5_s1_v1); the logical frames of the fleet and the vendor simulator (see p5_campus_v1).
-  # P5 S1 道路标线（见 p5_s1_v1）；机队与厂商模拟器的逻辑帧（见 p5_campus_v1）。
+  # The P5 S1 road marking (measured clear 0.2526, obstructed 0.1518; see p5_s1_v1); the logical frames of the fleet
+  # and the vendor simulator (see p5_campus_v1).
+  # P5 S1 道路标线（无遮挡实测 0.2526、有障碍 0.1518，见 p5_s1_v1）；机队与厂商模拟器的逻辑帧（见 p5_campus_v1）。
   road_signature_s1_v1:
     kind: deterministic
     method: color_signature

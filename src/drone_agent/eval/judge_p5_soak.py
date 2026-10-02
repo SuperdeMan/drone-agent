@@ -454,15 +454,7 @@ def resources(r: Records) -> dict:
     criteria = r.plan["criteria"]
     if not r.samples:
         return {"status": "missing", "reason": "no samples"}
-    first, last = r.samples[0].get("residents") or {}, r.samples[-1].get("residents") or {}
-    kills = sum(1 for item in r.occurrences if item["kind"] == "service_kill"
-                and ((r.state.get("occurrences") or {}).get(item["id"]) or {}).get("injected"))
-    unexpected = {}
-    for service, start in first.items():
-        delta = ((last.get(service) or {}).get("restart_count") or 0) - (start.get("restart_count") or 0)
-        allowed = kills if service == "desk-service" else 0
-        if delta != allowed:
-            unexpected[service] = {"restarts": delta, "injected": allowed}
+    unexpected = unexplained_restarts(r)
     oom = sorted({service for sample in r.samples for service, value in (sample.get("residents") or {}).items()
                   if (value or {}).get("oom")})
     high = sorted({name for sample in r.samples for name, value in (sample.get("containers") or {}).items()
@@ -488,6 +480,36 @@ def resources(r: Records) -> dict:
     ok = not unexpected and not oom and not late and bool(bursts)
     return {"status": "passed" if ok else "failed", "unexpected_restarts": unexpected, "oom": oom,
             "memory_over_95pct": high, "bursts": bursts, "late_bursts": late, "growth": growth}
+
+
+def unexplained_restarts(r: Records) -> dict:
+    """Every container start seen in the samples must follow an injected restart or kill of that container within five
+    minutes; anything else is an unexpected restart (Docker's restart counter is not relied on).
+
+    采样中看到的每次容器启动都必须在该容器被注入重启或强杀后五分钟内发生；否则即为意外重启（不依赖 Docker 的重启计数）。
+    """
+    statuses = r.state.get("occurrences") or {}
+    injected: dict[str, list[datetime]] = defaultdict(list)
+    for item in r.occurrences:
+        status = statuses.get(item["id"]) or {}
+        if item["kind"] in ("service_restart", "service_kill") and status.get("injected"):
+            injected[r.plan["faults"][item["kind"]]["service"]].append(_at(status.get("started_at")))
+        for restart in status.get("restarted") or []:
+            if restart.get("ok"):
+                injected[restart["service"]].append(_at(restart.get("at")))
+    found, previous = {}, {}
+    for sample in r.samples:
+        for service, value in (sample.get("residents") or {}).items():
+            started = (value or {}).get("started_at")
+            if not started:
+                continue
+            if service in previous and started != previous[service]:
+                at = _at(started)
+                if not any(when is not None and when - timedelta(seconds=5) <= at <= when + timedelta(minutes=5)
+                           for when in injected.get(service, [])):
+                    found.setdefault(service, []).append(started)
+            previous[service] = started
+    return found
 
 
 def _percent(value) -> float:
@@ -518,7 +540,8 @@ def layers(r: Records) -> dict:
                               and any((_at(f.get("started_at")) or r.t0) >= r.t0 for f in rec.get("flights", [])))
     statuses = r.state.get("occurrences") or {}
     probes = [statuses.get(i["id"]) or {} for i in r.occurrences if i["kind"] == "s2_probe"]
-    s2_ok = sum(1 for p in probes if p.get("exit_code") == 0)
+    s2_ok = sum(1 for p in probes if p.get("exit_code") == 0
+                and ((p.get("summary") or {}).get("answered") or 0) >= criteria.get("s2_answered_min", 1))
     vendor_tasks = sum(1 for m in soak_missions
                        if (r.bindings.get(m["mission_id"]) or {}).get("execution_backend") == "vendor_protocol_sim"
                        and m["status"] not in ("declined", "rejected", "refused", "planning_failed"))

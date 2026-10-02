@@ -1240,7 +1240,7 @@ function renderAudit() {
     `<button type="button" data-act="auditFilter" data-v="${key}" aria-pressed="${auditFilter === key}">${label}<b>${total[key] || 0}</b></button>`).join(""));
   const shown = entries.filter(e => auditFilter === "all" || auditGroup(e) === auditFilter);
   byId("auditSub").textContent = audit ? (auditBefore ? "更早的记录" : "最新记录") + " · " + entries.length + " 条" : "";
-  paint("auditList", audit ? table(["时间", "身份", "动作", "对象", "细节"], shown.map(e => [when(e.at), raw(`<span class="nowrap">${esc(e.actor || "—")}</span>`),
+  paint("auditList", audit ? table(["时间", "身份", "动作", "对象", "细节"], shown.map(e => [raw(`<time class="nowrap" datetime="${esc(e.at)}" title="${esc(e.at)}">${esc(stamp(e.at))}</time>`), raw(`<span class="nowrap">${esc(e.actor || "—")}</span>`),
     raw(badge(AUDIT[e.action] || e.action, e.action === "access.denied" ? "bad" : e.action.startsWith("mission.approved") ? "ok" : "")),
     auditObject(e.object), raw(`<small>${esc(Object.entries(e.detail || {}).filter(([, v]) => v !== null && v !== "").map(([k, v]) => k + "=" + v).join(" · ").slice(0, 200))}</small>`)]),
     entries.length ? "没有符合筛选的记录。" : "该项目还没有审计记录。") : blank("加载审计记录…", "只有本项目成员能看到本项目的记录。"));

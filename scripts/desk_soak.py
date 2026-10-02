@@ -50,6 +50,7 @@ ORDER_REPAIRABLE = ("open", "reinspection_failed", "reinspection_unknown")
 GROWING = ("missions", "events", "op_events", "op_claims", "wf_runs", "wf_triggers", "bz_jobs", "bz_findings",
            "bz_orders", "reports")
 LATE_GRACE_S = 600
+START_GRACE_S = 600
 PEOPLE_PERIOD_S = 4.0
 WORLD_SECTIONS = {"S0": "s0", "S1": "s1", "S3": "s3"}
 
@@ -414,30 +415,22 @@ class Soak:
         self.note("occurrence", occurrence=item["id"], occurrence_kind=kind, late_s=round(late, 1))
         workload = self.plan["workload"].get(kind)
         if kind == "s1_watch":
-            self.start_run(item, workload["project_id"], workload["workflow_id"], {"asset": item["asset"]})
-            self.update(item["id"], status="watching")
+            self.update(item["id"], status="watching", intended=[[workload["project_id"], workload["workflow_id"],
+                                                                  item["asset"]]])
+            self.ensure_runs(item)
         elif kind in ("s1_damage", "s0_damage", "s3_damage"):
             self.set_world(item["layer"], item["asset"], workload["state"], f"{item['id']} damage")
-            self.start_run(item, workload["project_id"], workload["workflow_id"], {"asset": item["asset"]})
-            self.update(item["id"], status="cycle", stage="damaged")
+            self.update(item["id"], status="cycle", stage="damaged",
+                        intended=[[workload["project_id"], workload["workflow_id"], item["asset"]]])
+            self.ensure_runs(item)
         elif kind == "s1_road":
             self.set_world("S1", item["asset"], workload["state"], f"{item['id']} obstacle")
-            response = self.call("roads", "workflows.event", trust="backend", project_id=workload["project_id"],
-                                 workflow_id=workload["workflow_id"], trigger_id=workload["trigger_id"],
-                                 event_type=workload["event_type"], event_id=f"soak-{item['id']}-{self.short()}",
-                                 payload={"segment": item["asset"]})
-            run_id = (response.get("result") or {}).get("run_id")
-            if run_id:
-                self.track(run_id, item, workload["project_id"], item["asset"])
-            self.update(item["id"], status="cycle" if run_id else "failed", stage="damaged", runs=[run_id] if run_id
-                        else [], error=(response.get("issue") or {}).get("code"))
+            self.update(item["id"], status="cycle", stage="damaged", intended=["event"])
+            self.ensure_runs(item)
         elif kind == "burst":
-            runs = []
-            for index, (project, workflow, asset) in enumerate(workload["runs"]):
-                run_id = self.start_run(item, project, workflow, {"asset": asset}, suffix=f"-{index:02d}")
-                if run_id:
-                    runs.append(run_id)
-            self.update(item["id"], status="watching", runs=runs, expected=len(workload["runs"]))
+            self.update(item["id"], status="watching", intended=[list(run) for run in workload["runs"]],
+                        expected=len(workload["runs"]))
+            self.ensure_runs(item)
         elif kind == "planning":
             response = self.call("operator", "missions.submit", project_id=workload["project_id"],
                                  robot_id=workload["robot_id"], text=workload["text"], volume_id=workload["volume_id"],
@@ -459,19 +452,65 @@ class Soak:
     def short(self) -> str:
         return self.manifest["soak_id"].rsplit("-", 1)[-1]
 
-    def start_run(self, item: dict, project: str, workflow: str, inputs: dict, suffix: str = "") -> str | None:
-        response = self.call("operator", "workflows.start", project_id=project, workflow_id=workflow,
-                             request_id=f"soak-{self.short()}-{item['id']}{suffix}", inputs=inputs)
-        run_id = ((response.get("result") or {}).get("run") or {}).get("run_id")
-        if run_id:
-            self.track(run_id, item, project, inputs.get("asset"))
-            runs = self.state["occurrences"][item["id"]].setdefault("runs", [])
-            if run_id not in runs:
-                runs.append(run_id)
+    def ensure_runs(self, item: dict) -> bool:
+        """Start every intended run not started yet; the request and event ids are fixed per occurrence, so a retry
+        after a refused start (a service restart, for instance) never starts a run twice. True once all started.
+
+        启动尚未启动的每个预定运行；请求号与事件号按发生时刻固定，因此在启动被拒（例如服务重启）后重试也不会启动两次。全部
+        启动后返回 True。
+        """
+        status = self.state["occurrences"][item["id"]]
+        started = status.setdefault("started", {})
+        runs = status.setdefault("runs", [])
+        for index, intent in enumerate(status.get("intended", [])):
+            if str(index) in started:
+                continue
+            if intent == "event":
+                workload = self.plan["workload"][item["kind"]]
+                response = self.call("roads", "workflows.event", trust="backend", project_id=workload["project_id"],
+                                     workflow_id=workload["workflow_id"], trigger_id=workload["trigger_id"],
+                                     event_type=workload["event_type"], event_id=f"soak-{item['id']}-{self.short()}",
+                                     payload={"segment": item["asset"]})
+                run_id = (response.get("result") or {}).get("run_id")
+                project = workload["project_id"]
+            else:
+                project, workflow, asset = intent
+                suffix = f"-{index:02d}" if len(status["intended"]) > 1 else ""
+                response = self.call("operator", "workflows.start", project_id=project, workflow_id=workflow,
+                                     request_id=f"soak-{self.short()}-{item['id']}{suffix}", inputs={"asset": asset})
+                run_id = ((response.get("result") or {}).get("run") or {}).get("run_id")
+            if run_id:
+                started[str(index)] = run_id
+                if run_id not in runs:
+                    runs.append(run_id)
+                self.track(run_id, item, project, item.get("asset") if intent == "event" else intent[2])
+            else:
+                status["start_error"] = (response.get("issue") or {}).get("code")
             self.dirty = True
-        else:
-            self.update(item["id"], error=(response.get("issue") or {}).get("code"))
-        return run_id
+        return len(started) == len(status.get("intended", []))
+
+    def starts_settled(self, item: dict, status: dict) -> bool:
+        """Retry missing starts within the grace period; afterwards record them as failed starts.
+
+        宽限期内重试未完成的启动；之后把它们记为启动失败。
+        """
+        if not status.get("intended") or self.ensure_runs(item):
+            return True
+        if (self.clock() - parse(item["at"])).total_seconds() < START_GRACE_S:
+            return False
+        missing = len(status["intended"]) - len(status.get("started", {}))
+        if not status.get("runs"):
+            self.update(item["id"], status="failed", reason="start_refused", start_failures=missing,
+                        finished_at=iso(self.clock()))
+            if item["layer"] in WORLD_SECTIONS and item["kind"] != "burst" and item["kind"] != "s1_watch":
+                self.set_world(item["layer"], item["asset"], "normal", f"{item['id']} never started")
+            return False
+        status["start_failures"] = missing
+        status["intended"] = [status["intended"][int(i)] for i in sorted(status["started"], key=int)]
+        status["started"] = {str(n): status["started"][key] for n, key in enumerate(sorted(status["started"],
+                                                                                           key=int))}
+        self.dirty = True
+        return True
 
     def track(self, run_id: str, item: dict, project: str, asset: str | None) -> None:
         self.state["runs"].setdefault(run_id, {"occurrence": item["id"], "project_id": project, "asset": asset})
@@ -489,11 +528,14 @@ class Soak:
         elif status["status"] == "watching":
             if kind == "planning":
                 return  # the people pass settles it / 由扮演人的处理收尾
+            if not self.starts_settled(item, status):
+                return
             states = [self.run_state(run_id) for run_id in status.get("runs", [])]
             if states and all(state in RUN_FINAL for state in states):
                 self.update(item["id"], status="done", finished_at=iso(self.clock()), run_states=states)
         elif status["status"] == "cycle":
-            self.advance_cycle(item, status)
+            if self.starts_settled(item, status):
+                self.advance_cycle(item, status)
 
     def run_state(self, run_id: str) -> str | None:
         project = self.state["runs"].get(run_id, {}).get("project_id")
@@ -550,11 +592,25 @@ class Soak:
         for project in PROJECTS:
             listing = self.read("workflows.list", project_id=project) or {}
             for run in listing.get("runs", []):
-                if run["state"] in RUN_FINAL:
+                # Only the soak's own load: runs from before T0 are left exactly as they were (D073).
+                # 只处理长稳自己的负载：T0 之前的运行保持原样（D073）。
+                if run["state"] in RUN_FINAL or run["created_at"] < self.manifest["t0"]:
                     continue
                 view = self.read("workflows.get", project_id=project, run_id=run["run_id"])
                 if view is not None:
                     self.serve_run(project, view)
+            # A business order no cycle owns is repaired once its world is normal, so nothing stays open by accident;
+            # while its asset is still damaged a cycle owns it and reports the repair itself.
+            # 没有循环拥有的业务工单在其世界恢复正常后维修，避免意外遗留；资产仍损伤时由其循环自己报告维修。
+            for order in self.read("orders.list", project_id=project) or []:
+                owned = any(s.get("order_id") == order["order_id"] for s in self.state["occurrences"].values())
+                if owned or order["state"] not in ORDER_REPAIRABLE or order["created_at"] < self.manifest["t0"]:
+                    continue
+                asset = order["asset_key"].rsplit("/", 1)[-1]
+                if self.world_state(project, asset) == "normal":
+                    self.call("operator", "orders.repair", project_id=project, order_id=order["order_id"],
+                              request_id=f"soak-{order['order_id'][-12:]}-adhoc-r{order['round'] + 1}",
+                              note="soak repair of an order no cycle owns")
         for mission_id, item_id in list(self.state["planning"].items()):
             view = self.read("view", mission_id=mission_id)
             status = ((view or {}).get("mission") or {}).get("status")
@@ -614,15 +670,6 @@ class Soak:
                 ("confirmed" if truth != "normal" else "dismissed")
             self.call("reviewer", "workflows.review", project_id=project, run_id=run_id, node_id=node["node_id"],
                       decision=decision, request_id=f"soak-{run_id[-12:]}-{node['node_id']}", note=f"world: {truth}")
-        for order in view.get("orders", []):
-            # An order no cycle owns is repaired at once, so nothing stays open by accident.
-            # 没有循环拥有的工单立即维修，避免意外遗留。
-            owned = any(s.get("order_id") == order["order_id"] for s in self.state["occurrences"].values())
-            if not owned and order["state"] in ORDER_REPAIRABLE and asset:
-                if self.world_state(project, asset) != "normal":
-                    continue  # its cycle will report the repair / 由其循环报告维修
-                self.call("operator", "orders.repair", project_id=project, order_id=order["order_id"],
-                          request_id=f"soak-{order['order_id'][-12:]}-adhoc", note="soak repair of an unowned order")
 
     def simulator_free(self) -> bool:
         """Whether no flight, batch or deployment holds the project's simulator lock right now.
@@ -728,7 +775,14 @@ class Soak:
         if process is not None and process.poll() is None:
             if not overdue:
                 return
-            process.kill()
+            # Killing the client would leave the container running; stop the container itself.
+            # 杀掉客户端会让容器继续运行；直接停止容器本身。
+            self.containers.run(["docker", "stop", "-t", "5", status["container"]])
+            try:
+                process.wait(timeout=60)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=30)
         elif process is None:
             # Adopted after a harness restart: wait while its container still runs. / 编排重启后接管：容器仍在运行时等待。
             running = subprocess.run(["docker", "ps", "-q", "--filter", f"name=^{status['container']}$"],
@@ -743,10 +797,18 @@ class Soak:
         if run.is_file():
             try:
                 header = json.loads(run.read_text(encoding="utf-8"))
-                summary = {k: header.get(k) for k in ("samples", "split", "mode", "threshold", "metrics", "errors",
-                                                      "refusals", "latency")}
+                summary = {k: header.get(k) for k in ("samples", "split", "mode", "model", "duration_s",
+                                                      "software_revision")}
             except ValueError:
                 summary = {}
+        results = output / "run" / "results.jsonl"
+        if results.is_file():
+            # A probe shows the live model path works: count the samples the model actually answered.
+            # 探针证明实调模型路径可用：统计模型实际回答的样本数。
+            rows = [json.loads(line) for line in results.read_text(encoding="utf-8").splitlines() if line.strip()]
+            refused = [r["result"].get("reasons", [None])[0] for r in rows if r["result"].get("verdict") == "refused"]
+            summary.update(answered=len(rows) - len(refused), refused=len(refused), refusal_reasons=sorted(set(
+                str(reason) for reason in refused))[:5])
         self.update(item["id"], status="done", exit_code=code, finished_at=iso(self.clock()), summary=summary,
                     adopted=process is None)
 
@@ -817,7 +879,9 @@ class Soak:
         kind, entry = item["kind"], self.plan["faults"][item["kind"]]
         if kind in ("fleet_uplink", "s1_uplink", "model_unreachable"):
             ok = self.containers.connect(entry["service"], entry["network"])
-        elif kind in ("vendor_protocol",):
+        elif kind in ("vendor_protocol", "vendor_link"):
+            # Back to the defaults; the link token is removed so a restarted simulator never drops the link again.
+            # 恢复默认；去掉断链令牌，重启的模拟器不会再次断链。
             write_json(self.desk.faults / "vendor" / "vendor.json",
                        {"faults": {"duplicate": False, "reorder": False, "drop_replies": {}}})
             ok = True
@@ -856,9 +920,13 @@ class Soak:
         if target == "robots":
             robots = {"fleet_uplink": ("uav_fa", "uav_fb"), "s1_uplink": ("uav_01",)}[item["kind"]]
             listed = {r.get("robot_id"): r for r in (self.read("robots") or []) if isinstance(r, dict)}
-            fresh = all((self.clock() - parse(listed[r]["status_at"])).total_seconds() < 15
-                        for r in robots if r in listed and listed[r].get("status_at"))
-            if fresh and all(r in listed for r in robots):
+
+            def seen(robot: str) -> str | None:
+                # The uplink stamps `comms.last_seen` on every status it publishes. / uplink 每次发布状态都写入它。
+                return (((listed.get(robot) or {}).get("status") or {}).get("comms") or {}).get("last_seen")
+
+            fresh = all(seen(r) and (self.clock() - parse(seen(r))).total_seconds() < 15 for r in robots)
+            if fresh:
                 self.update(item["id"], status="done", robots_fresh_s=round(waited, 1), finished_at=iso(self.clock()))
             elif waited > 900:
                 self.update(item["id"], status="done", robots_fresh_s=None, finished_at=iso(self.clock()))
@@ -869,7 +937,8 @@ class Soak:
         found = {}
         for project in PROJECTS:
             resources = self.read("resources.list", project_id=project) or {}
-            for dock in resources.get("docks", []) if isinstance(resources, dict) else []:
+            sites = resources.get("sites", []) if isinstance(resources, dict) else []
+            for dock in (dock for site in sites for dock in site.get("docks", [])):
                 found[dock.get("dock_id")] = (dock.get("status") or {}).get("session")
         return found
 

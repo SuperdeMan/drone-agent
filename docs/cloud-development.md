@@ -246,6 +246,11 @@ P0 的 `verify_p0_release.py` 用法与证据见 [P0 记录](p0-readiness.md)。
 | S2 数据安装 | `uv run python scripts/dev_stack.py p4-data --data <本机数据目录> [--apply] [--resume <上传ID>]` | 本机按已提交清单核对后，只把清单中的文件打成确定性归档，经可续传 SFTP 上传；云端拒绝链接与目录穿越，逐文件核对后只读安装到 `~/drone-agent/data/visa_pcb_v1`，从不覆盖已安装的数据 |
 | S2 评测 | `uv run python scripts/dev_stack.py p4-s2 --split calibration\|test --mode live\|replay\|scripted\|retrieval [--threshold τ] [--replay-of <部署>/p4-<运行>]` | `live` 只经白名单代理到达模型端点并逐样本录制；`replay` 与 `scripted` 无网络；校准运行给出阈值表，测试运行给出冻结指标，回放与所回放的实调运行逐样本比较；`retrieval` 在 M3 同版本 CLIP 的无网络评测镜像中给出检索报告（不设门槛） |
 | 常驻任务台（P4） | `desk-cloud --apply` | 服务改带 `p4_s1_v1` 工作流目录并另带 `p4_s1_v1` 业务目录与实调视觉角色；激活前在同一账本副本上依次运行 D056、D058、D060 与 D064 演练，服务启动时带备份加上业务表 |
+| P5 S1 用例 | `uv run python scripts/dev_stack.py p5 --scenario all [--seeds 7] [--keep-going]` | 云端 `compose.m2.yaml` + `compose.p1.yaml` + `compose.p4.yaml` + `compose.p5.yaml`；P5 仿真镜像（M2 世界加道路标线），机载 uplink / guardian / executive 加载 P5 S1 地图；编排经 Gazebo 世界服务放置与移除道路障碍物，以 `event:road-reports` 发出道路报告并按人的方式审批与复核；结果另带每次分析的道路特征占比，供区间标定记录 |
+| 常驻任务台（P5） | `desk-members --next --apply` 后 `desk-cloud --apply` | 成员列表先暂存（列出 `fleet_s0` / `vendor_s3` 会使旧服务拒绝启动），激活时才替换、失败即恢复；构建 P5 仿真镜像、为逻辑飞行器签发证书，在同一账本副本上依次运行迁移演练与 P5 目录切换演练；服务带四个 `p5_desk_v1` 目录、三种执行后端与厂商链路，另起 `desk-fleet` 与 `desk-vendor`，等四个机场会话都活动后才完成 |
+| 任务台世界 | `uv run python scripts/dev_stack.py desk-world --section s1\|s0\|s3 --asset <资产> --state normal\|damaged\|obstructed --apply` | 只写主机上的世界文件并记历史；监管者起飞前放置 S1 模型，逻辑机队与厂商模拟器按各自一节渲染；任务服务与页面读不到 |
+| 长稳 | `uv run python scripts/dev_stack.py desk-soak --start\|--status\|--stop\|--judge [--apply]` | 以 systemd unit 运行 `scripts/desk_soak.py`，计划为 `configs/soak/p5_soak_v1.yaml`；`--judge` 复制账本后在无网络容器中运行长稳裁判；见[运维手册](operations-guide.md) |
+| 备份与恢复演练 | `desk-backup --apply`、`desk-restore-drill --apply` | 在线备份账本并记录媒体清单；演练把最近的备份恢复到临时目录离线读回，从不触碰在用账本 |
 
 P1/P2 联调复用现有云端单机 mission_upload 与项目锁，不需要 Jetson。P3 的两机同世界拓扑与容量预算见 D061；S0 的 10/30/100 逻辑节点规模与 S1 物理实例数分别记录。保持 guardian 独立配额、项目隔离与按需 SITL，不自动改动其他项目或系统配置。
 

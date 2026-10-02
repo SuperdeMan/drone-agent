@@ -24,9 +24,11 @@
 | `fleet/service.py`、`fleet/main.py` | `--execution-backend` 接受允许集合（逗号分隔，第一个为主后端）；版本来源按机器人后端写入；厂商任务的状态、结果、报告与取消由网关派生；厂商任务不自动重飞 |
 | `fleet/api.py`、`runtime/permission.py` | `audit.list`（新 scope `audit.read`，全部项目角色）；项目成员的越权尝试写入项目审计 |
 | `console/mission.*` | 「运行审计」工作区（`audit_watch` / `audit` 帧）；厂商任务显示协议日志与「安全判定由厂商负责」 |
-| `scripts/desk_supervisor.py` | 每架次在仿真器就绪后按 `desk/world/appearance.json` 放置损伤贴片或障碍物（只由主机编排写入，页面与容器都读不到） |
+| `scripts/desk_supervisor.py` | 每架次在仿真器就绪后、guardian 启动前按 `desk/world/appearance.json` 的 `s1` 一节放置损伤贴片或障碍物（只由主机编排写入，页面与任务服务读不到），放置与所用地图写入 `flight.json`，逐任务裁判按该地图核对 |
+| `scripts/remote_desk.py`、`scripts/dev_stack.py` | 激活构建 P5 仿真镜像、为逻辑飞行器签发证书、在账本副本上运行目录切换演练、启动 `desk-fleet` / `desk-vendor` 并核对其边界；成员列表可暂存（`desk-members --next`）；新增 `desk-world`、`desk-soak`、`desk-backup`、`desk-restore-drill` |
+| `sim/compose.desk.yaml`、`sim/compose.p5.yaml` | 机载 uplink / guardian / executive 加载 P5 S1 地图 `p5_site_s1_v1`（飞行器按自己的地图解析航线与图像档案）；任务台另有两个常驻容器与模型代理的限流开关 |
 
-新增：`fleet/audit.py`（项目审计投影）、`fleet/vendor.py`（厂商档案、任务编译、协议信封）、`fleet/vendor_gateway.py`（网关状态机、厂商日志、证据入账）、`eval/vendor_sim.py`（S3 模拟器）、`eval/s0_fleet.py`（常驻逻辑机队）、`eval/p5_world.py` / `eval/judge_p5.py`（第二模板 S0 与 S3 矩阵）、`eval/p5_authz.py`（授权矩阵）、`eval/judge_p5_soak.py`（长稳裁判）、`configs/vendors/`、`configs/soak/`、`configs/platforms/vendor_dock_sim.yaml`、P5 的站点地图、运营 / 工作流 / 业务 / 调度目录、`sim/p5.Dockerfile` / `sim/p5_setup.py`（M2 世界加道路段标线）、`sim/compose.p5.yaml`、`scripts/remote_p5.py`、`scripts/desk_soak.py`、`scripts/verify_p5_release.py`、`docs/operations-guide.md`。
+新增：`fleet/audit.py`（项目审计投影）、`fleet/vendor.py`（厂商档案、任务编译、协议信封）、`fleet/vendor_gateway.py`（网关状态机、厂商日志、证据入账）、`fleet/switch_drill.py`（目录切换演练）、`eval/vendor_sim.py`（S3 模拟器，含常驻套接字模式）、`eval/s0_fleet.py`（常驻逻辑机队）、`eval/p5_desk_world.py`（S0 中的任务台平台目录，供冒烟、长稳编排测试与授权矩阵使用）、`eval/p5_world.py` / `eval/judge_p5.py`（第二模板 S0 与 S3 矩阵）、`eval/p5_authz.py`（授权矩阵）、`eval/judge_p5_soak.py`（长稳裁判）、`configs/vendors/`、`configs/soak/`、`configs/platforms/vendor_dock_sim.yaml`、P5 的站点地图、运营 / 工作流 / 业务 / 调度目录、`sim/p5.Dockerfile` / `sim/p5_setup.py`（M2 世界加道路段标线）、`sim/compose.p5.yaml`、`scripts/remote_p5.py`、`scripts/desk_soak.py`、`scripts/verify_p5_release.py`、`docs/operations-guide.md`。
 
 **不改的代码**：`fleet/workflow.py`、`workflow_store.py`、`workflow_models.py`（通用工作流内核），`business*.py`、`findings.py`、`work_orders.py`、`analysis*.py`、`media_index.py`（业务层），以及全部机载路径。门禁按文件核对这一点：第二模板只能靠目录与仿真世界接入。
 
@@ -54,7 +56,7 @@ P4 门禁十五项中十四项通过，只有 S2 精确率未达冻结要求（0
 ### 3.4 一入口主场景（D070）
 
 - 任务台的工作流目录逐字节保留 P4 模板；`appearance_watch` / `appearance_reinspection` 使用颜色特征插件，可以关单。任务台世界默认没有损伤，因此主场景需要世界变化：`dev_stack.py desk-world` 经 SSH 把资产外观写入 `desk/world/appearance.json`（损伤 / 正常 / 障碍），监管者在每架次仿真器就绪、guardian 启动之前按它放置或不放置模型，并把每次放置写入该架次的记录。
-- `desk_browser.py --loop appearance_watch --repair --world asset_red` 在真实浏览器中走完：开始前放置损伤；启动运行 → 审批巡检 → 发现 → 复核确认 → 建单 → 维修反馈（同时移除损伤）→ 审批复检 → 本轮复核 → 结算 `passed` → 工单关闭、发现解决；最后打开「运行审计」，核对这条链路的提交、审批、复核、反馈与关单都在列且身份正确。
+- `desk_browser.py --loop appearance_watch --repair --world asset_red` 在真实浏览器中走完：开始前经 `dev_stack.py desk-world` 放置损伤；启动运行 → 审批巡检 → 发现 → 复核确认 → 建单 → 维修反馈（同一时刻经 `desk-world` 移除损伤）→ 审批复检 → 在运行详情中确认本轮复核 → 结算 `passed` → 工单关闭、发现解决；最后打开「运行审计」，读回这条链路的条目（门禁要求其中有操作者本人的审批、发现复核与维修反馈）。
 
 ### 3.5 第二业务模板：园区道路障碍候选复核（D071）
 
@@ -79,8 +81,8 @@ P4 门禁十五项中十四项通过，只有 S2 精确率未达冻结要求（0
 
 - **计划**：`configs/soak/p5_soak_v1.yaml` 固定排班、故障与探测的节奏和随机种子，长稳开始时与候选 SHA、部署 ID 一起写入 `desk/soak/<长稳ID>/manifest.json`；开始时刻 T0 只存在于这个文件，服务重启不影响它。
 - **负载**：S0 每 15 分钟一次 `fleet_watch`（两台逻辑 UAV 交替），每 3 小时一次损伤 → 修复循环；S1 每 3 小时一次 `appearance_watch`（红 / 蓝交替），每天一次损伤循环与一次 `road_watch` 障碍循环；S3 每 30 分钟一次 `vendor_watch`，协议故障按计划穿插；S2 每 6 小时用冻结的 change-v3 实调 8 张 VisA 校准拆分图（不用测试拆分，不计入任何指标）；每天一次 15 个运行的积压突发；约 5% 的 S0 运行在随机阶段取消；每 30 分钟一组越权探测；每 2 小时一次自然语言实调规划提交。
-- **编排身份**：审批、复核、维修反馈与取消由主机上的长稳编排以 `harness:soak-*` 身份经 API 完成（成员列表是受信部署输入），全部计为编排介入；真人操作单独记录。
-- **故障**：服务每 8 小时一次正常重启、每天一次强杀；S0 机队上行每 6 小时断网 5 分钟、S1 上行每天一次断网 3 分钟；厂商链路每 6 小时断开一次；模型端点每 12 小时各一次 15 分钟不可达（断开代理出站网络）与 15 分钟限流（代理对 CONNECT 回 429，开关文件只由编排写入）；逻辑机场与机队容器每天重启一次。
+- **编排身份**：审批、复核、维修反馈与取消由主机上的长稳编排（`scripts/desk_soak.py`，systemd unit）以 `harness:soak-*` 身份经 API 完成（成员列表是受信部署输入），全部计为编排介入；真人操作单独记录。复核按世界真值决定（巡检运行：世界有损伤 / 障碍才确认；复检运行：世界已恢复才确认）。PX4 任务只在项目仿真锁空闲时审批，因此长稳期间可以照常运行其他云端批次，S1 只会延后。编排自身重启时按日志续跑：请求号按发生时刻固定，不会重复启动；它停机期间错过的发生时刻记为 `missed`（编排原因）。
+- **故障**（整容器，经 Docker 或只由编排写入的开关文件；强杀是主机对容器主进程发送 SIGKILL，由 `unless-stopped` 重启，与崩溃相同）：服务每 8 小时一次正常重启、每天一次强杀；S0 机队上行每 6 小时断网 5 分钟、S1 上行每天一次断网 3 分钟；厂商链路每 6 小时断开一次；模型端点每 12 小时各一次 15 分钟不可达（断开代理出站网络）与 15 分钟限流（代理对 CONNECT 回 429，开关文件只由编排写入）；逻辑机场与机队容器每天重启一次。
 - **采样**：每 60 秒记录各容器 CPU / 内存 / 重启次数、主机负载 / 内存 / 磁盘、账本与媒体体积、各表行数、待审批 / 活动运行 / 作业队列长度与 API 往返时延。
 - **判据（运行前冻结）**：
   1. 同一部署持续 ≥ 72 h；服务可重启，账本从未重置（只追加的表行数单调不减，T0 之前的记录仍在）。
@@ -149,7 +151,7 @@ P4 门禁十五项中十四项通过，只有 S2 精确率未达冻结要求（0
 | P5-V11 | 执行中重启服务（网关随之重启） | 从厂商日志恢复，不重发新的执行，结果正确 |
 | P5-V12 | 档案声明低层控制；网关被要求发送白名单外命令 | 档案拒绝加载；命令拒绝发送 |
 
-**S1（`scripts/remote_p5.py`，PX4 SITL 上的 `uav_01` + 逻辑机场，P5 仿真世界）**：`p5_s1_road` × 7 / 19 / 41（障碍在场 → 发现 → 确认 → 工单 → 清障反馈时移除障碍 → 复检正常 → 关单，2 次飞行）；`p5_s1_road_not_cleared` × 7（第 1 轮障碍仍在 → `failed`，第 2 轮移除后关单，3 次飞行）。
+**S1（`scripts/remote_p5.py`，PX4 SITL 上的 `uav_01` + 逻辑机场，P5 仿真世界与 P5 S1 地图）**：`p5_s1_road` × 7 / 19 / 41（障碍在场 → 发现 → 确认 → 工单 → 清障反馈时移除障碍 → 复检正常 → 关单，2 次飞行）；`p5_s1_road_not_cleared` × 7（第 1 轮障碍仍在 → `failed`，第 2 轮移除后关单，3 次飞行）。
 
 **授权矩阵**：见 §3.3，全部方法 × 全部身份类别。
 
