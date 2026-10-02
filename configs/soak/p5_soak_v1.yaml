@@ -29,9 +29,13 @@ schedules:
   - {layer: S0, project_id: fleet_s0, workflow_id: fleet_watch, trigger_id: rounds_fa, interval_min: 30, start_window_s: 300}
   - {layer: S0, project_id: fleet_s0, workflow_id: fleet_watch, trigger_id: rounds_fb, interval_min: 30, start_window_s: 300}
   - {layer: S3, project_id: vendor_s3, workflow_id: vendor_watch, trigger_id: rounds, interval_min: 30, start_window_s: 300}
+# The S1 damage cycle uses asset_blue: on the resident desk asset_red still carries a P4 desk order whose reinspection
+# template runs the labelled scripted fixture, which by the P4 design can never close it, so every new asset_red finding
+# joins that order (see the D073 addendum). / S1 损伤循环使用 asset_blue：常驻任务台上 asset_red 仍有一张 P4 任务台工单，其复检
+# 模板运行带标注的脚本夹具，按 P4 设计永远不能关单，asset_red 的新发现都会并入该工单（见 D073 补记）。
 workload:
   s1_watch: {layer: S1, every_h: 3, offset_min: 20, project_id: campus_s1, workflow_id: appearance_watch, assets: [asset_red, asset_blue]}
-  s1_damage: {layer: S1, every_h: 24, offset_min: 270, project_id: campus_s1, workflow_id: appearance_watch, asset: asset_red, state: damaged}
+  s1_damage: {layer: S1, every_h: 24, offset_min: 270, project_id: campus_s1, workflow_id: appearance_watch, asset: asset_blue, state: damaged}
   s1_road: {layer: S1, every_h: 24, offset_min: 990, project_id: campus_s1, workflow_id: road_watch, trigger_id: road_report, event_type: road.report, asset: road_north, state: obstructed}
   s0_damage: {layer: S0, every_h: 3, offset_min: 50, project_id: fleet_s0, workflow_id: fleet_watch, assets: [asset_blue, asset_blue_b], state: damaged}
   s3_damage: {layer: S3, every_h: 12, offset_min: 140, project_id: vendor_s3, workflow_id: vendor_watch, asset: asset_blue, state: damaged}
