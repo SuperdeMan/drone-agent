@@ -207,12 +207,21 @@ class DockBackend:
     只经服务 API 拉取请求的动作、确认并报告状态。
     """
 
-    def __init__(self, principal: str, docks: dict[str, DockSimulator], call: Call):
+    def __init__(self, principal: str, docks: dict[str, DockSimulator], call: Call, *, keep_transcript: bool = True):
+        """`keep_transcript` records every call for the S0 judge; a resident backend turns it off, since nothing reads
+        it there and it would grow for as long as the process runs (D073, 2026-10-05).
+
+        `keep_transcript` 为 S0 裁判记录每次调用；常驻后端关闭它，因为那里没有人读取，而它会随进程运行无限增长
+        （D073，2026-10-05）。
+        """
         self.principal, self.docks, self.call = principal, docks, call
+        self.keep_transcript = keep_transcript
         self.transcript: list[dict] = []
 
     async def _call(self, method: str, **params) -> dict:
         response = await self.call(method, **params)
+        if not self.keep_transcript:
+            return response
         self.transcript.append({"at": utcnow().isoformat(), "method": method,
                                 "ok": response.get("ok"), "code": (response.get("issue") or {}).get("code"),
                                 "result": response.get("result") if method != "docks.report" else
@@ -284,7 +293,7 @@ async def serve(args) -> None:
         except (OSError, RuntimeError, ValueError, TimeoutError) as error:
             return {"ok": False, "issue": {"code": "service.degraded", "message": type(error).__name__}}
 
-    backend = DockBackend(args.principal, {args.dock: dock}, call)
+    backend = DockBackend(args.principal, {args.dock: dock}, call, keep_transcript=False)
     previous, departed = utcnow(), False
     while True:
         now = utcnow()

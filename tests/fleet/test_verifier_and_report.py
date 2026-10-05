@@ -136,3 +136,27 @@ def test_only_timed_belief_facts_enter_the_scene_graph():
     assert not accept_fact(WorldFact(fact_id="f2", subject="asset_red", predicate="seen", timestamp=now,
                                      source=FactSource.SIM_TRUTH, world_kind=WorldKind.TRUTH))
     assert not accept_fact(belief.model_copy(update={"source": FactSource.MODEL, "source_version": None}))
+
+
+def test_image_quality_is_computed_once_per_digest_and_size(monkeypatch):
+    """A refresh rechecks evidence each time; unchanged bytes reuse their image quality (D073, 2026-10-05).
+
+    每次刷新都复核证据；未变的字节复用其影像质量（D073，2026-10-05）。
+    """
+    from drone_agent.fleet import verifier
+
+    seen: list[str] = []
+    real = verifier.image_quality
+
+    def counted(media: bytes, width: int, height: int) -> dict:
+        seen.append(hashlib.sha256(media).hexdigest())
+        return real(media, width, height)
+
+    monkeypatch.setattr(verifier, "image_quality", counted)
+    verifier._quality_cache.clear()
+    red, blue = image("red"), image("blue")
+    assert check(evidence(red), red) is EffectVerdict.VERIFIED
+    assert check(evidence(red), red) is EffectVerdict.VERIFIED
+    assert check(evidence(blue), blue) is EffectVerdict.UNVERIFIED
+    assert check(evidence(red), image("blue")) is EffectVerdict.REFUTED  # digest first / 先核对摘要
+    assert seen == [hashlib.sha256(red).hexdigest(), hashlib.sha256(blue).hexdigest()]

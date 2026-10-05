@@ -150,7 +150,7 @@ class Fleet:
             except (OSError, RuntimeError, ValueError, TimeoutError) as error:
                 return {"ok": False, "issue": {"code": "service.degraded", "message": type(error).__name__}}
 
-        self.backend = DockBackend(args.principal, self.docks, call)
+        self.backend = DockBackend(args.principal, self.docks, call, keep_transcript=False)
         self.logged_flights = dict.fromkeys(self.uavs, 0)
         self.sampled: dict[str, float] = {}
 

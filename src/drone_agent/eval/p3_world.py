@@ -36,6 +36,7 @@ import yaml
 from drone_agent.contracts import utcnow
 from drone_agent.eval.p1_world import P1World, ScenarioTimeout
 from drone_agent.eval.p2_world import P2World, draft_planner
+from drone_agent.fleet.resources import Stage
 from drone_agent.fleet.scheduler import Scheduler, build_scheduling
 from drone_agent.fleet.scheduling_models import TERMINAL_TASK, TaskState
 from drone_agent.fleet.workflow import WorkflowEngine, build_workflows
@@ -407,8 +408,13 @@ async def f09_withdraw_race(w: P3World) -> None:
         if not held["on"]:
             await original()
 
+    # The scheduler judges from the dock's last report, so the service must have seen it ready, not only the
+    # simulator (D073, 2026-10-05). / 调度器按机场最近一次上报判定，因此必须是服务已看到它就绪，而不只是模拟器
+    # （D073，2026-10-05）。
     await w.until(lambda: w.docks["dock_a"].energy()[0] == "ready" and not w.service.ops.store.holders(
-        w.service.ops.catalog.resources("uav_a")), "uav_a ready again", 30)
+        w.service.ops.catalog.resources("uav_a")) and not any(
+        reason.startswith("energy.") for reason in w.service.dispatch.judge("uav_a", stage=Stage.PREVIEW).reasons),
+        "uav_a ready again", 30)
     uav.cycle = cycle_without_pull
     second = await w.task("asset_mid", key=f"withdraw-first-{w.seed}")
     await w.drive_tasks(lambda: w.task_state(second) == "assigned" and w.task_robot(second) == "uav_a"

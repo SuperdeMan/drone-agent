@@ -74,3 +74,21 @@ def test_two_captures_of_one_asset_never_share_bytes_even_across_log_flushes():
     fleet.captures.clear()  # what every flush does / 每次刷新都会这样做
     second = capture("asset_red")
     assert first != second and fleet.nonce == 43
+
+
+async def test_a_resident_dock_backend_keeps_no_transcript():
+    """The S0 judge reads the transcript; a resident backend would only grow it (D073, 2026-10-05).
+
+    S0 裁判读取调用记录；常驻后端只会让它无限增长（D073，2026-10-05）。
+    """
+    from drone_agent.eval.dock_simulator import DockBackend
+
+    async def call(method: str, **params) -> dict:
+        return {"ok": True, "result": {}}
+
+    judged = DockBackend("dock:p1-s1-sim", {}, call)
+    resident = DockBackend("dock:p1-s1-sim", {}, call, keep_transcript=False)
+    for backend in (judged, resident):
+        for _ in range(3):
+            assert (await backend._call("docks.actions", dock_id="dock_s1"))["ok"]
+    assert len(judged.transcript) == 3 and resident.transcript == []

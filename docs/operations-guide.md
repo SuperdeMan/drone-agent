@@ -72,6 +72,7 @@ $env:UV_DEFAULT_INDEX = 'https://pypi.tuna.tsinghua.edu.cn/simple'
 | 现象 | 处理 |
 |---|---|
 | 页面报服务不可用 | `docker ps` 看 `desk-service`；它按 `unless-stopped` 自动重启，账本不变。连续失败时看 `docker logs`，常见原因是成员列表指明未知项目（按第 3 节写回匹配的列表）。 |
+| 服务重启后 CPU 持续接近配额几分钟 | 正常：重启后会复核全部历史任务的派生状态，仍可能变化的任务优先，其余在后台分片进行，API 与机队端点照常应答（D073 2026-10-05 补记）。任务越多耗时越长；若 API 本身数十秒不应答，属缺陷，按第 9 节记录。 |
 | 机场会话 `lost` / 报告过期 | 逻辑机场：`desk-dock` 或 `desk-fleet` 重启即新会话（P1 对账后恢复）；厂商机场：看 `desk/vendor/log/state.json` 的 `link_up`，模拟器断线会在设定时间后自动恢复。 |
 | 厂商任务停在「取消中」或不完成 | 网关只在终态与证据齐备后收尾；终态永久丢失时任务保持未完成、预约不释放（D072）。这是正确行为；需要人工判断后再处理，不要直接改账本。 |
 | 模型规划或分析失败 | 看模型代理日志（`throttled` / `upstream_unreachable`）与 `desk/faults/model/throttle.json`；代理恢复后新的请求即成功。分析以带原因的拒判结束，不会被当作正常。 |

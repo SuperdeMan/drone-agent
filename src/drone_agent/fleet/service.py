@@ -32,7 +32,9 @@ keyed by the activity so that a retry after a lost response finds the same missi
 from __future__ import annotations
 
 import asyncio
+import time
 import uuid
+from collections import deque
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -103,6 +105,13 @@ from drone_agent.runtime.signing import SigningKey
 # Version states after which the robot may hold the package. / 机器人可能已持有任务包的版本状态。
 DELIVERED = ("queued", "delivered", "delivery_rejected", "running", "finished")
 OPERATOR_TTL = timedelta(seconds=15)
+# Missions still waiting for a decision, a flight or its evidence; a restart reconciles them first, so a cancel or
+# a result persisted just before it takes effect at once. / 仍在等待决定、飞行或其证据的任务；重启后先核对它们，
+# 使重启前刚持久化的取消或结果立即生效。
+UNSETTLED_STATUSES = ("awaiting_approval", "approved", "queued", "delivered", "running", "verifying")
+# The startup reconciliation runs beside the API: a background pass starts no further mission after this long
+# (D073, 2026-10-05). / 启动核对与 API 并行：一次后台处理超过这个时长后不再开始新的任务（D073，2026-10-05）。
+BACKLOG_SLICE_S = 0.2
 ALLOWED_ACTIONS = {"running": ["pause", "cancel"], "paused": ["resume", "cancel"]}
 
 
@@ -157,9 +166,15 @@ class MissionService:
                 "scenario_sha256": hashlib.sha256((root / site.scene).read_bytes()).hexdigest(),
                 "registry_sha256": operations.registries[site_id].sha256})
                 for site_id, site in operations.catalog.sites.items()}
-        # Reconcile persisted input even when the uplink already acknowledged every item before a restart.
-        # 重启后复核持久化输入，即使 uplink 已在重启前确认了每条上传。
-        self.dirty: set[str] = {m["mission_id"] for m in ledger.missions(-1) if m["current_version"] > 0}
+        # Reconcile persisted input even when the uplink already acknowledged every item before a restart. Unsettled
+        # missions go first and the rest follow, newest first, in short slices beside the API, so a long history never
+        # keeps the API or the fleet endpoint from answering after a restart (D073, 2026-10-05).
+        # 重启后复核持久化输入，即使 uplink 已在重启前确认了每条上传。未定的任务优先，其余按新到旧在 API 旁分短时间片
+        # 进行，历史再长，重启后 API 与机队端点也照常应答（D073，2026-10-05）。
+        known = [m for m in ledger.missions(-1) if m["current_version"] > 0]
+        self.dirty: set[str] = set()
+        self.backlog: deque[str] = deque([m["mission_id"] for m in known if m["status"] in UNSETTLED_STATUSES]
+                                         + [m["mission_id"] for m in known if m["status"] not in UNSETTLED_STATUSES])
         self.status_changed = False
         # P2 (D057): the workflow engine and its draft planner, attached by the process entry when a workflow
         # catalog is loaded. / P2（D057）：工作流引擎及其草案规划器；加载了工作流目录时由进程入口挂上。
@@ -1161,7 +1176,10 @@ class MissionService:
         return added
 
     async def run(self, stop: asyncio.Event, period_s: float = 0.5) -> None:
-        """Background refresh of missions touched by ingest. / 后台刷新被入账触及的任务。"""
+        """Background refresh of missions touched by ingest, then a slice of the startup reconciliation.
+
+        后台刷新被入账触及的任务，再处理一段启动核对。
+        """
         while not stop.is_set():
             if self.status_changed:
                 self.status_changed = False
@@ -1178,16 +1196,27 @@ class MissionService:
                 await self.tick_vendor()
             for mission_id in sorted(self.dirty):
                 self.dirty.discard(mission_id)
-                try:
-                    self.refresh(mission_id)
-                    await self.enrich(mission_id)
-                except Exception as error:  # keep ingesting; the issue is visible to operators / 继续入账；问题对操作者可见
-                    self.ledger.record_issue(issue("service.degraded", f"{type(error).__name__}: {error}"[:300],
-                                                   mission_id=mission_id), mission_id=mission_id)
+                await self._reconcile(mission_id)
+            deadline = time.monotonic() + BACKLOG_SLICE_S
+            while self.backlog and time.monotonic() < deadline and not stop.is_set():
+                await self._reconcile(self.backlog.popleft())
             try:
                 await asyncio.wait_for(stop.wait(), period_s)
             except TimeoutError:
                 pass
+
+    async def _reconcile(self, mission_id: str) -> None:
+        """Refresh and enrich one mission, then let the API and the fleet endpoint answer.
+
+        刷新并补全一个任务，然后让 API 与机队端点应答。
+        """
+        try:
+            self.refresh(mission_id)
+            await self.enrich(mission_id)
+        except Exception as error:  # keep ingesting; the issue is visible to operators / 继续入账；问题对操作者可见
+            self.ledger.record_issue(issue("service.degraded", f"{type(error).__name__}: {error}"[:300],
+                                           mission_id=mission_id), mission_id=mission_id)
+        await asyncio.sleep(0)
 
     def tick_operations(self) -> None:
         """One P1 background pass: prepare docks, reconcile holds, do dock chores. / 一次 P1 后台处理。"""

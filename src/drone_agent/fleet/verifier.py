@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+from collections import OrderedDict
 from datetime import datetime
 
 from pydantic import Field
@@ -40,6 +41,29 @@ from drone_agent.mission.registry import Registry, distance
 from drone_agent.mission.verify import image_quality
 
 VLM_CANDIDATE_THRESHOLD = 0.7
+# Image quality is a pure function of the bytes and size. Within one process, the recheck on every later refresh
+# reuses it instead of walking the pixels again; the cache starts empty after a restart (D073, 2026-10-05).
+# 影像质量是字节与尺寸的纯函数。同一进程内，之后每次刷新的复核都复用它，不再逐像素重算；重启后缓存为空
+# （D073，2026-10-05）。
+QUALITY_CACHE = 2048
+_quality_cache: OrderedDict[tuple[str, int, int], dict] = OrderedDict()
+
+
+def _quality(digest: str, media: bytes, width: int, height: int) -> dict:
+    """`image_quality` of bytes whose digest was already checked, computed once per digest and size.
+
+    摘要已核对的字节的 `image_quality`，每个摘要与尺寸只计算一次。
+    """
+    key = (digest, width, height)
+    found = _quality_cache.get(key)
+    if found is None:
+        found = image_quality(media, width, height)
+        _quality_cache[key] = found
+        while len(_quality_cache) > QUALITY_CACHE:
+            _quality_cache.popitem(last=False)
+    else:
+        _quality_cache.move_to_end(key)
+    return dict(found)
 
 
 class ServiceVerification(ContractModel):
@@ -99,7 +123,7 @@ def recheck(evidence: Evidence, media: bytes | None, width: int | None, height: 
         checks["pose"] = "variance above threshold"
         return EffectVerdict.UNVERIFIED, checks
     checks["pose"] = "ok"
-    quality = image_quality(media, width, height)
+    quality = _quality(evidence.sha256, media, width, height)
     signature = asset.get("visual_signature", "red")
     low = threshold.get("min_signature_fraction", threshold.get("min_red_fraction"))
     high = threshold.get("max_signature_fraction", threshold.get("max_red_fraction"))
