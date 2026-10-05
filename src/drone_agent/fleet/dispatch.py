@@ -433,10 +433,12 @@ class Dispatch:
                 continue
             if abs((self.clock() - dock.report.observed_at).total_seconds()) > self.catalog.policy.freshness_s:
                 continue
-            ended = self.store.reservations(dock_id=dock_id, states=("released",))
-            if not ended:
+            # Only the newest released activity matters; loading every past reservation on each pass grew with the
+            # flights (P5 soak, D073 2026-10-05). / 只需要最近一次已释放的活动；每轮加载全部历史预约会随飞行次数
+            # 增长（P5 长稳，D073 2026-10-05）。
+            activity = self.store.latest_activity(dock_id, "released")
+            if activity is None:
                 continue
-            activity = max(ended, key=lambda r: r.updated_at).activity_key
             report = dock.report
             kind = None
             if report.lid in (LidState.OPEN, LidState.OPENING):

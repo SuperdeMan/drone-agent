@@ -38,6 +38,10 @@ from drone_agent.runtime.signing import TrustStore
 
 POLICY = "configs/recovery_policies/multirotor_m1_v1.yaml"
 LOG_LIMIT = 32 * 1024 * 1024
+# The uplink's own status rate. Each uplink pass walks every accepted mission on disk, so running it on every fleet
+# loop period grew with the flights (P5 soak, D073 2026-10-05). / uplink 自身的状态频率。每次 uplink 处理都遍历磁盘上
+# 全部已接受的任务，按机队循环周期运行会随飞行次数增长（P5 长稳，D073 2026-10-05）。
+SYNC_PERIOD_S = 1.0
 STATES = ("normal", "damaged", "obstructed")
 
 
@@ -87,8 +91,13 @@ class ResidentUav(LogicalUav):
     以 uplink 自身状态频率（1 Hz）运行的逻辑飞行器，而不是 S0 步进世界的每个周期。
     """
 
+    synced = float("-inf")
+
     async def cycle(self) -> None:
-        await self.uplink.cycle()
+        now = time.monotonic()
+        if now - self.synced >= SYNC_PERIOD_S:
+            self.synced = now
+            await self.uplink.cycle()
         if self.task is not None and self.task.done():
             error = None if self.task.cancelled() else self.task.exception()
             if error is not None and self.flights:

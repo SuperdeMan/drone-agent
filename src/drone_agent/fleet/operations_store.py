@@ -329,7 +329,11 @@ class OperationsStore:
         return self._reservation(self._one("SELECT * FROM op_reservations WHERE activity_key=?", (activity,)))
 
     def reservations(self, *, mission_id: str | None = None, states: tuple[str, ...] | None = None,
-                     dock_id: str | None = None) -> list[ResourceReservation]:
+                     dock_id: str | None = None, latest: int | None = None) -> list[ResourceReservation]:
+        """Matching reservations in creation order; `latest` keeps only the newest N without reading the rest.
+
+        按创建顺序返回匹配的预约；`latest` 只保留最新的 N 条，不读取其余。
+        """
         sql, args = "SELECT * FROM op_reservations WHERE 1=1", []
         if mission_id is not None:
             sql, args = sql + " AND mission_id=?", [*args, mission_id]
@@ -337,7 +341,20 @@ class OperationsStore:
             sql, args = sql + " AND dock_id=?", [*args, dock_id]
         if states is not None:
             sql, args = sql + f" AND state IN ({','.join('?' * len(states))})", [*args, *states]
-        return [self._reservation(row) for row in self._rows(sql + " ORDER BY created_at", args)]
+        if latest is not None:
+            rows = self._rows(sql + " ORDER BY created_at DESC LIMIT ?", [*args, latest])[::-1]
+        else:
+            rows = self._rows(sql + " ORDER BY created_at", args)
+        return [self._reservation(row) for row in rows]
+
+    def latest_activity(self, dock_id: str, state: str) -> str | None:
+        """The activity of the dock's most recently updated reservation in `state`, read without the history.
+
+        机场处于 `state` 的预约中最近更新的那条的活动键，不读取历史。
+        """
+        row = self._one("SELECT activity_key FROM op_reservations WHERE dock_id=? AND state=? "
+                        "ORDER BY updated_at DESC, created_at ASC LIMIT 1", (dock_id, state))
+        return None if row is None else row["activity_key"]
 
     def holders(self, resources) -> dict[str, str]:
         """Resource -> activity key of its active holder. / 资源 -> 其有效持有者的活动键。"""

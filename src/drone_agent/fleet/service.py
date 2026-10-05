@@ -1510,7 +1510,7 @@ class MissionService:
         if resource_id in catalog.docks and catalog.sites[catalog.docks[resource_id].site_id].project_id == project_id:
             return {"kind": "dock", **self._dock_row(resource_id),
                     "actions": store.actions(resource_id)[-20:], "events": store.events(f"dock:{resource_id}", limit=40),
-                    "reservations": [r.model_dump(mode="json") for r in store.reservations(dock_id=resource_id)][-20:]}
+                    "reservations": [r.model_dump(mode="json") for r in store.reservations(dock_id=resource_id, latest=20)]}
         if resource_id in catalog.robots and catalog.project_of(resource_id) == project_id:
             return {"kind": "robot", **self._robot_row(resource_id)}
         raise ServiceError("service.not_found", resource_id)

@@ -193,3 +193,29 @@ async def test_the_drill_reports_counts_and_digests_but_no_content(tmp_path):
     assert result["status"] == "passed" and result["op_tables"] == 12
     assert result["v1_dump_sha256_before"] == result["v1_dump_sha256_after"]
     assert "Inspect" not in json.dumps(result), "the receipt carries no mission content"
+
+
+def test_the_newest_released_activity_of_a_dock_is_read_without_the_history(tmp_path):
+    """Dock chores need only the newest released activity; loading every past reservation on each pass grew with the
+    flights (P5 soak, D073 2026-10-05). The dock view keeps its last twenty reservations the same way.
+
+    机场例行动作只需要最近一次已释放的活动；每轮加载全部历史预约会随飞行次数增长（P5 长稳，D073 2026-10-05）。机场
+    视图同样只取最近二十条预约。
+    """
+    now = [utcnow()]
+    ops = store(tmp_path / "ledger.sqlite3", clock=lambda: now[0])
+    dock = CATALOG.robots["uav_a"].dock_id
+    assert ops.latest_activity(dock, "released") is None
+    for n in range(5):
+        activity = f"mission:m-{n}:v1"
+        now[0] += timedelta(seconds=1)
+        ops.reserve(activity=activity, project_id="campus_ops", mission_id=f"m-{n}", version=1, robot_id="uav_a",
+                    expires_at=now[0] + timedelta(minutes=5))
+        assert ops.transition(activity, ("reserved",), "occupied", "claimed")
+        assert ops.transition(activity, ("occupied", "uncertain"), "released", "reconciled", {"n": n})
+    ended = ops.reservations(dock_id=dock, states=("released",))
+    newest = max(ended, key=lambda r: r.updated_at).activity_key
+    assert ops.latest_activity(dock, "released") == newest == "mission:m-4:v1"
+    assert ops.latest_activity(dock, "occupied") is None
+    assert [r.activity_key for r in ops.reservations(dock_id=dock, latest=2)] == ["mission:m-3:v1", "mission:m-4:v1"]
+    assert ops.reservations(dock_id=dock, latest=20) == ops.reservations(dock_id=dock)

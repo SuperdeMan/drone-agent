@@ -92,3 +92,27 @@ async def test_a_resident_dock_backend_keeps_no_transcript():
         for _ in range(3):
             assert (await backend._call("docks.actions", dock_id="dock_s1"))["ok"]
     assert len(judged.transcript) == 3 and resident.transcript == []
+
+
+async def test_a_resident_aircraft_syncs_its_uplink_at_the_uplink_rate():
+    """The fleet loop runs every 0.25 s, but each uplink pass walks every accepted mission on disk; the resident
+    aircraft syncs at the uplink's own 1 Hz (D073, 2026-10-05).
+
+    机队循环每 0.25 s 运行一次，而每次 uplink 处理都遍历磁盘上全部已接受的任务；常驻飞行器按 uplink 自身的 1 Hz 同步
+    （D073，2026-10-05）。
+    """
+    synced: list[int] = []
+
+    class Uplink:
+        async def cycle(self) -> None:
+            synced.append(1)
+
+    uav = s0_fleet.ResidentUav.__new__(s0_fleet.ResidentUav)
+    uav.uplink, uav.task, uav.flights = Uplink(), None, []
+    uav.pending = lambda: None
+    for _ in range(3):
+        await uav.cycle()
+    assert len(synced) == 1, "one uplink pass within a second"
+    uav.synced -= s0_fleet.SYNC_PERIOD_S
+    await uav.cycle()
+    assert len(synced) == 2
