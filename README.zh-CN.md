@@ -11,7 +11,7 @@
 
 建设无人机巡检运营平台，以安全约束任务运行时为底座。当前已在仿真中实现类型化任务、准入审批、本地执行和证据报告，以及按项目划分、由虚拟机场约束每次派遣的站点资源；下一步增加持久工作流、多站调度，以及发现—工单—复检业务闭环。
 
-> **当前范围：** M2 已于 **2026-09-23** 完成，验证对象是 **PX4 SITL + Gazebo**（软件在环仿真）中的单架无人机。**2026-09-25** M3 的仿真线（经 guardian 约束的 PX4 外部模式局部自主）通过发布门禁；M3 要在 Jetson-in-the-loop 验证后才关闭。H1 承接尚未完成的 JIL，原 M3 总门禁仍未通过。P0 运行来源与产品门禁已于 **2026-09-25** 在 `de597d0` 通过，见 [P0 验收](docs/p0-readiness.md)。P1 项目、虚拟机场与派遣领取闸门已于 **2026-09-26** 在 `b49701b` 通过：三站逻辑机场与逻辑飞行器（S0），以及一架 PX4 SITL 飞行器经虚拟机场（S1），见 [P1 验收](docs/p1-readiness.md)。P2 持久工作流已于 **2026-09-26** 在 `3bdbd50` 通过：可重启的巡检 → 标注来源的分析 → 人工复核 → 模拟工单 → 复检运行，不重复派飞、取消后不再派遣，覆盖三台逻辑飞行器（S0）与一架 PX4 SITL 飞行器经虚拟机场（S1），见 [P2 验收](docs/p2-readiness.md)。P3 多站多机调度已于 **2026-09-27** 在 `73fcf23` 通过：可重放的确定性分配、按航迹空域单元的独占预约、领取前撤回与任务级接力，覆盖逻辑站点与 10 / 30 / 100 逻辑节点阶梯（S0），以及同一 Gazebo 世界中的两架 PX4 SITL 飞行器（S1），见 [P3 验收](docs/p3-readiness.md)。P4 多模态业务闭环已在 `8f41112` 实施，在逻辑世界（S0）、真实改变外观的 PX4 SITL（S1）与常驻任务台上成立；但发布门禁**未通过**：冻结的 MiniMax-M3 分析器在 VisA 电路板子集上唯一一次实调测试的精确率为 0.8835，低于要求的 0.90（召回率 0.758，要求 0.70）。P4 在这一项上保持开放，见 [P4 验收](docs/p4-readiness.md)。P5 无硬件平台 v0.1 正在实施（D069–D073）：常驻任务台在同一服务下运行 PX4 SITL 站点、逻辑机队与模拟的厂商托管机场，并带第二业务模板、厂商协议合同、项目审计与 72 小时长稳，见 [P5 方案](docs/p5-implementation.md)与[运维手册](docs/operations-guide.md)。真机与空地协同按 [H/X 里程碑](docs/roadmap.md)验证。
+> **当前范围：** M2 已于 **2026-09-23** 完成，验证对象是 **PX4 SITL + Gazebo**（软件在环仿真）中的单架无人机。**2026-09-25** M3 的仿真线（经 guardian 约束的 PX4 外部模式局部自主）通过发布门禁；M3 要在 Jetson-in-the-loop 验证后才关闭。H1 承接尚未完成的 JIL，原 M3 总门禁仍未通过。P0 运行来源与产品门禁已于 **2026-09-25** 在 `de597d0` 通过，见 [P0 验收](docs/p0-readiness.md)。P1 项目、虚拟机场与派遣领取闸门已于 **2026-09-26** 在 `b49701b` 通过：三站逻辑机场与逻辑飞行器（S0），以及一架 PX4 SITL 飞行器经虚拟机场（S1），见 [P1 验收](docs/p1-readiness.md)。P2 持久工作流已于 **2026-09-26** 在 `3bdbd50` 通过：可重启的巡检 → 标注来源的分析 → 人工复核 → 模拟工单 → 复检运行，不重复派飞、取消后不再派遣，覆盖三台逻辑飞行器（S0）与一架 PX4 SITL 飞行器经虚拟机场（S1），见 [P2 验收](docs/p2-readiness.md)。P3 多站多机调度已于 **2026-09-27** 在 `73fcf23` 通过：可重放的确定性分配、按航迹空域单元的独占预约、领取前撤回与任务级接力，覆盖逻辑站点与 10 / 30 / 100 逻辑节点阶梯（S0），以及同一 Gazebo 世界中的两架 PX4 SITL 飞行器（S1），见 [P3 验收](docs/p3-readiness.md)。P4 多模态业务闭环已在 `8f41112` 实施，在逻辑世界（S0）、真实改变外观的 PX4 SITL（S1）与常驻任务台上成立；但发布门禁**未通过**：冻结的 MiniMax-M3 分析器在 VisA 电路板子集上唯一一次实调测试的精确率为 0.8835，低于要求的 0.90（召回率 0.758，要求 0.70）。P4 在这一项上保持开放，见 [P4 验收](docs/p4-readiness.md)。P5 无硬件平台 v0.1 已实施（D069–D073），但在 `4c3de14` 上发布门禁**未通过**。一个常驻任务台在同一服务下运行 PX4 SITL 站点、逻辑机队与模拟的厂商托管机场，带第二业务模板、厂商协议合同与项目审计。门禁二十二项中二十一项通过；72 小时真实墙钟长稳有一条恢复判据未通过：最后一次服务重启后，机场会话 67.5 s 才应答（限值 60 s），原因是服务启动时同步刷新全部历史任务。修复与新的72 小时长稳随后进行，见 [P5 验收](docs/p5-readiness.md)与[运维手册](docs/operations-guide.md)。真机与空地协同按 [H/X 里程碑](docs/roadmap.md)验证。
 
 [本机体验](#本机体验) · [设计](#设计) · [验证记录](#验证记录) · [文档导航](#文档导航) · [路线图](#路线图)
 
@@ -121,7 +121,7 @@ uv run python scripts/generate_proto.py
 | 消息语义与运行时保障 | [契约](docs/architecture/02-contracts.md) · [安全体系](docs/architecture/03-safety.md) · [Wire 协议](proto/README.md) |
 | 云端仿真与任务台 | [云端开发](docs/cloud-development.md) · [任务台](docs/tailnet-desk.md) |
 | 查看飞行证据与回放 | [评测体系](docs/architecture/08-evaluation.md) · [拉取与查看运行](docs/cloud-development.md#查看与人工核对结果) |
-| 运营层与下一批工作 | [运营架构](docs/architecture/09-operations.md) · [实施任务](docs/operations-implementation.md) · [P4 验收](docs/p4-readiness.md) · [P5 方案](docs/p5-implementation.md) · [运维手册](docs/operations-guide.md) |
+| 运营层与下一批工作 | [运营架构](docs/architecture/09-operations.md) · [实施任务](docs/operations-implementation.md) · [P4 验收](docs/p4-readiness.md) · [P5 验收](docs/p5-readiness.md) · [P5 方案](docs/p5-implementation.md) · [运维手册](docs/operations-guide.md) |
 | 设计理由与复用来源 | [决策记录](docs/decisions.md) · [姊妹项目复用](docs/reuse-from-embodied-agent.md) |
 
 ## 路线图
@@ -135,7 +135,7 @@ uv run python scripts/generate_proto.py
 | P2 | 持久业务工作流 | 软件 / SITL 范围已完成 |
 | P3 | 多站多机调度 | 软件 / SITL 范围已完成（同一世界两架 PX4 SITL） |
 | P4 | 多模态业务闭环 | 已实施；门禁未通过：S2 精确率 0.8835 < 0.90，保持开放 |
-| P5 | 平台 v0.1 | 实施中：第二业务模板、厂商协议合同、项目审计、平台目录与 72 h 长稳 |
+| P5 | 平台 v0.1 | 已实施；门禁未通过：72 h 长稳的一条恢复判据，待修复后重跑 |
 | H1–H3 | JIL、台架与受限真机、现场运营 | 独立硬件验证线 |
 | X1–X3 | 空地协同、厂商真实接入、模型与内核研究 | 条件满足后扩展 |
 

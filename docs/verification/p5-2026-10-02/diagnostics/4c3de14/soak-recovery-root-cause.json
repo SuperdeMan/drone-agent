@@ -1,0 +1,92 @@
+{
+  "source_sha": "4c3de145e485ce5ab9f119c1e93b803f1d6d2739",
+  "soak_id": "soak-20261002T160008Z-95020dd7",
+  "judge_run": "20261005T161425Z-1131fb37",
+  "failed_criterion": "recovery: service_restart-008 service ready 4.0 s, dock sessions active 67.5 s after the restart (limit 60 s after ready)",
+  "trend": {
+    "dock_sessions_active_s_after_service_restart": [
+      12.0,
+      17.5,
+      22.5,
+      28.0,
+      35.0,
+      44.4,
+      50.9,
+      59.3,
+      67.5
+    ],
+    "after_service_kill": [
+      19.4,
+      34.3,
+      60.3
+    ],
+    "after_vendor_link_drop": "2.0-2.6 every time",
+    "after_residents_restart": [
+      6.9,
+      4.2,
+      4.2
+    ],
+    "desk_service_cpu_hourly": {
+      "2026-10-02T16": "3.5%",
+      "2026-10-03T16": "9.9%",
+      "2026-10-04T16": "17.9%",
+      "2026-10-05T14": "28.1%"
+    },
+    "note": "monotonic across service restarts, so it depends on accumulated ledger data, not on process uptime"
+  },
+  "measurement": {
+    "what_the_harness_measures": "the time until resources.list answers for all three projects; dock sessions persist across a service restart (same boot id) and were active throughout",
+    "restart_reproduced_on_idle_desk_2026_10_05": {
+      "api_accepts_connections_s": 5.3,
+      "first_answer_s": 63.9,
+      "first_call_latency_s": 58.6,
+      "service_cpu_until_answer": "about 50% (its 0.5 CPU quota)",
+      "service_cpu_after": "25-35% with no soak load",
+      "resources_list_campus_s1_s": {
+        "before": 0.103,
+        "after": "0.37-0.47"
+      }
+    },
+    "cold_start_profile_on_copied_state_offline": {
+      "refresh_calls": 666,
+      "missions_in_ledger": 666,
+      "refresh_cumulative_s": 98.7,
+      "verifier_image_quality_s": 58.4,
+      "image_quality_generator_steps": 34172877,
+      "evidence_rechecks": 597,
+      "events_full_scans": {
+        "calls": 2566,
+        "cumulative_s": 17.2
+      },
+      "refresh_vendor_s": 25.6,
+      "conditions": "candidate ground image, no network, 0.5 CPU, 512 MiB, same arguments as desk-service"
+    },
+    "per_call_on_copy": {
+      "events_read_s": "0.003-0.006 (0.0003-0.0011 with an index on (mission_id, mission_version), copy only)",
+      "refresh_s": "0.031-0.073",
+      "mission_view_s": "0.013-0.034",
+      "query_plan": "SCAN events USING INDEX sqlite_autoindex_events_2 + TEMP B-TREE FOR ORDER BY"
+    },
+    "ruled_out": {
+      "resources_list_warm_s": "0.002-0.009",
+      "vendor_gateway_tick_s": 0.002,
+      "vendor_gateway_load_s": 0.22,
+      "dock_report_ingest_s": "0.002-0.004",
+      "fetch_deliveries_from_cursor_0_s": 0.0015,
+      "harness_list_calls_warm_s": "<= 0.017",
+      "background_passes": "dispatch / workflows / scheduler / business each a few ms"
+    }
+  },
+  "root_cause": [
+    "fleet/service.py:162 puts every mission with a version into the refresh set when the service starts (the M2 rule to reconcile persisted input after a restart); the first pass of the background loop refreshes all of them synchronously, so the API on the same event loop does not answer until it finishes",
+    "each refresh rechecks every evidence image through the verifier, which recomputes image quality pixel by pixel in Python (about 0.1 s per image), and reads the mission's journals several times from the events table, which has no index usable by mission_id and is scanned in full",
+    "the desk accumulates about 170 missions a day, so the blocked start grows linearly; after 72 h it exceeded the frozen 60 s limit"
+  ],
+  "related_findings": {
+    "steady_state_service_cpu": "3.5% to 30.6% over the soak; the refresh path (evidence recheck, full scans of events) grows with the ledger; not a criterion",
+    "desk_dock_memory": "about 4 MiB/h, reset by the daily residents restart, peaked above 95% of 128 MiB (reported, not a criterion)",
+    "desk_fleet": "memory about 7 MiB/h and CPU 1.7% to about 20%; its onboard uplink rescans every accepted mission each cycle (onboard M2 code, unchanged by P5)"
+  },
+  "next": "fix without a schema change (bounded, prioritised startup reconciliation off the API path; reuse a persisted verification for unchanged evidence bytes), test, new candidate, and a new full 72 h soak per D073; an index on events(mission_id, mission_version) is a schema change and needs approval first",
+  "counted_for_release": false
+}
