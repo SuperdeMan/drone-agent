@@ -1,0 +1,40 @@
+{
+  "source_sha": "6132927a25fd01fd63cb5022ca2f43ad1456dac6",
+  "scope": "isolated git archive, no .git",
+  "started_at": "2026-10-08T16:08:38.464418+00:00",
+  "ruff": {
+    "command": [
+      "uv",
+      "run",
+      "ruff",
+      "check",
+      "."
+    ],
+    "exit_code": 0
+  },
+  "pytest": {
+    "command": [
+      "uv",
+      "run",
+      "pytest",
+      "-q",
+      "--junitxml=D:/drone-agent-data/desk-visual-v2-6132927-pytest.xml"
+    ],
+    "exit_code": 0,
+    "counts": {
+      "tests": 1327,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 1326
+    },
+    "duration_s": 629.463,
+    "skips": [
+      {
+        "name": "test_api_socket_roundtrip",
+        "reason": "Unix sockets; exercised in the Linux checks image"
+      }
+    ]
+  },
+  "completed_at": "2026-10-08T16:19:23.201773+00:00"
+}

@@ -2,12 +2,12 @@
 
 [决策记录](decisions.md) · [D068 工作区验收](desk-workspaces-readiness.md) · [任务台指南](tailnet-desk.md) · [运营层 §8](architecture/09-operations.md) · [路线图](roadmap.md)
 
-本页是运营台视觉 v2 从 Figma 设计稿落到代码的唯一交接入口。设计已于 2026-10-08 经用户确认，**已按 D074 在 `b621c93` 完成本机实现，常驻任务台未部署，Figma 对照待完成**；准确版本、数据边界与核验进度见[视觉 v2 核验记录](desk-visual-v2-readiness.md)。它只改页面的视觉与组件结构，不改变任何门禁的状态，也不改变执行、准入、审批、机载与裁判的语义。
+本页是运营台视觉 v2 从 Figma 设计稿落到代码的唯一交接入口。设计已于 2026-10-08 经用户确认，**已按 D074 在 `6132927` 完成本机实现与 Figma MCP 对照，常驻任务台未部署**；准确版本、数据边界与回执见[视觉 v2 核验记录](desk-visual-v2-readiness.md)。它只改页面的视觉与组件结构，不改变任何门禁的状态，也不改变执行、准入、审批、机载与裁判的语义。
 
 ## 1. 设计来源
 
 - Figma 文件：<https://www.figma.com/design/bcdFxnQTIoDUhBoaxB2JJI>（需 Figma MCP；`fileKey = bcdFxnQTIoDUhBoaxB2JJI`）。
-- 读设计时优先用 `get_design_context` / `get_screenshot` 按下表节点读取；Figma 不可用时，以本页第 4–6 节为准。
+- 本轮按用户明确要求，必须用 Figma MCP 的 `get_design_context` / `get_screenshot` 按下表节点对照。工具不可用时可按第 4–6 节做准备，但不能据此宣称 Figma 对照已完成。
 - 设计稿中的字体 Noto Sans SC / JetBrains Mono 只是替身；代码继续用现有系统字体栈（`--font` / `--display` / `--mono`）。
 - 设计稿中的数据来自 `desk_preview.py --seed` 的本机预览，另有少量为演示编写的记录（审计里的 `viewer-01`、机场动作回执、候选的预计到场与近期使用数值、证据小图）。页面只展示服务给出的记录，不得把这些示例写进代码。
 
