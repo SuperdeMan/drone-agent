@@ -85,6 +85,7 @@ Recorded results below belong to their **exact revisions and scopes**; they are 
 
 | Evidence | Revision | Recorded result |
 |---|---|---|
+| [Operations desk visual v2 (D074)](docs/desk-visual-v2-readiness.md) | `b621c93` | Local validation: Ruff; 1326 Windows tests passed, 1 existing Unix-socket skip in an isolated archive; 31/31 client tests; light/dark desktop/phone checks with zero overflow or script errors. Not deployed during the P5 soak; Figma MCP comparison pending. No gate status changes. |
 | [M1 runtime](docs/m1-readiness.md) | `eefe76e` | 400 tests; 22 flight/fault scenarios × 3 seeds = 66/66 passed; zero false success reports; matching replay. |
 | [M2 release gate](docs/m2-readiness.md) | `f362b9e` | 775 tests; 18/18 end-to-end cases; 66/66 M1 regression; 42 deterministic and 32 scripted adversarial cases blocked or refused; zero false success reports and matching flight replay. |
 | [Live planner baseline](docs/verification/m2-baseline-2026-09-23.json) | `f362b9e` | MiniMax-M3: 20/20 plannable requests admitted on the first attempt, 8/8 expected refusals, 4/4 required blocks. |

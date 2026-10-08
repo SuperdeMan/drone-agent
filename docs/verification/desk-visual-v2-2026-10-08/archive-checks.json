@@ -1,0 +1,42 @@
+{
+  "source_sha": "b621c93be57f26d6e15f975b27660d10738854a5",
+  "git_present": false,
+  "started_at": "2026-10-08T07:42:21.089896+00:00",
+  "ruff": {
+    "command": [
+      "uv",
+      "run",
+      "ruff",
+      "check",
+      "."
+    ],
+    "exit_code": 0
+  },
+  "pytest": {
+    "command": [
+      "uv",
+      "run",
+      "pytest",
+      "-q",
+      "--junitxml=D:/drone-agent-data/desk-visual-v2-b621c93-pytest.xml"
+    ],
+    "exit_code": 0,
+    "counts": {
+      "tests": 1327,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 1326
+    },
+    "duration_s": 529.612,
+    "skips": [
+      {
+        "name": "test_api_socket_roundtrip",
+        "reason": "Unix sockets; exercised in the Linux checks image"
+      }
+    ]
+  },
+  "completed_at": "2026-10-08T07:51:26.070941+00:00",
+  "scope": "Windows, isolated git archive; no resident service or gate changes",
+  "module_import_verified": "D:/drone-agent-data/desk-visual-v2-b621c93/src/drone_agent/__init__.py"
+}
