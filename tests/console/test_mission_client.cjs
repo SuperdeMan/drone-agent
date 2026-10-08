@@ -523,3 +523,22 @@ test('an acknowledged dock action is never drawn as completed', () => {
   assert.match(ui.run(`dockActionTrack({state:'rejected',requested_at:'t0',acked_at:'t1',ack_accepted:false})`), /被拒/);
   assert.match(ui.run(`dockActionTrack({state:'completed',requested_at:'t0',acked_at:'t1',ack_accepted:1})`), /✓ 已受理/);
 });
+
+test('airspace framing retains distant held and uncertain cells with a bounded grid', () => {
+  const ui = setup();
+  const out = ui.run(`airspaceSketch({frame:'campus',cell_m:4,
+    holds:[{robot_id:'r1',mission_id:'m1',cells:['air.campus.52.6','air.campus.53.6']}],
+    envelopes:[{activity:'lost',cells:['air.campus.-90.2']}]})`);
+  assert.equal((out.match(/<rect x=/g) || []).length, 3, 'no record is clipped at the old 30-cell boundary');
+  assert.ok((out.match(/<line /g) || []).length <= 165, 'the backdrop stays bounded across distant sites');
+  assert.match(out, /单元 4 m · 网格线间隔 8 m/);
+  assert.match(out, /坐标原点/);
+  assert.doesNotMatch(out, /NaN|Infinity/);
+  assert.equal(ui.sent.length, 0, 'fitting a sketch sends no service frame');
+  const close = ui.run(`airspaceSketch({frame:'campus',cell_m:4,holds:[{robot_id:'r1',mission_id:'m1',cells:['air.campus.250.0']}],envelopes:[]})`);
+  assert.match(close, /坐标原点 \(0, 0\) · 当前视图外/);
+  assert.match(close, /viewBox="0 0 66 66"/, 'the default view fits actual holds instead of shrinking them to the distant origin');
+  ui.run(`act('airspaceView')`);
+  assert.equal(ui.run('airspaceIncludeOrigin'), true);
+  assert.equal(ui.sent.length, 0, 'changing the viewport is local only');
+});

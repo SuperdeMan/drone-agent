@@ -201,7 +201,7 @@ let socket = null, retry = 500, hello = null, projectId = null, planning = null,
 let missions = [], current = null, selected = null, photos = {}, asked = new Set(), host = null, filter = "all";
 let resources = null, resourceDetail = null, workflows = null, run = null, wfChoice = null;
 let tasks = null, task = null, business = null, subject = null, selectedEvidence = null;
-let audit = null, auditBefore = null, auditFilter = "all";
+let audit = null, auditBefore = null, auditFilter = "all", airspaceIncludeOrigin = false;
 let nav = {ws: "overview", id: null, kind: null};
 
 // ── small helpers / 小工具 ──
@@ -1051,7 +1051,7 @@ function renderTasks() {
     + (tasks.robots.length ? "" : '<div class="empty">本项目没有机器人。</div>'));
   const holds = tasks.airspace.holds, envelopes = tasks.airspace.envelopes;
   byId("taskAirspaceSub").textContent = `${tasks.airspace.frame} · 单元 ${tasks.airspace.cell_m} m`;
-  paint("taskAirspace", `<div class="airspace">${airspaceSketch(tasks.airspace)}</div>
+  paint("taskAirspace", `<div class="airspace">${airspaceSketch(tasks.airspace, airspaceIncludeOrigin)}</div>
     <div class="list" style="margin-top:10px">${holds.map(h => `<div class="item"><span class="item-main"><span class="item-title">${esc(h.robot_id)} · <a class="mono" href="#missions/${esc(h.mission_id)}">${esc(h.mission_id)}</a></span>
       <span class="item-meta">${esc(h.cells.length)} 个单元（${esc(tasks.airspace.cell_m)} m）</span></span>${badge(PAD[h.state] || h.state, h.state === "uncertain" ? "bad" : "info")}</div>`).join("")}
     ${envelopes.map(e => `<div class="item"><span class="item-main"><span class="item-title">失联包络 · ${esc(e.activity)}</span><span class="why bad">${esc(e.cells.length)} 个单元，只增不减，直到对账</span></span></div>`).join("")}</div>`
@@ -1075,27 +1075,34 @@ function cellXY(cell) {
   const x = Number(parts[parts.length - 2]), y = Number(parts[parts.length - 1]);
   return Number.isInteger(x) && Number.isInteger(y) ? {x, y} : null;
 }
-function airspaceSketch(airspace) {
+function airspaceSketch(airspace, includeOrigin = false) {
   const palette = ["#8ec4e5", "#c6e58a", "#e7b46c", "#c9a8ea", "#9fe0cf"];
   const cells = [];
   airspace.holds.forEach((h, i) => h.cells.forEach(c => { const p = cellXY(c); if (p) cells.push({...p, fill: palette[i % palette.length]}); }));
   airspace.envelopes.forEach(e => e.cells.forEach(c => { const p = cellXY(c); if (p) cells.push({...p, envelope: true}); }));
-  const xs = [-2, 2, ...cells.map(c => c.x)], ys = [-2, 2, ...cells.map(c => c.y)];
-  const minX = Math.max(Math.min(...xs) - 1, -30), maxX = Math.min(Math.max(...xs) + 1, 30);
-  const minY = Math.max(Math.min(...ys) - 1, -30), maxY = Math.min(Math.max(...ys) + 1, 30);
+  const anchor = !cells.length ? [-2, 2] : includeOrigin ? [0] : [];
+  const xs = [...anchor, ...cells.map(c => c.x)], ys = [...anchor, ...cells.map(c => c.y)];
+  const minX = Math.min(...xs) - 1, maxX = Math.max(...xs) + 1;
+  const minY = Math.min(...ys) - 1, maxY = Math.max(...ys) + 1;
   const size = 22, w = (maxX - minX + 1) * size, h = (maxY - minY + 1) * size;
   const px = x => (x - minX) * size, py = y => (maxY - y) * size;
+  // Fit all recorded cells; thin grid lines when sites are far apart. / 覆盖全部记录单元；站点相距较远时减少网格线。
+  const stride = Math.max(1, Math.ceil(Math.max(maxX - minX + 1, maxY - minY + 1) / 80));
   let grid = "";
-  for (let x = minX; x <= maxX + 1; x++) grid += `<line x1="${px(x)}" y1="0" x2="${px(x)}" y2="${h}"/>`;
-  for (let y = minY - 1; y <= maxY; y++) grid += `<line x1="0" y1="${py(y)}" x2="${w}" y2="${py(y)}"/>`;
-  const rects = cells.filter(c => c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY).map(c => c.envelope
+  for (let x = minX; x <= maxX + 1; x += stride) grid += `<line x1="${px(x)}" y1="0" x2="${px(x)}" y2="${h}"/>`;
+  for (let y = minY - 1; y <= maxY; y += stride) grid += `<line x1="0" y1="${py(y)}" x2="${w}" y2="${py(y)}"/>`;
+  const rects = cells.map(c => c.envelope
     ? `<rect x="${px(c.x) + 2}" y="${py(c.y) + 2}" width="${size - 4}" height="${size - 4}" rx="3" fill="url(#envelope)" stroke="#f19a87"/>`
     : `<rect x="${px(c.x) + 2}" y="${py(c.y) + 2}" width="${size - 4}" height="${size - 4}" rx="3" fill="${c.fill}" fill-opacity=".85"/>`).join("");
-  const origin = `<circle cx="${px(0) + size / 2}" cy="${py(0) + size / 2}" r="4" fill="none" stroke="#e6ecde" stroke-width="1.5"/>`;
+  const originVisible = minX <= 0 && maxX >= 0 && minY <= 0 && maxY >= 0;
+  const origin = originVisible ? `<circle cx="${px(0) + size / 2}" cy="${py(0) + size / 2}" r="4" fill="none" stroke="#e6ecde" stroke-width="1.5"/>` : "";
   const legend = airspace.holds.map((hold, i) => `<span><i style="background:${palette[i % palette.length]}"></i>${esc(hold.robot_id)} · ${esc(hold.mission_id)}</span>`).join("")
-    + (airspace.envelopes.length ? '<span><i style="background:#f19a87"></i>失联包络</span>' : "") + "<span>○ 坐标原点</span>";
+    + (airspace.envelopes.length ? '<span><i style="background:#f19a87"></i>失联包络</span>' : "")
+    + `<span>○ 坐标原点 (0, 0)${originVisible ? "" : " · 当前视图外"}</span>`;
   return `<div class="sky"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="空域网格持有示意"><defs><pattern id="envelope" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#3a1f1a"/><line x1="0" y1="0" x2="0" y2="6" stroke="#f19a87" stroke-width="2"/></pattern></defs>
-    <g stroke="var(--field-line)" stroke-width="1">${grid}</g>${rects}${origin}</svg></div><div class="legend"><span>↑ 北</span>${legend}</div><p class="scale">${esc(airspace.frame)} · 每格 ${esc(airspace.cell_m)} m · 网格持有示意</p>`;
+    <g stroke="var(--field-line)" stroke-width="1">${grid}</g>${rects}${origin}</svg></div><div class="legend"><span>↑ 北</span>${legend}</div>
+    <div class="row-end"><button class="btn small" type="button" data-act="airspaceView" aria-pressed="${includeOrigin}">${includeOrigin ? "聚焦持有单元" : "全景 · 包含原点"}</button></div>
+    <p class="scale">${esc(airspace.frame)} · 单元 ${esc(airspace.cell_m)} m · 网格线间隔 ${esc(stride * airspace.cell_m)} m · 网格持有示意</p>`;
 }
 
 function renderTask() {
@@ -1339,6 +1346,7 @@ const ACTIONS = {
     catch { notice("无法写入剪贴板，请选择并复制上方完整哈希。"); }
   },
   inspectEvidence: d => { selectedEvidence = d.id; renderSubject(); },
+  airspaceView: () => { airspaceIncludeOrigin = !airspaceIncludeOrigin; renderTasks(); },
   auditFilter: d => { auditFilter = d.v; renderAudit(); },
   auditOlder: () => { if (audit?.next && project()) { auditBefore = audit.next; send({type: "audit_watch", project_id: projectId, before: auditBefore}); } },
   auditLatest: () => { if (project()) { auditBefore = null; send({type: "audit_watch", project_id: projectId, before: null}); } },
