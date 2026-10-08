@@ -118,7 +118,7 @@ test('approval binds the package hash and needs the approver role of the mission
   assert.match(out, /id="approve"[^>]*data-hash="f{64}"/);
   assert.doesNotMatch(out, /id="approve"[^>]*disabled/);
   assert.doesNotMatch(out, /<img src=x/, 'the model goal is escaped');
-  assert.match(out, /<li class="now warn" aria-current="step">审批<\/li>/, 'the lifecycle marks the approval stage');
+  assert.match(out, /<li class="now warn" aria-current="step"><span class="stage-node" aria-hidden="true"><\/span>审批<\/li>/, 'the lifecycle marks the approval stage');
   ui.run(`hello.projects[0].roles = ['operator']; renderMission();`);
   out = ui.html('detail');
   assert.match(out, /id="approve"[^>]*disabled/, 'an operator without the approver role cannot sign');
@@ -145,10 +145,10 @@ test('the lifecycle only mirrors the service status', () => {
   const ui = setup();
   const done = ui.run(`stepper('completed')`), declined = ui.run(`stepper('declined')`), rejected = ui.run(`stepper('rejected')`);
   assert.equal((done.match(/class="done"/g) || []).length, 5);
-  assert.match(done, /<li class="ok" aria-current="step">结果<\/li>/);
-  assert.match(declined, /<li class="stop" aria-current="step">审批<\/li>/);
-  assert.match(rejected, /<li class="stop" aria-current="step">准入<\/li>/);
-  assert.match(ui.run(`stepper('incomplete')`), /<li class="stop warn" aria-current="step">结果<\/li>/, 'incomplete is never shown as done');
+  assert.match(done, /<li class="ok" aria-current="step"><span class="stage-node" aria-hidden="true"><\/span>结果<\/li>/);
+  assert.match(declined, /<li class="stop" aria-current="step"><span class="stage-node" aria-hidden="true"><\/span>审批<\/li>/);
+  assert.match(rejected, /<li class="stop" aria-current="step"><span class="stage-node" aria-hidden="true"><\/span>准入<\/li>/);
+  assert.match(ui.run(`stepper('incomplete')`), /<li class="stop warn" aria-current="step"><span class="stage-node" aria-hidden="true"><\/span>结果<\/li>/, 'incomplete is never shown as done');
 });
 
 test('the mission list names each request and its channel and counts the filters', () => {
@@ -225,7 +225,7 @@ test('a run shows every wait and failure reason, and only reviewers get review b
   let out = ui.html('runDetail');
   assert.equal(ui.nodes.get('runOverview').hidden, true);
   assert.match(out, /等待人工复核/);
-  assert.match(out, /疑似异常 · <span class="src script"[^>]*><span aria-hidden="true">⌘<\/span>脚本回答/);
+  assert.match(out, /疑似异常 · <span class="src script"[^>]*><span class="src-glyph" aria-hidden="true"><\/span>脚本回答/);
   assert.match(out, /mission\.declined/);
   assert.match(out, /上游失败/);
   assert.match(out, /脚本 \/ 确定性结果不是模型识别/);
@@ -492,6 +492,9 @@ test('source chips distinguish models, scripts, unknown sources and execution ba
   }
   assert.doesNotMatch(ui.run(`sourceChip('sim_render')`), /class="src sim"/, 'media sources are not execution backends');
   assert.doesNotMatch(ui.run(`sourceChip('<img src=x>')`), /<img/);
+  const provenance = ui.run(`provenanceCard({provenance:{analysis_sources:['scripted','live_model']}})`);
+  assert.match(provenance, /脚本回答/);
+  assert.match(provenance, /模型实调/, 'array positions never replace provenance labels');
 });
 
 test('event vocabulary preserves original codes and escapes unknown codes', () => {
@@ -537,8 +540,21 @@ test('airspace framing retains distant held and uncertain cells with a bounded g
   assert.equal(ui.sent.length, 0, 'fitting a sketch sends no service frame');
   const close = ui.run(`airspaceSketch({frame:'campus',cell_m:4,holds:[{robot_id:'r1',mission_id:'m1',cells:['air.campus.250.0']}],envelopes:[]})`);
   assert.match(close, /坐标原点 \(0, 0\) · 当前视图外/);
-  assert.match(close, /viewBox="0 0 66 66"/, 'the default view fits actual holds instead of shrinking them to the distant origin');
+  assert.match(close, /viewBox="0 0 726 286"/, 'the default view frames actual holds with grid context instead of shrinking them to the distant origin');
   ui.run(`act('airspaceView')`);
   assert.equal(ui.run('airspaceIncludeOrigin'), true);
   assert.equal(ui.sent.length, 0, 'changing the viewport is local only');
+});
+
+test('a completed service report keeps a failed independent judge visible above folded facts', () => {
+  const ui = setup();
+  const view = missionView({mission: {mission_id:'m-judge',status:'completed',current_version:1,replans:0},
+    report: {targets:{asset_red:'completed'},summary:{completed:1,not_completed:0,uncertain:0},rows:[],facts:[]},
+    cloud: {flights:[],judge:{passed:false,classification:'unsafe_or_incorrect',false_success_reports:1,replay_agrees:false}}});
+  ui.run(`current = ${JSON.stringify(view)};`);
+  const out = ui.run('missionHtml(current)'), summary = out.slice(out.indexOf('class="result-summary'),out.indexOf('class="d-grid'));
+  assert.match(summary, /已完成/);
+  assert.match(summary, /class="badge bad">独立裁判 · 不安全或不正确/);
+  assert.match(summary, /错误成功 1/);
+  assert.match(summary, /class="badge unknown">服务未提供/);
 });

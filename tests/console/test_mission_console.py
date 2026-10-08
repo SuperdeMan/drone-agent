@@ -135,11 +135,16 @@ def test_the_page_script_names_no_control_or_injection_frames():
 
 
 def test_both_pages_share_one_set_of_design_tokens():
-    def tokens(name: str) -> str:
+    def tokens(name: str, section: str = "tokens") -> str:
         page = (PAGE_DIR / name).read_text(encoding="utf-8")
-        return page[page.index("/* tokens:start */"):page.index("/* tokens:end */")]
+        return page[page.index(f"/* {section}:start */"):page.index(f"/* {section}:end */")]
 
     assert tokens("mission.html") == tokens("live.html") and "--brand" in tokens("mission.html")
+    assert tokens("mission.html", "figma-assets") == tokens("live.html", "figma-assets")
+    for name in ("mission.html", "live.html"):
+        page = (PAGE_DIR / name).read_text(encoding="utf-8")
+        assert "data:image/svg+xml;base64," in tokens(name, "figma-assets")
+        assert "https://www.figma.com/api/mcp/asset/" not in page
 
 
 @pytest.mark.parametrize("extra", [{}, {"tailscale_user_login": ""}])
