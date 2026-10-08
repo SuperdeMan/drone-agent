@@ -36,7 +36,7 @@ const REASON = {"dock.status_missing": "机场无状态", "dock.status_stale": "
   "robot.unbound": "未绑定", "capability.missing_skill": "缺少所需技能", "reservation.conflict": "资源被其他任务占用",
   "reservation.missing": "本任务未持有资源", "window.expired": "任务窗口已过"};
 const VERDICT = {eligible: "可派遣", blocked: "不可派遣", unknown: "未知·不派遣"};
-const VTONE = {eligible: "ok", blocked: "bad", unknown: "warn"};
+const VTONE = {eligible: "ok", blocked: "bad", unknown: "unknown"};
 const DIM = {online: "在线", offline: "离线", closed: "舱盖关", opening: "开盖中", open: "舱盖开", closing: "关盖中", jammed: "舱盖卡滞",
   present: "在位", absent: "不在位", idle: "未补能", charging: "充电中", cooling: "冷却中", ready: "补能就绪", fault: "故障",
   permitted: "环境许可", deferred: "环境推迟", normal: "运维正常", maintenance: "维护", unknown: "未知"};
@@ -73,9 +73,9 @@ const ALERTS = ["command_rejected", "safety_intervention", "operator_rejected"];
 const WSTATE = {pending: "待开始", running: "进行中", waiting: "等待中", completed: "已完成", skipped: "已跳过", failed: "失败",
   outcome_unknown: "结果未知", cancelled: "已取消", cancel_requested: "已请求取消", cancelling: "取消收尾中"};
 const WTONE = {completed: "ok", running: "info", waiting: "warn", cancel_requested: "warn", cancelling: "warn", failed: "bad",
-  outcome_unknown: "bad", cancelled: "bad"};
+  outcome_unknown: "unknown", cancelled: "bad"};
 const NODE_TONE = {completed: "ok", running: "info", waiting: "warn", cancel_requested: "warn", cancelling: "warn", failed: "bad",
-  outcome_unknown: "bad", cancelled: "neutral", skipped: "neutral"};
+  outcome_unknown: "unknown", cancelled: "neutral", skipped: "neutral"};
 const WAIT = {approval: "等待审批", device: "等待设备", environment: "等待环境", flight: "飞行中", evidence: "等待证据复核",
   review: "等待人工复核", repair: "等待维修反馈", delivery: "投递中", assignment: "等待调度分配", analysis: "分析中"};
 const SKIP = {condition_false: "条件不满足", upstream_skipped: "上游已跳过", upstream_failed: "上游失败", upstream_unknown: "上游结果未知",
@@ -96,7 +96,7 @@ Object.assign(REASON, {"asset.unregistered": "该机站点未登记此资产", "
 const TSTATE = {queued: "排队中", assigned: "已分配", completed: "已完成", failed: "失败", outcome_unknown: "结果未知",
   rejected: "已拒绝", cancel_requested: "已请求取消", cancelling: "取消收尾中", cancelled: "已取消"};
 const TTONE = {completed: "ok", assigned: "info", queued: "warn", cancel_requested: "warn", cancelling: "warn", failed: "bad",
-  outcome_unknown: "bad", rejected: "bad", cancelled: "bad"};
+  outcome_unknown: "unknown", rejected: "bad", cancelled: "bad"};
 const TASK_FINAL = ["completed", "failed", "outcome_unknown", "rejected", "cancelled"];
 const ASTATE = {active: "有效", withdrawn: "已撤回（未领取）", ended: "已结束"};
 const TVERDICT = {assign: "分配", wait: "等待", reject: "拒绝"};
@@ -107,7 +107,7 @@ const TVERDICT = {assign: "分配", wait: "等待", reject: "拒绝"};
 const FSTATE = {candidate: "候选·待复核", confirmed: "已确认", dismissed: "已驳回", resolved: "已修复关闭"};
 const FTONE = {candidate: "warn", confirmed: "bad", resolved: "ok"};
 Object.assign(ORDER, {reinspection_failed: "复检未通过·待再修", reinspection_unknown: "复检不确定·待再修", closed: "已关单"});
-const OTONE = {open: "warn", reinspection_requested: "info", repair_reported: "info", reinspection_failed: "bad", reinspection_unknown: "bad", closed: "ok"};
+const OTONE = {open: "warn", reinspection_requested: "info", repair_reported: "info", reinspection_failed: "bad", reinspection_unknown: "unknown", closed: "ok"};
 const RSTATE = {reinspecting: "复检中", passed: "通过", failed: "未通过", unknown: "不确定"};
 const JSTATE = {queued: "排队", running: "分析中", completed: "完成", refused: "拒判", cancelled: "已取消"};
 const PURPOSE = {inspection: "巡检", reinspection: "复检", reuse: "复用"};
@@ -169,6 +169,17 @@ const AUDIT = {"mission.submitted": "提交任务", "mission.approved": "审批�
   "job.refused": "分析拒判", "reuse.refused": "复用被拒", "access.denied": "越权尝试（已拒绝）"};
 const AUDIT_GROUPS = [["all", "全部"], ["mission", "任务与审批"], ["workflow", "工作流"], ["business", "发现与工单"],
   ["dispatch", "资源与派遣"], ["task", "调度"], ["denied", "越权尝试"]];
+// Display vocabulary only; unknown event codes stay verbatim. / 仅用于显示的用词表；缺项保留原始事件码。
+const EVENT = {...AUDIT, mission_accepted: "机载接受任务", package_verified: "任务包验签通过", skill_state: "技能状态",
+  step_outcome: "步骤结果", command_rejected: "指令被拒", operator_request: "收到操作请求", operator_rejected: "操作被拒",
+  safety_intervention: "安全监督介入", recovered_to: "进入恢复状态", mission_result: "任务执行结果",
+  "node.state": "节点状态", "lease.taken": "取得运行租约", "status.accepted": "接受机场报告"};
+const EXECUTION = {pending: "待执行", accepted: "已接受", running: "执行中", succeeded: "执行成功", failed: "执行失败",
+  cancelled: "已取消", timeout: "执行超时", unknown: "未知"};
+const EFFECT = {verified: "已证实", unverified: "未证实", refuted: "被推翻", unknown: "未知"};
+const EXECUTION_TONE = {succeeded: "ok", failed: "bad", running: "info", accepted: "info", timeout: "unknown", unknown: "unknown"};
+const EFFECT_TONE = {verified: "ok", refuted: "bad", unverified: "unknown", unknown: "unknown"};
+const SIM_BACKENDS = ["logical_sim", "px4_sitl", "vendor_protocol_sim"];
 function auditGroup(e) {
   const a = e.action || "", kind = e.object?.kind;
   if (a === "access.denied") return "denied";
@@ -189,7 +200,7 @@ const VENDOR_STATUS = {sent: "已下发", in_progress: "执行中", paused: "暂
 let socket = null, retry = 500, hello = null, projectId = null, planning = null, expect = null;
 let missions = [], current = null, selected = null, photos = {}, asked = new Set(), host = null, filter = "all";
 let resources = null, resourceDetail = null, workflows = null, run = null, wfChoice = null;
-let tasks = null, task = null, business = null, subject = null;
+let tasks = null, task = null, business = null, subject = null, selectedEvidence = null;
 let audit = null, auditBefore = null, auditFilter = "all";
 let nav = {ws: "overview", id: null, kind: null};
 
@@ -199,6 +210,37 @@ const raw = html => ({[RAW]: String(html)});
 const show = v => (v !== null && typeof v === "object" && RAW in v) ? v[RAW] : esc(v);
 const badge = (label, tone) => `<span class="badge ${tone || ""}">${esc(label)}</span>`;
 const tag = v => `<span class="tag">${esc(v)}</span>`;
+function sourceChip(source) {
+  const missing = !source || ["unknown", "legacy_unknown"].includes(source) || !Object.hasOwn(SOURCE, source);
+  const tone = missing ? "missing" : SIM_BACKENDS.includes(source) ? "sim" : source === "real_device" ? "device"
+    : ["live_model", "recorded_model"].includes(source) ? "model" : source === "scripted" ? "script" : "";
+  const icon = {sim: "◇", device: "◆", model: "○", script: "⌘", missing: "?"}[tone] || "□";
+  return `<span class="src ${tone}" title="${esc(source || "legacy_unknown")}"><span aria-hidden="true">${icon}</span>${esc(missing ? "来源未记录" : SOURCE[source])}</span>`;
+}
+function environmentTag(robots, expected = []) {
+  const groups = new Map();
+  for (const r of robots) {
+    const backend = r.execution_backend || "legacy_unknown";
+    if (!groups.has(backend)) groups.set(backend, []);
+    groups.get(backend).push(r.robot_id);
+  }
+  const missing = !robots.length || expected.some(id => !robots.some(r => r.robot_id === id))
+    || [...groups.keys()].some(k => !SIM_BACKENDS.includes(k) && k !== "real_device");
+  const real = groups.has("real_device"), mixed = groups.size > 1;
+  const label = real ? "真机 · 实飞" : missing ? "来源未记录" : mixed ? "仿真 · 混合后端" : "仿真 · " + SOURCE[groups.keys().next().value];
+  const tone = real ? "real" : missing ? "missing" : "sim";
+  const rows = [...groups].map(([key, ids]) => `<div>${sourceChip(key)}<span class="mono">${ids.map(esc).join(" / ")}</span></div>`).join("");
+  return `<details class="env-popover" data-k="environment"><summary class="env ${tone}"><span aria-hidden="true">${real ? "●" : missing ? "?" : "◇"}</span>${esc(label)}</summary>
+    <div class="env-list"><b>当前项目 · 执行后端</b>${rows || '<p>尚无机器人来源记录。</p>'}${missing ? '<p>来源未记录的机器人不推定为仿真。</p>' : ""}</div></details>`;
+}
+function eventName(kind) {
+  return Object.hasOwn(EVENT, kind) ? `${esc(EVENT[kind])}<code class="code">${esc(kind)}</code>` : `<code>${esc(kind)}</code>`;
+}
+function hashBlock(value) {
+  const hash = String(value || ""), groups = /^[a-f\d]{64}$/i.test(hash) ? hash.match(/.{8}/g) : [hash || "未提供"];
+  return `<div class="hash"><div class="hash-head"><span>任务包 SHA-256 · 完整值</span><button class="btn ghost small" type="button" data-act="copyHash" data-hash="${esc(hash)}" ${hash ? "" : "disabled"}>复制完整哈希</button></div>
+    <code class="hash-value" aria-label="${esc(hash)}">${groups.map(g => `<span>${esc(g)}</span>`).join("")}</code></div>`;
+}
 function chip(status) { return badge(STATUS[status] || status, TONE[status]); }
 function wchip(state) { return badge(WSTATE[state] || state, WTONE[state]); }
 function tchip(state) { return badge(TSTATE[state] || state, TTONE[state]); }
@@ -209,14 +251,15 @@ function kv(rows) {
   const body = rows.filter(Boolean).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${show(v)}</dd>`).join("");
   return body ? `<dl class="kv">${body}</dl>` : "";
 }
-function table(head, rows, empty) {
+function table(head, rows, empty, rowClass = () => "") {
   if (!rows.length) return empty === undefined ? "" : `<div class="empty">${esc(empty)}</div>`;
   return `<div class="table-wrap"><table><thead><tr>${head.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${
-    rows.map(r => `<tr>${r.map(c => `<td>${show(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    rows.map((r, i) => `<tr${rowClass(i) ? ` class="${esc(rowClass(i))}"` : ""}>${r.map(c => `<td>${show(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
 }
 function card(title, body, sub) {
   return `<section class="card"><div class="card-head"><h3>${show(title)}</h3>${sub ? `<span class="sub">${show(sub)}</span>` : ""}</div>${body}</section>`;
 }
+const detailBack = (workspace, label) => `<a class="detail-back" href="#${workspace}">← ${label}</a>`;
 function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
 function stamp(iso) {
   if (!iso) return "—";
@@ -526,9 +569,11 @@ function renderShell() {
     link.setAttribute("aria-current", nav.ws === ws ? "page" : "false");
     byId("ws-" + ws).hidden = nav.ws !== ws;
   }
-  const badges = {countOverview: total, countMissions: c.missions, countWorkflows: c.workflows, countTasks: c.tasks, countBusiness: c.business};
+  const badges = {countOverview: total, countMissions: c.missions, countWorkflows: c.workflows, countTasks: 0,
+    countBusiness: c.business};
   for (const [id, value] of Object.entries(badges)) { const el = byId(id); el.hidden = !value; el.textContent = value ? String(value) : ""; }
-  byId("countTasks").className = "count info";
+  const robots = resources?.project_id === projectId ? allRobots() : [];
+  paint("environment", environmentTag(robots, project()?.robots || []));
   document.title = (c.missions ? `(${c.missions}) ` : "") + "drone-agent · 云端飞行台";
 }
 
@@ -586,16 +631,16 @@ function renderOverview() {
   byId("ovSub").textContent = !hello ? "连接任务服务中…" : p ? `${zh(p.name) || p.project_id} · 我的角色 ${p.roles.join(" / ") || "无"}`
     : "本入口没有运营目录：提供自然语言任务的规划、审批与飞行。";
   const tiles = [kpi("#missions", "待审批任务", c.missions, "个", `进行中 ${list.filter(m => ACTIVE.includes(m.status)).length} · 最近 ${list.length} 个任务`, c.missions ? "warn" : "")];
-  if (host) tiles.push(kpi(host.mission_id ? "#missions/" + host.mission_id : "#missions", "云端飞行", HOST_SHORT[host.state] || host.state, "", host.mission_id ? `${host.mission_id} v${host.version}` + ((host.queue || []).length ? ` · 排队 ${host.queue.length}` : "") : HOST[host.state] || "", HOST_TONE[host.state] === "ok" ? "" : HOST_TONE[host.state]));
+  if (host) tiles.push(kpi(host.mission_id ? "#missions/" + host.mission_id : "#missions", "云端飞行", HOST_SHORT[host.state] || host.state, "", host.mission_id ? `${host.mission_id} v${host.version}` + ((host.queue || []).length ? ` · 排队 ${host.queue.length}` : "") : HOST[host.state] || ""));
   if (resources) {
     const robots = allRobots(), docks = allDocks(), ok = robots.filter(r => r.eligibility.verdict === "eligible").length;
-    tiles.push(kpi("#fleet", "可派遣机器人", ok, `/ ${robots.length}`, `机场在线 ${docks.filter(d => d.status?.link === "online" && d.status?.fresh).length} / ${docks.length}`, ok === robots.length ? "ok" : "warn"));
+    tiles.push(kpi("#fleet", "可派遣机器人", ok, `/ ${robots.length}`, `机场在线 ${docks.filter(d => d.status?.link === "online" && d.status?.fresh).length} / ${docks.length}`));
   }
   if (workflows) {
     const live = workflows.runs.filter(r => !FINAL.includes(r.state)).length;
-    tiles.push(kpi("#workflows", "进行中的运行", live, "个", `等待复核 ${c.workflows} · 模板 ${workflows.templates.length}`, c.workflows ? "warn" : ""));
+    tiles.push(kpi("#workflows", "进行中的运行", live, "个", `等待复核 ${c.workflows} · 模板 ${workflows.templates.length}`));
   }
-  if (tasks) tiles.push(kpi("#tasks", "排队任务单", c.tasks, "个", `机器人 ${tasks.robots.length} · 空域持有 ${tasks.airspace.holds.length}`, c.tasks ? "info" : ""));
+  if (tasks) tiles.push(kpi("#tasks", "排队任务单", c.tasks, "个", `机器人 ${tasks.robots.length} · 空域持有 ${tasks.airspace.holds.length}`));
   if (business) {
     const columns = business.report.columns;
     tiles.push(kpi("#business", "候选发现", c.business, "个", `关单 ${columns.closed.length} · 未关 ${columns.open.length} · 不确定 ${columns.unknown.length}`, c.business ? "warn" : ""));
@@ -605,8 +650,8 @@ function renderOverview() {
   const entry = (i, go) => `<li><a href="#${esc(i.href)}"><span class="ico ${i.tone}">${esc(i.icon)}</span>
     <span><b>${esc(i.title)}</b><small>${esc(i.meta)}</small></span><span class="go">${go}</span></a></li>`;
   byId("ovAttnSub").textContent = todo.length ? todo.length + " 项" : "";
-  paint("ovAttention", (todo.length ? `<ul class="attn">${todo.map(i => entry(i, "处理 →")).join("")}</ul>` : '<div class="empty">暂无待处理事项。</div>')
-    + (hints.length ? `<h4 class="label" style="margin-top:14px">资源提示</h4><ul class="attn">${hints.map(i => entry(i, "查看 →")).join("")}</ul>` : ""));
+  paint("ovAttention", todo.length ? `<ul class="attn">${todo.map(i => entry(i, "处理 →")).join("")}</ul>` : '<div class="empty">暂无待处理事项。</div>');
+  paint("ovHints", hints.length ? `<ul class="attn">${hints.map(i => entry(i, "查看 →")).join("")}</ul>` : '<div class="empty">暂无资源提示。</div>');
   paint("ovMissions", list.slice(0, 7).map(missionItem).join("") || '<div class="empty">暂无任务。</div>');
   byId("ovFleetCard").hidden = !resources;
   if (resources) paint("ovFleet", resources.sites.map(site => `<div class="site"><div class="site-head">${esc(site.site_id)}</div>
@@ -614,7 +659,7 @@ function renderOverview() {
       tag("补能 " + (SHORT[d.status.energy.state] || d.status.energy.state) + (d.status.energy.charge_fraction == null ? "" : " " + pct(d.status.energy.charge_fraction))),
       tag("环境 " + (SHORT[d.status.environment.state] || d.status.environment.state)), tag(PAD[d.pad] || d.pad), d.status.lock ? badge("维护锁定", "bad") : ""].join("") : ""}<span class="push"></span>
       ${d.status ? badge(d.status.link === "online" && d.status.fresh ? "在线" : SHORT[d.status.link] || d.status.link, d.status.link === "online" && d.status.fresh ? "ok" : "bad") : badge("无状态", "bad")}</div>`).join("")}
-    ${site.robots.map(r => `<div class="fleet-row"><a href="#fleet/${esc(r.robot_id)}">${esc(r.robot_id)}</a>${tag(SOURCE[r.execution_backend] || r.execution_backend)}${tag(robotLine(r))}<span class="push"></span>
+    ${site.robots.map(r => `<div class="fleet-row"><a href="#fleet/${esc(r.robot_id)}">${esc(r.robot_id)}</a>${sourceChip(r.execution_backend)}${tag(robotLine(r))}<span class="push"></span>
       ${badge(VERDICT[r.eligibility.verdict] || r.eligibility.verdict, VTONE[r.eligibility.verdict])}${r.eligibility.reasons.length ? `<span class="why">${esc(reasons(r.eligibility.reasons))}</span>` : ""}</div>`).join("")}</div>`).join(""));
   renderShell();
 }
@@ -647,7 +692,7 @@ function renderMission() {
   byId("detail").hidden = !open;
   if (!open) return;
   if (!current || current.mission.mission_id !== nav.id) { paint("detail", blank("加载任务 " + nav.id + " …", "任务不存在或无权查看时，这里会一直为空。")); return; }
-  paint("detail", missionHtml(current));
+  paint("detail", detailBack("missions", "任务列表") + missionHtml(current));
   loadMedia(current);
 }
 
@@ -661,27 +706,36 @@ function missionHtml(view) {
   const m = view.mission, request = view.request, v = version(), binding = view.binding;
   const scope = binding && !binding.legacy ? ` · ${binding.project_id} / ${binding.robot_id}` : binding?.legacy ? " · 历史任务（只读）" : "";
   let html = `<header class="d-head"><div class="eyebrow">任务 ${esc(m.mission_id)} · ${esc(CHANNEL[request.channel] || request.channel)} · ${show(requester(request))}${esc(scope)}</div>
-    <h1>${esc(v?.spec?.goal || request.text)}</h1><p class="lead">原始请求：${esc(request.text)}</p>
-    <div class="badges">${chip(m.status)}${tag("v" + m.current_version)}${m.replans ? badge("重规划 " + m.replans, "info") : ""}${view.task?.task_id ? " " + show(link("tasks/" + view.task.task_id, "任务单 " + view.task.task_id)) : ""}</div></header>`;
+    <div class="title-row"><h1>${esc(v?.spec?.goal || request.text)}</h1>${missionCancel(view)}</div><blockquote class="lead">原始请求：${esc(request.text)}</blockquote>
+    <div class="badges">${chip(m.status)}${tag("v" + m.current_version)}${sourceChip(binding?.execution_backend || v?.provenance?.execution_backend)}${m.replans ? badge("重规划 " + m.replans, "info") : ""}${view.task?.task_id ? " " + show(link("tasks/" + view.task.task_id, "任务单 " + view.task.task_id)) : ""}</div></header>`;
   html += stepper(m.status);
   if (!v) return html + '<p class="hint">等待规划结果。</p>';
   html += `<div class="tabs" role="tablist" aria-label="任务版本">${view.versions.map(x => `<button class="tab" type="button" role="tab" aria-selected="${x.version === v.version}" data-act="version" data-v="${x.version}">v${x.version} · ${esc(STATUS[x.status] || x.status)} · ${esc(x.origin)}</button>`).join("")}</div>`;
   html += missionActions(view, v);
-  // The plan on the left, the outcome and its audit on the right; on one column the outcome comes first once a flight
-  // produced one. / 左侧为计划，右侧为结果及其审计；单栏时，一旦飞行产生了结果就先显示结果。
-  const plan = `<div class="stack plan">${[packageCard(v), planningCard(v), approvalCard(v), dispatchCard(view), eventsCard(v), operationsCard(view)].join("")}</div>`;
-  const outcome = `<div class="stack outcome">${[reportCard(view), vendorCard(view, v), evidenceCard(view), cloudCard(view), provenanceCard(v), issuesCard(view)].join("")}</div>`;
+  // Main evidence and package, supporting facts on the right; completed outcomes lead the main column.
+  // 主栏展示证据与任务包，右栏展示支持事实；已结束任务的结果在主栏前置。
+  const plan = `<div class="stack plan">${packageCard(v)}</div>`;
+  const hasEvidence = !!(view.report || view.evidence?.length || v.events?.length || view.cloud);
+  const outcome = `<div class="stack outcome">${hasEvidence ? [reportCard(view), evidenceCard(view), eventsCard(v), cloudCard(view)].join("")
+    : card("飞行之后", '<p class="hint">飞行开始后展示机载事件；证据同步后展示图像、执行与效果记录及报告。</p>')}</div>`;
   const produced = bucket(view.mission.status) === "done" && !!(view.report || (view.evidence || []).length || view.cloud?.judge);
-  return html + `<div class="d-grid">${produced ? outcome + plan : plan + outcome}</div>`;
+  return html + `<div class="d-grid"><div class="stack">${produced ? outcome + plan : plan + outcome}${operationsCard(view)}${view.issues?.length ? issuesCard(view) : ""}</div>
+    <aside class="stack facts">${[planningCard(v), approvalCard(v), dispatchCard(view), provenanceCard(v), vendorCard(view, v)].join("")}</aside></div>`;
+}
+
+function missionCancel(view) {
+  const m = view.mission, dispatch = view.dispatch;
+  const cancellable = dispatch && ["awaiting_approval", "approving", "approved", "queued", "delivered"].includes(m.status) && !dispatch.cancel && !view.live;
+  return cancellable ? `<button class="btn ghost small" type="button" id="cancelMission" data-act="cancelMission" data-once data-id="${esc(m.mission_id)}" ${canMission("operator", view) ? "" : "disabled"}>取消任务</button>` : "";
 }
 
 function missionActions(view, v) {
-  const m = view.mission, dispatch = view.dispatch;
+  const m = view.mission;
   let html = "";
   if (v.status === "awaiting_approval" && v.version === m.current_version) {
     const allowed = canMission("approver", view);
-    html += `<section class="callout warn" aria-label="待审批"><h3>待审批 · v${esc(v.version)}</h3>
-      <p>审批绑定下面这个任务包哈希；审批后任何改动都会使签名失效，机载拒收。</p><code class="hash">${esc(v.package_hash)}</code>
+    html += `<section class="decision warn" aria-label="待审批"><h3>待审批 · v${esc(v.version)}</h3>
+      <p>审批绑定下面这个任务包哈希；审批后任何改动都会使签名失效，机载拒收。</p>${hashBlock(v.package_hash)}
       <div class="buttons"><button class="btn primary" type="button" id="approve" data-act="approve" data-once data-id="${esc(m.mission_id)}" data-v="${esc(v.version)}" data-hash="${esc(v.package_hash)}" ${allowed ? "" : "disabled"}>批准并签名</button>
       <button class="btn danger" type="button" id="decline" data-act="decline" data-id="${esc(m.mission_id)}" data-v="${esc(v.version)}" ${allowed ? "" : "disabled"}>驳回</button></div>
       ${allowed ? "" : '<p class="hint">审批需要该任务所属项目的 approver 角色。</p>'}</section>`;
@@ -692,18 +746,15 @@ function missionActions(view, v) {
       <div class="buttons">${["pause", "resume", "cancel"].map(a => `<button class="btn ${a === "cancel" ? "danger" : ""}" type="button" data-act="op" data-once data-id="${esc(m.mission_id)}" data-op="${a}" ${writable && allowed.includes(a) ? "" : "disabled"}>${{pause: "暂停", resume: "恢复", cancel: "取消并安全收尾"}[a]}</button>`).join("")}</div>
       <p>操作经机载 uplink 写入操作者信箱，由 executive 与 guardian 复核绑定与时效；页面按钮不直达飞控。</p></section>`;
   }
-  const cancellable = dispatch && ["awaiting_approval", "approving", "approved", "queued", "delivered"].includes(m.status) && !dispatch.cancel && !view.live;
-  if (cancellable) html += `<section class="callout" aria-label="取消任务"><h3>取消任务</h3><p>未领取的交付立即作废并释放预约；已领取的在飞行出现运行步骤时经机载通道取消，之后不再起飞。</p>
-    <div class="buttons"><button class="btn danger" type="button" id="cancelMission" data-act="cancelMission" data-once data-id="${esc(m.mission_id)}" ${canMission("operator", view) ? "" : "disabled"}>取消任务</button></div></section>`;
   return html;
 }
 
 function packageCard(v) {
   if (!v.package) return "";
-  const rows = v.package.nodes.map(n => [raw(`<span class="nowrap">${esc(n.task_id)}</span>`), raw(`<code>${esc(n.skill_id)}</code>`), raw(`<span class="nowrap">${esc(n.depends_on.join(", ") || "—")}</span>`),
-    raw(`<code class="wrap">${esc(JSON.stringify(n.params))}</code>`)]);
+  const nodes = `<ol class="package-list">${v.package.nodes.map(n => `<li><div class="package-title"><b>${esc(n.task_id)}</b><code>${esc(n.skill_id)}</code></div>
+    <p>依赖 ${esc(n.depends_on.join(", ") || "—")}</p><div class="param-tags">${Object.entries(n.params || {}).map(([key, value]) => `<span><b>${esc(key)}</b> ${esc(typeof value === "object" ? JSON.stringify(value) : value)}</span>`).join("") || "—"}</div></li>`).join("")}</ol>`;
   const diff = v.diff && v.version > 1 ? `<p class="hint">相对上一版本：新增 ${esc(v.diff.added.join(", ") || "—")}；删除 ${esc(v.diff.removed.join(", ") || "—")}；改动 ${esc(v.diff.changed.join(", ") || "—")}</p>` : "";
-  return card("任务包", table(["步骤", "技能", "依赖", "参数"], rows) + diff, raw(`哈希 ${tag((v.package_hash || "").slice(0, 12))}`));
+  return card("任务包", nodes + diff, raw(`哈希 ${tag((v.package_hash || "").slice(0, 12))}`));
 }
 
 function planningCard(v) {
@@ -723,7 +774,7 @@ function planningCard(v) {
 function approvalCard(v) {
   if (!v.approval) return "";
   return card("审批", kv([["审批人", v.approval.approver], ["时间", when(v.approval.approved_at)], ["签名密钥", v.approval.signer_key_id],
-    ["有效至", when(v.approval.expires_at)]]), "按任务包哈希签名");
+    ["有效至", when(v.approval.expires_at)]]) + hashBlock(v.package_hash), "按任务包哈希签名");
 }
 
 function dispatchCard(view) {
@@ -731,7 +782,7 @@ function dispatchCard(view) {
   if (!binding) return "";
   let body = kv([["项目 / 站点", binding.legacy ? binding.project_id + " · 历史任务（只读）" : `${binding.project_id} / ${binding.site_id}`],
     binding.legacy ? null : ["机场 / 机器人", `${binding.dock_id} / ${binding.robot_id}`],
-    binding.legacy ? null : ["执行后端", SOURCE[binding.execution_backend] || binding.execution_backend]]);
+    binding.legacy ? null : ["执行后端", raw(sourceChip(binding.execution_backend))]]);
   if (dispatch) {
     const latest = {};
     for (const d of dispatch.decisions) latest[d.version + ":" + d.stage] = d;
@@ -779,7 +830,7 @@ function eventsCard(v) {
   const events = v.events || [];
   const journals = Object.entries(v.journals || {}).map(([k, j]) => tag(`${k} ${j.rows} · ${j.chain}`)).join(" ") || tag("尚未同步");
   const body = events.length ? `<ol class="timeline" data-k="events-${esc(current.mission.mission_id)}-${esc(v.version)}">${events.slice().reverse().map(e => `<li class="${ALERTS.includes(e.kind) ? "alert" : ""}">${show(when(e.timestamp))}
-    <span>${esc(e.journal)} · ${esc(e.kind)} ${esc(e.data.step_id || e.data.state || e.data.method || "")} ${esc(e.data.status || "")} ${e.data.outcome ? esc(e.data.outcome.execution_status + " / " + e.data.outcome.effect_verdict) : ""}</span></li>`).join("")}</ol>`
+    <span>${eventName(e.kind)} <small>${esc(e.journal)} · ${esc(e.data.step_id || e.data.state || e.data.method || "")} ${esc(e.data.status || "")} ${e.data.outcome ? esc(e.data.outcome.execution_status + " / " + e.data.outcome.effect_verdict) : ""}</small></span></li>`).join("")}</ol>`
     : '<div class="empty">飞行开始后显示来自 executive 与 guardian 账本的事件。</div>';
   return card("机载事件", body, raw(journals));
 }
@@ -802,7 +853,10 @@ function reportCard(view) {
   const rows = table(["步骤", "列", "判定"], (report.rows || []).map(r => [`v${r.mission_version} ${r.step_id}`, COLUMN[r.column] || r.column,
     raw(`<code>${esc(r.execution_status || "—")} / ${esc(r.effect_verdict || "—")}${r.service_verdict ? " · 服务 " + esc(r.service_verdict) : ""}</code>`)]));
   const facts = (report.facts || []).length ? `<p class="hint">模型备注（不改变任何判定）：${report.facts.map(f => esc(f.predicate + "=" + JSON.stringify(f.value) + " @" + f.confidence)).join("；")}</p>` : "";
-  return card("报告", columns + rows + facts, "已完成 = 执行成功 ∧ 效果已证实");
+  const verdicts = (key, names, tones) => (report.rows || []).map(r => `<li><span class="mono">v${esc(r.mission_version)} · ${esc(r.step_id)}</span>${badge(names[r[key]] || r[key] || "服务未提供", tones[r[key]] || (!r[key] ? "unknown" : ""))}</li>`).join("") || `<li>${badge("服务未提供", "unknown")}</li>`;
+  const triad = `<div class="triad" aria-label="执行、效果与安全记录"><section><h4>执行 · 逐步骤</h4><ul>${verdicts("execution_status", EXECUTION, EXECUTION_TONE)}</ul></section>
+    <section><h4>效果 · 逐步骤</h4><ul>${verdicts("effect_verdict", EFFECT, EFFECT_TONE)}</ul></section><section class="unknown"><h4>安全 · 任务级</h4>${badge("服务未提供", "unknown")}<p class="hint">不从机载事件汇总安全结论。</p></section></div>`;
+  return card("报告", triad + columns + rows + facts, "已完成 = 执行成功 ∧ 效果已证实");
 }
 
 function evidenceCard(view) {
@@ -812,23 +866,23 @@ function evidenceCard(view) {
   const project = view.binding?.project_id, reuse = business && business.project_id === project ? business.reuse.analyzers : null;
   const body = items.length ? `<div class="gallery">${items.map(e => {
     const png = photos[e.evidence_id], verdict = e.verification?.final_verdict;
-    const state = e.verification ? badge(verdict + (e.verification.agrees ? "" : " · 机载/服务不一致"), verdict === "verified" && e.verification.agrees ? "ok" : "warn") : badge("待复核", "warn");
+    const state = e.verification ? badge(verdict + (e.verification.agrees ? "" : " · 机载/服务不一致"), EFFECT_TONE[verdict] === "unknown" ? "unknown" : verdict === "verified" && e.verification.agrees ? "ok" : "warn") : badge("待复核", "warn");
     const tools = reuse && verdict === "verified" ? `<div class="tools"><select data-analyzer="${esc(e.evidence_id)}" data-k="reuse-${esc(e.evidence_id)}" aria-label="复用分析器">${reuse.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join("")}</select>
       <button class="btn small" type="button" data-act="reuse" data-id="${esc(e.evidence_id)}" data-mission="${esc(view.mission.mission_id)}" ${can("operator", business.roles) ? "" : "disabled"}>复用分析</button>
       <button class="btn small" type="button" data-act="reference" data-id="${esc(e.evidence_id)}" data-mission="${esc(view.mission.mission_id)}" ${can("admin", business.roles) ? "" : "disabled"}>登记为参考外观</button></div>` : "";
     const frame = png ? `<img alt="机载相机证据 ${esc(e.step_id)}" src="${esc(png)}">` : e.media === true ? "加载图像…"
       : `<button class="btn small" type="button" data-act="media" data-id="${esc(e.evidence_id)}" data-mission="${esc(view.mission.mission_id)}">加载图像</button>`;
     return `<figure class="shot" style="margin:0"><div class="frame">${frame}</div><figcaption class="cap"><span class="badges">${state}</span>
-      <span class="item-meta">v${esc(e.version)} ${esc(e.step_id)} · ${esc(stamp(e.captured_at))} · ${esc(SOURCE[e.provenance?.source] || SOURCE.legacy_unknown)}</span>${tools}</figcaption></figure>`;
+      <span class="item-meta">v${esc(e.version)} ${esc(e.step_id)} · ${esc(stamp(e.captured_at))}</span>${sourceChip(e.provenance?.source)}${tools}</figcaption></figure>`;
   }).join("")}</div>` : '<div class="empty">暂无证据。</div>';
   return card("证据", body, items.length ? items.length + " 份" : "");
 }
 
 function provenanceCard(v) {
   const provenance = v.provenance || {}, runInfo = provenance.run || {};
-  return card("运行来源", kv([["执行后端", SOURCE[provenance.execution_backend] || SOURCE.legacy_unknown],
-    ["规划来源", SOURCE[provenance.planning?.source] || SOURCE.legacy_unknown],
-    ["分析来源", (provenance.analysis_sources || ["legacy_unknown"]).map(s => SOURCE[s] || s).join(" / ")],
+  return card("运行来源", kv([["执行后端", raw(sourceChip(provenance.execution_backend))],
+    ["规划来源", raw(sourceChip(provenance.planning?.source))],
+    ["分析来源", raw((provenance.analysis_sources || ["legacy_unknown"]).map(sourceChip).join(" "))],
     ["软件版本", runInfo.software_sha ? raw(`${show(short(runInfo.software_sha, 12))}${runInfo.dirty_sha256 ? " · 含未提交代码" : ""}`) : "未知"]]), "受信后端生成");
 }
 
@@ -935,42 +989,41 @@ function renderRun() {
   if (!run || run.run.run_id !== nav.id) { paint("runDetail", blank("加载运行 " + nav.id + " …")); return; }
   const r = run.run, final = FINAL.includes(r.state), operator = can("operator", workflows?.roles), reviewer = can("reviewer", workflows?.roles);
   let html = `<header class="d-head"><div class="eyebrow">工作流运行 ${esc(r.run_id)} · ${esc(r.trigger_source)} · 发起 ${esc(r.started_by)}</div>
-    <h1 title="${esc(run.template.title)}">${esc(zh(run.template.title))}</h1><div class="badges">${wchip(r.state)}${tag(r.workflow_id + " v" + r.version)}
+    <div class="title-row"><h1 title="${esc(run.template.title)}">${esc(zh(run.template.title))}</h1>${!final && !r.cancel ? `<button class="btn ghost small" type="button" id="cancelRun" data-act="cancelRun" data-id="${esc(r.run_id)}" ${operator ? "" : "disabled"}>取消本次运行</button>` : ""}</div><div class="badges">${wchip(r.state)}${tag(r.workflow_id + " v" + r.version)}
     ${run.waiting.length ? badge(run.waiting.map(w => WAIT[w] || w).join(" / "), "warn") : ""}</div></header>`;
   if (r.cancel) html += `<section class="callout warn"><h3>已请求取消</h3><p>取消：${esc(r.cancel.requested_by)} · ${esc(stamp(r.cancel.requested_at))} · ${esc(r.cancel.reason)}；已开始的飞行经原通道收尾，对账前显示“取消收尾中”。</p></section>`;
-  if (!final && !r.cancel) html += `<section class="callout"><h3>取消本次运行</h3><p>取消先持久化：未投递的效果作废，已提交的任务写入取消意图；停用排班请在排班处单独操作。</p>
-    <div class="buttons"><button class="btn danger" type="button" id="cancelRun" data-act="cancelRun" data-id="${esc(r.run_id)}" ${operator ? "" : "disabled"}>取消本次运行</button></div></section>`;
+  if (!r.cancel) html += run.nodes.filter(n => n.activity === "human_review" && n.state === "waiting").map(n => `<section class="decision warn"><h3>等待人工复核 · ${esc(n.node_id)}</h3><p>分析结果只是候选，请结合本次证据确认或驳回。</p>
+    <div class="buttons"><button class="btn primary" type="button" data-act="review" data-id="${esc(r.run_id)}" data-node="${esc(n.node_id)}" data-decision="confirmed" ${reviewer ? "" : "disabled"}>确认异常</button>
+    <button class="btn danger" type="button" data-act="review" data-id="${esc(r.run_id)}" data-node="${esc(n.node_id)}" data-decision="dismissed" ${reviewer ? "" : "disabled"}>驳回</button></div></section>`).join("");
   const nodes = `<ol class="flow">${run.nodes.map((n, i) => {
     const result = n.result || {};
     let detail = esc(why(n));
     if (result.mission_id && n.activity === "submit_mission") detail = show(link("missions/" + result.mission_id, "任务 " + result.mission_id));
     if (n.activity === "await_mission" && n.state === "completed") detail = `已证实 · 证据 ${esc(String(result.evidence_id || "").slice(0, 18))}…`;
-    if (n.activity === "analyze_evidence" && n.state === "completed") detail = `${result.suspected ? "疑似异常" : "未见异常"} · ${esc(SOURCE[result.source] || result.source)} · ${esc(result.confidence)}`
+    if (n.activity === "analyze_evidence" && n.state === "completed") detail = `${result.suspected ? "疑似异常" : "未见异常"} · ${sourceChip(result.source)} · ${esc(result.confidence)}`
       + (result.finding_id ? ` · <a class="mono" href="#business/finding/${esc(result.finding_id)}">${esc(result.finding_id)}</a>` : "");
     if (n.activity === "human_review" && n.state === "completed") detail = `${result.decision === "confirmed" ? "确认" : "驳回"} · ${esc(result.reviewer)}`;
     if (result.order_id) detail = `工单 ${esc(result.order_id)}`;
     if (n.activity === "request_reinspection" && result.run_id) detail = `<a class="mono" href="#workflows/${esc(result.run_id)}">复检 ${esc(result.run_id)}</a>`;
     if (n.detail?.late_result) detail += ` · 取消后到达的结果：${esc(WSTATE[n.detail.late_result.state] || n.detail.late_result.state)}（只记录）`;
-    const review = n.activity === "human_review" && n.state === "waiting" && !r.cancel
-      ? `<div class="buttons"><button class="btn primary small" type="button" data-act="review" data-id="${esc(r.run_id)}" data-node="${esc(n.node_id)}" data-decision="confirmed" ${reviewer ? "" : "disabled"}>确认异常</button>
-         <button class="btn danger small" type="button" data-act="review" data-id="${esc(r.run_id)}" data-node="${esc(n.node_id)}" data-decision="dismissed" ${reviewer ? "" : "disabled"}>驳回</button></div>` : "";
-    return `<li class="${NODE_TONE[n.state] || ""}"><span class="dot">${i + 1}</span><div class="flow-body"><div class="flow-top"><b>${esc(ACTIVITY[n.activity] || n.activity)}</b><code>${esc(n.node_id)}</code>${wchip(n.state)}</div>
-      ${detail ? `<div class="flow-note">${detail}</div>` : ""}${review}</div></li>`;
+    const symbol = n.state === "completed" ? "✓" : ["failed", "cancelled"].includes(n.state) ? "×" : n.state === "outcome_unknown" ? "?" : i + 1;
+    return `<li class="${NODE_TONE[n.state] || ""}"><span class="dot" aria-hidden="true">${symbol}</span><div class="flow-body"><div class="flow-top"><b>${esc(ACTIVITY[n.activity] || n.activity)}</b><code>${esc(n.node_id)}</code>${wchip(n.state)}</div>
+      ${detail ? `<div class="flow-note">${detail}</div>` : ""}</div></li>`;
   }).join("")}</ol>`;
   const main = [card("节点", nodes, "每个等待与失败都有原因")];
   if (run.missions.length) main.push(card("子任务（每个仍需人工审批）", table(["任务", "节点", "状态", "预约"], run.missions.map(m => [link("missions/" + m.mission_id, m.mission_id), m.node_id, raw(chip(m.status)), m.reservations.map(x => RESERVATION[x.state] || x.state).join(", ") || "—"]))));
-  if (run.analyses.length) main.push(card("分析", table(["资产", "分析器", "来源", "结论"], run.analyses.map(a => [a.asset_id, a.analyzer, SOURCE[a.source] || a.source, a.verdict])), "来源已标注；脚本 / 确定性结果不是模型识别"));
+  if (run.analyses.length) main.push(card("分析", table(["资产", "分析器", "来源", "结论"], run.analyses.map(a => [a.asset_id, a.analyzer, raw(sourceChip(a.source)), a.verdict])), "来源已标注；脚本 / 确定性结果不是模型识别"));
   if (run.orders.length) main.push(card("工单", table(["工单", "资产", "状态"], run.orders.map(o => [o.order_id, o.asset_id, ORDER[o.state] || o.state]))));
   if (run.children.length) main.push(card("复检运行", run.children.map(c => `<div class="item"><span class="item-main"><a class="mono" href="#workflows/${esc(c.run_id)}">${esc(c.run_id)}</a></span>${wchip(c.state)}</div>`).join("")));
   main.push(card("时间线", `<ol class="timeline" data-k="run-events-${esc(r.run_id)}">${run.events.slice().reverse().slice(0, 60).map(e => `<li>${show(when(e.created_at))}
-    <span>${esc(e.kind)} ${esc(e.body.node_id || "")} ${esc(e.body.state || e.body.to || "")} ${esc(e.body.reason || "")}</span></li>`).join("")}</ol>`));
-  paint("runDetail", html + `<div class="stack" style="margin-top:14px">${main.join("")}</div>`);
+    <span>${eventName(e.kind)} ${esc(e.body.node_id || "")} ${esc(e.body.state || e.body.to || "")} ${esc(e.body.reason || "")}</span></li>`).join("")}</ol>`));
+  paint("runDetail", detailBack("workflows", "工作流列表") + html + `<div class="stack" style="margin-top:14px">${main.join("")}</div>`);
 }
 
 function renderDraft(result) {
   if (!result) return;
   const spec = result.spec;
-  paint("draftResult", `<p class="hint">草案 ${esc(result.status === "planned" ? "已生成（未生效）" : result.status === "refused" ? "被拒答" : "无效")} · 来源 ${esc(SOURCE[result.use?.source] || result.use?.source)}
+  paint("draftResult", `<p class="hint">草案 ${esc(result.status === "planned" ? "已生成（未生效）" : result.status === "refused" ? "被拒答" : "无效")} · 来源 ${sourceChip(result.use?.source)}
     ${result.errors?.length ? " · " + esc(result.errors.join("；")) : ""}${result.decline_reason ? " · " + esc(result.decline_reason) : ""}</p>
     ${spec ? table(["节点", "活动"], spec.nodes.map(n => [n.node_id, ACTIVITY[n.activity] || n.activity])) + `<p class="hint">摘要 ${esc(String(result.spec_sha256).slice(0, 16))}…；${esc(result.note)}</p>` : ""}`);
 }
@@ -998,11 +1051,12 @@ function renderTasks() {
     + (tasks.robots.length ? "" : '<div class="empty">本项目没有机器人。</div>'));
   const holds = tasks.airspace.holds, envelopes = tasks.airspace.envelopes;
   byId("taskAirspaceSub").textContent = `${tasks.airspace.frame} · 单元 ${tasks.airspace.cell_m} m`;
-  paint("taskAirspace", holds.length || envelopes.length ? `<div class="airspace">${airspaceSketch(tasks.airspace)}</div>
+  paint("taskAirspace", `<div class="airspace">${airspaceSketch(tasks.airspace)}</div>
     <div class="list" style="margin-top:10px">${holds.map(h => `<div class="item"><span class="item-main"><span class="item-title">${esc(h.robot_id)} · <a class="mono" href="#missions/${esc(h.mission_id)}">${esc(h.mission_id)}</a></span>
       <span class="item-meta">${esc(h.cells.length)} 个单元（${esc(tasks.airspace.cell_m)} m）</span></span>${badge(PAD[h.state] || h.state, h.state === "uncertain" ? "bad" : "info")}</div>`).join("")}
     ${envelopes.map(e => `<div class="item"><span class="item-main"><span class="item-title">失联包络 · ${esc(e.activity)}</span><span class="why bad">${esc(e.cells.length)} 个单元，只增不减，直到对账</span></span></div>`).join("")}</div>`
-    : '<div class="empty">无持有。</div>');
+    + (!holds.length && !envelopes.length ? '<div class="empty">无持有。</div>' : "")
+    + `<div class="map-stations"><b>机位</b>${tasks.robots.map(r => `<span>${esc(r.dock_id || "来源未记录")} · ${esc(r.robot_id)}</span>`).join("")}<small>服务未提供机位坐标，图中不绘制机位点。</small></div>`);
   renderShell();
 }
 
@@ -1026,8 +1080,7 @@ function airspaceSketch(airspace) {
   const cells = [];
   airspace.holds.forEach((h, i) => h.cells.forEach(c => { const p = cellXY(c); if (p) cells.push({...p, fill: palette[i % palette.length]}); }));
   airspace.envelopes.forEach(e => e.cells.forEach(c => { const p = cellXY(c); if (p) cells.push({...p, envelope: true}); }));
-  if (!cells.length) return "";
-  const xs = [0, ...cells.map(c => c.x)], ys = [0, ...cells.map(c => c.y)];
+  const xs = [-2, 2, ...cells.map(c => c.x)], ys = [-2, 2, ...cells.map(c => c.y)];
   const minX = Math.max(Math.min(...xs) - 1, -30), maxX = Math.min(Math.max(...xs) + 1, 30);
   const minY = Math.max(Math.min(...ys) - 1, -30), maxY = Math.min(Math.max(...ys) + 1, 30);
   const size = 22, w = (maxX - minX + 1) * size, h = (maxY - minY + 1) * size;
@@ -1042,7 +1095,7 @@ function airspaceSketch(airspace) {
   const legend = airspace.holds.map((hold, i) => `<span><i style="background:${palette[i % palette.length]}"></i>${esc(hold.robot_id)} · ${esc(hold.mission_id)}</span>`).join("")
     + (airspace.envelopes.length ? '<span><i style="background:#f19a87"></i>失联包络</span>' : "") + "<span>○ 坐标原点</span>";
   return `<div class="sky"><svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="空域网格持有示意"><defs><pattern id="envelope" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#3a1f1a"/><line x1="0" y1="0" x2="0" y2="6" stroke="#f19a87" stroke-width="2"/></pattern></defs>
-    <g stroke="#2f4636" stroke-width="1">${grid}</g>${rects}${origin}</svg></div><div class="legend">${legend}</div>`;
+    <g stroke="var(--field-line)" stroke-width="1">${grid}</g>${rects}${origin}</svg></div><div class="legend"><span>↑ 北</span>${legend}</div><p class="scale">${esc(airspace.frame)} · 每格 ${esc(airspace.cell_m)} m · 网格持有示意</p>`;
 }
 
 function renderTask() {
@@ -1064,31 +1117,42 @@ function renderTask() {
     (ASTATE[a.state] || a.state) + (a.reason ? " · " + reasons(a.reason.split(",")) : "")]), "尚未分配。");
   const decision = d => `<div class="res-card"><div class="res-head"><b>${esc(TVERDICT[d.verdict] || d.verdict)}${d.robot_id ? " → " + esc(d.robot_id) : ""}</b>
     <span class="sub">${esc(stamp(d.created_at))} · 代次 ${esc(d.epoch)} · ${esc(d.ranking_version)} / ${esc(d.policy_version)} · 快照 ${esc(String(d.snapshot_sha256).slice(0, 12))}…</span></div>
-    ${table(["候选", "判定", "预计到场 s", "近期使用", "原因"], d.candidates.map(c => [c.robot_id, VERDICT[c.verdict] || c.verdict, c.eta_s ?? "—", c.usage, reasons(c.reasons)]))}</div>`;
+    ${table(["排序", "机器人", "站点 / 机场", "预计到场 s", "近期使用", "判定", "原因"], d.candidates.map(c => {
+      const rank = (d.order || []).indexOf(c.robot_id), robot = (tasks?.robots || []).find(r => r.robot_id === c.robot_id);
+      return [rank >= 0 ? rank + 1 : "—", c.robot_id, robot ? `${robot.site_id || "—"} / ${robot.dock_id || "—"}` : "—", c.eta_s ?? "—", c.usage ?? "—", raw(badge(VERDICT[c.verdict] || c.verdict, VTONE[c.verdict])), reasons(c.reasons) || "—"];
+    }))}<p class="hint">排序来自本次服务判定；站点 / 机场为当前资源目录。</p></div>`;
   const decisions = task.decisions.slice().reverse();
   const decided = decisions.length ? decision(decisions[0]) + (decisions.length > 1 ? `<details class="more" data-k="older-${esc(t.task_id)}"><summary>更早的 ${decisions.length - 1} 次判定</summary><div class="stack" style="margin-top:10px">${decisions.slice(1).map(decision).join("")}</div></details>` : "")
     : '<div class="empty">暂无判定。</div>';
   const events = `<ol class="timeline" data-k="task-events-${esc(t.task_id)}">${task.events.slice().reverse().slice(0, 60).map(e => `<li>${show(when(e.created_at))}
-    <span>${esc(e.kind)} ${esc(e.body.robot_id || "")} ${esc(e.body.epoch ?? "")} ${esc(e.body.reason || e.body.state || "")}</span></li>`).join("")}</ol>`;
-  paint("taskDetail", html + `<div class="stack" style="margin-top:14px">${card("分配（代次递增；撤回只发生在领取之前）", assignments)}${card("判定（按录制快照可重放）", decided, "最新在前")}${card("时间线", events)}</div>`);
+    <span>${eventName(e.kind)} ${esc(e.body.robot_id || "")} ${esc(e.body.epoch ?? "")} ${esc(e.body.reason || e.body.state || "")}</span></li>`).join("")}</ol>`;
+  paint("taskDetail", detailBack("tasks", "调度列表") + html + `<div class="stack" style="margin-top:14px">${card("分配（代次递增；撤回只发生在领取之前）", assignments)}${card("判定（按录制快照可重放）", decided, "最新在前")}${card("时间线", events)}</div>`);
 }
 
 // ── fleet / 机队 ──
+function dockActionTrack(action) {
+  const states = ["requested", "acked", "completed"];
+  const reached = {requested: !!action.requested_at, acked: !!action.acked_at && [true, 1].includes(action.ack_accepted),
+    completed: action.state === "completed"};
+  return `<div class="action-track" aria-label="${esc(ACTION_STATE[action.state] || action.state)}">${states.map(s =>
+    `<span class="${action.state === s ? "now" : reached[s] ? "done" : "pending"}">${reached[s] ? "✓ " : "○ "}${esc(ACTION_STATE[s])}</span>`).join('<span aria-hidden="true">→</span>')}
+    ${["rejected", "failed"].includes(action.state) ? badge(ACTION_STATE[action.state], "bad") : ""}</div>`;
+}
 function dims(d) {
   const s = d.status;
   if (!s) return '<div class="why bad">尚无机场报告：不可派遣。</div>';
   const charge = s.energy.charge_fraction == null ? null : Math.round(s.energy.charge_fraction * 100);
-  const energyTone = {ready: "ok", charging: "warn", cooling: "warn", fault: "bad", unknown: "warn"}[s.energy.state] || "";
+  const energyTone = {ready: "ok", charging: "warn", cooling: "warn", fault: "bad", unknown: "unknown"}[s.energy.state] || "";
   const tile = (label, value, tone, extra = "") => `<div class="dim ${tone || ""}"><small>${esc(label)}</small><b>${esc(value)}</b>${extra}</div>`;
   return `<div class="dims">${[
-    tile("链路", SHORT[s.link] || s.link, s.link === "online" && s.fresh ? "ok" : s.link === "offline" ? "bad" : "warn"),
-    tile("舱盖", SHORT[s.lid] || s.lid, s.lid === "jammed" ? "bad" : s.lid === "unknown" ? "warn" : ["open", "opening", "closing"].includes(s.lid) ? "info" : ""),
-    tile("在位", SHORT[s.aircraft] || s.aircraft, s.aircraft === "present" ? "ok" : s.aircraft === "unknown" ? "warn" : ""),
+    tile("链路", SHORT[s.link] || s.link, s.link === "unknown" ? "unknown" : s.link === "online" && s.fresh ? "ok" : "bad"),
+    tile("舱盖", SHORT[s.lid] || s.lid, s.lid === "jammed" ? "bad" : s.lid === "unknown" ? "unknown" : ["opening", "closing"].includes(s.lid) ? "info" : "ok"),
+    tile("在位", SHORT[s.aircraft] || s.aircraft, s.aircraft === "present" ? "ok" : s.aircraft === "unknown" ? "unknown" : ""),
     tile("补能", (SHORT[s.energy.state] || s.energy.state) + (charge == null ? "" : " " + charge + "%"), energyTone, charge == null ? "" : `<div class="meter"><i style="width:${Math.max(0, Math.min(100, charge))}%"></i></div>`),
-    tile("环境", SHORT[s.environment.state] || s.environment.state, s.environment.state === "permitted" ? "ok" : "warn", s.environment.wind_mps == null ? "" : `<em>风 ${esc(s.environment.wind_mps)} m/s</em>`),
-    tile("运维", s.lock ? "锁定：" + (DIM[s.lock.state] || s.lock.state) : SHORT[s.upkeep] || s.upkeep, s.lock || s.upkeep !== "normal" ? "bad" : "ok"),
-    tile("机位", PAD[d.pad] || d.pad, d.pad === "uncertain" ? "bad" : d.pad === "free" ? "" : "warn", d.holder ? `<em>${esc(d.holder)}</em>` : ""),
-    tile("新鲜度", (s.fresh ? "" : "过期 · ") + s.age_s.toFixed(1) + " s 前", s.fresh ? "" : "bad", `<em>${s.session === "active" ? "会话有效" : "会话对账中"}</em>`),
+    tile("环境", SHORT[s.environment.state] || s.environment.state, s.environment.state === "unknown" ? "unknown" : s.environment.state === "permitted" ? "ok" : "warn", s.environment.wind_mps == null ? "" : `<em>风 ${esc(s.environment.wind_mps)} m/s</em>`),
+    tile("运维", s.lock ? "锁定：" + (DIM[s.lock.state] || s.lock.state) : SHORT[s.upkeep] || s.upkeep, s.lock ? "bad" : s.upkeep === "unknown" ? "unknown" : s.upkeep !== "normal" ? "bad" : "ok"),
+    tile("机位", PAD[d.pad] || d.pad, d.pad === "uncertain" ? "unknown" : d.pad === "free" ? "" : "warn", d.holder ? `<em>${esc(d.holder)}</em>` : ""),
+    tile("新鲜度", (s.fresh ? "" : "过期 · ") + s.age_s.toFixed(1) + " s 前", s.fresh ? "ok" : "bad", `<em>${s.session === "active" ? "会话有效" : "会话对账中"}</em>`),
   ].join("")}</div>`;
 }
 
@@ -1107,15 +1171,15 @@ function renderResources() {
   const admin = can("admin", resources.roles);
   byId("fleetSub").textContent = `${resources.catalog.catalog_id} · 判定于 ${stamp(resources.evaluated_at)}`;
   paint("resourceList", resources.sites.map(site => `<div class="site"><div class="site-head">${esc(site.site_id)}</div><div class="list">
-    ${site.docks.map(d => `<a class="item" href="#fleet/${esc(d.dock_id)}" aria-current="${d.dock_id === nav.id && nav.ws === "fleet"}"><span class="item-main"><span class="item-title">${esc(d.dock_id)} · ${esc(d.source === "logical_sim" ? "逻辑模拟机场" : SOURCE[d.source] || d.source)}</span>
+    ${site.docks.map(d => `<a class="item" href="#fleet/${esc(d.dock_id)}" aria-current="${d.dock_id === nav.id && nav.ws === "fleet"}"><span class="item-main"><span class="item-title">${esc(d.dock_id)}</span>${sourceChip(d.source)}
       <span class="item-meta">${d.status ? `${esc(DIM[d.status.link] || d.status.link)} · ${esc(PAD[d.pad] || d.pad)} · ${esc((d.status.fresh ? "" : "过期 · ") + d.status.age_s.toFixed(1) + " s 前")}` : "尚无机场报告"}</span>
       ${d.status?.lock ? `<span class="why bad">锁定：${esc(DIM[d.status.lock.state] || d.status.lock.state)}</span>` : ""}</span>${d.status ? badge(d.status.link === "online" && d.status.fresh ? "在线" : DIM[d.status.link] || d.status.link, d.status.link === "online" && d.status.fresh ? "ok" : "bad") : badge("无状态", "bad")}</a>`).join("")}
-    ${site.robots.map(r => `<a class="item" href="#fleet/${esc(r.robot_id)}" aria-current="${r.robot_id === nav.id && nav.ws === "fleet"}"><span class="item-main"><span class="item-title">${esc(r.robot_id)} · ${esc(r.execution_backend === "px4_sitl" ? "PX4 SITL" : "逻辑飞行")}</span>
+    ${site.robots.map(r => `<a class="item" href="#fleet/${esc(r.robot_id)}" aria-current="${r.robot_id === nav.id && nav.ws === "fleet"}"><span class="item-main"><span class="item-title">${esc(r.robot_id)}</span>${sourceChip(r.execution_backend)}
       <span class="item-meta">${esc(robotLine(r))}</span>${r.eligibility.reasons.length ? `<span class="why">${esc(reasons(r.eligibility.reasons))}</span>` : ""}</span>${badge(VERDICT[r.eligibility.verdict] || r.eligibility.verdict, VTONE[r.eligibility.verdict])}</a>`).join("")}</div></div>`).join(""));
   paint("fleetOverview", resources.sites.map(site => site.docks.map(d => `<section class="res-card"><div class="res-head"><a href="#fleet/${esc(d.dock_id)}">${esc(d.dock_id)}</a>
-      <span class="sub">${esc(site.site_id)} · ${esc(d.source === "logical_sim" ? "逻辑模拟机场" : SOURCE[d.source] || d.source)} · 服务 ${esc(d.serves.join(", "))}</span></div>${dims(d)}
+      <span class="sub">${esc(site.site_id)} · ${sourceChip(d.source)} · 服务 ${esc(d.serves.join(", "))}</span></div>${dims(d)}
       ${d.status?.lock && admin ? `<div><button class="btn danger small" type="button" data-act="release" data-id="${esc(d.dock_id)}">解除维护锁（管理员）</button></div>` : ""}</section>`).join("")
-    + site.robots.map(r => `<section class="res-card"><div class="res-head"><a href="#fleet/${esc(r.robot_id)}">${esc(r.robot_id)}</a><span class="sub">${esc(site.site_id)} · ${esc(SOURCE[r.execution_backend] || r.execution_backend)} · ${esc(robotLine(r))}</span>
+    + site.robots.map(r => `<section class="res-card"><div class="res-head"><a href="#fleet/${esc(r.robot_id)}">${esc(r.robot_id)}</a><span class="sub">${esc(site.site_id)} · ${sourceChip(r.execution_backend)} · ${esc(robotLine(r))}</span>
       ${badge(VERDICT[r.eligibility.verdict] || r.eligibility.verdict, VTONE[r.eligibility.verdict])}</div>${r.eligibility.reasons.length ? `<div class="why">${esc(reasons(r.eligibility.reasons))}</div>` : ""}</section>`).join("")).join("")
     + `<p class="hint">目录 ${esc(resources.catalog.catalog_id)} · 策略 ${esc(resources.catalog.policy.version)} · 判定于 ${esc(stamp(resources.evaluated_at))}。“在线”不等于可派遣：可派遣是带有效期的判断，不是授权。</p>`);
   renderShell();
@@ -1134,24 +1198,24 @@ function renderResourceDetail() {
     const admin = can("admin", resources?.roles);
     html += `<div class="stack" style="margin-top:14px">${card("状态", dims(d) + (d.status?.lock && admin ? `<div class="buttons"><button class="btn danger" type="button" data-act="release" data-id="${esc(d.dock_id)}">解除维护锁（管理员）</button></div>` : ""),
       `${esc(d.vendor)} / ${esc(d.model)} · ${esc(d.source === "logical_sim" ? "逻辑模拟机场" : d.source)} · 服务 ${esc(d.serves.join(", "))}`)}`;
-    html += card("动作", table(["动作", "状态", "活动", "请求", "回执"], d.actions.slice().reverse().map(a => [DOCK_ACTION[a.kind] || a.kind, ACTION_STATE[a.state] || a.state, raw(`<code>${esc(a.activity_key)}</code>`), when(a.requested_at),
+    html += card("动作", table(["动作", "进度", "活动", "请求", "回执"], d.actions.slice().reverse().map(a => [DOCK_ACTION[a.kind] || a.kind, raw(dockActionTrack(a)), raw(`<code>${esc(a.activity_key)}</code>`), when(a.requested_at),
       a.acked_at ? (a.ack_accepted ? "受理" : "拒绝 " + (a.ack_reason || "")) : "—"]), "暂无动作。"), "ACK 只表示受理，完成以后续状态报告为准");
     html += card("预约", table(["活动", "状态", "原因"], d.reservations.slice().reverse().map(r => [raw(`<code>${esc(r.activity_key)}</code>`), RESERVATION[r.state] || r.state, RELEASE[r.reason] || r.reason]), "暂无预约。"));
     const reports = d.events.filter(e => e.kind === "status.accepted").length;
     const others = d.events.filter(e => e.kind !== "status.accepted").slice().reverse();
     html += card("审计事件", `<p class="hint" style="margin-top:0">最近 ${d.events.length} 条中有 ${reports} 条状态报告已被接受。</p><ol class="timeline" data-k="dock-events-${esc(d.dock_id)}">${others.map(e => `<li class="${e.kind === "status.rejected" ? "alert" : ""}">${show(when(e.created_at))}
-      <span>${esc(e.kind)} <small>${esc(JSON.stringify(e.body).slice(0, 160))}</small></span></li>`).join("") || "<li><span>暂无其他事件。</span></li>"}</ol>`);
+      <span>${eventName(e.kind)} <small>${esc(JSON.stringify(e.body).slice(0, 160))}</small></span></li>`).join("") || "<li><span>暂无其他事件。</span></li>"}</ol>`);
     html += "</div>";
   } else {
     html += `<div class="stack" style="margin-top:14px">${card("可派遣判定", `<div class="verdict ${VTONE[d.eligibility.verdict] || ""}"><b>${esc(VERDICT[d.eligibility.verdict] || d.eligibility.verdict)}</b></div>
       ${d.eligibility.reasons.length ? `<p class="why">${esc(reasons(d.eligibility.reasons))}</p>` : ""}
-      ${kv([["能力来源", d.capability_source], ["执行后端", SOURCE[d.execution_backend] || d.execution_backend], ["判定有效至", when(d.eligibility.valid_until)],
+      ${kv([["能力来源", d.capability_source], ["执行后端", raw(sourceChip(d.execution_backend))], ["判定有效至", when(d.eligibility.valid_until)],
         ["快照摘要", short(d.eligibility.snapshot_sha256, 16)], ["策略", d.eligibility.policy_version || "—"]])}<p class="hint">可派遣是带有效期的判断，不是授权；每次飞行仍需人工审批签名，机载仍会复核。</p>`)}
       ${card("机体状态", kv([["飞行阶段", d.status ? (d.status.flight_phase === "grounded" ? "机体在地面" : d.status.flight_phase) : "机体无状态"], ["状态年龄", d.status ? Math.round(d.status.age_s) + " s" : "—"],
         ["电量", d.status ? pct(d.status.energy) : "—"], ["机场", d.dock_id || "—"]]))}
       ${card("技能", `<div class="badges">${(d.skills || []).map(s => tag(s)).join("")}</div>`)}</div>`;
   }
-  paint("fleetDetail", html);
+  paint("fleetDetail", detailBack("fleet", "机队列表") + html);
 }
 
 // ── business / 业务 ──
@@ -1171,7 +1235,7 @@ function renderBusiness() {
     <span class="item-title">${esc(o.asset_key)}</span><span class="item-meta">${esc(o.order_id)} · 第 ${esc(o.round)} 轮 · ${esc(stamp(o.updated_at))}</span></span>${bchip(ORDER, OTONE, o.state)}</a>`).join("")
     || '<div class="empty">暂无工单。</div>');
   paint("businessJobs", table(["分析器", "状态", "结论", "来源", "分数", "原因"], business.jobs.slice(0, 20).map(j => [raw(`<code>${esc(j.analyzer)}</code>`), JSTATE[j.state] || j.state,
-    raw(j.verdict ? bchip(BVERDICT, BTONE, j.verdict) : "—"), raw(`<span class="nowrap">${esc(SOURCE[j.source] || j.source || "—")}</span>`), j.score ?? "—", reasons(j.reasons) || "—"]), "暂无分析。"));
+    raw(j.verdict ? bchip(BVERDICT, BTONE, j.verdict) : "—"), raw(sourceChip(j.source)), j.score ?? "—", reasons(j.reasons) || "—"]), "暂无分析。"));
   paint("businessReferences", business.references.map(r => `<div class="item"><span class="item-main"><span class="item-title">${esc(r.asset_key)} · ${esc(r.state)}</span>
     <span class="item-meta">${esc(r.registered_by)} · ${esc(stamp(r.registered_at))} · ${esc(String(r.evidence_id).slice(0, 24))}…</span></span></div>`).join("") || '<div class="empty">未登记。</div>');
   renderShell();
@@ -1184,13 +1248,13 @@ function renderSubject() {
   if (!open) return;
   const id = subject?.kind === "finding" ? subject.finding?.finding_id : subject?.order?.order_id;
   if (!subject || subject.kind !== nav.kind || id !== nav.id) { paint("bizDetail", blank("加载 " + nav.id + " …")); return; }
-  paint("bizDetail", subject.kind === "finding" ? findingHtml() : orderHtml());
+  paint("bizDetail", detailBack("business", "发现与工单") + (subject.kind === "finding" ? findingHtml() : orderHtml()));
   if (subject.kind === "finding") for (const j of subject.jobs) if (j.mission_id && j.evidence_id) requestMedia(j.mission_id, j.evidence_id);
 }
 
 function eventsList(events, key) {
   return card("时间线", `<ol class="timeline" data-k="${esc(key)}">${(events || []).slice().reverse().slice(0, 60).map(e => `<li>${show(when(e.created_at))}
-    <span>${esc(e.kind)} ${esc(e.actor || "")} <small>${esc(JSON.stringify(e.body).slice(0, 140))}</small></span></li>`).join("")}</ol>`);
+    <span>${eventName(e.kind)} ${esc(e.actor || "")} <small>${esc(JSON.stringify(e.body).slice(0, 140))}</small></span></li>`).join("")}</ol>`);
 }
 
 function findingHtml() {
@@ -1198,17 +1262,36 @@ function findingHtml() {
   let html = `<header class="d-head"><div class="eyebrow">发现 ${esc(f.finding_id)} · 聚合键 ${esc(f.cluster_key)}</div><h1>${esc(f.asset_key)} · ${esc(f.family)}</h1>
     <div class="badges">${bchip(FSTATE, FTONE, f.state)}${tag(f.jobs + " 次分析")}</div>${body.description ? `<p class="lead">首次描述（来自分析器，只是候选）：${esc(body.description)}</p>` : ""}</header>`;
   if (subject.review) html += `<section class="callout info"><h3>复核：${esc(subject.review.decision === "confirmed" ? "确认" : "驳回")}</h3><p>${esc(subject.review.reviewer)} · ${esc(stamp(subject.review.created_at))}${subject.review.note ? " · " + esc(subject.review.note) : ""}</p></section>`;
-  if (f.state === "candidate") html += `<section class="callout warn"><h3>待复核</h3><p>分析结论只是候选。确认后按「每个发现一张工单」建单；驳回后该发现关闭，同一缺陷再次出现会开新发现。</p>
+  if (f.state === "candidate") html += `<section class="decision warn"><h3>待复核</h3><p>分析结论只是候选。确认后按「每个发现一张工单」建单；驳回后该发现关闭，同一缺陷再次出现会开新发现。</p>
     <div class="buttons"><button class="btn primary" type="button" data-act="decide" data-id="${esc(f.finding_id)}" data-decision="confirmed" ${reviewer ? "" : "disabled"}>确认异常并建单</button>
     <button class="btn danger" type="button" data-act="decide" data-id="${esc(f.finding_id)}" data-decision="dismissed" ${reviewer ? "" : "disabled"}>驳回</button></div></section>`;
   if (subject.order) html += `<section class="callout"><h3>工单</h3><p><a class="mono" href="#business/order/${esc(subject.order.order_id)}">${esc(subject.order.order_id)}</a> ${bchip(ORDER, OTONE, subject.order.state)}</p></section>`;
-  const seen = new Set();
-  const shots = subject.jobs.filter(j => j.evidence_id && !seen.has(j.evidence_id) && seen.add(j.evidence_id)).map(j => `<figure class="shot" style="margin:0"><div class="frame">${photos[j.evidence_id] ? `<img alt="分析所用的采集" src="${esc(photos[j.evidence_id])}">` : "加载图像…"}</div>
-    <figcaption class="cap"><span class="item-meta">${esc(String(j.evidence_id).slice(0, 26))}… · <a href="#missions/${esc(j.mission_id)}">${esc(j.mission_id)}</a></span></figcaption></figure>`).join("");
-  const jobs = table(["分析器", "来源", "结论", "分数", "原因 / 描述", "证据"], subject.jobs.map(j => [raw(`<code>${esc(j.analyzer)}</code><br><small>${esc(PURPOSE[j.purpose] || j.purpose)}</small>`), raw(`<span class="nowrap">${esc(SOURCE[j.source] || j.source || "—")}</span>`),
-    raw(j.verdict ? bchip(BVERDICT, BTONE, j.verdict) : esc(JSTATE[j.state] || j.state)), j.score ?? "—", raw(`${esc(reasons(j.reasons))}${j.description ? "<br>" + esc(j.description) : ""}`),
-    j.mission_id ? link("missions/" + j.mission_id, j.mission_id) : "—"]));
-  return html + `<div class="stack" style="margin-top:14px">${shots ? card("采集", `<div class="gallery${seen.size <= 2 ? " large" : ""}">${shots}</div>`, "只读原始证据") : ""}${card("分析", jobs, "来源已标注；脚本 / 确定性结果不是模型识别")}${eventsList(subject.events, "finding-events-" + f.finding_id)}</div>`;
+  const jobs = `<div class="analysis-list">${subject.jobs.map(j => `<section class="analysis-row"><div class="badges"><code>${esc(j.analyzer)}</code>${sourceChip(j.source)}${j.verdict ? bchip(BVERDICT, BTONE, j.verdict) : badge(JSTATE[j.state] || j.state)}
+    ${tag("分数 " + (j.score ?? "—"))}</div><p>${esc(PURPOSE[j.purpose] || j.purpose)} · ${esc(reasons(j.reasons) || "无原因记录")}</p>${j.description ? `<p>${esc(j.description)}</p>` : ""}
+    ${j.mission_id ? show(link("missions/" + j.mission_id, j.mission_id)) : ""}</section>`).join("")}</div>`;
+  const facts = card("发现记录", kv([["资产", f.asset_key], ["缺陷族", f.family], ["分析记录", f.jobs], ["状态", raw(bchip(FSTATE, FTONE, f.state))],
+    ["复核", subject.review ? `${subject.review.reviewer} · ${subject.review.decision === "confirmed" ? "确认" : "驳回"}` : raw(badge("待复核", "warn"))]]));
+  return html + `<div class="d-grid"><div class="stack">${findingGallery(subject.jobs)}${card("分析", jobs, "来源已标注；脚本 / 确定性结果不是模型识别")}${eventsList(subject.events, "finding-events-" + f.finding_id)}</div>
+    <aside class="stack facts">${facts}${subject.order ? card("工单状态", kv([["工单", link("business/order/" + subject.order.order_id, subject.order.order_id)], ["状态", raw(bchip(ORDER, OTONE, subject.order.state))], ["轮次", subject.order.round]]) + '<p class="hint">关单条件与本轮记录见工单详情。</p>') : ""}</aside></div>`;
+}
+
+function findingGallery(jobs) {
+  const seen = new Set(), items = jobs.filter(j => j.evidence_id && !seen.has(j.evidence_id) && seen.add(j.evidence_id));
+  if (!items.length) return "";
+  const active = items.find(j => j.evidence_id === selectedEvidence) || items[0];
+  const image = j => photos[j.evidence_id] ? `<img alt="分析所用的采集 ${esc(j.evidence_id)}" src="${esc(photos[j.evidence_id])}">` : "加载图像…";
+  return card("采集", `<figure class="shot evidence-hero"><div class="frame">${image(active)}</div><figcaption class="cap"><span class="mono">${esc(active.evidence_id)}</span>${active.mission_id ? show(link("missions/" + active.mission_id, active.mission_id)) : ""}</figcaption></figure>
+    <div class="thumbnails">${items.map((j, i) => `<button type="button" data-act="inspectEvidence" data-id="${esc(j.evidence_id)}" aria-label="查看第 ${i + 1} 份采集" aria-pressed="${j === active}">${image(j)}</button>`).join("")}</div>`, "只读原始证据");
+}
+
+function closureFacts(order, rounds) {
+  const latest = rounds.find(r => r.round === order.round), conclusion = latest?.conclusion || order.closure;
+  const missing = raw(badge("服务未提供", "unknown"));
+  return card("关单条件 · 服务记录", kv([["工单状态", raw(bchip(ORDER, OTONE, order.state))], ["维修反馈", latest?.feedback ? `${latest.feedback.reported_by} · ${stamp(latest.feedback.reported_at)}` : missing],
+    ["复检采集", conclusion?.evidence_id || missing], ["采集时间", conclusion?.captured_at ? when(conclusion.captured_at) : missing],
+    ["分析来源", raw(sourceChip(conclusion?.job_source))], ["本轮复核", latest?.review ? `${latest.review.reviewer} · ${latest.review.decision === "confirmed" ? "确认修复" : "驳回"}` : missing],
+    ["结算", conclusion ? raw(badge(RSTATE[conclusion.status] || conclusion.status, {passed: "ok", failed: "bad", unknown: "unknown"}[conclusion.status])) : missing],
+    conclusion?.reasons?.length ? ["原因", reasons(conclusion.reasons)] : null]) + '<p class="hint">服务核对反馈后的新采集、允许来源的未疑似分析与本轮复核；页面不推导条件是否通过。</p>');
 }
 
 function orderHtml() {
@@ -1216,18 +1299,18 @@ function orderHtml() {
   let html = `<header class="d-head"><div class="eyebrow">工单 ${esc(o.order_id)} · 建单 ${esc(o.created_by)}</div><h1>${esc(o.asset_key)}</h1>
     <div class="badges">${bchip(ORDER, OTONE, o.state)}${tag("第 " + o.round + " 轮")}</div>
     <p class="lead">发现：<a class="mono" href="#business/finding/${esc(subject.finding.finding_id)}">${esc(subject.finding.finding_id)}</a> ${bchip(FSTATE, FTONE, subject.finding.state)}</p></header>`;
-  if (REPAIRABLE.includes(o.state)) html += `<section class="callout warn"><h3>记录维修反馈</h3><p>维修反馈不关单：复检飞行仍需逐次审批签名；关单需要反馈之后的新采集、未疑似的分析与 reviewer 对本轮的确认。</p>
+  if (REPAIRABLE.includes(o.state)) html += `<section class="decision warn"><h3>记录维修反馈</h3><p>维修反馈不关单：复检飞行仍需逐次审批签名；关单需要反馈之后的新采集、未疑似的分析与 reviewer 对本轮的确认。</p>
     <div class="buttons"><button class="btn primary" type="button" id="repairOrder" data-act="orderRepair" data-id="${esc(o.order_id)}" ${operator ? "" : "disabled"}>记录维修反馈并启动复检</button></div></section>`;
-  if (o.closure) html += `<section class="callout info"><h3>关单</h3><p>${esc(o.closure.rule)} · 证据 ${esc(String(o.closure.evidence_id || "").slice(0, 24))}… · 采集 ${esc(stamp(o.closure.captured_at))} · 分析来源 ${esc(SOURCE[o.closure.job_source] || o.closure.job_source)}</p></section>`;
+  if (o.closure) html += `<section class="callout info"><h3>关单</h3><p>${esc(o.closure.rule)} · 证据 ${esc(String(o.closure.evidence_id || "").slice(0, 24))}… · 采集 ${esc(stamp(o.closure.captured_at))} · 分析来源 ${sourceChip(o.closure.job_source)}</p></section>`;
+  html += subject.rounds.filter(r => r.state === "reinspecting" && !r.review).map(r => `<section class="decision warn"><h3>第 ${esc(r.round)} 轮 · 待复核</h3><p>确认本轮新的复检采集。服务仍会核对分析结论与关单条件。</p>
+    <div class="buttons"><button class="btn primary" type="button" data-act="orderReview" data-id="${esc(o.order_id)}" data-round="${esc(r.round)}" data-decision="confirmed" ${reviewer ? "" : "disabled"}>确认修复</button>
+    <button class="btn danger" type="button" data-act="orderReview" data-id="${esc(o.order_id)}" data-round="${esc(r.round)}" data-decision="dismissed" ${reviewer ? "" : "disabled"}>驳回</button></div></section>`).join("");
   const rounds = table(["轮", "维修反馈", "复检运行", "状态", "本轮复核", "结论原因"], subject.rounds.map(r => {
-    const decide = r.state === "reinspecting" && !r.review
-      ? raw(`<div class="buttons" style="margin:0"><button class="btn primary small" type="button" data-act="orderReview" data-id="${esc(o.order_id)}" data-round="${esc(r.round)}" data-decision="confirmed" ${reviewer ? "" : "disabled"}>确认修复</button>
-         <button class="btn danger small" type="button" data-act="orderReview" data-id="${esc(o.order_id)}" data-round="${esc(r.round)}" data-decision="dismissed" ${reviewer ? "" : "disabled"}>驳回</button></div>`) : "—";
     return [r.round, raw(`${esc(r.feedback.reported_by)}<br><small>${esc(stamp(r.feedback.reported_at))} · ${esc(r.feedback.note)}</small>`),
       r.reinspection_run ? raw(`<a class="mono" href="#workflows/${esc(r.reinspection_run)}">${esc(r.reinspection_run)}</a> ${r.run_state ? wchip(r.run_state) : ""}`) : "—",
-      RSTATE[r.state] || r.state, r.review ? (r.review.decision === "confirmed" ? "确认修复" : "驳回") + " · " + r.review.reviewer : decide, reasons((r.conclusion || {}).reasons || []) || "—"];
+      RSTATE[r.state] || r.state, r.review ? (r.review.decision === "confirmed" ? "确认修复" : "驳回") + " · " + r.review.reviewer : "尚无复核记录", reasons((r.conclusion || {}).reasons || []) || "—"];
   }), "尚无维修反馈。");
-  return html + `<div class="stack" style="margin-top:14px">${card("轮次", rounds + '<p class="hint">本轮复核只接受未疑似的复检采集；复检仍疑似时本轮直接判为未通过。</p>')}${eventsList(subject.events, "order-events-" + o.order_id)}</div>`;
+  return html + `<div class="d-grid"><div class="stack">${card("轮次", rounds + '<p class="hint">本轮复核只接受未疑似的复检采集；复检仍疑似时本轮直接判为未通过。</p>')}${eventsList(subject.events, "order-events-" + o.order_id)}</div><aside class="stack facts">${closureFacts(o, subject.rounds)}</aside></div>`;
 }
 
 // ── project audit (P5, D070) / 项目审计（P5，D070）──
@@ -1237,13 +1320,13 @@ function renderAudit() {
   const total = {all: entries.length};
   for (const e of entries) total[auditGroup(e)] = (total[auditGroup(e)] || 0) + 1;
   paint("auditFilters", AUDIT_GROUPS.map(([key, label]) =>
-    `<button type="button" data-act="auditFilter" data-v="${key}" aria-pressed="${auditFilter === key}">${label}<b>${total[key] || 0}</b></button>`).join(""));
+    `<button type="button" class="${key === "denied" ? "denied" : ""}" data-act="auditFilter" data-v="${key}" aria-pressed="${auditFilter === key}">${label}<b>${total[key] || 0}</b></button>`).join(""));
   const shown = entries.filter(e => auditFilter === "all" || auditGroup(e) === auditFilter);
-  byId("auditSub").textContent = audit ? (auditBefore ? "更早的记录" : "最新记录") + " · " + entries.length + " 条" : "";
+  byId("auditSub").textContent = audit ? (auditBefore ? "更早的记录" : "最新记录") + " · 已加载页 " + entries.length + " 条（筛选仅统计本页）" : "";
   paint("auditList", audit ? table(["时间", "身份", "动作", "对象", "细节"], shown.map(e => [raw(`<time class="nowrap" datetime="${esc(e.at)}" title="${esc(e.at)}">${esc(stamp(e.at))}</time>`), raw(`<span class="nowrap">${esc(e.actor || "—")}</span>`),
     raw(badge(AUDIT[e.action] || e.action, e.action === "access.denied" ? "bad" : e.action.startsWith("mission.approved") ? "ok" : "")),
     auditObject(e.object), raw(`<small>${esc(Object.entries(e.detail || {}).filter(([, v]) => v !== null && v !== "").map(([k, v]) => k + "=" + v).join(" · ").slice(0, 200))}</small>`)]),
-    entries.length ? "没有符合筛选的记录。" : "该项目还没有审计记录。") : blank("加载审计记录…", "只有本项目成员能看到本项目的记录。"));
+    entries.length ? "没有符合筛选的记录。" : "该项目还没有审计记录。", i => shown[i].action === "access.denied" ? "denied" : "") : blank("加载审计记录…", "只有本项目成员能看到本项目的记录。"));
   paint("auditPager", `<div class="buttons" style="margin:0"><button class="btn small" type="button" data-act="auditLatest" ${auditBefore ? "" : "disabled"}>回到最新</button>
     <button class="btn small" type="button" data-act="auditOlder" ${audit?.next ? "" : "disabled"}>更早的记录</button></div>`);
 }
@@ -1251,6 +1334,11 @@ function renderAudit() {
 // ── actions: every click becomes a named frame the service checks / 操作：每次点击都变成由服务检查的具名帧 ──
 const ACTIONS = {
   dismiss: () => notice(""),
+  copyHash: async d => {
+    try { await navigator.clipboard.writeText(d.hash); notice("已复制完整任务包哈希。"); }
+    catch { notice("无法写入剪贴板，请选择并复制上方完整哈希。"); }
+  },
+  inspectEvidence: d => { selectedEvidence = d.id; renderSubject(); },
   auditFilter: d => { auditFilter = d.v; renderAudit(); },
   auditOlder: () => { if (audit?.next && project()) { auditBefore = audit.next; send({type: "audit_watch", project_id: projectId, before: auditBefore}); } },
   auditLatest: () => { if (project()) { auditBefore = null; send({type: "audit_watch", project_id: projectId, before: null}); } },

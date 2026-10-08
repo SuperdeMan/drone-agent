@@ -35,7 +35,7 @@
 /* tokens:end */
 *{box-sizing:border-box}[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.55 var(--font);-webkit-font-smoothing:antialiased}
-button,select{font:inherit;color:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.45}
+button,select{font:inherit;color:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.42}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 /* Header shared with the operations desk. / 与运营台一致的顶栏。 */
 .top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:18px;min-height:56px;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--line)}
@@ -43,6 +43,8 @@ button,select{font:inherit;color:inherit}button{cursor:pointer}button:disabled{c
 .brand svg{width:28px;height:28px;flex:none}
 .brand b{font:600 17px var(--display);letter-spacing:.2px}
 .brand small{font:500 10px var(--mono);letter-spacing:1.6px;color:var(--muted);padding:2px 6px;border:1px solid var(--line);border-radius:5px}
+.top .modes a[aria-current=page]{color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--primary)}
+.env{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--sim-line);border-radius:4px;background:var(--sim-bg);color:var(--sim);font-size:12px;white-space:nowrap}
 .connection{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2);white-space:nowrap}
 .connection i{width:8px;height:8px;border-radius:50%;background:var(--warn)}.connection.good i{background:var(--ok)}
 .connection small{font:11px var(--mono);color:var(--muted)}
@@ -60,8 +62,8 @@ h1{font:600 22px/1.25 var(--display);margin:0 0 4px;letter-spacing:.2px}
 .mission p{font-size:12px;line-height:1.7;color:var(--ink-2);margin:0}
 .parameters{display:flex;align-items:center;justify-content:space-between;margin:14px 0 12px;font-size:12.5px;color:var(--ink-2)}
 select{height:32px;padding:0 8px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);font:12px var(--mono)}
-.start{width:100%;height:38px;border:1px solid var(--brand);border-radius:8px;background:var(--brand);color:var(--primary-ink);font-size:13px;font-weight:600}
-.start:hover:not(:disabled){filter:brightness(1.08)}
+.start{width:100%;height:38px;border:1px solid var(--primary);border-radius:8px;background:var(--primary);color:var(--primary-ink);font-size:13px;font-weight:600}
+.start:hover:not(:disabled){background:var(--primary-hover);border-color:var(--primary-hover)}
 .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .controls button{height:34px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);font-size:12.5px;font-weight:600}
 .controls button:hover:not(:disabled){background:var(--surface-2)}
@@ -74,7 +76,7 @@ select{height:32px;padding:0 8px;border:1px solid var(--line-strong);border-radi
 .step small{font-size:11.5px;margin-left:auto}
 .step.active{color:var(--ink);font-weight:600;background:var(--info-bg)}.step.active i{border-color:var(--info);color:var(--info)}
 .step.done{color:var(--ok)}.step.done i{background:var(--ok);border-color:var(--ok);color:var(--primary-ink)}
-.step.unknown{color:var(--warn)}.step.unknown i{border-color:var(--warn)}
+.step.unknown{color:var(--neutral)}.step.unknown i{border-color:var(--neutral);border-style:dashed;background:var(--neutral-bg)}
 /* The map field stays dark in both themes. / 地图区在两种主题下都保持深色。 */
 .field{position:relative;background:var(--field);color:var(--field-ink);overflow:hidden;border-radius:var(--radius) var(--radius) 0 0}
 .field-head{display:flex;justify-content:space-between;padding:16px 18px;gap:14px;color:var(--field-muted);font:11px var(--mono);letter-spacing:1px}
@@ -99,7 +101,7 @@ select{height:32px;padding:0 8px;border:1px solid var(--line-strong);border-radi
 .camera img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
 .camera p{font-size:12px;text-align:center;padding:14px;color:var(--field-muted);margin:0}
 .camera-meta{font:11px/1.8 var(--mono);color:var(--muted);margin-top:8px;overflow-wrap:anywhere}
-.result-title{font:600 22px var(--display);margin:2px 0 12px;color:var(--ok)}.result-title.warn{color:var(--warn)}
+.result-title{font:600 22px var(--display);margin:2px 0 12px;color:var(--ink)}.result-title.warn{color:var(--warn)}
 dl{margin:0;display:grid;gap:4px}dl div{display:flex;justify-content:space-between;font-size:12.5px;line-height:2;gap:8px}dt{color:var(--muted)}dd{margin:0;font-family:var(--mono);font-size:12px}
 .evidence{margin-top:12px;width:100%;height:34px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);font-size:12.5px;font-weight:600}
 .evidence:hover:not(:disabled){background:var(--surface-2)}
@@ -123,7 +125,7 @@ footer{display:flex;justify-content:space-between;gap:15px;font:11px/1.8 var(--m
 </style>
 </head>
 <body>
-<header class="top"><a class="brand" href="__BASE__/" aria-label="drone-agent 固定巡检"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" style="fill:var(--brand)"/><g style="fill:none;stroke:var(--primary-ink)" stroke-width="1.7" stroke-linecap="round"><circle cx="9.5" cy="9.5" r="3.4"/><circle cx="22.5" cy="9.5" r="3.4"/><circle cx="9.5" cy="22.5" r="3.4"/><circle cx="22.5" cy="22.5" r="3.4"/><path d="M12 12l2.6 2.6M20 12l-2.6 2.6M12 20l2.6-2.6M20 20l-2.6-2.6"/></g><rect x="13.6" y="13.6" width="4.8" height="4.8" rx="1.2" style="fill:var(--accent)"/></svg><b>drone-agent</b><small>FLIGHT DESK / M1</small></a>__NAV__<div class="connection" id="connection"><i></i><span id="connectionText">连接云端中</span><small id="latency"></small></div></header>
+<header class="top"><a class="brand" href="__BASE__/" aria-label="drone-agent 固定巡检"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" style="fill:var(--brand)"/><g style="fill:none;stroke:var(--primary-ink)" stroke-width="1.7" stroke-linecap="round"><circle cx="9.5" cy="9.5" r="3.4"/><circle cx="22.5" cy="9.5" r="3.4"/><circle cx="9.5" cy="22.5" r="3.4"/><circle cx="22.5" cy="22.5" r="3.4"/><path d="M12 12l2.6 2.6M20 12l-2.6 2.6M12 20l2.6-2.6M20 20l-2.6-2.6"/></g><rect x="13.6" y="13.6" width="4.8" height="4.8" rx="1.2" style="fill:var(--accent)"/></svg><b>drone-agent</b><small>FLIGHT DESK / M1</small></a>__NAV__<span class="env"><span aria-hidden="true">◇</span>仿真 · PX4 SITL</span><div class="connection" id="connection"><i></i><span id="connectionText">连接云端中</span><small id="latency"></small></div></header>
 <main>
 <div class="page-head"><div><h1>固定巡检</h1><p>发起一次园区巡检，看它起飞、取证与归航；页面只读取云端状态并提交有界操作。</p></div><aside>PX4 SITL × GAZEBO<br><span id="version">正在读取运行版本</span></aside></div>
 <div class="notice" id="notice" hidden role="status"></div>

@@ -22,7 +22,7 @@ function setup({answer = 'reason'} = {}) {
     hasAttribute(k) { return k in this.attrs; }
   }
   for (const m of html.matchAll(/id="([^"]+)"/g)) nodes.set(m[1], new Element());
-  const sent = [];
+  const sent = [], copied = [];
   const listeners = {};
   class Socket { constructor() { this.readyState = 1; } send(text) { sent.push(JSON.parse(text)); } }
   const location = {protocol: 'https:', host: 'desk.test', hash: ''};
@@ -31,10 +31,11 @@ function setup({answer = 'reason'} = {}) {
       addEventListener: (kind, fn) => { listeners[kind] = fn; }, visibilityState: 'visible', title: ''},
     window: {addEventListener: (kind, fn) => { listeners['window:' + kind] = fn; }},
     WebSocket: Socket, location, crypto: {randomUUID: () => '0123456789abcdef0123456789abcdef'},
+    navigator: {clipboard: {writeText: async value => copied.push(value)}},
     setTimeout: () => 0, clearTimeout: () => {}, setInterval: () => 0, prompt: () => answer, console, JSON, Date,
   });
   vm.runInContext(source, context);
-  return {nodes, sent, location, listeners, run: code => vm.runInContext(code, context), html: id => nodes.get(id).innerHTML};
+  return {nodes, sent, copied, location, listeners, run: code => vm.runInContext(code, context), html: id => nodes.get(id).innerHTML};
 }
 
 const HELLO = {type: 'hello', protocol: 'hri.v0', identity: 'tailnet:ops', can_write: true, source_sha: 'a'.repeat(40), volumes: [], assets: [], planner: 'scripted',
@@ -224,7 +225,7 @@ test('a run shows every wait and failure reason, and only reviewers get review b
   let out = ui.html('runDetail');
   assert.equal(ui.nodes.get('runOverview').hidden, true);
   assert.match(out, /等待人工复核/);
-  assert.match(out, /疑似异常 · 脚本回答/);
+  assert.match(out, /疑似异常 · <span class="src script"[^>]*><span aria-hidden="true">⌘<\/span>脚本回答/);
   assert.match(out, /mission\.declined/);
   assert.match(out, /上游失败/);
   assert.match(out, /脚本 \/ 确定性结果不是模型识别/);
@@ -333,7 +334,10 @@ test('a task shows its replayable decisions and assignment epochs and never appr
   assert.match(out, /已撤回（未领取） · 维护锁定/);
   assert.match(out, /分配 → uav_02/);
   assert.match(out, /快照 0123456789ab…/);
-  assert.match(out, /uav_01<\/td>\s*<td>不可派遣<\/td><td>23\.2<\/td>/);
+  const candidateRow = [...out.matchAll(/<tr>(.*?)<\/tr>/gs)].map(m => m[1]).find(row => row.startsWith('<td>—</td><td>uav_01</td>'));
+  assert.ok(candidateRow, 'the recorded candidate is still present');
+  assert.deepEqual([...candidateRow.matchAll(/<td>(.*?)<\/td>/gs)].map(m => m[1].replace(/<[^>]+>/g, '')),
+    ['—', 'uav_01', 'site_s1 / dock_s1', '23.2', '0', '不可派遣', '维护锁定']);
   assert.match(out, /待审批/);
   assert.match(out, /id="cancelTask"/);
   assert.doesNotMatch(out, /id="approve/, 'approval stays in the mission view');
@@ -386,7 +390,7 @@ test('the overview lists only facts the service reported, each linked to its det
       orders: [{order_id: 'ord-1', asset_key: 'campus_s1/*/asset_red', state: 'reinspection_unknown', round: 2, updated_at: 'x'}],
       jobs: [], references: [], reuse: {analyzers: []}};
     renderOverview();`);
-  const out = ui.html('ovAttention');
+  const out = ui.html('ovAttention') + '<h2>资源提示</h2>' + ui.html('ovHints');
   for (const href of ['#missions/m-1', '#workflows/wr-1', '#business/finding/fd-1', '#business/order/ord-1', '#fleet/uav_01', '#fleet/dock_s1&lt;script&gt;']) {
     assert.ok(out.includes(`href="${href}"`), href);
   }
@@ -394,6 +398,7 @@ test('the overview lists only facts the service reported, each linked to its det
   assert.match(out, /复检不确定·待再修/);
   assert.doesNotMatch(out, /<script>/);
   assert.match(out, /资源提示[\s\S]*不可派遣 · uav_01/, 'a blocked robot is a hint, listed after the actions');
+  assert.doesNotMatch(ui.html('ovAttention'), /不可派遣 · uav_01/, 'resource hints have a separate region');
   // approval, review, finding, business order, simulated order and dock lock; the robot is a hint.
   // 审批、复核、发现、业务工单、模拟工单与机场锁；机器人只是提示。
   assert.equal(ui.nodes.get('countOverview').textContent, '6', 'hints are not counted as pending actions');
@@ -419,4 +424,102 @@ test('evidence images are fetched once and only when the service holds one', () 
 
 test('the script names no control or injection frames', () => {
   for (const word of ['inject', 'docks.report', 'simulator', '"arm"', 'takeoff']) assert.ok(!source.includes(word), word);
+});
+
+// Visual v2 preserves service facts and exact human decisions (D074). / 视觉 v2 保留服务事实与人的确切决定（D074）。
+test('grouped hashes retain all 64 characters for copy and per-version approval', async () => {
+  const ui = setup(), hash = '0123456789abcdef'.repeat(4);
+  const block = ui.run(`hashBlock('${hash}')`);
+  const groups = [...block.matchAll(/<span>([a-f\d]{8})<\/span>/g)].map(m => m[1]);
+  assert.equal(groups.length, 8);
+  assert.equal(groups.join(''), hash);
+  assert.match(block, new RegExp(`data-hash="${hash}"`));
+  await ui.run(`act('copyHash', {hash: '${hash}'})`);
+  assert.deepEqual(ui.copied, [hash]);
+  assert.equal(ui.sent.length, 0, 'copy never sends a service frame');
+  ui.run(`act('approve', {id: 'm-1', v: '2', hash: '${hash}'})`);
+  assert.deepEqual(ui.sent.at(-1), {type: 'approve', mission_id: 'm-1', version: 2, package_hash: hash});
+  assert.doesNotMatch(ui.run(`hashBlock('<img src=x>')`), /<img/, 'nonstandard values are escaped, never truncated');
+  assert.match(ui.run(`hashBlock(null)`), /disabled/);
+});
+
+test('unknown report values stay neutral and no task safety conclusion is inferred', () => {
+  const ui = setup(), view = missionView({report: {
+    targets: {asset_red: 'uncertain'}, summary: {completed: 0, uncertain: 1, not_completed: 0}, facts: [],
+    rows: [{mission_version: 1, step_id: 'step1', column: 'uncertain', execution_status: 'unknown', effect_verdict: 'unknown'}],
+  }});
+  view.versions[0].events = [{journal: 'guardian', kind: 'step_outcome', data: {outcome: {safety_verdict: 'proceed'}}}];
+  ui.run(`current = ${JSON.stringify(view)};`);
+  const out = ui.run('reportCard(current)');
+  assert.match(out, /执行 · 逐步骤/);
+  assert.match(out, /效果 · 逐步骤/);
+  assert.match(out, /安全 · 任务级<\/h4><span class="badge unknown">服务未提供<\/span>/);
+  assert.equal((out.match(/class="badge unknown"/g) || []).length, 3);
+  assert.doesNotMatch(out, /proceed|guardian 干预|已证实步骤/);
+  assert.match(ui.run(`badge(VERDICT.unknown, VTONE.unknown)`), /class="badge unknown"/);
+  assert.match(ui.run(`wchip('outcome_unknown')`), /class="badge unknown"/);
+});
+
+test('environment labels show single, mixed and real backends without choosing one', () => {
+  const ui = setup();
+  assert.match(ui.run(`environmentTag([{robot_id:'r1',execution_backend:'px4_sitl'}])`), /仿真 · PX4 SITL/);
+  const mixed = ui.run(`environmentTag([{robot_id:'r1',execution_backend:'px4_sitl'},{robot_id:'r2',execution_backend:'logical_sim'},{robot_id:'r3',execution_backend:'vendor_protocol_sim'}])`);
+  assert.match(mixed, /仿真 · 混合后端/);
+  for (const name of ['r1', 'r2', 'r3', 'PX4 SITL', '逻辑模拟', '厂商协议模拟']) assert.ok(mixed.includes(name));
+  assert.doesNotMatch(mixed, /<select|data-act=/, 'the backend list is read-only');
+  assert.match(ui.run(`environmentTag([{robot_id:'r1',execution_backend:'real_device'},{robot_id:'r2',execution_backend:'px4_sitl'}])`), /class="env real"[^>]*>.*真机 · 实飞/);
+  assert.equal(ui.sent.length, 0);
+});
+
+test('missing or stale project provenance never presents a known simulated environment', () => {
+  const ui = setup();
+  for (const robots of [[], [{robot_id:'r1'}], [{robot_id:'r1',execution_backend:'future_backend'}]]) {
+    assert.match(ui.run(`environmentTag(${JSON.stringify(robots)})`), /class="env missing"/);
+  }
+  assert.match(ui.run(`environmentTag([{robot_id:'r1',execution_backend:'px4_sitl'}], ['r1','r2'])`), /class="env missing"/);
+  assert.match(ui.run(`environmentTag([{robot_id:'r1',execution_backend:'real_device'}], ['r1','r2'])`), /真机 · 实飞/);
+  ui.run(`hello = ${JSON.stringify(HELLO)}; projectId = 'campus_s1'; resources = ${JSON.stringify(resourcesView)}; renderShell();`);
+  assert.match(ui.html('environment'), /仿真 · PX4 SITL/);
+  ui.run(`projectId = 'another_project'; renderShell();`);
+  assert.match(ui.html('environment'), /class="env missing"/);
+  assert.doesNotMatch(ui.html('environment'), /uav_01|仿真 · PX4/);
+});
+
+test('source chips distinguish models, scripts, unknown sources and execution backends', () => {
+  const ui = setup();
+  for (const [value, style] of [['px4_sitl','sim'], ['real_device','device'], ['live_model','model'], ['scripted','script'], ['legacy_unknown','missing']]) {
+    assert.match(ui.run(`sourceChip('${value}')`), new RegExp(`class="src ${style}"`));
+  }
+  assert.doesNotMatch(ui.run(`sourceChip('sim_render')`), /class="src sim"/, 'media sources are not execution backends');
+  assert.doesNotMatch(ui.run(`sourceChip('<img src=x>')`), /<img/);
+});
+
+test('event vocabulary preserves original codes and escapes unknown codes', () => {
+  const ui = setup();
+  assert.match(ui.run(`eventName('safety_intervention')`), /安全监督介入<code class="code">safety_intervention<\/code>/);
+  assert.equal(ui.run(`eventName('new.event')`), '<code>new.event</code>');
+  assert.equal(ui.run(`eventName('constructor')`), '<code>constructor</code>');
+  assert.doesNotMatch(ui.run(`eventName('<img src=x>')`), /<img/);
+});
+
+test('audit filter counts are bounded to the loaded page and denied rows keep their meaning', () => {
+  const ui = setup();
+  ui.run(`audit = {entries:[{at:'2026-10-08T00:00:00Z',action:'access.denied',actor:'viewer',object:null,detail:{}},
+    {at:'2026-10-08T00:01:00Z',action:'mission.approved',actor:'approver',object:{kind:'mission',id:'m-1'},detail:{}}],next:'cursor'}; renderAudit();`);
+  assert.match(ui.nodes.get('auditSub').textContent, /已加载页 2 条（筛选仅统计本页）/);
+  assert.match(ui.html('auditFilters'), /全部<b>2<\/b>/);
+  assert.match(ui.html('auditList'), /<tr class="denied">.*越权尝试（已拒绝）/s);
+  ui.run(`act('auditFilter', {v:'denied'})`);
+  assert.doesNotMatch(ui.html('auditList'), /审批签名/);
+  assert.equal(ui.sent.length, 0, 'filtering does not request the whole audit history');
+});
+
+test('an acknowledged dock action is never drawn as completed', () => {
+  const ui = setup();
+  const out = ui.run(`dockActionTrack({state:'acked', requested_at:'t0', acked_at:'t1', ack_accepted:true})`);
+  assert.match(out, /class="now">✓ 已受理/);
+  assert.match(out, /class="pending">○ 已完成/);
+  assert.doesNotMatch(out, /✓ 已完成/);
+  assert.match(ui.run(`dockActionTrack({state:'rejected',requested_at:'t0',acked_at:'t1',ack_accepted:false})`), /被拒/);
+  assert.match(ui.run(`dockActionTrack({state:'completed',requested_at:'t0',acked_at:'t1',ack_accepted:1})`), /✓ 已受理/);
 });
