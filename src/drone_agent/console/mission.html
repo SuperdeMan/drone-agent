@@ -73,7 +73,7 @@ main{grid-area:main;min-width:0;padding:20px 24px 48px}
 .page-head h1{margin:0;font:600 22px/1.25 var(--display);letter-spacing:.2px}
 .page-head p{margin:4px 0 0;color:var(--muted);font-size:12.5px}
 /* Muted is for surfaces; canvas text uses the accessible secondary ink. / 弱化文字用于卡片底；页面底色上的文字使用对比度达标的次级墨色。 */
-.page-head p,.rail-foot,.d-head .eyebrow,main .pane-detail>.hint{color:var(--ink-2)}
+.page-head p,.rail-foot,.d-head .eyebrow,main .pane-detail>.hint,.pane-detail>.stack>.hint{color:var(--ink-2)}
 .notice{margin:0 0 14px;padding:10px 14px;border:1px solid var(--warn-line);background:var(--warn-bg);border-radius:8px;font-size:12.5px;line-height:1.6}
 /* Cards, lists and layout grids. / 卡片、列表与布局网格。 */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;min-width:0}
@@ -114,6 +114,7 @@ main{grid-area:main;min-width:0;padding:20px 24px 48px}
 .badge.unknown::before{background:transparent;border:1px solid currentColor}
 /* Sources have corners and symbols; environment details never select a backend. / 来源以方角与符号区分，环境详情不选择后端。 */
 .src,.env{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--line-strong);border-radius:4px;color:var(--ink-2);background:var(--surface-2);font:11px/1.4 var(--font);max-width:100%;vertical-align:middle}
+.src{justify-self:start}
 .src.sim,.env.sim{color:var(--sim);background:var(--sim-bg);border-color:var(--sim-line)}
 .src.device{color:var(--primary-ink);background:var(--primary);border-color:var(--primary)}
 .src.model{background:var(--surface);border-color:var(--ink-2)}
@@ -188,7 +189,7 @@ details.more summary{cursor:pointer;color:var(--ink);font-size:12px}
 .d-head blockquote{border-left:2px solid var(--line-strong);padding-left:12px}
 .lead{margin:0;color:var(--ink-2);font-size:13px;overflow-wrap:anywhere}
 .stepper{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));margin:18px 0 6px;padding:0;list-style:none}
-.stepper li{position:relative;padding-top:24px;text-align:center;font-size:12px;color:var(--muted)}
+.stepper li{position:relative;padding-top:24px;text-align:center;font-size:12px;color:var(--ink-2)}
 .stepper li::before{content:"";position:absolute;top:9px;left:0;right:0;height:2px;background:var(--line-strong)}
 .stepper li:first-child::before{left:50%}.stepper li:last-child::before{right:50%}
 .stepper li::after{content:"";position:absolute;top:3px;left:calc(50% - 7px);width:14px;height:14px;border-radius:50%;background:var(--surface);border:2px solid var(--line-strong);box-sizing:border-box}
