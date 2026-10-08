@@ -72,6 +72,8 @@ main{grid-area:main;min-width:0;padding:20px 24px 48px}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 16px}
 .page-head h1{margin:0;font:600 22px/1.25 var(--display);letter-spacing:.2px}
 .page-head p{margin:4px 0 0;color:var(--muted);font-size:12.5px}
+/* Muted is for surfaces; canvas text uses the accessible secondary ink. / 弱化文字用于卡片底；页面底色上的文字使用对比度达标的次级墨色。 */
+.page-head p,.rail-foot,.d-head .eyebrow,main .pane-detail>.hint{color:var(--ink-2)}
 .notice{margin:0 0 14px;padding:10px 14px;border:1px solid var(--warn-line);background:var(--warn-bg);border-radius:8px;font-size:12.5px;line-height:1.6}
 /* Cards, lists and layout grids. / 卡片、列表与布局网格。 */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;min-width:0}
@@ -95,7 +97,7 @@ main{grid-area:main;min-width:0;padding:20px 24px 48px}
 .why{font-size:12px;color:var(--warn);line-height:1.55}
 .why.bad{color:var(--bad)}
 .empty{color:var(--muted);font-size:12.5px;padding:10px 2px}
-.blank{display:grid;justify-items:center;text-align:center;gap:8px;padding:48px 20px;border:1px dashed var(--line-strong);border-radius:var(--radius);color:var(--muted)}
+.blank{display:grid;justify-items:center;text-align:center;gap:8px;padding:48px 20px;border:1px dashed var(--line-strong);border-radius:var(--radius);color:var(--ink-2)}
 .blank svg{width:40px;height:40px;color:var(--faint)}
 .blank b{color:var(--ink);font-size:15px}
 .blank ol{margin:6px 0 0;padding:0;list-style:none;display:grid;gap:4px;font-size:12.5px}
