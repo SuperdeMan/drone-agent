@@ -153,3 +153,4 @@ flowchart TB
 | [../tailnet-desk.md](../tailnet-desk.md) | M2 任务台常驻 Tailnet 入口：使用、部署、仿真监管者与进程边界（D035） |
 | [../tailnet-desk-readiness.md](../tailnet-desk-readiness.md) | 任务台常驻入口的准确版本、隔离核对、Tailnet HTTPS 任务验收与开发负记录 |
 | [../desk-workspaces-readiness.md](../desk-workspaces-readiness.md) | D068 运营台工作区：部署版本、浏览器级渲染与在页面中走完的任务与业务链路 |
+| [../desk-visual-v2-implementation.md](../desk-visual-v2-implementation.md) | 运营台视觉 v2 实施交接：Figma 节点、设计变量、组件映射、数据前提与验收（已确认，未实施） |
