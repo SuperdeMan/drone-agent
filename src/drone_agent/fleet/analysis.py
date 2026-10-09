@@ -294,13 +294,16 @@ async def analyze_model(*, profile: ModelProfile, threshold: float, provider, pr
                               encode(current, profile)[0], asset, parts)
     tokens_in = tokens_out = calls = 0
     latency, reason, reported = 0.0, "model.error", ""
+    # The effort is sent only when the profile pins one, so earlier profiles make exactly the same request (D076).
+    # 只有画像固定了思考深度时才发送，因此早先的画像发出完全相同的请求（D076）。
+    effort = {"reasoning_effort": profile.reasoning_effort} if profile.reasoning_effort is not None else {}
     for _ in range(profile.attempts):
         started = time.monotonic()
         calls += 1
         try:
             content, reported, finish, usage = await asyncio.wait_for(
                 provider.complete(messages, model, profile.temperature, profile.max_tokens, thinking=profile.thinking,
-                                  timeout_s=profile.timeout_s), profile.timeout_s)
+                                  timeout_s=profile.timeout_s, **effort), profile.timeout_s)
         except TimeoutError:
             latency += (time.monotonic() - started) * 1000
             reason = "model.timeout"

@@ -183,8 +183,11 @@ class ModelProfile(BusinessModel):
     temperature: float = Field(default=0.0, ge=0, le=1)
     thinking: bool = Field(default=False, description="let the model reason before its answer; only the final JSON is "
                                                      "parsed / 允许模型先推理再作答；只解析最终 JSON")
-    max_tokens: int = Field(ge=64, le=8192)
-    timeout_s: float = Field(gt=0, le=300)
+    reasoning_effort: Literal["low", "medium", "high", "xhigh", "max"] | None = Field(
+        default=None, description="thinking depth of an adaptive-thinking model; part of the pinned profile (D076) / "
+                                  "自适应思考模型的思考深度；属于固定画像的一部分（D076）")
+    max_tokens: int = Field(ge=64, le=65536, description="output budget, reasoning included / 输出预算，含推理")
+    timeout_s: float = Field(gt=0, le=600)
     attempts: int = Field(ge=1, le=3)
     threshold: float | None = Field(default=None, ge=0, le=1, description="tau; None only in calibration / τ")
     family: str = Field(pattern=ID)
@@ -195,12 +198,17 @@ class ModelProfile(BusinessModel):
 
     @model_validator(mode="after")
     def _types(self):
+        from drone_agent.providers.llm import check_generation
+
         if any(not re.fullmatch(r"^[a-z][a-z_]{0,31}$", t) for t in self.defect_types) or "none" in self.defect_types:
             raise ValueError("defect types are lower-case slugs and never `none`")
         if "{asset}" not in self.instruction:
             raise ValueError("the instruction must place the asset description with {asset}")
         if self.generic_type not in self.defect_types:
             raise ValueError("the generic type is one of the defect types")
+        # A profile the model cannot honour fails when the catalog loads, not at the first job (D076).
+        # 模型无法遵从的画像在目录加载时失败，而不是在第一个作业时（D076）。
+        check_generation(self.model, disable_thinking=not self.thinking, reasoning_effort=self.reasoning_effort)
         return self
 
     @property

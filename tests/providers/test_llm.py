@@ -111,6 +111,39 @@ def test_thinking_on_omits_disabled_key_and_raises_token_floor():
     assert qwen["enable_thinking"] is False and qwen["max_tokens"] == 400
 
 
+def test_an_adaptive_thinking_model_takes_an_effort_and_never_a_disabled_switch():
+    # MiniMax-M3.1-Flash-Preview answers 400 to `thinking: disabled` (probe 2026-10-10): refuse before sending (D076).
+    # MiniMax-M3.1-Flash-Preview 对 `thinking: disabled` 返回 400（2026-10-10 探针）：发送之前即拒绝（D076）。
+    msgs, model = [{"role": "user", "content": "x"}], "MiniMax-M3.1-Flash-Preview"
+    body = minimax()._build_body(msgs, model, 0.0, 16000, True, stream=False, reasoning_effort="high")
+    assert body["reasoning_effort"] == "high" and "thinking" not in body and body["max_completion_tokens"] == 16000
+    with pytest.raises(ValueError, match="always thinks"):
+        minimax()._build_body(msgs, model, 0.0, 400, None, stream=False)
+    with pytest.raises(ValueError, match="does not accept"):
+        minimax()._build_body(msgs, model, 0.0, 400, True, stream=False, reasoning_effort="none")
+    # M3 keeps its plain switch and takes no effort; nothing is sent without one. / M3 保持普通开关，不接受思考深度。
+    with pytest.raises(ValueError, match="does not accept"):
+        minimax()._build_body(msgs, "MiniMax-M3", 0.0, 400, True, stream=False, reasoning_effort="low")
+    assert "reasoning_effort" not in minimax()._build_body(msgs, "MiniMax-M3", 0.0, 400, True, stream=False)
+
+
+async def test_a_refused_generation_never_reaches_the_endpoint():
+    sent = []
+
+    def handler(request):
+        sent.append(request)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "{}"}}], "usage": {}})
+
+    provider = minimax()
+    provider._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    with pytest.raises(ValueError):
+        await provider.complete([{"role": "user", "content": "x"}], "MiniMax-M3.1-Flash-Preview", 0.0, 64)
+    await provider.complete([{"role": "user", "content": "x"}], "MiniMax-M3.1-Flash-Preview", 0.0, 64, thinking=True,
+                            reasoning_effort="low")
+    assert len(sent) == 1
+    await provider.aclose()
+
+
 def test_bearer_and_api_key_headers():
     assert minimax()._headers()["Authorization"] == "Bearer sk-test"
     assert minimax(auth_style="api-key")._headers()["api-key"] == "sk-test"
@@ -214,16 +247,33 @@ async def test_request_is_sent_to_the_configured_endpoint_with_bearer_auth():
 def test_cache_hit_miss_ttl_and_eviction():
     cache = LLMCache(max_size=2)
     msgs = [{"role": "user", "content": "hello"}]
-    cache.put(msgs, "m", 0.1, "world", "m")
-    assert cache.get(msgs, "m", 0.1)[0] == "world"
-    assert cache.get([{"role": "user", "content": "other"}], "m", 0.1) is None
+    options = {"temperature": 0.1, "max_tokens": 64}
+    cache.put(msgs, "m", options, "world", "m")
+    assert cache.get(msgs, "m", options)[0] == "world"
+    assert cache.get([{"role": "user", "content": "other"}], "m", options) is None
     for i in range(3):
-        cache.put([{"role": "user", "content": str(i)}], "m", 0.1, f"r{i}", "m")
+        cache.put([{"role": "user", "content": str(i)}], "m", options, f"r{i}", "m")
     assert cache.stats["size"] == 2
     expiring = LLMCache(ttl_seconds=0)
-    expiring.put(msgs, "m", 0.1, "y", "m")
+    expiring.put(msgs, "m", options, "y", "m")
     time.sleep(0.01)
-    assert expiring.get(msgs, "m", 0.1) is None
+    assert expiring.get(msgs, "m", options) is None
+
+
+async def test_the_cache_key_covers_every_generation_option():
+    # The same messages under another output budget, thinking switch or effort are other requests (D075).
+    # 同样的消息换一个输出预算、思考开关或思考深度就是另一个请求（D075）。
+    inner = CountingProvider()
+    guard = guarded(inner, cache=LLMCache(ttl_seconds=60))
+    await guard.complete(MSGS, "m", 0.1, 64)
+    await guard.complete(MSGS, "m", 0.1, 64)
+    assert inner.completes == 1 and guard.last_source == "cache"
+    await guard.complete(MSGS, "m", 0.1, 4096)
+    await guard.complete(MSGS, "m", 0.1, 64, thinking=True)
+    await guard.complete(MSGS, "m", 0.2, 64)
+    await guard.complete(MSGS, "m", 0.1, 64, reasoning_effort="low")
+    assert inner.completes == 5 and guard.last_source == "provider"
+    assert inner.efforts[-1] == "low" and inner.efforts[0] is None
 
 
 def test_token_bucket_and_rate_limiter():
@@ -237,9 +287,12 @@ class CountingProvider:
     def __init__(self, finish="stop", error: Exception | None = None):
         self.completes = self.tool_calls = 0
         self.finish, self.error = finish, error
+        self.efforts: list[str | None] = []
 
-    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
+    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None,
+                       reasoning_effort=None):
         self.completes += 1
+        self.efforts.append(reasoning_effort)
         if self.error:
             raise self.error
         return f"r{self.completes}", "m", self.finish, (1, 1)

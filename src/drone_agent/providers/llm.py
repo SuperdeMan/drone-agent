@@ -2,7 +2,8 @@
 # llm-gateway/providers.py @ f0b08f8), changes: AnthropicProvider, embeddings and the xiaomimimo default
 # endpoint removed (D029: MiniMax-M3 is the default, selected in runtime.py); content-filter endings and
 # MiniMax `base_resp` errors normalized (refusal -> finish "refusal", other errors -> ProviderHTTPError);
-# responses without choices fail loudly instead of raising KeyError; comments made bilingual.
+# responses without choices fail loudly instead of raising KeyError; comments made bilingual; per-call
+# `reasoning_effort` and the reviewed models' generation traits (D076).
 """LLM provider abstraction and the OpenAI-compatible implementation.
 
 Changing vendors is an environment change, not a code change: every supported vendor (MiniMax by
@@ -34,6 +35,30 @@ _STREAM_STALL_S = float(os.getenv("LLM_STREAM_STALL_S", "30") or 30)  # per-chun
 # MiniMax reports business errors in `base_resp`; these two mean the content was filtered.
 # MiniMax 在 `base_resp` 里报告业务错误；这两个码表示内容被过滤。
 _CONTENT_FILTER_CODES = frozenset({1026, 1027})
+
+# Generation traits of the models this project has reviewed (D076). `adaptive` thinking cannot be switched off: the
+# vendor answers 400 to `thinking: {type: disabled}` (probe 2026-10-10), and the depth is chosen by `reasoning_effort`.
+# A model not listed here keeps the plain switch and accepts no effort level.
+# 本项目已评审模型的生成特性（D076）。`adaptive` 思考不能关闭：对 `thinking: {type: disabled}` 厂商返回 400（2026-10-10
+# 探针），思考深度由 `reasoning_effort` 选择。未列出的模型保持普通开关，不接受思考深度。
+MODEL_TRAITS: dict[str, dict] = {
+    "MiniMax-M3": {"thinking": "switch", "efforts": ()},
+    "MiniMax-M3.1-Flash-Preview": {"thinking": "adaptive", "efforts": ("low", "medium", "high", "xhigh", "max")},
+}
+
+
+def check_generation(model: str, *, disable_thinking: bool, reasoning_effort: str | None) -> None:
+    """Refuse a call the model cannot honour before it is sent: disabling adaptive thinking or an unknown effort.
+
+    在发送之前拒绝模型无法遵从的调用：关闭自适应思考，或模型不支持的思考深度。
+    """
+    traits = MODEL_TRAITS.get(model, {"thinking": "switch", "efforts": ()})
+    if disable_thinking and traits["thinking"] == "adaptive":
+        raise ValueError(f"model {model} always thinks; set thinking on and choose a reasoning effort / "
+                         f"模型 {model} 始终思考，须开启思考并选择思考深度")
+    if reasoning_effort is not None and reasoning_effort not in traits["efforts"]:
+        raise ValueError(f"model {model} does not accept reasoning effort {reasoning_effort!r} / "
+                         f"模型 {model} 不接受思考深度 {reasoning_effort!r}")
 
 
 def _read_budget(budget_s, cap_s: float) -> float:
@@ -139,13 +164,16 @@ def normalize_tool_calls(raw_calls) -> list[dict]:
 class BaseProvider:
     """The provider protocol. / Provider 协议。"""
 
-    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
+    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None,
+                       reasoning_effort=None):
         """Returns (content, model_used, finish_reason, (prompt_tokens, completion_tokens)).
 
-        thinking: None uses the vendor default, True enables and False disables it for this call.
+        thinking: None uses the vendor default, True enables and False disables it for this call. reasoning_effort:
+        None sends nothing; otherwise one of the model's effort levels (`MODEL_TRAITS`).
 
         返回 (content, model_used, finish_reason, (prompt_tokens, completion_tokens))。
-        thinking：None = 用服务商默认；True = 本次开思考；False = 本次关思考。
+        thinking：None = 用服务商默认；True = 本次开思考；False = 本次关思考。reasoning_effort：None 不发送；
+        否则为该模型支持的思考深度之一（`MODEL_TRAITS`）。
         """
         raise NotImplementedError
 
@@ -174,7 +202,8 @@ class MockProvider(BaseProvider):
     无 API key 时的兜底，保证离线可跑；它从不声称完成了任何规划。
     """
 
-    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
+    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None,
+                       reasoning_effort=None):
         # Test hook: LLM_MOCK_DELAY_MS injects latency at call time to exercise caller timeouts.
         # 测试钩子：LLM_MOCK_DELAY_MS 在调用时注入延迟，用于刻画调用方超时。
         delay_ms = int(os.getenv("LLM_MOCK_DELAY_MS", "0") or 0)
@@ -338,12 +367,17 @@ class OpenAICompatibleProvider(BaseProvider):
         """
         return self.disable_thinking if thinking is None else (not thinking)
 
-    def _build_body(self, messages, model, temperature, max_tokens, thinking, stream: bool) -> dict:
-        """Build the chat/completions body with the vendor's token field and thinking switch.
+    def _build_body(self, messages, model, temperature, max_tokens, thinking, stream: bool,
+                    reasoning_effort=None) -> dict:
+        """Build the chat/completions body with the vendor's token field, thinking switch and reasoning effort.
 
-        按厂商差异（token_param / thinking_style）构造 chat/completions 请求体。
+        A call the model cannot honour (disabling adaptive thinking, an unknown effort) raises before anything is sent.
+
+        按厂商差异（token_param / thinking_style）构造 chat/completions 请求体，含思考开关与思考深度。模型无法遵从的
+        调用（关闭自适应思考、不支持的思考深度）在发送任何内容之前抛出。
         """
         disable = self._resolve_thinking(thinking)
+        check_generation(model, disable_thinking=disable, reasoning_effort=reasoning_effort)
         # With thinking on, reasoning eats the budget and starves content; raise the floor to 2048.
         # 开思考时给足 token：reasoning 占预算，content 容易被饿空 / 截断；下限抬到 2048。
         max_out = (max_tokens or 512) if disable else max((max_tokens or 512), 2048)
@@ -365,6 +399,10 @@ class OpenAICompatibleProvider(BaseProvider):
             # DashScope compatible mode: thinking is switched by enable_thinking.
             # DashScope 兼容模式 qwen3：思考经 enable_thinking 显式控制（结构化任务须置 false）。
             body["enable_thinking"] = not disable
+        if reasoning_effort is not None:
+            # Adaptive-thinking models choose their depth here; nothing is sent otherwise.
+            # 自适应思考模型在此选择思考深度；否则不发送。
+            body["reasoning_effort"] = reasoning_effort
         return body
 
     async def _post_chat(self, body, timeout_s) -> dict:
@@ -380,8 +418,10 @@ class OpenAICompatibleProvider(BaseProvider):
             raise ProviderHTTPError(resp.status_code, snippet, _retry_after_s(resp))
         return resp.json()
 
-    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
-        body = self._build_body(messages, model, temperature, max_tokens, thinking, stream=False)
+    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None,
+                       reasoning_effort=None):
+        body = self._build_body(messages, model, temperature, max_tokens, thinking, stream=False,
+                                reasoning_effort=reasoning_effort)
         data = await self._post_chat(body, timeout_s)
         usage = data.get("usage", {}) if isinstance(data, dict) else {}
         tokens = (usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0))

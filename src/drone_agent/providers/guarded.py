@@ -1,5 +1,6 @@
 # Ported from embodied-agent src/embodied/providers/guarded.py @ cb933ab, changes: bilingual comments;
-# health is recorded per call (ok / timeout / rate_limited / refusal / error) against a provider id.
+# health is recorded per call (ok / timeout / rate_limited / refusal / error) against a provider id; the cache key
+# covers every generation option and the reasoning effort is passed through (D075, D076).
 """GuardedProvider: rate limiting, health accounting and a plain-completion cache around a provider.
 
 Wrap real providers only. Replay and scripted providers are deterministic and stateful; caching or
@@ -76,10 +77,15 @@ class GuardedProvider:
         else:
             health_tracker.record(self.provider_id, True, latency_ms=latency)
 
-    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
+    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None,
+                       reasoning_effort=None):
         self.last_source, self.last_cache_digest = "not_called", ""
+        # Every option that can change the answer is part of the key; the timeout cannot. (D075)
+        # 所有可能改变回答的选项都是键的一部分；超时不会改变回答。（D075）
+        options = {"temperature": temperature, "max_tokens": max_tokens, "thinking": thinking,
+                   "reasoning_effort": reasoning_effort}
         if self._cache is not None:
-            hit = self._cache.get(messages, model, temperature, thinking)
+            hit = self._cache.get(messages, model, options)
             if hit is not None:
                 # A cached response is reuse, not a fresh model invocation. / 缓存响应是复用，不是新的模型实调。
                 self.last_source = "cache"
@@ -90,16 +96,17 @@ class GuardedProvider:
         await self._admit("complete")
         started = time.monotonic()
         self.last_source = "provider"
+        effort = {"reasoning_effort": reasoning_effort} if reasoning_effort is not None else {}
         try:
             content, model_used, finish, usage = await self.inner.complete(
-                messages, model, temperature, max_tokens, thinking=thinking, timeout_s=timeout_s)
+                messages, model, temperature, max_tokens, thinking=thinking, timeout_s=timeout_s, **effort)
         except Exception as error:
             self._record(started, None, error)
             raise
         self._record(started, finish)
         self.last_source = "provider"
         if self._cache is not None and finish == "stop":
-            self._cache.put(messages, model, temperature, content, model_used, thinking)
+            self._cache.put(messages, model, options, content, model_used)
         return content, model_used, finish, usage
 
     async def complete_tools(self, messages, model, temperature, max_tokens, tools=None, tool_choice=None,

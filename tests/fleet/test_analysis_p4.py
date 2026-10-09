@@ -110,6 +110,46 @@ def test_recorded_answers_replay_to_the_same_verdict():
     assert replayed.source == "recorded_model"
 
 
+def test_the_m31_profiles_keep_the_frozen_change_v3_prompt_and_pin_their_effort():
+    # D076: only the model and its reasoning effort change; the prompt, references and image budget are change-v3.
+    # D076：只改模型与思考深度；提示、参考图与图像预算均为 change-v3。
+    v3 = load_profile(ROOT, "configs/analysis/vlm_change_v3.yaml")[0]
+    kept = ("prompt_version", "system_prompt", "instruction", "references", "max_long_side", "detail", "image_format",
+            "jpeg_quality", "temperature", "thinking", "attempts", "family", "defect_types", "generic_type")
+    for name, effort in (("vlm_change_v5.yaml", "high"), ("vlm_change_v6.yaml", "max")):
+        profile = load_profile(ROOT, f"configs/analysis/{name}")[0]
+        assert profile.prompt_sha256 == v3.prompt_sha256
+        assert all(getattr(profile, field) == getattr(v3, field) for field in kept), name
+        assert (profile.model, profile.reasoning_effort) == ("MiniMax-M3.1-Flash-Preview", effort)
+        assert profile.threshold is None
+
+
+def test_a_profile_the_model_cannot_honour_fails_when_it_loads():
+    import pytest
+    from pydantic import ValidationError
+
+    v5 = load_profile(ROOT, "configs/analysis/vlm_change_v5.yaml")[0].model_dump()
+    with pytest.raises(ValidationError, match="always thinks"):
+        type(PROFILE).model_validate({**v5, "thinking": False})
+    with pytest.raises(ValidationError, match="does not accept"):
+        type(PROFILE).model_validate({**v5, "model": "MiniMax-M3"})
+
+
+def test_the_pinned_effort_reaches_the_provider_and_its_recording():
+    profile = PROFILE.model_copy(update={"model": "MiniMax-M3.1-Flash-Preview", "thinking": True,
+                                         "reasoning_effort": "high"})
+    recorder = RecordingProvider(ScriptedVisionProvider(model="MiniMax-M3.1-Flash-Preview"))
+    result = asyncio.run(analyze_model(profile=profile, threshold=0.5, provider=recorder, provider_id="scripted",
+                                       model="MiniMax-M3.1-Flash-Preview", references=[logical()],
+                                       current=logical(damaged=True, nonce=9), asset="Red marker"))
+    assert result.verdict == "suspected"
+    assert recorder.exchanges[0].request["reasoning_effort"] == "high"
+    # A profile without an effort sends exactly the earlier request. / 未设思考深度的画像发出与此前完全相同的请求。
+    plain = RecordingProvider(ScriptedVisionProvider())
+    run(plain)
+    assert "reasoning_effort" not in plain.exchanges[0].request
+
+
 def test_enlarged_parts_come_before_the_whole_capture_which_stays_the_last_image():
     image = np.zeros((100, 200, 3), dtype=np.uint8)
     parts = zoom_parts(image, 2, 0.25)

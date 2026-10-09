@@ -120,7 +120,8 @@ class ScriptedVisionProvider(ScriptedProvider):
         self.mode: str | None = None
         self.delay_s = 0.0
 
-    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
+    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None,
+                       reasoning_effort=None):
         self.calls.append({"messages": len(messages)})
         if self.mode == "timeout":
             await asyncio.sleep((timeout_s or 5) + 2)

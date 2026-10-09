@@ -71,11 +71,16 @@ _PROVIDER_SPECS: dict[str, dict] = {
     # P4 (D063, D065): MiniMax-M3 reads images through the same OpenAI-compatible endpoint and key as the planner;
     # a deployment selects it with VISION_PROVIDER=minimax-vl. / P4（D063、D065）：MiniMax-M3 经与规划器相同的
     # OpenAI 兼容端点与 key 读取图像；部署以 VISION_PROVIDER=minimax-vl 选择。
+    # D076: the tier names the models it may call; MiniMax-M3.1-Flash-Preview shares the key and endpoint (probe
+    # 2026-10-10). A model outside the list is unavailable, so no environment can route a profile to an unreviewed
+    # model. / D076：该档列出可调用的模型；MiniMax-M3.1-Flash-Preview 共用同一 key 与端点（2026-10-10 探针）。列表外的
+    # 模型不可用，任何环境都不能把画像路由到未评审的模型。
     "minimax-vl": {
         "label": "MiniMax vision", "key_env": "MINIMAX_API_KEY", "base_url_env": "MINIMAX_BASE_URL",
         "base_url": "https://api.minimaxi.com/v1/chat/completions",
         "auth_style": "bearer", "token_param": "max_completion_tokens", "thinking_style": "mimo",
         "model_env": "MINIMAX_VISION_MODEL", "model": "MiniMax-M3", "vision": True,
+        "models": ("MiniMax-M3", "MiniMax-M3.1-Flash-Preview"),
     },
 }
 
@@ -180,6 +185,9 @@ def build_provider(role: str, *, model: str = "", guarded: bool = True):
     config = provider_config(pid, model=model)
     if role == "vision" and not config.vision:
         raise ProviderUnavailable(f"provider {pid} is not a vision tier")
+    allowed = _PROVIDER_SPECS[pid].get("models")
+    if allowed is not None and config.model not in allowed:
+        raise ProviderUnavailable(f"model {config.model} is not registered for provider {pid}")
     key = secret(config.key_env)
     if not key:
         raise ProviderUnavailable(f"{config.key_env} is not configured for provider {pid}")

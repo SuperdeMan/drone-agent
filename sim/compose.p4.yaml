@@ -46,6 +46,11 @@ services:
       DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
       VISION_PROVIDER: minimax-vl
       MINIMAX_API_KEY_FILE: /model/minimax.key
+      # The profile's timeout governs each call: an adaptive-thinking model may answer after the provider's default
+      # 75 s read cap, which would turn a slow answer into `model.error` (D076). The proxy's 300 s idle limit still
+      # bounds a silent tunnel. / 每次调用由画像的超时决定：自适应思考模型可能在 provider 默认的 75 s 读取上限之后才
+      # 作答，那会把慢回答变成 `model.error`（D076）。代理 300 s 的空闲上限仍约束无数据的隧道。
+      LLM_HTTP_READ_CAP_S: "600"
       HTTPS_PROXY: http://model-proxy:3128
       NO_PROXY: localhost,127.0.0.1
       PYTHONDONTWRITEBYTECODE: "1"

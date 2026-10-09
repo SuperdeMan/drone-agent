@@ -1,8 +1,8 @@
 """Record and strictly replay provider exchanges; a replay never improvises.
 
 A recording binds every exchange to the SHA-256 of the exact request (model, messages including tool
-data, tool schemas, tool choice, thinking switch, sampling and token limits) plus the prompt version
-and model that produced it. Replay recomputes the digest of each request and fails with
+data, tool schemas, tool choice, thinking switch, reasoning effort when set, sampling and token limits)
+plus the prompt version and model that produced it. Replay recomputes the digest of each request and fails with
 ReplayMismatch when it differs or when the recording is exhausted, so a changed prompt, registry or
 tool return can never silently reuse an old model answer. Recordings never contain credentials:
 headers are not part of the request that is stored.
@@ -12,8 +12,8 @@ only `recorded` fixtures may be reported as model behaviour.
 
 录制并严格回放 provider 交互；回放从不即兴发挥。
 
-录制把每次交互绑定到确切请求（模型、含工具数据的消息、工具 schema、工具选择、思考开关、采样与
-token 上限）的 SHA-256，以及产生它的提示版本与模型。回放逐次重算请求摘要，不一致或录制用尽即抛
+录制把每次交互绑定到确切请求（模型、含工具数据的消息、工具 schema、工具选择、思考开关、设置时的
+思考深度、采样与 token 上限）的 SHA-256，以及产生它的提示版本与模型。回放逐次重算请求摘要，不一致或录制用尽即抛
 ReplayMismatch，提示、登记表或工具返回一变就不可能静默复用旧的模型回答。录制中不含凭证：
 存储的请求不包含请求头。
 
@@ -45,12 +45,15 @@ def canonical_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
-def request_body(kind, messages, model, temperature, max_tokens, tools=None, tool_choice=None, thinking=None) -> dict:
+def request_body(kind, messages, model, temperature, max_tokens, tools=None, tool_choice=None, thinking=None,
+                 reasoning_effort=None) -> dict:
     """The part of a call that determines the answer; this is what the digest covers.
 
-    决定回答的那部分调用参数；摘要覆盖的正是这些。
+    The reasoning effort (D076) joins only when it is set, so every recording made before it still replays.
+
+    决定回答的那部分调用参数；摘要覆盖的正是这些。思考深度（D076）只在设置时加入，因此此前的录制仍可回放。
     """
-    return {
+    body = {
         "kind": kind,
         "model": model,
         "messages": messages,
@@ -60,6 +63,9 @@ def request_body(kind, messages, model, temperature, max_tokens, tools=None, too
         "tool_choice": tool_choice,
         "thinking": thinking,
     }
+    if reasoning_effort is not None:
+        body["reasoning_effort"] = reasoning_effort
+    return body
 
 
 def digest(body: dict) -> str:
@@ -118,11 +124,14 @@ class RecordingProvider(BaseProvider):
         self.redact = redact
         self.exchanges: list[Exchange] = []
 
-    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
-        body = request_body("complete", messages, model, temperature, max_tokens, thinking=thinking)
+    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None,
+                       reasoning_effort=None):
+        body = request_body("complete", messages, model, temperature, max_tokens, thinking=thinking,
+                            reasoning_effort=reasoning_effort)
         started = time.monotonic()
+        effort = {"reasoning_effort": reasoning_effort} if reasoning_effort is not None else {}
         content, used, finish, usage = await self.inner.complete(
-            messages, model, temperature, max_tokens, thinking=thinking, timeout_s=timeout_s)
+            messages, model, temperature, max_tokens, thinking=thinking, timeout_s=timeout_s, **effort)
         self.exchanges.append(Exchange(request_digest=digest(body), request=self.redact(body) if self.redact else body,
                                        content=content, model_used=used, finish=finish, usage=tuple(usage),
                                        latency_ms=round((time.monotonic() - started) * 1000, 1)))
@@ -177,8 +186,10 @@ class ReplayProvider(BaseProvider):
     def exhausted(self) -> bool:
         return self.position == len(self.recording.exchanges)
 
-    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
-        exchange = self._next(request_body("complete", messages, model, temperature, max_tokens, thinking=thinking))
+    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None,
+                       reasoning_effort=None):
+        exchange = self._next(request_body("complete", messages, model, temperature, max_tokens, thinking=thinking,
+                                           reasoning_effort=reasoning_effort))
         return exchange.content, exchange.model_used, exchange.finish, exchange.usage
 
     async def complete_tools(self, messages, model, temperature, max_tokens, tools=None, tool_choice=None,
@@ -224,7 +235,8 @@ class KeyedScriptedProvider(BaseProvider):
             raise ReplayMismatch("no scripted answer for this request / 该请求没有脚本回答")
         return self.answers[text]
 
-    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
+    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None,
+                       reasoning_effort=None):
         answer = self._answer(messages)
         return answer.get("content", ""), self.model, answer.get("finish", "stop"), tuple(answer.get("usage", (0, 0)))
 
@@ -251,7 +263,8 @@ class ScriptedProvider(BaseProvider):
             raise ReplayMismatch("scripted answers exhausted / 脚本回答已用尽")
         return self.answers.pop(0)
 
-    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
+    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None,
+                       reasoning_effort=None):
         answer = self._pop()
         self.calls.append({"messages": messages})
         return answer.get("content", ""), self.model, answer.get("finish", "stop"), tuple(answer.get("usage", (0, 0)))

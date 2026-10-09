@@ -81,7 +81,8 @@ class LabelDouble(ScriptedProvider):
             "description": "scripted: manifest label", "unusable_reason": "blurred" if category == "blurry" else
             ("occluded" if category == "undeterminable" else "none")}
 
-    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None):
+    async def complete(self, messages, model, temperature, max_tokens, thinking=None, timeout_s=None,
+                       reasoning_effort=None):
         uri = [p for p in messages[-1]["content"] if p.get("type") == "image_url"][-1]["image_url"]["url"]
         return json.dumps(self.answers[sha256(uri.encode())]), self.model, "stop", (0, 0)
 
@@ -123,7 +124,9 @@ async def run(args) -> dict:
     if args.mode == "live":
         from drone_agent.providers import build_provider
 
-        live, config = build_provider("vision", guarded=False)
+        # The profile names the model; the tier only supplies the endpoint and key, and refuses unregistered models
+        # (D076). / 画像指定模型；该档只提供端点与 key，并拒绝未登记的模型（D076）。
+        live, config = build_provider("vision", model=profile.model, guarded=False)
         provider_id, model, endpoint = config.provider_id, config.model, config.endpoint_host
     elif args.mode == "replay":
         provider_id = "replay"

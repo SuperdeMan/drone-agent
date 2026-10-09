@@ -27,7 +27,7 @@ from drone_agent.providers import (
 ENV_KEYS = (
     "LLM_PROVIDER", "VISION_PROVIDER", "MINIMAX_API_KEY", "MINIMAX_API_KEY_FILE", "MINIMAX_BASE_URL",
     "MINIMAX_LLM_MODEL", "DEEPSEEK_API_KEY", "DASHSCOPE_LLM_KEY", "DASHSCOPE_ASR_KEY", "LLM_EMBED_API_KEY",
-    "LLM_API_KEY", "VISION_MODEL",
+    "LLM_API_KEY", "VISION_MODEL", "MINIMAX_VISION_MODEL",
 )
 
 
@@ -92,9 +92,47 @@ def test_vision_role_uses_the_separate_vl_tier(monkeypatch):
         build_provider("vision")
 
 
+def test_the_minimax_vision_tier_calls_only_its_registered_models(monkeypatch):
+    # The profile names the model and the tier refuses any model it does not list (D076).
+    # 画像指定模型，该档拒绝其未列出的任何模型（D076）。
+    monkeypatch.setenv("VISION_PROVIDER", "minimax-vl")
+    monkeypatch.setenv("MINIMAX_API_KEY", "sk-m")
+    _, config = build_provider("vision")
+    assert config.model == "MiniMax-M3" and config.vision
+    _, config = build_provider("vision", model="MiniMax-M3.1-Flash-Preview", guarded=False)
+    assert config.model == "MiniMax-M3.1-Flash-Preview" and config.endpoint_host == "api.minimaxi.com"
+    with pytest.raises(ProviderUnavailable, match="not registered"):
+        build_provider("vision", model="MiniMax-M9-unreviewed")
+    monkeypatch.setenv("MINIMAX_VISION_MODEL", "MiniMax-M9-unreviewed")
+    with pytest.raises(ProviderUnavailable, match="not registered"):
+        build_provider("vision")
+
+
 def test_unknown_provider_is_rejected():
     with pytest.raises(ProviderUnavailable):
         provider_config("nonexistent")
+
+
+async def test_an_effort_joins_the_digest_only_when_it_is_set(tmp_path):
+    # Recordings made before D076 keep replaying: without an effort the request body is unchanged.
+    # D076 之前的录制仍可回放：不设思考深度时请求体不变。
+    from drone_agent.providers.replay import digest, request_body
+
+    messages = [{"role": "user", "content": "x"}]
+    plain = request_body("complete", messages, "MiniMax-M3", 0.0, 6000, thinking=True)
+    assert "reasoning_effort" not in plain
+    assert digest(plain) == digest(request_body("complete", messages, "MiniMax-M3", 0.0, 6000, thinking=True,
+                                                reasoning_effort=None))
+    recorder = RecordingProvider(ScriptedProvider([{"content": "ok"}], model="MiniMax-M3.1-Flash-Preview"))
+    await recorder.complete(messages, "MiniMax-M3.1-Flash-Preview", 0.0, 16000, thinking=True, reasoning_effort="high")
+    fixture = recorder.recording(source="scripted", provider_id="minimax-vl", model="MiniMax-M3.1-Flash-Preview")
+    assert fixture.exchanges[0].request["reasoning_effort"] == "high"
+    with pytest.raises(ReplayMismatch):
+        await ReplayProvider(fixture).complete(messages, "MiniMax-M3.1-Flash-Preview", 0.0, 16000, thinking=True,
+                                               reasoning_effort="max")
+    replayed = await ReplayProvider(fixture).complete(messages, "MiniMax-M3.1-Flash-Preview", 0.0, 16000,
+                                                      thinking=True, reasoning_effort="high")
+    assert replayed[0] == "ok"
 
 
 CALL = dict(tools=[{"type": "function", "function": {"name": "f"}}], tool_choice={"type": "function"})
