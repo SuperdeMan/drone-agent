@@ -1,11 +1,45 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="application-name" content="drone-agent FLIGHT DESK">
-<!-- Figma brand assets shared with the header, adapted to the browser theme. / 复用页头 Figma 品牌资产，跟随浏览器主题。 -->
-<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyOCIgaGVpZ2h0PSIyOCIgdmlld0JveD0iMCAwIDI4IDI4Ij48c3R5bGU+LmRhcmt7ZGlzcGxheTpub25lfUBtZWRpYShwcmVmZXJzLWNvbG9yLXNjaGVtZTpkYXJrKXsubGlnaHR7ZGlzcGxheTpub25lfS5kYXJre2Rpc3BsYXk6aW5saW5lfX08L3N0eWxlPjxnIGNsYXNzPSJsaWdodCI+PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgd2lkdGg9IjI4IiBoZWlnaHQ9IjI4IiB2aWV3Qm94PSIwIDAgMjggMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGlkPSJCcmFuZE1hcmsiPgo8cGF0aCBkPSJNMCA4QzAgMy41ODE3MiAzLjU4MTcyIDAgOCAwSDIwQzI0LjQxODMgMCAyOCAzLjU4MTcyIDI4IDhWMjBDMjggMjQuNDE4MyAyNC40MTgzIDI4IDIwIDI4SDhDMy41ODE3MiAyOCAwIDI0LjQxODMgMCAyMFY4WiIgZmlsbD0iIzE1MjAyQSIvPgo8cGF0aCBpZD0iVmVjdG9yIiBkPSJNMTEuMjg3NSA4LjMxMjVDMTEuMjg3NSA5Ljk1NTU1IDkuOTU1NTUgMTEuMjg3NSA4LjMxMjUgMTEuMjg3NUM2LjY2OTQ1IDExLjI4NzUgNS4zMzc1IDkuOTU1NTUgNS4zMzc1IDguMzEyNUM1LjMzNzUgNi42Njk0NSA2LjY2OTQ1IDUuMzM3NSA4LjMxMjUgNS4zMzc1QzkuOTU1NTUgNS4zMzc1IDExLjI4NzUgNi42Njk0NSAxMS4yODc1IDguMzEyNVoiIHN0cm9rZS13aWR0aD0iMS40ODc1IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZT0id2hpdGUiLz4KPHBhdGggaWQ9IlZlY3Rvcl8yIiBkPSJNMjIuNjYyNSA4LjMxMjVDMjIuNjYyNSA5Ljk1NTU1IDIxLjMzMDUgMTEuMjg3NSAxOS42ODc1IDExLjI4NzVDMTguMDQ0NSAxMS4yODc1IDE2LjcxMjUgOS45NTU1NSAxNi43MTI1IDguMzEyNUMxNi43MTI1IDYuNjY5NDUgMTguMDQ0NSA1LjMzNzUgMTkuNjg3NSA1LjMzNzVDMjEuMzMwNSA1LjMzNzUgMjIuNjYyNSA2LjY2OTQ1IDIyLjY2MjUgOC4zMTI1WiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlPSJ3aGl0ZSIvPgo8cGF0aCBpZD0iVmVjdG9yXzMiIGQ9Ik0xMS4yODc1IDE5LjY4NzVDMTEuMjg3NSAyMS4zMzA1IDkuOTU1NTUgMjIuNjYyNSA4LjMxMjUgMjIuNjYyNUM2LjY2OTQ1IDIyLjY2MjUgNS4zMzc1IDIxLjMzMDUgNS4zMzc1IDE5LjY4NzVDNS4zMzc1IDE4LjA0NDUgNi42Njk0NSAxNi43MTI1IDguMzEyNSAxNi43MTI1QzkuOTU1NTUgMTYuNzEyNSAxMS4yODc1IDE4LjA0NDUgMTEuMjg3NSAxOS42ODc1WiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlPSJ3aGl0ZSIvPgo8cGF0aCBpZD0iVmVjdG9yXzQiIGQ9Ik0yMi42NjI1IDE5LjY4NzVDMjIuNjYyNSAyMS4zMzA1IDIxLjMzMDUgMjIuNjYyNSAxOS42ODc1IDIyLjY2MjVDMTguMDQ0NSAyMi42NjI1IDE2LjcxMjUgMjEuMzMwNSAxNi43MTI1IDE5LjY4NzVDMTYuNzEyNSAxOC4wNDQ1IDE4LjA0NDUgMTYuNzEyNSAxOS42ODc1IDE2LjcxMjVDMjEuMzMwNSAxNi43MTI1IDIyLjY2MjUgMTguMDQ0NSAyMi42NjI1IDE5LjY4NzVaIiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2U9IndoaXRlIi8+CjxwYXRoIGlkPSJWZWN0b3JfNSIgZD0iTTEwLjUgMTAuNUwxMi43NzUgMTIuNzc1TTE3LjUgMTAuNUwxNS4yMjUgMTIuNzc1TTEwLjUgMTcuNUwxMi43NzUgMTUuMjI1TTE3LjUgMTcuNUwxNS4yMjUgMTUuMjI1IiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2U9IndoaXRlIi8+CjxwYXRoIGlkPSJSZWN0YW5nbGUiIGQ9Ik0xMi45IDEyLjJIMTUuMUMxNS40ODY2IDEyLjIgMTUuOCAxMi41MTM0IDE1LjggMTIuOVYxNS4xQzE1LjggMTUuNDg2NiAxNS40ODY2IDE1LjggMTUuMSAxNS44SDEyLjlDMTIuNTEzNCAxNS44IDEyLjIgMTUuNDg2NiAxMi4yIDE1LjFWMTIuOUMxMi4yIDEyLjUxMzQgMTIuNTEzNCAxMi4yIDEyLjkgMTIuMloiIGZpbGw9IiNDNkU1OEEiIHN0cm9rZS13aWR0aD0iMC42IiBzdHJva2U9IiMxQTJBMTAiLz4KPC9nPgo8L3N2Zz4KPC9nPjxnIGNsYXNzPSJkYXJrIj48c3ZnIHdpZHRoPSIyOCIgaGVpZ2h0PSIyOCIgdmlld0JveD0iMCAwIDI4IDI4IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJNMCA4QzAgMy41ODE3MiAzLjU4MTcyIDAgOCAwSDIwQzI0LjQxODMgMCAyOCAzLjU4MTcyIDI4IDhWMjBDMjggMjQuNDE4MyAyNC40MTgzIDI4IDIwIDI4SDhDMy41ODE3MiAyOCAwIDI0LjQxODMgMCAyMFY4WiIgZmlsbD0iI0U2RUJFRiIvPgo8cGF0aCBkPSJNOC4zMTI1IDExLjI4NzVDOS45NTU1NSAxMS4yODc1IDExLjI4NzUgOS45NTU1NSAxMS4yODc1IDguMzEyNUMxMS4yODc1IDYuNjY5NDUgOS45NTU1NSA1LjMzNzUgOC4zMTI1IDUuMzM3NUM2LjY2OTQ1IDUuMzM3NSA1LjMzNzUgNi42Njk0NSA1LjMzNzUgOC4zMTI1QzUuMzM3NSA5Ljk1NTU1IDYuNjY5NDUgMTEuMjg3NSA4LjMxMjUgMTEuMjg3NVoiIHN0cm9rZT0iIzBCMEYxMiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNMTkuNjg3NSAxMS4yODc1QzIxLjMzMDUgMTEuMjg3NSAyMi42NjI1IDkuOTU1NTUgMjIuNjYyNSA4LjMxMjVDMjIuNjYyNSA2LjY2OTQ1IDIxLjMzMDUgNS4zMzc1IDE5LjY4NzUgNS4zMzc1QzE4LjA0NDUgNS4zMzc1IDE2LjcxMjUgNi42Njk0NSAxNi43MTI1IDguMzEyNUMxNi43MTI1IDkuOTU1NTUgMTguMDQ0NSAxMS4yODc1IDE5LjY4NzUgMTEuMjg3NVoiIHN0cm9rZT0iIzBCMEYxMiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNOC4zMTI1IDIyLjY2MjVDOS45NTU1NSAyMi42NjI1IDExLjI4NzUgMjEuMzMwNSAxMS4yODc1IDE5LjY4NzVDMTEuMjg3NSAxOC4wNDQ1IDkuOTU1NTUgMTYuNzEyNSA4LjMxMjUgMTYuNzEyNUM2LjY2OTQ1IDE2LjcxMjUgNS4zMzc1IDE4LjA0NDUgNS4zMzc1IDE5LjY4NzVDNS4zMzc1IDIxLjMzMDUgNi42Njk0NSAyMi42NjI1IDguMzEyNSAyMi42NjI1WiIgc3Ryb2tlPSIjMEIwRjEyIiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xOS42ODc1IDIyLjY2MjVDMjEuMzMwNSAyMi42NjI1IDIyLjY2MjUgMjEuMzMwNSAyMi42NjI1IDE5LjY4NzVDMjIuNjYyNSAxOC4wNDQ1IDIxLjMzMDUgMTYuNzEyNSAxOS42ODc1IDE2LjcxMjVDMTguMDQ0NSAxNi43MTI1IDE2LjcxMjUgMTguMDQ0NSAxNi43MTI1IDE5LjY4NzVDMTYuNzEyNSAyMS4zMzA1IDE4LjA0NDUgMjIuNjYyNSAxOS42ODc1IDIyLjY2MjVaIiBzdHJva2U9IiMwQjBGMTIiIHN0cm9rZS13aWR0aD0iMS40ODc1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHBhdGggZD0iTTEwLjUgMTAuNUwxMi43NzUgMTIuNzc1TTE3LjUgMTAuNUwxNS4yMjUgMTIuNzc1TTEwLjUgMTcuNUwxMi43NzUgMTUuMjI1TTE3LjUgMTcuNUwxNS4yMjUgMTUuMjI1IiBzdHJva2U9IiMwQjBGMTIiIHN0cm9rZS13aWR0aD0iMS40ODc1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHJlY3QgeD0iMTIuMiIgeT0iMTIuMiIgd2lkdGg9IjMuNiIgaGVpZ2h0PSIzLjYiIHJ4PSIwLjciIGZpbGw9IiNDNkU1OEEiIHN0cm9rZT0iIzFBMkExMCIgc3Ryb2tlLXdpZHRoPSIwLjYiLz4KPC9zdmc+Cgo8L2c+PC9zdmc+">
+<!-- Figma brand assets shared with the header, selected by the page theme. / 复用页头 Figma 品牌资产，按页面主题选择。 -->
+<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgd2lkdGg9IjI4IiBoZWlnaHQ9IjI4IiB2aWV3Qm94PSIwIDAgMjggMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGlkPSJCcmFuZE1hcmsiPgo8cGF0aCBkPSJNMCA4QzAgMy41ODE3MiAzLjU4MTcyIDAgOCAwSDIwQzI0LjQxODMgMCAyOCAzLjU4MTcyIDI4IDhWMjBDMjggMjQuNDE4MyAyNC40MTgzIDI4IDIwIDI4SDhDMy41ODE3MiAyOCAwIDI0LjQxODMgMCAyMFY4WiIgZmlsbD0iIzE1MjAyQSIvPgo8cGF0aCBpZD0iVmVjdG9yIiBkPSJNMTEuMjg3NSA4LjMxMjVDMTEuMjg3NSA5Ljk1NTU1IDkuOTU1NTUgMTEuMjg3NSA4LjMxMjUgMTEuMjg3NUM2LjY2OTQ1IDExLjI4NzUgNS4zMzc1IDkuOTU1NTUgNS4zMzc1IDguMzEyNUM1LjMzNzUgNi42Njk0NSA2LjY2OTQ1IDUuMzM3NSA4LjMxMjUgNS4zMzc1QzkuOTU1NTUgNS4zMzc1IDExLjI4NzUgNi42Njk0NSAxMS4yODc1IDguMzEyNVoiIHN0cm9rZS13aWR0aD0iMS40ODc1IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZT0id2hpdGUiLz4KPHBhdGggaWQ9IlZlY3Rvcl8yIiBkPSJNMjIuNjYyNSA4LjMxMjVDMjIuNjYyNSA5Ljk1NTU1IDIxLjMzMDUgMTEuMjg3NSAxOS42ODc1IDExLjI4NzVDMTguMDQ0NSAxMS4yODc1IDE2LjcxMjUgOS45NTU1NSAxNi43MTI1IDguMzEyNUMxNi43MTI1IDYuNjY5NDUgMTguMDQ0NSA1LjMzNzUgMTkuNjg3NSA1LjMzNzVDMjEuMzMwNSA1LjMzNzUgMjIuNjYyNSA2LjY2OTQ1IDIyLjY2MjUgOC4zMTI1WiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlPSJ3aGl0ZSIvPgo8cGF0aCBpZD0iVmVjdG9yXzMiIGQ9Ik0xMS4yODc1IDE5LjY4NzVDMTEuMjg3NSAyMS4zMzA1IDkuOTU1NTUgMjIuNjYyNSA4LjMxMjUgMjIuNjYyNUM2LjY2OTQ1IDIyLjY2MjUgNS4zMzc1IDIxLjMzMDUgNS4zMzc1IDE5LjY4NzVDNS4zMzc1IDE4LjA0NDUgNi42Njk0NSAxNi43MTI1IDguMzEyNSAxNi43MTI1QzkuOTU1NTUgMTYuNzEyNSAxMS4yODc1IDE4LjA0NDUgMTEuMjg3NSAxOS42ODc1WiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlPSJ3aGl0ZSIvPgo8cGF0aCBpZD0iVmVjdG9yXzQiIGQ9Ik0yMi42NjI1IDE5LjY4NzVDMjIuNjYyNSAyMS4zMzA1IDIxLjMzMDUgMjIuNjYyNSAxOS42ODc1IDIyLjY2MjVDMTguMDQ0NSAyMi42NjI1IDE2LjcxMjUgMjEuMzMwNSAxNi43MTI1IDE5LjY4NzVDMTYuNzEyNSAxOC4wNDQ1IDE4LjA0NDUgMTYuNzEyNSAxOS42ODc1IDE2LjcxMjVDMjEuMzMwNSAxNi43MTI1IDIyLjY2MjUgMTguMDQ0NSAyMi42NjI1IDE5LjY4NzVaIiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2U9IndoaXRlIi8+CjxwYXRoIGlkPSJWZWN0b3JfNSIgZD0iTTEwLjUgMTAuNUwxMi43NzUgMTIuNzc1TTE3LjUgMTAuNUwxNS4yMjUgMTIuNzc1TTEwLjUgMTcuNUwxMi43NzUgMTUuMjI1TTE3LjUgMTcuNUwxNS4yMjUgMTUuMjI1IiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2U9IndoaXRlIi8+CjxwYXRoIGlkPSJSZWN0YW5nbGUiIGQ9Ik0xMi45IDEyLjJIMTUuMUMxNS40ODY2IDEyLjIgMTUuOCAxMi41MTM0IDE1LjggMTIuOVYxNS4xQzE1LjggMTUuNDg2NiAxNS40ODY2IDE1LjggMTUuMSAxNS44SDEyLjlDMTIuNTEzNCAxNS44IDEyLjIgMTUuNDg2NiAxMi4yIDE1LjFWMTIuOUMxMi4yIDEyLjUxMzQgMTIuNTEzNCAxMi4yIDEyLjkgMTIuMloiIGZpbGw9IiNDNkU1OEEiIHN0cm9rZS13aWR0aD0iMC42IiBzdHJva2U9IiMxQTJBMTAiLz4KPC9nPgo8L3N2Zz4K" data-dark="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjgiIGhlaWdodD0iMjgiIHZpZXdCb3g9IjAgMCAyOCAyOCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTAgOEMwIDMuNTgxNzIgMy41ODE3MiAwIDggMEgyMEMyNC40MTgzIDAgMjggMy41ODE3MiAyOCA4VjIwQzI4IDI0LjQxODMgMjQuNDE4MyAyOCAyMCAyOEg4QzMuNTgxNzIgMjggMCAyNC40MTgzIDAgMjBWOFoiIGZpbGw9IiNFNkVCRUYiLz4KPHBhdGggZD0iTTguMzEyNSAxMS4yODc1QzkuOTU1NTUgMTEuMjg3NSAxMS4yODc1IDkuOTU1NTUgMTEuMjg3NSA4LjMxMjVDMTEuMjg3NSA2LjY2OTQ1IDkuOTU1NTUgNS4zMzc1IDguMzEyNSA1LjMzNzVDNi42Njk0NSA1LjMzNzUgNS4zMzc1IDYuNjY5NDUgNS4zMzc1IDguMzEyNUM1LjMzNzUgOS45NTU1NSA2LjY2OTQ1IDExLjI4NzUgOC4zMTI1IDExLjI4NzVaIiBzdHJva2U9IiMwQjBGMTIiIHN0cm9rZS13aWR0aD0iMS40ODc1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHBhdGggZD0iTTE5LjY4NzUgMTEuMjg3NUMyMS4zMzA1IDExLjI4NzUgMjIuNjYyNSA5Ljk1NTU1IDIyLjY2MjUgOC4zMTI1QzIyLjY2MjUgNi42Njk0NSAyMS4zMzA1IDUuMzM3NSAxOS42ODc1IDUuMzM3NUMxOC4wNDQ1IDUuMzM3NSAxNi43MTI1IDYuNjY5NDUgMTYuNzEyNSA4LjMxMjVDMTYuNzEyNSA5Ljk1NTU1IDE4LjA0NDUgMTEuMjg3NSAxOS42ODc1IDExLjI4NzVaIiBzdHJva2U9IiMwQjBGMTIiIHN0cm9rZS13aWR0aD0iMS40ODc1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHBhdGggZD0iTTguMzEyNSAyMi42NjI1QzkuOTU1NTUgMjIuNjYyNSAxMS4yODc1IDIxLjMzMDUgMTEuMjg3NSAxOS42ODc1QzExLjI4NzUgMTguMDQ0NSA5Ljk1NTU1IDE2LjcxMjUgOC4zMTI1IDE2LjcxMjVDNi42Njk0NSAxNi43MTI1IDUuMzM3NSAxOC4wNDQ1IDUuMzM3NSAxOS42ODc1QzUuMzM3NSAyMS4zMzA1IDYuNjY5NDUgMjIuNjYyNSA4LjMxMjUgMjIuNjYyNVoiIHN0cm9rZT0iIzBCMEYxMiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNMTkuNjg3NSAyMi42NjI1QzIxLjMzMDUgMjIuNjYyNSAyMi42NjI1IDIxLjMzMDUgMjIuNjYyNSAxOS42ODc1QzIyLjY2MjUgMTguMDQ0NSAyMS4zMzA1IDE2LjcxMjUgMTkuNjg3NSAxNi43MTI1QzE4LjA0NDUgMTYuNzEyNSAxNi43MTI1IDE4LjA0NDUgMTYuNzEyNSAxOS42ODc1QzE2LjcxMjUgMjEuMzMwNSAxOC4wNDQ1IDIyLjY2MjUgMTkuNjg3NSAyMi42NjI1WiIgc3Ryb2tlPSIjMEIwRjEyIiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xMC41IDEwLjVMMTIuNzc1IDEyLjc3NU0xNy41IDEwLjVMMTUuMjI1IDEyLjc3NU0xMC41IDE3LjVMMTIuNzc1IDE1LjIyNU0xNy41IDE3LjVMMTUuMjI1IDE1LjIyNSIgc3Ryb2tlPSIjMEIwRjEyIiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxyZWN0IHg9IjEyLjIiIHk9IjEyLjIiIHdpZHRoPSIzLjYiIGhlaWdodD0iMy42IiByeD0iMC43IiBmaWxsPSIjQzZFNThBIiBzdHJva2U9IiMxQTJBMTAiIHN0cm9rZS13aWR0aD0iMC42Ii8+Cjwvc3ZnPgoK">
+<script>
+/* theme:start */
+// Apply the saved page theme before styles, independently of the OS. / 在样式解析前应用保存的页面主题，不依赖系统设置。
+(() => {
+  const key = "drone-agent.desk.theme";
+  const root = document.documentElement;
+  const icon = document.querySelector('link[rel="icon"][data-dark]');
+  const marks = icon ? {light: icon.href, dark: icon.dataset.dark} : null;
+  let theme = "light";
+  try { theme = localStorage.getItem(key) === "dark" ? "dark" : "light"; } catch {}
+  function render() {
+    root.dataset.theme = theme;
+    if (icon) icon.href = marks[theme];
+    document.querySelectorAll("button[data-theme-choice]").forEach(button => {
+      button.setAttribute("aria-pressed", String(button.dataset.themeChoice === theme));
+    });
+  }
+  render();
+  document.addEventListener("DOMContentLoaded", render, {once: true});
+  document.addEventListener("click", event => {
+    const button = event.target.closest?.("button[data-theme-choice]");
+    if (!button) return;
+    theme = button.dataset.themeChoice === "dark" ? "dark" : "light";
+    try { localStorage.setItem(key, theme); } catch {}
+    render();
+  });
+  window.addEventListener("storage", event => {
+    if (event.key !== key && event.key !== null) return;
+    theme = event.newValue === "dark" ? "dark" : "light";
+    render();
+  });
+})();
+/* theme:end */
+</script>
 <meta name="console-nonce" content="__NONCE__">
 <meta name="console-base" content="__BASE__">
 <title>drone-agent · 云端飞行台</title>
@@ -26,7 +60,7 @@
 --font:"Segoe UI Variable Text","Segoe UI","Microsoft YaHei UI","PingFang SC","Hiragino Sans GB","Noto Sans CJK SC",system-ui,sans-serif;
 --display:Bahnschrift,"Segoe UI Variable Display","DIN Alternate","Microsoft YaHei UI","PingFang SC",system-ui,sans-serif;
 --mono:"Cascadia Mono","Cascadia Code",Consolas,"SFMono-Regular",Menlo,monospace}
-@media (prefers-color-scheme:dark){:root{color-scheme:dark;
+:root[data-theme="dark"]{color-scheme:dark;
 --bg:#0B0F12;--surface:#12171B;--surface-2:#161C21;--surface-3:#1D252B;--line:#232C33;--line-strong:#33404A;
 --ink:#E6EBEF;--ink-2:#B9C3CB;--muted:#8A96A0;--faint:#66727C;
 --primary:#E6EBEF;--primary-hover:#FFFFFF;--primary-ink:#0B0F12;--brand:#E6EBEF;--accent:#C6E58A;--accent-ink:#1A2A10;--focus:#E6EBEF;
@@ -34,7 +68,7 @@
 --bad:#F28B82;--bad-bg:#2D1412;--bad-line:#5A2722;--info:#7DB3F0;--info-bg:#0F1F33;--info-line:#21406A;
 --neutral:#A3AEB7;--neutral-bg:#192026;--neutral-line:#2E3840;--sim:#B39DF2;--sim-bg:#1E1733;--sim-line:#3D2F66;
 --field:#0A1411;--field-2:#10201A;--field-ink:#E3EBE6;--field-muted:#8FA39A;--field-line:#203229;--scrim:#000000;
---shadow:0 1px 2px rgba(18,23,28,.04),0 1px 3px rgba(18,23,28,.04);--shadow-raised:0 2px 6px rgba(18,23,28,.06),0 8px 24px rgba(18,23,28,.06);--shadow-lg:0 16px 48px rgba(18,23,28,.22)}}
+--shadow:0 1px 2px rgba(18,23,28,.04),0 1px 3px rgba(18,23,28,.04);--shadow-raised:0 2px 6px rgba(18,23,28,.06),0 8px 24px rgba(18,23,28,.06);--shadow-lg:0 16px 48px rgba(18,23,28,.22)}
 /* tokens:end */
 /* figma-assets:start */
 /* Original exported bytes; monochrome masks follow theme tokens. / 原始导出字节；单色遮罩绑定主题变量。 */
@@ -61,7 +95,7 @@
 --figma-chevron-dark-image:url("data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgd2lkdGg9IjEyIiBoZWlnaHQ9IjEyIiB2aWV3Qm94PSIwIDAgMTIgMTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGlkPSJjaGV2cm9uIj4KPHBhdGggaWQ9IlZlY3RvciIgZD0iTTMgNC41TDYgNy41TDkgNC41IiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2U9IiM4QTk2QTAiLz4KPC9nPgo8L3N2Zz4K");
 --figma-env-chevron:url("data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiB2aWV3Qm94PSIwIDAgMTAgMTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGlkPSJjaGV2cm9uIj4KPHBhdGggaWQ9IlZlY3RvciIgZD0iTTIuNSA0TDUgNi41TDcuNSA0IiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2U9IiM1QjQzQjAiLz4KPC9nPgo8L3N2Zz4K");
 }
-@media(prefers-color-scheme:dark){:root{--figma-brand-image:var(--figma-brand-dark-image);--figma-step-wait-image:var(--figma-step-wait-dark-image);--figma-chevron-image:var(--figma-chevron-dark-image)}}
+:root[data-theme="dark"]{--figma-brand-image:var(--figma-brand-dark-image);--figma-step-wait-image:var(--figma-step-wait-dark-image);--figma-chevron-image:var(--figma-chevron-dark-image)}
 /* figma-assets:end */
 *{box-sizing:border-box}[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.55 var(--font);-webkit-font-smoothing:antialiased}
@@ -162,10 +196,17 @@ main{padding:24px 28px 40px}.layout{grid-template-columns:280px minmax(380px,1fr
 select{appearance:none;padding:0 30px 0 12px;background-image:var(--figma-chevron-image);background-position:right 10px center;background-repeat:no-repeat}.start{height:32px}.step i{width:20px;height:20px}.step{font-size:12px}.field{border-radius:12px 12px 0 0}#map>rect{fill:var(--field)}#ground line{stroke:var(--field-line)}.field-head{padding:16px 18px}.event-section .empty{border:1px dashed var(--line);border-radius:8px;padding:16px}.guide{gap:16px}
 @media(max-width:1150px){.layout{grid-template-columns:240px minmax(0,1fr)}.right{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.top{flex-wrap:wrap;gap:10px;padding:10px 16px}.brand small{display:none}.env{margin-left:auto}.connection{margin-left:0}.top .modes{order:3}.layout{display:block}.right{display:grid;grid-template-columns:minmax(0,1fr)}main{padding:20px 16px 40px}.guide{grid-template-columns:minmax(0,1fr)}.page-head{gap:12px}.page-head aside{font-size:10px}}
+/* theme-controls:start */
+.theme-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:var(--radius-md);background:var(--surface-3);flex:none}
+.theme-switch button{height:26px;padding:0 8px;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--ink-2);font:500 12px/18px var(--font);cursor:pointer;white-space:nowrap}
+.theme-switch button:hover{background:var(--surface-2);color:var(--ink)}
+.theme-switch button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+/* theme-controls:end */
+@media(max-width:760px){.top{display:grid;grid-template-columns:minmax(0,1fr) auto}.top .brand{grid-column:1;grid-row:1}.top .env{grid-column:2;grid-row:1;justify-self:end;margin-left:0}.top .modes{grid-column:1;grid-row:2;justify-self:start;order:0}.top .theme-switch{grid-column:2;grid-row:2;justify-self:end}.top .connection{grid-column:1/-1;grid-row:3;justify-self:end}}
 </style>
 </head>
 <body>
-<header class="top"><a class="brand" href="__BASE__/" aria-label="drone-agent 固定巡检"><span class="brand-mark" aria-hidden="true"></span><b>drone-agent</b><small>运营台</small></a>__NAV__<span class="env"><span aria-hidden="true">◇</span>仿真 · PX4 SITL</span><div class="connection" id="connection"><i></i><span id="connectionText">连接云端中</span><small id="latency"></small></div></header>
+<header class="top"><a class="brand" href="__BASE__/" aria-label="drone-agent 固定巡检"><span class="brand-mark" aria-hidden="true"></span><b>drone-agent</b><small>运营台</small></a>__NAV__<span class="env"><span aria-hidden="true">◇</span>仿真 · PX4 SITL</span><div class="connection" id="connection"><i></i><span id="connectionText">连接云端中</span><small id="latency"></small></div><div class="theme-switch" role="group" aria-label="页面主题"><button type="button" data-theme-choice="light" aria-label="浅色模式" aria-pressed="true">浅色</button><button type="button" data-theme-choice="dark" aria-label="深色模式" aria-pressed="false">深色</button></div></header>
 <main>
 <div class="page-head"><div><h1>固定巡检</h1><p>发起一次园区巡检，看它起飞、取证与归航；页面只读取云端状态并提交有界操作。</p></div><aside>PX4 SITL × GAZEBO<br><span id="version">正在读取运行版本</span></aside></div>
 <div class="notice" id="notice" hidden role="status"></div>

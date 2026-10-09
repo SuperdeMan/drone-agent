@@ -141,6 +141,8 @@ def test_both_pages_share_one_set_of_design_tokens():
 
     assert tokens("mission.html") == tokens("live.html") and "--brand" in tokens("mission.html")
     assert tokens("mission.html", "figma-assets") == tokens("live.html", "figma-assets")
+    assert tokens("mission.html", "theme") == tokens("live.html", "theme")
+    assert tokens("mission.html", "theme-controls") == tokens("live.html", "theme-controls")
     for name in ("mission.html", "live.html"):
         page = (PAGE_DIR / name).read_text(encoding="utf-8")
         assert "data:image/svg+xml;base64," in tokens(name, "figma-assets")

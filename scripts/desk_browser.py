@@ -89,9 +89,16 @@ async def open_desk(browser, origin: str, width: int, height: int, scheme: str, 
     page.on("console", lambda m: errors.append(m.text[:300]) if m.type == "error" else None)
     page.on("pageerror", lambda e: errors.append(str(e)[:300]))
     await page.goto(origin + "/#overview", wait_until="domcontentloaded")
+    await select_theme(page, scheme)
     await page.wait_for_function("() => typeof hello !== 'undefined' && hello !== null", timeout=30000)
     await page.wait_for_timeout(2500)
     return page
+
+
+async def select_theme(page, scheme: str) -> None:
+    """Choose the page theme through its visible control, independent of the OS. / 经可见控件选择页面主题，不依赖系统设置。"""
+    await page.locator(f'button[data-theme-choice="{scheme}"]').click()
+    await page.wait_for_function("theme => document.documentElement.dataset.theme === theme", arg=scheme)
 
 
 async def tour(page, shots: Path, label: str) -> dict:
@@ -122,6 +129,7 @@ async def fixed(browser, origin: str, shots: Path, scheme: str, errors: list) ->
     page.on("console", lambda m: errors.append(m.text[:300]) if m.type == "error" else None)
     page.on("pageerror", lambda e: errors.append(str(e)[:300]))
     response = await page.goto(origin + "/fixed/", wait_until="domcontentloaded")
+    await select_theme(page, scheme)
     await page.wait_for_function("() => document.getElementById('connection').className.includes('good')", timeout=30000)
     await page.wait_for_timeout(2000)
     info = await page.evaluate("""() => ({steps: document.querySelectorAll('#steps .step').length,

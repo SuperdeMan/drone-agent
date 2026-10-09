@@ -1,11 +1,45 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="application-name" content="drone-agent FLIGHT DESK">
-<!-- Figma brand assets shared with the header, adapted to the browser theme. / 复用页头 Figma 品牌资产，跟随浏览器主题。 -->
-<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyOCIgaGVpZ2h0PSIyOCIgdmlld0JveD0iMCAwIDI4IDI4Ij48c3R5bGU+LmRhcmt7ZGlzcGxheTpub25lfUBtZWRpYShwcmVmZXJzLWNvbG9yLXNjaGVtZTpkYXJrKXsubGlnaHR7ZGlzcGxheTpub25lfS5kYXJre2Rpc3BsYXk6aW5saW5lfX08L3N0eWxlPjxnIGNsYXNzPSJsaWdodCI+PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgd2lkdGg9IjI4IiBoZWlnaHQ9IjI4IiB2aWV3Qm94PSIwIDAgMjggMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGlkPSJCcmFuZE1hcmsiPgo8cGF0aCBkPSJNMCA4QzAgMy41ODE3MiAzLjU4MTcyIDAgOCAwSDIwQzI0LjQxODMgMCAyOCAzLjU4MTcyIDI4IDhWMjBDMjggMjQuNDE4MyAyNC40MTgzIDI4IDIwIDI4SDhDMy41ODE3MiAyOCAwIDI0LjQxODMgMCAyMFY4WiIgZmlsbD0iIzE1MjAyQSIvPgo8cGF0aCBpZD0iVmVjdG9yIiBkPSJNMTEuMjg3NSA4LjMxMjVDMTEuMjg3NSA5Ljk1NTU1IDkuOTU1NTUgMTEuMjg3NSA4LjMxMjUgMTEuMjg3NUM2LjY2OTQ1IDExLjI4NzUgNS4zMzc1IDkuOTU1NTUgNS4zMzc1IDguMzEyNUM1LjMzNzUgNi42Njk0NSA2LjY2OTQ1IDUuMzM3NSA4LjMxMjUgNS4zMzc1QzkuOTU1NTUgNS4zMzc1IDExLjI4NzUgNi42Njk0NSAxMS4yODc1IDguMzEyNVoiIHN0cm9rZS13aWR0aD0iMS40ODc1IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZT0id2hpdGUiLz4KPHBhdGggaWQ9IlZlY3Rvcl8yIiBkPSJNMjIuNjYyNSA4LjMxMjVDMjIuNjYyNSA5Ljk1NTU1IDIxLjMzMDUgMTEuMjg3NSAxOS42ODc1IDExLjI4NzVDMTguMDQ0NSAxMS4yODc1IDE2LjcxMjUgOS45NTU1NSAxNi43MTI1IDguMzEyNUMxNi43MTI1IDYuNjY5NDUgMTguMDQ0NSA1LjMzNzUgMTkuNjg3NSA1LjMzNzVDMjEuMzMwNSA1LjMzNzUgMjIuNjYyNSA2LjY2OTQ1IDIyLjY2MjUgOC4zMTI1WiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlPSJ3aGl0ZSIvPgo8cGF0aCBpZD0iVmVjdG9yXzMiIGQ9Ik0xMS4yODc1IDE5LjY4NzVDMTEuMjg3NSAyMS4zMzA1IDkuOTU1NTUgMjIuNjYyNSA4LjMxMjUgMjIuNjYyNUM2LjY2OTQ1IDIyLjY2MjUgNS4zMzc1IDIxLjMzMDUgNS4zMzc1IDE5LjY4NzVDNS4zMzc1IDE4LjA0NDUgNi42Njk0NSAxNi43MTI1IDguMzEyNSAxNi43MTI1QzkuOTU1NTUgMTYuNzEyNSAxMS4yODc1IDE4LjA0NDUgMTEuMjg3NSAxOS42ODc1WiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlPSJ3aGl0ZSIvPgo8cGF0aCBpZD0iVmVjdG9yXzQiIGQ9Ik0yMi42NjI1IDE5LjY4NzVDMjIuNjYyNSAyMS4zMzA1IDIxLjMzMDUgMjIuNjYyNSAxOS42ODc1IDIyLjY2MjVDMTguMDQ0NSAyMi42NjI1IDE2LjcxMjUgMjEuMzMwNSAxNi43MTI1IDE5LjY4NzVDMTYuNzEyNSAxOC4wNDQ1IDE4LjA0NDUgMTYuNzEyNSAxOS42ODc1IDE2LjcxMjVDMjEuMzMwNSAxNi43MTI1IDIyLjY2MjUgMTguMDQ0NSAyMi42NjI1IDE5LjY4NzVaIiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2U9IndoaXRlIi8+CjxwYXRoIGlkPSJWZWN0b3JfNSIgZD0iTTEwLjUgMTAuNUwxMi43NzUgMTIuNzc1TTE3LjUgMTAuNUwxNS4yMjUgMTIuNzc1TTEwLjUgMTcuNUwxMi43NzUgMTUuMjI1TTE3LjUgMTcuNUwxNS4yMjUgMTUuMjI1IiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2U9IndoaXRlIi8+CjxwYXRoIGlkPSJSZWN0YW5nbGUiIGQ9Ik0xMi45IDEyLjJIMTUuMUMxNS40ODY2IDEyLjIgMTUuOCAxMi41MTM0IDE1LjggMTIuOVYxNS4xQzE1LjggMTUuNDg2NiAxNS40ODY2IDE1LjggMTUuMSAxNS44SDEyLjlDMTIuNTEzNCAxNS44IDEyLjIgMTUuNDg2NiAxMi4yIDE1LjFWMTIuOUMxMi4yIDEyLjUxMzQgMTIuNTEzNCAxMi4yIDEyLjkgMTIuMloiIGZpbGw9IiNDNkU1OEEiIHN0cm9rZS13aWR0aD0iMC42IiBzdHJva2U9IiMxQTJBMTAiLz4KPC9nPgo8L3N2Zz4KPC9nPjxnIGNsYXNzPSJkYXJrIj48c3ZnIHdpZHRoPSIyOCIgaGVpZ2h0PSIyOCIgdmlld0JveD0iMCAwIDI4IDI4IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJNMCA4QzAgMy41ODE3MiAzLjU4MTcyIDAgOCAwSDIwQzI0LjQxODMgMCAyOCAzLjU4MTcyIDI4IDhWMjBDMjggMjQuNDE4MyAyNC40MTgzIDI4IDIwIDI4SDhDMy41ODE3MiAyOCAwIDI0LjQxODMgMCAyMFY4WiIgZmlsbD0iI0U2RUJFRiIvPgo8cGF0aCBkPSJNOC4zMTI1IDExLjI4NzVDOS45NTU1NSAxMS4yODc1IDExLjI4NzUgOS45NTU1NSAxMS4yODc1IDguMzEyNUMxMS4yODc1IDYuNjY5NDUgOS45NTU1NSA1LjMzNzUgOC4zMTI1IDUuMzM3NUM2LjY2OTQ1IDUuMzM3NSA1LjMzNzUgNi42Njk0NSA1LjMzNzUgOC4zMTI1QzUuMzM3NSA5Ljk1NTU1IDYuNjY5NDUgMTEuMjg3NSA4LjMxMjUgMTEuMjg3NVoiIHN0cm9rZT0iIzBCMEYxMiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNMTkuNjg3NSAxMS4yODc1QzIxLjMzMDUgMTEuMjg3NSAyMi42NjI1IDkuOTU1NTUgMjIuNjYyNSA4LjMxMjVDMjIuNjYyNSA2LjY2OTQ1IDIxLjMzMDUgNS4zMzc1IDE5LjY4NzUgNS4zMzc1QzE4LjA0NDUgNS4zMzc1IDE2LjcxMjUgNi42Njk0NSAxNi43MTI1IDguMzEyNUMxNi43MTI1IDkuOTU1NTUgMTguMDQ0NSAxMS4yODc1IDE5LjY4NzUgMTEuMjg3NVoiIHN0cm9rZT0iIzBCMEYxMiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNOC4zMTI1IDIyLjY2MjVDOS45NTU1NSAyMi42NjI1IDExLjI4NzUgMjEuMzMwNSAxMS4yODc1IDE5LjY4NzVDMTEuMjg3NSAxOC4wNDQ1IDkuOTU1NTUgMTYuNzEyNSA4LjMxMjUgMTYuNzEyNUM2LjY2OTQ1IDE2LjcxMjUgNS4zMzc1IDE4LjA0NDUgNS4zMzc1IDE5LjY4NzVDNS4zMzc1IDIxLjMzMDUgNi42Njk0NSAyMi42NjI1IDguMzEyNSAyMi42NjI1WiIgc3Ryb2tlPSIjMEIwRjEyIiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xOS42ODc1IDIyLjY2MjVDMjEuMzMwNSAyMi42NjI1IDIyLjY2MjUgMjEuMzMwNSAyMi42NjI1IDE5LjY4NzVDMjIuNjYyNSAxOC4wNDQ1IDIxLjMzMDUgMTYuNzEyNSAxOS42ODc1IDE2LjcxMjVDMTguMDQ0NSAxNi43MTI1IDE2LjcxMjUgMTguMDQ0NSAxNi43MTI1IDE5LjY4NzVDMTYuNzEyNSAyMS4zMzA1IDE4LjA0NDUgMjIuNjYyNSAxOS42ODc1IDIyLjY2MjVaIiBzdHJva2U9IiMwQjBGMTIiIHN0cm9rZS13aWR0aD0iMS40ODc1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHBhdGggZD0iTTEwLjUgMTAuNUwxMi43NzUgMTIuNzc1TTE3LjUgMTAuNUwxNS4yMjUgMTIuNzc1TTEwLjUgMTcuNUwxMi43NzUgMTUuMjI1TTE3LjUgMTcuNUwxNS4yMjUgMTUuMjI1IiBzdHJva2U9IiMwQjBGMTIiIHN0cm9rZS13aWR0aD0iMS40ODc1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHJlY3QgeD0iMTIuMiIgeT0iMTIuMiIgd2lkdGg9IjMuNiIgaGVpZ2h0PSIzLjYiIHJ4PSIwLjciIGZpbGw9IiNDNkU1OEEiIHN0cm9rZT0iIzFBMkExMCIgc3Ryb2tlLXdpZHRoPSIwLjYiLz4KPC9zdmc+Cgo8L2c+PC9zdmc+">
+<!-- Figma brand assets shared with the header, selected by the page theme. / 复用页头 Figma 品牌资产，按页面主题选择。 -->
+<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgd2lkdGg9IjI4IiBoZWlnaHQ9IjI4IiB2aWV3Qm94PSIwIDAgMjggMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGlkPSJCcmFuZE1hcmsiPgo8cGF0aCBkPSJNMCA4QzAgMy41ODE3MiAzLjU4MTcyIDAgOCAwSDIwQzI0LjQxODMgMCAyOCAzLjU4MTcyIDI4IDhWMjBDMjggMjQuNDE4MyAyNC40MTgzIDI4IDIwIDI4SDhDMy41ODE3MiAyOCAwIDI0LjQxODMgMCAyMFY4WiIgZmlsbD0iIzE1MjAyQSIvPgo8cGF0aCBpZD0iVmVjdG9yIiBkPSJNMTEuMjg3NSA4LjMxMjVDMTEuMjg3NSA5Ljk1NTU1IDkuOTU1NTUgMTEuMjg3NSA4LjMxMjUgMTEuMjg3NUM2LjY2OTQ1IDExLjI4NzUgNS4zMzc1IDkuOTU1NTUgNS4zMzc1IDguMzEyNUM1LjMzNzUgNi42Njk0NSA2LjY2OTQ1IDUuMzM3NSA4LjMxMjUgNS4zMzc1QzkuOTU1NTUgNS4zMzc1IDExLjI4NzUgNi42Njk0NSAxMS4yODc1IDguMzEyNVoiIHN0cm9rZS13aWR0aD0iMS40ODc1IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZT0id2hpdGUiLz4KPHBhdGggaWQ9IlZlY3Rvcl8yIiBkPSJNMjIuNjYyNSA4LjMxMjVDMjIuNjYyNSA5Ljk1NTU1IDIxLjMzMDUgMTEuMjg3NSAxOS42ODc1IDExLjI4NzVDMTguMDQ0NSAxMS4yODc1IDE2LjcxMjUgOS45NTU1NSAxNi43MTI1IDguMzEyNUMxNi43MTI1IDYuNjY5NDUgMTguMDQ0NSA1LjMzNzUgMTkuNjg3NSA1LjMzNzVDMjEuMzMwNSA1LjMzNzUgMjIuNjYyNSA2LjY2OTQ1IDIyLjY2MjUgOC4zMTI1WiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlPSJ3aGl0ZSIvPgo8cGF0aCBpZD0iVmVjdG9yXzMiIGQ9Ik0xMS4yODc1IDE5LjY4NzVDMTEuMjg3NSAyMS4zMzA1IDkuOTU1NTUgMjIuNjYyNSA4LjMxMjUgMjIuNjYyNUM2LjY2OTQ1IDIyLjY2MjUgNS4zMzc1IDIxLjMzMDUgNS4zMzc1IDE5LjY4NzVDNS4zMzc1IDE4LjA0NDUgNi42Njk0NSAxNi43MTI1IDguMzEyNSAxNi43MTI1QzkuOTU1NTUgMTYuNzEyNSAxMS4yODc1IDE4LjA0NDUgMTEuMjg3NSAxOS42ODc1WiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlPSJ3aGl0ZSIvPgo8cGF0aCBpZD0iVmVjdG9yXzQiIGQ9Ik0yMi42NjI1IDE5LjY4NzVDMjIuNjYyNSAyMS4zMzA1IDIxLjMzMDUgMjIuNjYyNSAxOS42ODc1IDIyLjY2MjVDMTguMDQ0NSAyMi42NjI1IDE2LjcxMjUgMjEuMzMwNSAxNi43MTI1IDE5LjY4NzVDMTYuNzEyNSAxOC4wNDQ1IDE4LjA0NDUgMTYuNzEyNSAxOS42ODc1IDE2LjcxMjVDMjEuMzMwNSAxNi43MTI1IDIyLjY2MjUgMTguMDQ0NSAyMi42NjI1IDE5LjY4NzVaIiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2U9IndoaXRlIi8+CjxwYXRoIGlkPSJWZWN0b3JfNSIgZD0iTTEwLjUgMTAuNUwxMi43NzUgMTIuNzc1TTE3LjUgMTAuNUwxNS4yMjUgMTIuNzc1TTEwLjUgMTcuNUwxMi43NzUgMTUuMjI1TTE3LjUgMTcuNUwxNS4yMjUgMTUuMjI1IiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2U9IndoaXRlIi8+CjxwYXRoIGlkPSJSZWN0YW5nbGUiIGQ9Ik0xMi45IDEyLjJIMTUuMUMxNS40ODY2IDEyLjIgMTUuOCAxMi41MTM0IDE1LjggMTIuOVYxNS4xQzE1LjggMTUuNDg2NiAxNS40ODY2IDE1LjggMTUuMSAxNS44SDEyLjlDMTIuNTEzNCAxNS44IDEyLjIgMTUuNDg2NiAxMi4yIDE1LjFWMTIuOUMxMi4yIDEyLjUxMzQgMTIuNTEzNCAxMi4yIDEyLjkgMTIuMloiIGZpbGw9IiNDNkU1OEEiIHN0cm9rZS13aWR0aD0iMC42IiBzdHJva2U9IiMxQTJBMTAiLz4KPC9nPgo8L3N2Zz4K" data-dark="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjgiIGhlaWdodD0iMjgiIHZpZXdCb3g9IjAgMCAyOCAyOCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTAgOEMwIDMuNTgxNzIgMy41ODE3MiAwIDggMEgyMEMyNC40MTgzIDAgMjggMy41ODE3MiAyOCA4VjIwQzI4IDI0LjQxODMgMjQuNDE4MyAyOCAyMCAyOEg4QzMuNTgxNzIgMjggMCAyNC40MTgzIDAgMjBWOFoiIGZpbGw9IiNFNkVCRUYiLz4KPHBhdGggZD0iTTguMzEyNSAxMS4yODc1QzkuOTU1NTUgMTEuMjg3NSAxMS4yODc1IDkuOTU1NTUgMTEuMjg3NSA4LjMxMjVDMTEuMjg3NSA2LjY2OTQ1IDkuOTU1NTUgNS4zMzc1IDguMzEyNSA1LjMzNzVDNi42Njk0NSA1LjMzNzUgNS4zMzc1IDYuNjY5NDUgNS4zMzc1IDguMzEyNUM1LjMzNzUgOS45NTU1NSA2LjY2OTQ1IDExLjI4NzUgOC4zMTI1IDExLjI4NzVaIiBzdHJva2U9IiMwQjBGMTIiIHN0cm9rZS13aWR0aD0iMS40ODc1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHBhdGggZD0iTTE5LjY4NzUgMTEuMjg3NUMyMS4zMzA1IDExLjI4NzUgMjIuNjYyNSA5Ljk1NTU1IDIyLjY2MjUgOC4zMTI1QzIyLjY2MjUgNi42Njk0NSAyMS4zMzA1IDUuMzM3NSAxOS42ODc1IDUuMzM3NUMxOC4wNDQ1IDUuMzM3NSAxNi43MTI1IDYuNjY5NDUgMTYuNzEyNSA4LjMxMjVDMTYuNzEyNSA5Ljk1NTU1IDE4LjA0NDUgMTEuMjg3NSAxOS42ODc1IDExLjI4NzVaIiBzdHJva2U9IiMwQjBGMTIiIHN0cm9rZS13aWR0aD0iMS40ODc1IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPHBhdGggZD0iTTguMzEyNSAyMi42NjI1QzkuOTU1NTUgMjIuNjYyNSAxMS4yODc1IDIxLjMzMDUgMTEuMjg3NSAxOS42ODc1QzExLjI4NzUgMTguMDQ0NSA5Ljk1NTU1IDE2LjcxMjUgOC4zMTI1IDE2LjcxMjVDNi42Njk0NSAxNi43MTI1IDUuMzM3NSAxOC4wNDQ1IDUuMzM3NSAxOS42ODc1QzUuMzM3NSAyMS4zMzA1IDYuNjY5NDUgMjIuNjYyNSA4LjMxMjUgMjIuNjYyNVoiIHN0cm9rZT0iIzBCMEYxMiIgc3Ryb2tlLXdpZHRoPSIxLjQ4NzUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNMTkuNjg3NSAyMi42NjI1QzIxLjMzMDUgMjIuNjYyNSAyMi42NjI1IDIxLjMzMDUgMjIuNjYyNSAxOS42ODc1QzIyLjY2MjUgMTguMDQ0NSAyMS4zMzA1IDE2LjcxMjUgMTkuNjg3NSAxNi43MTI1QzE4LjA0NDUgMTYuNzEyNSAxNi43MTI1IDE4LjA0NDUgMTYuNzEyNSAxOS42ODc1QzE2LjcxMjUgMjEuMzMwNSAxOC4wNDQ1IDIyLjY2MjUgMTkuNjg3NSAyMi42NjI1WiIgc3Ryb2tlPSIjMEIwRjEyIiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxwYXRoIGQ9Ik0xMC41IDEwLjVMMTIuNzc1IDEyLjc3NU0xNy41IDEwLjVMMTUuMjI1IDEyLjc3NU0xMC41IDE3LjVMMTIuNzc1IDE1LjIyNU0xNy41IDE3LjVMMTUuMjI1IDE1LjIyNSIgc3Ryb2tlPSIjMEIwRjEyIiBzdHJva2Utd2lkdGg9IjEuNDg3NSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CjxyZWN0IHg9IjEyLjIiIHk9IjEyLjIiIHdpZHRoPSIzLjYiIGhlaWdodD0iMy42IiByeD0iMC43IiBmaWxsPSIjQzZFNThBIiBzdHJva2U9IiMxQTJBMTAiIHN0cm9rZS13aWR0aD0iMC42Ii8+Cjwvc3ZnPgoK">
+<script>
+/* theme:start */
+// Apply the saved page theme before styles, independently of the OS. / 在样式解析前应用保存的页面主题，不依赖系统设置。
+(() => {
+  const key = "drone-agent.desk.theme";
+  const root = document.documentElement;
+  const icon = document.querySelector('link[rel="icon"][data-dark]');
+  const marks = icon ? {light: icon.href, dark: icon.dataset.dark} : null;
+  let theme = "light";
+  try { theme = localStorage.getItem(key) === "dark" ? "dark" : "light"; } catch {}
+  function render() {
+    root.dataset.theme = theme;
+    if (icon) icon.href = marks[theme];
+    document.querySelectorAll("button[data-theme-choice]").forEach(button => {
+      button.setAttribute("aria-pressed", String(button.dataset.themeChoice === theme));
+    });
+  }
+  render();
+  document.addEventListener("DOMContentLoaded", render, {once: true});
+  document.addEventListener("click", event => {
+    const button = event.target.closest?.("button[data-theme-choice]");
+    if (!button) return;
+    theme = button.dataset.themeChoice === "dark" ? "dark" : "light";
+    try { localStorage.setItem(key, theme); } catch {}
+    render();
+  });
+  window.addEventListener("storage", event => {
+    if (event.key !== key && event.key !== null) return;
+    theme = event.newValue === "dark" ? "dark" : "light";
+    render();
+  });
+})();
+/* theme:end */
+</script>
 <title>drone-agent · 云端飞行台</title>
 <style>
 /* Shared design tokens (D068), kept identical to live.html by a test. / 共享设计变量（D068），由测试保证与 live.html 一致。 */
@@ -24,7 +58,7 @@
 --font:"Segoe UI Variable Text","Segoe UI","Microsoft YaHei UI","PingFang SC","Hiragino Sans GB","Noto Sans CJK SC",system-ui,sans-serif;
 --display:Bahnschrift,"Segoe UI Variable Display","DIN Alternate","Microsoft YaHei UI","PingFang SC",system-ui,sans-serif;
 --mono:"Cascadia Mono","Cascadia Code",Consolas,"SFMono-Regular",Menlo,monospace}
-@media (prefers-color-scheme:dark){:root{color-scheme:dark;
+:root[data-theme="dark"]{color-scheme:dark;
 --bg:#0B0F12;--surface:#12171B;--surface-2:#161C21;--surface-3:#1D252B;--line:#232C33;--line-strong:#33404A;
 --ink:#E6EBEF;--ink-2:#B9C3CB;--muted:#8A96A0;--faint:#66727C;
 --primary:#E6EBEF;--primary-hover:#FFFFFF;--primary-ink:#0B0F12;--brand:#E6EBEF;--accent:#C6E58A;--accent-ink:#1A2A10;--focus:#E6EBEF;
@@ -32,7 +66,7 @@
 --bad:#F28B82;--bad-bg:#2D1412;--bad-line:#5A2722;--info:#7DB3F0;--info-bg:#0F1F33;--info-line:#21406A;
 --neutral:#A3AEB7;--neutral-bg:#192026;--neutral-line:#2E3840;--sim:#B39DF2;--sim-bg:#1E1733;--sim-line:#3D2F66;
 --field:#0A1411;--field-2:#10201A;--field-ink:#E3EBE6;--field-muted:#8FA39A;--field-line:#203229;--scrim:#000000;
---shadow:0 1px 2px rgba(18,23,28,.04),0 1px 3px rgba(18,23,28,.04);--shadow-raised:0 2px 6px rgba(18,23,28,.06),0 8px 24px rgba(18,23,28,.06);--shadow-lg:0 16px 48px rgba(18,23,28,.22)}}
+--shadow:0 1px 2px rgba(18,23,28,.04),0 1px 3px rgba(18,23,28,.04);--shadow-raised:0 2px 6px rgba(18,23,28,.06),0 8px 24px rgba(18,23,28,.06);--shadow-lg:0 16px 48px rgba(18,23,28,.22)}
 /* tokens:end */
 /* figma-assets:start */
 /* Original exported bytes; monochrome masks follow theme tokens. / 原始导出字节；单色遮罩绑定主题变量。 */
@@ -59,7 +93,7 @@
 --figma-chevron-dark-image:url("data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgd2lkdGg9IjEyIiBoZWlnaHQ9IjEyIiB2aWV3Qm94PSIwIDAgMTIgMTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGlkPSJjaGV2cm9uIj4KPHBhdGggaWQ9IlZlY3RvciIgZD0iTTMgNC41TDYgNy41TDkgNC41IiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2U9IiM4QTk2QTAiLz4KPC9nPgo8L3N2Zz4K");
 --figma-env-chevron:url("data:image/svg+xml;base64,PHN2ZyBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIiBvdmVyZmxvdz0idmlzaWJsZSIgc3R5bGU9ImRpc3BsYXk6IGJsb2NrOyIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiB2aWV3Qm94PSIwIDAgMTAgMTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGlkPSJjaGV2cm9uIj4KPHBhdGggaWQ9IlZlY3RvciIgZD0iTTIuNSA0TDUgNi41TDcuNSA0IiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBzdHJva2U9IiM1QjQzQjAiLz4KPC9nPgo8L3N2Zz4K");
 }
-@media(prefers-color-scheme:dark){:root{--figma-brand-image:var(--figma-brand-dark-image);--figma-step-wait-image:var(--figma-step-wait-dark-image);--figma-chevron-image:var(--figma-chevron-dark-image)}}
+:root[data-theme="dark"]{--figma-brand-image:var(--figma-brand-dark-image);--figma-step-wait-image:var(--figma-step-wait-dark-image);--figma-chevron-image:var(--figma-chevron-dark-image)}
 /* figma-assets:end */
 *{box-sizing:border-box}[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
@@ -426,12 +460,19 @@ dialog.ask{width:min(460px,calc(100vw - 32px))}.ask-body{padding:20px 20px 8px}.
 @media(min-width:1241px){.kpis{grid-auto-flow:column;grid-template-columns:none;grid-auto-columns:minmax(0,1fr)}}
 @media(max-width:1240px){.app{grid-template-columns:64px minmax(0,1fr)}.rail a{height:40px;padding:0;justify-content:center}.rail a[aria-current=page]::before{left:0}.project select{max-width:200px}.who #headerVersion{display:none}}
 @media(max-width:980px){.split{grid-template-columns:minmax(0,1fr)}.overview-grid{grid-template-columns:minmax(0,1fr)}}
-@media(max-width:760px){.app{display:block}.top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:10px 16px;min-height:88px}.top .top-tools{display:contents}.top .brand{grid-column:1;grid-row:1}.top .brand b{font-size:14px}.top #environment{grid-column:2;grid-row:1;justify-self:end}.top .project{grid-column:1/-1;grid-row:2;width:100%}.project select{width:100%;max-width:none}.top .who,.top .modes,.top .brand small,.top #hostPill{display:none}.env{height:28px}.env-list{left:16px;right:16px;width:auto}
+@media(max-width:760px){.app{display:block}.top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:10px 16px;min-height:88px}.top .top-tools{display:contents}.top .brand{grid-column:1;grid-row:1}.top .brand b{font-size:14px}.top #environment{grid-column:2;grid-row:1;justify-self:end}.top .project{grid-column:1;grid-row:2;width:100%;min-width:0}.project select{width:100%;max-width:none}.top .who,.top .modes,.top .brand small,.top #hostPill{display:none}.env{height:28px}.env-list{left:16px;right:16px;width:auto}
 .after-flight,.stack.outcome:has(>.after-flight),.overview-roles{display:none}.d-head .eyebrow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gallery{grid-template-columns:repeat(2,minmax(0,1fr))}
 .rail{padding:8px 16px;gap:8px;background:var(--bg)}.rail a{height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);gap:6px}.rail a .l{display:inline}.rail a[aria-current=page]{background:var(--primary);color:var(--primary-ink);border-color:var(--primary)}.rail a[aria-current=page]::before{display:none}.rail a[aria-current=page] .nav-icon{background:var(--primary-ink)}.rail .nav-icon{width:18px;height:18px}.rail .count{position:static;margin:0;background:var(--warn-bg);color:var(--warn);border-color:var(--warn-line)}
 main{padding:20px 16px 40px}.page-head{flex-wrap:nowrap;align-items:center}.page-head p{max-height:36px;overflow:hidden}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.kpi[data-kpi=tasks]{display:none}.kpi{padding:16px}.overview-grid{grid-template-columns:minmax(0,1fr)}.overview-grid .card{padding:16px}#ovFleetCard,#ovHints{display:none}.page-head h1{font-size:22px}.attn a{gap:12px}.attn .go{font-weight:500}
 #ws-missions:has(#detail:not([hidden]))>.page-head{display:none}.d-grid{grid-template-columns:minmax(0,1fr)}#detail .title-row{padding-right:0}.d-head .badges .planning-source{display:none}.d-head .eyebrow{letter-spacing:.4px}.d-head blockquote{border:0;padding:0;line-height:20px}.mission-cancel{position:static;width:100%;height:32px;margin-top:16px;background:var(--surface)}.detail-back{margin:0 0 16px}.decision{padding:16px}.hash{padding:12px 16px}.hash-value{gap:4px 12px}.package-list{gap:12px}.package-list li{border:0;padding:0;gap:12px}.package-title{display:grid;gap:2px}.package-inline-params{display:none}.package-disclosure{display:block;margin-top:16px;font-size:11px;color:var(--muted)}.package-disclosure summary{cursor:pointer}.package-extra{margin-top:12px;padding:12px;background:var(--surface-2);border-radius:8px;overflow-wrap:anywhere}.package-extra b{color:var(--ink)}.later{font-size:12px}.facts .kv dd{text-align:right}.evidence-cluster{grid-template-columns:minmax(0,2fr) minmax(90px,1fr);gap:8px}.evidence-cluster .thumbnails{max-height:260px}.stepper li{font-size:11px}.app:has(.top .modes) .rail .mobile-mode{display:flex}.mobile-facts{display:block}.facts-disclosure>summary{display:block;color:var(--ink-2);font-size:12px;cursor:pointer}.facts-disclosure>.stack{margin-top:12px}
 }
+/* theme-controls:start */
+.theme-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:var(--radius-md);background:var(--surface-3);flex:none}
+.theme-switch button{height:26px;padding:0 8px;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--ink-2);font:500 12px/18px var(--font);cursor:pointer;white-space:nowrap}
+.theme-switch button:hover{background:var(--surface-2);color:var(--ink)}
+.theme-switch button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+/* theme-controls:end */
+@media(max-width:760px){.top .theme-switch{grid-column:2;grid-row:2;justify-self:end}}
 </style>
 </head>
 <body>
@@ -444,6 +485,7 @@ main{padding:20px 16px 40px}.page-head{flex-wrap:nowrap;align-items:center}.page
   <div id="environment"></div>
   <a class="pill" id="hostPill" href="#overview" hidden><i></i><span id="hostText">云端飞行</span></a>
   <div class="who" id="who"><i></i><span id="connectionLabel">连接中</span><code id="headerVersion"></code><span class="avatar" id="identityMark" title="连接任务服务中">?</span><span id="whoText">连接任务服务中</span></div>
+  <div class="theme-switch" role="group" aria-label="页面主题"><button type="button" data-theme-choice="light" aria-label="浅色模式" aria-pressed="true">浅色</button><button type="button" data-theme-choice="dark" aria-label="深色模式" aria-pressed="false">深色</button></div>
  </div>
 </header>
 <nav class="rail" id="rail" aria-label="工作区">
