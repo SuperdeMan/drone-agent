@@ -2,7 +2,7 @@
 
 [唯一实施交接](desk-visual-v2-implementation.md) · [决策 D074](decisions.md) · [D068 验收](desk-workspaces-readiness.md) · [运维手册](operations-guide.md)
 
-**已推送并部署，常驻任务台运行 `fb77a9f00efff6fd3e1e8a101abc41c37a8d8436`。** 该版本合并 P5 准出记录，包含经 Figma MCP 对照的视觉 v2 与浏览器图标。部署前已确认 P5 长稳实际结束、最终裁判与仓库记录一致，并获用户明确批准推送与部署；本页末尾记录本次同 SHA 的本机、云端与线上浏览器核验。没有新增服务字段，没有修改 CSP、hri.v0、逐次审批、执行、机载或裁判；`live.js` 保持原字节。P4 的 S2 保持开放；P5 准出仍绑定 `1716843`，不转记为视觉版本的门禁结果。
+**已推送并部署，常驻任务台运行 `009423821dceffc7dc980f25805ea4bcce77f20f`。** 两页页头现有「浅色 / 深色」按钮，默认浅色，保存用户选择；刷新、M1 / M2 切换与同源标签页同步，页面和浏览器图标均按选择切换。该版本包含经 Figma MCP 对照的视觉 v2；本页末尾记录当前版本与首次部署的独立核验。没有新增服务字段，没有修改 CSP、hri.v0、逐次审批、执行、机载或裁判；业务脚本保持不变。P4 的 S2 保持开放；P5 准出仍绑定 `1716843`，不转记为视觉版本的门禁结果。
 
 ## 准确版本
 
@@ -15,7 +15,8 @@
 | MCP 对照实施 | `959fe43`：取得真实设计上下文、截图与原始资产后，修正布局、组件、阴影和响应式；统一入口的旧应用标识检查发现一项失败 |
 | 主体核验版本 | `6132927a25fd01fd63cb5022ca2f43ad1456dac6`：在应用元信息中保留 `FLIGHT DESK`，原检查不改动；主体核验回执均绑定此版本 |
 | 浏览器图标补丁 | `aaf36c78792f344a49b125a802ad81be9fefa9d8`：两页补上随主题切换的浏览器图标；单独回执见浏览器图标补记 |
-| 已部署版本 | `fb77a9f00efff6fd3e1e8a101abc41c37a8d8436`：合并 P5 准出记录；部署 `20261009T033701Z-6dc6ca93`，两个入口版本一致、健康正常 |
+| 视觉 v2 首次部署 | `fb77a9f00efff6fd3e1e8a101abc41c37a8d8436`：合并 P5 准出记录；部署 `20261009T033701Z-6dc6ca93` |
+| 当前部署 | `009423821dceffc7dc980f25805ea4bcce77f20f`：增加手动主题入口；部署 `20261009T043053Z-e87efe4a`，两个入口版本一致、健康正常 |
 
 ## Figma MCP 对照
 
@@ -85,7 +86,7 @@
 
 视觉与图标实现阶段未激活新版本、未在常驻台执行写操作、未 push。计划结束不等于实际结束或已判定；本机核验不能替代部署前的实际结束与最终裁判核对，也不能替代部署后的真实入口验证。下方为完成这些步骤后的发布记录。
 
-## 常驻部署（2026-10-09）
+## 视觉 v2 首次部署（fb77a9f，2026-10-09）
 
 用户明确批准推送与部署后，先合并远端 `32dcb70` 的 P5 准出文档，再将 `fb77a9f` 推送到 `origin/main`。P5 长稳 `soak-20261005T192959Z-8ca0dffb` 的实时状态为 finished、编排 unit 已停止；云端最终裁判与已提交结果的规范化摘要相同，机器回执的八个分项全部 passed，P5 总门禁二十二项全部 passed。见[长稳状态](verification/desk-visual-v2-deploy-2026-10-09/pre-deploy-soak-status.json)、[裁判核对](verification/desk-visual-v2-deploy-2026-10-09/pre-deploy-judge-check.json)及 [P5 门禁](verification/p5-2026-10-06/release.json)。
 
@@ -101,6 +102,17 @@
 | 图标与 M1 手机 | 两页 × 浅 / 深共四项 390×844 补查：图标与源码一致、主题颜色正确、无 CSP 错误、脚本错误或横向溢出；[补充回执](verification/desk-visual-v2-deploy-2026-10-09/favicon-and-fixed-mobile.json) |
 
 当前入口仍由 `uv run python scripts/dev_stack.py desk-cloud --status` 返回，仓库不保存真实 tailnet 名称。此次线上核验没有新发起任务或飞行，浏览器展示的历史任务与 M1 结果不计作该版本新跑的飞行验收。截图留在 `outputs/desk-visual-v2-deploy-2026-10-09/`，不进仓库。
+
+## 手动主题发布（0094238，2026-10-09）
+
+按用户补充要求，两页页头增加「浅色 / 深色」按钮，未保存选择时默认浅色，不再依赖系统主题。选择保存在浏览器中，同源标签页同步；刷新和切换 M1 / M2 保留选择。主题在样式解析前初始化，页面、品牌与 favicon 同步变化；存储不可用时当前页面仍可切换。控件参考 Figma MCP 的 Button `3:36` 与 TopBar `7:159`，沿用现有原始品牌资产。
+
+`0094238` 已推送到 `origin/main`，部署为 `20261009T043053Z-e87efe4a`；[发布回执](verification/desk-theme-2026-10-09/release.json)与控制面摘要绑定。两页使用相同的内联主题初始化与样式，`mission.js` / `live.js` 字节与 `fb77a9f` 相同，没有新增服务字段、依赖或 CSP 权限。线上返回的主题初始化、控件样式、tokens 与 Figma 资产块均和部署提交一致，见[页面字节核对](verification/desk-theme-2026-10-09/served-theme.json)。
+
+- [本机检查](verification/desk-theme-2026-10-09/local-checks.json)：Ruff 通过，工作区及无 `.git` 的 archive 各 1326 passed、1 项原有 Unix socket 平台跳过，客户端 32/32。
+- [云端检查](verification/desk-theme-2026-10-09/deployment.json)：Linux 1327 项通过，0 失败 / 错误 / 跳过；先激活 M1 再激活 M2，四个机场会话 active，其他 30 个容器与其他 Serve 路由保持一致。
+- [线上主题检查](verification/desk-theme-2026-10-09/theme-checks.json)：28 项通过，覆盖默认浅色、点击切换、保留未提交文本、系统变化不覆盖选择、刷新保留、M1 / M2 与标签页同步、存储拒绝时的当前页切换，以及两页 × 浅 / 深 × 1440 / 980 / 760 / 390 / 320 宽；无控件重叠、横向溢出、CSP 或脚本错误。
+- [常规线上巡检](verification/desk-theme-2026-10-09/browser.json)：50 项检查通过；浏览器脚本改为点击主题按钮选择浅 / 深，确保覆盖实际页面主题。HTTP / 身份边界探针通过，未新发起常驻任务或飞行。
 
 ## 历史清理状态
 
