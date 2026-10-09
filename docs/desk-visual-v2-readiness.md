@@ -2,7 +2,7 @@
 
 [唯一实施交接](desk-visual-v2-implementation.md) · [决策 D074](decisions.md) · [D068 验收](desk-workspaces-readiness.md) · [运维手册](operations-guide.md)
 
-**本机实现与 Figma MCP 对照已完成，常驻任务台未部署。** 主体核验版本为 `6132927a25fd01fd63cb5022ca2f43ad1456dac6`；当前代码 `aaf36c78792f344a49b125a802ad81be9fefa9d8` 另补浏览器图标，独立核验见下方补记。主体版本已通过工作区及无 `.git` 副本的全量测试、客户端测试与本机浏览器检查。没有新增服务字段，没有修改 CSP、hri.v0、逐次审批、执行、机载或裁判；`live.js` 保持原字节。P4 / P5 门禁状态不变。
+**已推送并部署，常驻任务台运行 `fb77a9f00efff6fd3e1e8a101abc41c37a8d8436`。** 该版本合并 P5 准出记录，包含经 Figma MCP 对照的视觉 v2 与浏览器图标。部署前已确认 P5 长稳实际结束、最终裁判与仓库记录一致，并获用户明确批准推送与部署；本页末尾记录本次同 SHA 的本机、云端与线上浏览器核验。没有新增服务字段，没有修改 CSP、hri.v0、逐次审批、执行、机载或裁判；`live.js` 保持原字节。P4 的 S2 保持开放；P5 准出仍绑定 `1716843`，不转记为视觉版本的门禁结果。
 
 ## 准确版本
 
@@ -14,7 +14,8 @@
 | 初版本机实现 | `b621c93`：按交接文字规范完成；当时本会话没有 Figma MCP，不能将该批回执称为 Figma 对照 |
 | MCP 对照实施 | `959fe43`：取得真实设计上下文、截图与原始资产后，修正布局、组件、阴影和响应式；统一入口的旧应用标识检查发现一项失败 |
 | 主体核验版本 | `6132927a25fd01fd63cb5022ca2f43ad1456dac6`：在应用元信息中保留 `FLIGHT DESK`，原检查不改动；主体核验回执均绑定此版本 |
-| 当前代码 | `aaf36c78792f344a49b125a802ad81be9fefa9d8`：两页补上随主题切换的浏览器图标；单独回执见浏览器图标补记 |
+| 浏览器图标补丁 | `aaf36c78792f344a49b125a802ad81be9fefa9d8`：两页补上随主题切换的浏览器图标；单独回执见浏览器图标补记 |
+| 已部署版本 | `fb77a9f00efff6fd3e1e8a101abc41c37a8d8436`：合并 P5 准出记录；部署 `20261009T033701Z-6dc6ca93`，两个入口版本一致、健康正常 |
 
 ## Figma MCP 对照
 
@@ -73,16 +74,33 @@
 
 `aaf36c7` 的[独立核验回执](verification/desk-favicon-2026-10-09.json)：工作区及无 `.git` 的 archive 副本均为 **1326 passed、1 项原有 Unix socket 平台跳过、0 failed / errors**，两处 Ruff 通过，客户端 **32/32**。工作区 / 副本中的两页字节与该提交相同。首次 archive 检查随会话中断停在 75%，没有完成回执；本次已完整重跑，不把中断进度计作通过。
 
-后续会话中断关闭了本机预览；2026-10-09 继续工作时尝试在新的 S0 用例目录重启，自动审批审核返回 `blocked by policy`，未给出更具体的原因，命令未启动。因此当前预览未恢复，不把原核验地址写作正在运行的服务；未重试绕过该拦截。
+后续会话中断关闭了本机预览；2026-10-09 继续工作时尝试在新的 S0 用例目录重启，自动审批审核返回 `blocked by policy`，未给出更具体的原因，命令未启动。该本机预览未恢复，也未重试绕过拦截；之后用户明确批准云端部署，当前体验入口改为下方已激活的常驻任务台。
 
-## 常驻部署门槛
+## 部署等待记录（历史）
 
 [主体核验时保存的只读回执](verification/desk-visual-v2-figma-2026-10-09/pre-deploy-soak-status.json)为 **running**；图标补丁未刷新云端状态，不能据此声称长稳目前仍在运行或已经结束：
 
 - 长稳 `soak-20261005T192959Z-8ca0dffb`；候选 `17168434ca825f9ec07917c1426d81f7815c73df`。
 - 部署 `20261005T190214Z-5b857985`；计划结束为北京时间 **2026-10-09 03:30:01**。
 
-本轮未激活新版本、未在常驻台执行写操作、未 push。计划结束不等于实际结束或已判定；部署前必须再次确认实际结束与最终裁判记录，不确定时询问用户。之后仍需从部署 SHA 执行 `desk_probe.py` 字节核对，并在真实 Tailnet 入口重跑 `desk_browser.py`。本机核验不能替代这些步骤，也不证明 P4 / P5 准出。
+视觉与图标实现阶段未激活新版本、未在常驻台执行写操作、未 push。计划结束不等于实际结束或已判定；本机核验不能替代部署前的实际结束与最终裁判核对，也不能替代部署后的真实入口验证。下方为完成这些步骤后的发布记录。
+
+## 常驻部署（2026-10-09）
+
+用户明确批准推送与部署后，先合并远端 `32dcb70` 的 P5 准出文档，再将 `fb77a9f` 推送到 `origin/main`。P5 长稳 `soak-20261005T192959Z-8ca0dffb` 的实时状态为 finished、编排 unit 已停止；云端最终裁判与已提交结果的规范化摘要相同，机器回执的八个分项全部 passed，P5 总门禁二十二项全部 passed。见[长稳状态](verification/desk-visual-v2-deploy-2026-10-09/pre-deploy-soak-status.json)、[裁判核对](verification/desk-visual-v2-deploy-2026-10-09/pre-deploy-judge-check.json)及 [P5 门禁](verification/p5-2026-10-06/release.json)。
+
+[发布回执](verification/desk-visual-v2-deploy-2026-10-09/release.json)绑定 `fb77a9f`、部署 `20261009T033701Z-6dc6ca93` 与控制面摘要 `fdd528289e8d5071b41027909cb0c9ea235ddf83bd625b6ff73007a3a67e0f62`。相对 P5 候选，运行代码只改 `mission.html`、`mission.js`、`live.html`。
+
+| 核对 | 同一部署版本的结果 |
+|---|---|
+| 本机与 archive | Ruff 通过；工作区和无 `.git` 副本各 1326 passed、1 项原有 Unix socket 平台跳过；客户端 32/32；[本机回执](verification/desk-visual-v2-deploy-2026-10-09/local-checks.json) |
+| Linux 云端 | 1327 项，0 失败 / 错误 / 跳过；未解锁冒烟 passed；[部署回执](verification/desk-visual-v2-deploy-2026-10-09/deployment.json) |
+| 激活 | 先 [M1 控制台](verification/desk-visual-v2-deploy-2026-10-09/console-activation.json)，再 [M2 运营台](verification/desk-visual-v2-deploy-2026-10-09/desk-activation.json)；四份迁移副本演练与目录切换通过，四个机场会话 active；同机其他 30 个容器与其他 Serve 路由均未改变 |
+| 线上 HTTP 与身份边界 | 两页和健康接口 200；console / service / fixed 均为 `fb77a9f`；`mission.js` 与 `/fixed/live.js` 和部署 SHA 的 archive 按字节相同；无效 A2A token 返回 401，跨源 WebSocket 返回 403，伪造身份未采用；[HTTP](verification/desk-visual-v2-deploy-2026-10-09/http.json)、[身份探针](verification/desk-visual-v2-deploy-2026-10-09/spoof.json) |
+| 线上浏览器 | 浅 / 深 × 1440×900 / 390×844，七工作区共 48 个视图均渲染；另有两项 M1 桌面检查，横向溢出与脚本错误均为 0；[浏览器回执](verification/desk-visual-v2-deploy-2026-10-09/browser.json) |
+| 图标与 M1 手机 | 两页 × 浅 / 深共四项 390×844 补查：图标与源码一致、主题颜色正确、无 CSP 错误、脚本错误或横向溢出；[补充回执](verification/desk-visual-v2-deploy-2026-10-09/favicon-and-fixed-mobile.json) |
+
+当前入口仍由 `uv run python scripts/dev_stack.py desk-cloud --status` 返回，仓库不保存真实 tailnet 名称。此次线上核验没有新发起任务或飞行，浏览器展示的历史任务与 M1 结果不计作该版本新跑的飞行验收。截图留在 `outputs/desk-visual-v2-deploy-2026-10-09/`，不进仓库。
 
 ## 历史清理状态
 

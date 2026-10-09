@@ -1,0 +1,117 @@
+{
+  "format": "drone.desk-visual-v2-deployment/v1",
+  "source_sha": "fb77a9f00efff6fd3e1e8a101abc41c37a8d8436",
+  "recorded_at": "2026-10-09T04:04:10.274223+00:00",
+  "status": "passed",
+  "deployment_id": "20261009T033701Z-6dc6ca93",
+  "control_sha256": "fdd528289e8d5071b41027909cb0c9ea235ddf83bd625b6ff73007a3a67e0f62",
+  "push": {
+    "remote": "origin",
+    "branch": "main",
+    "source_sha": "fb77a9f00efff6fd3e1e8a101abc41c37a8d8436",
+    "user_authorized": true
+  },
+  "p5_clearance": {
+    "source_sha": "17168434ca825f9ec07917c1426d81f7815c73df",
+    "soak_id": "soak-20261005T192959Z-8ca0dffb",
+    "finished": true,
+    "judge_matches_cloud": true,
+    "soak_machine_criteria_passed": 8,
+    "release_criteria_passed": 22
+  },
+  "changed_runtime_files_from_p5": [
+    "src/drone_agent/console/live.html",
+    "src/drone_agent/console/mission.html",
+    "src/drone_agent/console/mission.js"
+  ],
+  "linux_checks": {
+    "tests": 1327,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "local_checks": {
+    "source_sha": "fb77a9f00efff6fd3e1e8a101abc41c37a8d8436",
+    "started_at": "2026-10-09T03:38:58.009408+00:00",
+    "finished_at": "2026-10-09T03:49:14.446196+00:00",
+    "ruff_exit_code": 0,
+    "node": {
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    "archive_isolated_from_git": true,
+    "pytest": {
+      "worktree": {
+        "tests": 1327,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1,
+        "passed": 1326,
+        "time_s": 602.203,
+        "junit_sha256": "1f4cc77540ee078449819fbf86a245e0e69adecb62785478bebd651985c64185",
+        "skip": "test_api_socket_roundtrip: Unix sockets; exercised in the Linux checks image"
+      },
+      "archive": {
+        "tests": 1327,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1,
+        "passed": 1326,
+        "time_s": 597.689,
+        "junit_sha256": "8fed4fa71ceca8a9818cbb9eaf79801f53515ecf55f96abf2162d24c25000ccd",
+        "skip": "test_api_socket_roundtrip: Unix sockets; exercised in the Linux checks image"
+      }
+    }
+  },
+  "activation": {
+    "health": "ready",
+    "dock_sessions": {
+      "dock_s1": "active",
+      "dock_fa": "active",
+      "dock_fb": "active",
+      "dock_vd": "active"
+    },
+    "catalog_switch": "passed",
+    "other_containers_unchanged": {
+      "count": 30,
+      "sha256": "e5d437af5be83f0944a706cff511be07364b40f9ac0a5e30ae0bad3e7d87a3ab"
+    },
+    "other_serve_routes_unchanged": true
+  },
+  "http": {
+    "mission_script_matches": true,
+    "fixed_script_matches": true,
+    "component_sha": "fb77a9f00efff6fd3e1e8a101abc41c37a8d8436",
+    "a2a_unauthorized_status": 401,
+    "cross_origin_websocket_status": 403,
+    "forged_identity_used": false
+  },
+  "browser": {
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "viewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "workspace_views": 48,
+    "fixed_desktop_checks": 2,
+    "supplemental_mobile_and_favicon_checks": 4,
+    "document_overflow_px": 0,
+    "console_errors": 0,
+    "source_sha": "fb77a9f00efff6fd3e1e8a101abc41c37a8d8436"
+  },
+  "service_fields_added": false,
+  "gate_scope": "UI deployment verification; P5 release remains bound to 1716843.",
+  "final_health": {
+    "status": "ready",
+    "source_sha": "fb77a9f00efff6fd3e1e8a101abc41c37a8d8436",
+    "revision_matches": true,
+    "tailnet_only_route": true,
+    "checked_at": "2026-10-09T04:07:53.479507+00:00"
+  },
+  "new_resident_desk_flight_started": false
+}
