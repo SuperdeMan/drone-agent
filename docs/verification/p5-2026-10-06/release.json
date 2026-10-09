@@ -1,0 +1,729 @@
+{
+  "schema_version": "0.1.0",
+  "milestone": "P5",
+  "source_sha": "17168434ca825f9ec07917c1426d81f7815c73df",
+  "records_sha": "e320c21f76a7bc3db6c0dff9126a04d2dd6d3cdc",
+  "status": "passed",
+  "criteria": {
+    "scope": {
+      "status": "passed",
+      "m1_regression": "not_required_onboard_runtime_wire_and_policies_unchanged",
+      "base_sha": "8f41112c299f01f868113acc6be5311fdb96d14a",
+      "changed": 247,
+      "outside_p5_scope": [],
+      "kernel_changed": [],
+      "onboard_changed": [],
+      "new_platform_file": true
+    },
+    "checks": {
+      "status": "passed",
+      "deployment_id": "20261005T190214Z-5b857985",
+      "tests": {
+        "tests": 1327,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "wire_checks": [
+        true,
+        true
+      ]
+    },
+    "adversarial": {
+      "status": "passed",
+      "earlier": {
+        "status": "passed",
+        "missions": {
+          "status": "passed",
+          "deterministic": {
+            "cases": 42,
+            "passed": 42,
+            "authorized_packages": 0,
+            "per_category": {
+              "wrong_coordinates": 7,
+              "capability": 6,
+              "parameters": 8,
+              "order": 7,
+              "prompt_injection": 7,
+              "scope_expansion": 7
+            }
+          },
+          "nl_scripted": {
+            "cases": 32,
+            "passed": 32,
+            "authorized_packages": 0,
+            "per_category": {
+              "wrong_coordinates": 5,
+              "capability": 5,
+              "parameters": 5,
+              "order": 5,
+              "prompt_injection": 6,
+              "scope_expansion": 6
+            }
+          },
+          "nl_replay": {
+            "cases": 0,
+            "passed": 0,
+            "authorized_packages": 0,
+            "per_category": {
+              "wrong_coordinates": 0,
+              "capability": 0,
+              "parameters": 0,
+              "order": 0,
+              "prompt_injection": 0,
+              "scope_expansion": 0
+            },
+            "unrecorded": 32
+          }
+        },
+        "workflow_drafts": {
+          "cases": 12,
+          "passed": 12,
+          "escapes": 0,
+          "activatable_drafts": 0,
+          "activation_path": "none: drafts are returned and audited only"
+        }
+      },
+      "vision": {
+        "cases": 31,
+        "passed": 31,
+        "escapes": 0,
+        "per_category": {
+          "extra_fields": 5,
+          "instruction_in_answer": 6,
+          "out_of_range": 5,
+          "tool_call_shape": 5,
+          "type_confusion": 5,
+          "wrapped": 5
+        },
+        "profile_sha256": "e39741b2921380c374065f2bac6968b906e06664f82185bbaefc42fc2fe845fc"
+      }
+    },
+    "s0": {
+      "status": "passed",
+      "cases": 24,
+      "expected": 24,
+      "counts": {
+        "duplicate_finding": 0,
+        "duplicate_order": 0,
+        "unreviewed_order": 0,
+        "non_human_decision": 0,
+        "false_closure": 0,
+        "unverified_analysis": 0,
+        "verdict_mutation": 0,
+        "post_cancel_effect": 0,
+        "lost_job": 0,
+        "default_verdict": 0,
+        "project_escape": 0,
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "false_success": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0,
+        "duplicate_execution": 0,
+        "post_cancel_execution": 0,
+        "low_level_command": 0,
+        "unknown_as_success": 0,
+        "journal_defect": 0
+      },
+      "problems": [],
+      "summary_sha256": "bff60edf61f5ca8118214b3a8b8730c224c7e6355400ffedfd2b38da50e98779"
+    },
+    "s3": {
+      "status": "passed",
+      "cases": 36,
+      "expected": 36,
+      "counts": {
+        "duplicate_finding": 0,
+        "duplicate_order": 0,
+        "unreviewed_order": 0,
+        "non_human_decision": 0,
+        "false_closure": 0,
+        "unverified_analysis": 0,
+        "verdict_mutation": 0,
+        "post_cancel_effect": 0,
+        "lost_job": 0,
+        "default_verdict": 0,
+        "project_escape": 0,
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "false_success": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0,
+        "duplicate_execution": 0,
+        "post_cancel_execution": 0,
+        "low_level_command": 0,
+        "unknown_as_success": 0,
+        "journal_defect": 0
+      },
+      "problems": [],
+      "summary_sha256": "bff60edf61f5ca8118214b3a8b8730c224c7e6355400ffedfd2b38da50e98779"
+    },
+    "authz": {
+      "status": "passed",
+      "escapes": 0,
+      "api_rows": 539,
+      "frame_rows": 248,
+      "methods": 49,
+      "forbidden_refused": 517,
+      "audit_denials": 120,
+      "identities": [
+        "a2a",
+        "admin",
+        "anonymous",
+        "approver",
+        "dock_backend",
+        "event_backend",
+        "non_member",
+        "operator",
+        "other_project",
+        "reviewer",
+        "viewer"
+      ]
+    },
+    "p1_regression": {
+      "status": "passed",
+      "cases": 42,
+      "expected": 42,
+      "passed": 42,
+      "counts": {
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0,
+        "project_escape": 0,
+        "false_success": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "3df4b1125d6bbdbd287e5aed3fd5b86dc7c2c37cf7b44cb7e1cc08cf524906a4"
+    },
+    "p2_regression": {
+      "status": "passed",
+      "cases": 45,
+      "expected": 45,
+      "passed": 45,
+      "counts": {
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "post_cancel_successor": 0,
+        "false_success": 0,
+        "false_order": 0,
+        "project_escape": 0,
+        "lost_run": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "e64a8a25b094d9885e987dc9a9328e81f496267837e7741f029287acab10ab7e"
+    },
+    "p3_regression": {
+      "status": "passed",
+      "cases": 45,
+      "expected": 45,
+      "passed": 45,
+      "counts": {
+        "double_ownership": 0,
+        "duplicate_execution": 0,
+        "lost_task": 0,
+        "conflicting_reservation": 0,
+        "false_success": 0,
+        "stale_epoch_effect": 0,
+        "decision_mismatch": 0,
+        "project_escape": 0,
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "1bb6c76ffea89d3fdbff6b231f1a046454947ae98dcfe3e03944cf7ddcb27a24"
+    },
+    "p4_regression": {
+      "status": "passed",
+      "cases": 45,
+      "expected": 45,
+      "passed": 45,
+      "counts": {
+        "duplicate_finding": 0,
+        "duplicate_order": 0,
+        "unreviewed_order": 0,
+        "non_human_decision": 0,
+        "false_closure": 0,
+        "unverified_analysis": 0,
+        "verdict_mutation": 0,
+        "post_cancel_effect": 0,
+        "lost_job": 0,
+        "default_verdict": 0,
+        "project_escape": 0,
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "false_success": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "d3c575c7391223463c9621bb05cd9d35946bd38b37ea29276f5336ff456479b3"
+    },
+    "s1": {
+      "status": "passed",
+      "cases": 4,
+      "expected": 4,
+      "missing": [],
+      "problems": [],
+      "flights": 9,
+      "signature_fractions": {
+        "p5_s1_road-7": [
+          {
+            "job_id": "job-d237072000404401b0cd",
+            "purpose": "inspection",
+            "verdict": "suspected",
+            "fraction": 0.140365
+          },
+          {
+            "job_id": "job-b4e85965b77b4459b331",
+            "purpose": "reinspection",
+            "verdict": "normal",
+            "fraction": 0.257917
+          }
+        ],
+        "p5_s1_road-19": [
+          {
+            "job_id": "job-6e660a766df747cb88a6",
+            "purpose": "inspection",
+            "verdict": "suspected",
+            "fraction": 0.154844
+          },
+          {
+            "job_id": "job-4c9833a6ef3a45929867",
+            "purpose": "reinspection",
+            "verdict": "normal",
+            "fraction": 0.259167
+          }
+        ],
+        "p5_s1_road-41": [
+          {
+            "job_id": "job-6133884d2a7840ea88f5",
+            "purpose": "inspection",
+            "verdict": "suspected",
+            "fraction": 0.149167
+          },
+          {
+            "job_id": "job-031bce2f84da43a68ec9",
+            "purpose": "reinspection",
+            "verdict": "normal",
+            "fraction": 0.258073
+          }
+        ],
+        "p5_s1_road_not_cleared-7": [
+          {
+            "job_id": "job-aa7d93a531db41a0b1da",
+            "purpose": "inspection",
+            "verdict": "suspected",
+            "fraction": 0.136823
+          },
+          {
+            "job_id": "job-83a1034c57224f8bbcf0",
+            "purpose": "reinspection",
+            "verdict": "suspected",
+            "fraction": 0.144115
+          },
+          {
+            "job_id": "job-0f7a0ec3f11940bf9ee0",
+            "purpose": "reinspection",
+            "verdict": "normal",
+            "fraction": 0.259167
+          }
+        ]
+      }
+    },
+    "m2_regression": {
+      "status": "passed",
+      "cases": 18,
+      "expected": 18,
+      "missing": [],
+      "problems": [],
+      "planner": [
+        "scripted"
+      ],
+      "false_success_reports": 0
+    },
+    "p1_s1_regression": {
+      "phase": "P1",
+      "status": "passed",
+      "cases": 5,
+      "expected": 5,
+      "missing": [],
+      "problems": [],
+      "counts": {
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0,
+        "project_escape": 0,
+        "false_success": 0
+      },
+      "flights": 4
+    },
+    "p2_s1_regression": {
+      "phase": "P2",
+      "status": "passed",
+      "cases": 5,
+      "expected": 5,
+      "missing": [],
+      "problems": [],
+      "counts": {
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "post_cancel_successor": 0,
+        "false_success": 0,
+        "false_order": 0,
+        "project_escape": 0,
+        "lost_run": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "flights": 8
+    },
+    "p3_s1_regression": {
+      "phase": "P3",
+      "status": "passed",
+      "s1": {
+        "status": "passed",
+        "cases": 5,
+        "expected": 5,
+        "missing": [],
+        "problems": [],
+        "counts": {
+          "double_ownership": 0,
+          "duplicate_execution": 0,
+          "lost_task": 0,
+          "conflicting_reservation": 0,
+          "false_success": 0,
+          "stale_epoch_effect": 0,
+          "decision_mismatch": 0,
+          "project_escape": 0,
+          "wrong_dispatch": 0,
+          "duplicate_dispatch": 0,
+          "wrong_release": 0
+        },
+        "flights": 9,
+        "aircraft": [
+          "uav_01",
+          "uav_02"
+        ]
+      },
+      "capacity": {
+        "status": "passed",
+        "problems": [],
+        "budget": {
+          "sitl_cpus": "2.5",
+          "sitl_mem": "3g"
+        },
+        "cases": 5,
+        "real_time_factor_min": 0.972,
+        "supervision_p99_max_s": 0.10191893484443426
+      }
+    },
+    "p4_s1_regression": {
+      "phase": "P4",
+      "status": "passed",
+      "cases": 5,
+      "expected": 5,
+      "missing": [],
+      "problems": [],
+      "counts": {
+        "duplicate_finding": 0,
+        "duplicate_order": 0,
+        "unreviewed_order": 0,
+        "non_human_decision": 0,
+        "false_closure": 0,
+        "unverified_analysis": 0,
+        "verdict_mutation": 0,
+        "post_cancel_effect": 0,
+        "lost_job": 0,
+        "default_verdict": 0,
+        "project_escape": 0,
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "false_success": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "flights": 12,
+      "closed_orders": 5
+    },
+    "desk": {
+      "status": "passed",
+      "problems": [],
+      "catalogs": {
+        "operations": "p5_desk_v1",
+        "workflows": "p5_desk_v1",
+        "scheduling": "p5_desk_v1",
+        "business": "p5_desk_v1"
+      },
+      "switch_drill": "passed",
+      "offered": [
+        "audit",
+        "business",
+        "fleet",
+        "missions",
+        "overview",
+        "tasks",
+        "workflows"
+      ]
+    },
+    "main_scenario": {
+      "status": "passed",
+      "problems": [],
+      "approved": 2,
+      "order": "closed",
+      "audit_actions": [
+        "activity.departed",
+        "delivery.claimed",
+        "finding.opened",
+        "finding.reviewed",
+        "job.completed",
+        "mission.approved",
+        "mission.submitted",
+        "order.created",
+        "order.repair_reported",
+        "order.round_passed",
+        "order.round_reviewed",
+        "reservation.occupied",
+        "reservation.released",
+        "reservation.reserved",
+        "reservation.uncertain",
+        "run.started",
+        "run.state"
+      ]
+    },
+    "soak": {
+      "status": "passed",
+      "problems": [],
+      "soak_id": "soak-20261005T192959Z-8ca0dffb",
+      "t0": "2026-10-05T19:30:01.860888+00:00",
+      "end": "2026-10-08T19:30:09.575306+00:00",
+      "counts": {
+        "unknown_as_success": 0,
+        "post_cancel_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "permission_escape": 0,
+        "false_closure": 0,
+        "duplicate_finding": 0,
+        "duplicate_order": 0,
+        "vendor_duplicate_execution": 0,
+        "ack_as_completion": 0,
+        "unexplained_miss": 0,
+        "duplicate_start": 0,
+        "lost_run": 0,
+        "lost_occurrence": 0
+      },
+      "criteria": {
+        "duration": "passed",
+        "schedules": "passed",
+        "occurrences": "passed",
+        "runs": "passed",
+        "safety": "passed",
+        "recovery": "passed",
+        "resources": "passed",
+        "layers": "passed"
+      },
+      "layers": {
+        "S0": {
+          "missions": 366,
+          "completed": 356,
+          "cancelled": 10,
+          "runs": 366,
+          "run_completed": 352,
+          "run_cancelled": 14
+        },
+        "S1": {
+          "missions": 72,
+          "declined": 24,
+          "completed": 36,
+          "planning_failed": 12,
+          "runs": 36,
+          "run_completed": 36
+        },
+        "S3": {
+          "missions": 171,
+          "completed": 171,
+          "runs": 171,
+          "run_completed": 171
+        }
+      }
+    },
+    "backup": {
+      "status": "passed",
+      "problems": [],
+      "tables": 47,
+      "media_files": 580
+    },
+    "p4_dependency": {
+      "status": "passed",
+      "p4_sha": "8f41112c299f01f868113acc6be5311fdb96d14a",
+      "open": [
+        "s2"
+      ],
+      "s2_status": "failed",
+      "other_criteria": {
+        "scope": "passed",
+        "checks": "passed",
+        "adversarial": "passed",
+        "s0_matrix": "passed",
+        "p1_regression": "passed",
+        "p2_regression": "passed",
+        "p3_regression": "passed",
+        "s1": "passed",
+        "p2_s1_regression": "passed",
+        "p3_s1_regression": "passed",
+        "m2_regression": "passed",
+        "desk": "passed",
+        "desk_session": "passed",
+        "historical": "passed"
+      }
+    },
+    "historical": {
+      "status": "passed",
+      "problems": [],
+      "earlier": {
+        "m3": {
+          "sha256": "b7c4a6fe95a9e5ee63b043b9a84843f54f1693a5e5ab00f9e43f26917e0d12eb",
+          "status": "not_passed",
+          "source_sha": "75382dca07509726f4274078ce11e7e8cee064e6",
+          "counts_as_candidate_validation": false
+        },
+        "p0": {
+          "sha256": "e361b3734e9ed5ba1774187382af3dbff96e1189a0e677eaa708ed86face4320",
+          "status": "passed",
+          "source_sha": "de597d0eb7430260285e0965dc07f7f904ab5e70",
+          "counts_as_candidate_validation": false
+        },
+        "p1": {
+          "sha256": "b9a091a415a606590ba34bcfe68c54b9a2a37c52c56d98adb1cb8e257bda67fb",
+          "status": "passed",
+          "source_sha": "b49701b6386ee7ea88dc05221879786f717d1947",
+          "counts_as_candidate_validation": false
+        },
+        "p2": {
+          "sha256": "959b4730dc4e61a7ea3288f35c6912243afd2628f813dec4a071f638720cf4d6",
+          "status": "passed",
+          "source_sha": "3bdbd503325d292efa298f28b6292dd2bf341cc0",
+          "counts_as_candidate_validation": false
+        },
+        "p3": {
+          "sha256": "47ad1a98c39be69841da72325e3bc18e6c2402aab977b592b2324efde300317b",
+          "status": "passed",
+          "source_sha": "73fcf23f1f5149324747358b7c214e9fc34c6205",
+          "counts_as_candidate_validation": false
+        }
+      },
+      "p4": {
+        "sha256": "95f35eecdeefa0f2361173bd5fd0f52c5d2ac84dd75c23729cb855cf5f084413",
+        "status": "not_passed",
+        "counts_as_candidate_validation": false
+      }
+    }
+  },
+  "capabilities": [
+    {
+      "capability": "platform_v0_1",
+      "milestone": "P5",
+      "implemented": true,
+      "software_validation": "passed",
+      "source_sha": "17168434ca825f9ec07917c1426d81f7815c73df",
+      "layers": {
+        "S0": {
+          "logical_aircraft": 2,
+          "template": "road obstacle candidate review"
+        },
+        "S1": {
+          "px4_sitl_aircraft": 1,
+          "obstacle": "Gazebo model",
+          "analyzer": "deterministic"
+        },
+        "S2": {
+          "probes": "frozen change-v3 on VisA calibration images",
+          "metrics": "none claimed"
+        },
+        "S3": {
+          "vendor": "protocol simulator of a profile not verified against any firmware"
+        }
+      },
+      "soak": "72 h on real wall-clock time with injected faults",
+      "real_devices": false,
+      "work_orders": "simulated in the ledger",
+      "field_accuracy": "not claimed"
+    },
+    {
+      "milestone": "P4",
+      "status": "not_passed",
+      "open": [
+        "s2"
+      ],
+      "source_sha": "8f41112c299f01f868113acc6be5311fdb96d14a",
+      "counts_as_candidate_validation": false
+    },
+    {
+      "milestone": "M3",
+      "status": "not_passed",
+      "reason": "JIL missing; not a P5 dependency"
+    },
+    {
+      "milestone": "H1",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "H2",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "H3",
+      "status": "missing",
+      "hardware_validation": "missing"
+    },
+    {
+      "milestone": "X1",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "X2",
+      "status": "planned",
+      "software_validation": "missing"
+    },
+    {
+      "milestone": "X3",
+      "status": "planned",
+      "software_validation": "missing"
+    }
+  ],
+  "inputs": {
+    "deployment.json": "8c85230e2203bffdf2bbbdc38e763ccc13aefaae5d2f2582098d88cebe5ecf00",
+    "desk/desk-activation.json": "6f2561feace49fcdf1c65b3ce7e92f5b63eb3ffa941ba233997dd7950b5b7258",
+    "desk/http.json": "6420024fd75ef02663535de26abd99148288361581944f7fea1ff8c3c1ca14aa",
+    "desk/spoof.json": "a956625fc4ef18cc6852849e7b4cb3abc304da39c06d3fda0a3d07cd738e4b62",
+    "desk/browser.json": "cc088f9ac015a81ad1f73b58979609102171689d5e2e6002b8d9059bb88c6fa0",
+    "desk/main-scenario.json": "8f024c56e2bcc985c03f4350beef726507dd0a6bb103a70abcf9e01bbb222be5",
+    "soak/result.json": "2a98dd6314a8f8e314d3ce4b7ef3eb9c673a8eca646dbd3402bf8c3a4e9dc455",
+    "desk/backup.json": "efa06616332fb0540b5e0e589fda318d362f8a211580679fd59ca44911dfacbf",
+    "desk/restore-drill.json": "fa1ab566e1a18ea53b5bf5fbdb1560690f2b77943d02e7a72c3095b5909fb097",
+    "s1/p5-20261005T193350Z-a2e51685.json": "ce7c9fd3de67c7f29464b1e838d869afe086d27803b185f2e1b6e41878d9dc6d",
+    "s1/p5-20261005T194943Z-7a3c0619.json": "6d60477c989e845ad7a1ba8e21ff3d645f1ed1a5119313c8e13f812c88b707f7",
+    "e2e/m2-20261005T212743Z-45bf4dd1.json": "e861564a3ea9ddd13b22ac5fd7796aae9bb51ade88adb09d63fa6f961911c1ea",
+    "e2e/m2-20261005T214622Z-67fa6d0c.json": "37478abcaeef46b5dff116b5594b4e4bf0bb2919a567ddb0839e955ea4824cf2",
+    "p1-s1/p1-20261005T205104Z-06af6c66.json": "5e4fd8322875fe25eb22da0c1f718df6713126226f8f2f62e31616130477a0bd",
+    "p1-s1/p1-20261005T205944Z-e2a40f1e.json": "01aadec6cfceaa80edcbbca1936fab5e49ed00ace9ebef79c9495da233261c59",
+    "p2-s1/p2-20261005T203016Z-ff79dec2.json": "51924431e6875984adaa21595ad29db165cab918dd38e8ad17f7fafbcfa5a557",
+    "p2-s1/p2-20261005T204423Z-d7da9df2.json": "adf70c9fb91cce8c50cd5f3215d9c9d7aada4b48eb00b74400b19f8cf340b297",
+    "p3-s1/p3-20261005T210601Z-2898f897.json": "c2e4c87119c1bd7e4788bb7ae3dd9691fdc1e509a6b8a965628c8acad2b94a5f",
+    "p3-s1/p3-20261005T211753Z-bd7faa13.json": "6314fb647a3b9dac19c004b5717767562310b4152eb5222e8b5266fa1ceae1c1",
+    "p4-s1/p4-20261005T195913Z-8bbe7e84.json": "2c7d19412ecc23633251d0def016b8d1f2e84196b28a82a73d66a5cfce3d3eb4",
+    "p4-s1/p4-20261005T201456Z-2f750d7f.json": "74c4041a719d5a37ace5ecc0cc7458722e8fd53a0e80bb846d49b36b772e8205",
+    "desk/flights/m-011daf17b4e9-v1.json": "0582876b05260d6f4439dc050a01050d96efca303c485c5e2a8687109b7652ad",
+    "desk/flights/m-843f1bf50385-v1.json": "fa74712dcf9ef2ef6bbb192e9d7b2b6b765e325b055cbc2a589509bea3b59949"
+  }
+}

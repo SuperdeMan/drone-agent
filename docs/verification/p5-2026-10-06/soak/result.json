@@ -1,0 +1,912 @@
+{
+  "format": "drone.soak-judge/v1",
+  "soak_id": "soak-20261005T192959Z-8ca0dffb",
+  "source_sha": "17168434ca825f9ec07917c1426d81f7815c73df",
+  "deployment_id": "20261005T190214Z-5b857985",
+  "plan_sha256": "7555ccac54d48df0b3ff279b790364f43b6fe843f6ffcf5c1ce36386dd0f526c",
+  "t0": "2026-10-05T19:30:01.860888+00:00",
+  "end": "2026-10-08T19:30:09.575306+00:00",
+  "passed": true,
+  "counts": {
+    "unknown_as_success": 0,
+    "post_cancel_dispatch": 0,
+    "duplicate_dispatch": 0,
+    "permission_escape": 0,
+    "false_closure": 0,
+    "duplicate_finding": 0,
+    "duplicate_order": 0,
+    "vendor_duplicate_execution": 0,
+    "ack_as_completion": 0,
+    "unexplained_miss": 0,
+    "duplicate_start": 0,
+    "lost_run": 0,
+    "lost_occurrence": 0
+  },
+  "criteria": {
+    "duration": {
+      "status": "passed",
+      "hours": 72.002,
+      "full_length": true,
+      "service_revisions": [
+        "17168434ca825f9ec07917c1426d81f7815c73df"
+      ],
+      "shrunk": [],
+      "missions_before_t0": 668,
+      "samples": 4222
+    },
+    "schedules": {
+      "status": "passed",
+      "schedules": {
+        "fleet_s0/fleet_watch/rounds_fa": {
+          "expected": 143,
+          "started": 143,
+          "missed": 0,
+          "missing": [],
+          "unexplained_missed": [],
+          "duplicates": 0,
+          "layer": "S0"
+        },
+        "fleet_s0/fleet_watch/rounds_fb": {
+          "expected": 143,
+          "started": 143,
+          "missed": 0,
+          "missing": [],
+          "unexplained_missed": [],
+          "duplicates": 0,
+          "layer": "S0"
+        },
+        "vendor_s3/vendor_watch/rounds": {
+          "expected": 143,
+          "started": 143,
+          "missed": 0,
+          "missing": [],
+          "unexplained_missed": [],
+          "duplicates": 0,
+          "layer": "S3"
+        }
+      }
+    },
+    "occurrences": {
+      "status": "passed",
+      "by_kind": {
+        "authz": {
+          "done": 144
+        },
+        "burst": {
+          "done": 3
+        },
+        "fleet_uplink": {
+          "done": 12
+        },
+        "model_throttle": {
+          "done": 6
+        },
+        "model_unreachable": {
+          "done": 6
+        },
+        "planning": {
+          "done": 36
+        },
+        "residents_restart": {
+          "done": 3
+        },
+        "s0_damage": {
+          "closed": 24
+        },
+        "s1_damage": {
+          "closed": 3
+        },
+        "s1_road": {
+          "closed": 3
+        },
+        "s1_uplink": {
+          "done": 3
+        },
+        "s1_watch": {
+          "done": 24
+        },
+        "s2_probe": {
+          "done": 12
+        },
+        "s3_damage": {
+          "closed": 6
+        },
+        "service_kill": {
+          "done": 3
+        },
+        "service_restart": {
+          "done": 9
+        },
+        "vendor_link": {
+          "done": 12
+        },
+        "vendor_protocol": {
+          "done": 18
+        }
+      },
+      "lost": [],
+      "harness_missed": []
+    },
+    "runs": {
+      "status": "passed",
+      "runs": 573,
+      "states": {
+        "completed": 559,
+        "cancelled": 14
+      },
+      "lost": [],
+      "open_at_end": []
+    },
+    "safety": {
+      "status": "passed",
+      "nonzero": [],
+      "problems": [],
+      "authz_probes": 144
+    },
+    "recovery": {
+      "status": "passed",
+      "slow_or_failed": [],
+      "planning": {
+        "inside_failed": 12,
+        "inside_succeeded": 0,
+        "outside_failed": 0,
+        "outside_succeeded": 24
+      },
+      "faults": {
+        "vendor_protocol-000": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_link-000": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": 2.0,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_protocol-001": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "fleet_uplink-000": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 6.0,
+          "restored": true,
+          "restarted": null
+        },
+        "model_unreachable-000": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "service_restart-000": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": 4.0,
+          "docks_active_s": 7.6,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": null
+        },
+        "vendor_protocol-002": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_link-001": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": 2.0,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "model_throttle-000": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "fleet_uplink-001": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 6.1,
+          "restored": true,
+          "restarted": null
+        },
+        "service_kill-000": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": 6.0,
+          "docks_active_s": 8.6,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": null
+        },
+        "vendor_protocol-003": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "service_restart-001": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": 6.0,
+          "docks_active_s": 8.4,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": null
+        },
+        "vendor_link-002": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": 2.0,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_protocol-004": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "fleet_uplink-002": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 4.0,
+          "restored": true,
+          "restarted": null
+        },
+        "model_unreachable-001": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "s1_uplink-000": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 2.0,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_protocol-005": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_link-003": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": 2.0,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "model_throttle-001": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "residents_restart-000": {
+          "status": "done",
+          "injected": null,
+          "service_ready_s": null,
+          "docks_active_s": 2.0,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": [
+            {
+              "service": "desk-dock",
+              "at": "2026-10-06T17:30:02.983127+00:00",
+              "ok": true,
+              "waited_s": 0.7
+            },
+            {
+              "service": "desk-fleet",
+              "at": "2026-10-06T17:30:08.739195+00:00",
+              "ok": true,
+              "waited_s": 6.2
+            }
+          ]
+        },
+        "service_restart-002": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": 6.0,
+          "docks_active_s": 8.0,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": null
+        },
+        "fleet_uplink-003": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 4.1,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_protocol-006": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_link-004": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": 2.0,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_protocol-007": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "fleet_uplink-004": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 6.1,
+          "restored": true,
+          "restarted": null
+        },
+        "model_unreachable-002": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "service_restart-003": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": 4.0,
+          "docks_active_s": 7.2,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": null
+        },
+        "vendor_protocol-008": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_link-005": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": 2.1,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "model_throttle-002": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "fleet_uplink-005": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 6.1,
+          "restored": true,
+          "restarted": null
+        },
+        "service_kill-001": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": 6.0,
+          "docks_active_s": 8.7,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": null
+        },
+        "vendor_protocol-009": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "service_restart-004": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": 4.0,
+          "docks_active_s": 7.4,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": null
+        },
+        "vendor_link-006": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": 2.0,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_protocol-010": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "fleet_uplink-006": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 6.1,
+          "restored": true,
+          "restarted": null
+        },
+        "model_unreachable-003": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "s1_uplink-001": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 4.0,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_protocol-011": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_link-007": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": 2.1,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "model_throttle-003": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "residents_restart-001": {
+          "status": "done",
+          "injected": null,
+          "service_ready_s": null,
+          "docks_active_s": 7.6,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": [
+            {
+              "service": "desk-dock",
+              "at": "2026-10-07T17:30:04.061346+00:00",
+              "ok": true,
+              "waited_s": 1.9
+            },
+            {
+              "service": "desk-fleet",
+              "at": "2026-10-07T17:30:04.720036+00:00",
+              "ok": true,
+              "waited_s": 1.9
+            }
+          ]
+        },
+        "service_restart-005": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": 4.0,
+          "docks_active_s": 9.6,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": null
+        },
+        "fleet_uplink-007": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 6.9,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_protocol-012": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_link-008": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": 2.0,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_protocol-013": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "fleet_uplink-008": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 4.1,
+          "restored": true,
+          "restarted": null
+        },
+        "model_unreachable-004": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "service_restart-006": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": 6.1,
+          "docks_active_s": 8.1,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": null
+        },
+        "vendor_protocol-014": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_link-009": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": 2.0,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "model_throttle-004": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "fleet_uplink-009": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 5.0,
+          "restored": true,
+          "restarted": null
+        },
+        "service_kill-002": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": 6.0,
+          "docks_active_s": 10.6,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": null
+        },
+        "vendor_protocol-015": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "service_restart-007": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": 7.1,
+          "docks_active_s": 10.1,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": null
+        },
+        "vendor_link-010": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": 2.1,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_protocol-016": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "fleet_uplink-010": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 6.1,
+          "restored": true,
+          "restarted": null
+        },
+        "model_unreachable-005": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "s1_uplink-002": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 2.0,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_protocol-017": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "vendor_link-011": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": 2.1,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "model_throttle-005": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": null,
+          "restored": true,
+          "restarted": null
+        },
+        "residents_restart-002": {
+          "status": "done",
+          "injected": null,
+          "service_ready_s": null,
+          "docks_active_s": 2.1,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": [
+            {
+              "service": "desk-dock",
+              "at": "2026-10-08T17:30:03.404650+00:00",
+              "ok": true,
+              "waited_s": 1.2
+            },
+            {
+              "service": "desk-fleet",
+              "at": "2026-10-08T17:30:09.946542+00:00",
+              "ok": true,
+              "waited_s": 7.3
+            }
+          ]
+        },
+        "service_restart-008": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": 6.0,
+          "docks_active_s": 9.9,
+          "robots_fresh_s": null,
+          "restored": null,
+          "restarted": null
+        },
+        "fleet_uplink-011": {
+          "status": "done",
+          "injected": true,
+          "service_ready_s": null,
+          "docks_active_s": null,
+          "robots_fresh_s": 7.1,
+          "restored": true,
+          "restarted": null
+        }
+      }
+    },
+    "resources": {
+      "status": "passed",
+      "unexpected_restarts": {},
+      "oom": [],
+      "memory_over_95pct": [],
+      "bursts": {
+        "burst-000": {
+          "runs": 15,
+          "expected": 15,
+          "drain_h": 0.039
+        },
+        "burst-001": {
+          "runs": 15,
+          "expected": 15,
+          "drain_h": 0.037
+        },
+        "burst-002": {
+          "runs": 15,
+          "expected": 15,
+          "drain_h": 0.038
+        }
+      },
+      "late_bursts": [],
+      "growth": {
+        "ledger_bytes_per_h": 4841110,
+        "media_bytes_per_h": 437594,
+        "disk_free_start": 41913421824,
+        "disk_free_end": 35331870720
+      }
+    },
+    "layers": {
+      "status": "passed",
+      "by_layer": {
+        "S0": {
+          "missions": 366,
+          "completed": 356,
+          "cancelled": 10,
+          "runs": 366,
+          "run_completed": 352,
+          "run_cancelled": 14
+        },
+        "S1": {
+          "missions": 72,
+          "declined": 24,
+          "completed": 36,
+          "planning_failed": 12,
+          "runs": 36,
+          "run_completed": 36
+        },
+        "S3": {
+          "missions": 171,
+          "completed": 171,
+          "runs": 171,
+          "run_completed": 171
+        }
+      },
+      "s1_flights_completed_and_judged": 36,
+      "s1_judge_failures": [],
+      "s2_probes": {
+        "planned": 12,
+        "succeeded": 12
+      },
+      "s3_vendor_tasks": 171,
+      "harness_interventions": 861
+    }
+  },
+  "judged_at": "2026-10-09T00:00:57.031700+00:00"
+}
