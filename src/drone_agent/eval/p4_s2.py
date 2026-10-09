@@ -67,8 +67,8 @@ class LabelDouble(ScriptedProvider):
     按清单标签、以当前图为键作答的脚本替身；只用于检查管线。
     """
 
-    def __init__(self):
-        super().__init__([], model="MiniMax-M3")
+    def __init__(self, model: str = "MiniMax-M3"):
+        super().__init__([], model=model)
         self.answers: dict[str, dict] = {}
 
     def register(self, uri: str, sample: dict) -> None:
@@ -120,7 +120,7 @@ async def run(args) -> dict:
     output = args.output
     (output / "recordings").mkdir(parents=True, exist_ok=True)
     provider_id, model, endpoint, live = "scripted", profile.model, "", None
-    double = LabelDouble() if args.mode == "scripted" else None
+    double = LabelDouble(profile.model) if args.mode == "scripted" else None
     if args.mode == "live":
         from drone_agent.providers import build_provider
 

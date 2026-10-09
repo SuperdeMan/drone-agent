@@ -310,9 +310,11 @@ async def analyze_model(*, profile: ModelProfile, threshold: float, provider, pr
             continue
         except ReplayMismatch:
             raise
-        except Exception:  # an HTTP or transport failure spends the attempt / HTTP 或传输失败，本次尝试已用掉
+        except Exception as error:  # an HTTP or transport failure spends the attempt / HTTP 或传输失败，本次尝试已用掉
             latency += (time.monotonic() - started) * 1000
-            reason = "model.error"
+            # The client's own read timeout (httpx) fires before the profile's deadline; it is still a timeout.
+            # 客户端自身的读取超时（httpx）先于画像的截止时间触发；它仍是超时。
+            reason = "model.timeout" if "Timeout" in type(error).__name__ else "model.error"
             continue
         latency += (time.monotonic() - started) * 1000
         tokens_in, tokens_out = tokens_in + int(usage[0] or 0), tokens_out + int(usage[1] or 0)

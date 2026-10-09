@@ -101,6 +101,23 @@ def test_model_timeout_is_refused(monkeypatch):
     assert result.reasons == ("model.timeout",) and result.verdict == "refused"
 
 
+def test_a_client_read_timeout_is_refused_as_a_timeout_not_an_error():
+    # httpx raises its own ReadTimeout before the profile's deadline; it is still `model.timeout` (D076 review).
+    # httpx 在画像截止时间之前抛出自己的 ReadTimeout；它仍是 `model.timeout`（D076 审查）。
+    class ReadTimeout(Exception):
+        pass
+
+    class Slow(ScriptedVisionProvider):
+        async def complete(self, *args, **kwargs):
+            raise ReadTimeout("read timed out")
+
+    result = run(Slow())
+    assert (result.verdict, result.reasons, result.model_calls) == ("refused", ("model.timeout",), 2)
+    double = ScriptedVisionProvider()
+    double.mode = "error"
+    assert run(double).reasons == ("model.error",)
+
+
 def test_recorded_answers_replay_to_the_same_verdict():
     recorder = RecordingProvider(ScriptedVisionProvider())
     live = run(recorder)
