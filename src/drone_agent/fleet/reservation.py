@@ -3,18 +3,27 @@
 Every site map keeps its own local frame; the scheduling catalog places each map's origin in one shared frame. That
 frame is cut into square cells, and a cell is an exclusive resource `air.<frame>.<i>.<j>` held through the same P1
 hold table and unique index as a robot's motion or a dock's pad. A mission version's footprint is every cell that
-meets the box around all the places its package may fly through (home, landing site, asset and every waypoint of the
-routes its nodes name), grown by a buffer. A robot that took its mission and then went silent may be anywhere its
-speed allows since the last evidence of where it was, so its footprint grows with the silence, bounded by the approved
-volume; new holds on those cells are refused until the P1 reconciliation releases the old ones.
+meets the box around all the places its package may fly through, grown by a buffer. A robot that took its mission and
+then went silent may be anywhere its speed allows since the last evidence of where it was, so its footprint grows with
+the silence, bounded by the approved volume; new holds on those cells are refused until the P1 reconciliation releases
+the old ones.
+
+The places come from each node's skill (D075): the waypoints of the routes it flies, the landing site, home and asset
+it names, every landing site reserved for the robot (a recovery may divert there), and for the external-mode skills
+the whole external-mode task scope, because the local planner may move anywhere inside it to avoid obstacles. A skill
+without a resolver here, or a name the map does not register, makes the footprint unresolvable: such a flight is
+refused a reservation instead of being treated as using no airspace.
 
 P3 空域预约：共享坐标、网格单元、航迹覆盖与失联包络（D059）。
 
 每个站点地图保留各自的局部坐标；调度目录把每个地图的原点放进同一共享坐标系。该坐标系切成方形单元，单元是独占资源
 `air.<frame>.<i>.<j>`，与机器人的运动资源、机场的机位经同一张 P1 持有表与唯一索引持有。任务版本的航迹覆盖是其任务包
-可能经过的全部位置（home、降落点、资产及各节点引用航线的全部航点）的外包矩形按缓冲外扩后相交的全部单元。领取任务后失联
-的机器人，可能位于自最后一次位置证据以来其速度所及的任何地方，因此其航迹覆盖随失联时长增长，并以批准体积为界；在 P1 对账
-释放旧持有之前，这些单元上的新持有一律被拒绝。
+可能经过的全部位置的外包矩形按缓冲外扩后相交的全部单元。领取任务后失联的机器人，可能位于自最后一次位置证据以来其速度
+所及的任何地方，因此其航迹覆盖随失联时长增长，并以批准体积为界；在 P1 对账释放旧持有之前，这些单元上的新持有一律被拒绝。
+
+位置来自每个节点的技能（D075）：所飞航线的航点、所引用的降落点、home 与资产，为该机器人预留的每个降落点（恢复可能改降到
+那里），以及外部模式技能的整个外部模式任务范围——局部规划器为避障可以在其中任意移动。这里没有解析器的技能，或地图未登记的
+名称，使航迹覆盖无法解析：这样的飞行被拒绝预约，而不是被当作不占用空域。
 """
 
 from __future__ import annotations
@@ -73,40 +82,109 @@ def _xy(point) -> tuple[float, float]:
     return float(point[0]), float(point[1])
 
 
-def package_points(data: dict, package: dict) -> list[tuple[float, float]]:
-    """Every map place a mission version may fly through: home, landing sites, assets and route waypoints its nodes name.
+class UnresolvedFootprint(ValueError):
+    """A node whose motion range the service cannot bound; its flight is refused a reservation (D075).
 
-    任务版本可能经过的全部地图位置：home、降落点、资产及其节点引用航线的航点。
+    服务无法界定其运动范围的节点；其飞行被拒绝预约（D075）。
     """
-    points = [_xy(data["home"]["position"])]
-    routes, sites, assets = data.get("routes", {}), data.get("landing_sites", {}), data.get("assets", {})
+
+
+def local_scope_points(data: dict) -> list[tuple[float, float]]:
+    """Corners of the external-mode task scope in the plane: the registered bounds that `Registry.task_scope` clips to
+    the flight band. The local planner may move anywhere inside it (M3, D039), so all of it is reserved.
+
+    外部模式任务范围在平面上的两个对角：即 `Registry.task_scope` 按飞行高度带裁剪的登记边界。局部规划器可以在其中任意
+    移动（M3，D039），因此整个范围都被预约。
+    """
+    bounds = data["bounds"]
+    return [(float(bounds["x"][0]), float(bounds["y"][0])), (float(bounds["x"][1]), float(bounds["y"][1]))]
+
+
+def _named(table: dict, name, kind: str, key: str = "position") -> tuple[float, float]:
+    entry = table.get(name) if isinstance(name, str) else None
+    if entry is None:
+        raise UnresolvedFootprint(f"{kind} {name!r} is not registered")
+    return _xy(entry[key] if key else entry)
+
+
+def _route(data: dict, route_id) -> list[tuple[float, float]]:
+    route = data.get("routes", {}).get(route_id) if isinstance(route_id, str) else None
+    if not route:
+        raise UnresolvedFootprint(f"route {route_id!r} is not registered")
+    return [_xy(p) for p in route]
+
+
+def _asset(data: dict, params: dict) -> tuple[float, float]:
+    return _named(data.get("assets", {}), params.get("asset_id"), "asset")
+
+
+def _goal(data: dict, goal_id) -> tuple[float, float]:
+    return _named(data.get("local_goals", {}), goal_id, "local goal", key="")
+
+
+# The places each registered skill may fly through, from its own parameters (D075). A contract test pins this table to
+# the skill manifests, so a new motion skill cannot be added without saying where it may go.
+# 每个已登记技能按自身参数可能经过的位置（D075）。契约测试把本表钉在技能清单上，新增运动技能必须说明它可能去哪里。
+SKILL_PLACES = {
+    "skill.flight.takeoff": lambda data, p: [],  # vertical above the pad; home and the pad are always included
+    "skill.flight.fly_route": lambda data, p: _route(data, p.get("route_id")),
+    "skill.flight.return_home": lambda data, p: _route(data, p.get("return_route_id")),
+    "skill.flight.land": lambda data, p: [_named(data.get("landing_sites", {}), p.get("landing_site_id"),
+                                                 "landing site")],
+    "skill.flight.capture_image": lambda data, p: [_asset(data, p)],
+    "skill.inspect.asset": lambda data, p: [*_route(data, p.get("approach_route_id")), _asset(data, p)],
+    "skill.flight.goto_local": lambda data, p: [_goal(data, p.get("goal_id")), *local_scope_points(data)],
+    "skill.inspect.asset_local": lambda data, p: [_goal(data, p.get("approach_goal_id")), _asset(data, p),
+                                                  *local_scope_points(data)],
+}
+
+
+def recovery_points(data: dict, robot_id: str | None) -> list[tuple[float, float]]:
+    """Home and every landing site reserved for the robot: a recovery may return or divert to any of them.
+
+    home 与为该机器人预留的每个降落点：恢复可能返航或改降到其中任何一处。
+    """
+    sites = data.get("landing_sites", {})
+    return [_xy(data["home"]["position"])] + [_xy(site["position"]) for _, site in sorted(sites.items())
+                                              if robot_id is not None and site.get("reserved_for") == robot_id]
+
+
+def package_points(data: dict, package: dict, robot_id: str | None = None) -> list[tuple[float, float]]:
+    """Every map place a mission version may fly through; raises UnresolvedFootprint when a node cannot be bounded.
+
+    任务版本可能经过的全部地图位置；任一节点无法界定时抛出 UnresolvedFootprint。
+    """
+    points = recovery_points(data, robot_id)
     for node in package.get("nodes", []):
-        params = node.get("params") or {}
-        for key in ("route_id", "approach_route_id", "return_route_id"):
-            points += [_xy(p) for p in routes.get(params.get(key)) or []]
-        if params.get("landing_site_id") in sites:
-            points.append(_xy(sites[params["landing_site_id"]]["position"]))
-        if params.get("asset_id") in assets:
-            points.append(_xy(assets[params["asset_id"]]["position"]))
+        places = SKILL_PLACES.get(node.get("skill_id"))
+        if places is None:
+            raise UnresolvedFootprint(f"skill {node.get('skill_id')!r} has no airspace footprint")
+        points += places(data, node.get("params") or {})
     return points
 
 
-def task_points(data: dict, asset_id: str) -> list[tuple[float, float]] | None:
-    """The same places for a planned single-asset inspection, before any package exists; None if unregistered.
+def task_points(data: dict, asset_id: str, robot_id: str | None = None) -> list[tuple[float, float]] | None:
+    """The same places for a planned single-asset inspection, before any package exists; None if unregistered. An
+    asset with a local observation goal may be compiled to the external-mode inspection, so its scope is included.
 
-    尚无任务包时，计划中的单资产巡检所经过的同样位置；资产未登记时为 None。
+    尚无任务包时，计划中的单资产巡检所经过的同样位置；资产未登记时为 None。带局部观测目标的资产可能被编译为外部模式
+    巡检，因此包含其任务范围。
     """
     asset = data.get("assets", {}).get(asset_id)
     if asset is None:
         return None
     defaults = data.get("mission_defaults", {})
     routes = data.get("routes", {})
-    points = [_xy(data["home"]["position"]), _xy(asset["position"])]
+    points = [*recovery_points(data, robot_id), _xy(asset["position"])]
     for route in (asset.get("observation_route"), asset.get("return_route") or defaults.get("return_route_id")):
         points += [_xy(p) for p in routes.get(route) or []]
     site = data.get("landing_sites", {}).get(defaults.get("landing_site_id"))
     if site is not None:
         points.append(_xy(site["position"]))
+    if asset.get("observation_goal") is not None:
+        # A registered goal lies inside the scope (`Registry.local_goal`), so the scope bounds it.
+        # 登记的目标位于范围之内（`Registry.local_goal`），因此范围已涵盖它。
+        points += local_scope_points(data)
     return points
 
 
@@ -181,14 +259,18 @@ class Airspace:
         return self.ops.registry(robot_id).data
 
     def mission_footprint(self, robot_id: str, package: dict) -> Footprint:
+        """The package's footprint; raises UnresolvedFootprint when any node cannot be bounded (D075).
+
+        任务包的航迹覆盖；任一节点无法界定时抛出 UnresolvedFootprint（D075）。
+        """
         data = self._data(robot_id)
         volume_id = (package.get("spatial_scope") or {}).get("approved_volume_id")
-        return footprint(self.grid, self.origin(robot_id), package_points(data, package),
+        return footprint(self.grid, self.origin(robot_id), package_points(data, package, robot_id),
                          data.get("volumes", {}).get(volume_id))
 
     def task_footprint(self, robot_id: str, asset_id: str, volume_id: str) -> Footprint | None:
         data = self._data(robot_id)
-        points = task_points(data, asset_id)
+        points = task_points(data, asset_id, robot_id)
         if points is None:
             return None
         return footprint(self.grid, self.origin(robot_id), points, data.get("volumes", {}).get(volume_id))

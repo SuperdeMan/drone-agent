@@ -153,6 +153,7 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "dispatch.blocked": IssueLayer.DISPATCH,
     "dispatch.unknown": IssueLayer.DISPATCH,
     "dispatch.reservation_conflict": IssueLayer.DISPATCH,
+    "dispatch.footprint_unresolved": IssueLayer.DISPATCH,
     "dispatch.approval_expired": IssueLayer.DISPATCH,
     "dispatch.cancelled": IssueLayer.DISPATCH,
     "dispatch.backend_mismatch": IssueLayer.DISPATCH,

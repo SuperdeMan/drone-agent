@@ -58,7 +58,7 @@ from drone_agent.contracts import (
 )
 from drone_agent.fleet.catalog import Catalog
 from drone_agent.fleet.coordinator import PassthroughCoordinator
-from drone_agent.fleet.dispatch import Dispatch, Operations
+from drone_agent.fleet.dispatch import UNRESOLVED, Dispatch, Operations
 from drone_agent.fleet.events import event_to_row, outcomes_from_rows, verify_chain
 from drone_agent.fleet.ledger import BusinessLedger
 from drone_agent.fleet.provenance import (
@@ -121,6 +121,16 @@ class ServiceError(ValueError):
     def __init__(self, code: str, message: str = ""):
         self.issue = issue(code, message)
         super().__init__(f"{code}: {message}" if message else code)
+
+
+def hold_problem(conflicts: dict[str, str]) -> tuple[str, str]:
+    """The issue for a refused hold: an unbounded airspace footprint (D075) or the activities holding the resources.
+
+    被拒持有对应的问题：无法界定的空域覆盖（D075），或持有这些资源的活动。
+    """
+    if UNRESOLVED in conflicts.values():
+        return "dispatch.footprint_unresolved", "the package's airspace footprint cannot be bounded"
+    return "dispatch.reservation_conflict", "held by " + ", ".join(sorted(set(conflicts.values())))
 
 
 def package_diff(before: dict | None, after: dict) -> dict:
@@ -441,12 +451,10 @@ class MissionService:
             # A soft hold while the human decides; approval refreshes or retakes it (D055). / 人工决定期间的软预约。
             _, conflicts = self.dispatch.reserve(mission_id, 1)
             if conflicts and strict_hold:
-                raise ServiceError("dispatch.reservation_conflict",
-                                   "held by " + ", ".join(sorted(set(conflicts.values()))))
+                raise ServiceError(*hold_problem(conflicts))
             if conflicts:
-                self.ledger.record_issue(issue("dispatch.reservation_conflict",
-                                               "held by " + ", ".join(sorted(set(conflicts.values()))),
-                                               severity=Severity.WARNING, mission_id=mission_id),
+                self.ledger.record_issue(issue(*hold_problem(conflicts), severity=Severity.WARNING,
+                                               mission_id=mission_id),
                                          mission_id=mission_id)
             self.dispatch.preview(mission_id, 1)
 
@@ -589,8 +597,7 @@ class MissionService:
         if bound:
             reservation, conflicts = self.dispatch.reserve(mission_id, version)
             if reservation is None:
-                raise ServiceError("dispatch.reservation_conflict",
-                                   "held by " + ", ".join(sorted(set(conflicts.values()))))
+                raise ServiceError(*hold_problem(conflicts))
         now = self.clock()
         approval = ApprovalRecord(
             approver=approver, approved_at=now, mission_id=mission_id, mission_version=version,

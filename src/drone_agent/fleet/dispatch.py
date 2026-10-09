@@ -29,6 +29,7 @@ from drone_agent.fleet.catalog import Catalog
 from drone_agent.fleet.ledger import BusinessLedger
 from drone_agent.fleet.operations_store import OperationsStore, migrate, soft_expiry
 from drone_agent.fleet.provenance import project
+from drone_agent.fleet.reservation import UnresolvedFootprint
 from drone_agent.fleet.resources import (
     DispatchEligibility,
     DispatchNeeds,
@@ -50,6 +51,8 @@ from drone_agent.fleet.resources import (
 from drone_agent.mission.registry import Registry
 
 OCCUPYING = (ReservationState.OCCUPIED.value, ReservationState.UNCERTAIN.value)
+# The holder named when a package's airspace footprint cannot be bounded (D075). / 任务包空域覆盖无法界定时给出的持有者。
+UNRESOLVED = "airspace.footprint_unresolved"
 
 
 @dataclass
@@ -203,7 +206,12 @@ class Dispatch:
         with self.store.transaction():
             fp = self.airspace.footprint_of(activity)
             if fp is None:
-                fp = self.airspace.mission_footprint(binding["robot_id"], record["package"])
+                try:
+                    fp = self.airspace.mission_footprint(binding["robot_id"], record["package"])
+                except UnresolvedFootprint:
+                    # Never a flight without airspace: no footprint, no hold, nothing to claim (D075).
+                    # 绝不存在不占空域的飞行：无航迹覆盖即无持有，也无从领取（D075）。
+                    return None, {"airspace": UNRESOLVED}
                 self.airspace.scheduling.record_footprint(activity, mission_id=mission_id, version=version,
                                                           robot_id=binding["robot_id"], body=fp.body())
             return self.store.reserve(**common, extra=fp.cells, blocked=self.airspace.envelopes(exclude={activity}))

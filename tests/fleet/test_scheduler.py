@@ -147,6 +147,38 @@ def test_a_robot_that_can_never_take_the_task_is_excluded_once_instead_of_retrie
     run(scenario())
 
 
+def test_a_package_whose_airspace_cannot_be_bounded_is_never_held_and_the_robot_is_excluded(world):
+    # D075: a footprint the service cannot bound is refused, never reserved as if it used no airspace; it cannot
+    # change on a retry, so the scheduler moves on to the next robot.
+    # D075：服务无法界定的航迹覆盖被拒绝，绝不当作不占空域而预约；重试也不会改变，所以调度器转向下一台机器人。
+    from drone_agent.fleet.reservation import UnresolvedFootprint
+
+    w = world()
+    airspace = w.service.dispatch.airspace
+    bounded = airspace.mission_footprint
+
+    def unbounded_on_uav_a(robot_id, package):
+        if robot_id == "uav_a":
+            raise UnresolvedFootprint("skill 'skill.flight.orbit' has no airspace footprint")
+        return bounded(robot_id, package)
+
+    airspace.mission_footprint = unbounded_on_uav_a
+
+    async def scenario():
+        await settled(w)
+        task = await w.task("asset_mid", key="unbounded")
+        await w.drive_tasks(lambda: w.task_state(task) == "assigned", "assigned", approve=False, timeout_s=15)
+        assert w.task_robot(task) == "uav_b"
+        refused = [e for e in w.tasks.events(f"task:{task}", 50) if e["kind"] == "assignment.refused"]
+        assert len(refused) == 1 and refused[0]["body"]["reason"] == "dispatch.footprint_unresolved"
+        assert [e["robot_id"] for e in w.task_row(task)["excluded"]] == ["uav_a"]
+        held = {r for reservation in w.service.ops.store.reservations(states=("reserved", "occupied", "uncertain"))
+                for r in reservation.resources}
+        assert not any(r.startswith("uav_a.") for r in held)
+
+    run(scenario())
+
+
 def test_an_assignment_nobody_approves_before_its_hold_expires_is_withdrawn_and_frees_the_robot(world):
     from datetime import timedelta
 

@@ -8,6 +8,11 @@ fitted upper bound and the prior. Travel time assumes the registered worst-case 
 flight controller's return speed, plus a climb allowance and a descent at the landing speed. Every missing
 input makes the answer "not reachable": unknown never selects the optimistic edge.
 
+The descent ends on the local ground plane z = 0, so every landing site of a map with an energy model must lie
+on that plane; loading a map that breaks this refuses to build the model (D075) instead of under- or
+over-estimating the descent to a rooftop or a lower site. Different elevations need a model that separates
+climb, horizontal and descent legs and is reviewed as such.
+
 Only recovery policy v2 uses this model; missions under v1 keep the M1 context unchanged.
 
 恢复策略 v2 的能源可达性（D042）：飞行器还能否到达 home 或某个降落点？
@@ -16,6 +21,9 @@ Only recovery policy v2 uses this model; missions under v1 keep the M1 context u
 （换电、估计器重置或注入输入），不是消耗：它重置电量水平，但保留跳变前学到的速率。连续样本不足时使用登记的
 先验速率；保守速率取拟合上界与先验中的较大者。航行时间按登记的最坏逆风对抗飞控返航速度计算，另加爬升裕量
 与按降落速度的下降。任何输入缺失都给出「不可达」：未知绝不选乐观边。
+
+下降终止于局部地面 z = 0，因此带能源模型的地图中每个降落点都必须位于该平面；加载违反这一点的地图时拒绝构建模型
+（D075），而不是低估或高估下降到楼顶或更低站点的时间。不同高程需要把爬升、水平与下降分段计算的模型，并按新模型评审。
 
 只有恢复策略 v2 使用本模型；v1 下的任务仍用 M1 的上下文，保持不变。
 """
@@ -45,7 +53,16 @@ class EnergySettings:
 
     @classmethod
     def from_registry(cls, data: dict) -> EnergySettings:
+        """The registered parameters; refuses a map whose landing sites leave the ground plane (D075).
+
+        登记的参数；降落点不在地面平面的地图被拒绝（D075）。
+        """
         model = data["energy_model"]
+        off_plane = sorted(name for name, site in data.get("landing_sites", {}).items()
+                           if float(site["position"][2]) != 0.0)
+        if off_plane:
+            raise ValueError("the energy model descends to the ground plane z = 0; landing sites off it: "
+                             + ", ".join(off_plane))
         return cls(
             prior_drain_rate_per_s=float(model["prior_drain_rate_per_s"]),
             return_speed_mps=float(model["return_speed_mps"]),
@@ -113,9 +130,10 @@ class EnergyModel:
         if ground_speed <= 0 or s.descent_speed_mps <= 0:
             return None
         horizontal = math.hypot(target[0] - position[0], target[1] - position[1])
-        altitude = max(position[2] - (target[2] if not landing else 0.0), 0.0)
         climb = s.climb_allowance_m / max(s.descent_speed_mps, 0.1)
-        descent = (altitude + s.climb_allowance_m) / s.descent_speed_mps if landing else 0.0
+        # A landing descends from the current height to the ground plane z = 0, where every landing site of the map
+        # lies (checked when the settings load). / 降落从当前高度下降到地面 z = 0，地图的每个降落点都在其上（加载时核对）。
+        descent = (max(position[2], 0.0) + s.climb_allowance_m) / s.descent_speed_mps if landing else 0.0
         return horizontal / ground_speed + climb + descent
 
     def reach(self, position, battery: float | None, reserve: float, target) -> Reach:

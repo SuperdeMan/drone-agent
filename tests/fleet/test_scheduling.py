@@ -157,11 +157,108 @@ def test_task_footprints_match_the_compiled_package_and_pair_neighbours_meet_onl
     assert not a_mid & task_cells("site_c", "asset_mid2")
     # The planned footprint equals the one of a compiled package. / 计划的航迹覆盖等于编译后任务包的航迹覆盖。
     data = maps["site_a"].data
-    package = {"nodes": [{"params": {"altitude_m_agl": 4}}, {"params": {"asset_id": "asset_mid",
-                                                                           "approach_route_id": "observe_asset_mid"}},
-                         {"params": {"home_ref": "home_v1", "return_route_id": "return"}},
-                         {"params": {"landing_site_id": "home_pad"}}]}
-    assert set(package_points(data, package)) == set(task_points(data, "asset_mid"))
+    package = {"nodes": [{"skill_id": "skill.flight.takeoff", "params": {"altitude_m_agl": 4}},
+                         {"skill_id": "skill.inspect.asset",
+                          "params": {"asset_id": "asset_mid", "approach_route_id": "observe_asset_mid"}},
+                         {"skill_id": "skill.flight.return_home", "params": {"home_ref": "home_v1",
+                                                                              "return_route_id": "return"}},
+                         {"skill_id": "skill.flight.land", "params": {"landing_site_id": "home_pad"}}]}
+    assert set(package_points(data, package, "uav_a")) == set(task_points(data, "asset_mid", "uav_a"))
+
+
+# ── the spatial contract of every skill (D075) / 每个技能的空间契约（D075） ──
+
+M3_SCENE = ROOT / "configs/scenarios/m3_campus_v3.yaml"
+
+
+def m3_package(*nodes) -> dict:
+    return {"spatial_scope": {"approved_volume_id": "campus_training"},
+            "nodes": [{"skill_id": skill, "robot_id": "uav_01", "params": params} for skill, params in nodes]}
+
+
+def test_every_registered_skill_has_an_airspace_footprint():
+    # A new motion skill cannot be added without saying where it may fly (D075).
+    # 新增运动技能必须说明它可能飞到哪里（D075）。
+    from drone_agent.fleet.reservation import SKILL_PLACES
+
+    manifests = {yaml.safe_load(path.read_text(encoding="utf-8"))["skill_id"]
+                 for path in (ROOT / "configs/skills").glob("*.yaml")}
+    assert manifests == set(SKILL_PLACES)
+
+
+def test_a_local_goal_flight_reserves_the_whole_external_mode_scope():
+    # The external review's counterexample: home (0, 0) and goto_local to a goal far from every route. The goal, and
+    # every place the local planner may go around obstacles, must lie inside the reserved box (D075).
+    # 外部评审的反例：home (0, 0) 与 goto_local 去一个远离所有航线的目标。目标以及局部规划器为避障可能去的每个位置，都必须
+    # 位于预约矩形之内（D075）。
+    registry = Registry(ROOT, scene=M3_SCENE)
+    data, grid = registry.data, load_scheduling(SCHEDULING).airspace
+    low, high = registry.task_scope()
+    for package in (m3_package(("skill.flight.takeoff", {"altitude_m_agl": 4}),
+                               ("skill.flight.goto_local", {"goal_id": "east_hold"})),
+                    m3_package(("skill.inspect.asset_local", {"asset_id": "asset_green",
+                                                               "approach_goal_id": "green_observe"}))):
+        fp = footprint(grid, (0.0, 0.0), package_points(data, package, "uav_01"),
+                       data["volumes"]["campus_training"])
+        x0, y0, x1, y1 = fp.box
+        assert x0 <= low[0] and y0 <= low[1] and x1 >= high[0] and y1 >= high[1]
+        for goal in data["local_goals"].values():
+            assert x0 <= goal[0] <= x1 and y0 <= goal[1] <= y1
+    # The same asset planned before compilation is covered just as widely. / 编译前计划的同一资产覆盖同样宽。
+    planned = footprint(grid, (0.0, 0.0), task_points(data, "asset_green", "uav_01"), data["volumes"]["campus_training"])
+    assert planned.box[0] <= low[0] and planned.box[3] >= high[1]
+
+
+def test_a_route_flight_covers_every_landing_site_a_recovery_may_divert_to():
+    # Recovery v2 may land at a reserved backup site (D042); it lies off every route of the M3 inspection.
+    # 恢复策略 v2 可能改降到预留的备用降落点（D042）；它不在 M3 巡检的任何航线上。
+    data = Registry(ROOT, scene=M3_SCENE).data
+    package = m3_package(("skill.flight.takeoff", {"altitude_m_agl": 4}),
+                         ("skill.inspect.asset", {"asset_id": "asset_red", "approach_route_id": "observe_red"}),
+                         ("skill.flight.return_home", {"home_ref": "home_v1", "return_route_id": "return"}),
+                         ("skill.flight.land", {"landing_site_id": "home_pad"}))
+    points = package_points(data, package, "uav_01")
+    assert (-3.0, 31.0) in points
+    assert (-3.0, 31.0) not in package_points(data, package, "uav_99")
+
+
+@pytest.mark.parametrize("node", [("skill.flight.orbit", {"center": [100, 0, 10]}),
+                                  ("skill.flight.fly_route", {"route_id": "unregistered"}),
+                                  ("skill.flight.goto_local", {"goal_id": "nowhere"}),
+                                  ("skill.flight.land", {}),
+                                  ("skill.inspect.asset", {"asset_id": "asset_red"})])
+def test_a_node_that_cannot_be_bounded_is_unresolvable_never_empty(node):
+    from drone_agent.fleet.reservation import UnresolvedFootprint
+
+    data = Registry(ROOT, scene=M3_SCENE).data
+    with pytest.raises(UnresolvedFootprint):
+        package_points(data, m3_package(("skill.flight.takeoff", {"altitude_m_agl": 4}), node), "uav_01")
+
+
+@pytest.mark.parametrize("name", ["p1_campus_v1", "p1_s1_v1", "p3_campus_v1", "p3_s1_v1", "p5_campus_v1",
+                                  "p5_desk_v1", "p5_s1_v1"])
+def test_the_committed_route_flights_keep_their_footprints(name):
+    # On every committed site map the resolver gives a route-based package exactly the places of the P3 contract it
+    # replaced (D059): home, the observation route, the asset, the return route and the pad.
+    # 在每张已提交的站点地图上，解析器给航线任务包的位置与其替代的 P3 契约完全相同（D059）：home、观测航线、资产、返航
+    # 航线与机位。
+    catalog = load_catalog(ROOT / f"configs/sites/{name}.yaml")
+    for site, registry in registries(catalog).items():
+        data = registry.data
+        robot = next(r for r, entry in catalog.robots.items() if entry.site_id == site)
+        for asset_id, asset in data["assets"].items():
+            package = {"nodes": [
+                {"skill_id": "skill.flight.takeoff", "params": {"altitude_m_agl": 4}},
+                {"skill_id": "skill.inspect.asset", "params": {"asset_id": asset_id,
+                                                               "approach_route_id": asset["observation_route"]}},
+                {"skill_id": "skill.flight.return_home", "params": {"home_ref": "home_v1", "return_route_id": "return"}},
+                {"skill_id": "skill.flight.land", "params": {"landing_site_id": "home_pad"}}]}
+            legacy = [tuple(map(float, data["home"]["position"][:2])),
+                      *[tuple(map(float, p[:2])) for p in data["routes"][asset["observation_route"]]],
+                      tuple(map(float, asset["position"][:2])),
+                      *[tuple(map(float, p[:2])) for p in data["routes"]["return"]],
+                      tuple(map(float, data["landing_sites"]["home_pad"]["position"][:2]))]
+            assert set(package_points(data, package, robot)) == set(legacy), (site, asset_id)
 
 
 def test_the_envelope_grows_with_the_radius_and_stays_inside_the_volume():

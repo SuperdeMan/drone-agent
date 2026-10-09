@@ -58,7 +58,8 @@ ASSET = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 REQUEST_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,120}$")
 # Refusals of a mission for one robot that retrying cannot change (configuration, the robot's site map).
 # 重试也改变不了的、针对某台机器人的任务拒绝（配置、该机站点地图）。
-PERMANENT_REFUSALS = frozenset({"dispatch.backend_mismatch", "workflow.invalid_draft", "service.not_found"})
+PERMANENT_REFUSALS = frozenset({"dispatch.backend_mismatch", "workflow.invalid_draft", "service.not_found",
+                                "dispatch.footprint_unresolved"})
 
 
 @dataclass
