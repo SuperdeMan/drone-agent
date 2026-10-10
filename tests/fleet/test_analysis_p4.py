@@ -133,12 +133,16 @@ def test_the_m31_profiles_keep_the_frozen_change_v3_prompt_and_pin_their_effort(
     v3 = load_profile(ROOT, "configs/analysis/vlm_change_v3.yaml")[0]
     kept = ("prompt_version", "system_prompt", "instruction", "references", "max_long_side", "detail", "image_format",
             "jpeg_quality", "temperature", "thinking", "attempts", "family", "defect_types", "generic_type")
-    for name, effort in (("vlm_change_v5.yaml", "high"), ("vlm_change_v6.yaml", "max")):
+    for name, effort, tau in (("vlm_change_v5.yaml", "high", None), ("vlm_change_v6.yaml", "max", 0.95)):
         profile = load_profile(ROOT, f"configs/analysis/{name}")[0]
         assert profile.prompt_sha256 == v3.prompt_sha256
         assert all(getattr(profile, field) == getattr(v3, field) for field in kept), name
         assert (profile.model, profile.reasoning_effort) == ("MiniMax-M3.1-Flash-Preview", effort)
-        assert profile.threshold is None
+        assert profile.threshold == tau
+    # change-v6 is the frozen choice of D076 §4; its record names the calibration run it came from.
+    # change-v6 是 D076 §4 冻结的选择；其记录写明来源的校准运行。
+    frozen = load_profile(ROOT, "configs/analysis/vlm_change_v6.yaml")[0].calibration
+    assert frozen["run"].endswith("p4-20261009T234043Z-e3898695") and float(frozen["precision"]) >= 0.92
 
 
 def test_a_profile_the_model_cannot_honour_fails_when_it_loads():

@@ -1,11 +1,15 @@
 # Vision-model profile change-v6 of the P4 main task (D063 §1, D065 §6, D076): change-v5 with the vendor's default
 # reasoning effort `max` instead of `high`; the frozen change-v3 prompt, references and image budget are verbatim and
-# the model is MiniMax-M3.1-Flash-Preview. The operating threshold is chosen on the calibration split only, by the
-# protocol's rule, and written under `calibration` before any test run; then the file is frozen.
+# the model is MiniMax-M3.1-Flash-Preview. Frozen by D076 before any test run: on the calibration split tau 0.95 is the
+# smallest grid value with calibration precision >= 0.92 (precision 0.9495, recall 0.7833, coverage 0.9964, false
+# assurance 0.0), and the rule written before the runs picks it over change-v5 (tau 0.95: precision 0.949, recall
+# 0.775) by its higher recall. Any change to the prompt, effort, image budget or threshold is a new version.
 #
 # P4 主任务的视觉模型画像 change-v6（D063 §1，D065 §6，D076）：change-v5 改用厂商默认的思考深度 `max`（而非 `high`）；
-# 逐字沿用冻结的 change-v3 提示、参考图与图像预算，模型为 MiniMax-M3.1-Flash-Preview。运行阈值只在校准拆分上按协议规则
-# 选定，并在任何测试运行之前写入 `calibration`；之后文件冻结。
+# 逐字沿用冻结的 change-v3 提示、参考图与图像预算，模型为 MiniMax-M3.1-Flash-Preview。由 D076 在任何测试运行之前冻结：
+# 在校准拆分上 τ 0.95 是校准精确率 ≥ 0.92 的最小网格值（精确率 0.9495、召回率 0.7833、覆盖率 0.9964、虚假放行率 0.0）；
+# 按运行之前写定的规则，它以更高的召回率胜过 change-v5（τ 0.95：精确率 0.949、召回率 0.775）。改动提示、思考深度、图像预算
+# 或阈值即为新版本。
 format: drone.analysis-profile/v1
 schema_version: "0.1.0"
 profile_id: vlm_change
@@ -56,8 +60,18 @@ reasoning_effort: max
 max_tokens: 32768
 timeout_s: 300
 attempts: 2
-threshold: null
+threshold: 0.95
 family: appearance
 defect_types: [damage, missing_part, contamination, deformation, discoloration, foreign_object, other_change]
 generic_type: other_change
-calibration: {status: "not calibrated; the service refuses model.uncalibrated / 未标定；服务以 model.uncalibrated 拒判"}
+calibration:
+  status: "calibrated on the calibration split, frozen by D076 / 在校准拆分上标定，由 D076 冻结"
+  run: 20261009T164305Z-47707fde/p4-20261009T234043Z-e3898695
+  source_sha: 9638109651708291bec69d12c97b768069e10c2d
+  samples: "360"
+  rule: "smallest grid tau with calibration precision >= 0.92; between change-v5 and change-v6 the higher recall at that tau (D076 §4) / 校准精确率 >= 0.92 的最小网格值；change-v5 与 change-v6 之间取该 τ 下召回率更高者（D076 §4）"
+  precision: "0.9495"
+  recall: "0.7833"
+  coverage: "0.9964"
+  false_assurance: "0.0"
+  compared: "change-v5 run 20261009T164305Z-47707fde/p4-20261009T170110Z-82907415: tau 0.95, precision 0.949, recall 0.775"
