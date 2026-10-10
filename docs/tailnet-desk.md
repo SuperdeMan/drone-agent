@@ -172,3 +172,14 @@ P5 起常驻任务台就是无硬件平台 v0.1：同一个任务服务服务三
 5. **长稳期间**：72 小时长稳由主机上的编排以 `harness:soak-*` 身份审批、复核与反馈维修，并注入重启、断网与模型故障；期间请不要在这三个项目中操作，页面上看到的这些动作都来自编排。
 
 `desk_browser.py --loop appearance_watch --repair --world asset_red` 在页面中走完主场景到关单，并读回运行审计（D070）。
+
+## P6 主动补拍（D078）
+
+P6 起任务台的工作流与业务目录为 `p6_desk_v1`，逐字节保留 P5 的全部模板与分析器；运营与调度目录仍为 `p5_desk_v1`。`campus_s1` 新增 `recapture_watch` 与 `recapture_reinspection` 两个模板：
+
+1. **目标区域质量**：分析前先检查资产在画面中的投影区域，包括可见比例、尺度、亮 / 暗像素与边缘清晰度，再读颜色特征。目标上有反光或阴影时，即使整张图正常也会拒判，例如 `quality.target_exposure`（页面显示中文名）。
+2. **补拍**：拒判原因属于业务目录的补拍策略时，运行自动提交一个补拍任务，机器人、体积与资产都与原巡检相同，请求文本写明原因与原分析作业。补拍任务和其他任务一样出现在任务视图，要逐次审批；不想补拍就在审批前驳回，运行随之以失败结束。每次巡检至多补拍一次。
+3. **选择分析结果**：运行详情中的「选择分析结果」节点取第一个完成的分析。被补拍接替的拒判不算运行失败，运行结论注明 `recaptured`；补拍仍被拒判时运行失败，没有结论。
+4. **演示**：维护者先在入口之外放置反光：`dev_stack.py desk-world --section s1 --asset asset_red --state glare --apply`。补拍等待审批时把状态设回 `normal`，再在页面中批准补拍。页面没有补拍按钮，也没有世界入口。
+
+`desk_probe.py workflow --origin <origin> --start --workflow recapture_watch --clear-before-recapture asset_red` 按页面方式走完一次补拍会话。当前版本与验收见 [P6 补拍验收](p6-recapture-readiness.md)。

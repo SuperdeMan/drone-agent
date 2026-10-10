@@ -2,7 +2,7 @@
 
 [路线图](roadmap.md) · [实施任务 §10](operations-implementation.md) · [评审记录](research/external-review-2026-10-10.md) · [P4 记录](p4-readiness.md) · [运营架构](architecture/09-operations.md)
 
-**状态：2026-10-10 用户批准（D078），实施中。** 评审的四个问题都按设计稿的建议定下：
+**状态：2026-10-10 用户批准（D078），同日在 `ecee452` 实施并准出（软件 / SITL 范围），见[验收记录](p6-recapture-readiness.md)。** 评审的四个问题都按设计稿的建议定下：
 1. 首版只做同位重采，每次巡检至多补拍 1 次；
 2. 可补拍原因按 §3.2，`model.timeout` 不算（模型问题重试分析，不重飞）；
 3. 缺几何信息直接拒判，不退回整图检查；
