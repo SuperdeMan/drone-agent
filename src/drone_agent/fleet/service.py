@@ -147,7 +147,7 @@ class MissionService:
                  approval_policy: ApprovalPolicy, planner=None, robot_id: str = "uav_01", airspace=None,
                  clock=utcnow, vision=None, provenance_context: SourceContext | None = None,
                  operations: Operations | None = None, backends: tuple[str, ...] | None = None):
-        self.registry = Registry(root, scene=scene)
+        self.root, self.registry = root, Registry(root, scene=scene)
         self.ledger, self.hub, self.key, self.policy = ledger, hub, signing_key, approval_policy
         self.planner, self.robot_id, self.clock, self.vision = planner, robot_id, clock, vision
         self.airspace = airspace or SimulatedAirspaceProvider()
@@ -219,6 +219,17 @@ class MissionService:
         if self.ops is not None and robot_id in self.ops.catalog.robots:
             return self.ops.registry(robot_id)
         return self.registry
+
+    def _planning_site(self, robot_id: str) -> dict:
+        """Catalog mode: plan at the robot's site, with its registry and map file (D079); the M2 deployment plans at
+        the service's scene.
+
+        目录模式：按机器人站点（其登记表与地图文件）规划（D079）；M2 部署按服务的场景规划。
+        """
+        if self.ops is None or robot_id not in self.ops.catalog.robots:
+            return {}
+        site = self.ops.catalog.robots[robot_id].site_id
+        return {"site": (self.ops.registries[site], self.root / self.ops.catalog.sites[site].scene)}
 
     def _coordinator(self, robot_id: str) -> PassthroughCoordinator:
         return self.coordinator if robot_id == self.robot_id and self.ops is None else \
@@ -399,7 +410,8 @@ class MissionService:
             return stop("rejected", [issue("scope.unregistered_volume", request.approved_volume_id)])
         if self.planner is None:
             return stop("planning_failed", [issue("planner.technical_failure", "no planner is configured")])
-        outcome = await self.planner.plan(request, mission_id=mission_id, mission_version=1)
+        outcome = await self.planner.plan(request, mission_id=mission_id, mission_version=1,
+                                          **self._planning_site(robot_id))
         if outcome.status != "planned":
             return stop("refused" if outcome.status == "refused" else "planning_failed", outcome.issues,
                         planner=outcome)

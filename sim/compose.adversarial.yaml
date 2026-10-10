@@ -1,0 +1,38 @@
+# WP-P6-03 adversarial recordings (D079), applied after compose.m2.yaml: one corpus run in one container that reaches the
+# model endpoint only through the allowlisted `model-proxy` (D036). It reads the corpora from the image's workspace,
+# writes its receipt and recordings to the run directory and holds no other mount, capability or network.
+#
+# WP-P6-03 对抗录制（D079），在 compose.m2.yaml 之后应用：一份语料在一个容器中运行，只经白名单 `model-proxy` 访问模型端点
+# （D036）。它从镜像的工作区读取语料，把回执与录制写到运行目录，没有其他挂载、capability 或网络。
+services:
+  adversarial-eval:
+    profiles: [adversarial]
+    image: ${DRONE_M2_GROUND_IMAGE:?}
+    pull_policy: never
+    init: true
+    # The workspace owner, so the owner-only model key is readable without any capability. / 工作区属主，无需任何
+    # capability 即可读取仅属主可读的模型 key。
+    user: ${DRONE_P6_UID:?}:${DRONE_P6_GID:?}
+    read_only: true
+    tmpfs: ["/tmp:size=256m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    cpus: 1.0
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 64
+    environment:
+      DRONE_SOURCE_SHA: ${DRONE_SOURCE_SHA:?}
+      VISION_PROVIDER: minimax-vl
+      MINIMAX_API_KEY_FILE: /model/minimax.key
+      # As in S2: the profile's timeout governs each vision call (D076). / 与 S2 相同：每次视觉调用由画像的超时决定（D076）。
+      LLM_HTTP_READ_CAP_S: "600"
+      HTTPS_PROXY: http://model-proxy:3128
+      NO_PROXY: localhost,127.0.0.1
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ${DRONE_P6_OUTPUT:?}:/output
+      - ${DRONE_M2_MODEL:?}:/model:ro
+    depends_on: [model-proxy]
+    networks: [model]

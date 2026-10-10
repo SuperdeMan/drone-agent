@@ -315,3 +315,75 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed) -> dict:
         compose("stop", "-t", "5", "executive", "guardian", "uplink", "dock-sim", "mission-service", "model-proxy",
                 "collector", check=False)
         return {"passed": False, "error": str(error), "scenario": scenario["id"], "seed": seed}
+
+
+# ── WP-P6-03 adversarial recordings (D079) / WP-P6-03 对抗录制（D079） ──
+
+CORPORA = ("nl_v1", "workflow_v1", "plan_ops_v1", "vision_ops_v1")
+VISION_PROFILES = ("configs/analysis/vlm_change_v3.yaml", "configs/analysis/vlm_change_v6.yaml")
+
+
+def run_adversarial(root: Path, deployment: Path, request: dict) -> dict:
+    """One corpus in one mode in its own container; `live` reaches the model only through the allowlisted proxy.
+
+    一份语料以一种模式在独立容器中运行；`live` 只经白名单代理访问模型。
+    """
+    sha, tag, checks = revision(deployment)
+    source = deployment / "source"
+    if not (source / "sim/compose.adversarial.yaml").is_file():
+        raise ValueError("deploy a version with the P6 adversarial runner first")
+    corpus, mode, profile = request.get("corpus"), request.get("mode"), request.get("profile")
+    if corpus not in CORPORA or mode not in ("live", "scripted"):
+        raise ValueError("p6-adv needs a known corpus and mode live|scripted (replays run where the recordings are)")
+    if (corpus == "vision_ops_v1") != bool(profile) or (profile and profile not in VISION_PROFILES):
+        raise ValueError("vision_ops_v1 needs --profile vlm_change_v3|v6 and the other corpora take none")
+    model = root / "secrets" / "m2-model"
+    if mode == "live" and not (model / "minimax.key").is_file():
+        raise ValueError("store the model key first (dev_stack.py m2-key)")
+    base = root / "artifacts" / deployment.name / ("p6adv-" + request["run_id"])
+    base.mkdir(parents=True, exist_ok=False)
+    output = base / "run"
+    output.mkdir()
+    images = M2["build_images"](source, base, tag, checks)
+    arguments = ["python3", "-m", "drone_agent.eval.p6_adversarial", "--root", "/workspace", "run", "--corpus", corpus,
+                 "--mode", mode, "--output", "/output"]
+    if profile:
+        arguments += ["--profile", profile]
+    started = time.monotonic()
+    log = base / "adversarial.log"
+    if mode == "live":
+        env = dict(os.environ, DRONE_SOURCE_SHA=sha, DRONE_M2_RUN=str(base / "idle"), DRONE_M2_SECRETS=str(
+            root / "secrets" / "m2"), DRONE_M2_MODEL=str(model), DRONE_M2_PLANNER="scripted",
+            DRONE_M2_SIM_IMAGE=images["sim"], DRONE_M2_AIRCRAFT_IMAGE=images["aircraft"],
+            DRONE_M2_GROUND_IMAGE=images["ground"], DRONE_M2_PACKAGE="none.json", DRONE_M2_VERSION="0",
+            DRONE_M2_EPOCH="0", DRONE_M2_FLIGHT=str(base / "idle"), DRONE_P6_OUTPUT=str(output),
+            DRONE_P6_UID=str(os.getuid()), DRONE_P6_GID=str(os.getgid()))
+        prefix = ["docker", "compose", "-p", "drone-agent-cloud", "-f", str(source / "sim/compose.m2.yaml"),
+                  "-f", str(source / "sim/compose.adversarial.yaml"), "--profile", "adversarial"]
+        with log.open("wb") as stream:
+            result = subprocess.run([*prefix, "run", "-T", "--rm", "adversarial-eval", *arguments], env=env,
+                                    stdout=stream, stderr=subprocess.STDOUT, timeout=4 * 3600)
+        subprocess.run([*prefix, "stop", "-t", "5", "model-proxy"], env=env, capture_output=True, timeout=120)
+    else:
+        with log.open("wb") as stream:
+            result = subprocess.run(["docker", "run", "--rm", "--network", "none", "--read-only", "--tmpfs",
+                                     "/tmp:size=256m,mode=1777", "--cap-drop", "ALL",
+                                     "--security-opt", "no-new-privileges:true",
+                                     "--user", f"{os.getuid()}:{os.getgid()}", "--memory", "1g", "--cpus", "1.0",
+                                     "-e", f"DRONE_SOURCE_SHA={sha}", "-e", "PYTHONDONTWRITEBYTECODE=1",
+                                     "-v", f"{output}:/output", images["ground"], *arguments],
+                                    stdout=stream, stderr=subprocess.STDOUT, timeout=4 * 3600)
+    receipt_path = output / "receipt.json"
+    receipt = json.loads(receipt_path.read_text()) if receipt_path.is_file() else None
+    summary = {"layer": "adversarial", "corpus": corpus, "mode": mode, "profile": profile, "source_sha": sha,
+               "deployment_id": deployment.name, "artifact_directory": str(base), "run_exit_code": result.returncode,
+               "duration_s": round(time.monotonic() - started, 1),
+               "images": {"ground": HELPERS["inspect_image"](images["ground"])["Id"]},
+               "status": receipt["status"] if receipt else "failed",
+               "receipt_sha256": hashlib.sha256(receipt_path.read_bytes()).hexdigest() if receipt else None,
+               "summary": {k: v for k, v in (receipt or {}).items() if k not in ("report", "recordings")},
+               "recordings": len((receipt or {}).get("recordings", {}))}
+    if receipt is None:
+        summary["error"] = "the adversarial run did not finish; see adversarial.log"
+    (base / "adversarial.json").write_text(json.dumps(summary, indent=2))
+    return summary

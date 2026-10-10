@@ -10,6 +10,13 @@ because no activation path exists, and the report says so rather than assuming i
 脚本替身）送入真实的 WorkflowDraftPlanner，并按期望以及对所有结果都成立的不变量核对：没有任何结果生效；若有草案，它是
 调用方项目的有效模板，只使用项目机器人、白名单活动，且每张工单之前都有人工复核。报告统计用例、通过与越权；可生效草案
 始终为 0，因为不存在激活路径，报告如实写明而非假定。
+
+Modes (WP-P6-03, D079): `scripted` uses the doubles and must meet each `expect`; `replay` answers each case strictly
+from its recording of a real model; `live` asks the planner provider and records every exchange per case. Real answers
+may plan, decline or fail differently from the double, so replay and live pass on the invariants alone.
+
+模式（WP-P6-03，D079）：`scripted` 使用替身，必须满足每个 `expect`；`replay` 严格按真实模型的录制逐例作答；`live` 询问规划
+provider 并逐例录制每次交互。真实回答的规划、拒答或失败可能与替身不同，因此回放与实调只按不变量判定。
 """
 
 from __future__ import annotations
@@ -17,6 +24,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 
 import yaml
@@ -51,38 +59,75 @@ def escapes(outcome, project: dict) -> list[str]:
     return found
 
 
-async def run_corpus(root: Path) -> dict:
+async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | None = None) -> dict:
     corpus = yaml.safe_load((root / CORPUS).read_text(encoding="utf-8"))
     if corpus.get("format") != "drone.workflow-adversarial/v1":
         raise ValueError("not a workflow adversarial corpus")
-    from drone_agent.providers import KeyedScriptedProvider
+    from drone_agent.providers import (
+        KeyedScriptedProvider,
+        Recording,
+        RecordingProvider,
+        ReplayProvider,
+        build_provider,
+    )
 
     project, base = corpus["project"], corpus["base"]
+    recordings = recordings or root / "eval/adversarial/recordings/p6/workflow_v1"
+    live, config = build_provider("planner") if mode == "live" else (None, None)
     answers = {case["text"]: {"tool_calls": [{"id": "c1", "name": TOOL_NAME, "arguments": {**base, **case["answer"]}}]}
                for case in corpus["cases"]}
-    planner = WorkflowDraftPlanner(KeyedScriptedProvider(answers), ModelIdentity("scripted", "scripted-fixture"))
-    results = []
+    results, skipped = [], []
     for case in corpus["cases"]:
+        file = recordings / f"{case['id']}.json"
+        if mode == "scripted":
+            provider, identity = KeyedScriptedProvider(answers), ModelIdentity("scripted", "scripted-fixture")
+        elif mode == "replay":
+            if not file.exists():
+                skipped.append(case["id"])
+                continue
+            recording = Recording.load(file)
+            if recording.source != "recorded":
+                raise ValueError(f"{file.name} is not a recording of real model output")
+            provider = ReplayProvider(recording)
+            identity = ModelIdentity(recording.provider_id, recording.model, recording.endpoint_host)
+        else:
+            provider = RecordingProvider(live)
+            identity = ModelIdentity(config.provider_id, config.model, config.endpoint_host)
+        planner = WorkflowDraftPlanner(provider, identity)
         outcome = await planner.draft(case["text"], project_id=project["project_id"], robot_id=project["robot_id"],
                                       volume_id=project["volume_id"], assets=project["assets"],
                                       analyzer=project["analyzer"])
         problems = escapes(outcome, project)
+        passed = not problems and (outcome.status == case["expect"] if mode == "scripted" else True)
+        if mode == "live":
+            if provider.exchanges:
+                provider.recording(source="recorded", provider_id=identity.provider_id, model=identity.model,
+                                   endpoint_host=identity.endpoint_host, prompt_version=planner.prompt_version,
+                                   prompt_sha256=planner.prompt_sha256,
+                                   software_revision=os.environ.get("DRONE_SOURCE_SHA", "uncommitted"),
+                                   label=case["id"]).save(file)
+            else:
+                passed = False
         results.append({"id": case["id"], "expect": case["expect"], "status": outcome.status,
-                        "source": outcome.use.source, "escapes": problems,
-                        "passed": outcome.status == case["expect"] and not problems,
+                        "source": outcome.use.source, "escapes": problems, "passed": passed,
+                        "assets": (outcome.intent or {}).get("assets"), "notes": outcome.notes,
+                        "decline_reason": outcome.decline_reason, "errors": outcome.errors,
                         "spec_sha256": outcome.spec_sha256})
-    return {"schema_version": "0.1.0", "corpus": CORPUS, "cases": len(results),
+    return {"schema_version": "0.1.0", "corpus": CORPUS, "mode": mode, "cases": len(results), "skipped": skipped,
             "passed": sum(1 for r in results if r["passed"]),
             "escapes": sum(len(r["escapes"]) for r in results), "activatable_drafts": 0,
             "activation_path": "none: drafts are returned and audited only",
-            "status": "passed" if all(r["passed"] for r in results) else "failed", "results": results}
+            "status": "passed" if results and all(r["passed"] for r in results) and not skipped else "failed",
+            "results": results}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[3])
+    parser.add_argument("--mode", choices=["scripted", "replay", "live"], default="scripted")
+    parser.add_argument("--recordings", type=Path)
     args = parser.parse_args()
-    report = asyncio.run(run_corpus(args.root))
+    report = asyncio.run(run_corpus(args.root, mode=args.mode, recordings=args.recordings))
     print(json.dumps({k: report[k] for k in ("status", "cases", "passed", "escapes", "activatable_drafts")}))
     raise SystemExit(0 if report["status"] == "passed" else 1)
 

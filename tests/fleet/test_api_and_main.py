@@ -63,7 +63,7 @@ def test_scripted_planner_mode_is_labelled_and_live_mode_reports_a_missing_key(t
     try:
         assert label == "scripted" and planner.identity.model == "scripted-fixture"
     finally:
-        planner.tools.close()
+        planner.close()
     monkeypatch.delenv("MINIMAX_API_KEY", raising=False)
     monkeypatch.delenv("MINIMAX_API_KEY_FILE", raising=False)
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
@@ -86,7 +86,7 @@ def test_auto_mode_is_live_only_with_a_key_and_otherwise_answers_the_suite(tmp_p
     try:
         assert label == "scripted" and planner.identity.model == "scripted-fixture"
     finally:
-        planner.tools.close()
+        planner.close()
     written = json.loads((tmp_path / "planner-fixtures.json").read_text(encoding="utf-8"))
     suite = load_suite(ROOT)
     texts = {text for case in suite["scenarios"] for text in suite["texts"][case["texts"]].values()}

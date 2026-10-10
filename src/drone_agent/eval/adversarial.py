@@ -206,8 +206,12 @@ async def run_nl_case(case: dict, registry: Registry, root: Path, provider, *, m
         missing = sorted(set(expected["codes"]) - set(codes))
         if missing:
             reasons.append(f"missing codes {missing}")
+    spec = planned.spec
     return {"id": case["id"], "category": case["category"], "mode": mode, "outcome": result, "blocked_at": blocked_at,
             "codes": codes, "authorized_package": authorized, "planner_status": planned.status,
+            "targets": [t.asset_id for t in spec.targets] if spec else [],
+            "volume": spec.spatial_scope.approved_volume_id if spec else None,
+            "notes": planned.notes, "decline_reason": planned.decline_reason,
             "channels": planned.channels, "model_id": planned.model_id, "input_hash": planned.input_hash,
             "prompt_tokens": planned.prompt_tokens, "completion_tokens": planned.completion_tokens,
             "passed": not reasons, "reasons": reasons}

@@ -178,7 +178,8 @@ def test_a_declared_heading_keeps_a_short_capture_analysable_where_an_unknown_on
 
 
 def test_a_declared_heading_needs_the_route_and_admits_no_tolerance_when_unknown():
-    assert check_target_quality(capture(), ROUTE, pose=pose(), asset=ASSET, heading=None)[0] ==         "quality.target_unknown"
+    assert check_target_quality(capture(), ROUTE, pose=pose(), asset=ASSET, heading=None)[0] == \
+        "quality.target_unknown"
     with pytest.raises(ValidationError):
         TargetQualityProfile.model_validate({**PROFILE.model_dump(mode="json"),
                                              "pose": {"heading": "unknown", "heading_tolerance_deg": 20}})

@@ -20,6 +20,8 @@ Run it on a tailnet device against the origin that `dev_stack.py desk-cloud --st
   page drives it: a reference registered from the newest verified capture, missions approved one by one, the finding
   reviewed, repair feedback given and the round decided when its capture is unsuspected, until the order's round
   settles and every flight was judged.
+- `plan` (P6, D079): one bound natural-language request through the entry; the planned version (status, targets,
+  planner, admission) is recorded and then declined, so nothing waits for approval and nothing flies.
 Receipts never contain the tailnet host name or the operator's login, and the probe decides nothing: it records
 what the desk, the service and the judge reported.
 
@@ -33,7 +35,8 @@ what the desk, the service and the judge reported.
 项目的队列（各机器人的分配与预览判定）、页面提供的资产、空域持有、对注入、控制与分配帧的拒绝，并可按页面方式提交一个任务单、
 审批其被分配的任务，直到任务单终结且其飞行有裁判结果；`business`（P4）记录业务面板（发现、工单、报告、参考外观与复用策略）、
 对注入、控制与判定帧以及对未知发现作决定的拒绝，并可按页面方式驱动一次巡检运行：以最新的已证实采集登记参考外观、逐任务审批、
-复核发现、给出维修反馈，并在采集未疑似时对本轮作出决定，直到工单本轮结算且每次飞行都有裁判结果。回执从不包含
+复核发现、给出维修反馈，并在采集未疑似时对本轮作出决定，直到工单本轮结算且每次飞行都有裁判结果；`plan`（P6，D079）经入口提交
+一条绑定的自然语言请求，记录规划出的版本（状态、目标、规划来源与准入）后将其驳回，不留待审批的任务，也不飞行。回执从不包含
 tailnet 主机名或操作者登录名；探针不做任何判定，只记录任务台、服务与裁判报告的内容。
 """
 
@@ -302,6 +305,52 @@ def session(origin: str, args) -> tuple[dict, str | None]:
     return follow(origin, client, first["view"], args, receipt, started), login
 
 
+def plan(origin: str, args) -> tuple[dict, str | None]:
+    """P6 (D079): one bound request through the entry; the planned version is recorded, then declined as the page would,
+    so nothing is left waiting for approval on the resident desk. The probe approves nothing and flies nothing.
+
+    P6（D079）：经入口提交一条绑定请求；记录规划出的版本，再像页面一样驳回，常驻任务台上不留任何待审批的任务。
+    探针不审批、也不飞行。
+    """
+    started = time.monotonic()
+    client, login, receipt = open_session(origin)
+    client.send({"type": "text", "rid": uuid.uuid4().hex[:16], "text": args.text, "volume_id": args.volume,
+                 "asset_ids": args.asset or [], "project_id": args.project, "robot_id": args.robot})
+    first = client.next(("mission", "error"), args.plan_timeout)
+    if first["type"] == "error":
+        receipt["errors"].append(first)
+        client.close()
+        return receipt, login
+    view = first["view"]
+    version = view["versions"][-1] if view["versions"] else {}
+    receipt["planning_s"] = round(time.monotonic() - started, 1)
+    receipt["request"] = {"text": args.text, "project_id": args.project, "robot_id": args.robot,
+                          "volume_id": args.volume, "asset_ids": args.asset or []}
+    receipt["planned"] = {
+        "mission_id": view["mission"]["mission_id"], "status": view["mission"]["status"],
+        "binding": {k: (view.get("binding") or {}).get(k) for k in ("project_id", "site_id", "robot_id")},
+        "targets": [t["asset_id"] for t in (version.get("spec") or {}).get("targets", [])],
+        "planner": version.get("planner"), "admission": version.get("admission"), "approval": version.get("approval")}
+    if view["mission"]["status"] == "awaiting_approval":
+        client.send({"type": "decline", "mission_id": view["mission"]["mission_id"], "version": version["version"],
+                     "reason": "desk probe: planning check only, nothing to fly (D079)"})
+        receipt["sent"].append({"t": round(time.monotonic() - started, 1), "action": "decline",
+                                "version": version["version"]})
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            message = client.next(("mission", "error"), max(1.0, deadline - time.monotonic()))
+            if message["type"] == "error":
+                receipt["errors"].append(message)
+                break
+            if message["view"]["mission"]["mission_id"] == view["mission"]["mission_id"] and                     message["view"]["mission"]["status"] != "awaiting_approval":
+                view = message["view"]
+                break
+    receipt["final_status"] = view["mission"]["status"]
+    receipt["duration_s"] = round(time.monotonic() - started, 1)
+    client.close()
+    return receipt, login
+
+
 def watch(origin: str, args) -> tuple[dict, str | None]:
     started = time.monotonic()
     client, login, receipt = open_session(origin)
@@ -488,7 +537,8 @@ def workflow(origin: str, args) -> tuple[dict, str | None]:
                     detail = mission(item["mission_id"])
                     missions[item["mission_id"]] = detail
                     latest = (detail.get("versions") or [{}])[-1]
-                    if latest.get("status") == "awaiting_approval" and item.get("node_id") == "recapture"                             and args.clear_before_recapture and "cleared" not in receipt:
+                    if latest.get("status") == "awaiting_approval" and item.get("node_id") == "recapture" \
+                            and args.clear_before_recapture and "cleared" not in receipt:
                         attempt = clear_world(args.clear_before_recapture, started)
                         receipt.setdefault("clear_attempts", []).append(attempt)
                         if attempt["exit_code"] != 0:
@@ -1017,7 +1067,7 @@ def fixed_session(origin: str, args) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("http", "session", "watch", "spoof", "fixed", "resources", "workflow", "tasks", "business"):
+    for name in ("http", "session", "watch", "spoof", "fixed", "resources", "workflow", "tasks", "business", "plan"):
         command = commands.add_parser(name)
         command.add_argument("--origin", required=True, help="https://<node>.<tailnet>.ts.net:8448")
         command.add_argument("--output", type=Path)
@@ -1033,6 +1083,13 @@ def main() -> None:
     run.add_argument("--project", help="P1: submit into this project (with --robot)")
     run.add_argument("--robot", help="P1: the robot the operator chose")
     follow_existing.add_argument("--mission", required=True)
+    planning = commands.choices["plan"]
+    planning.add_argument("--text", required=True)
+    planning.add_argument("--project", required=True)
+    planning.add_argument("--robot", required=True)
+    planning.add_argument("--volume", default="campus_training")
+    planning.add_argument("--asset", action="append")
+    planning.add_argument("--plan-timeout", type=float, default=300)
     flow = commands.choices["workflow"]
     flow.add_argument("--project", default="campus_s1")
     flow.add_argument("--draft-text", help="ask the configured planner for one inactive template draft")
@@ -1086,6 +1143,8 @@ def main() -> None:
         result, login = business(args.origin, args)
     elif args.command == "watch":
         result, login = watch(args.origin, args)
+    elif args.command == "plan":
+        result, login = plan(args.origin, args)
     else:
         result, login = session(args.origin, args)
     result = redact({"schema_version": "0.1.0", "probe": args.command, **result}, args.origin, login)

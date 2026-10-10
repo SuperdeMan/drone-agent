@@ -47,36 +47,10 @@ from drone_agent.fleet.provenance import source_context
 from drone_agent.fleet.service import MissionService
 from drone_agent.fleet.transport import FleetHub, serve_fleet
 from drone_agent.mission.registry import Registry
-from drone_agent.planner.engine import ModelIdentity, PlannerEngine
+from drone_agent.planner.engine import ModelIdentity
 from drone_agent.planner.replan import ApprovalPolicy
 from drone_agent.runtime.ledger import canonical
 from drone_agent.runtime.signing import SigningKey
-
-
-class RecordingPlanner:
-    """A fresh engine per request whose live exchanges are saved as `recorded` fixtures.
-
-    每个请求一个新引擎，其实调交互保存为 `recorded` 夹具。
-    """
-
-    def __init__(self, provider, identity: ModelIdentity, registry: Registry, tools, recordings: Path, label: str):
-        self.provider, self.identity, self.registry, self.tools = provider, identity, registry, tools
-        self.recordings, self.label = recordings, label
-
-    async def plan(self, request, *, mission_id: str, mission_version: int = 1):
-        from drone_agent.providers import RecordingProvider
-
-        recorder = RecordingProvider(self.provider)
-        engine = PlannerEngine(recorder, self.identity, self.registry, self.tools)
-        outcome = await engine.plan(request, mission_id=mission_id, mission_version=mission_version)
-        recording = recorder.recording(
-            source="recorded", provider_id=self.identity.provider_id, model=self.identity.model,
-            endpoint_host=self.identity.endpoint_host, prompt_version=engine.prompt_version,
-            prompt_sha256=engine.prompt_sha256, software_revision=os.environ.get("DRONE_SOURCE_SHA", "uncommitted"),
-            label=f"{mission_id}-v{mission_version}")
-        if recording.exchanges:
-            recording.save(self.recordings / f"{mission_id}-v{mission_version}.json")
-        return outcome
 
 
 def planner_mode(requested: str) -> str:
@@ -92,12 +66,19 @@ def planner_mode(requested: str) -> str:
 
 
 def build_planner(args, registry: Registry):
-    """(planner or None, label) for the requested mode. / 按模式返回（规划器或 None，标签）。"""
+    """(planner or None, label) for the requested mode; the planner plans each request at its robot's site (D079).
+
+    按模式返回（规划器或 None，标签）；规划器按每个请求的机器人站点规划（D079）。
+    """
     mode = planner_mode(args.planner)
     if mode == "none":
         return None, "none"
+    from drone_agent.planner.sites import SitePlanner
     from drone_agent.planner.tools.client import StdioSession
     from drone_agent.providers import KeyedScriptedProvider, ProviderUnavailable, build_provider
+
+    def session(scene: Path):
+        return StdioSession(args.root, scene).initialize()
 
     if mode == "scripted":
         fixtures = args.fixtures
@@ -108,16 +89,15 @@ def build_planner(args, registry: Registry):
             fixtures = args.state / "planner-fixtures.json"
             fixtures.write_text(json.dumps(suite_answers(args.root), ensure_ascii=False), encoding="utf-8")
         provider = KeyedScriptedProvider.load(fixtures)
-        tools = StdioSession(args.root, args.scene).initialize()
-        return PlannerEngine(provider, ModelIdentity("scripted", "scripted-fixture"), registry, tools), "scripted"
+        return SitePlanner(provider, ModelIdentity("scripted", "scripted-fixture"), registry, session(args.scene),
+                           scene=args.scene, session=session), "scripted"
     try:
         provider, config = build_provider("planner")
     except ProviderUnavailable as error:
         return None, f"unavailable: {error}"
     identity = ModelIdentity(config.provider_id, config.model, config.endpoint_host)
-    tools = StdioSession(args.root, args.scene).initialize()
-    return RecordingPlanner(provider, identity, registry, tools, args.state / "recordings", "live"), \
-        f"live:{config.provider_id}/{config.model}"
+    return SitePlanner(provider, identity, registry, session(args.scene), scene=args.scene, session=session,
+                       recordings=args.state / "recordings"), f"live:{config.provider_id}/{config.model}"
 
 
 async def main_async(args) -> None:
@@ -199,7 +179,8 @@ async def main_async(args) -> None:
             raise SystemExit("one --vendor-link per dock")
         service.vendor = VendorGateway(service, {dock: SocketLink(path) for dock, path in links.items()})
         vendor = {"docks": sorted(links)}
-    elif operations is not None and any(d.vendor_managed for d in operations.catalog.docks.values())             and "vendor_protocol_sim" in args.execution_backend:
+    elif operations is not None and any(d.vendor_managed for d in operations.catalog.docks.values()) \
+            and "vendor_protocol_sim" in args.execution_backend:
         raise SystemExit("the catalog has vendor-managed docks and needs one --vendor-link each")
     tls = args.tls
     credentials = {"cert_pem": (tls / "service.crt").read_bytes(), "key_pem": (tls / "service.key").read_bytes(),

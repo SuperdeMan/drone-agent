@@ -26,8 +26,9 @@ from drone_agent.fleet.transport import FleetHub, LocalFleetClient
 from drone_agent.guardian.core import Guardian
 from drone_agent.mission.executive import Executive
 from drone_agent.planner.draft import TOOL_NAME
-from drone_agent.planner.engine import ModelIdentity, PlannerEngine
+from drone_agent.planner.engine import ModelIdentity
 from drone_agent.planner.replan import ApprovalPolicy
+from drone_agent.planner.sites import SitePlanner
 from drone_agent.planner.tools.catalog import ToolCatalog
 from drone_agent.planner.tools.client import InProcessSession
 from drone_agent.providers import KeyedScriptedProvider
@@ -52,12 +53,16 @@ def draft(asset: str = "asset_red") -> dict:
             "notes": ""}
 
 
-def scripted_planner(answers: dict[str, dict] | None = None) -> PlannerEngine:
+def site_tools(scene: Path) -> InProcessSession:
+    return InProcessSession(ToolCatalog(ROOT, scene)).initialize()
+
+
+def scripted_planner(answers: dict[str, dict] | None = None) -> SitePlanner:
     answers = answers or {RED_REQUEST: draft()}
     provider = KeyedScriptedProvider({text: {"tool_calls": [{"id": "c1", "name": TOOL_NAME, "arguments": value}]}
                                       for text, value in answers.items()})
-    tools = InProcessSession(ToolCatalog(ROOT, SCENE)).initialize()
-    return PlannerEngine(provider, ModelIdentity("scripted", "scripted-fixture"), fast_registry(), tools)
+    return SitePlanner(provider, ModelIdentity("scripted", "scripted-fixture"), fast_registry(), site_tools(SCENE),
+                       scene=SCENE, session=site_tools)
 
 
 def request(text: str = RED_REQUEST, key: str = "idem-loop-0001", **overrides) -> MissionRequest:

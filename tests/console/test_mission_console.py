@@ -337,5 +337,5 @@ async def test_local_desk_plans_and_signs_with_a_labelled_scripted_planner(tmp_p
         assert view["versions"][0]["planner"]["model_id"] == "scripted-fixture"
         await session.close()
     finally:
-        service.planner.tools.close()
+        service.planner.close()
         service.ledger.close()

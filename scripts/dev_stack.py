@@ -607,6 +607,13 @@ def main() -> None:
     p6_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
     p6_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
     p6_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
+    adv_parser = commands.add_parser("p6-adv", help="record one WP-P6-03 adversarial corpus in the cloud (D079)")
+    adv_parser.add_argument("--corpus", choices=["nl_v1", "workflow_v1", "plan_ops_v1", "vision_ops_v1"], required=True)
+    adv_parser.add_argument("--mode", choices=["live", "scripted"], required=True,
+                            help="live asks the model once per case and records it; scripted checks the container path")
+    adv_parser.add_argument("--profile", choices=["configs/analysis/vlm_change_v3.yaml",
+                                                  "configs/analysis/vlm_change_v6.yaml"],
+                            help="vision_ops_v1 only: the model profile to record")
     data_parser = commands.add_parser("p4-data", help="upload and install the frozen S2 dataset in the cloud (D065)")
     data_parser.add_argument("--data", type=Path, required=True, help="the locally built dataset directory")
     data_parser.add_argument("--resume", help="upload id of an interrupted upload")
@@ -718,6 +725,9 @@ def main() -> None:
                     request.update(currency=args.currency, price_input=args.price_input,
                                    price_output=args.price_output, price_source=args.price_source)
                 result = ssh(connection, request, timeout=5 * 3600)
+            elif args.command == "p6-adv":
+                result = ssh(connection, {"action": "p6_adv", "run_id": new_run_id(), "corpus": args.corpus,
+                                          "mode": args.mode, "profile": args.profile}, timeout=5 * 3600)
             elif args.command in ("p1", "p2", "p3", "p4", "p5", "p6"):
                 result = ssh(
                     connection,

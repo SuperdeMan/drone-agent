@@ -45,8 +45,9 @@ from drone_agent.fleet.service import MissionService
 from drone_agent.fleet.transport import FleetHub
 from drone_agent.mission.registry import M2_SCENE, Registry
 from drone_agent.planner.draft import TOOL_NAME
-from drone_agent.planner.engine import ModelIdentity, PlannerEngine
+from drone_agent.planner.engine import ModelIdentity
 from drone_agent.planner.replan import ApprovalPolicy
+from drone_agent.planner.sites import SitePlanner
 from drone_agent.planner.tools.catalog import ToolCatalog
 from drone_agent.planner.tools.client import InProcessSession
 from drone_agent.providers import KeyedScriptedProvider
@@ -79,14 +80,21 @@ def draft(asset: str) -> dict:
             "notes": ""}
 
 
-def scripted_planner(repo: Path) -> PlannerEngine:
-    """A labelled scripted planner (never reported as model behaviour). / 带标注的脚本规划器（从不当作模型行为）。"""
+def scripted_planner(repo: Path) -> SitePlanner:
+    """A labelled scripted planner (never reported as model behaviour) that plans at each robot's site (D079).
+
+    带标注的脚本规划器（从不当作模型行为），按每台机器人的站点规划（D079）。
+    """
     answers = {TEXTS["red"]: draft("asset_red"), TEXTS["blue"]: draft("asset_blue")}
     provider = KeyedScriptedProvider({text: {"tool_calls": [{"id": "c1", "name": TOOL_NAME, "arguments": value}]}
                                       for text, value in answers.items()})
+
+    def session(scene: Path) -> InProcessSession:
+        return InProcessSession(ToolCatalog(repo, scene)).initialize()
+
     registry = Registry(repo, scene=repo / M2_SCENE)
-    tools = InProcessSession(ToolCatalog(repo, repo / M2_SCENE)).initialize()
-    return PlannerEngine(provider, ModelIdentity("scripted", "scripted-fixture"), registry, tools)
+    return SitePlanner(provider, ModelIdentity("scripted", "scripted-fixture"), registry, session(repo / M2_SCENE),
+                       scene=repo / M2_SCENE, session=session)
 
 
 class P1World:
