@@ -1,0 +1,239 @@
+{
+  "schema_version": "0.1.0",
+  "milestone": "P4",
+  "gate": "s2_reverification",
+  "source_sha": "f4b1b99deb571afcbb6956d2df83f18666980b02",
+  "records_sha": "f4b1b99deb571afcbb6956d2df83f18666980b02",
+  "status": "passed",
+  "criteria": {
+    "p4_record": {
+      "status": "passed",
+      "problems": [],
+      "source_sha": "8f41112c299f01f868113acc6be5311fdb96d14a",
+      "sha256": "95f35eecdeefa0f2361173bd5fd0f52c5d2ac84dd75c23729cb855cf5f084413",
+      "reused_criteria": [
+        "adversarial",
+        "checks",
+        "desk",
+        "desk_session",
+        "historical",
+        "m2_regression",
+        "p1_regression",
+        "p2_regression",
+        "p2_s1_regression",
+        "p3_regression",
+        "p3_s1_regression",
+        "s0_matrix",
+        "s1",
+        "scope"
+      ],
+      "counts_as_candidate_validation": false
+    },
+    "checks": {
+      "status": "passed",
+      "deployment_id": "20261010T055754Z-89d214da",
+      "tests": {
+        "tests": 1362,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "wire_checks": [
+        true,
+        true
+      ]
+    },
+    "s2": {
+      "status": "passed",
+      "problems": [],
+      "profile": "configs/analysis/vlm_change_v6.yaml",
+      "tau": 0.95,
+      "model": "MiniMax-M3.1-Flash-Preview",
+      "reasoning_effort": "max",
+      "profile_commit": "45ba863fdd0c0249cf45f1c979e32e181d5af8ff",
+      "profile_committed_at": "2026-10-10T08:23:21+08:00",
+      "preregistration_commit": "1be48b47b323b3db973e35ee282874d2fe6ff3cc",
+      "preregistered_at": "2026-10-10T12:28:34+08:00",
+      "test_split_uses": 2,
+      "uses": [
+        "20260927T162924Z-3d418f0e/p4-20260927T163456Z-0a79c6d3",
+        "20261010T003416Z-2bae1853/p4-20261010T042855Z-d2fd02a6"
+      ],
+      "live_test": "20261010T003416Z-2bae1853/p4-20261010T042855Z-d2fd02a6",
+      "metrics": {
+        "precision": 0.9703,
+        "precision_ci": [
+          0.9367,
+          0.9863
+        ],
+        "recall": 0.8167,
+        "recall_ci": [
+          0.7629,
+          0.8605
+        ],
+        "coverage": 0.9979,
+        "coverage_ci": [
+          0.9883,
+          0.9996
+        ],
+        "false_assurance": 0.0,
+        "false_assurance_ci": [
+          0.0,
+          0.031
+        ],
+        "instruction_following_rate": 0.075,
+        "injection_effects": 0,
+        "samples": {
+          "anomalous": 240,
+          "blurry": 40,
+          "injected": 40,
+          "normal": 240,
+          "undeterminable": 40,
+          "wrong_target": 40
+        },
+        "checks": {
+          "injection_effects": true,
+          "precision": true,
+          "recall": true,
+          "coverage": true,
+          "false_assurance": true
+        }
+      },
+      "usage": {
+        "model_samples": 588,
+        "model_calls": 598,
+        "latency_p50_ms": 17575.0,
+        "latency_p95_ms": 109437.0,
+        "input_tokens": 4565458,
+        "output_tokens": 1608493,
+        "cost": {
+          "basis": "MiniMax Token Plan subscription; no pay-as-you-go price is published for MiniMax-M3.1-Flash-Preview (vendor docs, 2026-10)"
+        },
+        "refusal_reasons": {
+          "analysis.undeterminable": 28,
+          "quality.blurry": 24,
+          "quality.exposure": 28,
+          "target.mismatch": 41
+        }
+      },
+      "retrieval": {
+        "map_at_10": 0.1841,
+        "device_top1": 0.9979
+      }
+    },
+    "s0_matrix": {
+      "status": "passed",
+      "cases": 45,
+      "expected": 45,
+      "passed": 45,
+      "counts": {
+        "duplicate_finding": 0,
+        "duplicate_order": 0,
+        "unreviewed_order": 0,
+        "non_human_decision": 0,
+        "false_closure": 0,
+        "unverified_analysis": 0,
+        "verdict_mutation": 0,
+        "post_cancel_effect": 0,
+        "lost_job": 0,
+        "default_verdict": 0,
+        "project_escape": 0,
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "false_success": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "e883be2c4bd80c38a59c62ed125b032519616d0bbd0e2192ef65dbabdd320b9c"
+    },
+    "p1_regression": {
+      "status": "passed",
+      "cases": 42,
+      "expected": 42,
+      "passed": 42,
+      "counts": {
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0,
+        "project_escape": 0,
+        "false_success": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "4a8b3e2c0201f03c25aa6902d2ef3a18795fd60e315349a18373b158fcf8974c"
+    },
+    "p2_regression": {
+      "status": "passed",
+      "cases": 45,
+      "expected": 45,
+      "passed": 45,
+      "counts": {
+        "duplicate_dispatch": 0,
+        "post_cancel_dispatch": 0,
+        "post_cancel_successor": 0,
+        "false_success": 0,
+        "false_order": 0,
+        "project_escape": 0,
+        "lost_run": 0,
+        "wrong_dispatch": 0,
+        "wrong_release": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "f296884eda67267bc8ccf1eda6e8062215013f9f590448f4db163396270ae376"
+    },
+    "p3_regression": {
+      "status": "passed",
+      "cases": 45,
+      "expected": 45,
+      "passed": 45,
+      "counts": {
+        "double_ownership": 0,
+        "duplicate_execution": 0,
+        "lost_task": 0,
+        "conflicting_reservation": 0,
+        "false_success": 0,
+        "stale_epoch_effect": 0,
+        "decision_mismatch": 0,
+        "project_escape": 0,
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "058ebd9e3a733cec3c372f1444ab107af1c1212788de4261f84981a0060d8cb8"
+    }
+  },
+  "capabilities": [
+    {
+      "capability": "business_loop_v1",
+      "milestone": "P4",
+      "software_validation": "passed",
+      "s2": {
+        "source_sha": "f4b1b99deb571afcbb6956d2df83f18666980b02",
+        "profile": "configs/analysis/vlm_change_v6.yaml",
+        "test_split_uses": 2,
+        "claims": "the analyzer's metrics on the VisA circuit-board close-ups only"
+      },
+      "other_criteria": {
+        "source_sha": "8f41112c299f01f868113acc6be5311fdb96d14a",
+        "record": "docs/verification/p4-2026-09-28/release.json",
+        "counts_as_candidate_validation": false
+      },
+      "field_accuracy": "not claimed",
+      "hardware_validation": "not_applicable"
+    }
+  ],
+  "inputs": {
+    "deployment-f4b1b99.json": "e2041102598ec5f01b36a43bccee00a07917442de6bdd142b1f202516c27277f",
+    "s2/calibration-v6.json": "d96a315d312861e8c9e2b40094dd249c15de93598b26adba40cfffb8e65dbd35",
+    "s2/test-replay-v6.json": "ed194b14c5b3e7059c33c44b6beb8a54502f4d59da20c39dec39e7b179c7be80",
+    "s2/test-scripted-v6.json": "e963fa89eb04559e096b24d8ab70f84dac3ba10433d5c05e1473305dcf4ce8ef",
+    "s2/retrieval.json": "a78a1cc8aaecca086b7c70861474e59997d40755bc4971f23bc85657b1688b09",
+    "test-live.json": "fcd287cc1d90e48f24b22a8d3ca4bb830311a1f1ff7de287a703d0eaf915934c",
+    "s2/test-live-v6.json": "5632d8b2cee22ca05a0bf92fb79542e9e88fd32041d9729b219f6c0907fab766"
+  }
+}
