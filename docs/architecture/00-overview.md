@@ -10,7 +10,7 @@
 
 ### 当前实现与阅读边界（2026-09-26）
 
-原架构审阅基线为 `9223d74`；P0 验收版本为 `de597d0`，验收见 [P0 记录](../p0-readiness.md)；P1 验收版本为 `b49701b`，见 [P1 记录](../p1-readiness.md)；P2 验收版本为 `3bdbd50`，见 [P2 记录](../p2-readiness.md)；P3 验收版本为 `73fcf23`，见 [P3 记录](../p3-readiness.md)；P4 验收版本为 `8f41112`，S2 在 `f4b1b99` 上复验（D076），见 [P4 记录](../p4-readiness.md)；P5 验收版本为 `1716843`（首个候选 `4c3de14` 未通过，保留为负记录），见 [P5 记录](../p5-readiness.md)。**M2 已完成单机仿真；M3-SITL 已通过，M3-JIL 待硬件；P0–P3 已完成（软件 / SITL 范围）；P4 已完成（2026-10-10，S2 以 MiniMax-M3.1-Flash-Preview 复验通过）；P5 已完成（D069–D073，软件 / SITL / 协议模拟范围）。** 2026-10-10 按外部评审加固航迹覆盖、能源降落平面前提与补全缓存键（D075），并为 P4 的 S2 接入 MiniMax-M3.1-Flash-Preview 视觉档、在校准拆分上冻结画像，在已披露第 2 次使用的测试拆分上复验通过（D076）；加入持续检查（D077）；P6 主动补拍的设计稿待评审（D078），见[评审记录](../research/external-review-2026-10-10.md)。
+原架构审阅基线为 `9223d74`；P0 验收版本为 `de597d0`，验收见 [P0 记录](../p0-readiness.md)；P1 验收版本为 `b49701b`，见 [P1 记录](../p1-readiness.md)；P2 验收版本为 `3bdbd50`，见 [P2 记录](../p2-readiness.md)；P3 验收版本为 `73fcf23`，见 [P3 记录](../p3-readiness.md)；P4 验收版本为 `8f41112`，S2 在 `f4b1b99` 上复验（D076），见 [P4 记录](../p4-readiness.md)；P5 验收版本为 `1716843`（首个候选 `4c3de14` 未通过，保留为负记录），见 [P5 记录](../p5-readiness.md)。**M2 已完成单机仿真；M3-SITL 已通过，M3-JIL 待硬件；P0–P3 已完成（软件 / SITL 范围）；P4 已完成（2026-10-10，S2 以 MiniMax-M3.1-Flash-Preview 复验通过）；P5 已完成（D069–D073，软件 / SITL / 协议模拟范围）。** 2026-10-10 按外部评审加固航迹覆盖、能源降落平面前提与补全缓存键（D075），并为 P4 的 S2 接入 MiniMax-M3.1-Flash-Preview 视觉档、在校准拆分上冻结画像，在已披露第 2 次使用的测试拆分上复验通过（D076）；加入持续检查（D077）；P6 主动补拍经用户批准、实施中（D078），见[评审记录](../research/external-review-2026-10-10.md)。
 
 | 链路 | 当前落地 | 进一步阅读 |
 |---|---|---|
@@ -129,7 +129,7 @@ flowchart TB
 | [../roadmap.md](../roadmap.md) | P/H/X 里程碑、历史映射与退出标准 |
 | [../p0-readiness.md](../p0-readiness.md) | P0 当前验收、来源语义、能力清单与准确候选证据 |
 | [../operations-implementation.md](../operations-implementation.md) | P0–P5 / H / X 工作包、责任、依赖与验收；§10 为评审提议的 P6 |
-| [../p6-implementation.md](../p6-implementation.md) | P6 主动补拍与目标区域质量的设计稿（D078，待评审） |
+| [../p6-implementation.md](../p6-implementation.md) | P6 主动补拍与目标区域质量的实施方案（D078，2026-10-10 批准，实施中） |
 | [../p1-implementation.md](../p1-implementation.md) | P1 的 12 项工作包、单机场纵向链、故障矩阵与实现落位 |
 | [../p1-readiness.md](../p1-readiness.md) | P1 验收版本、S0 / S1 与常驻任务台迁移证据 |
 | [../p2-implementation.md](../p2-implementation.md) | P2 持久工作流的语义、API、故障矩阵与实施记录 |

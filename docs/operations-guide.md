@@ -35,7 +35,7 @@ $env:UV_DEFAULT_INDEX = 'https://pypi.tuna.tsinghua.edu.cn/simple'
    uv run python scripts/dev_stack.py test
    ```
 3. **成员列表**：列表要指明新项目时（如 P4 → P5 增加 `fleet_s0`、`vendor_s3`），先暂存给下一次激活：`desk-members --next --apply`。旧服务在激活前重启也不会读到它；激活成功后才替换在用列表，失败则恢复原列表。成员不变时用 `desk-members --apply`（立即生效于下次服务启动）。
-4. **激活**：先 `console-cloud --apply`（使 `/fixed/` 的代理与部署版本一致），再 `desk-cloud` 看计划、`desk-cloud --apply`。激活依次：构建 M2 与 P5 仿真镜像、签发证书（含逻辑飞行器）、在当前账本副本上演练 P1–P4 迁移与 P5 目录切换（只保留计数与摘要）、写入激活记录、启动常驻容器与监管者、核对服务以四个 `p5_desk_v1` 目录、三种执行后端与厂商链路启动，并等待四个机场会话都变为活动；最后核对容器边界、Serve 映射与其他应用未变。任何一步失败只恢复本项目组件。
+4. **激活**：先 `console-cloud --apply`（使 `/fixed/` 的代理与部署版本一致），再 `desk-cloud` 看计划、`desk-cloud --apply`。激活依次：构建 M2 与 P5 仿真镜像、签发证书（含逻辑飞行器）、在当前账本副本上演练 P1–P4 迁移与 P5 目录切换（只保留计数与摘要）、写入激活记录、启动常驻容器与监管者、核对服务以四个任务台目录（P6 起工作流与业务目录为 `p6_desk_v1`，运营与调度目录仍为 `p5_desk_v1`，D078）、三种执行后端与厂商链路启动，并等待四个机场会话都变为活动；最后核对容器边界、Serve 映射与其他应用未变。任何一步失败只恢复本项目组件。
 5. **核对**：`desk-cloud --status`；`scripts/desk_probe.py http` 与 `spoof`；`uv run scripts/desk_browser.py --origin <origin> --output <目录>`（全部工作区与 `/fixed/`）。
 
 ## 3. 回退
@@ -88,7 +88,9 @@ $env:UV_DEFAULT_INDEX = 'https://pypi.tuna.tsinghua.edu.cn/simple'
 
 ## 8. 世界变更
 
-`desk-world --section s1|s0|s3 --asset <资产> --state normal|damaged|obstructed --apply` 修改任务台世界文件 `desk/world/appearance.json`，并在 `history.jsonl` 记一行。监管者在每架次起飞前按 `s1` 一节放置损伤贴片或道路障碍物；逻辑机队按 `s0`、厂商模拟器按 `s3` 渲染采集。页面与任务服务读不到这个文件；入口没有任何世界或飞控能力（D070）。
+`desk-world --section s1|s0|s3 --asset <资产> --state normal|damaged|obstructed|glare --apply` 修改任务台世界文件 `desk/world/appearance.json`，并在 `history.jsonl` 记一行。监管者在每架次起飞前按 `s1` 一节放置损伤贴片、道路障碍物或标记中心上的反光圆片（`glare`，P6 补拍演示，D078）；逻辑机队按 `s0`、厂商模拟器按 `s3` 渲染采集。页面与任务服务读不到这个文件；入口没有任何世界或飞控能力（D070）。
+
+补拍会话（P6，D078）：先 `desk-world --section s1 --asset asset_blue --state glare --apply`，再用 `scripts/desk_probe.py workflow --start --workflow recapture_watch --asset-input asset_blue --clear-before-recapture asset_blue` 经入口启动 `recapture_watch`。首次采集因目标区域反光被拒后，补拍任务等待审批；探针先以 `desk-world ... --state normal --apply` 清除反光，再像人一样审批补拍。补拍与其他任务一样逐次审批，入口没有补拍按钮。
 
 ## 9. 72 小时长稳
 

@@ -79,7 +79,7 @@ P1 调度侧默认 1 Hz 更新、3 s 新鲜度预算、最多 1 s 未来时钟�
 
 先用 YAML/JSON 定义和时间线，不做拖拽画布。`WorkflowPlanner` 后续可生成类型化草案，确定性校验器限制节点、项目、资产、预算和条件；首版先跑人工选择的固定模板。
 
-活动白名单：`submit_mission`、`await_mission`、`analyze_evidence`、`human_review`、`create_work_order`、`await_repair`、`request_reinspection`、`build_report`。条件使用有类型的谓词，禁止任意 Python / JavaScript、shell、自由 URL 或模型生成代码。外部事件只能触发已批准模板，不能携带审批、飞控命令或新的权限。
+活动白名单：`submit_mission`、`await_mission`、`analyze_evidence`、`human_review`、`create_work_order`、`await_repair`、`request_reinspection`、`build_report`。条件使用有类型的谓词，禁止任意 Python / JavaScript、shell、自由 URL 或模型生成代码。外部事件只能触发已批准模板，不能携带审批、飞控命令或新的权限。P4 增加 `settle_reinspection`（D063）；P6 增加无副作用的 `select_analysis` 与谓词输出 `recapture`（D078，见 §6.1）。
 
 流程状态：`pending → running ↔ waiting → completed/failed/outcome_unknown`；取消分为 `cancel_requested → cancelling → cancelled`。等待原因必须区分审批、设备、环境、证据、复核与维修。节点有独立状态与版本，流程 completed 由全部必需业务节点的结果推导，不能由某次飞行 succeeded 推导。
 
@@ -125,6 +125,16 @@ P1 调度侧默认 1 Hz 更新、3 s 新鲜度预算、最多 1 s 未来时钟�
 一份影像可支持多个 `AnalysisJob`，每个作业固定输入哈希、权限、模型 / 提示 / 阈值版本。复用须匹配传感器、视角、分辨率、采集时效与授权范围；可见光不能替代热红外，历史录像不能证明本次已飞。原始证据只读保留，分析输出为派生对象。
 
 RAG 查说明书、SOP、规范和历史线索；电量、天气、空域、占用等当次准入事实只取有有效期的结构化查询。旧状态不因向量检索命中而变新鲜。
+
+### 6.1 主动补拍与目标区域质量（P6，D078）
+
+具体语义见 [P6 实施方案](../p6-implementation.md) §3。
+
+- **触发**：补拍只由模板与业务目录的 `recapture-v1` 策略决定。分析节点因策略允许的原因拒判时，谓词输出 `recapture` 为真，固定模板中的补拍提交节点才会提交。模型只给出拒判原因，不能生成位姿、航线或飞行指令。
+- **范围**：补拍任务与原巡检的机器人、体积和资产完全相同，编译出同一条登记观测航线。每次巡检至多一次。它与其他任务一样经准入、逐次人工审批（D032）、领取闸门与对账。
+- **取舍**：选择节点取第一个完成的分析。被补拍接替的首次拒判不计入运行失败。两次都拒判时运行失败，资产状态仍未知，不给缺省结论。
+- **边界**：只处理已证实采集上的分析拒判。服务复核为 unverified 的采集仍按原规则使运行以未知结束，补拍不改变复核、效果判定或飞行判定。
+- **目标区域质量**：`quality-v2` 用画像固定的相机模型与采集位姿，在航向未知时保守地确定目标区域；缺几何信息即拒判，不退回整图检查。
 
 ## 7. 运行来源与分层验证
 
