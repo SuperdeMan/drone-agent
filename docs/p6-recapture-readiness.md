@@ -162,7 +162,7 @@
 - **测量航向**：在证据中加入姿态，用实测航向替代声明航向。要改机载适配器与 wire，属架构变更，先写决策。
 - **补拍 v2**：更近的登记拍摄位（解决 `quality.target_too_small`），以及复检模板的补拍（需要改结算规则）。
 - **常驻任务台的视觉画像**：仍是 change-v3，等 WP-P6-01 再定。
-- **代码整洁**：`scripts/desk_probe.py` 第 491 行与 `tests/fleet/test_target_quality.py` 第 181 行各有一处续行被合并成长空白（语义不变）。为不改动已验证的候选，留到下次代码改动时整理。
+- **代码整洁**：`scripts/desk_probe.py` 第 491 行与 `tests/fleet/test_target_quality.py` 第 181 行各有一处续行被合并成长空白（语义不变），P5 留下的 `src/drone_agent/fleet/main.py` 第 202 行也是同类。为不改动已验证的候选，留到下次代码改动时一并整理。
 
 ## 复现
 
