@@ -82,7 +82,7 @@ const SKIP = {condition_false: "条件不满足", upstream_skipped: "上游已�
   cancelled: "随运行取消"};
 const ACTIVITY = {submit_mission: "提交任务", await_mission: "等待任务结果", analyze_evidence: "分析证据", human_review: "人工复核",
   create_work_order: "模拟工单", await_repair: "等待维修反馈", request_reinspection: "请求复检", build_report: "生成报告",
-  settle_reinspection: "复检结算"};
+  settle_reinspection: "复检结算", select_analysis: "选择分析结果"};
 const TRIGGER = {manual: "手动", schedule: "排班", event: "事件", internal: "内部"};
 const ORDER = {open: "待维修", repair_reported: "已反馈维修·待复检", reinspection_requested: "已请求复检"};
 const FINAL = ["completed", "failed", "outcome_unknown", "cancelled"];
@@ -132,6 +132,12 @@ Object.assign(REASON, {"reinspection.still_anomalous": "复检仍疑似异常", 
   "model.other": "模型：其他原因", "reuse.stale": "采集过旧", "reuse.modality_mismatch": "模态不符",
   "reuse.resolution": "分辨率不符", "reuse.source_unknown": "来源未知", "reuse.analyzer_not_allowed": "分析器不允许复用",
   scripted_fixture: "脚本夹具答案"});
+// P6 (D078): target-region quality and recapture. A recapture is an ordinary mission that still needs its approval.
+// P6（D078）：目标区域质量与补拍。补拍是一次普通任务，仍需审批。
+Object.assign(REASON, {"quality.target_unknown": "目标几何无法确定", "quality.target_out_of_frame": "目标可能出画",
+  "quality.target_too_small": "目标过小", "quality.target_off_center": "相机未对准目标",
+  "quality.target_exposure": "目标区域曝光异常（反光或遮挡）", "quality.target_blurry": "目标区域模糊",
+  "analysis.no_usable_capture": "补拍后仍没有可分析的采集"});
 
 // Service issue codes in plain words; the code itself stays visible for tracing. / 服务问题码的中文说明；问题码本身仍显示以便追溯。
 const ISSUE = {"service.invalid_request": "请求无效", "service.not_found": "对象不存在或无权查看", "service.degraded": "任务服务暂不可用，稍后刷新",
@@ -1028,6 +1034,8 @@ function renderRun() {
     if (n.activity === "await_mission" && n.state === "completed") detail = `已证实 · 证据 ${esc(String(result.evidence_id || "").slice(0, 18))}…`;
     if (n.activity === "analyze_evidence" && n.state === "completed") detail = `${result.suspected ? "疑似异常" : "未见异常"} · ${sourceChip(result.source)} · ${esc(result.confidence)}`
       + (result.finding_id ? ` · <a class="mono" href="#business/finding/${esc(result.finding_id)}">${esc(result.finding_id)}</a>` : "");
+    if (n.activity === "select_analysis" && n.state === "completed") detail = `取自 ${esc(result.selected)} · ${result.suspected ? "疑似异常" : "未见异常"} · ${sourceChip(result.source)}`;
+    if (n.activity === "analyze_evidence" && n.state === "failed" && typeof n.detail?.recapture === "boolean") detail += n.detail.recapture ? " · 按补拍策略补拍一次" : " · 此原因不补拍";
     if (n.activity === "human_review" && n.state === "completed") detail = `${result.decision === "confirmed" ? "确认" : "驳回"} · ${esc(result.reviewer)}`;
     if (result.order_id) detail = `工单 ${esc(result.order_id)}`;
     if (n.activity === "request_reinspection" && result.run_id) detail = `<a class="mono" href="#workflows/${esc(result.run_id)}">复检 ${esc(result.run_id)}</a>`;

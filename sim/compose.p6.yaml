@@ -1,0 +1,20 @@
+# P6 S1 override (D078), applied after compose.m2.yaml, compose.p1.yaml and compose.p4.yaml: the mission service loads
+# the P6 workflow and business catalogs (target-region quality and recapture-v1) instead of the P4 ones, and the
+# judge is the P6 one. Nothing else changes: the same simulation, aircraft, dock backend and uplink.
+#
+# P6 S1 覆盖（D078），在 compose.m2.yaml、compose.p1.yaml 与 compose.p4.yaml 之后应用：任务服务加载 P6 工作流与业务目录
+# （目标区域质量与 recapture-v1）而不是 P4 目录，裁判换成 P6 裁判。其余不变：相同的仿真、飞行器、机场后端与 uplink。
+services:
+  mission-service:
+    command: [python3, -m, drone_agent.fleet.main, --scene, /workspace/configs/scenarios/m2_campus_v2.yaml,
+              --planner, "${DRONE_M2_PLANNER:?}", --fixtures, /input/planner-fixtures.json, --state, /state,
+              --tls, /tls, --signing-key, /secrets/approval-signing.key, --api, /run/mission/api.sock,
+              --listen, "0.0.0.0:8450", --transport, "${DRONE_M2_TRANSPORT:-grpc}",
+              --zenoh-listen, "tls/0.0.0.0:7447", --execution-backend, px4_sitl,
+              --catalog, /workspace/configs/sites/p1_s1_v1.yaml,
+              --members, /workspace/configs/sites/p4_members_s1.yaml,
+              --workflows, /workspace/configs/workflows/p6_s1_v1.yaml,
+              --business, /workspace/configs/analysis/p6_s1_v1.yaml, --vision, none]
+  judge:
+    command: [python3, -m, drone_agent.eval.judge_p6, /run, --layer, s1, --root, /workspace,
+              --output, /output/result.json]

@@ -96,3 +96,15 @@ class P5DeskWorld(P5World):
                 state = "damaged" if fleet.get(asset, "normal") != "normal" else "normal"
                 self.appearance.set(robot, asset, state)
         self.vendor_sim.damaged = {a for a, s in (data.get("s3") or {}).items() if s != "normal"}
+
+
+class P6DeskWorld(P5DeskWorld):
+    """The desk platform as activated since P6 (D078): the p6_desk_v1 workflow and business catalogs (every P5
+    template and analyzer plus the recapture template), operations and scheduling still p5_desk_v1.
+
+    P6 起激活的任务台平台（D078）：p6_desk_v1 工作流与业务目录（全部 P5 模板与分析器加补拍模板），运营与调度目录仍为
+    p5_desk_v1。
+    """
+
+    workflows_file = "configs/workflows/p6_desk_v1.yaml"
+    business_file = "configs/analysis/p6_desk_v1.yaml"

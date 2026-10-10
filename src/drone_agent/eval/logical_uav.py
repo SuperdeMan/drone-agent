@@ -105,6 +105,9 @@ class LogicalUav:
         # Harness-only camera of the simulated world (P4 appearance states); None keeps the default frames.
         # 只在编排中使用的模拟世界相机（P4 外观状态）；None 保持默认帧。
         self.camera = None
+        # Harness-only capture drift in metres for every next flight (P6); None keeps the exact pose.
+        # 只在编排中使用的拍摄偏差（米，P6），作用于之后的每次飞行；None 保持精确位姿。
+        self.capture_offset: tuple[float, float] | None = None
         # The resident fleet (P5) passes its own mTLS client; S0 worlds use the in-process hub.
         # 常驻机队（P5）传入自己的 mTLS 客户端；S0 世界使用进程内 hub。
         inner = client if client is not None else LocalFleetClient(hub, self.robot_id)
@@ -174,6 +177,7 @@ class LogicalUav:
         adapter = FlightFake(self.registry, artifacts, self.frames, battery=self.battery, drain_per_sample=self.drain,
                              camera=self.camera)
         adapter.climb_blocked = self.climb_blocked
+        adapter.capture_offset = self.capture_offset
         adapter.sim_clock = lambda: time.monotonic() - self.started
         snapshot, holder = adapter.snapshot, {"guardian": None, "last": 0.0}
 

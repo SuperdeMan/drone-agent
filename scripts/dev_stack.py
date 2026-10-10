@@ -540,7 +540,7 @@ def main() -> None:
     world_parser = commands.add_parser("desk-world", help="change one asset of the desk world file (P5, D070)")
     world_parser.add_argument("--section", choices=["s0", "s1", "s3"], required=True)
     world_parser.add_argument("--asset", required=True)
-    world_parser.add_argument("--state", choices=["normal", "damaged", "obstructed"], required=True)
+    world_parser.add_argument("--state", choices=["normal", "damaged", "obstructed", "glare"], required=True)
     world_parser.add_argument("--reason", default="")
     world_parser.add_argument("--apply", action="store_true")
     soak_parser = commands.add_parser("desk-soak", help="start, follow, stop or judge the P5 soak (D073)")
@@ -603,6 +603,10 @@ def main() -> None:
     p5_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
     p5_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
     p5_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
+    p6_parser = commands.add_parser("p6", help="run P6 S1 cases (recapture on PX4 SITL, D078) in the cloud")
+    p6_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
+    p6_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
+    p6_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
     data_parser = commands.add_parser("p4-data", help="upload and install the frozen S2 dataset in the cloud (D065)")
     data_parser.add_argument("--data", type=Path, required=True, help="the locally built dataset directory")
     data_parser.add_argument("--resume", help="upload id of an interrupted upload")
@@ -714,7 +718,7 @@ def main() -> None:
                     request.update(currency=args.currency, price_input=args.price_input,
                                    price_output=args.price_output, price_source=args.price_source)
                 result = ssh(connection, request, timeout=5 * 3600)
-            elif args.command in ("p1", "p2", "p3", "p4", "p5"):
+            elif args.command in ("p1", "p2", "p3", "p4", "p5", "p6"):
                 result = ssh(
                     connection,
                     {

@@ -85,6 +85,9 @@ class FlightFake:
         # Harness-only view of the simulated world (P4): raw frame bytes for an asset, or None for the default frame.
         # 只在编排中使用的模拟世界视图（P4）：某资产的原始帧字节，或 None 表示默认帧。
         self.camera = camera
+        # Harness-only capture drift in metres (P6): the capture pose is off by it, the flight path is not.
+        # 只在编排中使用的拍摄偏差（米，P6）：拍摄位姿偏离该值，飞行路径不变。
+        self.capture_offset: tuple[float, float] | None = None
 
     def snapshot(self):
         if self.path:
@@ -137,6 +140,12 @@ class FlightFake:
                 self.registry.data["assets"][node.params["asset_id"]]["visual_signature"]
             raw = image(signature)
         observation = self.snapshot()
+        if self.capture_offset is not None and observation.pose is not None:
+            position = observation.pose.position.model_copy(update={
+                "x": observation.pose.position.x + self.capture_offset[0],
+                "y": observation.pose.position.y + self.capture_offset[1]})
+            observation = observation.model_copy(update={"pose": observation.pose.model_copy(
+                update={"position": position})})
         digest = hashlib.sha256(raw).hexdigest()
         relative = f"images/{digest}-{uuid.uuid4().hex[:6]}.rgb"
         (self.artifacts / "images").mkdir(exist_ok=True)

@@ -1,0 +1,25 @@
+# P6 business catalog for the S0 world (D078), written for the operations catalog p1_campus_v1 and the workflow
+# catalog p6_campus_v1. The P4 policies stay as they were; analyses without their own quality profile use the
+# target-region profile quality_target_s0_v1, and recapture-v1 lists every reason a flight of the same pose can
+# change. The control template's model analyzer keeps the whole-frame profile it names.
+#
+# S0 世界的 P6 业务目录（D078），对应运营目录 p1_campus_v1 与工作流目录 p6_campus_v1。P4 的各项策略不变；未自带质量画像的
+# 分析使用目标区域画像 quality_target_s0_v1，recapture-v1 列出同一拍摄位的再次飞行可以改变的全部原因。对照模板的模型分析器
+# 保留其所指的整图画像。
+format: drone.business-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p6_campus_v1
+operations_catalog: p1_campus_v1
+workflow_catalog: p6_campus_v1
+default_quality: configs/analysis/quality_target_s0_v1.yaml
+families:
+  appearance: [damage, missing_part, contamination, deformation, discoloration, foreign_object, other_change]
+generic_defect: other_change
+closure: {version: reinspection-v1, allowed_sources: [deterministic, scripted, live_model, recorded_model]}
+reuse: {version: reuse-v1, max_age_s: 604800, analyzers: [signature_s0_v1, vlm_target_s0_v1]}
+runner: {concurrency: 2, lease_s: 8, max_attempts: 2, daily_tokens: 2000000}
+max_references: 3
+recapture:
+  version: recapture-v1
+  reasons: [quality.blurry, quality.exposure, quality.target_out_of_frame, quality.target_off_center,
+            quality.target_exposure, quality.target_blurry, analysis.undeterminable]

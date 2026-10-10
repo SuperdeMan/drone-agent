@@ -68,6 +68,8 @@ class Activity(StrEnum):
     BUILD_REPORT = "build_report"
     # P4 (D063): settle one reinspection round of a business work order. / P4（D063）：结算业务工单的一轮复检。
     SETTLE_REINSPECTION = "settle_reinspection"
+    # P6 (D078): the first completed of an analysis and its recapture; no effect. / P6（D078）：取分析及其补拍中首个完成者；无副作用。
+    SELECT_ANALYSIS = "select_analysis"
 
 
 class RunState(StrEnum):
@@ -171,6 +173,10 @@ class SubmitMissionParams(WorkflowModel):
     asset: str | InputRef = Field(description="registered asset id or run input / 登记资产 ID 或运行输入")
     candidates: tuple[str, ...] = Field(default=(), max_length=50)
     priority: int = Field(default=0, ge=0, le=9)
+    # P6 (D078): this node flies the same pose again after the named analysis was refused for a recapturable reason;
+    # left out of the canonical form while unused. / P6（D078）：所指分析因可补拍原因拒判后，本节点以同一拍摄位再飞一次；
+    # 未使用时不进入规范形式。
+    recapture_of: str | None = Field(default=None, pattern=NODE_ID)
 
     @model_validator(mode="after")
     def _mode(self):
@@ -179,6 +185,8 @@ class SubmitMissionParams(WorkflowModel):
         if any(not re.fullmatch(ID, robot) for robot in self.candidates) or \
                 len(set(self.candidates)) != len(self.candidates):
             raise ValueError("candidates are distinct robot ids")
+        if self.recapture_of is not None and self.robot_id is None:
+            raise ValueError("a recapture flies a fixed robot (D078)")
         return self
 
     @model_serializer(mode="wrap")
@@ -190,6 +198,8 @@ class SubmitMissionParams(WorkflowModel):
             data.pop("candidates", None)
         if not self.priority:
             data.pop("priority", None)
+        if self.recapture_of is None:
+            data.pop("recapture_of", None)
         return data
 
     @property
@@ -292,20 +302,37 @@ class SettleParams(WorkflowModel):
     review_from: str = Field(pattern=NODE_ID, description="the round's human_review node / 本轮复核节点")
 
 
+class SelectParams(WorkflowModel):
+    """P6 (D078): the analyses to choose from, in order; the first that completed is the output.
+
+    P6（D078）：按顺序列出的候选分析；首个完成者即为输出。
+    """
+
+    analyses: tuple[str, ...] = Field(min_length=2, max_length=3)
+
+
 class Predicate(WorkflowModel):
-    """`node.output == equals` over a typed output; the only condition form. / 对类型化输出的相等判断；唯一的条件形式。"""
+    """`node.output == equals` over a typed output; the only condition form. `recapture` (P6, D078) is the one output
+    a failed node has: whether the business catalog let its refusal be recaptured.
+
+    对类型化输出的相等判断；唯一的条件形式。`recapture`（P6，D078）是失败节点唯一的输出：业务目录是否允许其拒判补拍。
+    """
 
     node: str = Field(pattern=NODE_ID)
-    output: Literal["suspected", "decision"]
+    output: Literal["suspected", "decision", "recapture"]
     # Strict: "yes" or 1 is never coerced into true. / 严格类型："yes" 或 1 从不被转换为 true。
     equals: StrictBool | Literal["confirmed", "dismissed"]
 
 
-# Outputs a predicate may read, by activity and the values they take. / 谓词可读的输出：所属活动与取值。
-PREDICATE_OUTPUTS: dict[str, tuple[Activity, tuple]] = {
-    "suspected": (Activity.ANALYZE_EVIDENCE, (True, False)),
-    "decision": (Activity.HUMAN_REVIEW, ("confirmed", "dismissed")),
+# Outputs a predicate may read, by the activities that produce them and their values. / 谓词可读的输出：产生它的活动与取值。
+PREDICATE_OUTPUTS: dict[str, tuple[tuple[Activity, ...], tuple]] = {
+    "suspected": ((Activity.ANALYZE_EVIDENCE, Activity.SELECT_ANALYSIS), (True, False)),
+    "decision": ((Activity.HUMAN_REVIEW,), ("confirmed", "dismissed")),
+    "recapture": ((Activity.ANALYZE_EVIDENCE,), (True, False)),
 }
+# A reference to an analysis may name the selection over an analysis and its recapture (P6, D078).
+# 对分析的引用可以指向分析及其补拍之上的选择节点（P6，D078）。
+STANDS_FOR = {Activity.ANALYZE_EVIDENCE: (Activity.ANALYZE_EVIDENCE, Activity.SELECT_ANALYSIS)}
 
 
 class _Node(WorkflowModel):
@@ -387,8 +414,17 @@ class SettleNode(_Node):
     params: SettleParams
 
 
+class SelectNode(_Node):
+    """P6 (D078): like the settle node it reads its analyses through `after` with `requires: done`, because the
+    analysis a recapture replaced has failed. / P6（D078）：与结算节点一样经 `after` 与 `requires: done` 读取分析，
+    因为被补拍接替的分析已经失败。"""
+
+    activity: Literal["select_analysis"]
+    params: SelectParams
+
+
 Node = Annotated[SubmitMissionNode | AwaitMissionNode | AnalyzeNode | ReviewNode | WorkOrderNode | AwaitRepairNode
-                 | ReinspectionNode | ReportNode | SettleNode, Field(discriminator="activity")]
+                 | ReinspectionNode | ReportNode | SettleNode | SelectNode, Field(discriminator="activity")]
 
 
 # ── triggers and schedules / 触发器与排班 ──
@@ -594,7 +630,7 @@ class WorkflowSpec(WorkflowModel):
                     raise ValueError(f"{node.node_id} runs after an unknown node {dependency}")
             for reference, activity in node.references():
                 target = nodes.get(reference)
-                if target is None or target.activity != activity.value:
+                if target is None or target.activity not in {a.value for a in STANDS_FOR.get(activity, (activity,))}:
                     raise ValueError(f"{node.node_id} must read a {activity.value} node, not {reference}")
             if isinstance(node, AwaitMissionNode):
                 if node.params.mission_from in awaited:
@@ -606,10 +642,10 @@ class WorkflowSpec(WorkflowModel):
                 if not node.params.asset_pattern_ok():
                     raise ValueError(f"{node.node_id} names an invalid asset id")
             for predicate in node.when:
-                activity, values = PREDICATE_OUTPUTS[predicate.output]
+                activities, values = PREDICATE_OUTPUTS[predicate.output]
                 target = nodes.get(predicate.node)
-                if target is None or target.activity != activity.value or predicate.equals not in values \
-                        or type(predicate.equals) is not type(values[0]):
+                if target is None or target.activity not in {a.value for a in activities} \
+                        or predicate.equals not in values or type(predicate.equals) is not type(values[0]):
                     raise ValueError(f"{node.node_id} has a condition on {predicate.node}.{predicate.output} "
                                      f"that the node cannot produce")
         submits = [n.node_id for n in self.nodes if isinstance(n, SubmitMissionNode)]
@@ -644,8 +680,9 @@ class WorkflowSpec(WorkflowModel):
         P4（D063）：P4 工单固定其复检模板；只有复检模板结算轮次，依据其复检分析与本轮复核，且该复核只针对未疑似的采集。
         """
         def analysis_of(review_id: str):
-            return nodes[nodes[review_id].params.analysis_from]
+            return self.analysis(nodes[review_id].params.analysis_from)
 
+        self._recapture_rules(nodes)
         rechecks = [n for n in self.nodes if isinstance(n, AnalyzeNode) and n.params.purpose == "reinspection"]
         settles = [n for n in self.nodes if isinstance(n, SettleNode)]
         for node in self.nodes:
@@ -681,6 +718,62 @@ class WorkflowSpec(WorkflowModel):
             if isinstance(node, WorkOrderNode) and nodes[node.params.review_from].params.analysis_from \
                     == recheck.node_id:
                 raise ValueError(f"{node.node_id}: a reinspection never opens an order")
+
+    def _recapture_rules(self, nodes: dict) -> None:
+        """P6 (D078): a recapture flies the same fixed robot, volume and asset once after one inspection analysis,
+        only when that analysis may be recaptured, and its own analysis is the same; a selection chooses among
+        inspection analyses of one analyzer whatever they did.
+
+        P6（D078）：补拍在一次巡检分析之后、仅当该分析可补拍时，以相同的固定机器人、体积与资产飞一次，其分析与原分析相同；
+        选择节点无论候选分析结果如何都在同一分析器的巡检分析中选择。
+        """
+        recaptured: set[str] = set()
+        for node in self.nodes:
+            for predicate in node.when:
+                if predicate.output == "recapture" and not (isinstance(node, SubmitMissionNode)
+                                                            and node.params.recapture_of == predicate.node):
+                    raise ValueError(f"{node.node_id}: only the recapture of {predicate.node} reads its recapture")
+            if isinstance(node, SelectNode):
+                choices = [nodes.get(name) for name in node.params.analyses]
+                if len(set(node.params.analyses)) != len(choices) or any(
+                        not isinstance(c, AnalyzeNode) or not c.params.findings or c.params.purpose != "inspection"
+                        for c in choices) or len({c.params.analyzer for c in choices}) != 1:
+                    raise ValueError(f"{node.node_id} selects among distinct inspection analyses of one analyzer")
+                if node.requires != "done" or not set(node.params.analyses) <= set(node.after) or node.when:
+                    raise ValueError(f"{node.node_id} runs after its analyses whatever they did, unconditionally")
+            if not isinstance(node, SubmitMissionNode) or node.params.recapture_of is None:
+                continue
+            target = nodes.get(node.params.recapture_of)
+            if not isinstance(target, AnalyzeNode) or not target.params.findings \
+                    or target.params.purpose != "inspection":
+                raise ValueError(f"{node.node_id} recaptures {node.params.recapture_of}, not an inspection analysis")
+            if target.node_id in recaptured:
+                raise ValueError(f"{target.node_id} is recaptured twice")
+            recaptured.add(target.node_id)
+            gate = (Predicate(node=target.node_id, output="recapture", equals=True),)
+            if node.requires != "done" or target.node_id not in node.after or node.when != gate:
+                raise ValueError(f"{node.node_id} runs after {target.node_id} whatever it did, only when it may be "
+                                 f"recaptured")
+            original = nodes[nodes[target.params.inspection_from].params.mission_from]
+            if original.params.recapture_of is not None:
+                raise ValueError(f"{node.node_id}: a recapture is never recaptured")
+            if original.params.model_dump(exclude={"recapture_of"}) != node.params.model_dump(exclude={"recapture_of"}):
+                raise ValueError(f"{node.node_id} flies the robot, volume and asset of {original.node_id}")
+            waits = {n.node_id for n in self.nodes if isinstance(n, AwaitMissionNode)
+                     and n.params.mission_from == node.node_id}
+            for analysis in self.nodes:
+                if isinstance(analysis, AnalyzeNode) and analysis.params.inspection_from in waits and (
+                        analysis.params.analyzer != target.params.analyzer or not analysis.params.findings
+                        or analysis.params.purpose != "inspection"):
+                    raise ValueError(f"{analysis.node_id} analyses the recapture like {target.node_id}")
+
+    def analysis(self, node_id: str):
+        """The analysis node a reference stands for: itself, or the first analysis of a selection (P6).
+
+        引用所代表的分析节点：自身，或选择节点的第一个候选分析（P6）。
+        """
+        node = self.node(node_id)
+        return self.node(node.params.analyses[0]) if isinstance(node, SelectNode) else node
 
     def _check_trigger(self, trigger) -> None:
         required = {name for name, spec in self.inputs.items() if spec.required}
@@ -771,12 +864,23 @@ class SignatureAnalyzer(WorkflowModel):
     kind: Literal["deterministic"]
     method: Literal["color_signature"]
     bands: dict[str, tuple[float, float]] = Field(min_length=1)
+    # P6 (D078): a quality profile of its own, pinned like a model analyzer's, for deployments whose sites have
+    # different cameras; left out of the canonical form while unset (the business catalog's default applies).
+    # P6（D078）：自带的质量画像，与模型分析器一样固定，用于各站点相机不同的部署；未设置时不进入规范形式（使用业务目录的默认画像）。
+    quality: str | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
     def _bands(self):
         if any(not 0 <= low < high <= 1 for low, high in self.bands.values()):
             raise ValueError("bands are 0 <= low < high <= 1")
         return self
+
+    @model_serializer(mode="wrap")
+    def _canonical(self, handler):
+        data = handler(self)
+        if self.quality is None:
+            data.pop("quality", None)
+        return data
 
 
 class ModelAnalyzer(WorkflowModel):
@@ -911,6 +1015,10 @@ class WorkflowCatalog(WorkflowModel):
 
                 _, fixtures[f"{name}#profile"] = load_profile(root, analyzer.profile)
                 _, fixtures[f"{name}#quality"] = load_quality(root, analyzer.quality)
+            if isinstance(analyzer, SignatureAnalyzer) and analyzer.quality is not None:
+                from drone_agent.fleet.business_models import load_quality
+
+                _, fixtures[f"{name}#quality"] = load_quality(root, analyzer.quality)
         for workflow in self.workflows:
             if workflow.project_id not in operations.projects:
                 raise ValueError(f"{workflow.workflow_id} names an unknown project {workflow.project_id}")
@@ -1038,6 +1146,15 @@ class AnalysisOutput(WorkflowModel):
         return {key: value for key, value in handler(self).items() if value is not None}
 
 
+class SelectOutput(AnalysisOutput):
+    """select_analysis (P6, D078): the chosen analysis's output and which node it came from.
+
+    select_analysis（P6，D078）：所选分析的输出及其来源节点。
+    """
+
+    selected: str = Field(pattern=NODE_ID)
+
+
 class ReviewOutput(WorkflowModel):
     review_id: str
     decision: Literal["confirmed", "dismissed"]
@@ -1075,6 +1192,7 @@ OUTPUTS: dict[Activity, type[WorkflowModel]] = {
     Activity.ANALYZE_EVIDENCE: AnalysisOutput, Activity.HUMAN_REVIEW: ReviewOutput,
     Activity.CREATE_WORK_ORDER: OrderOutput, Activity.AWAIT_REPAIR: RepairOutput,
     Activity.REQUEST_REINSPECTION: ReinspectionOutput, Activity.SETTLE_REINSPECTION: SettleOutput,
+    Activity.SELECT_ANALYSIS: SelectOutput,
 }
 
 

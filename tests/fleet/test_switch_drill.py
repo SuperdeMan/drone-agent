@@ -77,6 +77,21 @@ async def test_the_p5_catalogs_open_a_p4_desk_ledger_and_render_its_records_with
     assert result["rows_after"] - result["rows_before"] == 4  # one new row per catalog table / 每个目录表新增一行
 
 
+async def test_the_p6_desk_catalogs_open_an_earlier_desk_ledger_with_only_catalog_rows_added(tmp_path):
+    # P6 (D078): the recapture catalogs replace the workflow and business ones; no table changes.
+    # P6（D078）：补拍目录替换工作流与业务目录；表不变。
+    path = await p4_desk_ledger(tmp_path)
+    result = await drill(ROOT, path, scene=ROOT / M2_SCENE, catalog=ROOT / "configs/sites/p5_desk_v1.yaml",
+                         members=ROOT / "configs/sites/p5_members_desk_s0.yaml",
+                         workflows=ROOT / "configs/workflows/p6_desk_v1.yaml",
+                         scheduling=ROOT / "configs/scheduling/p5_desk_v1.yaml",
+                         business=ROOT / "configs/analysis/p6_desk_v1.yaml",
+                         backends=("px4_sitl", "logical_sim", "vendor_protocol_sim"))
+    assert result["status"] == "passed", result
+    assert result["catalogs"]["workflows"][0] == "p6_desk_v1" and result["catalogs"]["business"][0] == "p6_desk_v1"
+    assert result["read"]["runs"] >= 1 and result["rows_after"] - result["rows_before"] == 4
+
+
 async def test_a_member_list_naming_an_unknown_project_fails_the_drill(tmp_path):
     path = await p4_desk_ledger(tmp_path)
     members = tmp_path / "bad.yaml"

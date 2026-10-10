@@ -86,7 +86,7 @@ def test_a_cycle_is_refused():
     (lambda s: node(s, "analyze_red")["params"].update(script="import os"), "Extra inputs are not permitted"),
     (lambda s: node(s, "review_red").update(when="analyze_red.suspected == True"), "valid tuple"),
     (lambda s: node(s, "review_red").update(when=[{"node": "analyze_red", "output": "__class__", "equals": True}]),
-     "Input should be 'suspected' or 'decision'"),
+     "Input should be 'suspected', 'decision' or 'recapture'"),
     (lambda s: node(s, "inspect_blue")["params"].update(url="https://example.test/hook"), "Extra inputs"),
     (lambda s: node(s, "await_red")["params"].update(mission_from="nowhere"), "must read a submit_mission node"),
     (lambda s: node(s, "report").update(after=["ghost"]), "unknown node ghost"),

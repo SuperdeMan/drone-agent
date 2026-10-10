@@ -35,7 +35,7 @@ import yaml
 from drone_agent.console.mission import MAX_FRAME, LocalApi, MissionConsole, scene_scope
 from drone_agent.console.unified import UnifiedConsole
 from drone_agent.eval.p1_world import TEXTS
-from drone_agent.eval.p5_desk_world import P5DeskWorld
+from drone_agent.eval.p5_desk_world import P6DeskWorld
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = "configs/sites/p5_desk_v1.yaml"
@@ -43,7 +43,7 @@ PROJECT = "campus_s1"
 PROJECTS = ("campus_s1", "fleet_s0", "vendor_s3")
 
 
-class PreviewWorld(P5DeskWorld):
+class PreviewWorld(P6DeskWorld):
     """The desk platform catalogs over the S0 world, the PX4 aircraft relabelled logical. / S0 世界上的任务台平台目录。"""
 
     def __init__(self, case: Path, repo: Path, *, principal: str):

@@ -1,0 +1,161 @@
+# P6 workflow catalog for the S0 world (D078), written for the operations catalog p1_campus_v1. `recapture_watch` on
+# site_b (colour-signature plugin) and `recapture_vlm_watch` on site_c (model analyzer answered by the labelled
+# scripted vision double) analyse with the target-region profile quality_target_s0_v1; an analysis refused for a
+# reason the business catalog's recapture-v1 allows starts one recapture of the same robot, volume and asset, and the
+# selection takes the first analysis that completed. `plain_vlm_watch` on site_a is the control: the same model
+# analyzer behind the whole-frame profile quality_sim_v1 and no recapture. `harbor_watch` belongs to the isolation
+# fixture project. Every mission, the recapture included, still needs its own human approval; the logical aircraft
+# are not physical flights.
+#
+# S0 世界的 P6 工作流目录（D078），对应运营目录 p1_campus_v1。site_b 的 `recapture_watch`（颜色特征插件）与 site_c 的
+# `recapture_vlm_watch`（由带标注脚本视觉替身作答的模型分析器）使用目标区域画像 quality_target_s0_v1；分析因业务目录
+# recapture-v1 允许的原因被拒时，以相同的机器人、体积与资产补拍一次，选择节点取首个完成的分析。site_a 的
+# `plain_vlm_watch` 是对照：同一模型分析器，但用整图画像 quality_sim_v1 且不补拍。`harbor_watch` 属于隔离夹具项目。
+# 每个任务（包括补拍）仍需各自的人工审批；逻辑飞行器不是物理飞行。
+format: drone.workflow-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p6_campus_v1
+operations_catalog: p1_campus_v1
+analyzers:
+  # The P4 bands: 40x40 of a 160x120 frame is 0.0833; the damage band leaves 0.0667.
+  # P4 的区间：160x120 画面中 40x40 的标记占 0.0833；损伤带之后为 0.0667。
+  signature_s0_v1:
+    kind: deterministic
+    method: color_signature
+    bands: {asset_red: [0.075, 0.095], asset_blue: [0.075, 0.095]}
+  vlm_target_s0_v1: {kind: model, profile: configs/analysis/vlm_scripted_s0_v1.yaml, quality: configs/analysis/quality_target_s0_v1.yaml}
+  vlm_frame_s0_v1: {kind: model, profile: configs/analysis/vlm_scripted_s0_v1.yaml, quality: configs/analysis/quality_sim_v1.yaml}
+workflows:
+  - workflow_id: recapture_watch
+    version: 1
+    project_id: campus_ops
+    title: "Site B watch with one recapture: inspect, analyse, recapture a refusal once, review the finding / B 站巡检带一次补拍：巡检、分析、拒判时补拍一次、复核发现"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+      - {trigger_id: report, kind: event, source: "event:p6-reports", event_type: marker.report, inputs_from_event: [asset]}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_b, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s0_v1, findings: true}}
+      - {node_id: recapture, activity: submit_mission, requires: done, after: [analyze], when: [{node: analyze, output: recapture, equals: true}], params: {robot_id: uav_b, volume_id: campus_training, asset: {input: asset}, recapture_of: analyze}}
+      - {node_id: await_recapture, activity: await_mission, params: {mission_from: recapture}}
+      - {node_id: analyze_recapture, activity: analyze_evidence, params: {inspection_from: await_recapture, analyzer: signature_s0_v1, findings: true}}
+      - {node_id: select, activity: select_analysis, requires: done, after: [analyze, analyze_recapture], params: {analyses: [analyze, analyze_recapture]}}
+      - {node_id: review, activity: human_review, when: [{node: select, output: suspected, equals: true}], params: {analysis_from: select}}
+      - node_id: work_order
+        activity: create_work_order
+        when: [{node: review, output: decision, equals: confirmed}]
+        params: {review_from: review, reinspection: {workflow_id: recapture_reinspection, version: 1, asset_input: asset}}
+      - {node_id: report, activity: build_report, requires: done, after: [work_order]}
+    budget: {max_missions: 2}
+  - workflow_id: recapture_reinspection
+    version: 1
+    project_id: campus_ops
+    title: "Site B reinspection after repair feedback (no recapture in v1) / B 站维修反馈后的复检（v1 不补拍）"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: reinspection, kind: internal}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_b, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s0_v1, findings: true, purpose: reinspection}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: false}], params: {analysis_from: analyze}}
+      - {node_id: settle, activity: settle_reinspection, requires: done, after: [analyze, review], params: {analysis_from: analyze, review_from: review}}
+      - {node_id: report, activity: build_report, requires: done, after: [settle]}
+    budget: {max_missions: 1}
+  - workflow_id: recapture_vlm_watch
+    version: 1
+    project_id: campus_ops
+    title: "Site C watch with the model analyzer and one recapture (scripted double in S0) / C 站模型分析巡检带一次补拍（S0 中为脚本替身）"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_c, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: vlm_target_s0_v1, findings: true}}
+      - {node_id: recapture, activity: submit_mission, requires: done, after: [analyze], when: [{node: analyze, output: recapture, equals: true}], params: {robot_id: uav_c, volume_id: campus_training, asset: {input: asset}, recapture_of: analyze}}
+      - {node_id: await_recapture, activity: await_mission, params: {mission_from: recapture}}
+      - {node_id: analyze_recapture, activity: analyze_evidence, params: {inspection_from: await_recapture, analyzer: vlm_target_s0_v1, findings: true}}
+      - {node_id: select, activity: select_analysis, requires: done, after: [analyze, analyze_recapture], params: {analyses: [analyze, analyze_recapture]}}
+      - {node_id: review, activity: human_review, when: [{node: select, output: suspected, equals: true}], params: {analysis_from: select}}
+      - node_id: work_order
+        activity: create_work_order
+        when: [{node: review, output: decision, equals: confirmed}]
+        params: {review_from: review, reinspection: {workflow_id: recapture_vlm_reinspection, version: 1, asset_input: asset}}
+      - {node_id: report, activity: build_report, requires: done, after: [work_order]}
+    budget: {max_missions: 2}
+  - workflow_id: recapture_vlm_reinspection
+    version: 1
+    project_id: campus_ops
+    title: "Site C reinspection with the model analyzer / C 站复检（模型分析器）"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: reinspection, kind: internal}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_c, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: vlm_target_s0_v1, findings: true, purpose: reinspection}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: false}], params: {analysis_from: analyze}}
+      - {node_id: settle, activity: settle_reinspection, requires: done, after: [analyze, review], params: {analysis_from: analyze, review_from: review}}
+      - {node_id: report, activity: build_report, requires: done, after: [settle]}
+    budget: {max_missions: 1}
+  - workflow_id: plain_vlm_watch
+    version: 1
+    project_id: campus_ops
+    title: "Control on site A: the model analyzer behind the whole-frame profile, no recapture / A 站对照：整图画像后的模型分析器，不补拍"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_a, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: vlm_frame_s0_v1, findings: true}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - node_id: work_order
+        activity: create_work_order
+        when: [{node: review, output: decision, equals: confirmed}]
+        params: {review_from: review, reinspection: {workflow_id: plain_vlm_reinspection, version: 1, asset_input: asset}}
+      - {node_id: report, activity: build_report, requires: done, after: [work_order]}
+    budget: {max_missions: 1}
+  - workflow_id: plain_vlm_reinspection
+    version: 1
+    project_id: campus_ops
+    title: "Site A reinspection of the control / A 站对照的复检"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: reinspection, kind: internal}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_a, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: vlm_frame_s0_v1, findings: true, purpose: reinspection}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: false}], params: {analysis_from: analyze}}
+      - {node_id: settle, activity: settle_reinspection, requires: done, after: [analyze, review], params: {analysis_from: analyze, review_from: review}}
+      - {node_id: report, activity: build_report, requires: done, after: [settle]}
+    budget: {max_missions: 1}
+  - workflow_id: harbor_watch
+    version: 1
+    project_id: harbor_ops
+    title: "Isolation fixture: harbor watch with one recapture / 隔离夹具：港区巡检带一次补拍"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_h, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s0_v1, findings: true}}
+      - {node_id: recapture, activity: submit_mission, requires: done, after: [analyze], when: [{node: analyze, output: recapture, equals: true}], params: {robot_id: uav_h, volume_id: campus_training, asset: {input: asset}, recapture_of: analyze}}
+      - {node_id: await_recapture, activity: await_mission, params: {mission_from: recapture}}
+      - {node_id: analyze_recapture, activity: analyze_evidence, params: {inspection_from: await_recapture, analyzer: signature_s0_v1, findings: true}}
+      - {node_id: select, activity: select_analysis, requires: done, after: [analyze, analyze_recapture], params: {analyses: [analyze, analyze_recapture]}}
+      - {node_id: review, activity: human_review, when: [{node: select, output: suspected, equals: true}], params: {analysis_from: select}}
+      - {node_id: report, activity: build_report, requires: done, after: [review]}
+    budget: {max_missions: 2}

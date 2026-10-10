@@ -9,7 +9,9 @@ Run it on a tailnet device against the origin that `dev_stack.py desk-cloud --st
   eligibility kept apart from the link state, one dock's detail, and the refusal of injection or control frames;
 - `workflow` (P2): the project's templates and schedules, one inactive draft from the configured planner, the
   refusal of injection, control and activation frames, and optionally one run started, approved mission by mission,
-  reviewed and given repair feedback as the page does, until every run is final and each flight was judged;
+  reviewed and given repair feedback as the page does, until every run is final and each flight was judged; with
+  `--clear-before-recapture ASSET` (P6, D078) it first sets the asset's S1 world state to normal through
+  `dev_stack.py desk-world` whenever a recapture waits for approval, as the operator would;
 - `tasks` (P3): the project's queue with each robot's assignment and preview verdict, the assets the page offers,
   the airspace holds, the refusal of injection, control and assignment frames, and optionally one task submitted as
   the page does, its assigned mission approved, until the task is final and its flight was judged;
@@ -27,7 +29,7 @@ what the desk, the service and the judge reported.
 断线重连，直到任务结束且监管者发布裁判结果；`spoof` 伪造 Serve 身份头；`resources`（P1）记录调用方的项目，
 每个项目的站点、机场与机器人（状态年龄、来源，以及与链路状态分开的可派遣判定），一个机场的详情，以及对注入或
 控制帧的拒绝；`workflow`（P2）记录项目的模板与排班、配置的规划器给出的一份未生效草案、对注入、控制与激活帧的拒绝，
-并可按页面方式启动一次运行、逐任务审批、复核并给出维修反馈，直到每个运行终结且每次飞行都有裁判结果；`tasks`（P3）记录
+并可按页面方式启动一次运行、逐任务审批、复核并给出维修反馈，直到每个运行终结且每次飞行都有裁判结果；带 `--clear-before-recapture ASSET`（P6，D078）时，补拍等待审批时先像操作者那样经 `dev_stack.py desk-world` 把该资产的 S1 世界状态设为正常；`tasks`（P3）记录
 项目的队列（各机器人的分配与预览判定）、页面提供的资产、空域持有、对注入、控制与分配帧的拒绝，并可按页面方式提交一个任务单、
 审批其被分配的任务，直到任务单终结且其飞行有裁判结果；`business`（P4）记录业务面板（发现、工单、报告、参考外观与复用策略）、
 对注入、控制与判定帧以及对未知发现作决定的拒绝，并可按页面方式驱动一次巡检运行：以最新的已证实采集登记参考外观、逐任务审批、
@@ -486,6 +488,14 @@ def workflow(origin: str, args) -> tuple[dict, str | None]:
                     detail = mission(item["mission_id"])
                     missions[item["mission_id"]] = detail
                     latest = (detail.get("versions") or [{}])[-1]
+                    if latest.get("status") == "awaiting_approval" and item.get("node_id") == "recapture"                             and args.clear_before_recapture and "cleared" not in receipt:
+                        attempt = clear_world(args.clear_before_recapture, started)
+                        receipt.setdefault("clear_attempts", []).append(attempt)
+                        if attempt["exit_code"] != 0:
+                            # The world still shows the condition: no approval this round; try again next round.
+                            # 世界仍呈现该状况：本轮不审批，下一轮再清除。
+                            continue
+                        receipt["cleared"] = attempt
                     if latest.get("status") == "awaiting_approval":
                         client.send({"type": "approve", "mission_id": item["mission_id"],
                                      "version": latest["version"], "package_hash": latest["package_hash"]})
@@ -545,6 +555,25 @@ def workflow(origin: str, args) -> tuple[dict, str | None]:
                      for v in m["versions"]],
         "report": m.get("report"), "cloud": m.get("cloud")} for mission_id, m in missions.items() if m}
     return receipt, login
+
+
+def clear_world(asset: str, started: float) -> dict:
+    """P6 (D078): the operator clears the asset's S1 world state before approving its recapture, as `desk-world` does.
+
+    P6（D078）：操作者在审批补拍之前用 `desk-world` 清除该资产的 S1 世界状态。
+    """
+    import subprocess
+    import sys
+
+    try:
+        result = subprocess.run([sys.executable, str(ROOT / "scripts/dev_stack.py"), "desk-world", "--section", "s1",
+                                 "--asset", asset, "--state", "normal", "--apply",
+                                 "--reason", "desk probe: the condition passed before the recapture approval"],
+                                capture_output=True, timeout=300)
+        code = result.returncode
+    except subprocess.TimeoutExpired:
+        code = None
+    return {"t": round(time.monotonic() - started, 1), "asset": asset, "exit_code": code}
 
 
 TASK_FORBIDDEN = (*FORBIDDEN_FRAMES, {"type": "task_assign", "task_id": "tk-probe", "robot_id": "uav_01"},
@@ -1013,6 +1042,8 @@ def main() -> None:
     flow.add_argument("--review", choices=("confirmed", "dismissed"), default="confirmed")
     flow.add_argument("--plan-timeout", type=float, default=300)
     flow.add_argument("--timeout", type=float, default=2700)
+    flow.add_argument("--clear-before-recapture", metavar="ASSET",
+                      help="P6: set the asset's S1 world state to normal before approving its recapture")
     queue = commands.choices["tasks"]
     queue.add_argument("--project", default="campus_s1")
     queue.add_argument("--start", action="store_true", help="also submit one task and approve its assigned mission")

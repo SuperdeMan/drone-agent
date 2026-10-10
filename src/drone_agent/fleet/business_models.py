@@ -23,6 +23,7 @@ P4 业务契约：业务目录、分析画像、作业、发现、复核、工�
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 from datetime import datetime
 from enum import StrEnum
@@ -30,7 +31,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StrictBool, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StrictBool, model_serializer, model_validator
 
 from drone_agent.contracts.common import ContractModel
 from drone_agent.fleet.provenance import digest
@@ -38,12 +39,15 @@ from drone_agent.fleet.provenance import digest
 CATALOG_FORMAT = "drone.business-catalog/v1"
 PROFILE_FORMAT = "drone.analysis-profile/v1"
 QUALITY_FORMAT = "drone.quality-profile/v1"
+QUALITY_V2_FORMAT = "drone.quality-profile/v2"
 ID = r"^[a-z][a-z0-9_]{0,39}$"
 SHA256 = r"^[0-9a-f]{64}$"
 REQUEST_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,120}$")
 CLOSURE_RULE = "reinspection-v1"
 REUSE_RULE = "reuse-v1"
 QUALITY_RULE = "quality-v1"
+QUALITY_V2_RULE = "quality-v2"
+RECAPTURE_RULE = "recapture-v1"
 
 
 class BusinessModel(ContractModel):
@@ -120,6 +124,13 @@ DECISIONS = ("confirmed", "dismissed")
 
 QUALITY_REASONS = ("quality.media_mismatch", "quality.media_missing", "quality.resolution", "quality.exposure",
                    "quality.blurry", "quality.capture_time_unknown")
+# P6 (D078): the target-region checks of `quality-v2`. / P6（D078）：`quality-v2` 的目标区域检查。
+TARGET_REASONS = ("quality.target_unknown", "quality.target_out_of_frame", "quality.target_too_small",
+                  "quality.target_off_center", "quality.target_exposure", "quality.target_blurry")
+# Refusals a flight of the same registered pose can change; nothing else may ever start a recapture (D078).
+# 同一登记拍摄位的再次飞行可以改变的拒判；其他原因永远不能启动补拍（D078）。
+RECAPTURABLE = ("quality.blurry", "quality.exposure", "quality.target_out_of_frame", "quality.target_off_center",
+                "quality.target_exposure", "quality.target_blurry", "analysis.undeterminable")
 MODEL_REASONS = ("model.unavailable", "model.timeout", "model.refusal", "model.malformed", "model.error",
                  "model.profile_mismatch", "model.uncalibrated", "model.budget_exhausted")
 ANALYSIS_REASONS = ("analysis.no_reference", "analysis.undeterminable", "analysis.not_verified",
@@ -155,6 +166,49 @@ class QualityProfile(BusinessModel):
         if not 0 <= low < high <= 255:
             raise ValueError("luminance is 0 <= low < high <= 255")
         return self
+
+
+class CameraModel(BusinessModel):
+    """The downward pinhole camera a `quality-v2` profile is written for (D078); pinned with the profile because the
+    profile is the quality limit of one capture setup.
+
+    `quality-v2` 画像所针对的下视针孔相机（D078）；随画像固定，因为画像就是某种采集配置下的质量限值。
+    """
+
+    camera_id: str = Field(pattern=r"^[a-z][a-z0-9_]{0,31}$")
+    width: int = Field(ge=16, le=8192)
+    height: int = Field(ge=16, le=8192)
+    hfov_rad: float = Field(gt=0.05, lt=3.0, description="horizontal field of view / 水平视场角")
+    mount_below_m: float = Field(ge=0, le=5, description="optical centre below the reported position / 光心低于上报位置的距离")
+
+    @property
+    def focal_px(self) -> float:
+        return (self.width / 2) / math.tan(self.hfov_rad / 2)
+
+
+class TargetLimits(BusinessModel):
+    """Limits of the target region (D078). / 目标区域的限值（D078）。"""
+
+    min_visible_fraction: float = Field(ge=0, le=1, description="worst heading / 最坏航向下")
+    min_side_px: float = Field(ge=1, le=8192, description="projected side / 投影边长")
+    min_core_px: int = Field(ge=1, description="pixels that are the target at every heading / 任何航向下都属于目标的像素")
+    dark_level: int = Field(ge=0, le=255, description="max(R,G,B) below it is dark / max(R,G,B) 低于它为暗")
+    max_dark_fraction: float = Field(ge=0, le=1)
+    bright_level: int = Field(ge=0, le=255, description="min(R,G,B) above it is blown / min(R,G,B) 高于它为过曝")
+    max_bright_fraction: float = Field(ge=0, le=1)
+    min_sharpness: float = Field(ge=0, le=255, description="99.5th percentile gradient on the target boundary ring / "
+                                                       "目标边界环上梯度幅值的 99.5 分位")
+
+
+class TargetQualityProfile(QualityProfile):
+    """`quality-v2` (D078): the whole-frame limits of `quality-v1` plus the camera and the target-region limits.
+
+    `quality-v2`（D078）：`quality-v1` 的整图限值，加上相机与目标区域限值。
+    """
+
+    format: Literal["drone.quality-profile/v2"]
+    camera: CameraModel
+    target: TargetLimits
 
 
 class ModelProfile(BusinessModel):
@@ -262,6 +316,25 @@ class Prices(BusinessModel):
     source: str = Field(min_length=1, max_length=300)
 
 
+class RecapturePolicy(BusinessModel):
+    """`recapture-v1` (D078): the refusals after which a template's recapture node flies the same pose once.
+
+    `recapture-v1`（D078）：模板的补拍节点在这些拒判之后以同一拍摄位再飞一次。
+    """
+
+    version: Literal["recapture-v1"] = "recapture-v1"
+    reasons: tuple[str, ...] = Field(min_length=1, max_length=len(RECAPTURABLE))
+
+    @model_validator(mode="after")
+    def _reasons(self):
+        refused = [reason for reason in self.reasons if reason not in RECAPTURABLE]
+        if refused:
+            raise ValueError(f"a flight of the same pose cannot change {refused}")
+        if len(set(self.reasons)) != len(self.reasons):
+            raise ValueError("recapture reasons are distinct")
+        return self
+
+
 class BusinessCatalog(BusinessModel):
     """Policies of the business loop for one deployment. / 一个部署的业务闭环策略。"""
 
@@ -278,6 +351,16 @@ class BusinessCatalog(BusinessModel):
     runner: RunnerPolicy
     max_references: int = Field(default=3, ge=1, le=10)
     prices: Prices | None = None
+    # P6 (D078); left out of the canonical form while unset, so every P4 and P5 catalog keeps its digest.
+    # P6（D078）；未设置时不进入规范形式，因此每个 P4 与 P5 目录的摘要保持不变。
+    recapture: RecapturePolicy | None = None
+
+    @model_serializer(mode="wrap")
+    def _canonical(self, handler):
+        data = handler(self)
+        if self.recapture is None:
+            data.pop("recapture", None)
+        return data
 
     @model_validator(mode="after")
     def _families(self):
@@ -308,8 +391,10 @@ def load_yaml_file(root: Path, relative: str) -> tuple[dict, str]:
 
 
 def load_quality(root: Path, relative: str) -> tuple[QualityProfile, str]:
+    """A `quality-v1` or, by its format, a `quality-v2` profile. / `quality-v1` 画像，或按格式为 `quality-v2` 画像。"""
     data, sha = load_yaml_file(root, relative)
-    return QualityProfile.model_validate(data), sha
+    v2 = isinstance(data, dict) and data.get("format") == QUALITY_V2_FORMAT
+    return (TargetQualityProfile if v2 else QualityProfile).model_validate(data), sha
 
 
 def load_profile(root: Path, relative: str) -> tuple[ModelProfile, str]:

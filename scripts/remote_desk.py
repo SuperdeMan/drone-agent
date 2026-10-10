@@ -70,10 +70,15 @@ RESIDENTS = ("desk-model-proxy", "desk-vendor", "desk-service", "desk-dock", "de
 NETWORKS = {"desk": {"desk_ingress"}, "desk-service": {"desk_uplink", "desk_model"}, "desk-uplink": {"desk_uplink"},
             "desk-model-proxy": {"desk_model", "desk_egress"}, "desk-dock": set(), "desk-fleet": {"desk_uplink"},
             "desk-vendor": set()}
-# P5 (D069): the catalogs the service must start with, the backends it allows and the fleet's aircraft.
-# P5（D069）：服务必须加载的目录、允许的后端与机队的飞行器。
-CATALOGS = {"operations": "p5_desk_v1", "workflows": "p5_desk_v1", "scheduling": "p5_desk_v1",
-            "business": "p5_desk_v1"}
+# P5 (D069): the catalogs the service must start with, the backends it allows and the fleet's aircraft. P6 (D078)
+# replaces the workflow and business catalogs with the recapture ones; operations and scheduling stay those of P5.
+# P5（D069）：服务必须加载的目录、允许的后端与机队的飞行器。P6（D078）把工作流与业务目录换成带补拍的目录；运营与调度
+# 目录仍为 P5 的。
+CATALOGS = {"operations": "p5_desk_v1", "workflows": "p6_desk_v1", "scheduling": "p5_desk_v1",
+            "business": "p6_desk_v1"}
+CATALOG_FILES = {"--catalog": "configs/sites/p5_desk_v1.yaml", "--workflows": "configs/workflows/p6_desk_v1.yaml",
+                 "--scheduling": "configs/scheduling/p5_desk_v1.yaml", "--business": "configs/analysis/p6_desk_v1.yaml"}
+CATALOG_ARGS = [part for flag, path in CATALOG_FILES.items() for part in (flag, "/workspace/" + path)]
 BACKENDS = ["px4_sitl", "logical_sim", "vendor_protocol_sim"]
 FLEET = ("uav_fa", "uav_fb")
 DOCKS = ("dock_s1", "dock_fa", "dock_fb", "dock_vd")
@@ -166,9 +171,9 @@ def plan(root: Path, deployment: Path) -> dict:
             "serve_other_routes_sha256": fingerprint(other_routes(config)), "funnel": False, "a2a_clients": 0,
             "authorization": "existing tailnet access; writes need the Serve login header and a project role "
                              "from the desk member list (D033, D055)",
-            "catalog": "configs/sites/p5_desk_v1.yaml", "members_provisioned": (desk.secrets / "members.yaml").is_file(),
-            "workflows": "configs/workflows/p5_desk_v1.yaml", "scheduling": "configs/scheduling/p5_desk_v1.yaml",
-            "business": "configs/analysis/p5_desk_v1.yaml", "execution_backends": BACKENDS,
+            "catalog": CATALOG_FILES["--catalog"], "members_provisioned": (desk.secrets / "members.yaml").is_file(),
+            "workflows": CATALOG_FILES["--workflows"], "scheduling": CATALOG_FILES["--scheduling"],
+            "business": CATALOG_FILES["--business"], "execution_backends": BACKENDS,
             "residents": list(RESIDENTS),
             "vision": "live" if (desk.model / "minimax.key").is_file() else "unavailable",
             "ledger_migration": "drills on a copy first (D056, D058, D060, D064) and the P5 catalog switch drill "
@@ -333,11 +338,7 @@ def migration_drill(desk, artifact: Path, image: str, members: Path | None = Non
                                    "-v", f"{members or desk.secrets / 'members.yaml'}:/members.yaml:ro", image,
                                    "python3", "-m",
                                    "drone_agent.fleet.switch_drill", "--ledger", "/drill/ledger.sqlite3",
-                                   "--members", "/members.yaml",
-                                   "--catalog", "/workspace/configs/sites/p5_desk_v1.yaml",
-                                   "--workflows", "/workspace/configs/workflows/p5_desk_v1.yaml",
-                                   "--scheduling", "/workspace/configs/scheduling/p5_desk_v1.yaml",
-                                   "--business", "/workspace/configs/analysis/p5_desk_v1.yaml"],
+                                   "--members", "/members.yaml", *CATALOG_ARGS],
                                   capture_output=True, timeout=300)
         lines = switched.stdout.decode("utf-8", errors="replace").strip().splitlines()
         try:
@@ -477,19 +478,19 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
         started = read_json(desk.service / "ready.json") or {}
         operations = started.get("operations") or {}
         if operations.get("catalog_id") != CATALOGS["operations"] or not operations.get("migration"):
-            raise RuntimeError("the mission service did not start with the P5 catalog and a migrated ledger")
+            raise RuntimeError(f"the mission service did not start with {CATALOGS['operations']} and a migrated ledger")
         workflows = started.get("workflows") or {}
         if workflows.get("catalog_id") != CATALOGS["workflows"] or (workflows.get("migration") or {}).get(
                 "status") not in ("migrated", "current"):
-            raise RuntimeError("the mission service did not start with the P5 workflow catalog and its tables")
+            raise RuntimeError(f"the mission service did not start with workflow catalog {CATALOGS['workflows']} and its tables")
         scheduling = started.get("scheduling") or {}
         if scheduling.get("catalog_id") != CATALOGS["scheduling"] or (scheduling.get("migration") or {}).get(
                 "status") not in ("migrated", "current"):
-            raise RuntimeError("the mission service did not start with the P5 scheduling catalog and its tables")
+            raise RuntimeError(f"the mission service did not start with scheduling catalog {CATALOGS['scheduling']} and its tables")
         business = started.get("business") or {}
         if business.get("catalog_id") != CATALOGS["business"] or (business.get("migration") or {}).get(
                 "status") not in ("migrated", "current"):
-            raise RuntimeError("the mission service did not start with the P5 business catalog and its tables")
+            raise RuntimeError(f"the mission service did not start with business catalog {CATALOGS['business']} and its tables")
         if started.get("execution_backends") != BACKENDS or (started.get("vendor") or {}).get("docks") != ["dock_vd"]:
             raise RuntimeError("the mission service did not start with the three backends and the vendor link")
         sessions = wait_sessions(desk)
@@ -562,7 +563,8 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
 SOAK_UNIT = "drone-agent-desk-soak.service"
 SOAK_UNIT_PATH = Path("/etc/systemd/system") / SOAK_UNIT
 SOAK_MARKER = "# Managed by drone-agent D073"
-WORLD_ASSETS = {"s1": {"asset_red": ("normal", "damaged"), "asset_blue": ("normal", "damaged"),
+# P6 (D078) adds glare over an S1 marker for the recapture template. / P6（D078）为补拍模板加上 S1 标记上的反光。
+WORLD_ASSETS = {"s1": {"asset_red": ("normal", "damaged", "glare"), "asset_blue": ("normal", "damaged", "glare"),
                        "road_north": ("normal", "obstructed")},
                 "s0": {**{a: ("normal", "damaged") for a in ("asset_red", "asset_blue", "asset_red_b", "asset_blue_b")},
                        **{a: ("normal", "obstructed") for a in ("road_north", "road_north_b")}},
@@ -778,11 +780,7 @@ def restore_drill(root: Path, request: dict) -> dict:
         result = subprocess.run(["docker", "run", "--rm", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
                                  "-v", f"{work}:/drill", "-v", f"{members}:/members.yaml:ro", image, "python3", "-m",
                                  "drone_agent.fleet.switch_drill", "--ledger", "/drill/ledger.sqlite3",
-                                 "--members", "/members.yaml",
-                                 "--catalog", "/workspace/configs/sites/p5_desk_v1.yaml",
-                                 "--workflows", "/workspace/configs/workflows/p5_desk_v1.yaml",
-                                 "--scheduling", "/workspace/configs/scheduling/p5_desk_v1.yaml",
-                                 "--business", "/workspace/configs/analysis/p5_desk_v1.yaml"],
+                                 "--members", "/members.yaml", *CATALOG_ARGS],
                                 capture_output=True, timeout=600)
         lines = result.stdout.decode("utf-8", errors="replace").strip().splitlines()
         try:

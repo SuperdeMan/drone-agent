@@ -1,0 +1,60 @@
+# P6 workflow catalog for PX4 SITL (D078), written for the operations catalog p1_s1_v1. `recapture_watch` inspects a
+# marker with uav_01 through the logical dock, analyses it with the P4 colour-signature plugin behind the S1
+# target-region profile, recaptures once with the same robot, volume and asset when the business catalog's
+# recapture-v1 allows the refusal, and lets a reviewer decide a suspected finding, which opens one order with its
+# pinned reinspection template. Every mission, the recapture included, still needs its own human approval.
+#
+# PX4 SITL 的 P6 工作流目录（D078），对应运营目录 p1_s1_v1。`recapture_watch` 由 uav_01 经逻辑机场巡检标记，用 P4 颜色
+# 特征插件在 S1 目标区域画像之后分析；业务目录 recapture-v1 允许该拒判时以相同的机器人、体积与资产补拍一次；疑似发现
+# 由复核人决定，确认后开一张带固定复检模板的工单。每个任务（包括补拍）仍需各自的人工审批。
+format: drone.workflow-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p6_s1_v1
+operations_catalog: p1_s1_v1
+analyzers:
+  # The P4 S1 bands: the unpatched red marker measured 0.124-0.130 of a 160x120 render; the patch hides 40% of it.
+  # P4 S1 的区间：未加贴片的红色标记在 160x120 渲染中占 0.124-0.130；贴片遮住其中 40%。
+  signature_s1_v1:
+    kind: deterministic
+    method: color_signature
+    bands: {asset_red: [0.105, 0.16], asset_blue: [0.105, 0.16]}
+workflows:
+  - workflow_id: recapture_watch
+    version: 1
+    project_id: campus_s1
+    title: "PX4 SITL watch with one recapture / PX4 SITL 巡检带一次补拍"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_01, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s1_v1, findings: true}}
+      - {node_id: recapture, activity: submit_mission, requires: done, after: [analyze], when: [{node: analyze, output: recapture, equals: true}], params: {robot_id: uav_01, volume_id: campus_training, asset: {input: asset}, recapture_of: analyze}}
+      - {node_id: await_recapture, activity: await_mission, params: {mission_from: recapture}}
+      - {node_id: analyze_recapture, activity: analyze_evidence, params: {inspection_from: await_recapture, analyzer: signature_s1_v1, findings: true}}
+      - {node_id: select, activity: select_analysis, requires: done, after: [analyze, analyze_recapture], params: {analyses: [analyze, analyze_recapture]}}
+      - {node_id: review, activity: human_review, when: [{node: select, output: suspected, equals: true}], params: {analysis_from: select}}
+      - node_id: work_order
+        activity: create_work_order
+        when: [{node: review, output: decision, equals: confirmed}]
+        params: {review_from: review, reinspection: {workflow_id: recapture_reinspection, version: 1, asset_input: asset}}
+      - {node_id: report, activity: build_report, requires: done, after: [work_order]}
+    budget: {max_missions: 2}
+  - workflow_id: recapture_reinspection
+    version: 1
+    project_id: campus_s1
+    title: "PX4 SITL reinspection after repair feedback (no recapture in v1) / PX4 SITL 维修反馈后的复检（v1 不补拍）"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_red, asset_blue]}
+    triggers:
+      - {trigger_id: reinspection, kind: internal}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_01, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s1_v1, findings: true, purpose: reinspection}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: false}], params: {analysis_from: analyze}}
+      - {node_id: settle, activity: settle_reinspection, requires: done, after: [analyze, review], params: {analysis_from: analyze, review_from: review}}
+      - {node_id: report, activity: build_report, requires: done, after: [settle]}
+    budget: {max_missions: 1}

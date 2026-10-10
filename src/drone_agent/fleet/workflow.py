@@ -55,6 +55,7 @@ from drone_agent.fleet.workflow_models import (
     RunState,
     ScheduleTrigger,
     ScriptedAnalyzer,
+    SelectOutput,
     SkipReason,
     SubmitMissionNode,
     WaitReason,
@@ -341,7 +342,7 @@ class WorkflowEngine:
         if not isinstance(request_id, str) or not REQUEST_ID.fullmatch(request_id):
             raise ServiceError("service.invalid_request", "request_id must be 1-120 safe characters")
         business = getattr(self.service, "business", None)
-        if spec.node(node_spec.params.analysis_from).params.findings:
+        if spec.analysis(node_spec.params.analysis_from).params.findings:
             # P4 (D063 §7): the node reviews its finding or round; the record belongs to that subject.
             # P4（D063 §7）：节点复核其发现或轮次；记录属于该对象。
             nodes = self.store.nodes(run["run_id"])
@@ -495,6 +496,19 @@ class WorkflowEngine:
                 if node["state"] == NodeState.COMPLETED.value and node["result"] is not None}
 
     @staticmethod
+    def _facts(nodes: dict) -> dict[str, dict]:
+        """What conditions may read: completed outputs, and the recapture decision a failed analysis recorded (P6).
+
+        条件可读的内容：已完成节点的输出，以及失败分析所记录的补拍判定（P6）。
+        """
+        facts = WorkflowEngine._outputs(nodes)
+        for node_id, node in nodes.items():
+            detail = node["detail"] if isinstance(node["detail"], dict) else {}
+            if node["state"] == NodeState.FAILED.value and "recapture" in detail:
+                facts[node_id] = {"recapture": detail["recapture"] is True}
+        return facts
+
+    @staticmethod
     def _readiness(spec: WorkflowSpec, node_spec, nodes: dict) -> tuple[NodeState, SkipReason | None] | None:
         """None while a dependency runs; otherwise start, or skip with the reason (D057 §8).
 
@@ -525,8 +539,8 @@ class WorkflowEngine:
             return NodeState.SKIPPED, SkipReason.UPSTREAM_FAILED
         if skipped:
             return NodeState.SKIPPED, SkipReason.UPSTREAM_SKIPPED
-        outputs = WorkflowEngine._outputs(nodes)
-        if not all(predicate_holds(predicate, outputs) for predicate in node_spec.when):
+        facts = WorkflowEngine._facts(nodes)
+        if not all(predicate_holds(predicate, facts) for predicate in node_spec.when):
             return NodeState.SKIPPED, SkipReason.CONDITION_FALSE
         return NodeState.RUNNING, None
 
@@ -547,7 +561,7 @@ class WorkflowEngine:
                 return True
             self._move(run, node, epoch, NodeState.RUNNING,
                        outbox={"key": activity_key(run["run_id"], node_spec.node_id), "kind": activity.value,
-                               "payload": self._payload(run, spec, node_spec, outputs)})
+                               "payload": self._payload(run, spec, node_spec, outputs, nodes)})
         elif activity is Activity.AWAIT_MISSION:
             self._move(run, node, epoch, NodeState.WAITING, reason=WaitReason.DELIVERY.value)
         elif activity in (Activity.HUMAN_REVIEW, Activity.AWAIT_REPAIR):
@@ -561,6 +575,8 @@ class WorkflowEngine:
             self._analyze(run, node_spec, node, outputs, epoch)
         elif activity is Activity.SETTLE_REINSPECTION:
             self._settle(run, spec, node_spec, node, nodes, epoch)
+        elif activity is Activity.SELECT_ANALYSIS:
+            self._select(run, node_spec, node, nodes, epoch)
         else:
             self._move(run, node, epoch, NodeState.COMPLETED, result=self._report(run, spec, nodes))
         return True
@@ -598,11 +614,34 @@ class WorkflowEngine:
             output = business.settle_node(run, spec, node_spec, nodes)
             self._move(run, node, epoch, NodeState.COMPLETED, result=output.model_dump(mode="json"))
 
+    def _select(self, run, node_spec, node, nodes, epoch) -> None:
+        """P6 (D078): the first completed analysis; otherwise unknown, failed or skipped like its inputs.
+
+        P6（D078）：首个完成的分析；否则按输入结果记为未知、失败或跳过。
+        """
+        names = node_spec.params.analyses
+        for name in names:
+            if nodes[name]["state"] == NodeState.COMPLETED.value:
+                output = SelectOutput(**nodes[name]["result"], selected=name)
+                self._move(run, node, epoch, NodeState.COMPLETED, result=output.model_dump(mode="json"))
+                return
+        inputs = {name: {"state": nodes[name]["state"], "reason": nodes[name]["reason"]} for name in names}
+        if any(i["state"] == NodeState.OUTCOME_UNKNOWN.value or i["reason"] == SkipReason.UPSTREAM_UNKNOWN.value
+               for i in inputs.values()):
+            self._move(run, node, epoch, NodeState.SKIPPED, reason=SkipReason.UPSTREAM_UNKNOWN.value,
+                       detail={"analyses": inputs})
+        elif all(i["state"] == NodeState.SKIPPED.value and i["reason"] in LEGITIMATE_SKIPS for i in inputs.values()):
+            self._move(run, node, epoch, NodeState.SKIPPED, reason=SkipReason.UPSTREAM_SKIPPED.value,
+                       detail={"analyses": inputs})
+        else:
+            self._move(run, node, epoch, NodeState.FAILED, reason="analysis.no_usable_capture",
+                       detail={"analyses": inputs})
+
     def _asset(self, run: dict, submit: SubmitMissionNode) -> str:
         asset = submit.params.asset
         return run["inputs"][asset.input] if isinstance(asset, InputRef) else asset
 
-    def _payload(self, run, spec: WorkflowSpec, node_spec, outputs) -> dict:
+    def _payload(self, run, spec: WorkflowSpec, node_spec, outputs, nodes: dict) -> dict:
         project = run["project_id"]
         if isinstance(node_spec, SubmitMissionNode):
             params = node_spec.params
@@ -611,12 +650,21 @@ class WorkflowEngine:
             if params.assigned:
                 # A P3 task: the scheduler picks the robot among the candidates (D059). / P3 任务单：调度器在候选中选机。
                 return {**base, "candidates": list(params.candidates), "priority": params.priority}
+            if params.recapture_of is not None:
+                # P6 (D078): the request names the refused analysis and why; the approver sees it. / P6（D078）：请求写明
+                # 被拒分析及其原因；审批人可见。
+                refused = nodes[params.recapture_of]
+                detail = refused["detail"] if isinstance(refused["detail"], dict) else {}
+                base["recapture"] = {"of": params.recapture_of, "job_id": str(detail.get("job_id") or "")[:40],
+                                     "reason": str(refused["reason"] or "")[:60]}
             return {**base, "robot_id": params.robot_id}
         if isinstance(node_spec, WorkOrderNode):
             review = outputs[node_spec.params.review_from]
             analyze_id = spec.node(node_spec.params.review_from).params.analysis_from
             analysis = outputs[analyze_id]
-            inspection = outputs[spec.node(analyze_id).params.inspection_from]
+            # A selection's output names the analysis it took (P6). / 选择节点的输出写明所取的分析（P6）。
+            chosen = analysis.get("selected", analyze_id)
+            inspection = outputs[spec.node(chosen).params.inspection_from]
             if node_spec.params.reinspection is not None:
                 # P4 (D063 §8): the order belongs to the finding; the service re-checks its confirmation.
                 # P4（D063 §8）：工单属于发现；服务会重新核对其确认。
@@ -686,7 +734,7 @@ class WorkflowEngine:
             view = self.service.submit_workflow(run_id=run["run_id"], key=key, project_id=payload["project_id"],
                                                 robot_id=payload["robot_id"], volume_id=payload["volume_id"],
                                                 asset_id=payload["asset_id"], template=payload["template"],
-                                                guard=guard)
+                                                guard=guard, recapture=payload.get("recapture"))
             return None if view is None else MissionOutput(mission_id=view["mission"]["mission_id"]).model_dump(
                 mode="json")
         if row["kind"] == Activity.CREATE_WORK_ORDER.value and "finding_id" in payload:
@@ -1040,25 +1088,37 @@ class WorkflowEngine:
     # ── run state and cancellation / 运行状态与取消 ──
 
     @staticmethod
-    def outcome(nodes: dict) -> dict:
-        """completed only if every node completed or was skipped by a false condition (D057 §8).
+    def outcome(nodes: dict, spec: WorkflowSpec | None = None) -> dict:
+        """completed only if every node completed or was skipped by a false condition (D057 §8). A refused analysis
+        whose recapture started is replaced by it (P6, D078): the recapture's own result counts instead.
 
-        只有每个节点都完成或因条件为假被跳过才是 completed（D057 §8）。
+        只有每个节点都完成或因条件为假被跳过才是 completed（D057 §8）。补拍已开始的被拒分析由补拍接替（P6，D078）：
+        改为计入补拍自身的结果。
         """
         states = {node_id: (node["state"], node["reason"]) for node_id, node in nodes.items()}
+        replaced = set()
+        for node in spec.nodes if spec is not None else ():
+            target = getattr(node.params, "recapture_of", None)
+            detail = nodes[target]["detail"] if target else None
+            if target and states[target][0] == "failed" and isinstance(detail, dict) \
+                    and detail.get("recapture") is True and states[node.node_id][0] != "skipped":
+                replaced.add(target)
         unknown = [n for n, (s, r) in states.items() if s == "outcome_unknown" or r == SkipReason.UPSTREAM_UNKNOWN]
-        failed = [n for n, (s, r) in states.items()
-                  if s in ("failed", "cancelled") or (s == "skipped" and r == SkipReason.UPSTREAM_FAILED)]
+        failed = [n for n, (s, r) in states.items() if n not in replaced and (
+            s in ("failed", "cancelled") or (s == "skipped" and r == SkipReason.UPSTREAM_FAILED))]
         result = "outcome_unknown" if unknown else "failed" if failed else "completed"
-        return {"result": result, "unknown": sorted(unknown), "failed": sorted(failed),
-                "counts": {state: sum(1 for s, _ in states.values() if s == state)
-                           for state in sorted({s for s, _ in states.values()})}}
+        summary = {"result": result, "unknown": sorted(unknown), "failed": sorted(failed),
+                   "counts": {state: sum(1 for s, _ in states.values() if s == state)
+                              for state in sorted({s for s, _ in states.values()})}}
+        if replaced:
+            summary["recaptured"] = sorted(replaced)
+        return summary
 
     def _derive(self, run: dict, epoch: int) -> None:
         nodes = self.store.nodes(run["run_id"])
         states = [NodeState(node["state"]) for node in nodes.values()]
         if all(state in TERMINAL_NODE for state in states):
-            summary = self.outcome(nodes)
+            summary = self.outcome(nodes, self.store.spec_of(run))
             self.store.set_run_state(run["run_id"], worker=self.worker, epoch=epoch,
                                      state=RunState(summary["result"]), outcome=summary)
             self._run_ended(run["run_id"])
@@ -1113,7 +1173,7 @@ class WorkflowEngine:
         nodes = self.store.nodes(run_id)
         if not unsettled and not children and all(NodeState(n["state"]) in TERMINAL_NODE for n in nodes.values()):
             self.store.set_run_state(run_id, worker=self.worker, epoch=epoch, state=RunState.CANCELLED,
-                                     outcome={**self.outcome(nodes), "result": "cancelled"},
+                                     outcome={**self.outcome(nodes, spec), "result": "cancelled"},
                                      allowed_from=(RunState.CANCELLING,))
             self._run_ended(run_id)
 

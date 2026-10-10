@@ -222,6 +222,21 @@ def check_cancel(c: Case, problems: list[str]) -> tuple[int, int]:
     return dispatched, successors
 
 
+def recaptured(c: Case, run: dict, nodes: dict) -> set[str]:
+    """Refused analyses a recapture replaced (P6, D078): failed with a recorded recapture decision, and the template's
+    recapture node for them started. / 被补拍接替的拒判分析（P6，D078）：带补拍判定的失败，且模板中对应的补拍节点已开始。
+    """
+    spec = c.templates.spec(run["project_id"], run["workflow_id"], run["version"])
+    found = set()
+    for node in spec.nodes if spec is not None else ():
+        target = getattr(node.params, "recapture_of", None)
+        refused = nodes.get(target or "", {})
+        if target and refused.get("state") == "failed" and (_json(refused.get("detail")) or {}).get("recapture") is True \
+                and nodes.get(node.node_id, {}).get("state") not in (None, "pending", "skipped"):
+            found.add(target)
+    return found
+
+
 def check_success(c: Case, problems: list[str], *, use_replay: bool, flight_false: int | None = None) -> int:
     """A completed run rests on completed, verified inspections; analyses only of verified evidence. `flight_false`
     carries the S1 flight judges' count instead of the S0 logical-truth check.
@@ -234,8 +249,10 @@ def check_success(c: Case, problems: list[str], *, use_replay: bool, flight_fals
     for run_id, run in c.runs.items():
         nodes = c.nodes.get(run_id, {})
         if run["state"] == "completed":
+            replaced = recaptured(c, run, nodes)
             for node_id, node in nodes.items():
-                if node["state"] == "completed" or (node["state"] == "skipped" and node["reason"] in LEGITIMATE_SKIPS):
+                if node["state"] == "completed" or (node["state"] == "skipped" and node["reason"] in LEGITIMATE_SKIPS) \
+                        or node_id in replaced:
                     continue
                 false += 1
                 problems.append(f"completed_run_with_{node['state']}_node:{run_id}:{node_id}")

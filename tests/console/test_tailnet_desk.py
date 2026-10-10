@@ -70,10 +70,11 @@ def test_residents_share_only_internal_networks_and_mount_secrets_read_only():
 
 def test_the_desk_service_loads_the_operations_workflow_scheduling_and_business_catalogs():
     command = COMPOSE["services"]["desk-service"]["command"]
+    # P6 (D078): the workflow and business catalogs carry the recapture template. / P6（D078）：工作流与业务目录带补拍模板。
     for flag, path in (("--catalog", "configs/sites/p5_desk_v1.yaml"),
-                       ("--workflows", "configs/workflows/p5_desk_v1.yaml"),
+                       ("--workflows", "configs/workflows/p6_desk_v1.yaml"),
                        ("--scheduling", "configs/scheduling/p5_desk_v1.yaml"),
-                       ("--business", "configs/analysis/p5_desk_v1.yaml")):
+                       ("--business", "configs/analysis/p6_desk_v1.yaml")):
         assert command[command.index(flag) + 1] == "/workspace/" + path
         assert (ROOT / path).is_file()
     assert command[command.index("--vision") + 1] == "live"

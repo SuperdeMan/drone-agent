@@ -355,8 +355,10 @@ def role_scopes_names(roles) -> set[str]:
     return {"viewer"} if roles else set()
 
 
-async def run(case: Path, repo: Path) -> dict:
-    world = P5DeskWorld(case, repo, seed=7)
+async def run(case: Path, repo: Path, *, world_class: type[P5DeskWorld] = P5DeskWorld) -> dict:
+    """The matrix over the desk platform; P6 passes the desk as activated since D078. / 任务台平台上的矩阵；P6 传入 D078
+    起激活的任务台。"""
+    world = world_class(case, repo, seed=7)
     try:
         await world.settle()
         matrix = Matrix(world, repo)

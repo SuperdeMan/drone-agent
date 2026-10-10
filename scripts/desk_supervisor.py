@@ -72,6 +72,15 @@ def world_model(asset_id: str, state: str) -> tuple[str, str] | None:
                       f'<pose>{x} {y} 0.065 0 0 0</pose><link name="patch"><visual name="patch_visual"><geometry><box>'
                       '<size>2.2 0.8 0.02</size></box></geometry><material><ambient>0.08 0.08 0.08 1</ambient>'
                       '<diffuse>0.08 0.08 0.08 1</diffuse></material></visual></link></model></sdf>')
+    if state == "glare" and asset_id in MARKERS:
+        # P6 (D078): the S1 glare disc over the marker's centre (eval/p6_prepare.py). / P6（D078）：标记中心上的 S1 反光圆片。
+        x, y = MARKERS[asset_id]
+        name = f"glare_disc_{asset_id}"
+        return name, ('<?xml version="1.0"?><sdf version="1.9"><model name="' + name + '"><static>true</static>'
+                      f'<pose>{x} {y} 0.08 0 0 0</pose><link name="glare"><visual name="glare_visual"><geometry>'
+                      '<cylinder><radius>0.95</radius><length>0.02</length></cylinder></geometry><material>'
+                      '<ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse><emissive>1 1 1 1</emissive></material>'
+                      '</visual></link></model></sdf>')
     if state == "obstructed" and asset_id in ROAD:
         x, y = ROAD[asset_id]
         name = f"road_obstacle_{asset_id}"

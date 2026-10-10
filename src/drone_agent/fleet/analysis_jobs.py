@@ -23,7 +23,7 @@ import json
 from datetime import datetime, time, timezone
 from pathlib import Path
 
-from drone_agent.fleet.analysis import analyze, check_quality, job_result, pixels
+from drone_agent.fleet.analysis import analyze, check_quality, check_target_quality, job_result, pixels
 from drone_agent.fleet.business_models import (
     EvidenceRef,
     JobInputs,
@@ -31,6 +31,7 @@ from drone_agent.fleet.business_models import (
     JobResult,
     JobState,
     ReferenceRef,
+    TargetQualityProfile,
     refusal,
 )
 from drone_agent.fleet.business_store import StaleRecord
@@ -90,15 +91,15 @@ class AnalysisJobs:
         files = {name: sha for name, sha in fixtures.items() if name == analyzer_name
                  or name.startswith(analyzer_name + "#")}
         references: tuple[ReferenceRef, ...] = ()
+        # A model analyzer always pins its quality profile; a deterministic one may (P6). / 模型分析器总是固定其质量画像；
+        # 确定性分析器可以固定（P6）。
+        quality_sha = fixtures.get(f"{analyzer_name}#quality") or self.engine.business.default_quality_sha
         if isinstance(analyzer, ModelAnalyzer):
-            quality_sha = fixtures[f"{analyzer_name}#quality"]
             profile = self.engine.model_profile(analyzer.profile, fixtures[f"{analyzer_name}#profile"])
             wanted = min(profile.references, self.engine.catalog.max_references) if profile else 0
             references = tuple(ReferenceRef(reference_id=r["reference_id"], evidence_id=r["evidence_id"],
                                             media_sha256=r["media_sha256"])
                                for r in self.store.references(asset=asset, active=True)[:wanted])
-        else:
-            quality_sha = self.engine.business.default_quality_sha
         inputs = JobInputs(purpose=purpose, analyzer=analyzer_name, analyzer_kind=analyzer.kind,
                            analyzer_sha256=digest({"definition": analyzer.model_dump(mode="json"), "files": files}),
                            workflow_catalog_sha256=workflow_catalog_sha, quality_sha256=quality_sha, evidence=evidence,
@@ -162,6 +163,12 @@ class AnalysisJobs:
             result = refusal("analysis.error", description=f"{type(error).__name__}: {error}"[:400])
         return self.complete(job_id, epoch, result)
 
+    def _captured_pose(self, evidence: EvidenceRef) -> dict | None:
+        """The capture pose of the stored evidence contract; None when it has none. / 已存证据契约中的拍摄位姿；没有时为 None。"""
+        row = next((r for r in self.engine.ledger.evidence(evidence.mission_id)
+                    if r["evidence_id"] == evidence.evidence_id), None)
+        return (row["body"] or {}).get("captured_pose") if row is not None else None
+
     def _run_cancelled(self, inputs: JobInputs) -> bool:
         if inputs.run_id is None:
             return False
@@ -186,21 +193,25 @@ class AnalysisJobs:
         workflows = self.engine.workflow_store
         catalog = workflows.pinned(inputs.workflow_catalog_sha256)
         analyzer = catalog.analyzers[inputs.analyzer]
-        if isinstance(analyzer, ModelAnalyzer):
+        if getattr(analyzer, "quality", None) is not None:
             quality = self.engine.quality_profile(analyzer.quality, inputs.quality_sha256)
         else:
             quality = self.engine.business.default_quality \
                 if inputs.quality_sha256 == self.engine.business.default_quality_sha else None
         if quality is None:
             return refusal("analysis.fixture_changed")
-        reason, measures = check_quality(image, quality)
+        robot = self.engine.ledger.mission(inputs.evidence.mission_id)["robot_id"]
+        entry = self.engine.service._registry(robot).data["assets"].get(inputs.evidence.asset_id, {})
+        if isinstance(quality, TargetQualityProfile):
+            reason, measures = check_target_quality(image, quality, pose=self._captured_pose(inputs.evidence),
+                                                    asset=entry)
+        else:
+            reason, measures = check_quality(image, quality)
         if reason is not None:
             return refusal(reason, quality=measures)
         if inputs.evidence.captured_at is None:
             return refusal("quality.capture_time_unknown", quality=measures)
         if not isinstance(analyzer, ModelAnalyzer):
-            robot = self.engine.ledger.mission(inputs.evidence.mission_id)["robot_id"]
-            entry = self.engine.service._registry(robot).data["assets"].get(inputs.evidence.asset_id, {})
             fixtures = workflows.fixtures_of(inputs.workflow_catalog_sha256)
             fixture_sha = fixtures.get(inputs.analyzer, "")
             fixture = self.engine.workflows._fixture(analyzer.fixture, fixture_sha) \

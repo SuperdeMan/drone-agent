@@ -141,6 +141,13 @@ class ScriptedVisionProvider(ScriptedProvider):
             # Decision fields a model must never be able to set; the schema rejects the whole answer.
             # 模型永远不能设置的决定字段；schema 会拒绝整个回答。
             answer = {**answer, "decision": "confirmed", "approve": True, "close_order": True}
+        if self.mode in ("mismatch", "occluded"):
+            # P6 (D078): a well-formed answer that the capture shows another object, or that the target is hidden.
+            # P6（D078）：格式合规的回答：采集拍到的是别的对象，或目标被遮挡。
+            answer = {**answer, "target_matches_reference": self.mode != "mismatch",
+                      "image_usable": self.mode != "occluded", "anomaly_score": 0.0, "defect_type": "none",
+                      "unusable_reason": "occluded" if self.mode == "occluded" else "none",
+                      "description": f"scripted: {self.mode}"}
         return json.dumps(answer), self.model, "stop", (180, 40)
 
 

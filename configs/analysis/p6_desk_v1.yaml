@@ -1,0 +1,25 @@
+# P6 business catalog of the resident desk (D078), for the operations catalog p5_desk_v1 and the workflow catalog
+# p6_desk_v1. Every rule of p5_desk_v1 stays, including the whole-frame default quality profile of the analyzers that
+# pin none; recapture-v1 lists every reason a flight of the same pose can change, and the reuse list adds the
+# target-region analyzer.
+#
+# 常驻任务台的 P6 业务目录（D078），对应运营目录 p5_desk_v1 与工作流目录 p6_desk_v1。p5_desk_v1 的全部规则不变，包括未固定
+# 质量画像的分析器所用的整图默认画像；recapture-v1 列出同一拍摄位的再次飞行可以改变的全部原因，复用列表加上目标区域分析器。
+format: drone.business-catalog/v1
+schema_version: "0.1.0"
+catalog_id: p6_desk_v1
+operations_catalog: p5_desk_v1
+workflow_catalog: p6_desk_v1
+default_quality: configs/analysis/quality_sim_v1.yaml
+families:
+  appearance: [damage, missing_part, contamination, deformation, discoloration, foreign_object, other_change]
+generic_defect: other_change
+closure: {version: reinspection-v1, allowed_sources: [deterministic, live_model, recorded_model]}
+reuse: {version: reuse-v1, max_age_s: 604800, analyzers: [signature_s1_v1, vlm_change_v3, road_signature_s1_v1, signature_desk_s0_v1, signature_target_s1_v1]}
+runner: {concurrency: 2, lease_s: 60, max_attempts: 2, daily_tokens: 2000000}
+max_references: 3
+prices: {currency: USD, input_per_mtok: 0.30, output_per_mtok: 1.20, source: "MiniMax-M3 standard tier as listed by third-party price trackers, September 2026 (e.g. devtk.ai/en/models/minimax-m3)"}
+recapture:
+  version: recapture-v1
+  reasons: [quality.blurry, quality.exposure, quality.target_out_of_frame, quality.target_off_center,
+            quality.target_exposure, quality.target_blurry, analysis.undeterminable]

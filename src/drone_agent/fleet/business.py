@@ -233,7 +233,14 @@ class BusinessEngine:
         result = job["result"] or {}
         if job["state"] != JobState.COMPLETED.value or job["verdict"] not in ("suspected", "normal"):
             reasons = result.get("reasons") or ["analysis.refused"]
-            return NodeState.FAILED, reasons[0], {**detail, "reasons": reasons, "source": job["source"]}, None
+            detail = {**detail, "reasons": reasons, "source": job["source"]}
+            policy = self.catalog.recapture
+            if node_spec.params.purpose == "inspection" and policy is not None:
+                # P6 (D078): decided once, when the node fails, and kept with the node. / P6（D078）：只在节点失败时判定
+                # 一次，并随节点保存。
+                detail.update(recapture=reasons[0] in policy.reasons, recapture_rule=policy.version,
+                              business_catalog=self.catalog.sha256)
+            return NodeState.FAILED, reasons[0], detail, None
         finding = self.store.finding(job["finding_id"]) if job["finding_id"] else None
         output = AnalysisOutput(analysis_id=job["job_id"], verdict=job["verdict"],
                                 suspected=job["verdict"] == "suspected",
@@ -243,14 +250,15 @@ class BusinessEngine:
         return NodeState.COMPLETED, None, detail, output.model_dump(mode="json")
 
     def review_subject(self, run: dict, spec, node_spec, outputs: dict) -> tuple[str, str] | None:
-        """What a P4 review node reviews: the analysis's finding, or the run's round. / P4 复核节点的对象。"""
-        analysis_node = spec.node(node_spec.params.analysis_from)
+        """What a P4 review node reviews: the analysis's finding, or the run's round; a selection (P6) stands for the
+        analysis it took. / P4 复核节点的对象：分析的发现，或运行的轮次；选择节点（P6）代表其所取的分析。"""
+        analysis_node = spec.analysis(node_spec.params.analysis_from)
         if not analysis_node.params.findings:
             return None
         if analysis_node.params.purpose == "reinspection":
             found = self.orders.round_of(run)
             return (ReviewSubject.ROUND.value, round_subject(*found)) if found else None
-        finding_id = (outputs.get(analysis_node.node_id) or {}).get("finding_id")
+        finding_id = (outputs.get(node_spec.params.analysis_from) or {}).get("finding_id")
         return (ReviewSubject.FINDING.value, finding_id) if finding_id else None
 
     def poll_review(self, subject: tuple[str, str]) -> dict | None:
@@ -360,6 +368,10 @@ class BusinessEngine:
         definition = catalog.analyzers[analyzer]
         fixtures = self.workflows.workflows.fixtures
         modality, quality = "visible", self.business.default_quality
+        if getattr(definition, "quality", None) is not None and not isinstance(definition, ModelAnalyzer):
+            quality = self.quality_profile(definition.quality, fixtures.get(f"{analyzer}#quality", ""))
+            if quality is None:
+                raise ServiceError("analysis.fixture_changed", analyzer)
         if isinstance(definition, ModelAnalyzer):
             profile = self.model_profile(definition.profile, fixtures.get(f"{analyzer}#profile", ""))
             quality = self.quality_profile(definition.quality, fixtures.get(f"{analyzer}#quality", ""))

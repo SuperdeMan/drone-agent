@@ -1,0 +1,29 @@
+# P6 target-region quality profile for the S0 logical frames (D078). The whole-frame limits are those of
+# quality_sim_v1. The camera is the logical one: a 160x120 frame on which the 2 m marker seen from 4 m spans 40 px,
+# so the focal length is 80 px and the horizontal field of view pi/2. On these frames the clean marker's core is
+# entirely the marker, the P4 damage band darkens about a quarter of it, and the P6 world's glare disc or shadow
+# disc covers most of it; the limits sit between. They are properties of the simulated frames, not detectors.
+#
+# S0 逻辑帧的 P6 目标区域质量画像（D078）。整图限值与 quality_sim_v1 相同。相机为逻辑相机：160x120 画面中，从 4 m 看 2 m 的
+# 标记占 40 像素，因此焦距 80 像素、水平视场角 pi/2。在这些画面上，干净标记的核心全部是标记，P4 的损伤带约使其四分之一
+# 变暗，P6 世界的反光圆片或阴影圆片遮住其大部分；限值取在两者之间。它们是模拟画面的属性，不是检测器。
+format: drone.quality-profile/v2
+schema_version: "0.1.0"
+profile_id: quality_target_s0
+version: 1
+note: "S0 logical frames with the logical nadir camera (D078) / 逻辑下视相机拍摄的 S0 逻辑帧（D078）"
+min_width: 160
+min_height: 120
+luminance: [20.0, 235.0]
+max_clipped_fraction: 0.35
+min_sharpness: 8.0
+camera: {camera_id: cam_0, width: 160, height: 120, hfov_rad: 1.5707963267948966, mount_below_m: 0.0}
+target:
+  min_visible_fraction: 0.95
+  min_side_px: 24
+  min_core_px: 150
+  dark_level: 40
+  max_dark_fraction: 0.6
+  bright_level: 245
+  max_bright_fraction: 0.5
+  min_sharpness: 10.0

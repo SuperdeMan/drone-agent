@@ -459,7 +459,7 @@ class MissionService:
             self.dispatch.preview(mission_id, 1)
 
     def submit_workflow(self, *, run_id: str, key: str, project_id: str, robot_id: str, volume_id: str, asset_id: str,
-                        template: str, guard) -> dict | None:
+                        template: str, guard, recapture: dict | None = None) -> dict | None:
         """Submit one workflow activity deterministically; None when `guard` refuses inside the transaction (D057).
 
         The template contributes a narrow single-asset draft; ids, window, budget and policy come from the site map as
@@ -473,10 +473,14 @@ class MissionService:
         预算与策略与规划请求一样来自站点地图，编译、准入与软预约相同。请求、任务、绑定、版本与预约在一个事务中写入，
         事务的第一步是 `guard`（outbox 领取仍属于我方，且自那以后没有提交取消），因此先提交的取消不会留下任何东西。活动键
         即幂等键：响应丢失后的重试返回第一次的任务。该版本仍需人工审批；这里不签名也不排队任何任务包。
+
+        P6 (D078): a recapture writes the refused analysis and its reason into the request; nothing else changes.
+        P6（D078）：补拍把被拒分析及其原因写进请求；其他一律不变。
         """
         return self._submit_deterministic(principal=f"workflow:{run_id}", key=key, project_id=project_id,
                                           robot_id=robot_id, volume_id=volume_id, asset_id=asset_id, template=template,
-                                          provider="workflow", channel=RequestChannel.WORKFLOW, guard=guard)
+                                          provider="workflow", channel=RequestChannel.WORKFLOW, guard=guard,
+                                          recapture=recapture)
 
     def submit_assigned(self, *, principal: str, key: str, project_id: str, robot_id: str, volume_id: str,
                         asset_id: str, template: str, guard) -> dict | None:
@@ -496,7 +500,7 @@ class MissionService:
 
     def _submit_deterministic(self, *, principal: str, key: str, project_id: str, robot_id: str, volume_id: str,
                               asset_id: str, template: str, provider: str, channel: RequestChannel, guard,
-                              strict_hold: bool = False) -> dict | None:
+                              strict_hold: bool = False, recapture: dict | None = None) -> dict | None:
         if self.ops is None:
             raise ServiceError("service.invalid_request", "no operations catalog is configured")
         known = self.ledger.request_by_key(principal, key)
@@ -510,17 +514,21 @@ class MissionService:
                                f"{robot_id} runs {catalog.robots[robot_id].execution_backend}")
         registry = self._registry(robot_id)
         data = registry.data
+        action, because = "inspect", ""
+        if recapture is not None:
+            action = "recapture"
+            because = f" after {str(recapture.get('reason', ''))[:60]} (analysis {str(recapture.get('job_id', ''))[:40]})"
         draft = {"decision": "plan", "decline_reason": "", "goal": f"Inspect {asset_id}", "goal_type": "inspect",
                  "approved_volume_id": volume_id,
                  "tasks": [{"task_id": f"inspect_{asset_id}", "skill_id": "skill.inspect.asset", "asset_id": asset_id}],
-                 "notes": f"{provider} activity {key}"}
+                 "notes": f"{provider} activity {key}{because}"}
         errors = validate_draft(draft, draft_schema(list(data.get("volumes", {})), list(data["assets"]),
                                                     data.get("mission_defaults", {}).get("planner_skills", [])))
         if errors:
             raise ServiceError("workflow.invalid_draft", "; ".join(errors)[:300])
         now = self.clock()
         request = MissionRequest(request_id="req-" + uuid.uuid4().hex[:16],
-                                 text=f"{provider.capitalize()} {template}: inspect {asset_id} in {volume_id}",
+                                 text=f"{provider.capitalize()} {template}: {action} {asset_id} in {volume_id}{because}",
                                  requested_by=principal, trust_level=TrustLevel.FIRST_PARTY, channel=channel,
                                  approved_volume_id=volume_id, asset_ids=[asset_id], idempotency_key=key,
                                  received_at=now)

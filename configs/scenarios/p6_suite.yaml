@@ -1,0 +1,75 @@
+# P6 recapture matrix (D078). `s0` cases run in the S0 world (eval/p6_world.py): the P4 world with the p6_campus_v1
+# workflow and business catalogs, target-region quality, capture effects (glare, shadow, blur, capture drift) and
+# the labelled scripted vision double. Each case runs for every seed; `expected` is what the independent judge
+# (eval/judge_p6.py, with every P4, P2 and P1 check) requires on top of the recapture invariants it always checks: a
+# recapture only after a refusal the pinned recapture-v1 allows, at most one per inspection, the same robot, volume
+# and asset, each flown only after its own human approval, never a finding from a refused capture, the selection
+# taking the first completed analysis, and each `quality.target_*` refusal consistent with the profile and the pose
+# recomputed by the judge. `recaptures` counts missions requested by recapture nodes. S0 results never count as
+# physical flights or as model behaviour.
+#
+# P6 补拍矩阵（D078）。`s0` 用例在 S0 世界（eval/p6_world.py）中运行：P4 世界加上 p6_campus_v1 工作流与业务目录、目标区域
+# 质量、采集效果（反光、阴影、模糊、拍摄位置偏差）与带标注的脚本视觉替身。每个用例跑全部种子；`expected` 是独立裁判
+# （eval/judge_p6.py，另含 P4、P2、P1 的全部检查）在始终检查的补拍不变量之外的要求：补拍只发生在固定的 recapture-v1 允许
+# 的拒判之后、每次巡检至多一次、机器人、体积与资产相同、每次都在各自的人工审批之后飞行、拒判的采集从不产生发现、选择
+# 节点取首个完成的分析，以及每个 `quality.target_*` 拒判都与裁判按画像和位姿复算的结果一致。`recaptures` 统计由补拍节点
+# 提出的任务数。S0 结果从不计为物理飞行或模型行为。
+format: p6.suite/v1
+seeds: [7, 19, 41]
+s0:
+  - id: p6_f01_glare_finding
+    fault: P6-F01
+    description: "Glare over a damaged marker: the first capture is refused for the target region, the recapture approved after the glare went sees the damage, the finding is confirmed and one order opened. / 受损标记上有反光：首次采集因目标区域被拒，反光消失后获批的补拍看到损伤，发现被确认并开一张工单。"
+    expected: {flights: 2, runs: {completed: 1}, findings: {confirmed: 1}, orders: {open: 1}, reviews: 1, jobs: {refused: 1, completed: 1}, recaptures: 1, refusals: [quality.target_exposure], selected: [analyze_recapture]}
+  - id: p6_f02_blur_event
+    fault: P6-F02
+    description: "A report event, raised twice with one id, starts one run; its blurred first capture is recaptured once and found normal. / 同一 ID 的报告事件触发两次只启动一个运行；其模糊的首次采集补拍一次，结果正常。"
+    expected: {flights: 2, runs: {completed: 1}, findings: {}, orders: {}, jobs: {refused: 1, completed: 1}, recaptures: 1, refusals: [quality.blurry], selected: [analyze_recapture], injections: [duplicate_event]}
+  - id: p6_f03_drift
+    fault: P6-F03
+    description: "The first capture is taken 1.2 m off the marker: with no heading the target pixels cannot be established, so it is refused off centre; the recapture over the marker is normal. / 首次采集偏离标记 1.2 m：没有航向时无法确定目标像素，以偏离中心拒判；位于标记上方的补拍正常。"
+    expected: {flights: 2, runs: {completed: 1}, findings: {}, orders: {}, jobs: {refused: 1, completed: 1}, recaptures: 1, refusals: [quality.target_off_center], selected: [analyze_recapture], injections: [capture_drift]}
+  - id: p6_f04_both_refused
+    fault: P6-F04
+    description: "A shadow stays over the marker: the capture and its one recapture are both refused, the selection fails and the run fails with no finding and no default verdict. / 阴影一直在标记上：采集与唯一一次补拍都被拒，选择节点失败，运行失败，没有发现也没有缺省结论。"
+    expected: {flights: 2, runs: {failed: 1}, findings: {}, orders: {}, jobs: {refused: 2}, recaptures: 1, refusals: [quality.target_exposure]}
+  - id: p6_f05_not_recapturable
+    fault: P6-F05
+    description: "The reference baseline (refused for want of a reference), model timeouts, provider errors and a target mismatch end their runs without a recapture; a model answer that the target is occluded is recaptured once and found normal. / 参考基准（因缺参考图被拒）、模型超时、provider 错误与目标不符都不补拍，运行结束；模型回答目标被遮挡时补拍一次，结果正常。"
+    expected: {flights: 6, runs: {completed: 1, failed: 4}, findings: {}, orders: {}, recaptures: 1, references: 1, refusals: [analysis.no_reference, model.timeout, model.error, target.mismatch, analysis.undeterminable], injections: [vision_mode]}
+  - id: p6_f06_declined
+    fault: P6-F06
+    description: "The operator declines the recapture by cancelling its mission before approval: nothing flies again and the run fails. / 操作者在审批前取消补拍任务以示拒绝：不再飞行，运行失败。"
+    expected: {flights: 1, runs: {failed: 1}, findings: {}, orders: {}, jobs: {refused: 1}, recaptures: 1, refusals: [quality.target_exposure], injections: [recapture_declined]}
+  - id: p6_f07_cancel_run
+    fault: P6-F07
+    description: "The run is cancelled while its recapture waits for approval: the recapture never flies and nothing is analysed after the cancel. / 补拍等待审批时取消运行：补拍从不飞行，取消后不做任何分析。"
+    expected: {flights: 1, runs: {cancelled: 1}, findings: {}, orders: {}, jobs: {refused: 1}, recaptures: 1}
+  - id: p6_f08_crash
+    fault: P6-F08
+    description: "The mission service accepts the recapture but its response is lost and the process dies; after the restart exactly one recapture mission exists and flies. / 任务服务接受补拍但响应丢失、进程死亡；重启后恰好有一个补拍任务并飞行。"
+    expected: {flights: 2, runs: {completed: 1}, findings: {}, orders: {}, recaptures: 1, refusals: [quality.target_exposure], crash_windows: 1}
+  - id: p6_f09_control
+    fault: P6-F09
+    description: "The same shadow on two sites: the control's whole-frame profile lets the model read it as damage and a person must dismiss the finding; the P6 template refuses the target region, recaptures and finds the marker normal. / 两个站点上相同的阴影：对照模板的整图画像让模型把它读成损伤，需要人驳回发现；P6 模板拒判目标区域、补拍并得出标记正常。"
+    expected: {flights: 5, runs: {completed: 2, failed: 2}, findings: {dismissed: 1}, orders: {}, reviews: 1, references: 2, recaptures: 1, refusals: [analysis.no_reference, quality.target_exposure], false_suspected: {plain_vlm_watch: 1, recapture_vlm_watch: 0}}
+  - id: p6_f10_authority
+    fault: P6-F10
+    description: "Viewer, other-project, admin, agent, dock and anonymous approvals of a recapture and foreign starts of the template are refused; only the project's operator approves it. / viewer、他项目、admin、agent、机场与匿名身份对补拍的审批以及越权启动模板全部被拒；只有本项目操作者可以审批。"
+    expected: {flights: 2, runs: {completed: 1}, findings: {}, orders: {}, recaptures: 1, refusals: [quality.target_exposure], probes: true}
+s1:
+  - id: p6_s1_glare_recapture
+    seeds: [7, 19, 41]
+    description: "PX4 SITL: an emissive disc over the red marker's centre makes the first capture's target region glare and it is refused; the harness removes the disc while the recapture waits for approval, and the recapture is normal. / PX4 SITL：红色标记中心上的自发光圆片使首次采集的目标区域反光而被拒；补拍等待审批时编排移除圆片，补拍结果正常。"
+    world: {glare: true, remove_glare_before_recapture: true}
+    expected: {flights: 2, runs: {completed: 1}, findings: {}, orders: {}, recaptures: 1, refusals: [quality.target_exposure], selected: [analyze_recapture]}
+  - id: p6_s1_glare_persists
+    seeds: [7]
+    description: "PX4 SITL: the disc stays, both captures are refused, the selection fails and the run fails with no finding. / PX4 SITL：圆片一直在，两次采集都被拒，选择节点失败，运行失败且没有发现。"
+    world: {glare: true, remove_glare_before_recapture: false}
+    expected: {flights: 2, runs: {failed: 1}, findings: {}, orders: {}, recaptures: 1, refusals: [quality.target_exposure]}
+  - id: p6_s1_damage_found
+    seeds: [7]
+    description: "PX4 SITL: only the P4 damage patch: the target-region checks pass it, the analysis is suspected, the reviewer confirms and one order opens; nothing is recaptured. / PX4 SITL：只有 P4 损伤贴片：目标区域检查放行，分析为疑似，复核人确认并开一张工单；不补拍。"
+    world: {patch: true}
+    expected: {flights: 1, runs: {completed: 1}, findings: {confirmed: 1}, orders: {open: 1}, recaptures: 0, selected: [analyze]}

@@ -22,7 +22,9 @@
 # through the API socket; `desk-vendor` is the vendor protocol simulator with no network, reached only through its
 # socket by the service's gateway. The host-written world file (read-only) tells the simulators what the world shows;
 # the harness fault switches (read-only, one folder per consumer) can throttle the model proxy or drop the vendor link.
-# Neither is mounted into the service or the page.
+# Neither is mounted into the service or the page. P6 (D078): the workflow and business catalogs become p6_desk_v1
+# (every P5 template and analyzer byte for byte, plus the recapture template on the PX4 SITL site); operations and
+# scheduling stay p5_desk_v1; no table is added.
 #
 # 常驻 M2 任务台（D035）。常驻：`desk`（页面，只发布 127.0.0.1:8769，位于私有 Tailscale Serve 8448 之后）、
 # `desk-service`（任务服务）与 `desk-uplink`（机载 uplink）；它们只共享内部 `desk_uplink` 网络与 API 套接字
@@ -39,7 +41,8 @@
 # 机队与厂商机场）并允许三种执行后端；飞行器在 P5 仿真镜像中按 P5 S1 地图飞行。`desk-fleet` 运行两台逻辑飞行器（真实机载进程
 # 加逻辑飞行适配器，各自以客户端证书接入 `desk_uplink`）并经 API 套接字运行其机场；`desk-vendor` 是没有网络的厂商协议模拟器，
 # 只由服务的网关经其套接字访问。主机写入的世界文件（只读）告诉模拟器世界呈现什么；编排故障开关（只读，每个使用方一个目录）可以
-# 使模型代理限流或断开厂商链路。二者都不挂载进服务或页面。
+# 使模型代理限流或断开厂商链路。二者都不挂载进服务或页面。P6（D078）：工作流与业务目录改为 p6_desk_v1（逐字节保留全部 P5
+# 模板与分析器，并在 PX4 SITL 站点上加上补拍模板）；运营与调度目录仍为 p5_desk_v1；不新增表。
 name: drone-agent-cloud
 services:
   desk:
@@ -108,9 +111,9 @@ services:
               --api, /api/api.sock, --listen, "0.0.0.0:8450",
               --execution-backend, "px4_sitl,logical_sim,vendor_protocol_sim",
               --catalog, /workspace/configs/sites/p5_desk_v1.yaml, --members, /members/members.yaml,
-              --workflows, /workspace/configs/workflows/p5_desk_v1.yaml,
+              --workflows, /workspace/configs/workflows/p6_desk_v1.yaml,
               --scheduling, /workspace/configs/scheduling/p5_desk_v1.yaml,
-              --business, /workspace/configs/analysis/p5_desk_v1.yaml, --vision, live,
+              --business, /workspace/configs/analysis/p6_desk_v1.yaml, --vision, live,
               --vendor-link, "dock_vd=/vendor/vendor.sock"]
     volumes:
       - ${DRONE_DESK_ROOT:?}/service:/state
