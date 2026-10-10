@@ -25,6 +25,7 @@ M0–M2 已完成；**M3-SITL 已通过（2026-09-25，`75382dc`），原 M3 未
 - `eval/` — 版本化评测任务、`adversarial/`（M2 起的对抗性规划语料）、`s2/`（P4 起的 S2 冻结清单、协议与署名，D065；素材图片本身不进仓库，本机默认放 `D:/drone-agent-data/`）与 `BASELINES.md`（只增不改，负结果照记）。
 - `sim/` — M0 开发 compose 与只读冒烟；M1 扩展完整仿真。Windows 先用 `scripts/stage_sim.py` 暂存到 ASCII 目录，版本与 digest 固定，见 `sim/README.md`。
 - `scripts/` — 一次性可复用脚本；`experiments/` — 一次性实验，禁止被 `src/` 依赖，30 天未引用可清理（删除仍先按全局红线问）。
+- `.github/workflows/` — 持续检查（D077，用户 2026-10-10 批准）：推送到 main 与每个 PR 时按 `uv.lock` 安装并跑 ruff、契约字段核对、全量 pytest 与两组客户端测试；只读、无密钥、不触云端。不开分支保护，CI 通过不计入任何发布门禁；改动工作流仍属 CI/CD 配置红线，先问用户。
 - 新增顶层目录属于架构变更，走文档先行流程。
 
 ## 命名

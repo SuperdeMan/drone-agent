@@ -128,7 +128,8 @@ flowchart TB
 | [09-operations.md](09-operations.md) | 资源、工作流、调度、发现与工单、运行来源和权限 |
 | [../roadmap.md](../roadmap.md) | P/H/X 里程碑、历史映射与退出标准 |
 | [../p0-readiness.md](../p0-readiness.md) | P0 当前验收、来源语义、能力清单与准确候选证据 |
-| [../operations-implementation.md](../operations-implementation.md) | P0–P5 / H / X 工作包、责任、依赖与验收 |
+| [../operations-implementation.md](../operations-implementation.md) | P0–P5 / H / X 工作包、责任、依赖与验收；§10 为评审提议的 P6 |
+| [../p6-implementation.md](../p6-implementation.md) | P6 主动补拍与目标区域质量的设计稿（D078，待评审） |
 | [../p1-implementation.md](../p1-implementation.md) | P1 的 12 项工作包、单机场纵向链、故障矩阵与实现落位 |
 | [../p1-readiness.md](../p1-readiness.md) | P1 验收版本、S0 / S1 与常驻任务台迁移证据 |
 | [../p2-implementation.md](../p2-implementation.md) | P2 持久工作流的语义、API、故障矩阵与实施记录 |
