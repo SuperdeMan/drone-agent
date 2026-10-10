@@ -23,7 +23,14 @@ import json
 from datetime import datetime, time, timezone
 from pathlib import Path
 
-from drone_agent.fleet.analysis import analyze, check_quality, check_target_quality, job_result, pixels
+from drone_agent.fleet.analysis import (
+    analyze,
+    check_quality,
+    check_target_quality,
+    job_result,
+    pixels,
+    route_heading,
+)
 from drone_agent.fleet.business_models import (
     EvidenceRef,
     JobInputs,
@@ -201,10 +208,11 @@ class AnalysisJobs:
         if quality is None:
             return refusal("analysis.fixture_changed")
         robot = self.engine.ledger.mission(inputs.evidence.mission_id)["robot_id"]
-        entry = self.engine.service._registry(robot).data["assets"].get(inputs.evidence.asset_id, {})
+        registry = self.engine.service._registry(robot).data
+        entry = registry["assets"].get(inputs.evidence.asset_id, {})
         if isinstance(quality, TargetQualityProfile):
             reason, measures = check_target_quality(image, quality, pose=self._captured_pose(inputs.evidence),
-                                                    asset=entry)
+                                                    asset=entry, heading=route_heading(registry, entry))
         else:
             reason, measures = check_quality(image, quality)
         if reason is not None:

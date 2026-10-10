@@ -200,14 +200,37 @@ class TargetLimits(BusinessModel):
                                                        "目标边界环上梯度幅值的 99.5 分位")
 
 
-class TargetQualityProfile(QualityProfile):
-    """`quality-v2` (D078): the whole-frame limits of `quality-v1` plus the camera and the target-region limits.
+class PoseModel(BusinessModel):
+    """How a capture's pose is known beyond its reported position (D078). Evidence poses carry no attitude, so the
+    heading is either unknown or declared: the direction of the asset's registered approach route's last segment,
+    which the flight controller holds towards the waypoint, within a tolerance. The position tolerance covers the
+    pose estimate and the image timing. Both are calibrated on renders and checked against truth by the S1 judge.
 
-    `quality-v2`（D078）：`quality-v1` 的整图限值，加上相机与目标区域限值。
+    采集位姿在上报位置之外的已知程度（D078）。证据位姿不带姿态，因此航向要么未知，要么按声明取资产登记观测航线末段的
+    方向（飞控朝航点保持航向），并带容差。位置容差覆盖位姿估计与成像时刻的误差。二者都按渲染标定，并由 S1 裁判对照真值核对。
+    """
+
+    heading: Literal["unknown", "approach_route"] = "unknown"
+    heading_tolerance_deg: float = Field(default=180.0, ge=0, le=180)
+    position_tolerance_m: float = Field(default=0.0, ge=0, le=2)
+
+    @model_validator(mode="after")
+    def _tolerance(self):
+        if self.heading == "unknown" and self.heading_tolerance_deg != 180:
+            raise ValueError("an unknown heading takes no heading tolerance")
+        return self
+
+
+class TargetQualityProfile(QualityProfile):
+    """`quality-v2` (D078): the whole-frame limits of `quality-v1` plus the camera, the pose model and the
+    target-region limits.
+
+    `quality-v2`（D078）：`quality-v1` 的整图限值，加上相机、位姿模型与目标区域限值。
     """
 
     format: Literal["drone.quality-profile/v2"]
     camera: CameraModel
+    pose: PoseModel = PoseModel()
     target: TargetLimits
 
 

@@ -160,13 +160,24 @@ def check_selections(c, problems: list[str]) -> tuple[int, int]:
 # ── independent quality-v2 recomputation / 独立复算 quality-v2 ──
 
 
-def _registry_asset(c, mission_id: str, asset_id: str) -> dict:
+def _scene(c, mission_id: str) -> dict:
     robot = c.missions.get(mission_id, {}).get("robot_id")
     site = c.catalog.robots[robot].site_id if robot in c.catalog.robots else None
     if site is None:
         return {}
-    data = yaml.safe_load((c.root / c.catalog.sites[site].scene).read_text(encoding="utf-8"))
-    return data.get("assets", {}).get(asset_id, {})
+    return yaml.safe_load((c.root / c.catalog.sites[site].scene).read_text(encoding="utf-8")) or {}
+
+
+def _heading(scene: dict, asset: dict) -> float | None:
+    """The judge's own reading of the approach direction: the last two points of the registered route.
+
+    裁判自己读取的进近方向：登记航线的最后两点。
+    """
+    route = (scene.get("routes") or {}).get(asset.get("observation_route"))
+    if not route or len(route) < 2:
+        return None
+    (ax, ay), (bx, by) = route[-2][:2], route[-1][:2]
+    return None if (ax, ay) == (bx, by) else math.atan2(by - ay, bx - ax)
 
 
 def _profile(c, job: dict):
@@ -176,9 +187,13 @@ def _profile(c, job: dict):
     return profile if sha == job["inputs"]["quality_sha256"] else None
 
 
-def _geometry(pose: dict | None, asset: dict, profile, width: int, height: int) -> dict | None:
-    """The judge's own target geometry: analytic size and core, sampled worst visibility. / 裁判自己的目标几何。"""
-    camera = profile.camera
+def _geometry(pose: dict | None, asset: dict, profile, width: int, height: int, heading: float | None) -> dict | None:
+    """The judge's own target geometry under the profile's pose model: sampled visibility of points inside the
+    widened square, and per-pixel tests for the core and the boundary ring at its own heading steps.
+
+    裁判自己在画像位姿模型下的目标几何：外扩正方形内采样点的可见比例，以及按其自己的航向步长逐像素判定核心与边界环。
+    """
+    camera, model = profile.camera, profile.pose
     position = (pose or {}).get("position") or {}
     place, size = asset.get("position"), asset.get("size_m")
     try:
@@ -192,28 +207,43 @@ def _geometry(pose: dict | None, asset: dict, profile, width: int, height: int) 
     depth = pz - camera.mount_below_m - az
     if depth < 0.3:
         return None
-    focal = (camera.width / 2) / math.tan(camera.hfov_rad / 2)
-    dx, dy = ax - px, ay - py
-    grid = (np.arange(40) + 0.5) / 40 - 0.5
-    gx, gy = np.meshgrid(grid * size + dx, grid * size + dy)
-    worst = 1.0
-    for degrees in range(0, 360, 5):
-        a = math.radians(degrees)
-        u = width / 2 + focal / depth * (gx * math.cos(a) - gy * math.sin(a))
-        v = height / 2 + focal / depth * (gx * math.sin(a) + gy * math.cos(a))
+    if model.heading == "approach_route":
+        if heading is None:
+            return None
+        count = max(2, int(model.heading_tolerance_deg * 2)) + 1
+        angles = np.linspace(heading - math.radians(model.heading_tolerance_deg),
+                             heading + math.radians(model.heading_tolerance_deg), count)
+    else:
+        angles = np.radians(np.arange(0, 360, 2.0))
+    scale = (camera.width / 2) / math.tan(camera.hfov_rad / 2) / depth  # pixels per ground metre / 每地面米的像素数
+    dx, dy, half, slack = ax - px, ay - py, size / 2, model.position_tolerance_m
+    grid = (np.arange(40) + 0.5) / 40 * 2 - 1
+    sx, sy = np.meshgrid(grid * (half + slack) + dx, grid * (half + slack) + dy)
+    rows, columns = np.indices((height, width))
+    ahead = (height / 2 - rows - 0.5) / scale
+    aside = (width / 2 - columns - 0.5) / scale
+    worst, core, ring = 1.0, np.ones((height, width), bool), np.zeros((height, width), bool)
+    for a in angles:
+        cos, sin = math.cos(a), math.sin(a)
+        u = width / 2 - scale * (-sx * sin + sy * cos)
+        v = height / 2 - scale * (sx * cos + sy * sin)
         worst = min(worst, float(((u >= 0) & (u <= width) & (v >= 0) & (v <= height)).mean()))
-    return {"visible": worst, "side": focal * size / depth, "core": focal * (size / 2 - max(abs(dx), abs(dy))) / depth,
-            "outer": focal * math.hypot(dx, dy) / depth + focal * size / depth / math.sqrt(2) + 2}
+        ex, ey = np.abs(ahead * cos - aside * sin - dx), np.abs(ahead * sin + aside * cos - dy)
+        core &= (ex <= half - slack) & (ey <= half - slack)
+        far = np.maximum(ex, ey)
+        ring |= (far >= half - slack - 2 / scale) & (far <= half + slack + 2 / scale)
+    return {"visible": worst, "side": scale * size, "core": core, "ring": ring[:-1, :-1]}
 
 
 def _near(value: float, limit: float) -> bool:
     return abs(value - limit) <= BAND * max(abs(limit), 1.0)
 
 
-def judge_quality(image: np.ndarray | None, pose: dict | None, asset: dict, profile) -> tuple[str | None, bool]:
+def judge_quality(image: np.ndarray | None, pose: dict | None, asset: dict, profile,
+                  heading: float | None = None) -> tuple[str | None, bool]:
     """(the first failing check by the judge's recomputation, conclusive). / （裁判复算的首个不合格项，是否有结论）。"""
     height, width = (image.shape[:2] if image is not None else (profile.camera.height, profile.camera.width))
-    geometry = _geometry(pose, asset, profile, width, height)
+    geometry = _geometry(pose, asset, profile, width, height, heading)
     if geometry is None:
         return "quality.target_unknown", True
     if image is None:
@@ -233,9 +263,7 @@ def judge_quality(image: np.ndarray | None, pose: dict | None, asset: dict, prof
                    _near(geometry["visible"], limits.min_visible_fraction)))
     checks.append(("quality.target_too_small", geometry["side"] < limits.min_side_px,
                    _near(geometry["side"], limits.min_side_px)))
-    rows, columns = np.indices((height, width))
-    distance = np.sqrt((columns + 0.5 - width / 2) ** 2 + (rows + 0.5 - height / 2) ** 2)
-    core = distance <= geometry["core"]
+    core = geometry["core"]
     checks.append(("quality.target_off_center", core.sum() < limits.min_core_px,
                    _near(float(core.sum()), float(limits.min_core_px))))
     if core.any():
@@ -243,7 +271,7 @@ def judge_quality(image: np.ndarray | None, pose: dict | None, asset: dict, prof
         bright = float((image[core].min(axis=1) > limits.bright_level).mean())
         checks.append(("quality.target_exposure", dark > limits.max_dark_fraction or bright > limits.max_bright_fraction,
                        _near(dark, limits.max_dark_fraction) or _near(bright, limits.max_bright_fraction)))
-        ring = ((distance >= geometry["core"] - 2) & (distance <= geometry["outer"]))[:-1, :-1]
+        ring = geometry["ring"]
         edge = float(np.percentile(gradient[ring], 99.5)) if ring.any() else 0.0
         checks.append(("quality.target_blurry", edge < limits.min_sharpness, _near(edge, limits.min_sharpness)))
     for reason, failing, near in checks:
@@ -254,10 +282,40 @@ def judge_quality(image: np.ndarray | None, pose: dict | None, asset: dict, prof
     return None, True
 
 
-def check_quality(c, problems: list[str]) -> int:
-    """Jobs under a `quality-v2` profile whose refusal or pass the judge's recomputation contradicts.
+def check_pose_model(c, job: dict, profile, heading: float | None, problems: list[str]) -> int:
+    """S1: the declared heading and position tolerances held at the capture, by the Gazebo truth nearest to it.
 
-    `quality-v2` 画像下、其拒判或通过与裁判复算相矛盾的作业。
+    S1：按离拍摄最近的 Gazebo 真值，声明的航向与位置容差在拍摄时成立。
+    """
+    truth = getattr(c, "truth", None)
+    if not truth or profile.pose.heading != "approach_route" or heading is None:
+        return 0
+    evidence = job["inputs"]["evidence"]
+    pose = ((c.evidence.get(evidence["evidence_id"], {}).get("body") or {}).get("captured_pose") or {}).get("position")
+    captured = _at(evidence.get("captured_at"))
+    rows = [r for rows in truth.values() for r in rows if r.get("timestamp") and r.get("orientation")]
+    if not rows or captured is None or not pose:
+        problems.append(f"pose_model_unverified:{job['job_id']}")
+        return 0
+    row = min(rows, key=lambda r: abs((_at(r["timestamp"]) - captured).total_seconds()))
+    if abs((_at(row["timestamp"]) - captured).total_seconds()) > 0.5:
+        problems.append(f"pose_model_unverified:{job['job_id']}")
+        return 0
+    x, y, z, w = row["orientation"]
+    yaw = math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
+    off = math.degrees(math.atan2(math.sin(yaw - heading), math.cos(yaw - heading)))
+    gap = math.hypot(row["position"][0] - pose["x"], row["position"][1] - pose["y"])
+    if abs(off) > profile.pose.heading_tolerance_deg or gap > profile.pose.position_tolerance_m:
+        problems.append(f"pose_model_violated:{job['job_id']}:heading {off:.1f} deg, position {gap:.2f} m")
+        return 1
+    return 0
+
+
+def check_quality(c, problems: list[str]) -> int:
+    """Jobs under a `quality-v2` profile whose refusal or pass the judge's recomputation contradicts, or whose
+    declared pose model the truth contradicts (S1).
+
+    `quality-v2` 画像下、其拒判或通过与裁判复算相矛盾，或其声明的位姿模型与真值相矛盾（S1）的作业。
     """
     contradictions = 0
     for job in c.jobs.values():
@@ -279,12 +337,15 @@ def check_quality(c, problems: list[str]) -> int:
             if hashlib.sha256(raw).hexdigest() == evidence["media_sha256"] and \
                     len(raw) == evidence["width"] * evidence["height"] * 3:
                 image = np.frombuffer(raw, dtype=np.uint8).reshape(evidence["height"], evidence["width"], 3)
-        expected, conclusive = judge_quality(image, (row.get("body") or {}).get("captured_pose"),
-                                             _registry_asset(c, evidence["mission_id"], evidence["asset_id"]),
-                                             profile)
+        scene = _scene(c, evidence["mission_id"])
+        asset = (scene.get("assets") or {}).get(evidence["asset_id"], {})
+        heading = _heading(scene, asset)
+        expected, conclusive = judge_quality(image, (row.get("body") or {}).get("captured_pose"), asset, profile,
+                                             heading)
         if conclusive and expected != reason:
             contradictions += 1
             problems.append(f"quality_contradicts_recomputation:{job['job_id']}:{reason}!={expected}")
+        contradictions += check_pose_model(c, job, profile, heading, problems)
     return contradictions
 
 

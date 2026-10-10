@@ -14,7 +14,7 @@ import yaml
 from pydantic import ValidationError
 
 from drone_agent.eval.p6_vision import render
-from drone_agent.fleet.analysis import check_quality, check_target_quality, pixels, target_geometry
+from drone_agent.fleet.analysis import check_quality, check_target_quality, pixels, route_heading, target_geometry
 from drone_agent.fleet.business_models import (
     RECAPTURABLE,
     BusinessCatalog,
@@ -45,10 +45,13 @@ def check(image: np.ndarray, at: dict | None = None, asset: dict | None = None):
 
 
 def test_a_centred_capture_matches_the_logical_camera():
-    geometry = target_geometry(pose(), ASSET, PROFILE, 160, 120)
+    geometry, core, ring = target_geometry(pose(), ASSET, PROFILE, 160, 120)
     assert geometry["side_px"] == pytest.approx(40.0) and geometry["visible_min"] == 1.0
-    assert geometry["core_radius_px"] == pytest.approx(20.0) and geometry["offset_px"] == 0.0
-    assert geometry["ring_outer_px"] == pytest.approx(20 * math.sqrt(2) + 2, abs=1e-3)
+    assert geometry["offset_px"] == 0.0 and abs(geometry["core_px"] - math.pi * 20 ** 2) < 60
+    # With an unknown heading the core is the disc of radius 20 px around the centre. / 航向未知时核心是半径 20 像素的圆盘。
+    rows, columns = np.nonzero(core)
+    assert (rows.min(), rows.max(), columns.min(), columns.max()) == (40, 79, 60, 99)
+    assert ring.shape == (119, 159) and ring[60, 80] == 0 and ring[60, 60] == 1
 
 
 def test_clean_and_damaged_markers_pass_and_keep_their_measures():
@@ -99,11 +102,11 @@ def test_the_worst_visible_fraction_covers_every_heading():
     # 2 m off along x: at the heading that points the offset at the frame's short side a corner leaves the frame,
     # although the long side would still hold it. / 沿 x 偏移 2 m：在把偏移转向画面短边的航向下有一个角出画，
     # 尽管长边方向仍能容纳它。
-    geometry = target_geometry(pose(dx=2.0), ASSET, PROFILE, 160, 120)
-    assert 0.95 < geometry["visible_min"] < 1.0
-    assert target_geometry(pose(dy=2.0), ASSET, PROFILE, 160, 120)["visible_min"] == geometry["visible_min"]
-    assert target_geometry(pose(dx=1.5), ASSET, PROFILE, 160, 120)["visible_min"] == 1.0
-    assert target_geometry(pose(dx=2.2), ASSET, PROFILE, 160, 120)["visible_min"] == pytest.approx(0.9)
+    def visible(**offset) -> float:
+        return target_geometry(pose(**offset), ASSET, PROFILE, 160, 120)[0]["visible_min"]
+
+    assert 0.95 < visible(dx=2.0) < 1.0 and visible(dy=2.0) == pytest.approx(visible(dx=2.0), abs=1e-6)
+    assert visible(dx=1.5) == 1.0 and visible(dx=2.2) == pytest.approx(0.9, abs=1e-3)
 
 
 def test_missing_or_mismatching_geometry_is_unknown_never_a_whole_frame_pass():
@@ -144,3 +147,58 @@ def test_catalogs_without_a_recapture_policy_keep_their_canonical_form():
         assert catalog.recapture is None and "recapture" not in dumped
         assert catalog.sha256 == digest(dumped)
         assert BusinessCatalog.model_validate(dumped) == catalog
+
+
+# ── the pose model (D078 S1 calibration) / 位姿模型（D078 S1 标定） ──
+
+ROUTE = TargetQualityProfile.model_validate({**PROFILE.model_dump(mode="json"),
+                                             "pose": {"heading": "approach_route", "heading_tolerance_deg": 20,
+                                                      "position_tolerance_m": 0.35}})
+REGISTRY = {"routes": {"observe_red": [[0, 4, 4], [4, 4, 4]], "observe_blue": [[0, 4, 4], [-4, 6, 4]],
+                       "still": [[1, 1, 4], [1, 1, 4]]}}
+
+
+def test_the_route_heading_is_the_last_segment():
+    assert route_heading(REGISTRY, {"observation_route": "observe_red"}) == 0.0
+    assert route_heading(REGISTRY, {"observation_route": "observe_blue"}) == pytest.approx(math.atan2(2, -4))
+    assert route_heading(REGISTRY, {"observation_route": "still"}) is None
+    assert route_heading(REGISTRY, {}) is None
+
+
+def test_a_declared_heading_keeps_a_short_capture_analysable_where_an_unknown_one_cannot():
+    # 0.8 m short of the marker along the approach, as every S1 calibration capture was.
+    # 沿进近方向停在标记前 0.8 m，与每次 S1 标定拍摄相同。
+    short = capture(offset_m=(-0.8, 0.0))
+    at = pose(dx=-0.8)
+    assert check(short, at=at)[0] == "quality.target_off_center"
+    reason, measures = check_target_quality(short, ROUTE, pose=at, asset=ASSET, heading=0.0)
+    assert reason is None and measures["target_core_px"] >= 150 and measures["target_heading_deg"] == 0.0
+    glare = capture(offset_m=(-0.8, 0.0), overlay="glare")
+    assert check_target_quality(glare, ROUTE, pose=at, asset=ASSET, heading=0.0)[0] == "quality.target_exposure"
+
+
+def test_a_declared_heading_needs_the_route_and_admits_no_tolerance_when_unknown():
+    assert check_target_quality(capture(), ROUTE, pose=pose(), asset=ASSET, heading=None)[0] ==         "quality.target_unknown"
+    with pytest.raises(ValidationError):
+        TargetQualityProfile.model_validate({**PROFILE.model_dump(mode="json"),
+                                             "pose": {"heading": "unknown", "heading_tolerance_deg": 20}})
+    s1, _ = load_quality(ROOT, "configs/analysis/quality_target_s1_v2.yaml")
+    assert s1.pose.heading == "approach_route" and s1.pose.heading_tolerance_deg == 20
+    assert load_quality(ROOT, "configs/analysis/quality_target_s1_v1.yaml")[0].pose.heading == "unknown"
+
+
+@pytest.mark.parametrize("effects, at, profile, heading", [
+    ({}, {}, "frame", None), ({"overlay": "glare"}, {}, "frame", None), ({"blur": 9}, {}, "frame", None),
+    ({"offset_m": (1.2, 0.0)}, {"dx": 1.2}, "frame", None), ({"damaged": True}, {}, "frame", None),
+    ({"offset_m": (-0.8, 0.0)}, {"dx": -0.8}, "route", 0.0),
+    ({"offset_m": (-0.8, 0.0), "overlay": "glare"}, {"dx": -0.8}, "route", 0.0),
+    ({"offset_m": (-0.8, 0.0), "damaged": True}, {"dx": -0.8}, "route", 0.0)])
+def test_the_judge_recomputes_the_same_reason(effects, at, profile, heading):
+    from drone_agent.eval.judge_p6 import judge_quality
+
+    chosen = PROFILE if profile == "frame" else ROUTE
+    image = capture(**effects)
+    service = check_target_quality(image, chosen, pose=pose(**at), asset=ASSET, heading=heading)[0]
+    judged, conclusive = judge_quality(image, pose(**at), ASSET, chosen, heading)
+    assert conclusive and judged == service
+

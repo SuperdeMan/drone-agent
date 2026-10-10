@@ -1,0 +1,38 @@
+# P6 target-region quality profile for the S1 Gazebo renders (D078), version 2: version 1 plus the pose model. The
+# whole-frame limits are those of quality_sim_v1. The camera is the one the simulation image mounts under the x500
+# (sim/m1_setup.py): 160x120, a horizontal field of view of 1.4 rad, 0.15 m below the vehicle origin, looking straight
+# down with image up towards the vehicle's front; the 2 m marker seen from 4 m spans about 49 px. The pose model comes
+# from the S1 calibration on c660ff9 (D078): captures stop about 0.8 m short of the marker along the approach, the true
+# heading stays within 1.6-12.8 degrees of the route's last segment and the reported position within about 0.12 m of
+# truth, so the heading is the approach route's within 20 degrees and the position tolerance 0.35 m; the S1 judge
+# checks both against Gazebo truth at every capture. The calibration renders show the P4 damage patch mid grey
+# (67, 67, 67), never dark, and the P6 glare disc pure white; the target limits keep the patch analysable and refuse
+# the disc. They are properties of the simulated renders, not detectors.
+#
+# S1 Gazebo 渲染的 P6 目标区域质量画像（D078）第 2 版：第 1 版加上位姿模型。整图限值与 quality_sim_v1 相同。相机为仿真镜像
+# 挂在 x500 下方的相机（sim/m1_setup.py）：160x120、水平视场角 1.4 rad、位于飞行器原点下方 0.15 m、垂直向下，画面上方为
+# 机头方向；从 4 m 看 2 m 的标记约占 49 像素。位姿模型来自 c660ff9 上的 S1 标定（D078）：拍摄点沿进近方向停在标记前约 0.8 m，
+# 真实航向与航线末段方向相差 1.6–12.8 度，上报位置与真值相差约 0.12 m 以内，因此航向取进近航线方向 ±20 度、位置容差 0.35 m；
+# S1 裁判在每次拍摄时用 Gazebo 真值核对这两项。标定渲染中 P4 损伤贴片为中灰 (67, 67, 67)，从不是暗像素，P6 反光圆片为纯白；
+# 目标限值使贴片仍可分析并拒判圆片。它们是模拟渲染的属性，不是检测器。
+format: drone.quality-profile/v2
+schema_version: "0.1.0"
+profile_id: quality_target_s1
+version: 2
+note: "S1 Gazebo renders from the simulation image's nadir camera (D078) / 仿真镜像下视相机的 S1 Gazebo 渲染（D078）"
+min_width: 160
+min_height: 120
+luminance: [20.0, 235.0]
+max_clipped_fraction: 0.35
+min_sharpness: 8.0
+camera: {camera_id: cam_0, width: 160, height: 120, hfov_rad: 1.4, mount_below_m: 0.15}
+pose: {heading: approach_route, heading_tolerance_deg: 20, position_tolerance_m: 0.35}
+target:
+  min_visible_fraction: 0.95
+  min_side_px: 24
+  min_core_px: 150
+  dark_level: 40
+  max_dark_fraction: 0.9
+  bright_level: 245
+  max_bright_fraction: 0.5
+  min_sharpness: 8.0

@@ -211,22 +211,36 @@ def _area(polygon: list[tuple[float, float]]) -> float:
                                                                    strict=True))) / 2
 
 
-def target_geometry(pose: dict | None, asset: dict, profile: TargetQualityProfile, width: int,
-                    height: int) -> dict[str, float] | None:
-    """Where the registered asset can be in the capture, at any heading; None when it cannot be established.
+def route_heading(registry: dict, asset: dict) -> float | None:
+    """The direction of the asset's registered approach route's last segment (radians, map ENU), or None.
+
+    资产登记观测航线末段的方向（弧度，地图 ENU）；没有时为 None。
+    """
+    points = (registry.get("routes") or {}).get(asset.get("observation_route") or "")
+    if not isinstance(points, list) or len(points) < 2:
+        return None
+    (x0, y0, *_), (x1, y1, *_) = points[-2], points[-1]
+    return math.atan2(y1 - y0, x1 - x0) if (x0, y0) != (x1, y1) else None
+
+
+def target_geometry(pose: dict | None, asset: dict, profile: TargetQualityProfile, width: int, height: int, *,
+                    heading: float | None = None) -> tuple[dict[str, float], np.ndarray, np.ndarray] | None:
+    """Where the registered asset can be in the capture under the profile's pose model; None when it cannot be
+    established. Returns the measures, the core (pixels that are the target at every heading and position the model
+    allows) and the boundary ring (pixels within 2 px and the position tolerance of the target's edge at some
+    allowed heading).
 
     The asset is the map-aligned square of its registered position and `size_m`; the camera looks straight down from
-    `mount_below_m` under the reported position. Without a heading the projected square can be anywhere on the circle
-    of its offset, rotated with it, so the visible fraction is the minimum over headings; the core (pixels that are
-    the target at every heading) is the disc around the image centre inside the square, which exists only while the
-    nadir lies inside the square; the boundary ring holds every edge pixel at every heading.
+    `mount_below_m` under the reported position, image up being the vehicle's forward direction. With an unknown
+    heading every heading is allowed, so the core is the disc around the image centre inside the square and exists
+    only while the nadir lies inside it; a declared `approach_route` heading allows only its tolerance.
 
-    登记资产在采集中可能的位置（任何航向）；无法确立时为 None。资产是由登记位置与 `size_m` 给出的地图轴对齐正方形；相机
-    从上报位置下方 `mount_below_m` 处垂直向下。没有航向时，投影正方形可在其偏移所在的圆上随之转动，因此可见比例取所有
-    航向的最小值；核心（任何航向下都属于目标的像素）是画面中心周围、位于正方形内的圆盘，只有相机正下方点在正方形内时才
-    存在；边界环在任何航向下都包含全部边缘像素。
+    在画像的位姿模型下，登记资产在采集中可能的位置；无法确立时为 None。返回测量值、核心（模型允许的每个航向与位置下都属于
+    目标的像素）与边界环（在某个允许航向下距目标边缘不超过 2 像素加位置容差的像素）。资产是由登记位置与 `size_m` 给出的
+    地图轴对齐正方形；相机从上报位置下方 `mount_below_m` 处垂直向下，画面上方为飞行器前进方向。航向未知时允许任何航向，
+    核心是画面中心周围、位于正方形内的圆盘，只有相机正下方点在正方形内时才存在；声明 `approach_route` 航向时只允许其容差。
     """
-    camera = profile.camera
+    camera, model = profile.camera, profile.pose
     position = (pose or {}).get("position") or {}
     place, size = asset.get("position"), asset.get("size_m")
     if asset.get("camera_id") != camera.camera_id or (width, height) != (camera.width, camera.height) \
@@ -240,39 +254,60 @@ def target_geometry(pose: dict | None, asset: dict, profile: TargetQualityProfil
     depth = position["z"] - camera.mount_below_m - place[2]
     if depth < MIN_DEPTH_M:
         return None
-    focal = camera.focal_px
+    if model.heading == "approach_route":
+        if heading is None or not math.isfinite(heading):
+            return None
+        steps = max(int(round(model.heading_tolerance_deg)), 1)
+        span = math.radians(model.heading_tolerance_deg)
+        angles = [heading + span * k / steps for k in range(-steps, steps + 1)]
+    else:
+        angles = list(HEADINGS)
+    metres = depth / camera.focal_px  # ground metres per pixel at the asset / 资产处每像素对应的地面米数
     dx, dy = place[0] - position["x"], place[1] - position["y"]
-    half = focal * size / 2 / depth
-    ox, oy = focal * dx / depth, focal * dy / depth
-    corners = [(ox - half, oy - half), (ox + half, oy - half), (ox + half, oy + half), (ox - half, oy + half)]
-    cx, cy = width / 2, height / 2
-    whole = (2 * half) ** 2
+    half, slack = size / 2, model.position_tolerance_m
+    forward = ((height / 2 - (np.arange(height) + 0.5)) * metres)[:, None]
+    left = ((width / 2 - (np.arange(width) + 0.5)) * metres)[None, :]
+    core = np.ones((height, width), dtype=bool)
+    ring = np.zeros((height, width), dtype=bool)
+    outline = [(sx * (half + slack), sy * (half + slack)) for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+    whole = (2 * (half + slack) / metres) ** 2
     visible = 1.0
-    for angle in HEADINGS:
+    for angle in angles:
         c, s = math.cos(angle), math.sin(angle)
-        turned = [(cx + x * c - y * s, cy + x * s + y * c) for x, y in corners]
-        visible = min(visible, _area(_clip(turned, width, height)) / whole)
-    offset = math.hypot(ox, oy)
-    return {"depth_m": round(depth, 4), "side_px": round(2 * half, 3), "offset_px": round(offset, 3),
-            "visible_min": round(visible, 6),
-            "core_radius_px": round(focal * (size / 2 - max(abs(dx), abs(dy))) / depth, 3),
-            "ring_outer_px": round(offset + half * math.sqrt(2) + 2, 3)}
+        # Each pixel's ground offset from the asset centre, in map axes. / 每个像素相对资产中心的地面偏移（地图轴）。
+        chebyshev = np.maximum(np.abs(forward * c - left * s - dx), np.abs(forward * s + left * c - dy))
+        core &= chebyshev <= half - slack
+        ring |= np.abs(chebyshev - half) <= 2 * metres + slack
+        polygon = []
+        for ox, oy in outline:
+            gx, gy = dx + ox, dy + oy
+            polygon.append((width / 2 - (-gx * s + gy * c) / metres, height / 2 - (gx * c + gy * s) / metres))
+        visible = min(visible, _area(_clip(polygon, width, height)) / whole)
+    measures = {"depth_m": round(depth, 4), "side_px": round(size / metres, 3),
+                "offset_px": round(math.hypot(dx, dy) / metres, 3), "visible_min": round(visible, 6),
+                "core_px": float(core.sum()), "ring_px": float(ring.sum())}
+    if model.heading == "approach_route":
+        measures["heading_deg"] = round(math.degrees(heading), 3)
+    return measures, core, ring[:-1, :-1]
 
 
-def check_target_quality(image: np.ndarray, profile: TargetQualityProfile, *, pose: dict | None,
-                         asset: dict) -> tuple[str | None, dict[str, float]]:
+def check_target_quality(image: np.ndarray, profile: TargetQualityProfile, *, pose: dict | None, asset: dict,
+                         heading: float | None = None) -> tuple[str | None, dict[str, float]]:
     """`quality-v2`: geometry first, then the whole-frame checks of `quality-v1`, then the target region.
 
     Refusals report in this order: `quality.target_unknown`, the `quality-v1` reasons, then the target out of frame,
-    too small, off centre, badly exposed and blurred. Every measure taken is returned.
+    too small, off centre, badly exposed and blurred. Every measure taken is returned. `heading` is the asset's
+    approach-route heading, needed only by a profile that declares it.
 
     `quality-v2`：先几何，再 `quality-v1` 的整图检查，最后是目标区域。拒判按此顺序报告：`quality.target_unknown`、
-    `quality-v1` 的原因，然后是目标出画、过小、偏离中心、曝光异常与模糊。返回已取得的全部测量值。
+    `quality-v1` 的原因，然后是目标出画、过小、偏离中心、曝光异常与模糊。返回已取得的全部测量值。`heading` 是资产观测
+    航线的方向，只有声明它的画像需要。
     """
     height, width = image.shape[:2]
-    geometry = target_geometry(pose, asset, profile, width, height)
-    if geometry is None:
+    found = target_geometry(pose, asset, profile, width, height, heading=heading)
+    if found is None:
         return "quality.target_unknown", {"width": float(width), "height": float(height)}
+    geometry, core, ring = found
     reason, measures = check_quality(image, profile)
     measures.update({f"target_{key}": float(value) for key, value in geometry.items()})
     if reason is not None:
@@ -282,10 +317,6 @@ def check_target_quality(image: np.ndarray, profile: TargetQualityProfile, *, po
         return "quality.target_out_of_frame", measures
     if geometry["side_px"] < limits.min_side_px:
         return "quality.target_too_small", measures
-    rows, columns = np.mgrid[0:height, 0:width]
-    distance = np.hypot(columns + 0.5 - width / 2, rows + 0.5 - height / 2)
-    core = distance <= geometry["core_radius_px"]
-    measures["target_core_px"] = float(core.sum())
     if core.sum() < limits.min_core_px:
         return "quality.target_off_center", measures
     inside = image[core].astype(np.int32)
@@ -297,7 +328,6 @@ def check_target_quality(image: np.ndarray, profile: TargetQualityProfile, *, po
     rgb = image.astype(np.float32)
     luminance = 0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2]
     gradient = np.hypot(np.abs(np.diff(luminance, axis=1))[:-1, :], np.abs(np.diff(luminance, axis=0))[:, :-1])
-    ring = ((distance >= geometry["core_radius_px"] - 2) & (distance <= geometry["ring_outer_px"]))[:-1, :-1]
     sharpness = float(np.percentile(gradient[ring], 99.5)) if ring.any() else 0.0
     measures["target_sharpness"] = round(sharpness, 3)
     if sharpness < limits.min_sharpness:
