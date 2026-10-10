@@ -1,0 +1,45 @@
+# Continuous checks for every push to main and every pull request (D077): lint, the contract field export, the whole
+# pytest suite (contract tests and representative S0 cases included) and the two console client test files. Read-only,
+# no secrets, no cloud workspace and no simulation; release gates still decide milestones on their own candidates.
+#
+# 每次推送到 main 与每个 PR 的持续检查（D077）：静态检查、契约字段导出核对、全量 pytest（含契约测试与代表性 S0 用例）以及两组
+# 任务台客户端测试。只读权限，不用任何密钥，不访问云端工作区，不起仿真；里程碑仍只由发布门禁在各自的候选上判定。
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      # Full history: release-gate tests may read committed records. / 完整历史：门禁测试可能读取已提交的记录。
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.2"
+      - name: Install the locked environment / 按锁文件安装环境
+        run: uv sync --frozen
+      - name: Ruff
+        run: uv run ruff check .
+      - name: Contract field export / 契约字段导出
+        run: uv run python scripts/generate_contract_fields.py --check
+      - name: Pytest
+        run: uv run pytest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Console client tests / 任务台客户端测试
+        run: node --test tests/console/test_mission_client.cjs tests/console/test_live_client.cjs
