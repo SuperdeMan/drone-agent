@@ -199,14 +199,24 @@ async def run_case(root: Path, corpus: dict, case: dict, provider, identity: Mod
             "codes": codes, "intent": intent(case, outcome, planned, codes),
             "escapes": found, "decline_reason": planner.get("decline_reason") or "",
             "notes": planner.get("notes") or "", "model_id": planner.get("model_id") or "",
+            "issue_messages": [str(i.get("message") or "")[:300] for i in view.get("issues", [])
+                               if i.get("code") in ("planner.technical_failure", "planner.tool_failure",
+                                                    "planner.replay_mismatch")],
             "prompt_version": planner.get("prompt_version") or "", "input_hash": planner.get("input_hash") or "",
             "attempts": planner.get("attempts", 0), "channels": planner.get("channels", []),
             "passed": not reasons, "reasons": reasons}
 
 
 async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | None = None,
-                     corpus_path: str = CORPUS) -> dict:
-    """Run every case in one mode. / 以一种模式运行全部用例。"""
+                     corpus_path: str = CORPUS, resume: Path | None = None, patient=None) -> dict:
+    """Run every case in one mode. A live run with `resume` replays each case that already has a recording there,
+    strictly, and asks the model only for the others (a case is never asked again once a model answered it).
+
+    以一种模式运行全部用例。带 `resume` 的实调运行对其中已有录制的用例严格回放，只对其余用例询问模型（模型回答过的用例
+    从不再问）。
+    """
+    import shutil
+
     from drone_agent.providers import (
         KeyedScriptedProvider,
         Recording,
@@ -218,25 +228,34 @@ async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | N
     corpus = load(root, corpus_path)
     recordings = recordings or root / "eval/adversarial/recordings/p6" / corpus["corpus"]
     live, config = (build_provider("planner") if mode == "live" else (None, None))
+    if live is not None and patient is not None:
+        live = patient(live)
     results, skipped = [], []
     for case in corpus["cases"]:
         file = recordings / f"{case['id']}.json"
+        earlier = resume / f"{case['id']}.json" if resume is not None else None
+        resumed = mode == "live" and earlier is not None and earlier.is_file()
         if mode == "scripted":
             provider, identity = KeyedScriptedProvider({case["text"]: scripted_answer(case)}), SCRIPTED
-        elif mode == "replay":
-            if not file.exists():
+        elif mode == "replay" or resumed:
+            source = earlier if resumed else file
+            if not source.exists():
                 skipped.append(case["id"])
                 continue
-            recording = Recording.load(file)
+            recording = Recording.load(source)
             if recording.source != "recorded":
-                raise ValueError(f"{file.name} is not a recording of real model output")
+                raise ValueError(f"{source.name} is not a recording of real model output")
             provider = ReplayProvider(recording)
             identity = ModelIdentity(recording.provider_id, recording.model, recording.endpoint_host)
         else:
             provider = RecordingProvider(live)
             identity = ModelIdentity(config.provider_id, config.model, config.endpoint_host)
         result = await run_case(root, corpus, case, provider, identity, mode)
-        if mode == "live":
+        result["answered"] = "resumed" if resumed else mode
+        if resumed:
+            file.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(earlier, file)
+        elif mode == "live":
             if provider.exchanges:
                 provider.recording(source="recorded", provider_id=identity.provider_id, model=identity.model,
                                    endpoint_host=identity.endpoint_host, prompt_version=result["prompt_version"],
@@ -246,7 +265,11 @@ async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | N
                 result["reasons"].append("no model exchange was recorded")
                 result["passed"] = False
         results.append(result)
-    return report(corpus, mode, results, skipped)
+    found = report(corpus, mode, results, skipped)
+    if mode == "live":
+        found["resumed"] = [r["id"] for r in results if r["answered"] == "resumed"]
+        found["patience"] = live.counts() if hasattr(live, "counts") else None
+    return found
 
 
 def report(corpus: dict, mode: str, results: list[dict], skipped: list[str]) -> dict:

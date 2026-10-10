@@ -25,6 +25,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import runpy
 import shutil
 import subprocess
@@ -340,6 +341,18 @@ def run_adversarial(root: Path, deployment: Path, request: dict) -> dict:
     model = root / "secrets" / "m2-model"
     if mode == "live" and not (model / "minimax.key").is_file():
         raise ValueError("store the model key first (dev_stack.py m2-key)")
+    earlier = None
+    if request.get("resume_of"):
+        # Complete an earlier live run of the same corpus and profile: its recordings are replayed, never re-asked.
+        # 补全同一语料与画像的先前实调运行：其录制只回放，从不重问。
+        found = re.fullmatch(r"(\d{8}T\d{6}Z-[0-9a-f]{8})/(p6adv-\d{8}T\d{6}Z-[0-9a-f]{8})", request["resume_of"])
+        if mode != "live" or corpus not in ("plan_ops_v1", "vision_ops_v1") or not found:
+            raise ValueError("resume_of=<deployment id>/p6adv-<run id> completes a live plan_ops_v1 or vision_ops_v1 run")
+        previous = root / "artifacts" / found.group(1) / found.group(2) / "run"
+        header = json.loads((previous / "receipt.json").read_text())
+        if (header["corpus"], header.get("profile"), header["mode"]) != (corpus, profile, "live"):
+            raise ValueError("the resumed run must be a live run of the same corpus and profile")
+        earlier = previous / "recordings" / corpus / (header.get("prompt_version") or "")
     base = root / "artifacts" / deployment.name / ("p6adv-" + request["run_id"])
     base.mkdir(parents=True, exist_ok=False)
     output = base / "run"
@@ -349,6 +362,9 @@ def run_adversarial(root: Path, deployment: Path, request: dict) -> dict:
                  "--mode", mode, "--output", "/output"]
     if profile:
         arguments += ["--profile", profile]
+    if earlier is not None:
+        shutil.copytree(earlier, output / "resume")
+        arguments += ["--resume", "/output/resume"]
     started = time.monotonic()
     log = base / "adversarial.log"
     if mode == "live":
@@ -376,6 +392,7 @@ def run_adversarial(root: Path, deployment: Path, request: dict) -> dict:
     receipt_path = output / "receipt.json"
     receipt = json.loads(receipt_path.read_text()) if receipt_path.is_file() else None
     summary = {"layer": "adversarial", "corpus": corpus, "mode": mode, "profile": profile, "source_sha": sha,
+               "resume_of": request.get("resume_of"),
                "deployment_id": deployment.name, "artifact_directory": str(base), "run_exit_code": result.returncode,
                "duration_s": round(time.monotonic() - started, 1),
                "images": {"ground": HELPERS["inspect_image"](images["ground"])["Id"]},

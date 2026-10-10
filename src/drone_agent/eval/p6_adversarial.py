@@ -80,7 +80,8 @@ def scripted_ok(report: dict) -> bool:
     return report["status"] == "passed" if "status" in report else report.get("passed") == report["cases"]
 
 
-async def execute(root: Path, corpus: str, mode: str, recordings: Path, profile: str | None) -> tuple[dict, int]:
+async def execute(root: Path, corpus: str, mode: str, recordings: Path, profile: str | None,
+                  resume: Path | None = None, patient=None) -> tuple[dict, int]:
     if corpus == "nl_v1":
         from drone_agent.eval.adversarial import run_nl_corpus
 
@@ -96,19 +97,29 @@ async def execute(root: Path, corpus: str, mode: str, recordings: Path, profile:
     if corpus == "plan_ops_v1":
         from drone_agent.eval.plan_ops import run_corpus
 
-        report = await run_corpus(root, mode=mode, recordings=recordings)
+        report = await run_corpus(root, mode=mode, recordings=recordings, resume=resume, patient=patient)
         return report, report["escapes"]
     from drone_agent.eval.vision_ops import run_corpus
 
-    report = await run_corpus(root, profile_path=profile, mode=mode, recordings=recordings)
+    report = await run_corpus(root, profile_path=profile, mode=mode, recordings=recordings, resume=resume,
+                              patient=patient)
     return report, report["escapes"]
 
 
 async def run(root: Path, corpus: str, mode: str, output: Path, *, profile: str | None = None,
-              recordings: Path | None = None) -> dict:
-    """One corpus in one mode; live recordings go to `output/recordings`. / 一份语料一种模式；实调录制写到 `output/recordings`。"""
+              recordings: Path | None = None, resume: Path | None = None, pace_s: float = 6.0,
+              budget_s: float = 900.0) -> dict:
+    """One corpus in one mode; live recordings go to `output/recordings`. A live run is paced and waits out HTTP 429
+    (a throttled call has no answer); with `resume` it replays the cases an earlier live run already recorded and asks
+    the model only for the rest (`plan_ops_v1`, `vision_ops_v1`).
+
+    一份语料一种模式；实调录制写到 `output/recordings`。实调运行限速，并等过 HTTP 429（被节流的调用没有回答）；带 `resume`
+    时回放先前实调运行已录制的用例，只对其余用例询问模型（`plan_ops_v1`、`vision_ops_v1`）。
+    """
     if corpus not in CORPORA:
         raise ValueError(f"unknown corpus {corpus}")
+    if resume is not None and (mode != "live" or corpus not in ("plan_ops_v1", "vision_ops_v1")):
+        raise ValueError("resume completes a live run of plan_ops_v1 or vision_ops_v1")
     if (corpus == "vision_ops_v1") != (profile is not None):
         raise ValueError("vision_ops_v1 needs --profile and the other corpora take none")
     prompt = None
@@ -122,7 +133,10 @@ async def run(root: Path, corpus: str, mode: str, output: Path, *, profile: str 
     if mode == "live":
         recordings.mkdir(parents=True, exist_ok=True)
     started, started_at = time.monotonic(), time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    report, escapes = await execute(root, corpus, mode, recordings, profile)
+    from drone_agent.eval.patience import Patient
+
+    report, escapes = await execute(root, corpus, mode, recordings, profile, resume,
+                                    lambda inner: Patient(inner, pace_s=pace_s, budget_s=budget_s))
     files = sorted(recordings.glob("*.json")) if mode == "live" else []
     receipt = {"format": "drone.p6-adversarial-run/v1", "corpus": corpus, "corpus_sha256": corpus_sha256(root, corpus),
                "mode": mode, "profile": profile, "prompt_version": prompt,
@@ -130,8 +144,11 @@ async def run(root: Path, corpus: str, mode: str, output: Path, *, profile: str 
                "duration_s": round(time.monotonic() - started, 1), "escapes": escapes,
                "cases": report["cases"], "skipped": report.get("skipped", []),
                "recordings": {f.name: sha256(f.read_bytes()) for f in files},
+               "resumed_from": str(resume) if resume else None, "resumed": report.get("resumed", []),
+               "patience": report.get("patience"),
                "status": "passed" if escapes == 0 and report["cases"] and not report.get("skipped")
-               and (mode != "scripted" or scripted_ok(report)) else "failed",
+               and (mode != "scripted" or scripted_ok(report))
+               and (mode != "live" or len(files) == report["cases"]) else "failed",
                "report": report}
     output.mkdir(parents=True, exist_ok=True)
     (output / "receipt.json").write_text(json.dumps(receipt, ensure_ascii=False, indent=1) + "\n", encoding="utf-8",
@@ -174,6 +191,9 @@ def main() -> None:
     runner.add_argument("--mode", choices=["scripted", "replay", "live"], required=True)
     runner.add_argument("--profile")
     runner.add_argument("--recordings", type=Path)
+    runner.add_argument("--resume", type=Path, help="live only: recordings of an earlier live run to replay")
+    runner.add_argument("--pace-s", type=float, default=6.0, help="live only: minimum seconds between call starts")
+    runner.add_argument("--budget-s", type=float, default=900.0, help="live only: total HTTP 429 wait per call")
     runner.add_argument("--output", type=Path, required=True)
     comparer = commands.add_parser("compare")
     comparer.add_argument("--live", type=Path, required=True)
@@ -185,7 +205,8 @@ def main() -> None:
         print(json.dumps(result, ensure_ascii=False))
         raise SystemExit(0 if result["status"] == "passed" else 1)
     receipt = asyncio.run(run(args.root, args.corpus, args.mode, args.output, profile=args.profile,
-                              recordings=args.recordings))
+                              recordings=args.recordings, resume=args.resume, pace_s=args.pace_s,
+                              budget_s=args.budget_s))
     print(json.dumps({k: v for k, v in receipt.items() if k != "report"}, ensure_ascii=False))
     raise SystemExit(0 if receipt["status"] == "passed" else 1)
 

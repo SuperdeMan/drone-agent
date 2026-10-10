@@ -614,6 +614,8 @@ def main() -> None:
     adv_parser.add_argument("--profile", choices=["configs/analysis/vlm_change_v3.yaml",
                                                   "configs/analysis/vlm_change_v6.yaml"],
                             help="vision_ops_v1 only: the model profile to record")
+    adv_parser.add_argument("--resume-of", help="<deployment id>/p6adv-<run id>: complete that live run; its recorded "
+                                                "cases are replayed, only unanswered cases are asked")
     data_parser = commands.add_parser("p4-data", help="upload and install the frozen S2 dataset in the cloud (D065)")
     data_parser.add_argument("--data", type=Path, required=True, help="the locally built dataset directory")
     data_parser.add_argument("--resume", help="upload id of an interrupted upload")
@@ -727,7 +729,8 @@ def main() -> None:
                 result = ssh(connection, request, timeout=5 * 3600)
             elif args.command == "p6-adv":
                 result = ssh(connection, {"action": "p6_adv", "run_id": new_run_id(), "corpus": args.corpus,
-                                          "mode": args.mode, "profile": args.profile}, timeout=5 * 3600)
+                                          "mode": args.mode, "profile": args.profile, "resume_of": args.resume_of},
+                             timeout=5 * 3600)
             elif args.command in ("p1", "p2", "p3", "p4", "p5", "p6"):
                 result = ssh(
                     connection,

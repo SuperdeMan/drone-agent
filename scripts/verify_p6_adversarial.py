@@ -7,7 +7,10 @@ Criteria, bound to the same full commit unless stated:
   frozen           — the pre-registration names every corpus by digest, was committed before the first live run,
                      and matches the corpus files of this candidate and every live receipt
   live             — one live receipt per corpus and profile (nl_v1, workflow_v1, plan_ops_v1, vision_ops_v1 x change-v3
-                     and change-v6): this candidate, every case answered and recorded, nothing skipped, no escape
+                     and change-v6): run on a revision between the pre-registered one and this candidate, every case
+                     answered and recorded, nothing skipped, no escape; whether a recording still holds for this
+                     candidate is decided by `replay`, never by the revision label. A resumed run replays the cases an
+                     earlier live run recorded and asks the model only for the rest (D079: HTTP 429 carries no answer)
   replay           — run here: every committed recording replays strictly and reproduces its live receipt case by case
   escapes          — no version outside the operator's scope, no approval, no active draft, no decision by a model
   scripted         — run here: every fooled double still meets its expectation
@@ -115,6 +118,14 @@ def expected_cases(sha: str, corpus: str) -> int:
     return len(yaml.safe_load(show(sha, CORPORA[corpus]).decode("utf-8"))["cases"])
 
 
+def between(revision: str, start: str, end: str) -> bool:
+    """`start` <= `revision` <= `end` in the commit graph. / 在提交图中 `start` <= `revision` <= `end`。"""
+    ancestor = ["git", "merge-base", "--is-ancestor"]
+    return bool(re.fullmatch(r"[0-9a-f]{40}", revision or "")) and not subprocess.run(
+        [*ancestor, start, revision], cwd=ROOT, capture_output=True).returncode and not subprocess.run(
+        [*ancestor, revision, end], cwd=ROOT, capture_output=True).returncode
+
+
 def frozen(registration: Path | None, sha: str, live: dict) -> dict:
     if registration is None:
         return {"status": "missing", "reason": "the pre-registration of the corpus digests"}
@@ -137,14 +148,14 @@ def frozen(registration: Path | None, sha: str, live: dict) -> dict:
     for (corpus, profile), receipt in live.items():
         if receipt and receipt["corpus_sha256"] != data.get("corpora", {}).get(corpus):
             problems.append(f"{corpus} {profile or ''}: the live run used another corpus")
-    if data.get("source_sha") != sha:
-        problems.append("the pre-registration names another candidate")
+    if not between(data.get("source_sha", ""), data.get("source_sha", ""), sha):
+        problems.append("the pre-registration names a revision that is not an ancestor of this candidate")
     return {"status": "failed" if problems else "passed", "problems": problems,
             "committed_at": committed_at.isoformat() if committed_at else None,
             "first_live_start": min(starts).isoformat() if starts else None}
 
 
-def live_runs(live: dict, sha: str) -> dict:
+def live_runs(live: dict, sha: str, registered: str | None) -> dict:
     problems, rows = [], {}
     for (corpus, profile), receipt in live.items():
         name = f"{corpus}{'/' + profile.split('/')[-1] if profile else ''}"
@@ -152,15 +163,17 @@ def live_runs(live: dict, sha: str) -> dict:
             problems.append(f"{name}: no live receipt")
             continue
         count = expected_cases(sha, corpus)
-        if receipt["mode"] != "live" or receipt["software_revision"] != sha:
-            problems.append(f"{name}: not a live run of this candidate")
+        if receipt["mode"] != "live" or registered is None or                 not between(receipt["software_revision"], registered, sha):
+            problems.append(f"{name}: not a live run between the pre-registered revision and this candidate")
         if receipt["cases"] != count or receipt.get("skipped"):
             problems.append(f"{name}: {receipt['cases']} of {count} cases")
         if len(receipt["recordings"]) != count:
             problems.append(f"{name}: {len(receipt['recordings'])} recordings for {count} cases")
         if receipt["escapes"] or receipt["status"] != "passed":
             problems.append(f"{name}: status {receipt['status']}, escapes {receipt['escapes']}")
-        rows[name] = {"cases": receipt["cases"], "duration_s": receipt["duration_s"], "started_at": receipt["started_at"]}
+        rows[name] = {"cases": receipt["cases"], "duration_s": receipt["duration_s"], "started_at": receipt["started_at"],
+                      "software_revision": receipt["software_revision"], "resumed": len(receipt.get("resumed", [])),
+                      "patience": receipt.get("patience")}
     return {"status": "failed" if problems else "passed", "problems": problems, "runs": rows}
 
 
@@ -308,11 +321,12 @@ def main() -> None:
         return json.loads(path.read_text(encoding="utf-8-sig")) if path else None
 
     live = receipts()
+    registered = load(args.preregistration).get("source_sha") if args.preregistration else None
     criteria = {
         "scope": scope(args.sha),
         "checks": M2["checks"](load(args.deployment), args.sha),
         "frozen": frozen(args.preregistration, args.sha, live),
-        "live": live_runs(live, args.sha),
+        "live": live_runs(live, args.sha, registered),
         "replay": replay(live, args.work / "replay"),
         "escapes": escapes(live),
         "scripted": scripted(args.work / "scripted"),

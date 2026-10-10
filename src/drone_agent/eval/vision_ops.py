@@ -409,7 +409,14 @@ async def run_case(root: Path, manifest: dict, case: dict, profile, threshold: f
 
 
 async def run_corpus(root: Path, *, profile_path: str, mode: str = "scripted", recordings: Path | None = None,
-                     concurrency: int = 3) -> dict:
+                     concurrency: int = 3, resume: Path | None = None, patient=None) -> dict:
+    """Run every case with one profile in one mode; a live run with `resume` replays each case already recorded there
+    and asks the model only for the others.
+
+    以一个画像、一种模式运行全部用例；带 `resume` 的实调运行对其中已录制的用例回放，只对其余用例询问模型。
+    """
+    import shutil
+
     from drone_agent.fleet.analysis_jobs import redact_images
     from drone_agent.fleet.business_models import load_profile, load_quality
     from drone_agent.providers.replay import Recording, RecordingProvider, ReplayMismatch, ReplayProvider
@@ -429,6 +436,8 @@ async def run_corpus(root: Path, *, profile_path: str, mode: str = "scripted", r
 
         live, config = build_provider("vision", model=profile.model, guarded=False)
         provider_id, model, endpoint = config.provider_id, config.model, config.endpoint_host
+        if patient is not None:
+            live = patient(live)
     elif mode == "replay":
         provider_id = "replay"
     semaphore = asyncio.Semaphore(concurrency)
@@ -437,15 +446,18 @@ async def run_corpus(root: Path, *, profile_path: str, mode: str = "scripted", r
     async def one(case: dict) -> dict | None:
         async with semaphore:
             file = recordings / f"{case['id']}.json"
+            earlier = resume / f"{case['id']}.json" if resume is not None else None
+            resumed = mode == "live" and earlier is not None and earlier.is_file()
             if mode == "scripted":
                 provider = FooledDouble(profile.model)
-            elif mode == "replay":
-                if not file.is_file():
+            elif mode == "replay" or resumed:
+                source = earlier if resumed else file
+                if not source.is_file():
                     skipped.append(case["id"])
                     return None
-                recording = Recording.load(file)
+                recording = Recording.load(source)
                 if recording.source != "recorded":
-                    raise ValueError(f"{file.name} is not a recording of real model output")
+                    raise ValueError(f"{source.name} is not a recording of real model output")
                 provider = ReplayProvider(recording)
             else:
                 provider = RecordingProvider(live, redact=redact_images)
@@ -455,7 +467,12 @@ async def run_corpus(root: Path, *, profile_path: str, mode: str = "scripted", r
             except ReplayMismatch as error:
                 row = {"id": case["id"], "category": case["category"], "model": "replay_mismatch",
                        "pipeline": "replay_mismatch", "escapes": [], "error": str(error)[:300]}
-            if mode == "live":
+            row["answered"] = "resumed" if resumed else mode
+            if resumed:
+                file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(earlier, file)
+                row["recording_sha256"] = sha256(file.read_bytes())
+            elif mode == "live":
                 if provider.exchanges:
                     recording = provider.recording(source="recorded", provider_id=provider_id, model=model,
                                                    endpoint_host=endpoint, prompt_version=profile.prompt_version,
@@ -470,9 +487,14 @@ async def run_corpus(root: Path, *, profile_path: str, mode: str = "scripted", r
 
     rows = [r for r in await asyncio.gather(*(one(c) for c in manifest["cases"])) if r is not None]
     rows.sort(key=lambda r: r["id"])
-    return report(manifest, manifest_sha, profile_path, profile_sha, mode, rows, sorted(skipped),
-                  {"provider_id": provider_id, "model": model, "endpoint_host": endpoint,
-                   "prompt_version": profile.prompt_version, "threshold": threshold})
+    found = report(manifest, manifest_sha, profile_path, profile_sha, mode, rows, sorted(skipped),
+                   {"provider_id": provider_id, "model": model, "endpoint_host": endpoint,
+                    "prompt_version": profile.prompt_version, "threshold": threshold})
+    if mode == "live":
+        found["resumed"] = [r["id"] for r in rows if r.get("answered") == "resumed"]
+        found["unanswered"] = [r["id"] for r in rows if not r.get("recording_sha256")]
+        found["patience"] = live.counts() if hasattr(live, "counts") else None
+    return found
 
 
 def report(manifest: dict, manifest_sha: str, profile_path: str, profile_sha: str, mode: str, rows: list[dict],

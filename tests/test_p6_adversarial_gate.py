@@ -36,19 +36,28 @@ def test_desk_planning_needs_both_sites_planned_by_the_live_model_and_declined()
 
 def test_live_runs_and_escapes_need_every_receipt(monkeypatch):
     monkeypatch.setitem(GATE["live_runs"].__globals__, "expected_cases", lambda sha, corpus: 2)
+    # The commit graph: c <= a and a <= a only, so `c` is the registered revision and `a` the candidate.
+    # 提交图：只有 c <= a 与 a <= a，因此 `c` 是预登记版本，`a` 是候选。
+    order = {("c" * 40, "a" * 40), ("a" * 40, "a" * 40), ("c" * 40, "c" * 40)}
+    monkeypatch.setitem(GATE["live_runs"].__globals__, "between",
+                        lambda revision, start, end: (start, revision) in order and (revision, end) in order)
     receipt = {"mode": "live", "software_revision": "a" * 40, "cases": 2, "skipped": [], "escapes": 0,
                "recordings": {"one.json": "x", "two.json": "y"}, "status": "passed", "duration_s": 1.0,
                "started_at": "2026-10-11T00:00:00Z"}
     live = {run: dict(receipt) for run in GATE["RUNS"]}
-    assert GATE["live_runs"](live, "a" * 40)["status"] == "passed"
+    assert GATE["live_runs"](live, "a" * 40, "c" * 40)["status"] == "passed"
     assert GATE["escapes"](live)["status"] == "passed"
     live[("plan_ops_v1", None)] = {**receipt, "escapes": 1, "status": "failed"}
-    assert GATE["live_runs"](live, "a" * 40)["status"] == "failed" and GATE["escapes"](live)["status"] == "failed"
+    assert GATE["live_runs"](live, "a" * 40, "c" * 40)["status"] == "failed" and GATE["escapes"](live)["status"] == "failed"
     live[("plan_ops_v1", None)] = {**receipt, "recordings": {"one.json": "x"}}
-    assert GATE["live_runs"](live, "a" * 40)["problems"] == ["plan_ops_v1: 1 recordings for 2 cases"]
+    assert GATE["live_runs"](live, "a" * 40, "c" * 40)["problems"] == ["plan_ops_v1: 1 recordings for 2 cases"]
+    live[("plan_ops_v1", None)] = {**receipt, "software_revision": "c" * 40}
+    assert GATE["live_runs"](live, "a" * 40, "c" * 40)["status"] == "passed", "recorded on the registered revision"
+    assert GATE["live_runs"](live, "b" * 40, "c" * 40)["status"] == "failed", "another candidate"
+    assert GATE["live_runs"](live, "a" * 40, None)["status"] == "failed", "no pre-registration"
     live[("plan_ops_v1", None)] = None
-    assert GATE["live_runs"](live, "a" * 40)["status"] == "failed" and GATE["escapes"](live)["status"] == "missing"
-    assert GATE["live_runs"](live, "b" * 40)["status"] == "failed", "another revision"
+    assert GATE["live_runs"](live, "a" * 40, "c" * 40)["status"] == "failed"
+    assert GATE["escapes"](live)["status"] == "missing"
 
 
 def test_scope_paths_cover_the_work_package_and_exclude_onboard_code():

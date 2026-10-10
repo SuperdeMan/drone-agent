@@ -119,3 +119,100 @@ def test_the_recording_container_reaches_only_the_allowlisted_proxy():
     assert mounts == {"/output": False, "/model": True}
     assert "networks" not in adversarial and m2["networks"]["model"] == {"internal": True}
     assert "egress" not in service["networks"] and "ports" not in service
+
+
+# ── live runs: pacing, HTTP 429 and resuming / 实调运行：限速、HTTP 429 与续跑 ──
+
+
+class Throttled(RuntimeError):
+    status_code = 429
+    retry_after = None
+
+
+class Flaky:
+    def __init__(self, failures: int, error=Throttled):
+        self.failures, self.error, self.calls = failures, error, 0
+
+    async def complete(self, *args, **kwargs):
+        self.calls += 1
+        if self.calls <= self.failures:
+            raise self.error("provider HTTP 429: rate limit")
+        return "ok", "model", "stop", (1, 1)
+
+
+def patient(inner, **options):
+    from drone_agent.eval.patience import Patient
+
+    waits, now = [], [0.0]
+
+    async def sleep(seconds):
+        waits.append(seconds)
+        now[0] += seconds
+
+    return Patient(inner, sleep=sleep, clock=lambda: now[0], **options), waits
+
+
+async def test_a_throttled_call_is_asked_again_until_its_budget_is_spent():
+    wrapper, waits = patient(Flaky(2), base_s=10, budget_s=100)
+    assert await wrapper.complete([], "m", 0, 8) == ("ok", "model", "stop", (1, 1))
+    assert waits == [10, 20] and wrapper.counts()["throttled_calls"] == 2
+    wrapper, waits = patient(Flaky(9), base_s=10, budget_s=50)
+    with pytest.raises(Throttled):
+        await wrapper.complete([], "m", 0, 8)
+    assert waits == [10, 20] and wrapper.counts()["gave_up"] == 1, "a third wait would exceed the budget"
+    wrapper, waits = patient(Flaky(1, error=ValueError))
+    with pytest.raises(ValueError):
+        await wrapper.complete([], "m", 0, 8)
+    assert waits == [] and wrapper.inner.calls == 1, "only HTTP 429 is waited out"
+
+
+async def test_two_spent_budgets_in_a_row_end_the_run_instead_of_waiting_for_hours():
+    wrapper, waits = patient(Flaky(99), base_s=10, budget_s=15)
+    for _ in range(2):
+        with pytest.raises(Throttled):
+            await wrapper.complete([], "m", 0, 8)
+    calls = wrapper.inner.calls
+    with pytest.raises(Throttled):
+        await wrapper.complete([], "m", 0, 8)
+    assert wrapper.inner.calls == calls and wrapper.counts()["refused_fast"] == 1
+
+
+async def test_calls_start_at_least_the_pace_apart():
+    wrapper, waits = patient(Flaky(0), pace_s=6)
+    await wrapper.complete([], "m", 0, 8)
+    await wrapper.complete([], "m", 0, 8)
+    assert waits == [6]
+
+
+async def test_resuming_replays_answered_cases_and_asks_only_the_others(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from drone_agent.eval import plan_ops
+    from drone_agent.providers import KeyedScriptedProvider
+
+    corpus = load_plan_ops(ROOT)
+    small = {**corpus, "cases": [c for c in corpus["cases"] if c["id"] in (
+        "control-green-en", "control-blue-zh", "negation-only-green-zh")]}
+    path = tmp_path / "small.yaml"
+    path.write_text(yaml.safe_dump(small, allow_unicode=True), encoding="utf-8")
+    answers = {c["text"]: plan_ops.scripted_answer(c) for c in small["cases"]}
+
+    class Live(KeyedScriptedProvider):
+        asked: list[str] = []
+
+        async def complete_tools(self, messages, *args, **kwargs):
+            Live.asked.append(messages[-1]["content"].split("OPERATOR_REQUEST:\n", 1)[1].split("\n", 1)[0])
+            return await super().complete_tools(messages, *args, **kwargs)
+
+    config = SimpleNamespace(provider_id="test", model="test-model", endpoint_host="")
+    monkeypatch.setattr("drone_agent.providers.build_provider", lambda role, **kw: (Live(answers), config))
+    first = await plan_ops.run_corpus(ROOT, mode="live", recordings=tmp_path / "first", corpus_path=str(path))
+    assert first["status"] == "passed" and len(Live.asked) == 3
+    (tmp_path / "first" / "control-blue-zh.json").unlink()
+    Live.asked.clear()
+    second = await plan_ops.run_corpus(ROOT, mode="live", recordings=tmp_path / "second", corpus_path=str(path),
+                                       resume=tmp_path / "first")
+    assert Live.asked == ["检查蓝色设备标记。"], "only the case without a recording is asked"
+    assert sorted(second["resumed"]) == ["control-green-en", "negation-only-green-zh"]
+    assert sorted(p.name for p in (tmp_path / "second").glob("*.json")) == sorted(
+        f"{c['id']}.json" for c in small["cases"])
