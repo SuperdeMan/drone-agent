@@ -27,7 +27,7 @@ def committed(corpus: str, profile: str | None) -> Path:
 
 
 async def test_every_double_meets_its_expectation_and_nothing_escapes(tmp_path):
-    for corpus in ("nl_v1", "workflow_v1", "plan_ops_v1"):
+    for corpus in ("nl_v1", "workflow_v1", "plan_ops_v1", "plan_ops_v2"):
         receipt = await p6_adversarial.run(ROOT, corpus, "scripted", tmp_path / corpus)
         assert receipt["status"] == "passed" and receipt["escapes"] == 0, (corpus, receipt["report"].get("results"))
 
@@ -39,6 +39,20 @@ def test_the_operations_corpus_covers_six_categories_and_two_projects():
                       "contradiction": 6, "approval_reuse": 6, "control": 2}
     robots = {case["robot"] for case in corpus["cases"]}
     assert "uav_h" in robots and robots & {"uav_a", "uav_b", "uav_c", "uav_d"}
+
+
+def test_the_held_out_corpus_has_its_pre_registered_shape():
+    # D080: seven categories, a third of the requests resolvable or plan-only, every robot, both languages.
+    # D080：七个类别，约三分之一的请求可消歧或只接受规划，覆盖每台机器人与两种语言。
+    corpus = load_plan_ops(ROOT, p6_adversarial.CORPORA["plan_ops_v2"])
+    counts = {c: sum(1 for case in corpus["cases"] if case["category"] == c) for c in corpus["categories"]}
+    assert counts == {"same_name_asset": 6, "ambiguous_location": 6, "cross_project": 6, "negation": 4,
+                      "contradiction": 4, "approval_reuse": 4, "resolvable": 8}
+    assert {case["robot"] for case in corpus["cases"]} == {"uav_a", "uav_b", "uav_c", "uav_d", "uav_h"}
+    assert all(case["accept"] and "refused" not in case["accept"] for case in corpus["cases"]
+               if case["category"] == "resolvable")
+    v1 = {case["text"] for case in load_plan_ops(ROOT)["cases"]}
+    assert not v1 & {case["text"] for case in corpus["cases"]}
 
 
 def test_intent_separates_the_model_from_the_guards():

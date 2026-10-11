@@ -142,8 +142,9 @@ def frozen(registration: Path | None, sha: str, live: dict) -> dict:
         problems.append("the pre-registration is not committed")
     elif starts and committed_at >= min(starts):
         problems.append("the pre-registration was committed after a live run started")
-    for corpus, path in CORPORA.items():
-        actual = digest(show(sha, path))
+    for corpus in sorted({c for c, _ in RUNS}):
+        # Only this gate's corpora: later decisions register their own (D080). / 只核对本门禁的语料：后续决策自行登记（D080）。
+        actual = digest(show(sha, CORPORA[corpus]))
         if data.get("corpora", {}).get(corpus) != actual:
             problems.append(f"{corpus}: pre-registered digest differs from the candidate's corpus")
     for (corpus, profile), receipt in live.items():
@@ -164,7 +165,8 @@ def live_runs(live: dict, sha: str, registered: str | None) -> dict:
             problems.append(f"{name}: no live receipt")
             continue
         count = expected_cases(sha, corpus)
-        if receipt["mode"] != "live" or registered is None or                 not between(receipt["software_revision"], registered, sha):
+        if (receipt["mode"] != "live" or registered is None
+                or not between(receipt["software_revision"], registered, sha)):
             problems.append(f"{name}: not a live run between the pre-registered revision and this candidate")
         if receipt["cases"] != count or receipt.get("skipped"):
             problems.append(f"{name}: {receipt['cases']} of {count} cases")

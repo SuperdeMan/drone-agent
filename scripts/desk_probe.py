@@ -342,7 +342,8 @@ def plan(origin: str, args) -> tuple[dict, str | None]:
             if message["type"] == "error":
                 receipt["errors"].append(message)
                 break
-            if message["view"]["mission"]["mission_id"] == view["mission"]["mission_id"] and                     message["view"]["mission"]["status"] != "awaiting_approval":
+            if (message["view"]["mission"]["mission_id"] == view["mission"]["mission_id"]
+                    and message["view"]["mission"]["status"] != "awaiting_approval"):
                 view = message["view"]
                 break
     receipt["final_status"] = view["mission"]["status"]
