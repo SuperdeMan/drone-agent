@@ -146,8 +146,12 @@ class MissionService:
     def __init__(self, *, root: Path, scene: Path, ledger: BusinessLedger, hub: FleetHub, signing_key: SigningKey,
                  approval_policy: ApprovalPolicy, planner=None, robot_id: str = "uav_01", airspace=None,
                  clock=utcnow, vision=None, provenance_context: SourceContext | None = None,
-                 operations: Operations | None = None, backends: tuple[str, ...] | None = None):
+                 operations: Operations | None = None, backends: tuple[str, ...] | None = None,
+                 reference_check: bool = True):
         self.root, self.registry = root, Registry(root, scene=scene)
+        # D082: reject requests naming another project, site, robot or dock before planning; prompt evaluations turn it
+        # off because they measure the model. / D082：规划前拒绝点名其他项目、站点、机器人或机场的请求；提示评测关闭它，因为它们测量的是模型。
+        self.reference_check = reference_check
         self.ledger, self.hub, self.key, self.policy = ledger, hub, signing_key, approval_policy
         self.planner, self.robot_id, self.clock, self.vision = planner, robot_id, clock, vision
         self.airspace = airspace or SimulatedAirspaceProvider()
@@ -402,6 +406,23 @@ class MissionService:
             self.ledger.finish_operation(operation, "done")
         return self._view(mission_id)
 
+    def _foreign_references(self, robot_id: str, text: str) -> Issue | None:
+        """D082: the issue for a request that names another project, site, robot or dock, or None.
+
+        D082：请求点名其他项目、站点、机器人或机场时对应的问题，否则为 None。
+        """
+        if not self.reference_check or self.ops is None or self.ops.references is None:
+            return None
+        binding = self._planning_site(robot_id).get("binding")
+        hits = self.ops.references.foreign(text, binding) if binding else []
+        if not hits:
+            return None
+        names = ", ".join(f"{h['matched']!r} ({h['kind']} {h['id']})" for h in hits)
+        return issue("scope.foreign_reference",
+                     f"the request names {names}; this mission is for project {binding['project_id']}, site "
+                     f"{binding['site_id']}, robot {binding['robot_id']}: submit it for the robot that covers it, or "
+                     "rephrase", affected=sorted({h['id'] for h in hits}))
+
     async def _plan(self, mission_id: str, request: MissionRequest) -> None:
         def stop(status: str, found: list[Issue], **records) -> None:
             self._record_version(mission_id, 1, status=status, origin=request.channel.value, **records)
@@ -412,6 +433,9 @@ class MissionService:
         if request.approved_volume_id not in self._registry(robot_id).data.get("volumes", {}):
             # No model call for a scope the registry does not know. / 登记表不认识的范围不调用模型。
             return stop("rejected", [issue("scope.unregistered_volume", request.approved_volume_id)])
+        foreign = self._foreign_references(robot_id, request.text)
+        if foreign:
+            return stop("rejected", [foreign])
         if self.planner is None:
             return stop("planning_failed", [issue("planner.technical_failure", "no planner is configured")])
         outcome = await self.planner.plan(request, mission_id=mission_id, mission_version=1,

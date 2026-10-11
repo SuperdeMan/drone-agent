@@ -89,6 +89,8 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "scope.frame_mismatch": IssueLayer.ADMISSION,
     "scope.target_outside_volume": IssueLayer.ADMISSION,
     "scope.asset_not_requested": IssueLayer.ADMISSION,
+    # D082: the request names another project, site, robot or dock. / D082：请求点名了其他项目、站点、机器人或机场。
+    "scope.foreign_reference": IssueLayer.ADMISSION,
     "scope.route_outside_volume": IssueLayer.ADMISSION,
     "capability.missing_skill": IssueLayer.ADMISSION,
     "capability.missing_control_mode": IssueLayer.ADMISSION,

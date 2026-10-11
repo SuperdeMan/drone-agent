@@ -1,0 +1,23 @@
+# Desk requests for the cross-site reference check (D082) on the resident desk's catalog p5_desk_v1, written before the
+# check was run. `foreign`: the text names a project, site, robot or dock outside the robot's binding and the request
+# must be rejected before planning; `clear`: it names only the robot's own ones, or none, and must reach the planner.
+#
+# 跨站点指代检查（D082）的任务台请求，基于常驻任务台目录 p5_desk_v1，在运行检查之前写成。`foreign`：文字点名了机器人绑定以外的
+# 项目、站点、机器人或机场，请求必须在规划前被拒绝；`clear`：只点名本机自己的对象或不点名，请求必须交给规划器。
+format: drone.reference-cases/v1
+catalog: configs/sites/p5_desk_v1.yaml
+cases:
+  - {id: desk-site-a-from-b-en, robot: uav_fb, text: "Inspect the red equipment marker at site A.", expect: foreign}
+  - {id: desk-site-b-own-en, robot: uav_fb, text: "Inspect the red marker of site B.", expect: clear}
+  - {id: desk-pad-east-en, robot: uav_fb, text: "Inspect the red equipment marker east of the pad.", expect: clear}
+  - {id: desk-road-north-en, robot: uav_01, text: "Inspect the road segment north of the pad.", expect: clear}
+  - {id: desk-b-from-a-zh, robot: uav_fa, text: "检查 B 站的红色标记。", expect: foreign}
+  - {id: desk-other-robot-zh, robot: uav_fa, text: "让 uav_fb 去查红色标记。", expect: foreign}
+  - {id: desk-fleet-from-campus-en, robot: uav_01, text: "Inspect the fleet's red marker.", expect: foreign}
+  - {id: desk-own-vendor-zh, robot: uav_v1, text: "厂商机场这边的标记巡检一次。", expect: clear}
+  - {id: desk-site-id-en, robot: uav_fb, text: "Check site_fa's blue marker.", expect: foreign}
+  - {id: desk-own-site-s1-en, robot: uav_01, text: "Inspect asset_red at site S1.", expect: clear}
+  - {id: desk-own-letter-en, robot: uav_fa, text: "Inspect the red marker at site A.", expect: clear}
+  - {id: desk-plain-english-en, robot: uav_fb, text: "Inspect the marker near the site a few metres east of the pad.", expect: clear}
+  - {id: desk-dock-id-en, robot: uav_fb, text: "Inspect the marker next to dock_fa.", expect: foreign}
+  - {id: desk-map-id-en, robot: uav_fa, text: "The blue marker on p5_site_fb_v1 needs a look.", expect: foreign}

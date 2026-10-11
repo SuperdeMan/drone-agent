@@ -29,6 +29,7 @@ from drone_agent.fleet.catalog import Catalog
 from drone_agent.fleet.ledger import BusinessLedger
 from drone_agent.fleet.operations_store import OperationsStore, migrate, soft_expiry
 from drone_agent.fleet.provenance import project
+from drone_agent.fleet.references import ReferenceIndex
 from drone_agent.fleet.reservation import UnresolvedFootprint
 from drone_agent.fleet.resources import (
     DispatchEligibility,
@@ -68,6 +69,9 @@ class Operations:
     # P5 (D072): the pinned protocol profile of each vendor-managed dock, with its file digest.
     # P5（D072）：每个厂商托管机场固定的协议档案及其文件摘要。
     profiles: dict[str, tuple] = field(default_factory=dict)
+    # D082: the names of the catalog's projects, sites, robots and docks, checked in requests before planning.
+    # D082：目录中项目、站点、机器人与机场的称呼，规划前在请求中检查。
+    references: ReferenceIndex | None = None
 
     def registry(self, robot_id: str) -> Registry:
         return self.registries[self.catalog.robots[robot_id].site_id]
@@ -99,7 +103,8 @@ def build_operations(root: Path, ledger: BusinessLedger, catalog_path: Path, mem
 
     profiles = {dock_id: load_profile(root, dock.backend.profile)
                 for dock_id, dock in catalog.docks.items() if dock.vendor_managed}
-    return Operations(catalog, directory, store, registries, capabilities, migration, profiles)
+    references = ReferenceIndex.build(catalog, registries, catalog_path)
+    return Operations(catalog, directory, store, registries, capabilities, migration, profiles, references)
 
 
 def needs_of(record: dict) -> DispatchNeeds:

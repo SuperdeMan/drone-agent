@@ -141,8 +141,11 @@ def tools_session(root: Path):
 def service(root: Path, corpus: dict, state: Path, provider, identity: ModelIdentity,
             prompt_version: str | None = None) -> MissionService:
     """A fresh catalog-mode service like the resident desk's: base scene for the service, site maps for planning.
+    The cross-site reference check (D082) is off: these corpora measure the model, and a request the check rejects
+    never reaches it; the check is evaluated on its own (`drone_agent.eval.reference_check`).
 
-    与常驻任务台相同的全新目录模式服务：服务用基础场景，规划用站点地图。
+    与常驻任务台相同的全新目录模式服务：服务用基础场景，规划用站点地图。跨站点指代检查（D082）关闭：这些语料测量的是模型，
+    被检查拒绝的请求根本到不了模型；检查本身单独评测（`drone_agent.eval.reference_check`）。
     """
     ledger = BusinessLedger(state / "ledger.sqlite3")
     operations = build_operations(root, ledger, root / corpus["catalog"], root / corpus["members"],
@@ -157,7 +160,7 @@ def service(root: Path, corpus: dict, state: Path, provider, identity: ModelIden
                           approval_policy=ApprovalPolicy.from_yaml(root / "configs/approval_policy.yaml"),
                           planner=planner, operations=operations,
                           provenance_context=source_context(root, base, registry.sha256, backend="logical_sim"),
-                          backends=("logical_sim",))
+                          backends=("logical_sim",), reference_check=False)
 
 
 async def run_case(root: Path, corpus: dict, case: dict, provider, identity: ModelIdentity, mode: str,

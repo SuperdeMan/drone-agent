@@ -347,6 +347,8 @@ def plan(origin: str, args) -> tuple[dict, str | None]:
                 view = message["view"]
                 break
     receipt["final_status"] = view["mission"]["status"]
+    # D082: a request rejected before planning shows why only in its issues. / D082：规划前被拒绝的请求只在问题中写明原因。
+    receipt["issues"] = [i["code"] for i in view.get("issues", [])]
     receipt["duration_s"] = round(time.monotonic() - started, 1)
     client.close()
     return receipt, login
