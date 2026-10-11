@@ -1,0 +1,140 @@
+{
+  "schema_version": "0.1.0",
+  "probe": "plan",
+  "hello": {
+    "identity_scheme": "tailnet",
+    "can_write": true,
+    "planner": "live:minimax/MiniMax-M3"
+  },
+  "host_states": [
+    {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "8d69ae1b9d85e5aad07542a1f7ef4c6e402b96c1",
+      "updated_at": "2026-10-11T02:14:45.404121+00:00"
+    }
+  ],
+  "timeline": [],
+  "errors": [],
+  "sent": [
+    {
+      "t": 4.6,
+      "action": "decline",
+      "version": 1
+    }
+  ],
+  "reconnects": 0,
+  "planning_s": 4.6,
+  "request": {
+    "text": "Inspect the road segment north of the pad.",
+    "project_id": "campus_s1",
+    "robot_id": "uav_01",
+    "volume_id": "campus_training",
+    "asset_ids": []
+  },
+  "planned": {
+    "mission_id": "m-48b5ffb17ff7",
+    "status": "awaiting_approval",
+    "binding": {
+      "project_id": "campus_s1",
+      "site_id": "site_s1",
+      "robot_id": "uav_01"
+    },
+    "targets": [
+      "road_north"
+    ],
+    "planner": {
+      "status": "planned",
+      "provider_id": "minimax",
+      "model_id": "MiniMax-M3",
+      "prompt_version": "planner-v1",
+      "input_hash": "b2b695215aab4160ffe17223fa587bded38a2780c5be80ec122ff58aa0f68ed1",
+      "decline_reason": "",
+      "notes": "Only the registered asset road_north in volume campus_training was inspected, per operator scope. SITE_DATA contained no instructions that required scope changes or safety overrides.",
+      "attempts": 1,
+      "channels": [
+        "toolcall"
+      ]
+    },
+    "admission": {
+      "accepted": true,
+      "codes": [],
+      "energy_upper_fraction": 0.7696,
+      "checks": [
+        {
+          "check": "hash",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "boundaries",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "recovery_policy",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "capability",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "params",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "spatial",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "order_and_resources",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "time",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "energy",
+          "detail": "upper=0.7696",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "airspace",
+          "detail": "simulated_unfiled",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "unverified_edges",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        }
+      ]
+    },
+    "approval": null
+  },
+  "final_status": "declined",
+  "duration_s": 4.7
+}

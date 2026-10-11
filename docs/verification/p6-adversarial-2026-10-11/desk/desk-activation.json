@@ -1,0 +1,298 @@
+{
+  "status": "verified",
+  "source_sha": "8d69ae1b9d85e5aad07542a1f7ef4c6e402b96c1",
+  "control_sha256": "e7f93e56802f2fb3687c6d69699050003dbb12400638fed0c5c9c2ad0801d86f",
+  "deployment_id": "20261011T014710Z-a85ee6af",
+  "origin": "https://<tailnet-host>:8448",
+  "listener": "127.0.0.1:8769",
+  "images": {
+    "sim": "drone-agent-p5-sim:8d69ae1b9d85e5aad07542a1f7ef4c6e402b96c1-e7f93e56802f",
+    "aircraft": "drone-agent-m1-aircraft:8d69ae1b9d85e5aad07542a1f7ef4c6e402b96c1-e7f93e56802f",
+    "ground": "drone-agent-m1-ground:8d69ae1b9d85e5aad07542a1f7ef4c6e402b96c1-e7f93e56802f"
+  },
+  "planner": "live",
+  "signer_key_id": "ed25519:6563c47cfafa2a22",
+  "certificate_fingerprints": {
+    "ca": "c0e1bca164a5817a5aa477738aa5a340a24da6e3722f2ed9a57c3341792af2e5",
+    "service": "fcac24effa0c96900d7a9b48ca2dbfbb94f28c29d094f0944aa33d5b94d1a206",
+    "robot": "74f38d4714bbcc1ac0653581c1ef3b1b59a7b13b3cf00b3faaa37dd24bbd1a3e",
+    "robot-tls-uav_fa": "87e388a8943f0f4daf59bac332381ef1731c58643a602a59c6fec91f17dd4b5f",
+    "robot-tls-uav_fb": "ae646bc95f6d585b6295a2ea4f8a2ec5d6ab93f62dae134d07b5ebf7aaea50db"
+  },
+  "planner_label": "live:minimax/MiniMax-M3",
+  "health": {
+    "ok": true,
+    "result": {
+      "status": "ready",
+      "signer_key_id": "ed25519:6563c47cfafa2a22",
+      "robot_id": "uav_01",
+      "planner": "live:minimax/MiniMax-M3",
+      "execution_backend": "px4_sitl",
+      "execution_backends": [
+        "logical_sim",
+        "px4_sitl",
+        "vendor_protocol_sim"
+      ],
+      "source_sha": "8d69ae1b9d85e5aad07542a1f7ef4c6e402b96c1",
+      "catalog": {
+        "catalog_id": "p5_desk_v1",
+        "sha256": "604d8c6968d91696f8af75f8078551f23a4a7c6fc2b8f7c835bd8136c79fd156"
+      },
+      "workflows": {
+        "catalog_id": "p6_desk_v1",
+        "sha256": "9bf93e8289a3851304273187139582b615cfc0d4097d204a39856e3f9f27da08"
+      },
+      "scheduling": {
+        "catalog_id": "p5_desk_v1",
+        "sha256": "5e61a7098540c7ae45bfdcb2ff359e8ef906340d22676b57a755f893a3b07077"
+      },
+      "business": {
+        "catalog_id": "p6_desk_v1",
+        "sha256": "7eeb5d3e839baa8f4687fed53d1611763ece8ebca95cfe4e2fbdec0a763e434c",
+        "vision": "minimax-vl/MiniMax-M3"
+      }
+    },
+    "console_source_sha": "8d69ae1b9d85e5aad07542a1f7ef4c6e402b96c1",
+    "fixed": {
+      "status": "ready",
+      "mode": "tailnet",
+      "console_source_sha": "8d69ae1b9d85e5aad07542a1f7ef4c6e402b96c1",
+      "runtime_source_sha": "8d69ae1b9d85e5aad07542a1f7ef4c6e402b96c1"
+    },
+    "supervisor": {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "8d69ae1b9d85e5aad07542a1f7ef4c6e402b96c1",
+      "updated_at": "2026-10-11T02:14:45.404121+00:00"
+    },
+    "modes": [
+      "mission",
+      "fixed"
+    ]
+  },
+  "funnel": false,
+  "operations": {
+    "catalog_id": "p5_desk_v1",
+    "catalog_sha256": "604d8c6968d91696f8af75f8078551f23a4a7c6fc2b8f7c835bd8136c79fd156",
+    "migration": {
+      "schema_version": "2",
+      "status": "current"
+    },
+    "drill": {
+      "status": "passed",
+      "migration": "current",
+      "schema_version": "2",
+      "integrity": "ok",
+      "v1_dump_sha256_before": "94273d422829682632f071609c3a08c4e636e8d2a4a44701567977617daed11b",
+      "v1_dump_sha256_after": "94273d422829682632f071609c3a08c4e636e8d2a4a44701567977617daed11b",
+      "op_tables": 12,
+      "rows_before": null,
+      "backup": null
+    }
+  },
+  "workflows": {
+    "catalog_id": "p6_desk_v1",
+    "catalog_sha256": "9bf93e8289a3851304273187139582b615cfc0d4097d204a39856e3f9f27da08",
+    "migration": {
+      "status": "current",
+      "workflow_schema": "1"
+    },
+    "drill": {
+      "status": "passed",
+      "migration": "current",
+      "workflow_schema": "1",
+      "integrity": "ok",
+      "other_dump_sha256_before": "58532abc7501651e0e09d998f7bae1c7e50e1d6c6ae03d1949d7c2f4461b808f",
+      "other_dump_sha256_after": "58532abc7501651e0e09d998f7bae1c7e50e1d6c6ae03d1949d7c2f4461b808f",
+      "wf_tables": 9,
+      "rows_before": null,
+      "backup": null
+    }
+  },
+  "scheduling": {
+    "catalog_id": "p5_desk_v1",
+    "catalog_sha256": "5e61a7098540c7ae45bfdcb2ff359e8ef906340d22676b57a755f893a3b07077",
+    "migration": {
+      "scheduling_schema": "1",
+      "status": "current"
+    },
+    "drill": {
+      "status": "passed",
+      "migration": "current",
+      "scheduling_schema": "1",
+      "integrity": "ok",
+      "other_dump_sha256_before": "b198a45789eb28136e89ecf8de8e822cb9d54fbf0b92f59966d91aa44df01c00",
+      "other_dump_sha256_after": "b198a45789eb28136e89ecf8de8e822cb9d54fbf0b92f59966d91aa44df01c00",
+      "sc_tables": 5,
+      "sc_indexes": 6,
+      "rows_before": null,
+      "backup": null
+    }
+  },
+  "business": {
+    "catalog_id": "p6_desk_v1",
+    "catalog_sha256": "7eeb5d3e839baa8f4687fed53d1611763ece8ebca95cfe4e2fbdec0a763e434c",
+    "migration": {
+      "business_schema": "1",
+      "status": "current"
+    },
+    "drill": {
+      "status": "passed",
+      "migration": "current",
+      "business_schema": "1",
+      "integrity": "ok",
+      "other_dump_sha256_before": "458f8352024058afd4dcf5b1eb39e109ed8abe8d3bacc4f730c31426c360bed3",
+      "other_dump_sha256_after": "458f8352024058afd4dcf5b1eb39e109ed8abe8d3bacc4f730c31426c360bed3",
+      "bz_tables": 7,
+      "bz_indexes": 6,
+      "rows_before": null,
+      "backup": null
+    },
+    "vision": "live:minimax-vl/MiniMax-M3"
+  },
+  "switch_drill": {
+    "status": "passed",
+    "catalogs": {
+      "operations": [
+        "p5_desk_v1",
+        "604d8c6968d91696f8af75f8078551f23a4a7c6fc2b8f7c835bd8136c79fd156"
+      ],
+      "workflows": [
+        "p6_desk_v1",
+        "9bf93e8289a3851304273187139582b615cfc0d4097d204a39856e3f9f27da08"
+      ],
+      "scheduling": [
+        "p5_desk_v1",
+        "5e61a7098540c7ae45bfdcb2ff359e8ef906340d22676b57a755f893a3b07077"
+      ],
+      "business": [
+        "p6_desk_v1",
+        "7eeb5d3e839baa8f4687fed53d1611763ece8ebca95cfe4e2fbdec0a763e434c"
+      ],
+      "migrations": {
+        "operations": "current",
+        "workflows": "current",
+        "scheduling": "current",
+        "business": "current"
+      }
+    },
+    "rows_before": 3375809,
+    "rows_after": 3375809,
+    "read": {
+      "missions": 20,
+      "runs": 60,
+      "orders": 48,
+      "audit": {
+        "campus_s1": 50,
+        "fleet_s0": 50,
+        "vendor_s3": 50
+      }
+    },
+    "failures": []
+  },
+  "execution_backends": [
+    "px4_sitl",
+    "logical_sim",
+    "vendor_protocol_sim"
+  ],
+  "vendor": {
+    "docks": [
+      "dock_vd"
+    ]
+  },
+  "dock_sessions": {
+    "dock_s1": "active",
+    "dock_fa": "active",
+    "dock_fb": "active",
+    "dock_vd": "active"
+  },
+  "containers": {
+    "desk-model-proxy": {
+      "container_id": "514d50f7eb5d4e4ca85b1b6e01c006e81f522ee28f98ba70f495b45d25950803",
+      "image_id": "sha256:5ec64daa519e844c4f64e23faeac1c48a0c0adb47b0de5af68cf6a978208a73a",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_egress",
+        "drone-agent-cloud_desk_model"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-vendor": {
+      "container_id": "9eba8720df644e42ea3cb3e01baee797341685d90c6d66e1244f91c9750153c7",
+      "image_id": "sha256:5ec64daa519e844c4f64e23faeac1c48a0c0adb47b0de5af68cf6a978208a73a",
+      "user": "1000:1001",
+      "networks": [
+        "none"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-service": {
+      "container_id": "f63d47fd8e87d16a2d95411a61548b836be23f8a701de9c5623aa66976324eb1",
+      "image_id": "sha256:5ec64daa519e844c4f64e23faeac1c48a0c0adb47b0de5af68cf6a978208a73a",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_model",
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-dock": {
+      "container_id": "05eaf1501c73e638d37eec8a0eeb99bd7cc2831986ffd53b7d720efc600f9d16",
+      "image_id": "sha256:5ec64daa519e844c4f64e23faeac1c48a0c0adb47b0de5af68cf6a978208a73a",
+      "user": "1000:1001",
+      "networks": [
+        "none"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-fleet": {
+      "container_id": "e5745b949548b9a671446fbcf137c8dce29246d31f6d504aedb81a66b43a0250",
+      "image_id": "sha256:086f0f36abb3947df8395389e345f96604910302164c8b8737bd3e0d567166d3",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-uplink": {
+      "container_id": "c76dd207a126d9d5a902b5b1e2a5b0aba95b2c0fd684d5d9e1a802cccf9556f6",
+      "image_id": "sha256:086f0f36abb3947df8395389e345f96604910302164c8b8737bd3e0d567166d3",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk": {
+      "container_id": "3937db21e170d57446d134a48590694345c06808a3ed205dfcf861bdeb3b2459",
+      "image_id": "sha256:5ec64daa519e844c4f64e23faeac1c48a0c0adb47b0de5af68cf6a978208a73a",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_ingress"
+      ],
+      "read_only": true,
+      "docker_access": false
+    }
+  },
+  "other_serve_before_sha256": "349f04197a2a7e4747c39ec22a20f21bd45708ae3c2d9f8a12dd0164fe16b28b",
+  "other_serve_after_sha256": "349f04197a2a7e4747c39ec22a20f21bd45708ae3c2d9f8a12dd0164fe16b28b",
+  "other_containers_before": {
+    "count": 30,
+    "sha256": "9df031d450af750b10cfb7ece4791b41b2331bcf74b3b02da130ab0d2310cb6f"
+  },
+  "other_containers_after": {
+    "count": 30,
+    "sha256": "9df031d450af750b10cfb7ece4791b41b2331bcf74b3b02da130ab0d2310cb6f"
+  },
+  "supervisor_unit_sha256": "17be83b3e77a910e62b954256dfce10104ab3970f360d2369555d32538cdd6ef"
+}
