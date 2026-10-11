@@ -47,7 +47,7 @@ from drone_agent.providers.replay import ReplayMismatch
 from drone_agent.runtime.issues import Issue, issue
 
 PROMPTS = Path(__file__).with_name("prompts")
-DEFAULT_PROMPT = "planner-v2"
+DEFAULT_PROMPT = "planner-v3"
 # Request formats by prompt version (D081): from planner-v3 on, OPERATOR_SCOPE also names the binding (project, site,
 # robot); earlier versions keep their exact requests, so their recordings still replay.
 # 按提示版本区分请求格式（D081）：planner-v3 起 OPERATOR_SCOPE 另写明绑定（项目、站点、机器人）；更早版本的请求保持不变，
