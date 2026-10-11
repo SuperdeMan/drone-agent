@@ -1,0 +1,91 @@
+{
+  "schema_version": "0.1.0",
+  "decision": "D084",
+  "candidate_sha": "6544a9a81ec0731b89328841a5ba8215b2f4135d",
+  "written_at": "2026-10-11T17:17:29+00:00",
+  "files": {
+    "src/drone_agent/eval/airspace_choice.py": "bd7b4d864fcecdd8f167955ef967c7dda2a16c9d90b8f2d4819751b2367b3866",
+    "src/drone_agent/eval/judge_p3.py": "abd9f894caab522c5233af8a7dd3d570b9fba7d3213bd5cfbd1929234754fa32",
+    "src/drone_agent/eval/p3_world.py": "7d5205696ffd1cd5e88049b0e11e53dabc598c10bb7751d49a8af832bcf38fb4",
+    "src/drone_agent/eval/p3_layout.py": "693ccade5d499afaacf25066293239c230e5f9bd17c3aca128c5d2f82e349437",
+    "src/drone_agent/fleet/reservation.py": "36b0f170273e4adce06d563d81cae91e5678e61760b4c31774a0a4d4fef5ce9e",
+    "configs/scenarios/p3_suite.yaml": "d49247f8625d5cdf56d3d9f17d1e5ae902436593c7e053eb3a273a8e11b073e1",
+    "configs/scenarios/p6_airspace_suite.yaml": "94f1636ec20a6d2b39d7d35b1a7f8018cc258556256984b1473115b94c2dd552",
+    "configs/scheduling/p3_campus_v1.yaml": "fdcb21cf1d936e2233b78317079cbc92bdf51dec4c347f5a08a7fb4f5cea1c8f",
+    "configs/scheduling/p3_campus_corridor_v1.yaml": "8db72737ae179c802f501ae04001ef3ee00960032ce324d9b866479b7297bf0b",
+    "configs/scheduling/p3_s1_v1.yaml": "be7047bced1d5816308de645e020cea278bd821f85f10c24b30ae03231a456f1",
+    "configs/scheduling/p3_s1_corridor_v1.yaml": "efa6e21b839e0e0489d2770e6e14ab62575d71271a1f1b4fbcca836b26ccf05b",
+    "docs/fine-reservations-design.md": "c102298cdb2ca707f3827ea1c4c404d6ab23c737185ffa58b5ab2648f2e80716"
+  },
+  "layouts": {
+    "p6_long_l10-7:box-v1": "4e9112cc7074e6bdfaffb2595a842a33996010523472a839a473a03b1599f96c",
+    "p6_long_l10-7:corridor-v1": "d3d78280611f4c4110e48fb155c492a255114a0f87bf727a689a9299d8ef8ae9",
+    "p6_long_l10-19:box-v1": "d076e595d9448fa870fa9f89002bcd938182e8af305bd0b2e3f2d3a0375166e4",
+    "p6_long_l10-19:corridor-v1": "91e24cdeea5e0e2564d86180e2a96b360a5b3009d6d3ac0feaf8b3e1403d7abe",
+    "p6_long_l10-41:box-v1": "2e93f6fcd5254e4fedac3ce76f9be597dc41b0d835b3c28c0b479117cbcdbde1",
+    "p6_long_l10-41:corridor-v1": "28b57bbb331a33e43fed5f452f68bbb044f1eefa5ec2beff74ac1b24ac173980",
+    "p3_l10-7:box-v1": "50653cb0a74400e81d6083478edd403a9c58c35e1f3520300f4015d93a95033f",
+    "p3_l10-7:corridor-v1": "ffd5f1c8093a4cd739bc3cc3e2d9168a0b0c5992a5a41e2dfd6787c5c26d02c0",
+    "p3_l30-7:box-v1": "33f08fae4687d671f896954106b786b42f16c813fc04ee6fed101b7dac419f3c",
+    "p3_l30-7:corridor-v1": "5881d42922d83119ab9907514d20bed2e2a5de26fd7ac37ff7955a4fec30a7ad",
+    "p3_l100-7:box-v1": "3f8da718aa628cfb0bee790e14a7e835bbf638bb4cc50aa6265545c6721277a2",
+    "p3_l100-7:corridor-v1": "e3b383664fea73eebf16f2979cfaac3ca936b95a71ef4e7f945eb3103b044f42"
+  },
+  "noise_runs": [
+    {
+      "file": "noise-1.json",
+      "sha256": "b04cea5aaa1c26922e41c9eba7a515937c5c558516595d080551b027b63e59be",
+      "source_sha": "6544a9a81ec0731b89328841a5ba8215b2f4135d",
+      "footprint": "box-v1",
+      "cases": 3,
+      "status": "passed"
+    },
+    {
+      "file": "noise-2.json",
+      "sha256": "192f288a2cc02d906766492507907ff3a3b5bcc458a6acad06ae9beef3d6feb7",
+      "source_sha": "6544a9a81ec0731b89328841a5ba8215b2f4135d",
+      "footprint": "box-v1",
+      "cases": 3,
+      "status": "passed"
+    }
+  ],
+  "thresholds": {
+    "rung": "p6_long_l10",
+    "source_sha": "6544a9a81ec0731b89328841a5ba8215b2f4135d",
+    "noise_wait_s": 32.438,
+    "noise_drain_s": 3.95,
+    "wait_drop": 0.3,
+    "noise_factor": 3.0,
+    "long_drain": 1.05,
+    "ladder_drain": 1.1,
+    "noise_runs": [
+      {
+        "wait_s": 264.223,
+        "drain_s": 255.71
+      },
+      {
+        "wait_s": 296.661,
+        "drain_s": 259.66
+      }
+    ]
+  },
+  "rule": "src/drone_agent/eval/airspace_choice.py decide(): inputs are what they claim (suite cases, part, footprint, one commit); safety: every case passed, every count and containment violation 0 in the box and corridor long rung, existing ladder and S0 matrix, and the corridor P3 S1 receipt (5 cases); benefit: on p6_long_l10 the airspace-only wait (sum over seeds 7/19/41) drops by at least 30 % of the box and by more than 3 x noise_wait_s, the drain worsens by at most 5 %; every existing rung's drain worsens by at most 10 %. Adopt only if every criterion passes.",
+  "order": [
+    "1 long rung, box (--suite p6_airspace_suite --part ladder --footprint box-v1)",
+    "2 long rung, corridor (--footprint corridor-v1)",
+    "3 existing P3 ladder, box (--part ladder)",
+    "4 existing P3 ladder, corridor",
+    "5 P3 S0 matrix, box (--part s0)",
+    "6 P3 S0 matrix, corridor",
+    "7 deploy the candidate; cloud checks",
+    "8 P3 S1, box (dev_stack.py p3), containment baseline",
+    "9 P3 S1, corridor (dev_stack.py p3 --footprint corridor-v1)",
+    "10 desk activation and entry checks (the desk keeps its v1 catalog)",
+    "11 apply the rule to 1-6 and 9; the gate scripts/verify_fine_reservations.py"
+  ],
+  "disclosed_before": [
+    "functional smoke runs: a 2-node long-route rung, 6 tasks, seed 1, under both models (not the evaluation rung, not evidence)",
+    "the offline estimate experiments/fine_reservations/estimate.py on the same geometry",
+    "the two box noise runs of the evaluation rung listed above"
+  ]
+}
