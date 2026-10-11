@@ -1,0 +1,70 @@
+{
+ "format": "drone.planner-choice-preregistration/v1",
+ "decision": "D080",
+ "source_sha": "8efed7a6845db5930ab921dea688a26efd7e3e61",
+ "registered_at": "2026-10-11T03:47:56Z",
+ "frozen_prompt_commit": "210098c6bfe5a1bfc80c18be026059695d218cce",
+ "prompts": {
+  "planner-v1": "6ccc030a90bb6203e57220ae77f48de1f956e8e8335d28340b40422c783a2eef",
+  "planner-v2": "eb72c36ecf9efcbb891fd4dfa736f437eb611232f0914ddef8f3d294e2492e0d"
+ },
+ "corpora": {
+  "plan_ops_v2": "266699138ae1720f62221a7dc49b1c3cf10a4605097f5e34a441e6c29fea39e7",
+  "plan_ops_v1": "f54b0a2b0a557658a19080a753db4e558e9865cd4b04df0cb828660b5a2b7a56",
+  "nl_v1": "88dd7f1ac61cbcc3093d923a6320870c8ff1febe61a04cec9153cc2584682545"
+ },
+ "code": {
+  "rule": "771a5788a8651767aa6584998a04b87f4ff6f0c6a9bbd1ee287cbe6cc9cffa0f",
+  "scoring": "8dffe86df3ec77b85a267b1faa02ca455918d1cf1e9bf39623abb047fd576517"
+ },
+ "runs": [
+  {
+   "corpus": "plan_ops_v2",
+   "planner_prompt": "planner-v1",
+   "label": "r1"
+  },
+  {
+   "corpus": "plan_ops_v2",
+   "planner_prompt": "planner-v2",
+   "label": "r1"
+  },
+  {
+   "corpus": "plan_ops_v2",
+   "planner_prompt": "planner-v1",
+   "label": "r2"
+  },
+  {
+   "corpus": "plan_ops_v2",
+   "planner_prompt": "planner-v2",
+   "label": "r2"
+  },
+  {
+   "corpus": "nl_v1",
+   "planner_prompt": "planner-v2",
+   "label": "r1"
+  },
+  {
+   "corpus": "plan_ops_v1",
+   "planner_prompt": "planner-v2",
+   "label": "r1"
+  }
+ ],
+ "rule": {
+  "rounds": 2,
+  "min_wrong": 2,
+  "over_refusal_allowance": 2
+ },
+ "pacing": {
+  "pace_s": 6.0,
+  "budget_s": 900.0
+ },
+ "model": "the planner role (MiniMax-M3, D029), through the allowlisted model proxy in the cloud",
+ "held_out_author": "a fresh sub-agent started after 210098c; it read neither planner prompt, their history, the D080 text nor any recorded model answer",
+ "protocol": [
+  "the six runs in this order on one deployment, each completed (resumed only for cases without an answer) before the next starts",
+  "a case the model answered is never asked again; a run is never repeated to replace an answer",
+  "plan_ops_v1 with planner-v2 is the development set: reported, never part of the decision",
+  "decision by drone_agent.eval.planner_choice.decide over the four held-out runs and the nl_v1 run; planner-v1 stays unless it says adopt",
+  "on adoption the engine's default prompt becomes planner-v2 and the resident desk is switched and checked through its entry"
+ ]
+}
