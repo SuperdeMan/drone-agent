@@ -745,5 +745,6 @@ class Scheduler:
                 "roles": sorted(r.value for r in self.ops.directory.roles(caller, project_id)),
                 "tasks": [self._summary(t) for t in live + done], "robots": robots, "assets": assets,
                 "airspace": {"frame": self.catalog.airspace.frame, "cell_m": self.catalog.airspace.cell_m,
+                             "footprint": self.catalog.airspace.footprint,
                              "holds": holds, "envelopes": [{"activity": a, "cells": sorted(c)}
                                                            for a, c in sorted(envelopes.items())]}}

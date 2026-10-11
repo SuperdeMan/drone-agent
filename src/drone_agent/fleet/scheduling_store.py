@@ -194,7 +194,7 @@ class SchedulingStore:
             raise MigrationError("run migrate() before opening the scheduling store")
         self.ledger, self.catalog, self.clock = ledger, catalog, clock
         self.ledger._exec("INSERT OR IGNORE INTO sc_catalogs VALUES (?,?,?,?)",
-                          (catalog.sha256, catalog.catalog_id, _dump(catalog), self._now()))
+                          (catalog.sha256, catalog.catalog_id, _dump(catalog.body()), self._now()))
 
     def transaction(self):
         return self.ledger.transaction()

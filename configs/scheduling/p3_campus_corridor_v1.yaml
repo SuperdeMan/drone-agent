@@ -1,0 +1,27 @@
+# P3 S0 scheduling catalog with per-leg corridors (D084) for the operations catalog p3_campus_v1. Everything but the
+# format, the id and `airspace.footprint` is p3_campus_v1: the same frame, origins, 4 m cells, 2 m buffer, lost-contact
+# rule, ranking and policy. A flight holds the cells within 2 m of each leg's convex hull with home and the reserved
+# landing sites, cut from the box p3_campus_v1 would hold; the lost-contact envelope still grows from that box.
+#
+# 带航段走廊（D084）的 P3 S0 调度目录，对应运营目录 p3_campus_v1。除格式、ID 与 `airspace.footprint` 外与 p3_campus_v1
+# 完全相同：同一坐标、原点、4 m 单元、2 m 缓冲、失联规则、排序与策略。一次飞行持有与各航段（连同 home 与预留降落点）之凸包
+# 距离不超过 2 m 的单元，取自 p3_campus_v1 会持有的外包矩形；失联包络仍从该外包矩形起算。
+format: drone.scheduling-catalog/v2
+schema_version: "0.1.0"
+catalog_id: p3_campus_corridor_v1
+operations_catalog: p3_campus_v1
+airspace:
+  frame: campus
+  cell_m: 4.0
+  buffer_m: 2.0
+  contact_timeout_s: 5.0
+  envelope_margin_m: 2.0
+  footprint: corridor-v1
+  sites:
+    site_a: {origin: [0, 0]}
+    site_b: {origin: [12, 0]}
+    site_c: {origin: [0, 100]}
+    site_d: {origin: [12, 100]}
+    site_h: {origin: [0, -300]}
+ranking: {version: p3-rank-v1, cruise_mps: 2.0, setup_s: 20.0, usage_window_s: 3600.0}
+policy: {version: p3-sched-v1, reassign_after_s: 5.0, max_assignments: 4, task_window_s: 1800.0, max_tasks_per_pass: 50}

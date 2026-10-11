@@ -30,6 +30,11 @@ from drone_agent.contracts.common import ContractModel
 from drone_agent.fleet.provenance import digest
 
 CATALOG_FORMAT = "drone.scheduling-catalog/v1"
+# v2 adds the footprint model (D084); a v1 catalog always uses the box and keeps its digest.
+# v2 增加航迹覆盖模型（D084）；v1 目录始终用外包矩形，摘要不变。
+CATALOG_FORMAT_V2 = "drone.scheduling-catalog/v2"
+FOOTPRINT_BOX = "box-v1"
+FOOTPRINT_CORRIDOR = "corridor-v1"
 ID = r"^[a-z][a-z0-9_]{0,39}$"
 FRAME = r"^[a-z][a-z0-9_]{0,31}$"
 TASK_KEY = re.compile(r"^[A-Za-z0-9_.:#-]{1,160}$")
@@ -102,6 +107,10 @@ class AirspaceGrid(SchedulingModel):
     envelope_margin_m: float = Field(ge=0, le=50)
     position_tolerance_m: float = Field(default=0.5, gt=0, le=5)
     sites: dict[str, SiteOrigin] = Field(min_length=1)
+    footprint: Literal["box-v1", "corridor-v1"] = Field(
+        default=FOOTPRINT_BOX,
+        description="how a flight's cells are derived: the box of all its places, or per-leg corridors with their "
+                    "recovery fans (D084) / 航迹覆盖的求法：全部位置的外包矩形，或带恢复扇区的航段走廊（D084）")
 
 
 class Ranking(SchedulingModel):
@@ -129,7 +138,7 @@ class SchedulingCatalog(SchedulingModel):
     版本化的 P3 目录；`check` 把它绑定到运营目录与站点地图。
     """
 
-    format: Literal["drone.scheduling-catalog/v1"]
+    format: Literal["drone.scheduling-catalog/v1", "drone.scheduling-catalog/v2"]
     catalog_id: str = Field(pattern=ID)
     operations_catalog: str = Field(pattern=ID)
     airspace: AirspaceGrid
@@ -140,7 +149,24 @@ class SchedulingCatalog(SchedulingModel):
     def _ids(self):
         if any(not re.fullmatch(ID, key) for key in self.airspace.sites):
             raise ValueError("site identifiers must be lower-case slugs")
+        # The footprint model is declared only by a v2 catalog, and always explicitly there (D084).
+        # 航迹覆盖模型只由 v2 目录声明，且必须显式写出（D084）。
+        if self.format == CATALOG_FORMAT and "footprint" in self.airspace.model_fields_set:
+            raise ValueError("a v1 scheduling catalog keeps the box footprint; declare the model in a v2 catalog")
+        if self.format == CATALOG_FORMAT_V2 and "footprint" not in self.airspace.model_fields_set:
+            raise ValueError("a v2 scheduling catalog must declare airspace.footprint")
         return self
+
+    def body(self) -> dict:
+        """The catalog as recorded and digested. A v1 catalog leaves the footprint field out, so its body and digest are
+        the ones recorded before D084.
+
+        记录与计算摘要所用的目录内容。v1 目录不含航迹覆盖字段，因此其内容与摘要和 D084 之前记录的相同。
+        """
+        body = self.model_dump(mode="json")
+        if self.format == CATALOG_FORMAT:
+            body["airspace"].pop("footprint")
+        return body
 
     @cached_property
     def sha256(self) -> str:
@@ -148,7 +174,7 @@ class SchedulingCatalog(SchedulingModel):
 
         目录摘要每个实例只算一次（目录冻结；每个快照都记录它）。
         """
-        return digest(self.model_dump(mode="json"))
+        return digest(self.body())
 
     def origin(self, site_id: str) -> tuple[float, float]:
         return self.airspace.sites[site_id].origin

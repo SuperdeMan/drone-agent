@@ -24,6 +24,15 @@ P3 空域预约：共享坐标、网格单元、航迹覆盖与失联包络（D0
 位置来自每个节点的技能（D075）：所飞航线的航点、所引用的降落点、home 与资产，为该机器人预留的每个降落点（恢复可能改降到
 那里），以及外部模式技能的整个外部模式任务范围——局部规划器为避障可以在其中任意移动。这里没有解析器的技能，或地图未登记的
 名称，使航迹覆盖无法解析：这样的飞行被拒绝预约，而不是被当作不占用空域。
+
+A v2 scheduling catalog may declare per-leg corridors instead of the box (D084): the flight passes its stops in the
+order the executive runs the nodes, and each leg holds the cells near the convex hull of its two stops and every
+recovery target, so a straight return or diversion from anywhere on the leg stays inside. The corridor is cut from
+the box's cells, and the box itself is kept as the coarse range the lost-contact envelope grows from.
+
+v2 调度目录可以声明航段走廊代替外包矩形（D084）：飞行按执行器运行节点的顺序经过各停留，每个航段持有其两端停留与全部
+恢复目标之凸包附近的单元，因此从航段任一点直线返航或改降都在其中。走廊取自外包矩形的单元，外包矩形本身保留为失联包络
+起算的大范围。
 """
 
 from __future__ import annotations
@@ -32,6 +41,8 @@ import json
 import math
 from dataclasses import dataclass
 from datetime import datetime
+
+from drone_agent.fleet.scheduling_models import FOOTPRINT_CORRIDOR
 
 Box = tuple[float, float, float, float]  # (x_min, y_min, x_max, y_max) in the shared frame / 共享坐标中的外包矩形
 PREFIX = "air."
@@ -188,6 +199,180 @@ def task_points(data: dict, asset_id: str, robot_id: str | None = None) -> list[
     return points
 
 
+# ── corridors (D084) / 航段走廊（D084） ──
+
+Point = tuple[float, float]
+Stop = tuple[Point, ...]  # one point, or the vertices of a convex area / 一个点，或一片凸区域的顶点
+_EPS = 1e-9
+# Skills whose motion is a whole area: the local planner may go anywhere in the external-mode task scope (D075).
+# 运动是整片区域的技能：局部规划器可以去外部模式任务范围内的任何地方（D075）。
+AREA_SKILLS = frozenset({"skill.flight.goto_local", "skill.inspect.asset_local"})
+
+
+def hull(points) -> list[Point]:
+    """Convex hull (monotone chain); one or two vertices when the points coincide or are collinear.
+
+    凸包（单调链）；点重合或共线时为一个或两个顶点。
+    """
+    pts = sorted(set(points))
+    if len(pts) <= 2:
+        return pts
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower: list[Point] = []
+    upper: list[Point] = []
+    for point in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], point) <= 0:
+            lower.pop()
+        lower.append(point)
+    for point in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], point) <= 0:
+            upper.pop()
+        upper.append(point)
+    vertices = lower[:-1] + upper[:-1]
+    return vertices if len(vertices) >= 3 else [pts[0], pts[-1]]
+
+
+def _point_segment(p: Point, a: Point, b: Point) -> float:
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    length = dx * dx + dy * dy
+    t = 0.0 if length < _EPS else max(0.0, min(1.0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length))
+    return math.dist(p, (a[0] + t * dx, a[1] + t * dy))
+
+
+def _crosses(a: Point, b: Point, c: Point, d: Point) -> bool:
+    def side(p, q, r):
+        value = (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+        return 0 if abs(value) < _EPS else (1 if value > 0 else -1)
+
+    return side(a, b, c) != side(a, b, d) and side(c, d, a) != side(c, d, b)
+
+
+def _inside(p: Point, polygon: list[Point]) -> bool:
+    """Whether `p` lies in a convex polygon of at least three vertices, boundary included.
+
+    `p` 是否在至少三个顶点的凸多边形内（含边界）。
+    """
+    if len(polygon) < 3:
+        return False
+    sign = 0
+    for index, a in enumerate(polygon):
+        b = polygon[(index + 1) % len(polygon)]
+        value = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])
+        if abs(value) < _EPS:
+            continue
+        current = 1 if value > 0 else -1
+        if sign and current != sign:
+            return False
+        sign = current
+    return True
+
+
+def _edges(polygon: list[Point]) -> list[tuple[Point, Point]]:
+    if len(polygon) <= 2:
+        return [(polygon[0], polygon[-1])]
+    return [(a, polygon[(index + 1) % len(polygon)]) for index, a in enumerate(polygon)]
+
+
+def distance_to_box(polygon: list[Point], box: Box) -> float:
+    """Distance between a convex polygon (or a segment, or a point) and an axis-aligned box; 0 when they meet.
+
+    凸多边形（或线段、点）与轴对齐矩形之间的距离；相交时为 0。
+    """
+    x0, y0, x1, y1 = box
+    square = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+    if any(x0 <= p[0] <= x1 and y0 <= p[1] <= y1 for p in polygon) or any(_inside(c, polygon) for c in square):
+        return 0.0
+    best = math.inf
+    for a, b in _edges(polygon):
+        for c, d in _edges(square):
+            if _crosses(a, b, c, d):
+                return 0.0
+            best = min(best, _point_segment(a, c, d), _point_segment(b, c, d), _point_segment(c, a, b),
+                       _point_segment(d, a, b))
+    return best
+
+
+def scope_corners(data: dict) -> list[Point]:
+    """The four plane corners of the external-mode task scope (the registered bounds). / 外部模式任务范围在平面上的四角。"""
+    bounds = data["bounds"]
+    x0, x1 = float(bounds["x"][0]), float(bounds["x"][1])
+    y0, y1 = float(bounds["y"][0]), float(bounds["y"][1])
+    return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+
+
+def execution_order(nodes: list[dict]) -> list[dict]:
+    """The order the executive runs the nodes in: again and again the first pending node, in package order, whose
+    dependencies have run (`mission/executive.py`). A node that can never become ready makes the footprint unresolvable.
+
+    执行器运行节点的顺序：反复取包内顺序中依赖都已运行的第一个待运行节点（`mission/executive.py`）。永远不能就绪的节点
+    使航迹覆盖无法解析。
+    """
+    pending, done, order = list(nodes), set(), []
+    while pending:
+        ready = next((n for n in pending if all(d in done for d in n.get("depends_on") or [])), None)
+        if ready is None:
+            raise UnresolvedFootprint("package nodes cannot all become ready")
+        order.append(ready)
+        done.add(ready.get("task_id"))
+        pending.remove(ready)
+    return order
+
+
+def node_stops(data: dict, node: dict) -> list[Stop]:
+    """A node's stops in flight order: each place of a point skill, or one area for an external-mode skill.
+
+    节点按飞行顺序的停留：点技能的每个位置，或外部模式技能的一片区域。
+    """
+    skill = node.get("skill_id")
+    places = SKILL_PLACES.get(skill)
+    if places is None:
+        raise UnresolvedFootprint(f"skill {skill!r} has no airspace footprint")
+    points = places(data, node.get("params") or {})
+    if skill in AREA_SKILLS:
+        return [tuple(hull([*points, *scope_corners(data)]))]
+    return [(point,) for point in points]
+
+
+def package_stops(data: dict, package: dict) -> list[Stop]:
+    """Home, then every node's stops in execution order. / home，随后按执行顺序的各节点停留。"""
+    stops: list[Stop] = [(_xy(data["home"]["position"]),)]
+    for node in execution_order(package.get("nodes", [])):
+        stops += node_stops(data, node)
+    return stops
+
+
+def task_stops(data: dict, asset_id: str) -> list[Stop] | None:
+    """The stops of the package a single-asset inspection compiles to (takeoff, inspection, return, landing), before
+    any package exists; None if unregistered. An asset with a local observation goal may be lowered to the
+    external-mode inspection, so its inspection stop is the area covering both forms.
+
+    单资产巡检在尚无任务包时将编译成的停留（起飞、巡检、返航、降落）；未登记时为 None。带局部观测目标的资产可能被降为外部
+    模式巡检，因此其巡检停留是同时涵盖两种形式的区域。
+    """
+    asset = data.get("assets", {}).get(asset_id)
+    if asset is None:
+        return None
+    defaults = data.get("mission_defaults", {})
+    routes = data.get("routes", {})
+    approach = [_xy(p) for p in routes.get(asset.get("observation_route")) or []]
+    stops: list[Stop] = [(_xy(data["home"]["position"]),)]
+    if asset.get("observation_goal") is not None:
+        stops.append(tuple(hull([*approach, _xy(asset["position"]), *scope_corners(data)])))
+    else:
+        stops += [(point,) for point in approach] + [(_xy(asset["position"]),)]
+    # The compiler binds the inspected asset's own return route when it registers one (`admission/compiler.py`).
+    # 资产登记了自己的返航航线时，编译器使用它（`admission/compiler.py`）。
+    back = asset.get("return_route") or defaults.get("return_route_id")
+    stops += [(_xy(p),) for p in routes.get(back) or []]
+    site = data.get("landing_sites", {}).get(defaults.get("landing_site_id"))
+    if site is not None:
+        stops.append((_xy(site["position"]),))
+    return stops
+
+
 @dataclass(frozen=True)
 class Footprint:
     """The cells one flight may use, with the boxes they came from. / 一次飞行可能使用的单元及其来源矩形。"""
@@ -216,6 +401,33 @@ def footprint(grid, origin: tuple[float, float], points, volume: dict | None) ->
         volume_box = (ox + float(xs[0]), oy + float(ys[0]), ox + float(xs[1]), oy + float(ys[1]))
     cells = tuple(sorted(cell_resource(grid.frame, i, j) for i, j in grid_cells(box, grid.cell_m)))
     return Footprint(grid.frame, cells, box, volume_box)
+
+
+def corridor_footprint(grid, origin: tuple[float, float], stops: list[Stop], targets, coarse: Footprint) -> Footprint:
+    """The cells of `coarse` near some leg: within the buffer of the convex hull of two consecutive stops and every
+    recovery target (D084). `coarse` is the box footprint of the same flight; its box stays as the lost-contact range.
+
+    `coarse` 中靠近某个航段的单元：与相邻两个停留及全部恢复目标之凸包的距离不超过缓冲（D084）。`coarse` 是同一飞行的
+    外包矩形覆盖；其矩形保留为失联时的大范围。
+    """
+    ox, oy = origin
+
+    def shared(points):
+        return [(ox + x, oy + y) for x, y in points]
+
+    goals = shared(targets)
+    chain = [shared(stop) for stop in stops if stop]
+    pairs = [chain[i] + chain[i + 1] for i in range(len(chain) - 1)] or chain[:1]
+    legs = [(leg, dilate(bounds(leg), grid.buffer_m)) for leg in (hull(points + goals) for points in pairs)]
+
+    def near(cell: str) -> bool:
+        box = cell_box(cell, grid.cell_m)
+        # The leg's own box, grown by the buffer, rules most cells out before the exact distance.
+        # 先用按缓冲外扩的航段外包矩形排除大多数单元，再算精确距离。
+        return any(clip(box, reach) is not None and distance_to_box(leg, box) <= grid.buffer_m + _EPS
+                   for leg, reach in legs)
+
+    return Footprint(coarse.frame, tuple(cell for cell in coarse.cells if near(cell)), coarse.box, coarse.volume_box)
 
 
 def envelope_cells(grid, fp: Footprint, radius_m: float) -> tuple[str, ...]:
@@ -249,6 +461,9 @@ class Airspace:
     def __init__(self, catalog, operations, robots, scheduling, *, clock):
         self.catalog, self.ops, self.robots, self.scheduling, self.clock = catalog, operations, robots, scheduling, clock
         self.grid = catalog.airspace
+        # Planned footprints by robot, asset, volume and map digest: every decision pass asks again (D084).
+        # 按机器人、资产、体积与地图摘要缓存的计划覆盖：每轮判定都会再问一次（D084）。
+        self._planned: dict[tuple, Footprint | None] = {}
 
     # ── footprints / 航迹覆盖 ──
 
@@ -265,15 +480,29 @@ class Airspace:
         """
         data = self._data(robot_id)
         volume_id = (package.get("spatial_scope") or {}).get("approved_volume_id")
-        return footprint(self.grid, self.origin(robot_id), package_points(data, package, robot_id),
-                         data.get("volumes", {}).get(volume_id))
+        coarse = footprint(self.grid, self.origin(robot_id), package_points(data, package, robot_id),
+                           data.get("volumes", {}).get(volume_id))
+        if self.grid.footprint != FOOTPRINT_CORRIDOR:
+            return coarse
+        return corridor_footprint(self.grid, self.origin(robot_id), package_stops(data, package),
+                                  recovery_points(data, robot_id), coarse)
 
     def task_footprint(self, robot_id: str, asset_id: str, volume_id: str) -> Footprint | None:
+        key = (robot_id, asset_id, volume_id, self.ops.registry(robot_id).sha256, self.origin(robot_id))
+        if key not in self._planned:
+            self._planned[key] = self._task_footprint(robot_id, asset_id, volume_id)
+        return self._planned[key]
+
+    def _task_footprint(self, robot_id: str, asset_id: str, volume_id: str) -> Footprint | None:
         data = self._data(robot_id)
         points = task_points(data, asset_id, robot_id)
         if points is None:
             return None
-        return footprint(self.grid, self.origin(robot_id), points, data.get("volumes", {}).get(volume_id))
+        coarse = footprint(self.grid, self.origin(robot_id), points, data.get("volumes", {}).get(volume_id))
+        if self.grid.footprint != FOOTPRINT_CORRIDOR:
+            return coarse
+        return corridor_footprint(self.grid, self.origin(robot_id), task_stops(data, asset_id),
+                                  recovery_points(data, robot_id), coarse)
 
     def footprint_of(self, activity: str) -> Footprint | None:
         row = self.scheduling.footprint(activity)

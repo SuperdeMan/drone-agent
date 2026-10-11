@@ -49,6 +49,8 @@ REFUSED = ("service.not_found", "auth.project_denied", "auth.method_not_allowed"
 TASK_FINAL = ("completed", "failed", "outcome_unknown", "rejected", "cancelled")
 MIN_SEPARATION_M = 3.0
 MAX_SPEED_MPS = 8.0
+# Wait reasons that come from the airspace alone (D084 metrics). / 只来自空域的等待原因（D084 指标）。
+AIRSPACE_ONLY = frozenset({"airspace.cell_held", "airspace.envelope", "airspace.hold_missing"})
 
 
 def _at(value: str) -> datetime:
@@ -368,6 +370,66 @@ def check_airspace(c: Case, problems: list[str]) -> int:
     return count
 
 
+def check_containment(c: Case, problems: list[str]) -> int:
+    """Every airborne truth sample lies in a cell that its robot's current activity held at that moment (D084).
+
+    The activity is the holder of the robot's motion resource; airborne without one counts too, once per airborne
+    stretch. The smallest distance from a sample to a cell its activity did not hold is kept as that flight's margin.
+    The result is kept apart from the counts, whose set earlier gates pin; a violation still makes the case unsafe.
+
+    每个空中真值样本都落在其机器人当前活动于该时刻所持的单元内（D084）。活动是该机运动资源的持有者；空中却没有持有也计入，
+    每段空中只计一次。样本到该活动未持有单元的最小距离记为该次飞行的余量。结果与计数分开（早先的门禁钉住了计数集合）；
+    违例仍使用例判为不安全。
+    """
+    grid = c.scheduling.airspace
+    holds = hold_intervals(c)
+    reach = math.ceil((grid.buffer_m + grid.cell_m) / grid.cell_m)
+    violations, samples, margins = 0, 0, {}
+
+    def holder(resource: str, at: datetime) -> str | None:
+        return next((a for a, start, stop in holds.get(resource, []) if start <= at < stop), None)
+
+    def cell(i: int, j: int) -> str:
+        return f"air.{grid.frame}.{i}.{j}"
+
+    for robot, rows in shared_truth(c).items():
+        flagged, unheld = set(), False
+        for at, x, y, air in rows:
+            if not air:
+                unheld = False
+                continue
+            samples += 1
+            activity = holder(f"{robot}.motion", at)
+            if activity is None:
+                if not unheld:
+                    violations += 1
+                    problems.append(f"airborne_without_hold:{robot}:{at.isoformat()}")
+                unheld = True
+                continue
+            unheld = False
+            i, j = math.floor(x / grid.cell_m), math.floor(y / grid.cell_m)
+            if holder(cell(i, j), at) != activity:
+                margins[activity] = 0.0
+                if activity not in flagged:
+                    flagged.add(activity)
+                    violations += 1
+                    problems.append(f"outside_reservation:{activity}:{cell(i, j)}:{at.isoformat()}")
+                continue
+            margin = reach * grid.cell_m
+            for di in range(-reach, reach + 1):
+                for dj in range(-reach, reach + 1):
+                    if holder(cell(i + di, j + dj), at) == activity:
+                        continue
+                    x0, y0 = (i + di) * grid.cell_m, (j + dj) * grid.cell_m
+                    margin = min(margin, math.hypot(max(x0 - x, 0.0, x - x0 - grid.cell_m),
+                                                    max(y0 - y, 0.0, y - y0 - grid.cell_m)))
+            margins[activity] = min(margins.get(activity, margin), margin)
+    c.containment = {"violations": violations, "samples": samples,
+                     "min_margin_m": round(min(margins.values()), 3) if margins else None,
+                     "margins_m": {a: round(m, 3) for a, m in sorted(margins.items())}}
+    return violations
+
+
 def check_success(c: Case, problems: list[str]) -> int:
     """A completed task has a completed mission whose report target and verification say verified.
 
@@ -485,6 +547,43 @@ def check_probes(c: Case, problems: list[str]) -> int:
     return escapes
 
 
+def airspace_waits(c: Case) -> list[float]:
+    """Seconds each task spent waiting only on the airspace: its latest decision was `wait` and some candidate's
+    reasons were all airspace codes, i.e. that candidate was otherwise eligible (D084).
+
+    每个任务只因空域而等待的秒数：其最新判定为 `wait`，且某个候选的原因全是空域原因，即该候选本可派遣（D084）。
+    """
+    by_task: dict[str, list[dict]] = {}
+    for row in sorted(c.decisions, key=lambda r: (r["created_at"], r["decision_id"])):
+        by_task.setdefault(row["task_id"], []).append(row)
+    waits = []
+    for task_id, rows in by_task.items():
+        task = c.tasks.get(task_id) or {}
+        end = _at(task["updated_at"]) if task.get("state") in TASK_FINAL else c.end
+        total = 0.0
+        for index, row in enumerate(rows):
+            body = row["body"]
+            if body["verdict"] != "wait" or not any(cand["reasons"] and set(cand["reasons"]) <= AIRSPACE_ONLY
+                                                    for cand in body["candidates"]):
+                continue
+            stop = _at(rows[index + 1]["created_at"]) if index + 1 < len(rows) else end
+            total += max(0.0, (stop - _at(row["created_at"])).total_seconds())
+        waits.append(total)
+    return waits
+
+
+def held_cell_seconds(c: Case) -> dict:
+    """Cell-seconds held per flight, from the first hold to the release (D084). / 每次飞行持有的单元·秒（D084）。"""
+    per_activity: Counter = Counter()
+    for resource, intervals in hold_intervals(c).items():
+        if resource.startswith("air."):
+            for activity, start, stop in intervals:
+                per_activity[activity] += max(0.0, (min(stop, c.end) - start).total_seconds())
+    total = sum(per_activity.values())
+    return {"total": round(total, 1), "flights": len(per_activity),
+            "per_flight_mean": round(total / len(per_activity), 1) if per_activity else None}
+
+
 def metrics(c: Case) -> dict:
     """Latency, wait and rejection distributions of the case (reported, never gated here). / 用例的延迟、等待与拒绝分布。"""
     decision_ms = [row["body"].get("compute_ms") for row in c.decisions if row["body"].get("compute_ms") is not None]
@@ -508,7 +607,13 @@ def metrics(c: Case) -> dict:
             rejects.update((task["reason"] or "").split(","))
     ladder = c.scenario.get("ladder") or {}
     samples = ladder.get("samples") or []
-    return {"tasks": dict(Counter(t["state"] for t in c.tasks.values())), "decisions": len(c.decisions),
+    waited = airspace_waits(c)
+    return {"airspace_wait_s": {"total": round(sum(waited), 3), "tasks": len(waited),
+                                "waiting": _percentiles([w for w in waited if w > 0])},
+            "held_cell_s": held_cell_seconds(c),
+            "airborne_mean": round(sum(s["airborne"] for s in samples) / len(samples), 3) if samples else None,
+            "containment": getattr(c, "containment", None),
+            "tasks": dict(Counter(t["state"] for t in c.tasks.values())), "decisions": len(c.decisions),
             "decision_ms": _percentiles(decision_ms), "assignment_latency_s": _percentiles(assign_s),
             "completion_s": _percentiles(complete_s), "wait_reasons": dict(sorted(waits.items())),
             "reject_reasons": dict(sorted(rejects.items())),
@@ -599,7 +704,8 @@ def judge_case(case: Path, root: Path, *, use_replay: bool = False) -> dict:
               "stale_epoch_effect": check_epochs(c, problems), "decision_mismatch": check_decisions(c, problems),
               "project_escape": check_probes(c, problems), "wrong_dispatch": check_claims(c, problems),
               "duplicate_dispatch": check_dispatch_counts(c, problems), "wrong_release": check_releases(c, problems)}
-    unsafe = any(counts.values())
+    contained = check_containment(c, problems)
+    unsafe = any(counts.values()) or contained > 0
     check_expected(c, problems)
     classification = "unsafe_or_incorrect" if unsafe else ("unexpected" if problems else "as_expected")
     stalls = [i for i in c.injections if i["kind"] == "host_stall"]
@@ -611,7 +717,7 @@ def judge_case(case: Path, root: Path, *, use_replay: bool = False) -> dict:
     return {"schema_version": "0.1.0", "scenario": c.scenario["scenario"], "seed": c.scenario["seed"],
             "layer": "S0", "source_sha": c.scenario.get("source_sha"), "mode": "replay" if use_replay else "online",
             "classification": classification, "passed": not problems, "counts": counts,
-            "false_success_reports": counts["false_success"], "problems": problems,
+            "containment": c.containment, "false_success_reports": counts["false_success"], "problems": problems,
             "expected": c.scenario.get("expected", {}), "metrics": metrics(c), "flights": len(c.flights),
             "artifacts": {} if use_replay else {
                 str(path.relative_to(case)).replace("\\", "/"): hashlib.sha256(path.read_bytes()).hexdigest()
@@ -739,15 +845,17 @@ def judge_s1_case(case: Path, root: Path, *, use_replay: bool = False) -> dict:
               "stale_epoch_effect": check_epochs(c, problems), "decision_mismatch": check_decisions(c, problems),
               "project_escape": check_probes(c, problems), "wrong_dispatch": check_claims(c, problems),
               "duplicate_dispatch": check_dispatch_counts(c, problems), "wrong_release": check_releases(c, problems)}
+    contained = check_containment(c, problems)
     # Any M2 finding (mirror, signature, terminal state, geofence) is an integrity failure, as in P1 S1.
     # 任何 M2 发现（镜像、签名、终态、围栏）都是完整性失败，与 P1 S1 相同。
-    unsafe = any(counts.values()) or any(r["classification"] == "unsafe_or_incorrect" for r in flights.values())
+    unsafe = any(counts.values()) or contained > 0 or any(r["classification"] == "unsafe_or_incorrect"
+                                                         for r in flights.values())
     check_expected(c, problems)
     classification = "unsafe_or_incorrect" if unsafe else ("unexpected" if problems else "as_expected")
     return {"schema_version": "0.1.0", "scenario": c.scenario["scenario"], "seed": c.scenario["seed"],
             "layer": "S1", "source_sha": c.scenario.get("source_sha"), "mode": "replay" if use_replay else "online",
             "classification": classification, "passed": not problems, "counts": counts,
-            "false_success_reports": counts["false_success"], "problems": problems,
+            "containment": c.containment, "false_success_reports": counts["false_success"], "problems": problems,
             "expected": c.scenario.get("expected", {}), "metrics": metrics(c), "flights": len(c.flights),
             "missions": flights,
             "claims": sum(1 for r in c.ops["op_claims"] if r["state"] == "claimed"),

@@ -45,6 +45,8 @@ SUITE = "configs/scenarios/p3_suite.yaml"
 CATALOG = "configs/sites/p3_campus_v1.yaml"
 MEMBERS = "configs/sites/p3_members_s0.yaml"
 SCHEDULING = "configs/scheduling/p3_campus_v1.yaml"
+# The same S0 world under per-leg corridors (D084). / 同一 S0 世界在航段走廊下（D084）。
+CORRIDOR_SCHEDULING = "configs/scheduling/p3_campus_corridor_v1.yaml"
 WORKFLOWS = "configs/workflows/p3_campus_v1.yaml"
 OPERATOR, REVIEWER, VIEWER, ADMIN, HARBOR, JUDGE = (
     "harness:p3-operator", "harness:p3-reviewer", "harness:p3-viewer", "harness:p3-admin", "harness:p3-harbor",
@@ -578,16 +580,25 @@ SCENARIOS: dict[str, Callable] = {
 # ── the scale ladder / 规模阶梯 ──
 
 
-async def ladder_stream(w: P3World, nodes: int, budget: int, total: int) -> dict:
+async def ladder_stream(w: P3World, nodes: int, budget: int, total: int, layout: str = "pair") -> dict:
     """A closed-loop task stream: at most `budget` tasks in flight, `total` tasks overall, a fixed mix per seed.
 
-    闭环任务流：在途任务至多 `budget` 个，总计 `total` 个，每个种子的组合固定。
+    On the long-route layout (D084) every task is a uniformly drawn asset of a uniformly drawn pair that both robots
+    of the pair may take, with no rejected task and no maintenance: the stream measures airspace contention only.
+
+    闭环任务流：在途任务至多 `budget` 个，总计 `total` 个，每个种子的组合固定。长航线布局（D084）上每个任务都是均匀抽取的
+    站点对中均匀抽取的资产，该对两台机器人都可执行，没有被拒任务与维护：任务流只测量空域竞争。
     """
+    from drone_agent.eval.p3_layout import LONG_ASSETS
+
     pairs = nodes // 2
     rng = random.Random(w.seed)
     plan = []
     for index in range(total):
         pair = rng.randrange(pairs)
+        if layout == "long":
+            plan.append({"asset": f"asset_{rng.choice(sorted(LONG_ASSETS))}_p{pair:02d}", "candidates": []})
+            continue
         roll = rng.random()
         if roll < 0.1:
             plan.append({"asset": f"asset_west_p{pair:02d}", "candidates": [f"uav_p{pair:02d}r"]})  # rejected
@@ -596,11 +607,11 @@ async def ladder_stream(w: P3World, nodes: int, budget: int, total: int) -> dict
         else:
             side = rng.choice(["west", "east"])
             plan.append({"asset": f"asset_{side}_p{pair:02d}", "candidates": []})
-    maintenance = rng.sample(range(pairs), max(1, pairs // 10))
+    maintenance = rng.sample(range(pairs), max(1, pairs // 10)) if layout == "pair" else []
     submitted: list[str] = []
     started = time.monotonic()
     samples = []
-    injected = released = False
+    injected = released = layout != "pair"
     while True:
         await w.step()
         await w.approve_tasks()
@@ -647,8 +658,13 @@ def host() -> dict:
             "cpus": os.cpu_count(), "python": platform.python_version()}
 
 
-async def run_case(case: Path, repo: Path, scenario: dict, seed: int, sha: str) -> dict:
-    """Run one S0 case or ladder rung and judge it online and from the recordings. / 运行一个用例或阶梯档并裁判两次。"""
+async def run_case(case: Path, repo: Path, scenario: dict, seed: int, sha: str, footprint: str = "box-v1") -> dict:
+    """Run one S0 case or ladder rung and judge it online and from the recordings. / 运行一个用例或阶梯档并裁判两次。
+
+    `footprint` picks the airspace model (D084): the matrix loads the corridor twin of its scheduling catalog, and a
+    generated ladder declares it in a v2 scheduling catalog of its own directory.
+    `footprint` 选择空域模型（D084）：矩阵加载其调度目录的走廊版本，生成的阶梯在自己目录的 v2 调度目录中声明它。
+    """
     from drone_agent.eval.judge_p3 import judge_case
     from drone_agent.eval.p3_layout import ladder
 
@@ -657,18 +673,22 @@ async def run_case(case: Path, repo: Path, scenario: dict, seed: int, sha: str) 
     nodes = scenario.get("nodes")
     layout = None
     if nodes:
-        layout = ladder(repo, nodes, repo / "outputs" / "p3-ladder" / f"{case.name}")
+        suffix = "" if footprint == "box-v1" else f"-{footprint}"
+        layout = ladder(repo, nodes, repo / "outputs" / "p3-ladder" / f"{case.name}{suffix}",
+                        layout=scenario.get("layout", "pair"), footprint=footprint)
         world = P3World(case, repo, seed=seed, catalog=Path(layout["files"]["catalog"]),
                         members=Path(layout["files"]["members"]), scheduling=Path(layout["files"]["scheduling"]),
                         with_workflows=False)
     else:
-        world = P3World(case, repo, seed=seed)
+        world = P3World(case, repo, seed=seed,
+                        scheduling=repo / CORRIDOR_SCHEDULING if footprint == "corridor-v1" else None)
     error, stream = None, None
     started = time.monotonic()
     try:
         await world.settle()
         if nodes:
-            stream = await ladder_stream(world, nodes, scenario["budget"], scenario.get("tasks", nodes * 2))
+            stream = await ladder_stream(world, nodes, scenario["budget"], scenario.get("tasks", nodes * 2),
+                                         layout=scenario.get("layout", "pair"))
         else:
             await SCENARIOS[scenario["id"]](world)
         for uav in world.uavs.values():
@@ -693,7 +713,7 @@ async def run_case(case: Path, repo: Path, scenario: dict, seed: int, sha: str) 
     keys = ("classification", "problems", "false_success_reports", "counts")
     agrees = all(online.get(k) == replay.get(k) for k in keys)
     result = {**{k: online.get(k) for k in ("scenario", "seed", "classification", "problems", "counts",
-                                             "false_success_reports", "expected", "metrics")},
+                                             "containment", "false_success_reports", "expected", "metrics")},
               "passed": bool(online.get("passed")) and agrees, "replay_agrees": agrees, "harness_error": error}
     (case / "judge").mkdir(exist_ok=True)
     (case / "judge/result.json").write_text(json.dumps(online, indent=2, default=str), encoding="utf-8")
@@ -702,11 +722,17 @@ async def run_case(case: Path, repo: Path, scenario: dict, seed: int, sha: str) 
 
 
 async def run_suite(output: Path, repo: Path, *, sha: str, only: list[str] | None = None,
-                    seeds: list[int] | None = None, part: str = "s0") -> dict:
-    """`part` is `s0` (the fault matrix) or `ladder` (the scale rungs). / `part` 为 `s0`（故障矩阵）或 `ladder`（规模阶梯）。"""
+                    seeds: list[int] | None = None, part: str = "s0", footprint: str = "box-v1",
+                    suite_path: Path | None = None) -> dict:
+    """`part` is `s0` (the fault matrix) or `ladder` (the scale rungs); `footprint` and `suite_path` select the
+    airspace model and another suite file (D084).
+
+    `part` 为 `s0`（故障矩阵）或 `ladder`（规模阶梯）；`footprint` 与 `suite_path` 选择空域模型与另一个场景集文件（D084）。
+    """
     from drone_agent.eval.judge_p3 import COUNTS
 
-    definition = suite(repo)
+    definition = suite(repo) if suite_path is None else yaml.safe_load(suite_path.read_text(encoding="utf-8"))
+    started_at = utcnow().isoformat()
     results, voided = [], []
     for scenario in definition[part]:
         if only and scenario["id"] not in only:
@@ -714,7 +740,7 @@ async def run_suite(output: Path, repo: Path, *, sha: str, only: list[str] | Non
         for seed in seeds or scenario.get("seeds") or definition["seeds"]:
             for attempt in range(1, ATTEMPTS + 1):
                 case = output / f"{scenario['id']}-{seed}"
-                result = await run_case(case, repo, scenario, seed, sha)
+                result = await run_case(case, repo, scenario, seed, sha, footprint)
                 result["attempt"] = attempt
                 print(json.dumps({k: result[k] for k in ("scenario", "seed", "attempt", "passed", "classification")}),
                       flush=True)
@@ -727,10 +753,17 @@ async def run_suite(output: Path, repo: Path, *, sha: str, only: list[str] | Non
                 voided.append({k: result[k] for k in ("scenario", "seed", "attempt", "problems")})
             results.append(result)
     counts = {key: sum((r.get("counts") or {}).get(key, 0) for r in results) for key in COUNTS}
+    margins = [r["containment"]["min_margin_m"] for r in results
+               if (r.get("containment") or {}).get("min_margin_m") is not None]
+    containment = {"violations": sum((r.get("containment") or {}).get("violations", 0) for r in results),
+                   "unjudged": sum(1 for r in results if r.get("containment") is None),
+                   "min_margin_m": min(margins) if margins else None}
     summary = {"schema_version": "0.1.0", "layer": "S0", "part": part, "source_sha": sha, "suite": definition["format"],
+               "footprint": footprint, "started_at": started_at, "finished_at": utcnow().isoformat(),
                "cases": len(results), "passed": sum(1 for r in results if r["passed"]),
                "status": "passed" if results and all(r["passed"] for r in results) else "failed",
-               "counts": counts, "results": results, "voided_attempts": voided, "host": host()}
+               "counts": counts, "containment": containment, "results": results, "voided_attempts": voided,
+               "host": host()}
     output.mkdir(parents=True, exist_ok=True)
     (output / f"suite-{part}.json").write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8")
     return summary
@@ -744,10 +777,14 @@ def main() -> None:
     parser.add_argument("--part", choices=["s0", "ladder"], default="s0")
     parser.add_argument("--scenario", default="all", help="all or comma-separated scenario ids")
     parser.add_argument("--seeds", default=None, help="comma-separated seeds; defaults to the suite's")
+    parser.add_argument("--footprint", choices=["box-v1", "corridor-v1"], default="box-v1",
+                        help="airspace footprint model (D084)")
+    parser.add_argument("--suite", type=Path, default=None, help="another suite file, e.g. the D084 long-route ladder")
     args = parser.parse_args()
     only = None if args.scenario == "all" else args.scenario.split(",")
     seeds = [int(s) for s in args.seeds.split(",")] if args.seeds else None
-    summary = asyncio.run(run_suite(args.output, args.root, sha=args.sha, only=only, seeds=seeds, part=args.part))
+    summary = asyncio.run(run_suite(args.output, args.root, sha=args.sha, only=only, seeds=seeds, part=args.part,
+                                    footprint=args.footprint, suite_path=args.suite))
     print(json.dumps({k: summary[k] for k in ("status", "cases", "passed", "counts")}))
     raise SystemExit(0 if summary["status"] == "passed" else 1)
 

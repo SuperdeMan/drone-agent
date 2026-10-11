@@ -1,0 +1,24 @@
+# P3 S1 scheduling catalog with per-leg corridors (D084) for the operations catalog p3_s1_v1. Everything but the
+# format, the id and `airspace.footprint` is p3_s1_v1 (Gazebo world frame, uav_02's site 12 m east, 4 m cells, 2 m
+# buffer). The S1 flights under this catalog are where the judge checks against Gazebo truth that every airborne
+# position lies in a cell its own activity held at that moment.
+#
+# 带航段走廊（D084）的 P3 S1 调度目录，对应运营目录 p3_s1_v1。除格式、ID 与 `airspace.footprint` 外与 p3_s1_v1 相同
+# （Gazebo 世界坐标、uav_02 的站点在东 12 m、4 m 单元、2 m 缓冲）。在本目录下的 S1 飞行中，裁判按 Gazebo 真值核对每个空中
+# 位置都落在本活动当时所持的单元内。
+format: drone.scheduling-catalog/v2
+schema_version: "0.1.0"
+catalog_id: p3_s1_corridor_v1
+operations_catalog: p3_s1_v1
+airspace:
+  frame: campus_p3
+  cell_m: 4.0
+  buffer_m: 2.0
+  contact_timeout_s: 5.0
+  envelope_margin_m: 2.0
+  footprint: corridor-v1
+  sites:
+    site_s1a: {origin: [0, 0]}
+    site_s1b: {origin: [12, 0]}
+ranking: {version: p3-rank-v1, cruise_mps: 2.0, setup_s: 20.0, usage_window_s: 3600.0}
+policy: {version: p3-sched-v1, reassign_after_s: 20.0, max_assignments: 4, task_window_s: 1800.0, max_tasks_per_pass: 50}

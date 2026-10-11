@@ -596,6 +596,8 @@ def main() -> None:
     p3_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
     p3_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
     p3_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
+    p3_parser.add_argument("--footprint", choices=["box-v1", "corridor-v1"], default="box-v1",
+                           help="airspace footprint model of the S1 scheduling catalog (D084)")
     p4_parser = commands.add_parser("p4", help="run P4 S1 cases (the business loop on PX4 SITL) in the cloud")
     p4_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
     p4_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
@@ -747,6 +749,7 @@ def main() -> None:
                         "scenario": args.scenario,
                         "seeds": [int(seed) for seed in args.seeds.split(",") if seed],
                         "keep_going": args.keep_going,
+                        **({"footprint": args.footprint} if args.command == "p3" else {}),
                     },
                     timeout=14400,
                 )

@@ -302,3 +302,39 @@ def test_the_service_entry_requires_the_catalog_and_scheduling_for_assigned_temp
 
     assert load_workflows(ROOT / "configs/workflows/p3_campus_v1.yaml").assigned_nodes()
     assert not load_workflows(ROOT / "configs/workflows/p2_campus_v1.yaml").assigned_nodes()
+
+
+def test_a_corridor_catalog_holds_the_planned_corridor_and_shared_markers_still_take_turns(world):
+    # D084: under the v2 corridor catalog the compiled mission holds exactly the corridor the scheduler planned, cut
+    # from the box the v1 catalog holds, and the reservation event names the model; two flights to the shared mid
+    # marker still take turns. / D084：v2 走廊目录下，编译后的任务恰好持有调度器计划的走廊（取自 v1 目录持有的外包
+    # 矩形），预约事件写明模型；两个飞往共享 mid 标记的飞行仍然轮流。
+    corridor = world(scheduling=ROOT / "configs/scheduling/p3_campus_corridor_v1.yaml")
+    box = world()
+
+    async def first_mid(w: P3World) -> tuple[str, list[str], dict]:
+        await settled(w)
+        task = await w.task("asset_mid", key="first")
+        await w.drive_tasks(lambda: w.task_state(task) == "assigned", "assigned", approve=False, timeout_s=10)
+        activity = f"mission:{w.task_mission(task)}:v1"
+        cells = w.tasks.footprint(activity)["cells"]
+        reserved = [e for e in w.service.ops.store.events(activity) if e["kind"] == "reservation.reserved"]
+        return task, cells, reserved[0]["body"]
+
+    async def scenario():
+        _, box_cells, box_event = await first_mid(box)
+        task, cells, event = await first_mid(corridor)
+        planned = corridor.service.scheduler.airspace.task_footprint("uav_a", "asset_mid", "campus_training")
+        assert cells == list(planned.cells) and set(cells) < set(box_cells)
+        assert event["footprint"] == "corridor-v1" and "footprint" not in box_event
+        second = await corridor.task("asset_mid", key="second")
+        await corridor.hold(1.0)
+        assert corridor.task_state(second) == "queued"
+        reasons = {c["robot_id"]: c["reasons"] for c in corridor.tasks.last_decision(second)["body"]["candidates"]}
+        assert "airspace.cell_held" in reasons["uav_b"]
+        east = await corridor.task("asset_east", key="east")
+        await corridor.drive_tasks(lambda: corridor.task_state(east) == "assigned", "east assigned", approve=False,
+                                   timeout_s=10)
+        assert corridor.task_robot(east) == "uav_b" and corridor.task_robot(task) == "uav_a"
+
+    run(scenario())

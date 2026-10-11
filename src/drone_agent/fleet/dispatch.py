@@ -49,6 +49,7 @@ from drone_agent.fleet.resources import (
     load_catalog,
     load_members,
 )
+from drone_agent.fleet.scheduling_models import CATALOG_FORMAT_V2
 from drone_agent.mission.registry import Registry
 
 OCCUPYING = (ReservationState.OCCUPIED.value, ReservationState.UNCERTAIN.value)
@@ -219,7 +220,16 @@ class Dispatch:
                     return None, {"airspace": UNRESOLVED}
                 self.airspace.scheduling.record_footprint(activity, mission_id=mission_id, version=version,
                                                           robot_id=binding["robot_id"], body=fp.body())
-            return self.store.reserve(**common, extra=fp.cells, blocked=self.airspace.envelopes(exclude={activity}))
+                # A v2 catalog names its model on the event; a v1 event stays as before (D084).
+                # v2 目录在事件上写明模型；v1 事件保持原样（D084）。
+                label = self.airspace.grid.footprint if self.airspace.catalog.format == CATALOG_FORMAT_V2 else None
+            else:
+                # A recorded footprint keeps the label it was derived under, whatever the catalog is now.
+                # 已记录的航迹覆盖沿用其求得时的标签，与当前目录无关。
+                first = next((e for e in self.store.events(activity) if e["kind"] == "reservation.reserved"), None)
+                label = (first["body"] or {}).get("footprint") if first else None
+            return self.store.reserve(**common, extra=fp.cells, blocked=self.airspace.envelopes(exclude={activity}),
+                                      detail={"footprint": label} if label else None)
 
     def release_unclaimed(self, mission_id: str, version: int, reason: str) -> bool:
         """Nothing physical happened before a claim, so an unclaimed hold may be released. / 领取前无物理动作，可释放。"""

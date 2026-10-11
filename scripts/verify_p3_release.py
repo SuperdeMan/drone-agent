@@ -185,6 +185,10 @@ def s1(receipts: list[dict], sha: str) -> dict:
             problems.append("shared-server isolation not verified")
         if not receipt.get("signer_key_id") or set(receipt.get("certificate_fingerprints", {})) != FINGERPRINTS:
             problems.append("signing key id or both robots' certificate fingerprints not recorded")
+        # A corridor run (D084) is not evidence for the v1 catalog; receipts before D084 carry no model.
+        # 走廊运行（D084）不是 v1 目录的证据；D084 之前的回执不带模型字段。
+        if receipt.get("footprint", "box-v1") != "box-v1":
+            problems.append("receipt ran a different airspace footprint model")
         for row in receipt.get("results", []):
             key = row.get("scenario"), row.get("seed")
             if key not in expected or key in results:

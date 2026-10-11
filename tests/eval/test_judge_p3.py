@@ -114,6 +114,12 @@ def test_the_pair_in_the_s1_layout_passes_online_and_from_the_recordings(pair):
     replay = judge_s1_case(pair, ROOT, use_replay=True)
     for key in ("classification", "false_success_reports", "problems", "counts"):
         assert replay[key] == result[key]
+    # Every airborne sample lay in a cell its flight held (D084). / 每个空中样本都在其飞行所持的单元内（D084）。
+    contained = result["containment"]
+    assert contained["violations"] == 0 and contained["samples"] > 0 and contained["min_margin_m"] > 0
+    assert len(contained["margins_m"]) == 2 and result["metrics"]["containment"] == contained
+    assert result["metrics"]["held_cell_s"]["flights"] == 2 and result["metrics"]["held_cell_s"]["total"] > 0
+    assert result["metrics"]["airspace_wait_s"]["total"] == 0
 
 
 def test_truth_left_in_a_robot_frame_is_caught(pair, tmp_path):
@@ -177,3 +183,29 @@ def test_a_cell_held_by_both_flights_is_caught(pair, tmp_path):
 
     result = judge_s1_case(tampered(pair, tmp_path, change), ROOT)
     assert not result["passed"] and result["counts"]["conflicting_reservation"] >= 1
+
+
+def test_a_flight_outside_the_cells_it_held_is_caught(pair, tmp_path):
+    # uav_01's airborne samples moved 40 m north: the aircraft flew where its activity held nothing (D084).
+    # uav_01 的空中样本北移 40 m：飞行器飞到了其活动未持有的地方（D084）。
+    case = shutil.copytree(pair, tmp_path / "case")
+    truth = case / "truth_a/truth.jsonl"
+    _write_rows(truth, [{**row, "position": [row["position"][0], row["position"][1] + 40.0, row["position"][2]]}
+                        if row["position"][2] > 0.3 else row for row in _rows(truth)])
+    result = judge_s1_case(case, ROOT)
+    assert not result["passed"] and result["classification"] == "unsafe_or_incorrect"
+    assert result["containment"]["violations"] >= 1
+    assert any(p.startswith("outside_reservation:") for p in result["problems"])
+
+
+def test_an_airborne_aircraft_without_a_hold_is_caught(pair, tmp_path):
+    # uav_02's airborne samples replayed a day later, long after every hold was released. / 空中样本推后一天。
+    from datetime import datetime, timedelta
+
+    case = shutil.copytree(pair, tmp_path / "case")
+    truth = case / "truth_b/truth.jsonl"
+    _write_rows(truth, [{**row, "timestamp": (datetime.fromisoformat(row["timestamp"]) + timedelta(days=1)).isoformat()}
+                        for row in _rows(truth)])
+    result = judge_s1_case(case, ROOT)
+    assert not result["passed"] and result["containment"]["violations"] >= 1
+    assert any(p.startswith("airborne_without_hold:uav_02") for p in result["problems"])

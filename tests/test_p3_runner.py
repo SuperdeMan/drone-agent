@@ -118,3 +118,17 @@ def test_capacity_is_sufficient_only_within_both_d061_limits():
     # Missing evidence is never enough. / 缺少证据从不算足够。
     assert not verdict({"uav_01": None, "uav_02": None}, fine)["sufficient"]
     assert not verdict(good, {"uav_01:m-1:v1": None})["sufficient"]
+
+
+def test_the_footprint_model_picks_the_s1_scheduling_catalog_and_the_box_stays_the_default():
+    # D084: `dev_stack.py p3 --footprint corridor-v1` runs the same S1 world under the corridor twin of the catalog.
+    # D084：`dev_stack.py p3 --footprint corridor-v1` 在同一 S1 世界中使用目录的走廊版本。
+    from drone_agent.fleet.scheduling_models import load_scheduling
+
+    command = COMPOSE["services"]["mission-service"]["command"]
+    assert command[command.index("--scheduling") + 1] == \
+        "${DRONE_P3_SCHEDULING:-/workspace/configs/scheduling/p3_s1_v1.yaml}"
+    assert RUNNER["SCHEDULING"]["box-v1"] == "configs/scheduling/p3_s1_v1.yaml"
+    for model, path in RUNNER["SCHEDULING"].items():
+        catalog = load_scheduling(ROOT / path)
+        assert catalog.airspace.footprint == model and catalog.operations_catalog == "p3_s1_v1"

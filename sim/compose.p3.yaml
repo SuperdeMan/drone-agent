@@ -94,7 +94,7 @@ services:
               --catalog, /workspace/configs/sites/p3_s1_v1.yaml,
               --members, /workspace/configs/sites/p3_members_s1.yaml,
               --workflows, /workspace/configs/workflows/p3_s1_v1.yaml,
-              --scheduling, /workspace/configs/scheduling/p3_s1_v1.yaml]
+              --scheduling, "${DRONE_P3_SCHEDULING:-/workspace/configs/scheduling/p3_s1_v1.yaml}"]
     volumes:
       - ${DRONE_P3_RUN:?}/input:/input:ro
       - ${DRONE_P3_RUN:?}/service:/state

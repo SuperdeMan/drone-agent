@@ -58,6 +58,8 @@ MIN_REAL_TIME_FACTOR, MAX_SUPERVISION_P99_S = 0.5, 0.120
 IDLE_PROBE_S = 60
 # The frozen two-aircraft budget (D061): the SITL container's CPU and memory caps. / 冻结的双机预算。
 SITL_CPUS, SITL_MEM = os.environ.get("DRONE_P3_SITL_CPUS", "2.5"), os.environ.get("DRONE_P3_SITL_MEM", "3g")
+# The scheduling catalog of each airspace model (D084). / 各空域模型的调度目录（D084）。
+SCHEDULING = {"box-v1": "configs/scheduling/p3_s1_v1.yaml", "corridor-v1": "configs/scheduling/p3_s1_corridor_v1.yaml"}
 
 
 def now() -> str:
@@ -297,6 +299,11 @@ def run_p3(root: Path, deployment: Path, request: dict) -> dict:
     selection = [(case, seed) for case in cases for seed in case["seeds"] if not seeds or seed in seeds]
     if not selection:
         raise ValueError("empty P3 S1 selection")
+    # The airspace model (D084): the corridor twin of the S1 scheduling catalog, or the box by default.
+    # 空域模型（D084）：S1 调度目录的走廊版本，默认为外包矩形。
+    footprint = request.get("footprint") or "box-v1"
+    if footprint not in SCHEDULING:
+        raise ValueError(f"unknown footprint model {footprint}")
     subnet = free_subnet()
     # The idle M0 SITL would compete for the same cores. / 空闲的 M0 SITL 会争用同一批核心。
     HELPERS["compose"](root, deployment, ["stop", "sitl"])
@@ -304,7 +311,7 @@ def run_p3(root: Path, deployment: Path, request: dict) -> dict:
     try:
         for index, (case, seed) in enumerate(selection):
             result = run_case(root, source, base, images, sha, request["run_id"], case, seed, subnet,
-                              probe=index == 0)
+                              probe=index == 0, scheduling=SCHEDULING[footprint])
             results.append(result)
             (base / "progress.json").write_text(json.dumps({"source_sha": sha, "results": results}))
             if not result.get("passed") and not request.get("keep_going"):
@@ -316,6 +323,7 @@ def run_p3(root: Path, deployment: Path, request: dict) -> dict:
         "status": "passed" if results and len(results) == len(selection) and all(r["passed"] for r in results)
         and before == after else "failed",
         "layer": "S1", "aircraft": 2, "source_sha": sha, "deployment_id": deployment.name,
+        "footprint": footprint, "scheduling": SCHEDULING[footprint],
         "artifact_directory": str(base), "planner": "scripted", "task_planning": "deterministic", "subnet": subnet,
         "budget": {"sitl_cpus": SITL_CPUS, "sitl_mem": SITL_MEM},
         "signer_key_id": keys["signer_key_id"], "certificate_fingerprints": keys["fingerprints"],
@@ -327,7 +335,8 @@ def run_p3(root: Path, deployment: Path, request: dict) -> dict:
     return summary
 
 
-def run_case(root, source, base, images, sha, run_id, scenario, seed, subnet, *, probe: bool = False) -> dict:
+def run_case(root, source, base, images, sha, run_id, scenario, seed, subnet, *, probe: bool = False,
+             scheduling: str = "configs/scheduling/p3_s1_v1.yaml") -> dict:
     case = base / f"{scenario['id']}-{seed}"
     for folder in FOLDERS:
         (case / folder).mkdir(parents=True)
@@ -345,7 +354,7 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed, subnet, *,
                DRONE_P3_SITL_CPUS=SITL_CPUS, DRONE_P3_SITL_MEM=SITL_MEM,
                DRONE_P3_PACKAGE_A="none.json", DRONE_P3_PACKAGE_B="none.json", DRONE_P3_EPOCH_A="0",
                DRONE_P3_EPOCH_B="0", DRONE_P3_FLIGHT_A=str(case / "idle-flight"),
-               DRONE_P3_FLIGHT_B=str(case / "idle-flight"))
+               DRONE_P3_FLIGHT_B=str(case / "idle-flight"), DRONE_P3_SCHEDULING=f"/workspace/{scheduling}")
     prefix = ["docker", "compose", "-p", "drone-agent-cloud", "-f", str(source / "sim/compose.p3.yaml")]
     transcript, injections, snapshots = [], [], []
     flights: dict[str, list[dict]] = {"a": [], "b": []}
@@ -563,7 +572,7 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed, subnet, *,
             (case / "world" / f"{info['robot']}-flights.json").write_text(json.dumps(flights[key], indent=2))
         (case / "input/layout.json").write_text(json.dumps({
             "catalog": "configs/sites/p3_s1_v1.yaml", "members": "configs/sites/p3_members_s1.yaml",
-            "scheduling": "configs/scheduling/p3_s1_v1.yaml", "workflows": "configs/workflows/p3_s1_v1.yaml",
+            "scheduling": scheduling, "workflows": "configs/workflows/p3_s1_v1.yaml",
             "platform_b_sha256": hashlib.sha256(platform).hexdigest()}, indent=2))
         HELPERS["run"](["docker", "run", "--rm", "--network", "none", "-v", f"{case}:/run", images["ground"], "python3",
                         "-m", "drone_agent.eval.p3_prepare", "--export", "/run/service/ledger.sqlite3",

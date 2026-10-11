@@ -1,0 +1,23 @@
+# WP-P6-06 long-route ladder (D084), run by eval/p3_world.py with `--suite` and `--footprint`. The layout is the one
+# fixed in docs/fine-reservations-design.md §6: pairs of docks 60 m apart, six assets 40 to 120 m out that both robots
+# of a pair may take, M2-shaped routes, pairs 400 m apart. The stream draws a pair and an asset uniformly for each
+# task, with no rejected task and no maintenance, so the only thing it varies is airspace contention. The same rung
+# runs under the box (v1) and the corridor (v2) footprint; the comparison thresholds are pre-registered before the
+# comparison runs. S0 results never count as physical flights.
+#
+# WP-P6-06 长航线阶梯（D084），由 eval/p3_world.py 以 `--suite` 与 `--footprint` 运行。布局即 docs/fine-reservations-design.md
+# §6 固定的布局：机场相距 60 m 的站点对，40–120 m 外六个同一对两台机器人都可执行的资产，M2 形状的航线，站点对相距 400 m。
+# 任务流对每个任务均匀抽取站点对与资产，没有被拒任务与维护，因此只改变空域竞争。同一档分别在外包矩形（v1）与走廊（v2）
+# 下运行；比较阈值在比较运行之前预登记。S0 结果从不计为物理飞行。
+format: p6-airspace.suite/v1
+seeds: [7, 19, 41]
+s0: []
+ladder:
+  - id: p6_long_l10
+    layout: long
+    nodes: 10
+    budget: 10
+    tasks: 30
+    seeds: [7, 19, 41]
+    description: "10 logical nodes (5 long-route pairs), 30 tasks, at most 10 in flight. / 10 个逻辑节点（5 个长航线站点对），30 个任务，在途至多 10 个。"
+    expected: {}
