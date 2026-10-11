@@ -334,7 +334,7 @@ def main() -> None:
               "inputs": {input_name(p): digest(p.read_bytes()) for p in (*inputs, *live_files)}}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
-    print(json.dumps({"status": report["status"], "decision": choice.get("decision"),
+    print(json.dumps({"status": report["status"], "verdict": choice.get("decision"),
                       **{k: v["status"] for k, v in criteria.items()}}))
     raise SystemExit(0 if passed else 1)
 
