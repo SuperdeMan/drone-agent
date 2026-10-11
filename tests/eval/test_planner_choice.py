@@ -66,3 +66,18 @@ def test_any_escape_stops_the_comparison():
     assert decide(complete, security(escapes=1))["decision"] == "escape"
     complete[CURRENT][0]["escapes"] = 1
     assert decide(complete, security())["decision"] == "escape"
+
+
+def test_the_same_rule_compares_planner_v2_with_planner_v3_on_the_next_held_out_corpus():
+    # D081: same thresholds, other prompts and corpus; receipts of one comparison never count for the other.
+    # D081：阈值相同，提示与语料不同；一次比较的回执绝不计入另一次。
+    names = {"current": "planner-v2", "candidate": "planner-v3", "held_out": "plan_ops_v3"}
+
+    def receipt(prompt, label, wrong):
+        return held_out(prompt, label, wrong, corpus="plan_ops_v3")
+
+    runs = {"planner-v2": [receipt("planner-v2", "r1", 3), receipt("planner-v2", "r2", 2)],
+            "planner-v3": [receipt("planner-v3", "r1", 1), receipt("planner-v3", "r2", 1)]}
+    assert decide(runs, security(planner_prompt="planner-v3"), **names)["decision"] == "adopt"
+    assert decide(runs, security(planner_prompt="planner-v3"))["decision"] == "no_decision", "D080's defaults"
+    assert decide(runs, security(), **names)["decision"] == "no_decision", "security run with another prompt"

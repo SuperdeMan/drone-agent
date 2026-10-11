@@ -35,6 +35,7 @@ CORPORA = {
     "workflow_v1": "eval/adversarial/workflow_v1.yaml",
     "plan_ops_v1": "eval/adversarial/plan_ops_v1.yaml",
     "plan_ops_v2": "eval/adversarial/plan_ops_v2.yaml",
+    "plan_ops_v3": "eval/adversarial/plan_ops_v3.yaml",
     "vision_ops_v1": "eval/adversarial/vision_ops_v1/manifest.yaml",
 }
 
@@ -68,7 +69,8 @@ def recordings_dir(root: Path, corpus: str, profile: str | None = None, variant:
     return base / variant if variant else base
 
 
-PLANNING = ("nl_v1", "plan_ops_v1", "plan_ops_v2")
+PLANNING = ("nl_v1", "plan_ops_v1", "plan_ops_v2", "plan_ops_v3")
+OPERATIONS = ("plan_ops_v1", "plan_ops_v2", "plan_ops_v3")
 
 
 def replay_prompt(receipt: dict) -> str | None:
@@ -124,7 +126,7 @@ async def execute(root: Path, corpus: str, mode: str, recordings: Path, profile:
 
         report = await run_corpus(root, mode=mode, recordings=recordings, patient=patient)
         return report, report["escapes"]
-    if corpus in ("plan_ops_v1", "plan_ops_v2"):
+    if corpus in OPERATIONS:
         from drone_agent.eval.plan_ops import run_corpus
 
         report = await run_corpus(root, mode=mode, recordings=recordings, resume=resume, patient=patient,
@@ -149,8 +151,8 @@ async def run(root: Path, corpus: str, mode: str, output: Path, *, profile: str 
     """
     if corpus not in CORPORA:
         raise ValueError(f"unknown corpus {corpus}")
-    if resume is not None and (mode != "live" or corpus not in ("plan_ops_v1", "plan_ops_v2", "vision_ops_v1")):
-        raise ValueError("resume completes a live run of plan_ops_v1, plan_ops_v2 or vision_ops_v1")
+    if resume is not None and (mode != "live" or corpus not in (*OPERATIONS, "vision_ops_v1")):
+        raise ValueError("resume completes a live run of an operations corpus or vision_ops_v1")
     if planner_prompt is not None and corpus not in PLANNING:
         raise ValueError("--planner-prompt applies to the planning corpora only")
     if corpus in PLANNING:
@@ -199,6 +201,7 @@ KEYS = {"nl_v1": ("outcome", "blocked_at", "codes", "targets", "volume"),
         "workflow_v1": ("status", "escapes", "assets"),
         "plan_ops_v1": ("outcome", "planned", "codes", "intent", "escapes"),
         "plan_ops_v2": ("outcome", "planned", "codes", "intent", "escapes"),
+        "plan_ops_v3": ("outcome", "planned", "codes", "intent", "escapes"),
         "vision_ops_v1": ("model", "pipeline", "score", "defect_type", "quality_v1", "quality_v2")}
 
 

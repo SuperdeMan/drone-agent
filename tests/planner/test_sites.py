@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from drone_agent.admission.models import MissionRequest, RequestChannel
@@ -60,14 +61,14 @@ def request(text: str) -> MissionRequest:
                           idempotency_key="sites-1", received_at=utcnow())
 
 
-def planner(provider, opened: list[Path] | None = None) -> SitePlanner:
+def planner(provider, opened: list[Path] | None = None, **options) -> SitePlanner:
     def session(scene: Path):
         if opened is not None:
             opened.append(scene)
         return InProcessSession(ToolCatalog(ROOT, scene)).initialize()
 
     return SitePlanner(provider, ModelIdentity("scripted", "scripted-fixture"), Registry(ROOT, scene=BASE),
-                       session(BASE), scene=BASE, session=session)
+                       session(BASE), scene=BASE, session=session, **options)
 
 
 def schema_assets(tools: list[dict]) -> list[str]:
@@ -94,7 +95,7 @@ async def test_the_schema_and_site_data_follow_the_site():
     assert same.status == "failed" and opened == [BASE, SITE_S1], "the default site reuses its session"
 
 
-def desk_service(tmp_path: Path, provider) -> MissionService:
+def desk_service(tmp_path: Path, provider, **options) -> MissionService:
     ledger = BusinessLedger(tmp_path / "ledger.sqlite3")
     operations = build_operations(ROOT, ledger, ROOT / "configs/sites/p5_desk_v1.yaml",
                                   ROOT / "configs/sites/p5_members_desk_s0.yaml", backups=tmp_path / "backups")
@@ -103,7 +104,7 @@ def desk_service(tmp_path: Path, provider) -> MissionService:
     return MissionService(root=ROOT, scene=BASE, ledger=ledger, hub=FleetHub(ledger, tmp_path / "media"),
                           signing_key=SigningKey.generate(),
                           approval_policy=ApprovalPolicy.from_yaml(ROOT / "configs/approval_policy.yaml"),
-                          planner=planner(provider), operations=operations,
+                          planner=planner(provider, **options), operations=operations,
                           provenance_context=source_context(ROOT, BASE, registry.sha256, backend="px4_sitl"),
                           backends=("px4_sitl", "logical_sim", "vendor_protocol_sim"))
 
@@ -164,3 +165,39 @@ async def test_a_planning_request_does_not_depend_on_when_it_is_made():
                                clock=lambda moment=moment: moment)
         await engine.plan(request("Inspect the road segment north of the pad."), mission_id="m-time")
     assert len(seen) == 2 and seen[0] == seen[1]
+
+
+def scope_of(content: str) -> dict:
+    return json.loads(content.split("OPERATOR_SCOPE:\n", 1)[1].split("\n", 1)[0])
+
+
+async def test_only_planner_v3_shows_the_binding_and_older_requests_stay_byte_identical():
+    # D081: the binding enters OPERATOR_SCOPE from planner-v3 on; earlier prompts keep their exact requests, so their
+    # recordings still replay. / D081：planner-v3 起绑定进入 OPERATOR_SCOPE；更早提示的请求保持不变，录制仍可回放。
+    from drone_agent.planner.engine import PlannerEngine
+
+    registry, tools = Registry(ROOT, scene=SITE_S1), InProcessSession(ToolCatalog(ROOT, SITE_S1)).initialize()
+    binding = {"project_id": "campus_s1", "project_name": "Campus", "site_id": "site_s1", "robot_id": "uav_01"}
+    identity, asked = ModelIdentity("scripted", "scripted-fixture"), request("Inspect the road segment north of the pad.")
+
+    def engine(version, **options):
+        return PlannerEngine(Capturing({}), identity, registry, tools, prompt_version=version, **options)
+
+    context = engine("planner-v2").retrieve(asked)
+    for version in ("planner-v1", "planner-v2"):
+        assert engine(version).messages(asked, context) == engine(version, binding=binding).messages(asked, context)
+    shown = scope_of(engine("planner-v3", binding=binding).messages(asked, context)[-1]["content"])
+    assert {k: shown[k] for k in binding} == binding and shown["approved_volume_id"] == "campus_training"
+    unbound = scope_of(engine("planner-v3").messages(asked, context)[-1]["content"])
+    assert "project_id" not in unbound, "no binding outside catalog mode"
+
+
+async def test_the_service_names_the_robots_binding_from_the_catalog(tmp_path):
+    text = "Inspect the red marker of site B."
+    provider = Capturing({text: answer("asset_red_b")})
+    service = desk_service(tmp_path, provider, prompt_version="planner-v3")
+    view = await submit(service, "fleet_s0", "uav_fb", text, "k-bound")
+    assert view["mission"]["status"] == "awaiting_approval", view["mission"]
+    shown = scope_of(provider.seen[0][0][-1]["content"])
+    assert (shown["project_id"], shown["site_id"], shown["robot_id"]) == ("fleet_s0", "site_fb", "uav_fb")
+    assert shown["project_name"] == service.ops.catalog.projects["fleet_s0"].name

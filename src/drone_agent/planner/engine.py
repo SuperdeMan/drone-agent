@@ -48,6 +48,11 @@ from drone_agent.runtime.issues import Issue, issue
 
 PROMPTS = Path(__file__).with_name("prompts")
 DEFAULT_PROMPT = "planner-v2"
+# Request formats by prompt version (D081): from planner-v3 on, OPERATOR_SCOPE also names the binding (project, site,
+# robot); earlier versions keep their exact requests, so their recordings still replay.
+# 按提示版本区分请求格式（D081）：planner-v3 起 OPERATOR_SCOPE 另写明绑定（项目、站点、机器人）；更早版本的请求保持不变，
+# 其录制仍可回放。
+BINDING_PROMPTS = frozenset({"planner-v3"})
 
 
 def canonical(value) -> str:
@@ -130,9 +135,12 @@ class PlannerEngine:
 
     def __init__(self, provider, identity: ModelIdentity, registry: Registry, tools, *,
                  prompt_version: str = DEFAULT_PROMPT, temperature: float = 0.1, max_tokens: int = 4096,
-                 max_attempts: int = 3, clock=utcnow):
+                 max_attempts: int = 3, clock=utcnow, binding: dict[str, str] | None = None):
         self.provider, self.identity, self.registry, self.tools = provider, identity, registry, tools
         self.prompt_version = prompt_version
+        # The catalog binding the service resolved for this request, never text from the request (D081).
+        # 服务为本请求解析出的目录绑定，从不取自请求文字（D081）。
+        self.binding = dict(binding) if binding else None
         self.prompt, self.prompt_sha256 = load_prompt(prompt_version)
         self.temperature, self.max_tokens, self.max_attempts, self.clock = temperature, max_tokens, max_attempts, clock
         volumes = list(registry.data.get("volumes", {registry.data["approved_volume_id"]: {}}))
@@ -162,6 +170,8 @@ class PlannerEngine:
         """
         scope = {"approved_volume_id": request.approved_volume_id,
                  "asset_ids": list(request.asset_ids) or "any registered asset in this volume"}
+        if self.binding and self.prompt_version in BINDING_PROMPTS:
+            scope.update(self.binding)
         user = (
             "OPERATOR_REQUEST:\n" + request.text.strip() + "\n\n"
             "OPERATOR_SCOPE:\n" + canonical(scope) + "\n\n"

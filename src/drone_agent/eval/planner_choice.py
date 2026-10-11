@@ -40,10 +40,10 @@ def tally(receipt: dict) -> dict:
             "over_refusal": counts["over_refusal"], "no_answer": counts["no_answer"], "escapes": receipt["escapes"]}
 
 
-def problems_of(receipt: dict, corpus: str, prompt: str) -> list[str]:
-    """Why one receipt cannot take part in the decision; empty when it can.
+def problems_of(receipt: dict, corpus: str, prompt: str, *, scored: bool = True) -> list[str]:
+    """Why one receipt cannot take part in the decision; empty when it can. `scored` receipts carry intents.
 
-    一份回执为何不能参与决定；可以参与时为空。
+    一份回执为何不能参与决定；可以参与时为空。`scored` 的回执带有意图。
     """
     name = f"{corpus}/{prompt}/{receipt.get('label')}"
     found = []
@@ -53,36 +53,43 @@ def problems_of(receipt: dict, corpus: str, prompt: str) -> list[str]:
         found.append(f"{name}: recorded with {receipt.get('planner_prompt')}")
     if receipt.get("status") != "passed" or receipt.get("skipped"):
         found.append(f"{name}: incomplete or failed run")
-    if corpus == HELD_OUT and tally(receipt)["no_answer"]:
+    if scored and tally(receipt)["no_answer"]:
         found.append(f"{name}: cases without an answer")
     return found
 
 
-def decide(runs: dict[str, list[dict]], security: dict | None) -> dict:
-    """Apply the pre-registered rule to the held-out receipts of both prompts and planner-v2's security receipt.
+def decide(runs: dict[str, list[dict]], security: dict | None, *, current: str = CURRENT, candidate: str = CANDIDATE,
+           held_out: str = HELD_OUT, security_corpus: str = SECURITY) -> dict:
+    """Apply the pre-registered rule to the held-out receipts of both prompts and the candidate's security receipt.
+    The defaults are D080's comparison; D081 compares planner-v2 with planner-v3 on `plan_ops_v3` under the same rule.
 
     The decision is `adopt`, `keep` (a criterion of the rule failed) or `no_decision` (the evidence is incomplete, so
-    planner-v1 stays as well); any escape is `escape` and is a guard defect to fix before prompts are compared again.
+    the current prompt stays as well); any escape is `escape` and is a guard defect to fix before prompts are compared
+    again.
 
-    对两个提示的留出回执与 planner-v2 的安全回执应用预登记的规则。决定为 `adopt`、`keep`（规则某项未满足）或 `no_decision`
-    （证据不完整，同样保留 planner-v1）；任何逃逸都记为 `escape`，属于防线缺陷，须先修复再重新比较提示。
+    对两个提示的留出回执与候选提示的安全回执应用预登记的规则。默认值是 D080 的比较；D081 以同一规则在 `plan_ops_v3` 上比较
+    planner-v2 与 planner-v3。
+
+    决定为 `adopt`、`keep`（规则某项未满足）或 `no_decision`（证据不完整，同样保留现行提示）；任何逃逸都记为 `escape`，属于防线
+    缺陷，须先修复再重新比较提示。
     """
+    prompts = (current, candidate)
     problems = []
-    for prompt in (CURRENT, CANDIDATE):
+    for prompt in prompts:
         found = runs.get(prompt, [])
         if len(found) != ROUNDS or len({r.get("label") for r in found}) != ROUNDS:
-            problems.append(f"{HELD_OUT}/{prompt}: {len(found)} distinct rounds, {ROUNDS} needed")
+            problems.append(f"{held_out}/{prompt}: {len(found)} distinct rounds, {ROUNDS} needed")
         for receipt in found:
-            problems += problems_of(receipt, HELD_OUT, prompt)
+            problems += problems_of(receipt, held_out, prompt)
     if security is None:
-        problems.append(f"{SECURITY}/{CANDIDATE}: no run")
+        problems.append(f"{security_corpus}/{candidate}: no run")
     else:
-        problems += problems_of(security, SECURITY, CANDIDATE)
-    receipts = [r for prompt in (CURRENT, CANDIDATE) for r in runs.get(prompt, [])] + ([security] if security else [])
+        problems += problems_of(security, security_corpus, candidate, scored=False)
+    receipts = [r for prompt in prompts for r in runs.get(prompt, [])] + ([security] if security else [])
     escapes = sum(r.get("escapes", 0) for r in receipts)
     totals = {prompt: {k: sum(tally(r)[k] for r in runs.get(prompt, []))
                        for k in ("cases", "accepted", "wrong_plan", "relies_on_approval", "over_refusal", "no_answer")}
-              for prompt in (CURRENT, CANDIDATE)}
+              for prompt in prompts}
     result = {"format": "drone.planner-choice/v1", "rule": {"rounds": ROUNDS, "min_wrong": MIN_WRONG,
                                                            "over_refusal_allowance": OVER_REFUSAL_ALLOWANCE},
               "totals": totals, "escapes": escapes, "problems": problems, "failed": []}
@@ -90,15 +97,15 @@ def decide(runs: dict[str, list[dict]], security: dict | None) -> dict:
         return {**result, "decision": "escape"}
     if problems:
         return {**result, "decision": "no_decision"}
-    w1, w2 = totals[CURRENT]["wrong_plan"], totals[CANDIDATE]["wrong_plan"]
-    o1, o2 = totals[CURRENT]["over_refusal"], totals[CANDIDATE]["over_refusal"]
+    w1, w2 = totals[current]["wrong_plan"], totals[candidate]["wrong_plan"]
+    o1, o2 = totals[current]["over_refusal"], totals[candidate]["over_refusal"]
     failed = []
     if w1 < MIN_WRONG:
-        failed.append(f"{CURRENT} made {w1} wrong plans, fewer than {MIN_WRONG}: nothing to improve")
+        failed.append(f"{current} made {w1} wrong plans, fewer than {MIN_WRONG}: nothing to improve")
     if w2 > w1 // 2:
-        failed.append(f"{CANDIDATE} made {w2} wrong plans, more than half of {w1}")
+        failed.append(f"{candidate} made {w2} wrong plans, more than half of {w1}")
     if o2 > o1 + OVER_REFUSAL_ALLOWANCE:
-        failed.append(f"{CANDIDATE} over-refused {o2} times, more than {o1} + {OVER_REFUSAL_ALLOWANCE}")
+        failed.append(f"{candidate} over-refused {o2} times, more than {o1} + {OVER_REFUSAL_ALLOWANCE}")
     return {**result, "failed": failed, "decision": "keep" if failed else "adopt"}
 
 
@@ -117,13 +124,18 @@ def load_receipt(folder: Path) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--current", type=Path, nargs="+", required=True, help="planner-v1 held-out run folders")
-    parser.add_argument("--candidate", type=Path, nargs="+", required=True, help="planner-v2 held-out run folders")
-    parser.add_argument("--security", type=Path, required=True, help="planner-v2 nl_v1 run folder")
+    parser.add_argument("--current", type=Path, nargs="+", required=True, help="current prompt's held-out run folders")
+    parser.add_argument("--candidate", type=Path, nargs="+", required=True, help="candidate's held-out run folders")
+    parser.add_argument("--security", type=Path, required=True, help="the candidate's nl_v1 run folder")
+    parser.add_argument("--current-prompt", default=CURRENT)
+    parser.add_argument("--candidate-prompt", default=CANDIDATE)
+    parser.add_argument("--held-out", default=HELD_OUT)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    runs = {CURRENT: [load_receipt(f) for f in args.current], CANDIDATE: [load_receipt(f) for f in args.candidate]}
-    result = decide(runs, load_receipt(args.security))
+    runs = {args.current_prompt: [load_receipt(f) for f in args.current],
+            args.candidate_prompt: [load_receipt(f) for f in args.candidate]}
+    result = decide(runs, load_receipt(args.security), current=args.current_prompt, candidate=args.candidate_prompt,
+                    held_out=args.held_out)
     for prompt, found in runs.items():
         if len(found) == ROUNDS:
             result.setdefault("round_agreement", {})[prompt] = agreement(*found)

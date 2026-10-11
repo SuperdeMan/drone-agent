@@ -221,15 +221,19 @@ class MissionService:
         return self.registry
 
     def _planning_site(self, robot_id: str) -> dict:
-        """Catalog mode: plan at the robot's site, with its registry and map file (D079); the M2 deployment plans at
-        the service's scene.
+        """Catalog mode: plan at the robot's site, with its registry and map file (D079), and name the binding from the
+        catalog (D081); the M2 deployment plans at the service's scene.
 
-        目录模式：按机器人站点（其登记表与地图文件）规划（D079）；M2 部署按服务的场景规划。
+        目录模式：按机器人站点（其登记表与地图文件）规划（D079），并写明取自目录的绑定（D081）；M2 部署按服务的场景规划。
         """
         if self.ops is None or robot_id not in self.ops.catalog.robots:
             return {}
-        site = self.ops.catalog.robots[robot_id].site_id
-        return {"site": (self.ops.registries[site], self.root / self.ops.catalog.sites[site].scene)}
+        catalog = self.ops.catalog
+        site = catalog.robots[robot_id].site_id
+        project = catalog.sites[site].project_id
+        return {"site": (self.ops.registries[site], self.root / catalog.sites[site].scene),
+                "binding": {"project_id": project, "project_name": catalog.projects[project].name, "site_id": site,
+                            "robot_id": robot_id}}
 
     def _coordinator(self, robot_id: str) -> PassthroughCoordinator:
         return self.coordinator if robot_id == self.robot_id and self.ops is None else \

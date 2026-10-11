@@ -59,14 +59,15 @@ class SitePlanner:
         return self.sessions[key]
 
     async def plan(self, request: MissionRequest, *, mission_id: str, mission_version: int = 1,
-                   site: tuple[Registry, Path] | None = None) -> PlannerOutcome:
-        """Plan once at `site` (the robot's registry and its scene file), or at the default site.
+                   site: tuple[Registry, Path] | None = None, binding: dict[str, str] | None = None) -> PlannerOutcome:
+        """Plan once at `site` (the robot's registry and its scene file), or at the default site; `binding` names the
+        project, site and robot for prompt versions that show it (D081).
 
-        在 `site`（机器人的登记表及其场景文件）或默认站点规划一次。
+        在 `site`（机器人的登记表及其场景文件）或默认站点规划一次；`binding` 为会展示它的提示版本写明项目、站点与机器人（D081）。
         """
         registry, tools = self.default if site is None else (site[0], self.tools_for(site[1]))
         provider = RecordingProvider(self.provider) if self.recordings is not None else self.provider
-        engine = PlannerEngine(provider, self.identity, registry, tools, **self.engine_options)
+        engine = PlannerEngine(provider, self.identity, registry, tools, binding=binding, **self.engine_options)
         outcome = await engine.plan(request, mission_id=mission_id, mission_version=mission_version)
         if self.recordings is not None:
             recording = provider.recording(

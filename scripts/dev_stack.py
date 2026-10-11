@@ -609,7 +609,8 @@ def main() -> None:
     p6_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
     p6_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
     adv_parser = commands.add_parser("p6-adv", help="record one WP-P6-03 adversarial corpus in the cloud (D079)")
-    adv_parser.add_argument("--corpus", choices=["nl_v1", "workflow_v1", "plan_ops_v1", "plan_ops_v2", "vision_ops_v1"],
+    adv_parser.add_argument("--corpus", choices=["nl_v1", "workflow_v1", "plan_ops_v1", "plan_ops_v2", "plan_ops_v3",
+                                                 "vision_ops_v1"],
                             required=True)
     adv_parser.add_argument("--mode", choices=["live", "scripted"], required=True,
                             help="live asks the model once per case and records it; scripted checks the container path")
@@ -618,7 +619,7 @@ def main() -> None:
                             help="vision_ops_v1 only: the model profile to record")
     adv_parser.add_argument("--resume-of", help="<deployment id>/p6adv-<run id>: complete that live run; its recorded "
                                                 "cases are replayed, only unanswered cases are asked")
-    adv_parser.add_argument("--planner-prompt", choices=["planner-v1", "planner-v2"],
+    adv_parser.add_argument("--planner-prompt", choices=["planner-v1", "planner-v2", "planner-v3"],
                             help="planning corpora: the planner prompt version (D080)")
     adv_parser.add_argument("--label", help="a short run label such as r1 or r2 (D080)")
     data_parser = commands.add_parser("p4-data", help="upload and install the frozen S2 dataset in the cloud (D065)")
