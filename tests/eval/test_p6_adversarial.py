@@ -23,12 +23,7 @@ RUNS = [("nl_v1", None), ("workflow_v1", None), ("plan_ops_v1", None),
 
 
 def committed(corpus: str, profile: str | None) -> Path:
-    prompt = None
-    if profile:
-        from drone_agent.fleet.business_models import load_profile
-
-        prompt = load_profile(ROOT, profile)[0].prompt_version
-    return p6_adversarial.recordings_dir(ROOT, corpus, prompt)
+    return p6_adversarial.recordings_dir(ROOT, corpus, profile)
 
 
 async def test_every_double_meets_its_expectation_and_nothing_escapes(tmp_path):

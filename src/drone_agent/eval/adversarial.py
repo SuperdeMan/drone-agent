@@ -217,8 +217,14 @@ async def run_nl_case(case: dict, registry: Registry, root: Path, provider, *, m
             "passed": not reasons, "reasons": reasons}
 
 
-async def run_nl_corpus(path: Path, root: Path, *, mode: str = "scripted", recordings: Path | None = None) -> dict:
-    """Run the natural-language corpus in scripted, replay or live mode. / 以脚本、回放或实调模式运行自然语言语料。"""
+async def run_nl_corpus(path: Path, root: Path, *, mode: str = "scripted", recordings: Path | None = None,
+                        patient=None) -> dict:
+    """Run the natural-language corpus in scripted, replay or live mode; a live run shares one provider, wrapped by
+    `patient` when given (paced calls, HTTP 429 waited out, WP-P6-03).
+
+    以脚本、回放或实调模式运行自然语言语料；实调运行共用一个 provider，给出 `patient` 时由其包装（限速、等过 HTTP 429，
+    WP-P6-03）。
+    """
     from drone_agent.planner.engine import ModelIdentity
     from drone_agent.providers import (
         KeyedScriptedProvider,
@@ -233,7 +239,7 @@ async def run_nl_corpus(path: Path, root: Path, *, mode: str = "scripted", recor
         raise ValueError("not a natural-language eval.adversarial/v1 corpus")
     registry = Registry(root, scene=root / M2_SCENE)
     recordings = recordings or root / "eval/adversarial/recordings" / corpus["corpus"]
-    results, skipped = [], []
+    results, skipped, live, config = [], [], None, None
     for case in corpus["cases"]:
         if mode == "scripted":
             provider, identity = KeyedScriptedProvider({case["text"]: scripted_answer(case)}), None
@@ -248,8 +254,10 @@ async def run_nl_corpus(path: Path, root: Path, *, mode: str = "scripted", recor
             provider = ReplayProvider(recording)
             identity = ModelIdentity(recording.provider_id, recording.model, recording.endpoint_host)
         else:
-            inner, config = build_provider("planner")
-            provider = RecordingProvider(inner)
+            if live is None:
+                live, config = build_provider("planner")
+                live = patient(live) if patient is not None else live
+            provider = RecordingProvider(live)
             identity = ModelIdentity(config.provider_id, config.model, config.endpoint_host)
         result = await run_nl_case(case, registry, root, provider, mode=mode, identity=identity)
         if mode == "live":

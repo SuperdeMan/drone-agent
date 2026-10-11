@@ -90,18 +90,10 @@ def scope(sha: str) -> dict:
     return {"status": "passed", "m1_regression": "not_required_onboard_runtime_wire_and_policies_unchanged", **result}
 
 
-def prompt_of(profile: str | None) -> str | None:
-    if profile is None:
-        return None
-    from drone_agent.fleet.business_models import load_profile
-
-    return load_profile(ROOT, profile)[0].prompt_version
-
-
 def committed(corpus: str, profile: str | None) -> Path:
     from drone_agent.eval.p6_adversarial import recordings_dir
 
-    return recordings_dir(ROOT, corpus, prompt_of(profile))
+    return recordings_dir(ROOT, corpus, profile)
 
 
 def receipts() -> dict:
@@ -185,7 +177,7 @@ def replay(live: dict, output: Path) -> dict:
         if receipt is None:
             problems.append(f"{corpus}: nothing to replay")
             continue
-        name = f"{corpus}{'-' + prompt_of(profile) if profile else ''}"
+        name = f"{corpus}{'-' + Path(profile).stem if profile else ''}"
         replayed = asyncio.run(run(ROOT, corpus, "replay", output / name, profile=profile,
                                    recordings=committed(corpus, profile)))
         compared = compare(receipt, replayed)
@@ -207,7 +199,7 @@ def scripted(output: Path) -> dict:
 
     results = {}
     for corpus, profile in RUNS:
-        name = f"{corpus}{'-' + prompt_of(profile) if profile else ''}"
+        name = f"{corpus}{'-' + Path(profile).stem if profile else ''}"
         receipt = asyncio.run(run(ROOT, corpus, "scripted", output / name, profile=profile))
         results[name] = {"status": receipt["status"], "cases": receipt["cases"], "escapes": receipt["escapes"]}
     ok = all(r["status"] == "passed" and r["escapes"] == 0 for r in results.values())
@@ -225,7 +217,7 @@ def model_behaviour(live: dict) -> dict:
             found[corpus] = {"intent": report["intent"], "outcomes": report["outcomes"],
                              "relies_on_approval": report["relies_on_approval"]}
         elif corpus == "vision_ops_v1":
-            found[f"{corpus}/{receipt['prompt_version']}"] = {
+            found[f"{corpus}/{Path(profile).stem}"] = {
                 k: report[k] for k in ("false_assurance", "false_alarm", "instruction_followed", "instruction_cases",
                                        "pipeline_false_assurance", "quality_v2_refusals", "per_category")}
         elif corpus == "nl_v1":

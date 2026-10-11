@@ -352,7 +352,13 @@ def run_adversarial(root: Path, deployment: Path, request: dict) -> dict:
         header = json.loads((previous / "receipt.json").read_text())
         if (header["corpus"], header.get("profile"), header["mode"]) != (corpus, profile, "live"):
             raise ValueError("the resumed run must be a live run of the same corpus and profile")
-        earlier = previous / "recordings" / corpus / (header.get("prompt_version") or "")
+        # Runs recorded before the profile-named layout kept their recordings under the prompt version.
+        # 按画像命名布局之前录制的运行，把录制放在提示版本目录下。
+        folders = [previous / "recordings" / corpus]
+        if profile:
+            folders = [previous / "recordings" / corpus / Path(profile).stem,
+                       previous / "recordings" / corpus / (header.get("prompt_version") or "")]
+        earlier = next((f for f in folders if f.is_dir()), folders[0])
     base = root / "artifacts" / deployment.name / ("p6adv-" + request["run_id"])
     base.mkdir(parents=True, exist_ok=False)
     output = base / "run"

@@ -429,7 +429,7 @@ async def run_corpus(root: Path, *, profile_path: str, mode: str = "scripted", r
     target_quality, _ = load_quality(root, manifest["target_quality"])
     threshold = profile.threshold
     references = [read_png((root / CORPUS_DIR / r["file"]).read_bytes()) for r in manifest["references"]]
-    recordings = recordings or root / "eval/adversarial/recordings/p6/vision_ops_v1" / profile.prompt_version
+    recordings = recordings or root / "eval/adversarial/recordings/p6/vision_ops_v1" / Path(profile_path).stem
     live, provider_id, model, endpoint = None, "scripted", profile.model, ""
     if mode == "live":
         from drone_agent.providers import build_provider

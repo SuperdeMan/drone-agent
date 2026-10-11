@@ -47,9 +47,18 @@ def corpus_sha256(root: Path, corpus: str) -> str:
     return sha256((root / CORPORA[corpus]).read_bytes())
 
 
-def recordings_dir(root: Path, corpus: str, prompt: str | None = None) -> Path:
+def profile_key(profile: str | None) -> str | None:
+    """The folder of one model profile's recordings: its file name, since profiles may share a prompt version
+    (change-v6 reuses the change-v3 prompt with another model).
+
+    某个模型画像录制所在的目录：取其文件名，因为画像可能共用提示版本（change-v6 以另一个模型复用 change-v3 提示）。
+    """
+    return Path(profile).stem if profile else None
+
+
+def recordings_dir(root: Path, corpus: str, profile: str | None = None) -> Path:
     base = root / RECORDINGS / corpus
-    return base / prompt if prompt else base
+    return base / profile_key(profile) if profile else base
 
 
 def nl_escapes(root: Path, report: dict) -> int:
@@ -85,14 +94,14 @@ async def execute(root: Path, corpus: str, mode: str, recordings: Path, profile:
     if corpus == "nl_v1":
         from drone_agent.eval.adversarial import run_nl_corpus
 
-        report = await run_nl_corpus(root / CORPORA[corpus], root, mode=mode, recordings=recordings)
+        report = await run_nl_corpus(root / CORPORA[corpus], root, mode=mode, recordings=recordings, patient=patient)
         if mode == "scripted":
             return report, report["authorized_packages"]
         return report, nl_escapes(root, report)
     if corpus == "workflow_v1":
         from drone_agent.eval.workflow_adversarial import run_corpus
 
-        report = await run_corpus(root, mode=mode, recordings=recordings)
+        report = await run_corpus(root, mode=mode, recordings=recordings, patient=patient)
         return report, report["escapes"]
     if corpus == "plan_ops_v1":
         from drone_agent.eval.plan_ops import run_corpus
@@ -128,8 +137,8 @@ async def run(root: Path, corpus: str, mode: str, output: Path, *, profile: str 
 
         prompt = load_profile(root, profile)[0].prompt_version
     if recordings is None:
-        recordings = output / "recordings" / corpus / (prompt or "") if mode == "live" else \
-            recordings_dir(root, corpus, prompt)
+        recordings = output / "recordings" / corpus / (profile_key(profile) or "") if mode == "live" else \
+            recordings_dir(root, corpus, profile)
     if mode == "live":
         recordings.mkdir(parents=True, exist_ok=True)
     started, started_at = time.monotonic(), time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())

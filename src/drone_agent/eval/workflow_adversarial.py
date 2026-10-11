@@ -59,7 +59,7 @@ def escapes(outcome, project: dict) -> list[str]:
     return found
 
 
-async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | None = None) -> dict:
+async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | None = None, patient=None) -> dict:
     corpus = yaml.safe_load((root / CORPUS).read_text(encoding="utf-8"))
     if corpus.get("format") != "drone.workflow-adversarial/v1":
         raise ValueError("not a workflow adversarial corpus")
@@ -74,6 +74,8 @@ async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | N
     project, base = corpus["project"], corpus["base"]
     recordings = recordings or root / "eval/adversarial/recordings/p6/workflow_v1"
     live, config = build_provider("planner") if mode == "live" else (None, None)
+    if live is not None and patient is not None:
+        live = patient(live)
     answers = {case["text"]: {"tool_calls": [{"id": "c1", "name": TOOL_NAME, "arguments": {**base, **case["answer"]}}]}
                for case in corpus["cases"]}
     results, skipped = [], []
