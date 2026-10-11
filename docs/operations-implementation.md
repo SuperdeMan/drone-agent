@@ -137,7 +137,7 @@ H2 的飞行程序仍须按届时适用要求核对；本次路线文件不是�
 
 ## 10. P6：证据驱动运营（评审建议）
 
-来源是 [2026-10-10 外部评审](research/external-review-2026-10-10.md)。用户 2026-10-10 选定先做 WP-P6-02（主动补拍与目标区域质量），[实施方案](p6-implementation.md)同日经用户批准（D078），并在 `ecee452` 准出（软件 / SITL 范围，[验收记录](p6-recapture-readiness.md)）。WP-P6-01 等待用户提供素材，WP-P6-03 真实模型对抗录制于 2026-10-11 在 `8d69ae1` 准出（D079，[验收记录](p6-adversarial-readiness.md)）；其接手项「歧义时请操作者澄清」由 D080 完成，planner-v2 同日在 `02694be` 采用（[验收记录](planner-clarification-readiness.md)），planner-v3（规划请求写明绑定身份，D081）同日在 `b4a17a3` 采用（[验收记录](planner-binding-readiness.md)），跨站点指代的确定性检查（D082）同日在 `4398938` 准出（[验收记录](reference-check-readiness.md)）；其余工作包仍是提议。涉及工作流内核、新表或外部系统的，先写设计与决策，持久化变更按红线先获批准。合并保护已按 D077 加 CI（不开分支保护）。
+来源是 [2026-10-10 外部评审](research/external-review-2026-10-10.md)。用户 2026-10-10 选定先做 WP-P6-02（主动补拍与目标区域质量），[实施方案](p6-implementation.md)同日经用户批准（D078），并在 `ecee452` 准出（软件 / SITL 范围，[验收记录](p6-recapture-readiness.md)）。WP-P6-01 等待用户提供素材，WP-P6-03 真实模型对抗录制于 2026-10-11 在 `8d69ae1` 准出（D079，[验收记录](p6-adversarial-readiness.md)）；其接手项「歧义时请操作者澄清」由 D080 完成，planner-v2 同日在 `02694be` 采用（[验收记录](planner-clarification-readiness.md)），planner-v3（规划请求写明绑定身份，D081）同日在 `b4a17a3` 采用（[验收记录](planner-binding-readiness.md)），跨站点指代的确定性检查（D082）同日在 `4398938` 准出（[验收记录](reference-check-readiness.md)）；WP-P6-05 运营解释助手（D083）同日在 `76e7403` 准出（[验收记录](explain-readiness.md)）；其余工作包仍是提议。涉及工作流内核、新表或外部系统的，先写设计与决策，持久化变更按红线先获批准。合并保护已按 D077 加 CI（不开分支保护）。
 
 | 工作包 | 交付 / 落位 | 前置 | 验收判据 |
 |---|---|---|---|
