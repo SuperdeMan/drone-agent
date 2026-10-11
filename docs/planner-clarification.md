@@ -97,6 +97,8 @@ WP-P6-03 用 MiniMax-M3 + planner-v1 实调 `plan_ops_v1`，38 例中有 8 例�
 
 ## 6. 第二轮：绑定身份（D081）
 
+**结果**：2026-10-11 采用 planner-v3，候选 `b4a17a3`，门禁九项全部通过，见[验收记录](planner-binding-readiness.md)。
+
 ### 6.1 问题
 
 D080 留出集上，planner-v2 剩余的错误计划中有 4 次是跨站点同色同名指代：
