@@ -515,7 +515,8 @@ def deploy_command(connection: Connection, args: argparse.Namespace) -> dict:
     )
     upload_packet(connection, packet, manifest, destination, resume=bool(args.resume))
     print("Verifying and starting cloud workspace...", file=sys.stderr, flush=True)
-    receipt = ssh(connection, {"action": "deploy", "run_id": packet.name})
+    # Images, smoke and up to 1800 s of checks. / 镜像、冒烟与至多 1800 s 的检查。
+    receipt = ssh(connection, {"action": "deploy", "run_id": packet.name}, timeout=3600)
     (packet / "deployment.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8", newline="\n")
     return receipt | {"local_receipt": str(packet / "deployment.json")}
 
@@ -772,7 +773,7 @@ def main() -> None:
                     timeout=14400,
                 )
             else:
-                result = ssh(connection, {"action": args.command, "run_id": new_run_id()})
+                result = ssh(connection, {"action": args.command, "run_id": new_run_id()}, timeout=2400)
         print(json.dumps(result, ensure_ascii=False, indent=2))
     except (ValueError, RuntimeError, OSError, subprocess.TimeoutExpired) as error:
         print(json.dumps({"status": "error", "reason": str(error)}, ensure_ascii=False))

@@ -208,8 +208,10 @@ def smoke(root: Path, deployment: Path, run_id: str) -> dict:
 
 def checks(root: Path, deployment: Path, run_id: str) -> dict:
     (root / "artifacts" / deployment.name / run_id).mkdir(parents=True, exist_ok=False)
+    # The whole suite on one CPU, including every strict replay of the committed model recordings, outgrew 600 s
+    # (D080). / 单个 CPU 上的全量测试（含全部已提交模型录制的严格回放）已超过 600 s（D080）。
     compose(root, deployment, ["run", "-T", "--rm", "--no-deps", "--name", f"drone-agent-checks-{run_id}", "checks"],
-            run_id=run_id, timeout=600)
+            run_id=run_id, timeout=1800)
     xml = root / "artifacts" / deployment.name / run_id / "contracts.xml"
     suites = ET.parse(xml).findall(".//testsuite")
     counts = {key: sum(int(item.attrib.get(key, 0)) for item in suites) for key in ("tests", "failures", "errors", "skipped")}
