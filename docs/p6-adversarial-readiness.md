@@ -129,6 +129,8 @@
 
 ## 复现
 
+门禁绑定 `8d69ae1`，按规则须在候选或只增加证据的后代上运行（如记录提交 `017970e`）。那时的门禁在汇总输入摘要时只接受绝对路径；之后的提交修正为相对、绝对路径都可，并在工作目录非空时一开始就拒绝。
+
 ```powershell
 # 本机：脚本替身、严格回放与门禁 / locally: doubles, strict replay and the gate
 uv run python -m drone_agent.eval.p6_adversarial run --corpus plan_ops_v1 --mode scripted --output outputs/p6-adv/plan-ops

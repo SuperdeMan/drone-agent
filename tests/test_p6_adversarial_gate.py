@@ -65,3 +65,12 @@ def test_scope_paths_cover_the_work_package_and_exclude_onboard_code():
     assert "src/drone_agent/planner/" in paths and "sim/compose.adversarial.yaml" in paths
     assert not any(path.startswith(GATE["ONBOARD"]) for path in paths)
     assert "eval/adversarial/recordings/p6/" in GATE["EVIDENCE"]
+
+
+def test_inputs_are_named_by_repository_path_whether_relative_or_absolute(monkeypatch, tmp_path):
+    record = "docs/verification/p6-adversarial-2026-10-11/preregistration.json"
+    monkeypatch.chdir(ROOT)
+    assert GATE["input_name"](Path(record)) == record
+    assert GATE["input_name"](ROOT / record) == record
+    outside = tmp_path / "receipt.json"
+    assert GATE["input_name"](outside) == "receipt.json"

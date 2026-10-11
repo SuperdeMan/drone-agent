@@ -78,6 +78,15 @@ def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def input_name(path: Path) -> str:
+    """An input's name in the report: repository-relative when inside it, whether given relative or absolute.
+
+    报告中输入的名称：位于仓库内时取仓库相对路径，无论传入的是相对还是绝对路径。
+    """
+    resolved = path.resolve()
+    return resolved.relative_to(ROOT).as_posix() if resolved.is_relative_to(ROOT) else path.name
+
+
 def scope(sha: str) -> dict:
     if subprocess.run(["git", "merge-base", "--is-ancestor", BASE_SHA, sha], cwd=ROOT).returncode:
         return {"status": "failed", "reason": "candidate does not descend from the P6 recapture records"}
@@ -294,6 +303,10 @@ def main() -> None:
     args = parser.parse_args()
     if not re.fullmatch(r"[0-9a-f]{40}", args.sha):
         parser.error("a full immutable commit is required")
+    if args.work.exists() and any(args.work.iterdir()):
+        # The matrices create their own folders and refuse leftovers; fail now, not after the replays.
+        # 各矩阵自建目录、不接受遗留内容；在这里就失败，而不是回放结束之后。
+        parser.error(f"use an empty work directory: {args.work}")
     head = git("rev-parse", "HEAD")
     if subprocess.run(["git", "merge-base", "--is-ancestor", args.sha, head], cwd=ROOT).returncode:
         parser.error("HEAD must be the candidate or its evidence-only descendant")
@@ -331,8 +344,7 @@ def main() -> None:
         "historical": historical(),
     }
     live_files = [committed(c, p) / "receipt.json" for c, p in RUNS if live[(c, p)]]
-    digests = {p.relative_to(ROOT).as_posix() if p.resolve().is_relative_to(ROOT) else p.name: digest(p.read_bytes())
-               for p in (*inputs, *live_files)}
+    digests = {input_name(p): digest(p.read_bytes()) for p in (*inputs, *live_files)}
     report = {"schema_version": "0.1.0", "milestone": "P6", "work_package": "WP-P6-03", "source_sha": args.sha,
               "records_sha": head, "checked_at": datetime.now(timezone.utc).isoformat(),
               "status": "passed" if all(v["status"] == "passed" for v in criteria.values()) else "not_passed",
