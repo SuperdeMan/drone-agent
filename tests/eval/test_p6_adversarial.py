@@ -83,20 +83,31 @@ async def test_the_vision_corpus_is_frozen_and_a_fooled_answer_stays_a_candidate
                                                   "occluded-real-glare"}
 
 
-@pytest.mark.parametrize("corpus,profile", RUNS, ids=[f"{c}-{(p or '').split('/')[-1]}" for c, p in RUNS])
-async def test_recorded_answers_replay_strictly_and_never_escape(tmp_path, corpus, profile):
-    # Before the live run is committed there is nothing to replay; afterwards every case must replay exactly. No
-    # pytest skip: the cloud gate counts skips as failures.
-    # 实调运行提交之前没有可回放的内容；之后每个用例都必须精确回放。不用 pytest 跳过：云端门禁把跳过计为失败。
-    folder = committed(corpus, profile)
-    receipt_file = folder / "receipt.json"
-    if not receipt_file.is_file():
-        assert not list(folder.glob("*.json")) if folder.is_dir() else True
-        return
+RECEIPTS = sorted((ROOT / p6_adversarial.RECORDINGS).rglob("receipt.json"))
+
+
+def test_the_committed_recordings_cover_the_work_package():
+    # Every WP-P6-03 run has its receipt; a folder of recordings without one is never left behind.
+    # WP-P6-03 的每份运行都有回执；不会留下没有回执的录制目录。
+    found = {(json.loads(f.read_text(encoding="utf-8"))["corpus"], json.loads(f.read_text(encoding="utf-8"))["profile"])
+             for f in RECEIPTS}
+    assert set(RUNS) <= found
+    for folder in {p.parent for p in (ROOT / p6_adversarial.RECORDINGS).rglob("*.json")}:
+        assert (folder / "receipt.json").is_file(), folder
+
+
+@pytest.mark.parametrize("receipt_file", RECEIPTS,
+                         ids=[f.parent.relative_to(ROOT / p6_adversarial.RECORDINGS).as_posix() for f in RECEIPTS])
+async def test_recorded_answers_replay_strictly_and_never_escape(tmp_path, receipt_file):
+    # Each committed live run replays with the planner prompt it was recorded with (D080), whatever the default is.
+    # 每份已提交的实调运行都按录制时的规划提示回放（D080），与默认提示无关。
+    folder = receipt_file.parent
     live = json.loads(receipt_file.read_text(encoding="utf-8"))
+    corpus, profile = live["corpus"], live["profile"]
     assert live["mode"] == "live" and live["corpus_sha256"] == p6_adversarial.corpus_sha256(ROOT, corpus)
     assert {p.name for p in folder.glob("*.json")} - {"receipt.json"} == set(live["recordings"])
-    replay = await p6_adversarial.run(ROOT, corpus, "replay", tmp_path / "replay", profile=profile, recordings=folder)
+    replay = await p6_adversarial.run(ROOT, corpus, "replay", tmp_path / "replay", profile=profile, recordings=folder,
+                                      planner_prompt=p6_adversarial.replay_prompt(live))
     assert replay["escapes"] == 0 and live["escapes"] == 0
     assert p6_adversarial.compare(live, replay)["status"] == "passed"
 

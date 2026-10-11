@@ -320,7 +320,9 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed) -> dict:
 
 # ── WP-P6-03 adversarial recordings (D079) / WP-P6-03 对抗录制（D079） ──
 
-CORPORA = ("nl_v1", "workflow_v1", "plan_ops_v1", "vision_ops_v1")
+CORPORA = ("nl_v1", "workflow_v1", "plan_ops_v1", "plan_ops_v2", "vision_ops_v1")
+PLANNING = ("nl_v1", "plan_ops_v1", "plan_ops_v2")
+PROMPTS = ("planner-v1", "planner-v2")
 VISION_PROFILES = ("configs/analysis/vlm_change_v3.yaml", "configs/analysis/vlm_change_v6.yaml")
 
 
@@ -338,6 +340,11 @@ def run_adversarial(root: Path, deployment: Path, request: dict) -> dict:
         raise ValueError("p6-adv needs a known corpus and mode live|scripted (replays run where the recordings are)")
     if (corpus == "vision_ops_v1") != bool(profile) or (profile and profile not in VISION_PROFILES):
         raise ValueError("vision_ops_v1 needs --profile vlm_change_v3|v6 and the other corpora take none")
+    prompt, label = request.get("planner_prompt"), request.get("label")
+    if prompt is not None and (prompt not in PROMPTS or corpus not in PLANNING):
+        raise ValueError("--planner-prompt is planner-v1|planner-v2 and applies to the planning corpora only")
+    if label is not None and not re.fullmatch(r"[a-z0-9-]{1,16}", label):
+        raise ValueError("--label is 1-16 lowercase letters, digits or dashes")
     model = root / "secrets" / "m2-model"
     if mode == "live" and not (model / "minimax.key").is_file():
         raise ValueError("store the model key first (dev_stack.py m2-key)")
@@ -346,12 +353,20 @@ def run_adversarial(root: Path, deployment: Path, request: dict) -> dict:
         # Complete an earlier live run of the same corpus and profile: its recordings are replayed, never re-asked.
         # 补全同一语料与画像的先前实调运行：其录制只回放，从不重问。
         found = re.fullmatch(r"(\d{8}T\d{6}Z-[0-9a-f]{8})/(p6adv-\d{8}T\d{6}Z-[0-9a-f]{8})", request["resume_of"])
-        if mode != "live" or corpus not in ("plan_ops_v1", "vision_ops_v1") or not found:
-            raise ValueError("resume_of=<deployment id>/p6adv-<run id> completes a live plan_ops_v1 or vision_ops_v1 run")
+        if mode != "live" or corpus not in ("plan_ops_v1", "plan_ops_v2", "vision_ops_v1") or not found:
+            raise ValueError("resume_of=<deployment id>/p6adv-<run id> completes a live plan_ops_v1, plan_ops_v2 or "
+                             "vision_ops_v1 run")
         previous = root / "artifacts" / found.group(1) / found.group(2) / "run"
         header = json.loads((previous / "receipt.json").read_text())
         if (header["corpus"], header.get("profile"), header["mode"]) != (corpus, profile, "live"):
             raise ValueError("the resumed run must be a live run of the same corpus and profile")
+        if corpus in PLANNING:
+            # A resumed round keeps its prompt and label, so one run never mixes two prompts' answers (D080).
+            # 续跑的一轮沿用其提示与标签，一份运行绝不混入两个提示的回答（D080）。
+            recorded = header.get("planner_prompt") or "planner-v1"
+            prompt = prompt or recorded
+            if (recorded, header.get("label")) != (prompt, label):
+                raise ValueError(f"the resumed run used {recorded} with label {header.get('label')}")
         # Runs recorded before the profile-named layout kept their recordings under the prompt version.
         # 按画像命名布局之前录制的运行，把录制放在提示版本目录下。
         folders = [previous / "recordings" / corpus]
@@ -368,6 +383,10 @@ def run_adversarial(root: Path, deployment: Path, request: dict) -> dict:
                  "--mode", mode, "--output", "/output"]
     if profile:
         arguments += ["--profile", profile]
+    if prompt:
+        arguments += ["--planner-prompt", prompt]
+    if label:
+        arguments += ["--label", label]
     if earlier is not None:
         shutil.copytree(earlier, output / "resume")
         arguments += ["--resume", "/output/resume"]
@@ -398,7 +417,7 @@ def run_adversarial(root: Path, deployment: Path, request: dict) -> dict:
     receipt_path = output / "receipt.json"
     receipt = json.loads(receipt_path.read_text()) if receipt_path.is_file() else None
     summary = {"layer": "adversarial", "corpus": corpus, "mode": mode, "profile": profile, "source_sha": sha,
-               "resume_of": request.get("resume_of"),
+               "resume_of": request.get("resume_of"), "planner_prompt": prompt, "label": label,
                "deployment_id": deployment.name, "artifact_directory": str(base), "run_exit_code": result.returncode,
                "duration_s": round(time.monotonic() - started, 1),
                "images": {"ground": HELPERS["inspect_image"](images["ground"])["Id"]},

@@ -179,7 +179,7 @@ def live_runs(live: dict, sha: str, registered: str | None) -> dict:
 
 
 def replay(live: dict, output: Path) -> dict:
-    from drone_agent.eval.p6_adversarial import compare, run
+    from drone_agent.eval.p6_adversarial import compare, replay_prompt, run
 
     problems, results = [], {}
     for (corpus, profile), receipt in live.items():
@@ -188,7 +188,8 @@ def replay(live: dict, output: Path) -> dict:
             continue
         name = f"{corpus}{'-' + Path(profile).stem if profile else ''}"
         replayed = asyncio.run(run(ROOT, corpus, "replay", output / name, profile=profile,
-                                   recordings=committed(corpus, profile)))
+                                   recordings=committed(corpus, profile),
+                                   planner_prompt=replay_prompt(receipt)))
         compared = compare(receipt, replayed)
         results[name] = {"replay": replayed["status"], "escapes": replayed["escapes"], "compare": compared["status"],
                          "problems": compared["problems"][:10]}

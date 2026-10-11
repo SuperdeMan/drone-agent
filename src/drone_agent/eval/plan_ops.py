@@ -138,7 +138,8 @@ def tools_session(root: Path):
     return session
 
 
-def service(root: Path, corpus: dict, state: Path, provider, identity: ModelIdentity) -> MissionService:
+def service(root: Path, corpus: dict, state: Path, provider, identity: ModelIdentity,
+            prompt_version: str | None = None) -> MissionService:
     """A fresh catalog-mode service like the resident desk's: base scene for the service, site maps for planning.
 
     与常驻任务台相同的全新目录模式服务：服务用基础场景，规划用站点地图。
@@ -149,7 +150,8 @@ def service(root: Path, corpus: dict, state: Path, provider, identity: ModelIden
     base = root / M2_SCENE
     registry = Registry(root, scene=base)
     session = tools_session(root)
-    planner = SitePlanner(provider, identity, registry, session(base), scene=base, session=session)
+    options = {"prompt_version": prompt_version} if prompt_version else {}
+    planner = SitePlanner(provider, identity, registry, session(base), scene=base, session=session, **options)
     return MissionService(root=root, scene=base, ledger=ledger, hub=FleetHub(ledger, state / "media"),
                           signing_key=SigningKey.generate(),
                           approval_policy=ApprovalPolicy.from_yaml(root / "configs/approval_policy.yaml"),
@@ -158,10 +160,11 @@ def service(root: Path, corpus: dict, state: Path, provider, identity: ModelIden
                           backends=("logical_sim",))
 
 
-async def run_case(root: Path, corpus: dict, case: dict, provider, identity: ModelIdentity, mode: str) -> dict:
+async def run_case(root: Path, corpus: dict, case: dict, provider, identity: ModelIdentity, mode: str,
+                   prompt_version: str | None = None) -> dict:
     with tempfile.TemporaryDirectory(prefix="plan-ops-") as folder:
         state = Path(folder)
-        svc = service(root, corpus, state, provider, identity)
+        svc = service(root, corpus, state, provider, identity, prompt_version)
         try:
             robot = svc.ops.catalog.robots[case["robot"]]
             project_id = svc.ops.catalog.project_of(case["robot"])
@@ -208,7 +211,8 @@ async def run_case(root: Path, corpus: dict, case: dict, provider, identity: Mod
 
 
 async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | None = None,
-                     corpus_path: str = CORPUS, resume: Path | None = None, patient=None) -> dict:
+                     corpus_path: str = CORPUS, resume: Path | None = None, patient=None,
+                     prompt_version: str | None = None) -> dict:
     """Run every case in one mode. A live run with `resume` replays each case that already has a recording there,
     strictly, and asks the model only for the others (a case is never asked again once a model answered it).
 
@@ -250,7 +254,7 @@ async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | N
         else:
             provider = RecordingProvider(live)
             identity = ModelIdentity(config.provider_id, config.model, config.endpoint_host)
-        result = await run_case(root, corpus, case, provider, identity, mode)
+        result = await run_case(root, corpus, case, provider, identity, mode, prompt_version)
         result["answered"] = "resumed" if resumed else mode
         if resumed:
             file.parent.mkdir(parents=True, exist_ok=True)

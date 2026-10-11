@@ -608,7 +608,8 @@ def main() -> None:
     p6_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
     p6_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
     adv_parser = commands.add_parser("p6-adv", help="record one WP-P6-03 adversarial corpus in the cloud (D079)")
-    adv_parser.add_argument("--corpus", choices=["nl_v1", "workflow_v1", "plan_ops_v1", "vision_ops_v1"], required=True)
+    adv_parser.add_argument("--corpus", choices=["nl_v1", "workflow_v1", "plan_ops_v1", "plan_ops_v2", "vision_ops_v1"],
+                            required=True)
     adv_parser.add_argument("--mode", choices=["live", "scripted"], required=True,
                             help="live asks the model once per case and records it; scripted checks the container path")
     adv_parser.add_argument("--profile", choices=["configs/analysis/vlm_change_v3.yaml",
@@ -616,6 +617,9 @@ def main() -> None:
                             help="vision_ops_v1 only: the model profile to record")
     adv_parser.add_argument("--resume-of", help="<deployment id>/p6adv-<run id>: complete that live run; its recorded "
                                                 "cases are replayed, only unanswered cases are asked")
+    adv_parser.add_argument("--planner-prompt", choices=["planner-v1", "planner-v2"],
+                            help="planning corpora: the planner prompt version (D080)")
+    adv_parser.add_argument("--label", help="a short run label such as r1 or r2 (D080)")
     data_parser = commands.add_parser("p4-data", help="upload and install the frozen S2 dataset in the cloud (D065)")
     data_parser.add_argument("--data", type=Path, required=True, help="the locally built dataset directory")
     data_parser.add_argument("--resume", help="upload id of an interrupted upload")
@@ -729,7 +733,8 @@ def main() -> None:
                 result = ssh(connection, request, timeout=5 * 3600)
             elif args.command == "p6-adv":
                 result = ssh(connection, {"action": "p6_adv", "run_id": new_run_id(), "corpus": args.corpus,
-                                          "mode": args.mode, "profile": args.profile, "resume_of": args.resume_of},
+                                          "mode": args.mode, "profile": args.profile, "resume_of": args.resume_of,
+                                          "planner_prompt": args.planner_prompt, "label": args.label},
                              timeout=5 * 3600)
             elif args.command in ("p1", "p2", "p3", "p4", "p5", "p6"):
                 result = ssh(

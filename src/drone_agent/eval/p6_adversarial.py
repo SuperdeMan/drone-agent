@@ -34,6 +34,7 @@ CORPORA = {
     "nl_v1": "eval/adversarial/nl_v1.yaml",
     "workflow_v1": "eval/adversarial/workflow_v1.yaml",
     "plan_ops_v1": "eval/adversarial/plan_ops_v1.yaml",
+    "plan_ops_v2": "eval/adversarial/plan_ops_v2.yaml",
     "vision_ops_v1": "eval/adversarial/vision_ops_v1/manifest.yaml",
 }
 
@@ -56,9 +57,28 @@ def profile_key(profile: str | None) -> str | None:
     return Path(profile).stem if profile else None
 
 
-def recordings_dir(root: Path, corpus: str, profile: str | None = None) -> Path:
+def recordings_dir(root: Path, corpus: str, profile: str | None = None, variant: str | None = None) -> Path:
+    """Where one corpus run's recordings live: per vision profile, or per planner prompt and round (`variant`, D080).
+
+    一份语料运行的录制所在目录：按视觉画像，或按规划提示与轮次（`variant`，D080）。
+    """
     base = root / RECORDINGS / corpus
-    return base / profile_key(profile) if profile else base
+    if profile:
+        base = base / profile_key(profile)
+    return base / variant if variant else base
+
+
+PLANNING = ("nl_v1", "plan_ops_v1", "plan_ops_v2")
+
+
+def replay_prompt(receipt: dict) -> str | None:
+    """The planner prompt a live receipt was recorded with; receipts from before D080 only knew planner-v1.
+
+    实调回执录制时所用的规划提示；D080 之前的回执只有 planner-v1。
+    """
+    if receipt["corpus"] not in PLANNING:
+        return None
+    return receipt.get("planner_prompt") or "planner-v1"
 
 
 def nl_escapes(root: Path, report: dict) -> int:
@@ -90,11 +110,12 @@ def scripted_ok(report: dict) -> bool:
 
 
 async def execute(root: Path, corpus: str, mode: str, recordings: Path, profile: str | None,
-                  resume: Path | None = None, patient=None) -> tuple[dict, int]:
+                  resume: Path | None = None, patient=None, prompt: str | None = None) -> tuple[dict, int]:
     if corpus == "nl_v1":
         from drone_agent.eval.adversarial import run_nl_corpus
 
-        report = await run_nl_corpus(root / CORPORA[corpus], root, mode=mode, recordings=recordings, patient=patient)
+        report = await run_nl_corpus(root / CORPORA[corpus], root, mode=mode, recordings=recordings, patient=patient,
+                                     prompt_version=prompt)
         if mode == "scripted":
             return report, report["authorized_packages"]
         return report, nl_escapes(root, report)
@@ -103,10 +124,11 @@ async def execute(root: Path, corpus: str, mode: str, recordings: Path, profile:
 
         report = await run_corpus(root, mode=mode, recordings=recordings, patient=patient)
         return report, report["escapes"]
-    if corpus == "plan_ops_v1":
+    if corpus in ("plan_ops_v1", "plan_ops_v2"):
         from drone_agent.eval.plan_ops import run_corpus
 
-        report = await run_corpus(root, mode=mode, recordings=recordings, resume=resume, patient=patient)
+        report = await run_corpus(root, mode=mode, recordings=recordings, resume=resume, patient=patient,
+                                  corpus_path=CORPORA[corpus], prompt_version=prompt)
         return report, report["escapes"]
     from drone_agent.eval.vision_ops import run_corpus
 
@@ -117,7 +139,7 @@ async def execute(root: Path, corpus: str, mode: str, recordings: Path, profile:
 
 async def run(root: Path, corpus: str, mode: str, output: Path, *, profile: str | None = None,
               recordings: Path | None = None, resume: Path | None = None, pace_s: float = 6.0,
-              budget_s: float = 900.0) -> dict:
+              budget_s: float = 900.0, planner_prompt: str | None = None, label: str | None = None) -> dict:
     """One corpus in one mode; live recordings go to `output/recordings`. A live run is paced and waits out HTTP 429
     (a throttled call has no answer); with `resume` it replays the cases an earlier live run already recorded and asks
     the model only for the rest (`plan_ops_v1`, `vision_ops_v1`).
@@ -127,8 +149,15 @@ async def run(root: Path, corpus: str, mode: str, output: Path, *, profile: str 
     """
     if corpus not in CORPORA:
         raise ValueError(f"unknown corpus {corpus}")
-    if resume is not None and (mode != "live" or corpus not in ("plan_ops_v1", "vision_ops_v1")):
-        raise ValueError("resume completes a live run of plan_ops_v1 or vision_ops_v1")
+    if resume is not None and (mode != "live" or corpus not in ("plan_ops_v1", "plan_ops_v2", "vision_ops_v1")):
+        raise ValueError("resume completes a live run of plan_ops_v1, plan_ops_v2 or vision_ops_v1")
+    if planner_prompt is not None and corpus not in PLANNING:
+        raise ValueError("--planner-prompt applies to the planning corpora only")
+    if corpus in PLANNING:
+        from drone_agent.planner.engine import DEFAULT_PROMPT, load_prompt
+
+        planner_prompt = planner_prompt or DEFAULT_PROMPT
+        load_prompt(planner_prompt)
     if (corpus == "vision_ops_v1") != (profile is not None):
         raise ValueError("vision_ops_v1 needs --profile and the other corpora take none")
     prompt = None
@@ -145,10 +174,11 @@ async def run(root: Path, corpus: str, mode: str, output: Path, *, profile: str 
     from drone_agent.eval.patience import Patient
 
     report, escapes = await execute(root, corpus, mode, recordings, profile, resume,
-                                    lambda inner: Patient(inner, pace_s=pace_s, budget_s=budget_s))
+                                    lambda inner: Patient(inner, pace_s=pace_s, budget_s=budget_s), planner_prompt)
     files = sorted(recordings.glob("*.json")) if mode == "live" else []
     receipt = {"format": "drone.p6-adversarial-run/v1", "corpus": corpus, "corpus_sha256": corpus_sha256(root, corpus),
-               "mode": mode, "profile": profile, "prompt_version": prompt,
+               "mode": mode, "profile": profile, "prompt_version": prompt, "planner_prompt": planner_prompt,
+               "label": label,
                "software_revision": os.environ.get("DRONE_SOURCE_SHA", "uncommitted"), "started_at": started_at,
                "duration_s": round(time.monotonic() - started, 1), "escapes": escapes,
                "cases": report["cases"], "skipped": report.get("skipped", []),
@@ -168,6 +198,7 @@ async def run(root: Path, corpus: str, mode: str, output: Path, *, profile: str 
 KEYS = {"nl_v1": ("outcome", "blocked_at", "codes", "targets", "volume"),
         "workflow_v1": ("status", "escapes", "assets"),
         "plan_ops_v1": ("outcome", "planned", "codes", "intent", "escapes"),
+        "plan_ops_v2": ("outcome", "planned", "codes", "intent", "escapes"),
         "vision_ops_v1": ("model", "pipeline", "score", "defect_type", "quality_v1", "quality_v2")}
 
 
@@ -203,6 +234,8 @@ def main() -> None:
     runner.add_argument("--resume", type=Path, help="live only: recordings of an earlier live run to replay")
     runner.add_argument("--pace-s", type=float, default=6.0, help="live only: minimum seconds between call starts")
     runner.add_argument("--budget-s", type=float, default=900.0, help="live only: total HTTP 429 wait per call")
+    runner.add_argument("--planner-prompt", help="planning corpora: the planner prompt version (default: the engine's)")
+    runner.add_argument("--label", help="a short label for this run, e.g. the round (D080)")
     runner.add_argument("--output", type=Path, required=True)
     comparer = commands.add_parser("compare")
     comparer.add_argument("--live", type=Path, required=True)
@@ -215,7 +248,7 @@ def main() -> None:
         raise SystemExit(0 if result["status"] == "passed" else 1)
     receipt = asyncio.run(run(args.root, args.corpus, args.mode, args.output, profile=args.profile,
                               recordings=args.recordings, resume=args.resume, pace_s=args.pace_s,
-                              budget_s=args.budget_s))
+                              budget_s=args.budget_s, planner_prompt=args.planner_prompt, label=args.label))
     print(json.dumps({k: v for k, v in receipt.items() if k != "report"}, ensure_ascii=False))
     raise SystemExit(0 if receipt["status"] == "passed" else 1)
 

@@ -168,7 +168,7 @@ def nl_request(case: dict, now: datetime) -> MissionRequest:
 
 
 async def run_nl_case(case: dict, registry: Registry, root: Path, provider, *, mode: str,
-                      identity=None, now: datetime | None = None) -> dict:
+                      identity=None, now: datetime | None = None, prompt_version: str | None = None) -> dict:
     """Plan one natural-language case, then compile and admit whatever the model produced.
 
     规划一条自然语言用例，再对模型产出的内容执行编译与准入。
@@ -181,7 +181,9 @@ async def run_nl_case(case: dict, registry: Registry, root: Path, provider, *, m
     now = now or utcnow()
     request = nl_request(case, now)
     tools = InProcessSession(ToolCatalog(root, root / M2_SCENE)).initialize()
-    engine = PlannerEngine(provider, identity or ModelIdentity("scripted", "scripted-fixture"), registry, tools)
+    options = {"prompt_version": prompt_version} if prompt_version else {}
+    engine = PlannerEngine(provider, identity or ModelIdentity("scripted", "scripted-fixture"), registry, tools,
+                           **options)
     planned = await engine.plan(request, mission_id=f"adv-{case['id']}")
     codes, blocked_at, authorized = [i.code for i in planned.issues], None, False
     if planned.status == "planned":
@@ -218,7 +220,7 @@ async def run_nl_case(case: dict, registry: Registry, root: Path, provider, *, m
 
 
 async def run_nl_corpus(path: Path, root: Path, *, mode: str = "scripted", recordings: Path | None = None,
-                        patient=None) -> dict:
+                        patient=None, prompt_version: str | None = None) -> dict:
     """Run the natural-language corpus in scripted, replay or live mode; a live run shares one provider, wrapped by
     `patient` when given (paced calls, HTTP 429 waited out, WP-P6-03).
 
@@ -259,7 +261,8 @@ async def run_nl_corpus(path: Path, root: Path, *, mode: str = "scripted", recor
                 live = patient(live) if patient is not None else live
             provider = RecordingProvider(live)
             identity = ModelIdentity(config.provider_id, config.model, config.endpoint_host)
-        result = await run_nl_case(case, registry, root, provider, mode=mode, identity=identity)
+        result = await run_nl_case(case, registry, root, provider, mode=mode, identity=identity,
+                                   prompt_version=prompt_version)
         if mode == "live":
             provider.recording(source="recorded", provider_id=identity.provider_id, model=identity.model,
                                endpoint_host=identity.endpoint_host, label=case["id"]).save(
