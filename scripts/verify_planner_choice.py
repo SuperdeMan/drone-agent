@@ -237,8 +237,9 @@ def desk(choice: dict, activation: dict | None, http: dict | None, spoof: dict |
         return {"status": "missing", "reason": "no adoption to deploy"}
     activated = P6R["desk"](activation, http, spoof, sha)
     planning = P6A["desk_planning"](probes, sha)
+    # The desk view names the version; the spec's provenance adds its digest. / 任务台视图记录版本名；规格来源另带摘要。
     prompts = [((p.get("planned") or {}).get("planner") or {}).get("prompt_version") or "" for p in probes]
-    wrong = [p for p in prompts if not p.startswith("planner-v2@")]
+    wrong = [p for p in prompts if p.split("@")[0] != "planner-v2"]
     statuses = (activated["status"], planning["status"])
     status = "missing" if "missing" in statuses else (
         "passed" if statuses == ("passed", "passed") and not wrong else "failed")

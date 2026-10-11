@@ -75,10 +75,23 @@ def test_the_default_prompt_must_follow_the_rule(monkeypatch):
     assert GATE["decision"](deciding, CANDIDATE)["status"] == "missing"
 
 
-def test_the_desk_is_required_only_after_adoption():
+def test_the_desk_is_required_only_after_adoption(monkeypatch):
     assert GATE["desk"]({"decision": "keep"}, None, None, None, [], CANDIDATE)["status"] == "passed"
     assert GATE["desk"]({"decision": "no_decision"}, None, None, None, [], CANDIDATE)["status"] == "missing"
     assert GATE["desk"]({"decision": "adopt"}, None, None, None, [], CANDIDATE)["status"] == "missing"
+    # Activation and the two plans are the WP-P6-03 checks; here only the prompt the desk planned with is new.
+    # 激活与两次规划沿用 WP-P6-03 的核对；这里新增的只是任务台规划所用的提示。
+    scope = GATE["desk"].__globals__
+    monkeypatch.setitem(scope, "P6R", {"desk": lambda *args: {"status": "passed"}})
+    monkeypatch.setitem(scope, "P6A", {"desk_planning": lambda probes, sha: {"status": "passed"}})
+
+    def probe(version):
+        return {"planned": {"planner": {"prompt_version": version}}}
+
+    adopted = {"decision": "adopt"}
+    assert GATE["desk"](adopted, {}, {}, {}, [probe("planner-v2"), probe("planner-v2@0123")], CANDIDATE)[
+        "status"] == "passed"
+    assert GATE["desk"](adopted, {}, {}, {}, [probe("planner-v2"), probe("planner-v1")], CANDIDATE)["status"] == "failed"
 
 
 def test_the_engine_may_change_only_its_default_prompt(monkeypatch):
