@@ -53,7 +53,7 @@ async def test_tool_call_draft_becomes_a_spec_with_full_provenance():
     assert [(t.task_id, t.params) for t in spec.tasks] == [("inspect_asset_red", {"asset_id": "asset_red"})]
     assert spec.recovery_policy_ref == "multirotor_m1@v1" and spec.energy_budget.max_consumption_fraction == 0.78
     assert spec.provenance.model_id == "minimax/scripted" and spec.provenance.input_hash == outcome.input_hash
-    assert spec.provenance.prompt_version.startswith("planner-v1@")
+    assert spec.provenance.prompt_version.startswith("planner-v2@"), "the default prompt since D080"
     assert set(outcome.context_digests) == {"map.query", "assets.lookup", "missions.history", "weather.current",
                                             "airspace.status"}
     assert (outcome.prompt_tokens, outcome.completion_tokens) == (100, 20)

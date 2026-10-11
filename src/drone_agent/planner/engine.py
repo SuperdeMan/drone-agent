@@ -47,7 +47,7 @@ from drone_agent.providers.replay import ReplayMismatch
 from drone_agent.runtime.issues import Issue, issue
 
 PROMPTS = Path(__file__).with_name("prompts")
-DEFAULT_PROMPT = "planner-v1"
+DEFAULT_PROMPT = "planner-v2"
 
 
 def canonical(value) -> str:

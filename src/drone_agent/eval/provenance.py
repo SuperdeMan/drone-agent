@@ -10,6 +10,7 @@ from pathlib import Path
 
 from drone_agent.fleet.provenance import RunProvenance, export
 from drone_agent.mission.registry import Registry
+from drone_agent.planner.engine import DEFAULT_PROMPT, load_prompt
 
 
 def audit_view(view: dict, sha: str, *, planning_source: str, root: Path) -> dict:
@@ -22,7 +23,8 @@ def audit_view(view: dict, sha: str, *, planning_source: str, root: Path) -> dic
     images = {}
     expected_scene = hashlib.sha256((root / "configs/scenarios/m2_campus_v2.yaml").read_bytes()).hexdigest()
     expected_platform = hashlib.sha256((root / "configs/platforms/px4_sitl_multirotor.yaml").read_bytes()).hexdigest()
-    expected_prompt = hashlib.sha256((root / "src/drone_agent/planner/prompts/planner-v1.md").read_bytes()).hexdigest()
+    # Live planning uses the engine's default prompt (planner-v2 since D080). / 实调规划使用引擎默认提示（D080 起为 planner-v2）。
+    expected_prompt = load_prompt(DEFAULT_PROMPT)[1]
     expected_registry = Registry(root, scene=root / "configs/scenarios/m2_campus_v2.yaml").sha256
     for version in view.get("versions", []):
         number = version.get("version")

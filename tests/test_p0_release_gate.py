@@ -16,6 +16,7 @@ import pytest
 from drone_agent.eval.provenance import audit_view
 from drone_agent.fleet.provenance import EvidenceOrigin, ModelUse, SourceContext, digest, export, seal
 from drone_agent.mission.registry import Registry
+from drone_agent.planner.engine import DEFAULT_PROMPT, load_prompt
 
 ROOT = Path(__file__).resolve().parents[1]
 GATE = runpy.run_path(str(ROOT / "scripts/verify_p0_release.py"))
@@ -24,7 +25,6 @@ SHA = "a" * 40
 
 def source_view(source: str = "scripted") -> dict:
     """A minimal refused request: no flight or fabricated media. / 最小拒绝请求，不飞行、不编造媒体。"""
-    prompt = ROOT / "src/drone_agent/planner/prompts/planner-v1.md"
     context = SourceContext(
         execution_backend="px4_sitl", run_id="test-gate", software_sha=SHA,
         scenario_sha256=hashlib.sha256((ROOT / "configs/scenarios/m2_campus_v2.yaml").read_bytes()).hexdigest(),
@@ -32,7 +32,7 @@ def source_view(source: str = "scripted") -> dict:
         registry_sha256=Registry(ROOT, scene=ROOT / "configs/scenarios/m2_campus_v2.yaml").sha256)
     header = context.header("m-source", 1, ModelUse(source=source, provider_id="test", model_id="test-model",
                                                   input_sha256="d" * 64, outcome="refused",
-                                                  prompt_sha256=hashlib.sha256(prompt.read_bytes()).hexdigest()))
+                                                  prompt_sha256=load_prompt(DEFAULT_PROMPT)[1]))
     record = {"mission_id": "m-source", "version": 1, "decision": {"run_provenance": {"run": seal(header)}}}
     return {"mission": {"mission_id": "m-source", "status": "refused"}, "versions": [
         {"version": 1, "origin": "harness", "decision": record["decision"], "provenance": export(record)}],
