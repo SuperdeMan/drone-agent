@@ -139,3 +139,28 @@ async def test_another_sites_asset_is_outside_the_schema_and_never_planned(tmp_p
     assert view["mission"]["status"] == "planning_failed"
     assert "asset_red" not in schema_assets(provider.seen[0][1])
     assert {"asset_red_b", "asset_blue_b", "road_north_b"} <= set(schema_assets(provider.seen[0][1]))
+
+
+async def test_a_planning_request_does_not_depend_on_when_it_is_made():
+    # The digest of a recording covers the whole request; any clock value in SITE_DATA would make every recording
+    # unreplayable (D079). / 录制摘要覆盖整个请求；SITE_DATA 中的任何时钟值都会使所有录制无法回放（D079）。
+    from datetime import datetime, timezone
+
+    from drone_agent.planner.engine import PlannerEngine
+    from drone_agent.providers.replay import digest, request_body
+
+    seen = []
+
+    class Capture:
+        async def complete_tools(self, messages, model, temperature, max_tokens, tools=None, tool_choice=None,
+                                 thinking=None, timeout_s=None):
+            seen.append(digest(request_body("complete_tools", messages, model, temperature, max_tokens, tools,
+                                            tool_choice, thinking)))
+            raise RuntimeError("captured")
+
+    for moment in (datetime(2026, 10, 10, 16, 22, tzinfo=timezone.utc), datetime(2026, 10, 11, 1, 13, tzinfo=timezone.utc)):
+        tools = InProcessSession(ToolCatalog(ROOT, SITE_S1, clock=lambda moment=moment: moment)).initialize()
+        engine = PlannerEngine(Capture(), ModelIdentity("x", "y"), Registry(ROOT, scene=SITE_S1), tools,
+                               clock=lambda moment=moment: moment)
+        await engine.plan(request("Inspect the road segment north of the pad."), mission_id="m-time")
+    assert len(seen) == 2 and seen[0] == seen[1]

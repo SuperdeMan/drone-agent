@@ -153,7 +153,12 @@ class ToolCatalog:
         return weather
 
     def _airspace_status(self, args: dict) -> dict:
-        return self._airspace.query(args["volume_id"], now=self.clock()).model_dump(mode="json")
+        # The check time is the wrapper's `retrieved_at`, which never enters the prompt; left in the data it would make
+        # every planning request unique and no recording replayable (D079).
+        # 检查时刻就是包装层的 `retrieved_at`，它从不进入提示；若留在数据里，每次规划请求都会不同，任何录制都无法回放（D079）。
+        status = self._airspace.query(args["volume_id"], now=self.clock()).model_dump(mode="json")
+        status.pop("checked_at", None)
+        return status
 
     def _history(self) -> list[dict]:
         return list(self.scene.get("site_records", {}).get("history", [])) + list(self.records.get("history", []))
