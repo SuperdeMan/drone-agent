@@ -1,0 +1,123 @@
+{
+  "schema_version": "0.1.0",
+  "layer": "S0",
+  "part": "ladder",
+  "source_sha": "73fdb4bc69a0e86814e338c23d8451813356f73a",
+  "suite": "p3.suite/v1",
+  "cases": 1,
+  "passed": 0,
+  "status": "failed",
+  "counts": {
+    "double_ownership": 0,
+    "duplicate_execution": 0,
+    "lost_task": 0,
+    "conflicting_reservation": 0,
+    "false_success": 0,
+    "stale_epoch_effect": 0,
+    "decision_mismatch": 0,
+    "project_escape": 0,
+    "wrong_dispatch": 0,
+    "duplicate_dispatch": 0,
+    "wrong_release": 0
+  },
+  "results": [
+    {
+      "scenario": "p3_l100",
+      "seed": 7,
+      "classification": "unexpected",
+      "problems": [
+        "task_open_at_end:tk-9a97072d1fb345e384a1:queued",
+        "task_open_at_end:tk-64186e59765341429889:assigned",
+        "task_open_at_end:tk-6f18bdbb71af475e9be0:queued",
+        "task_open_at_end:tk-b35fad3de56f421a8463:queued",
+        "task_open_at_end:tk-21f91deae1a64e6fa822:queued",
+        "task_open_at_end:tk-bb2c0fed6ebd4e27a3d5:queued",
+        "task_open_at_end:tk-3df2962aa71b40299ea9:queued",
+        "task_open_at_end:tk-1c7b38acedfb45fd907a:queued",
+        "harness_error:ScenarioTimeout: ladder 100 did not drain"
+      ],
+      "counts": {
+        "double_ownership": 0,
+        "duplicate_execution": 0,
+        "lost_task": 0,
+        "conflicting_reservation": 0,
+        "false_success": 0,
+        "stale_epoch_effect": 0,
+        "decision_mismatch": 0,
+        "project_escape": 0,
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0
+      },
+      "false_success_reports": 0,
+      "expected": {},
+      "metrics": {
+        "tasks": {
+          "completed": 96,
+          "rejected": 35,
+          "outcome_unknown": 35,
+          "queued": 7,
+          "assigned": 1
+        },
+        "decisions": 876,
+        "decision_ms": {
+          "n": 876,
+          "p50": 58.945,
+          "p95": 81.468,
+          "p99": 86.689,
+          "max": 93.073
+        },
+        "assignment_latency_s": {
+          "n": 147,
+          "p50": 2.269,
+          "p95": 129.014,
+          "p99": 159.706,
+          "max": 187.143
+        },
+        "completion_s": {
+          "n": 96,
+          "p50": 32.239,
+          "p95": 170.401,
+          "p99": 333.16,
+          "max": 333.16
+        },
+        "wait_reasons": {
+          "airspace.cell_held": 294,
+          "asset.unregistered": 62721,
+          "dock.aircraft_absent": 720,
+          "dock.maintenance": 3015,
+          "dock.status_stale": 44400,
+          "energy.charging": 209,
+          "energy.cooling": 208,
+          "energy.idle": 746,
+          "energy.insufficient": 955,
+          "energy.unknown": 720,
+          "presence.conflict": 30,
+          "reservation.conflict": 2560,
+          "robot.airborne": 720,
+          "task.robot_excluded": 115
+        },
+        "reject_reasons": {
+          "asset.unregistered": 35,
+          "task.robot_excluded": 14
+        },
+        "live_tasks_max": null,
+        "airborne_max": null,
+        "flights": 369,
+        "ladder": null
+      },
+      "passed": false,
+      "replay_agrees": true,
+      "harness_error": "ScenarioTimeout: ladder 100 did not drain",
+      "attempt": 1
+    }
+  ],
+  "voided_attempts": [],
+  "host": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "machine": "AMD64",
+    "processor": "Intel64 Family 6 Model 170 Stepping 4, GenuineIntel",
+    "cpus": 18,
+    "python": "3.12.10"
+  }
+}

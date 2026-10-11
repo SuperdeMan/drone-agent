@@ -1,0 +1,42 @@
+{
+  "schema_version": "0.1.0",
+  "decision": "D084",
+  "attempt": 1,
+  "status": "void, not counted",
+  "preregistration": "docs/verification/fine-reservations-2026-10-12/preregistration.json",
+  "reason": "Windows execution-speed power throttling (EcoQoS) of the background S0 processes while the PC was unattended (local night); the 100-node P3 rung then timed out under both models.",
+  "evidence": {
+    "decide_benchmark": {
+      "what": "cbc8a41 decide() on the first 200 decision snapshots its 10-10 run of p3_l100 recorded (outputs/d084/decide_bench.py)",
+      "recorded_10_10_p50_ms": 20.1,
+      "default_qos_p50_ms": [
+        43.8,
+        47.1,
+        58.3,
+        59.0
+      ],
+      "high_qos_p50_ms": [
+        26.3,
+        25.6
+      ]
+    },
+    "controls": {
+      "73fdb4b (before D084), default QoS": "p3_l100 timed out: 96 completed, 35 outcome_unknown",
+      "cbc8a41 (passed on 10-10 here), default QoS": "p3_l100 timed out: 99 completed, 27 outcome_unknown",
+      "cbc8a41, high QoS": "p3_l100 passed: 174 completed, 0 outcome_unknown, drain 527.5 s, decision p50 23.1 ms (10-10: 172 completed, 534 s, 22.4 ms)"
+    },
+    "high_qos": "SetProcessInformation(ProcessPowerThrottling) on each Python process only; children do not inherit it, so outputs/d084/highqos/sitecustomize.py on PYTHONPATH sets it at start-up; no system setting changed"
+  },
+  "results_seen": "the long-route rung of attempt 1 (box 295.3 s, corridor 87.4 s airspace-only wait) was seen before attempt 2 was pre-registered",
+  "files": {
+    "box-long.json": 18001,
+    "corridor-long.json": 17865,
+    "box-ladder.json": 45226,
+    "corridor-ladder.json": 47405,
+    "box-matrix.json": 108602,
+    "corridor-matrix.json": 108498,
+    "control-73fdb4b-l100.json": 3439,
+    "control-cbc8a41-l100.json": 3443,
+    "control-cbc8a41-l100-high-qos.json": 3169
+  }
+}
