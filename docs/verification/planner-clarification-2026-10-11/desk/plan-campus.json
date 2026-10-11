@@ -1,0 +1,140 @@
+{
+  "schema_version": "0.1.0",
+  "probe": "plan",
+  "hello": {
+    "identity_scheme": "tailnet",
+    "can_write": true,
+    "planner": "live:minimax/MiniMax-M3"
+  },
+  "host_states": [
+    {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "02694be93d5be7051f7a1a81ed4db3d39b367871",
+      "updated_at": "2026-10-11T06:09:47.737205+00:00"
+    }
+  ],
+  "timeline": [],
+  "errors": [],
+  "sent": [
+    {
+      "t": 8.8,
+      "action": "decline",
+      "version": 1
+    }
+  ],
+  "reconnects": 0,
+  "planning_s": 8.8,
+  "request": {
+    "text": "Inspect the road segment north of the pad.",
+    "project_id": "campus_s1",
+    "robot_id": "uav_01",
+    "volume_id": "campus_training",
+    "asset_ids": []
+  },
+  "planned": {
+    "mission_id": "m-610ebea5a1d0",
+    "status": "awaiting_approval",
+    "binding": {
+      "project_id": "campus_s1",
+      "site_id": "site_s1",
+      "robot_id": "uav_01"
+    },
+    "targets": [
+      "road_north"
+    ],
+    "planner": {
+      "status": "planned",
+      "provider_id": "minimax",
+      "model_id": "MiniMax-M3",
+      "prompt_version": "planner-v2",
+      "input_hash": "08ed262f56918b674c5667279d7998c543fd0f1bc8211d4d175741af6bd4ea4e",
+      "decline_reason": "",
+      "notes": "",
+      "attempts": 1,
+      "channels": [
+        "toolcall"
+      ]
+    },
+    "admission": {
+      "accepted": true,
+      "codes": [],
+      "energy_upper_fraction": 0.7696,
+      "checks": [
+        {
+          "check": "hash",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "boundaries",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "recovery_policy",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "capability",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "params",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "spatial",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "order_and_resources",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "time",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "energy",
+          "detail": "upper=0.7696",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "airspace",
+          "detail": "simulated_unfiled",
+          "passed": true,
+          "schema_version": "0.1.0"
+        },
+        {
+          "check": "unverified_edges",
+          "detail": "",
+          "passed": true,
+          "schema_version": "0.1.0"
+        }
+      ]
+    },
+    "approval": null
+  },
+  "final_status": "declined",
+  "duration_s": 12.2
+}
