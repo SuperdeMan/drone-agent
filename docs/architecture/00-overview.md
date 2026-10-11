@@ -133,6 +133,8 @@ flowchart TB
 | [../p6-recapture-readiness.md](../p6-recapture-readiness.md) | WP-P6-02 验收记录（2026-10-10，`ecee452`，软件 / SITL 范围） |
 | [../p6-adversarial-implementation.md](../p6-adversarial-implementation.md) | WP-P6-03 真实模型对抗录制与规划器按站点取上下文的实施方案（D079） |
 | [../p6-adversarial-readiness.md](../p6-adversarial-readiness.md) | WP-P6-03 验收记录（2026-10-11，`8d69ae1`，软件 / SITL 范围） |
+| [../planner-clarification.md](../planner-clarification.md) | 规划提示 planner-v2：歧义时请操作者澄清，留出语料、预登记规则与门禁（D080） |
+| [../planner-clarification-readiness.md](../planner-clarification-readiness.md) | D080 验收记录（2026-10-11，`02694be`，采用 planner-v2） |
 | [../p1-implementation.md](../p1-implementation.md) | P1 的 12 项工作包、单机场纵向链、故障矩阵与实现落位 |
 | [../p1-readiness.md](../p1-readiness.md) | P1 验收版本、S0 / S1 与常驻任务台迁移证据 |
 | [../p2-implementation.md](../p2-implementation.md) | P2 持久工作流的语义、API、故障矩阵与实施记录 |
