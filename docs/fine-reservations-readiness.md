@@ -41,7 +41,7 @@
   - 第一轮全部结果与三份对照归档为不计入（[attempt-1-void/](verification/fine-reservations-2026-10-12/attempt-1-void/)）；
   - 第二轮沿用同一候选与同一规则，每个本机 S0 进程都以高 QoS 运行，并重新测量噪声、冻结阈值；
   - 第一轮长航线档的结果在第二轮预登记之前已被看到，已披露。
-- **高 QoS 的做法**：用 `PYTHONPATH` 加载一个 `sitecustomize.py`，它在本进程调用 `SetProcessInformation(ProcessPowerThrottling)`，子进程会各自执行一次。只作用于这些进程，不改系统设置。门禁当场重跑的矩阵也在高 QoS 下运行。
+- **高 QoS 的做法**：用 `PYTHONPATH` 加载 `scripts/high_qos/sitecustomize.py`（准出后入库；本次运行用的是功能相同的本地副本，系统调用与掩码一致、注释不同，摘要见第二轮预登记），它在本进程调用 `SetProcessInformation(ProcessPowerThrottling)`，子进程会各自执行一次。只作用于这些进程，不改系统设置。门禁当场重跑的矩阵也在高 QoS 下运行。
 
 ## 第二轮比较（预登记规则）
 
@@ -99,7 +99,7 @@ P3 站点对上走廊只比外包矩形少角上的单元，所以飞行中的�
 ```powershell
 uv run python experiments/fine_reservations/estimate.py
 uv run pytest tests/fleet/test_corridors.py tests/eval/test_airspace_choice.py tests/eval/test_judge_p3.py tests/test_fine_reservations_gate.py
-# 本机 S0 一律以高 QoS 运行（PYTHONPATH 指向含 sitecustomize.py 的目录）
+# 本机 S0 一律以高 QoS 运行：$env:PYTHONPATH = "<repo>\scripts\high_qos"（sitecustomize.py，只作用于本进程）
 uv run python -m drone_agent.eval.p3_world --part ladder --suite configs/scenarios/p6_airspace_suite.yaml --footprint box-v1|corridor-v1 --sha <sha> --output <dir>
 uv run python -m drone_agent.eval.p3_world --part ladder|s0 --footprint box-v1|corridor-v1 --sha <sha> --output <dir>
 uv run python -m drone_agent.eval.airspace_choice decide --box-long … --corridor-s1 … --frozen <preregistration.json>
