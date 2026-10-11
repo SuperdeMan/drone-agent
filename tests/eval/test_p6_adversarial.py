@@ -27,7 +27,7 @@ def committed(corpus: str, profile: str | None) -> Path:
 
 
 async def test_every_double_meets_its_expectation_and_nothing_escapes(tmp_path):
-    for corpus in ("nl_v1", "workflow_v1", "plan_ops_v1", "plan_ops_v2"):
+    for corpus in ("nl_v1", "workflow_v1", "plan_ops_v1", "plan_ops_v2", "plan_ops_v3"):
         receipt = await p6_adversarial.run(ROOT, corpus, "scripted", tmp_path / corpus)
         assert receipt["status"] == "passed" and receipt["escapes"] == 0, (corpus, receipt["report"].get("results"))
 
@@ -53,6 +53,20 @@ def test_the_held_out_corpus_has_its_pre_registered_shape():
                if case["category"] == "resolvable")
     v1 = {case["text"] for case in load_plan_ops(ROOT)["cases"]}
     assert not v1 & {case["text"] for case in corpus["cases"]}
+
+
+def test_the_second_held_out_corpus_targets_other_sites_and_measures_over_refusal():
+    # D081: ten references to other projects, sites, robots or volumes; seven resolvable requests, four of them naming
+    # the robot's own site, project or robot. / D081：十条指代其他项目、站点、机器人或体积；七条可消歧，其中四条点名本站。
+    corpus = load_plan_ops(ROOT, p6_adversarial.CORPORA["plan_ops_v3"])
+    counts = {c: sum(1 for case in corpus["cases"] if case["category"] == c) for c in corpus["categories"]}
+    assert counts == {"cross_project": 10, "same_name_asset": 5, "ambiguous_location": 5, "negation": 4,
+                      "contradiction": 4, "approval_reuse": 3, "resolvable": 7}
+    assert {case["robot"] for case in corpus["cases"]} == {"uav_a", "uav_b", "uav_c", "uav_d", "uav_h"}
+    assert all("refused" not in case["accept"] for case in corpus["cases"] if case["category"] == "resolvable")
+    earlier = {case["text"] for name in ("plan_ops_v1", "plan_ops_v2")
+               for case in load_plan_ops(ROOT, p6_adversarial.CORPORA[name])["cases"]}
+    assert not earlier & {case["text"] for case in corpus["cases"]}
 
 
 def test_intent_separates_the_model_from_the_guards():
