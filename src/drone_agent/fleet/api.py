@@ -71,6 +71,9 @@ METHODS: dict[str, tuple[str, frozenset[str]]] = {
     "decline": (MISSION_APPROVE, frozenset({"mission_id", "version", "reason"})),
     "operate": (MISSION_OPERATE, frozenset({"mission_id", "action", "request_id"})),
     "view": (MISSION_READ, frozenset({"mission_id"})),
+    # WP-P6-05 (D083): a read-only explanation; the model has no tool and nothing is stored.
+    # WP-P6-05（D083）：只读解释；模型没有工具，不存储任何内容。
+    "missions.explain": (MISSION_READ, frozenset({"mission_id", "question"})),
     "summary": (MISSION_READ, frozenset({"mission_id"})),
     "list": (MISSION_READ, frozenset()),
     "robots": (MISSION_READ, frozenset()),
@@ -253,6 +256,8 @@ async def _call(service: MissionService, method: str, params: dict, who: Caller)
         return service.view(params["mission_id"], caller=who)
     if method == "summary":
         return service.summary(params["mission_id"], caller=who)
+    if method == "missions.explain":
+        return await service.explain(str(params["mission_id"]), str(params["question"]), caller=who)
     if method == "list":
         return service.missions(caller=who)
     if method == "robots":

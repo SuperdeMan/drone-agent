@@ -558,3 +558,32 @@ test('a completed service report keeps a failed independent judge visible above 
   assert.match(summary, /错误成功 1/);
   assert.match(summary, /class="badge unknown">服务未提供/);
 });
+
+// WP-P6-05 (D083): an answer is shown only after the service checked it; otherwise the service's own summary.
+// WP-P6-05（D083）：回答只在服务核对之后展示；否则展示服务自己的摘要。
+test('an explanation shows its citations and draft, and a rejected one shows only the summary', async () => {
+  const ui = setup({answer: '为什么被拒绝？'});
+  const view = missionView();
+  const id = view.mission.mission_id;
+  ui.run(`hello = ${JSON.stringify(HELLO)}; current = ${JSON.stringify(view)}; nav = {ws: 'missions', id: '${id}', kind: null};`);
+  await ui.run(`act('explain', {id: '${id}'})`);
+  assert.deepEqual(ui.sent.at(-1), {type: 'explain', mission_id: id, question: '为什么被拒绝？'});
+  const facts = [{id: 'mission', kind: 'mission', status: 'rejected'}, {id: 'issue:1', kind: 'issue', code: 'scope.foreign_reference'}];
+  ui.run(`receive(${JSON.stringify({type: 'explanation', result: {mission_id: id, question: '为什么被拒绝？', status: 'validated', facts,
+    summary: '任务状态：rejected。', model: 'minimax/MiniMax-M3', prompt_version: 'explain-v1@abc',
+    explanation: {answer: '请求点名了站点 A <b>', citations: ['issue:1'], missing: [], change_draft: '检查本站的红色标记'}}})});`);
+  const out = ui.html('detail');
+  assert.match(out, /请求点名了站点 A &lt;b&gt;/, 'the answer is escaped');
+  assert.match(out, /issue:1/);
+  assert.match(out, /scope\.foreign_reference/, 'a citation carries its fact');
+  assert.match(out, /重新审批/);
+  ui.run(`act('explainDraft', {id: '${id}'})`);
+  assert.equal(ui.nodes.get('text').value, '检查本站的红色标记', 'the draft only fills the submit box');
+  assert.equal(ui.sent.at(-1).type, 'explain', 'filling the draft sends nothing');
+  ui.run(`receive(${JSON.stringify({type: 'explanation', result: {mission_id: id, question: 'why?', status: 'rejected', facts,
+    summary: 'Mission status: rejected.', problems: ['code not in the facts: energy.budget_exceeded'], explanation: null}})});`);
+  const rejected = ui.html('detail');
+  assert.match(rejected, /模型回答未通过核对/);
+  assert.match(rejected, /Mission status: rejected\./);
+  assert.doesNotMatch(rejected, /请求点名了站点 A/, 'a rejected answer is never shown');
+});

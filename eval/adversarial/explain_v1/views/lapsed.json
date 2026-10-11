@@ -1,0 +1,116 @@
+{
+ "binding": {
+  "legacy": null,
+  "project_id": "campus_ops",
+  "robot_id": "uav_c",
+  "site_id": "site_c"
+ },
+ "dispatch": {
+  "cancel": null,
+  "decisions": [
+   {
+    "reasons": [
+     "dock.maintenance"
+    ],
+    "stage": "preview",
+    "verdict": "blocked",
+    "version": 1
+   },
+   {
+    "reasons": [
+     "dock.lid_not_open",
+     "environment.deferred"
+    ],
+    "stage": "claim",
+    "verdict": "blocked",
+    "version": 1
+   },
+   {
+    "reasons": [
+     "environment.deferred"
+    ],
+    "stage": "prepare",
+    "verdict": "blocked",
+    "version": 1
+   }
+  ]
+ },
+ "evidence": [],
+ "issues": [
+  {
+   "affected": [],
+   "code": "dispatch.approval_expired",
+   "layer": "dispatch",
+   "message": "v1 was never handed out: approval_expired"
+  }
+ ],
+ "mission": {
+  "current_version": 1,
+  "mission_id": "m-d72e1a9800a7",
+  "replans": 0,
+  "robot_id": "uav_c",
+  "status": "dispatch_expired"
+ },
+ "operations": [],
+ "report": {
+  "all_targets_completed": false,
+  "summary": {
+   "completed": 0,
+   "not_completed": 1,
+   "uncertain": 0
+  },
+  "targets": {
+   "asset_blue": "not_completed"
+  }
+ },
+ "request": {
+  "approved_volume_id": "campus_training",
+  "asset_ids": [],
+  "text": "Please photograph the blue marker north-west of the landing pad."
+ },
+ "versions": [
+  {
+   "admission": {
+    "accepted": true,
+    "codes": [],
+    "energy_upper_fraction": 0.7696
+   },
+   "approval": {
+    "approved_at": "2026-10-11T12:47:31.497141Z",
+    "expires_at": "2026-10-11T13:17:31.480309Z"
+   },
+   "decision": {
+    "blocked_at": null,
+    "codes": [],
+    "reason": null
+   },
+   "diff": {
+    "added": [
+     "takeoff",
+     "inspect_asset_blue",
+     "return_home",
+     "land"
+    ],
+    "changed": [],
+    "removed": []
+   },
+   "events": [],
+   "origin": "harness",
+   "planner": {
+    "decline_reason": "",
+    "notes": "",
+    "prompt_version": "planner-v3",
+    "status": "planned"
+   },
+   "spec": {
+    "targets": [
+     {
+      "asset_id": "asset_blue"
+     }
+    ]
+   },
+   "status": "withdrawn",
+   "version": 1
+  }
+ ]
+}

@@ -559,6 +559,13 @@ class Session:
         elif kind in ("business_watch", "finding_watch", "order_watch", "finding_review", "order_repair",
                       "order_review", "reference_register", "analysis_submit"):
             await self.business(kind, message)
+        elif kind == "explain":
+            # WP-P6-05 (D083): read-only; the answer is checked by the service before it comes back.
+            # WP-P6-05（D083）：只读；回答在返回之前已由服务核对。
+            result = await self.call("missions.explain", mission_id=str(message.get("mission_id", "")),
+                                     question=str(message.get("question", ""))[:500])
+            if result is not None:
+                await self.send({"type": "explanation", "result": result})
         elif kind == "audit_watch":
             before = message.get("before")
             self.audit = (str(message.get("project_id", ""))[:120],

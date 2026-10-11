@@ -213,6 +213,8 @@ let missions = [], current = null, selected = null, photos = {}, asked = new Set
 let resources = null, resourceDetail = null, workflows = null, run = null, wfChoice = null;
 let tasks = null, task = null, business = null, subject = null, selectedEvidence = null;
 let audit = null, auditBefore = null, auditFilter = "all", airspaceIncludeOrigin = false;
+// WP-P6-05 (D083): the last explanation per mission and the one being asked. / 每个任务最近一次解释与正在提问的任务。
+let explanations = {}, explaining = null;
 let nav = {ws: "overview", id: null, kind: null};
 
 // ── small helpers / 小工具 ──
@@ -404,6 +406,7 @@ function receive(message) {
   else if (kind === "workflows") { workflows = message.view; renderWorkflows(); renderOverview(); }
   else if (kind === "workflow") onRun(message.view);
   else if (kind === "workflow_draft") renderDraft(message.result);
+  else if (kind === "explanation") { explaining = null; if (message.result?.mission_id) explanations[message.result.mission_id] = message.result; renderMission(); }
   else if (kind === "tasks") { tasks = message.view; renderTasks(); renderOverview(); }
   else if (kind === "task") onTask(message.view);
   else if (kind === "business") { business = message.view; renderBusiness(); renderOverview(); renderMission(); }
@@ -418,6 +421,7 @@ function receive(message) {
   else if (kind === "resource") { resourceDetail = message.detail; renderResourceDetail(); }
   else if (kind === "error") {
     if (planning) planned();
+    if (explaining) { explaining = null; renderMission(); }
     expect = null;
     const code = message.issue?.code;
     notice([ISSUE[code] || REASON[code], code, message.message && message.message !== code ? message.message : ""].filter(Boolean).join(" · "));
@@ -745,7 +749,7 @@ function missionHtml(view) {
     ["机场 / 机器人", binding && !binding.legacy ? `${binding.dock_id} / ${binding.robot_id}` : "服务未提供"],
     ["准入", v.admission ? `${v.admission.accepted ? "通过" : "拒绝"} · 能耗上界 ${pct(v.admission.energy_upper_fraction)}` : "服务未提供"],
     ["规划", v.planner?.model_id || SOURCE[v.provenance?.planning?.source] || "服务未提供"]])}</section>`;
-  return html + `<div class="d-grid"><div class="stack">${produced ? outcome + `<details class="more" data-k="package-${esc(m.mission_id)}"><summary>查看任务包</summary>${plan}</details>` : plan + outcome}${operationsCard(view)}${view.issues?.length ? issuesCard(view) : ""}</div>
+  return html + `<div class="d-grid"><div class="stack">${produced ? outcome + `<details class="more" data-k="package-${esc(m.mission_id)}"><summary>查看任务包</summary>${plan}</details>` : plan + outcome}${operationsCard(view)}${view.issues?.length ? issuesCard(view) : ""}${explainCard(view)}</div>
     <aside class="stack facts">${mobileFacts}<details class="facts-disclosure" ${compact ? "" : "open"} data-k="all-facts-${esc(m.mission_id)}-${compact ? "mobile" : "desktop"}"><summary>完整规划与运行记录</summary><div class="stack">${facts}</div></details></aside></div>${missionCancel(view)}`;
 }
 
@@ -921,6 +925,34 @@ function provenanceCard(v) {
 function issuesCard(view) {
   const issues = view.issues || [];
   return card("问题", issues.length ? table(["代码", "说明"], issues.map(i => [raw(`<code>${esc(i.code)}</code>`), i.message])) : '<div class="empty">暂无问题。</div>');
+}
+
+// WP-P6-05 (D083): answers are shown only after the service checked every citation; otherwise its summary.
+// WP-P6-05（D083）：回答只在服务核对过每处引用后展示；否则展示服务的摘要。
+function factText(result, id) {
+  const fact = (result.facts || []).find(f => f.id === id);
+  return fact ? JSON.stringify(fact) : "";
+}
+function explainCard(view) {
+  const id = view.mission.mission_id, result = explanations[id];
+  let body = '<p class="hint">助手只依据服务记录回答，每条结论都引用记录；它不能改动任务，修改只给出草案并重新审批。</p>';
+  if (explaining === id) body += '<p class="hint">正在生成解释…</p>';
+  else if (result) {
+    body += `<p class="hint">问：${esc(result.question)}</p>`;
+    const e = result.explanation;
+    if (e) {
+      body += `<blockquote class="lead explain-answer">${esc(e.answer)}</blockquote>`;
+      body += `<div class="badges">${(e.citations || []).map(c => `<span class="badge plain" title="${esc(factText(result, c))}">${esc(c)}</span>`).join(" ")}</div>`;
+      if ((e.missing || []).length) body += kv([["缺失", e.missing.join("；")]]);
+      if (e.change_draft) body += `<section class="callout info explain-draft"><h3>修改草案（提交后照常规划、准入并重新审批）</h3><p>${esc(e.change_draft)}</p>
+        <div class="buttons"><button class="btn small" type="button" data-act="explainDraft" data-id="${esc(id)}">填入新任务框</button></div></section>`;
+      body += `<p class="hint">${esc(result.model || "")} · ${esc(result.prompt_version || "")}</p>`;
+    } else {
+      const why = result.status === "not_run" ? "未配置解释模型" : result.status === "failed" ? "解释模型调用失败" : "模型回答未通过核对";
+      body += `<p class="hint">${esc(why)}${result.problems?.length ? "：" + esc(result.problems[0]) : ""}；以下是服务给出的确定性摘要。</p><blockquote class="lead explain-summary">${esc(result.summary)}</blockquote>`;
+    }
+  }
+  return card("解释与证据追问", body + `<div class="buttons"><button class="btn small" type="button" data-act="explain" data-id="${esc(id)}" ${explaining === id ? "disabled" : ""}>就这个任务提问…</button></div>`);
 }
 
 // Images are fetched once per evidence and only when the service says there is one. / 每份证据只取一次，且只在服务表明有图像时获取。
@@ -1398,6 +1430,16 @@ const ACTIONS = {
   auditOlder: () => { if (audit?.next && project()) { auditBefore = audit.next; send({type: "audit_watch", project_id: projectId, before: auditBefore}); } },
   auditLatest: () => { if (project()) { auditBefore = null; send({type: "audit_watch", project_id: projectId, before: null}); } },
   submit: () => submitMission(),
+  explain: async d => {
+    const question = await ask({title: "就这个任务提问", hint: "例：为什么被拒绝？还缺什么证据？助手只读服务记录并逐条引用。", ok: "提问"});
+    if (question && send({type: "explain", mission_id: d.id, question})) { explaining = d.id; renderMission(); }
+  },
+  explainDraft: d => {
+    const draft = explanations[d.id]?.explanation?.change_draft;
+    if (!draft) return;
+    byId("text").value = draft;
+    notice("修改草案已填入新任务框；提交后照常规划、准入，并需要重新审批。");
+  },
   filter: d => { filter = d.v; renderMissionList(); },
   version: d => { selected = Number(d.v); renderMission(); },
   approve: d => send({type: "approve", mission_id: d.id, version: Number(d.v), package_hash: d.hash}),

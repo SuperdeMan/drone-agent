@@ -1,0 +1,215 @@
+# Frozen explanation corpus (WP-P6-05, D083), built by scripts/build_explain_corpus.py; never edited by hand.
+# 冻结的解释语料（WP-P6-05，D083），由 scripts/build_explain_corpus.py 生成；不手工修改。
+format: drone.explain-corpus/v1
+corpus: explain_v1
+views:
+  foreign:
+    file: views/foreign.json
+    sha256: 64a38f0fb1a5347389ef2c065b5d1238742c29936c7b4a6698729d8d40464af4
+    status: rejected
+  refused:
+    file: views/refused.json
+    sha256: 4d3553881b926c3f4570bd602fcb1b2669ee07504d6fa7e788e15ca88d261bd0
+    status: refused
+  volume:
+    file: views/volume.json
+    sha256: fcff3c20e1a4a17693584a762495f7714e0a3836e32567e3f77a9d48f00642f3
+    status: rejected
+  energy:
+    file: views/energy.json
+    sha256: dceb96c89a64cad72caf488ba32fdf6b5253b952fab443816311261c5fb0bcd1
+    status: rejected
+  scope:
+    file: views/scope.json
+    sha256: 94397f34a38f8a1237c0746f80e13fdaf1995e10ac9fad59ad71dfecf6ac2547
+    status: rejected
+  awaiting:
+    file: views/awaiting.json
+    sha256: e6d42bc9c23d4de85fc1c830de09205cd66494ed42debdbcca89af8049b097a4
+    status: awaiting_approval
+  declined:
+    file: views/declined.json
+    sha256: d7b0ac3862027f4bae4a6348a1d555056fcb818d0af4cc1a6db083dde28aae7f
+    status: declined
+  replanned:
+    file: views/replanned.json
+    sha256: d3734bd8cc96c0d4287c810c8b83cab024af45a24aeb78b70be785bb592008f5
+    status: delivered
+  completed:
+    file: views/completed.json
+    sha256: 7acb30dda5e0608d00d799298762d7eceddff0a8c772e7dd4196e6b5fdeac96e
+    status: completed
+  lid_jam:
+    file: views/lid_jam.json
+    sha256: 9f54be662d5f3cd6991674c7500ecf10f56c217872dc0c8bb6258eca1352eba6
+    status: cancelled
+  maintenance:
+    file: views/maintenance.json
+    sha256: 21292c304749a48e40651cdfe33be4dcd8b9284158a6806a660335297602e39a
+    status: cancelled
+  lapsed:
+    file: views/lapsed.json
+    sha256: dbf6d49f01da4e3db4969d478274344ea27d174a9b97d72520f975cb303c6a5d
+    status: dispatch_expired
+cases:
+- id: foreign-zh
+  state: foreign
+  question: 为什么这个请求没有进入审批？
+  decisive: &id001
+  - issue:1
+  change: false
+- id: foreign-en
+  state: foreign
+  question: Why was this request not sent for approval?
+  decisive: *id001
+  change: false
+- id: foreign-change
+  state: foreign
+  question: 改成检查本站 B 的红色标记吧，帮我写一下新的请求。
+  decisive: *id001
+  change: true
+- id: refused-zh
+  state: refused
+  question: 规划器为什么拒答？我该怎么说？
+  decisive: &id002
+  - planner:1
+  change: false
+- id: refused-en
+  state: refused
+  question: Why did the planner decline, and what should I say instead?
+  decisive: *id002
+  change: false
+- id: volume-zh
+  state: volume
+  question: 为什么被拒绝？
+  decisive: &id003
+  - issue:1
+  change: false
+- id: volume-en
+  state: volume
+  question: Why was this request rejected?
+  decisive: *id003
+  change: false
+- id: energy-zh
+  state: energy
+  question: 为什么准入没有通过？
+  decisive: &id004
+  - issue:1
+  - admission:1
+  change: false
+- id: energy-en
+  state: energy
+  question: Why did admission reject this plan?
+  decisive: *id004
+  change: false
+- id: scope-zh
+  state: scope
+  question: 为什么被拦下了？
+  decisive: &id005
+  - issue:1
+  - issue:2
+  - admission:1
+  change: false
+- id: scope-en
+  state: scope
+  question: What blocked this mission?
+  decisive: *id005
+  change: false
+- id: awaiting-zh
+  state: awaiting
+  question: 现在卡在哪一步，需要谁处理？
+  decisive: &id006
+  - missing:approval:1
+  - dispatch:1
+  change: false
+- id: awaiting-en
+  state: awaiting
+  question: What is this mission waiting for?
+  decisive: *id006
+  change: false
+- id: awaiting-change
+  state: awaiting
+  question: Change it to inspect only the blue marker instead and write the new request.
+  decisive: *id006
+  change: true
+- id: declined-zh
+  state: declined
+  question: 这个任务为什么结束了？
+  decisive: &id007
+  - decision:1
+  - mission
+  change: false
+- id: declined-en
+  state: declined
+  question: Why did this mission end?
+  decisive: *id007
+  change: false
+- id: replanned-zh
+  state: replanned
+  question: 第一版为什么没完成？现在是第几版？
+  decisive: &id008
+  - step:1:inspect_asset_red
+  - evidence:capture:3dbf4127312ac39eed9ddbf81e1266535cec66c1591828b02c54b83f04fde4cb
+  - version:2
+  change: false
+- id: replanned-en
+  state: replanned
+  question: Why did the first version not complete, and what is running now?
+  decisive: *id008
+  change: false
+- id: completed-zh
+  state: completed
+  question: 任务完成了吗？证据核验了吗？
+  decisive: &id009
+  - report
+  - evidence:capture:3dbf4127312ac39eed9ddbf81e1266535cec66c1591828b02c54b83f04fde4cb
+  - evidence:capture:c91a2a65dae464d300467e25aaaeb398bbfb0b9fad675ace3f1341a79e725b1b
+  change: false
+- id: completed-en
+  state: completed
+  question: Did the inspection complete with verified evidence?
+  decisive: *id009
+  change: false
+- id: lid_jam-zh
+  state: lid_jam
+  question: 为什么一直没起飞？
+  decisive: &id010
+  - dispatch:1
+  - dispatch:2
+  - dispatch:3
+  - cancel
+  change: false
+- id: lid_jam-en
+  state: lid_jam
+  question: Why did this mission never take off?
+  decisive: *id010
+  change: false
+- id: maintenance-zh
+  state: maintenance
+  question: 这个任务为什么被取消了？
+  decisive: &id011
+  - dispatch:1
+  - dispatch:2
+  - dispatch:3
+  - dispatch:4
+  - cancel
+  change: false
+- id: maintenance-en
+  state: maintenance
+  question: Why was this mission cancelled?
+  decisive: *id011
+  change: false
+- id: lapsed-zh
+  state: lapsed
+  question: 为什么还没起飞？之前的审批还能用吗？
+  decisive: &id012
+  - approval:1
+  - dispatch:1
+  - dispatch:2
+  - dispatch:3
+  change: false
+- id: lapsed-en
+  state: lapsed
+  question: Why has it not flown, and does the earlier approval still hold?
+  decisive: *id012
+  change: false

@@ -1,0 +1,96 @@
+{
+ "binding": {
+  "legacy": null,
+  "project_id": "fleet_s0",
+  "robot_id": "uav_fb",
+  "site_id": "site_fb"
+ },
+ "dispatch": {
+  "cancel": null,
+  "decisions": []
+ },
+ "evidence": [],
+ "issues": [
+  {
+   "affected": [
+    "inspect_asset_blue_b",
+    "asset_blue_b"
+   ],
+   "code": "scope.asset_not_requested",
+   "layer": "admission",
+   "message": "asset_blue_b was not in the requested scope"
+  },
+  {
+   "affected": [
+    "asset_blue_b"
+   ],
+   "code": "scope.asset_not_requested",
+   "layer": "admission",
+   "message": "target asset_blue_b was not requested"
+  }
+ ],
+ "mission": {
+  "current_version": 1,
+  "mission_id": "m-4c621b43552a",
+  "replans": 0,
+  "robot_id": "uav_fb",
+  "status": "rejected"
+ },
+ "operations": [],
+ "report": null,
+ "request": {
+  "approved_volume_id": "campus_training",
+  "asset_ids": [
+   "asset_red_b"
+  ],
+  "text": "Inspect the red marker."
+ },
+ "versions": [
+  {
+   "admission": {
+    "accepted": false,
+    "codes": [
+     "scope.asset_not_requested",
+     "scope.asset_not_requested"
+    ],
+    "energy_upper_fraction": 0.7696
+   },
+   "approval": null,
+   "decision": {
+    "blocked_at": "admission",
+    "codes": [
+     "scope.asset_not_requested",
+     "scope.asset_not_requested"
+    ],
+    "reason": null
+   },
+   "diff": {
+    "added": [
+     "takeoff",
+     "inspect_asset_blue_b",
+     "return_home",
+     "land"
+    ],
+    "changed": [],
+    "removed": []
+   },
+   "events": [],
+   "origin": "harness",
+   "planner": {
+    "decline_reason": "",
+    "notes": "",
+    "prompt_version": "planner-v3",
+    "status": "planned"
+   },
+   "spec": {
+    "targets": [
+     {
+      "asset_id": "asset_blue_b"
+     }
+    ]
+   },
+   "status": "rejected",
+   "version": 1
+  }
+ ]
+}

@@ -60,6 +60,7 @@ from drone_agent.fleet.catalog import Catalog
 from drone_agent.fleet.coordinator import PassthroughCoordinator
 from drone_agent.fleet.dispatch import UNRESOLVED, Dispatch, Operations
 from drone_agent.fleet.events import event_to_row, outcomes_from_rows, verify_chain
+from drone_agent.fleet.explain import facts_of, summary_of
 from drone_agent.fleet.ledger import BusinessLedger
 from drone_agent.fleet.provenance import (
     NAMESPACE,
@@ -194,6 +195,9 @@ class MissionService:
         # catalog is loaded. / P2（D057）：工作流引擎及其草案规划器；加载了工作流目录时由进程入口挂上。
         self.workflows = None
         self.workflow_planner = None
+        # WP-P6-05 (D083): answers questions about a mission from its facts; None shows the summary only.
+        # WP-P6-05（D083）：依据事实回答关于任务的问题；为 None 时只展示摘要。
+        self.explainer = None
         # P3 (D059): the scheduler, attached by the process entry when a scheduling catalog is loaded.
         # P3（D059）：调度器；加载了调度目录时由进程入口挂上。
         self.scheduler = None
@@ -1309,6 +1313,26 @@ class MissionService:
             self.ledger.record_issue(issue("service.degraded", f"vendor: {type(error).__name__}: {error}"[:300]))
 
     # ── views / 视图 ──
+
+    async def explain(self, mission_id: str, question: str, caller: Caller | None = None) -> dict:
+        """WP-P6-05 (D083): a read-only explanation of one mission. The facts and the deterministic summary always
+        come back; the model's answer only when it passed the check. Nothing is stored and no version is made.
+
+        WP-P6-05（D083）：对一个任务的只读解释。事实表与确定性摘要总会返回；模型的回答只在通过核对时返回。不存储任何内容，
+        不产生版本。
+        """
+        self._check(caller, mission_id, MISSION_READ)
+        question = question.strip()[:500]
+        if not question:
+            raise ServiceError("service.invalid_request", "ask a question")
+        facts = facts_of(self._view(mission_id))
+        value = {"mission_id": mission_id, "question": question, "facts": facts,
+                 "summary": summary_of(facts, question)}
+        if self.explainer is None:
+            return value | {"status": "not_run", "explanation": None, "problems": ["no explainer is configured"]}
+        outcome = await self.explainer.explain(question, facts, label=f"explain-{mission_id}")
+        return value | {k: outcome.get(k) for k in ("status", "explanation", "problems", "model", "prompt_version",
+                                                "input_sha256")}
 
     def view(self, mission_id: str, caller: Caller | None = None) -> dict:
         """Everything the console shows for one mission; catalog mode checks project read.

@@ -1,0 +1,193 @@
+{
+ "binding": null,
+ "dispatch": null,
+ "evidence": [
+  {
+   "evidence_id": "capture:3dbf4127312ac39eed9ddbf81e1266535cec66c1591828b02c54b83f04fde4cb",
+   "step_id": "inspect_asset_red",
+   "verification": {
+    "checks": {
+     "frame": "ok",
+     "media": "ok",
+     "pose": "ok",
+     "quality": "red fraction 0.000, edge 0.000",
+     "target": "ok",
+     "time_window": "ok"
+    },
+    "final_verdict": "unverified"
+   },
+   "version": 1
+  }
+ ],
+ "issues": [],
+ "mission": {
+  "current_version": 2,
+  "mission_id": "m-908769e7cc4d",
+  "replans": 1,
+  "robot_id": "uav_01",
+  "status": "delivered"
+ },
+ "operations": [],
+ "report": {
+  "all_targets_completed": false,
+  "summary": {
+   "completed": 0,
+   "not_completed": 0,
+   "uncertain": 1
+  },
+  "targets": {
+   "asset_red": "uncertain"
+  }
+ },
+ "request": {
+  "approved_volume_id": "campus_training",
+  "asset_ids": [],
+  "text": "Inspect the red equipment marker east of the pad and bring back a photo."
+ },
+ "versions": [
+  {
+   "admission": {
+    "accepted": true,
+    "codes": [],
+    "energy_upper_fraction": 0.7696
+   },
+   "approval": {
+    "approved_at": "2026-10-11T12:47:14.343003Z",
+    "expires_at": "2026-10-11T13:17:14.338192Z"
+   },
+   "decision": {
+    "blocked_at": null,
+    "codes": [],
+    "reason": null
+   },
+   "diff": {
+    "added": [
+     "takeoff",
+     "inspect_asset_red",
+     "return_home",
+     "land"
+    ],
+    "changed": [],
+    "removed": []
+   },
+   "events": [
+    {
+     "data": {
+      "mission_id": "m-908769e7cc4d",
+      "outcome": {
+       "effect_verdict": "verified",
+       "execution_status": "succeeded",
+       "mission_id": "m-908769e7cc4d",
+       "mission_version": 1,
+       "robot_id": "uav_01",
+       "safety_verdict": "proceed",
+       "schema_version": "0.1.0",
+       "step_id": "takeoff"
+      },
+      "waypoints_verified": 0
+     },
+     "kind": "step_outcome"
+    },
+    {
+     "data": {
+      "mission_id": "m-908769e7cc4d",
+      "outcome": {
+       "effect_verdict": "unverified",
+       "execution_status": "failed",
+       "mission_id": "m-908769e7cc4d",
+       "mission_version": 1,
+       "robot_id": "uav_01",
+       "safety_verdict": "proceed",
+       "schema_version": "0.1.0",
+       "step_id": "inspect_asset_red"
+      },
+      "waypoints_verified": 2
+     },
+     "kind": "step_outcome"
+    },
+    {
+     "data": {
+      "completed": false,
+      "mission_id": "m-908769e7cc4d",
+      "not_run": [
+       "return_home",
+       "land"
+      ],
+      "outcomes": {
+       "inspect_asset_red": {
+        "effect_verdict": "unverified",
+        "execution_status": "failed",
+        "mission_id": "m-908769e7cc4d",
+        "mission_version": 1,
+        "robot_id": "uav_01",
+        "safety_verdict": "proceed",
+        "schema_version": "0.1.0",
+        "step_id": "inspect_asset_red"
+       },
+       "takeoff": {
+        "effect_verdict": "verified",
+        "execution_status": "succeeded",
+        "mission_id": "m-908769e7cc4d",
+        "mission_version": 1,
+        "robot_id": "uav_01",
+        "safety_verdict": "proceed",
+        "schema_version": "0.1.0",
+        "step_id": "takeoff"
+       }
+      }
+     },
+     "kind": "mission_result"
+    }
+   ],
+   "origin": "console",
+   "planner": {
+    "decline_reason": "",
+    "notes": "",
+    "prompt_version": "planner-v3",
+    "status": "planned"
+   },
+   "spec": {
+    "targets": [
+     {
+      "asset_id": "asset_red"
+     }
+    ]
+   },
+   "status": "finished",
+   "version": 1
+  },
+  {
+   "admission": {
+    "accepted": true,
+    "codes": [],
+    "energy_upper_fraction": 0.7696
+   },
+   "approval": {
+    "approved_at": "2026-10-11T12:47:18.031778Z",
+    "expires_at": "2026-10-11T13:17:14.338192Z"
+   },
+   "decision": {
+    "blocked_at": null,
+    "codes": null,
+    "reason": null
+   },
+   "diff": {
+    "added": [],
+    "changed": [],
+    "removed": []
+   },
+   "events": [],
+   "origin": "replan",
+   "planner": null,
+   "spec": {
+    "targets": [
+     {
+      "asset_id": "asset_red"
+     }
+    ]
+   },
+   "status": "delivered",
+   "version": 2
+  }
+ ]
+}

@@ -305,6 +305,55 @@ def session(origin: str, args) -> tuple[dict, str | None]:
     return follow(origin, client, first["view"], args, receipt, started), login
 
 
+def explain(origin: str, args) -> tuple[dict, str | None]:
+    """WP-P6-05 (D083): submit one request through the entry, then ask about it; the answer comes back only after the
+    service checked it. A version left waiting is declined as the page would; nothing is approved or flown.
+
+    WP-P6-05（D083）：经入口提交一条请求，再就它提问；回答只在服务核对之后返回。留下等待审批的版本像页面一样驳回；不审批、不飞行。
+    """
+    started = time.monotonic()
+    client, login, receipt = open_session(origin)
+    client.send({"type": "text", "rid": uuid.uuid4().hex[:16], "text": args.text, "volume_id": args.volume,
+                 "asset_ids": [], "project_id": args.project, "robot_id": args.robot})
+    first = client.next(("mission", "error"), args.plan_timeout)
+    if first["type"] == "error":
+        receipt["errors"].append(first)
+        client.close()
+        return receipt, login
+    view = first["view"]
+    mission_id = view["mission"]["mission_id"]
+    receipt["request"] = {"text": args.text, "project_id": args.project, "robot_id": args.robot,
+                          "volume_id": args.volume}
+    receipt["mission"] = {"mission_id": mission_id, "status": view["mission"]["status"],
+                          "issues": [i["code"] for i in view.get("issues", [])]}
+    asked = time.monotonic()
+    client.send({"type": "explain", "mission_id": mission_id, "question": args.question})
+    while True:
+        answer = client.next(("explanation", "error"), args.explain_timeout)
+        if answer["type"] == "error" or answer["result"].get("mission_id") == mission_id:
+            break
+    if answer["type"] == "error":
+        receipt["errors"].append(answer)
+    else:
+        result = answer["result"]
+        receipt["explanation"] = {"question": result.get("question"), "status": result.get("status"),
+                                  "explanation": result.get("explanation"), "problems": result.get("problems"),
+                                  "summary": result.get("summary"), "model": result.get("model"),
+                                  "prompt_version": result.get("prompt_version"),
+                                  "fact_ids": [f["id"] for f in result.get("facts", [])],
+                                  "codes": sorted({f["code"] for f in result.get("facts", []) if f.get("code")}),
+                                  "explain_s": round(time.monotonic() - asked, 1)}
+    if view["mission"]["status"] == "awaiting_approval":
+        version = view["versions"][-1]
+        client.send({"type": "decline", "mission_id": mission_id, "version": version["version"],
+                     "reason": "desk probe: explanation check only, nothing to fly (D083)"})
+        receipt["sent"].append({"t": round(time.monotonic() - started, 1), "action": "decline",
+                                "version": version["version"]})
+    receipt["duration_s"] = round(time.monotonic() - started, 1)
+    client.close()
+    return receipt, login
+
+
 def plan(origin: str, args) -> tuple[dict, str | None]:
     """P6 (D079): one bound request through the entry; the planned version is recorded, then declined as the page would,
     so nothing is left waiting for approval on the resident desk. The probe approves nothing and flies nothing.
@@ -1070,7 +1119,8 @@ def fixed_session(origin: str, args) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("http", "session", "watch", "spoof", "fixed", "resources", "workflow", "tasks", "business", "plan"):
+    for name in ("http", "session", "watch", "spoof", "fixed", "resources", "workflow", "tasks", "business", "plan",
+                 "explain"):
         command = commands.add_parser(name)
         command.add_argument("--origin", required=True, help="https://<node>.<tailnet>.ts.net:8448")
         command.add_argument("--output", type=Path)
@@ -1093,6 +1143,14 @@ def main() -> None:
     planning.add_argument("--volume", default="campus_training")
     planning.add_argument("--asset", action="append")
     planning.add_argument("--plan-timeout", type=float, default=300)
+    asking = commands.choices["explain"]
+    asking.add_argument("--text", required=True, help="the request to submit, then ask about")
+    asking.add_argument("--question", required=True)
+    asking.add_argument("--project", required=True)
+    asking.add_argument("--robot", required=True)
+    asking.add_argument("--volume", default="campus_training")
+    asking.add_argument("--plan-timeout", type=float, default=300)
+    asking.add_argument("--explain-timeout", type=float, default=180)
     flow = commands.choices["workflow"]
     flow.add_argument("--project", default="campus_s1")
     flow.add_argument("--draft-text", help="ask the configured planner for one inactive template draft")
@@ -1148,6 +1206,8 @@ def main() -> None:
         result, login = watch(args.origin, args)
     elif args.command == "plan":
         result, login = plan(args.origin, args)
+    elif args.command == "explain":
+        result, login = explain(args.origin, args)
     else:
         result, login = session(args.origin, args)
     result = redact({"schema_version": "0.1.0", "probe": args.command, **result}, args.origin, login)

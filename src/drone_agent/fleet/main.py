@@ -147,6 +147,12 @@ async def main_async(args) -> None:
         # 草案与任务规划器共用 provider；实调交互与规划一样被录制（D029，D057 §9）。
         service.workflow_planner = WorkflowDraftPlanner.from_planner(
             planner, recordings=args.state / "recordings" if label.startswith("live") else None)
+    # WP-P6-05 (D083): explanations share the planner's provider; live answers are recorded like plans.
+    # WP-P6-05（D083）：解释与规划器共用 provider；实调回答与规划一样被录制。
+    from drone_agent.fleet.explain import MissionExplainer
+
+    service.explainer = MissionExplainer.from_planner(
+        planner, recordings=args.state / "recordings" if label.startswith("live") else None)
     if scheduling is not None:
         from drone_agent.fleet.scheduler import Scheduler
 

@@ -321,7 +321,7 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed) -> dict:
 # ── WP-P6-03 adversarial recordings (D079) / WP-P6-03 对抗录制（D079） ──
 
 OPERATIONS = ("plan_ops_v1", "plan_ops_v2", "plan_ops_v3")
-CORPORA = ("nl_v1", "workflow_v1", *OPERATIONS, "vision_ops_v1")
+CORPORA = ("nl_v1", "workflow_v1", *OPERATIONS, "vision_ops_v1", "explain_v1")
 PLANNING = ("nl_v1", *OPERATIONS)
 PROMPTS = ("planner-v1", "planner-v2", "planner-v3")
 VISION_PROFILES = ("configs/analysis/vlm_change_v3.yaml", "configs/analysis/vlm_change_v6.yaml")
@@ -354,7 +354,7 @@ def run_adversarial(root: Path, deployment: Path, request: dict) -> dict:
         # Complete an earlier live run of the same corpus and profile: its recordings are replayed, never re-asked.
         # 补全同一语料与画像的先前实调运行：其录制只回放，从不重问。
         found = re.fullmatch(r"(\d{8}T\d{6}Z-[0-9a-f]{8})/(p6adv-\d{8}T\d{6}Z-[0-9a-f]{8})", request["resume_of"])
-        if mode != "live" or corpus not in (*OPERATIONS, "vision_ops_v1") or not found:
+        if mode != "live" or corpus not in (*OPERATIONS, "vision_ops_v1", "explain_v1") or not found:
             raise ValueError("resume_of=<deployment id>/p6adv-<run id> completes a live operations or vision_ops_v1 "
                              "run")
         previous = root / "artifacts" / found.group(1) / found.group(2) / "run"

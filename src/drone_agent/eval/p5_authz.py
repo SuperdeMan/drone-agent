@@ -150,6 +150,7 @@ class Matrix:
             "decline": (p, {"mission_id": o["pending"], "version": 1, "reason": "authz probe"}),
             "operate": (p, {"mission_id": o["mission"], "action": "pause", "request_id": f"authz-{n}"}),
             "view": (p, {"mission_id": o["mission"]}), "summary": (p, {"mission_id": o["mission"]}),
+            "missions.explain": (p, {"mission_id": o["mission"], "question": "Why did it end?"}),
             "list": (p, {}), "robots": (p, {}), "health": (p, {}), "projects": (p, {}),
             "media": (p, {"mission_id": o["mission"], "evidence_id": o["evidence"]}),
             "audit": (p, {"code": "auth.identity_missing", "message": "authz probe"}),
@@ -248,6 +249,7 @@ class Matrix:
         return [
             ("list", {}, "list", p),
             ("watch", {"mission_id": o["mission"]}, "view", p),
+            ("explain", {"mission_id": o["mission"], "question": "Why did it end?"}, "missions.explain", p),
             ("media", {"mission_id": o["mission"], "evidence_id": o["evidence"]}, "media", p),
             ("resources", {"project_id": p}, "resources.list", p),
             ("resource", {"project_id": p, "resource_id": "dock_s1"}, "resources.get", p),
