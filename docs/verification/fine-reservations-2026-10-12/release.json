@@ -1,0 +1,249 @@
+{
+  "schema_version": "0.1.0",
+  "work_package": "WP-P6-06",
+  "decision_record": "D084",
+  "source_sha": "6544a9a81ec0731b89328841a5ba8215b2f4135d",
+  "records_sha": "69228e2a9572ec9a8b2d30e34bdce17afdfceeff",
+  "checked_at": "2026-10-11T23:22:25.561804+00:00",
+  "status": "passed",
+  "adopt_corridors": false,
+  "criteria": {
+    "scope": {
+      "status": "passed",
+      "base_sha": "73fdb4bc69a0e86814e338c23d8451813356f73a",
+      "changed": 28,
+      "outside_scope": [],
+      "onboard_changed": []
+    },
+    "checks": {
+      "status": "passed",
+      "deployment_id": "20261011T203555Z-2f24bc29",
+      "tests": {
+        "tests": 1530,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "wire_checks": [
+        true,
+        true
+      ]
+    },
+    "prereg": {
+      "status": "passed",
+      "problems": [],
+      "commit": "69228e2a9572ec9a8b2d30e34bdce17afdfceeff",
+      "committed_at": "2026-10-12T05:17:16+08:00",
+      "thresholds": {
+        "rung": "p6_long_l10",
+        "source_sha": "6544a9a81ec0731b89328841a5ba8215b2f4135d",
+        "noise_wait_s": 70.366,
+        "noise_drain_s": 0.88,
+        "wait_drop": 0.3,
+        "noise_factor": 3.0,
+        "long_drain": 1.05,
+        "ladder_drain": 1.1,
+        "noise_runs": [
+          {
+            "wait_s": 175.298,
+            "drain_s": 195.64
+          },
+          {
+            "wait_s": 245.664,
+            "drain_s": 196.52
+          }
+        ]
+      }
+    },
+    "decision": {
+      "status": "passed",
+      "adopt": false,
+      "criteria": {
+        "inputs": {
+          "status": "passed",
+          "problems": {},
+          "source_sha": {
+            "box_long": "6544a9a81ec0731b89328841a5ba8215b2f4135d",
+            "corridor_long": "6544a9a81ec0731b89328841a5ba8215b2f4135d",
+            "box_ladder": "6544a9a81ec0731b89328841a5ba8215b2f4135d",
+            "corridor_ladder": "6544a9a81ec0731b89328841a5ba8215b2f4135d",
+            "box_matrix": "6544a9a81ec0731b89328841a5ba8215b2f4135d",
+            "corridor_matrix": "6544a9a81ec0731b89328841a5ba8215b2f4135d",
+            "corridor_s1": "6544a9a81ec0731b89328841a5ba8215b2f4135d"
+          }
+        },
+        "safety": {
+          "status": "passed",
+          "problems": {}
+        },
+        "long_wait": {
+          "status": "failed",
+          "box_s": 261.327,
+          "corridor_s": 52.221,
+          "drop_s": 209.106,
+          "at_least_s": 78.398,
+          "more_than_s": 211.098
+        },
+        "long_drain": {
+          "status": "passed",
+          "box_s": 202.08,
+          "corridor_s": 187.52,
+          "limit_s": 212.184
+        },
+        "ladder_drain": {
+          "status": "passed",
+          "rungs": {
+            "p3_l10": {
+              "box_s": 33.02,
+              "corridor_s": 34.45,
+              "limit_s": 36.322
+            },
+            "p3_l100": {
+              "box_s": 512.53,
+              "corridor_s": 534.17,
+              "limit_s": 563.783
+            },
+            "p3_l30": {
+              "box_s": 102.08,
+              "corridor_s": 96.38,
+              "limit_s": 112.288
+            }
+          }
+        }
+      }
+    },
+    "s1": {
+      "status": "passed",
+      "problems": [],
+      "min_margin_m": {
+        "box-v1": 3.276,
+        "corridor-v1": 3.319
+      }
+    },
+    "regression": {
+      "status": "passed",
+      "p1_s0": {
+        "status": "passed",
+        "cases": 42,
+        "expected": 42,
+        "passed": 42,
+        "counts": {
+          "wrong_dispatch": 0,
+          "duplicate_dispatch": 0,
+          "wrong_release": 0,
+          "project_escape": 0,
+          "false_success": 0
+        },
+        "voided_attempts": 0,
+        "problems": [],
+        "summary_sha256": "ae91b4b807b804e280f5f0ceae8b834a7f6a85c49d7edd262987b1e596086f86"
+      },
+      "p3_s0_box": {
+        "status": "passed",
+        "cases": 45,
+        "passed": 45,
+        "counts": {
+          "double_ownership": 0,
+          "duplicate_execution": 0,
+          "lost_task": 0,
+          "conflicting_reservation": 0,
+          "false_success": 0,
+          "stale_epoch_effect": 0,
+          "decision_mismatch": 0,
+          "project_escape": 0,
+          "wrong_dispatch": 0,
+          "duplicate_dispatch": 0,
+          "wrong_release": 0
+        },
+        "containment": {
+          "violations": 0,
+          "unjudged": 0,
+          "min_margin_m": 2.0
+        },
+        "summary_sha256": "5eb9d3a12a17dfdcbfaadc08c3b7cdbbf46dc97eb1debf980f2384262d62273a"
+      },
+      "p3_s0_corridor": {
+        "status": "passed",
+        "cases": 45,
+        "passed": 45,
+        "counts": {
+          "double_ownership": 0,
+          "duplicate_execution": 0,
+          "lost_task": 0,
+          "conflicting_reservation": 0,
+          "false_success": 0,
+          "stale_epoch_effect": 0,
+          "decision_mismatch": 0,
+          "project_escape": 0,
+          "wrong_dispatch": 0,
+          "duplicate_dispatch": 0,
+          "wrong_release": 0
+        },
+        "containment": {
+          "violations": 0,
+          "unjudged": 0,
+          "min_margin_m": 2.0
+        },
+        "summary_sha256": "e72de880cedc2ed91c5877553a2a6e0b3c0768354b43f5bcd3739575a5bc04d9"
+      }
+    },
+    "desk": {
+      "status": "passed",
+      "problems": [],
+      "catalogs": {
+        "operations": "p5_desk_v1",
+        "workflows": "p6_desk_v1",
+        "scheduling": "p5_desk_v1",
+        "business": "p6_desk_v1"
+      },
+      "switch_drill": "passed"
+    },
+    "historical": {
+      "status": "passed",
+      "problems": [],
+      "records": {
+        "docs/verification/explain-2026-10-11/release.json": {
+          "sha256": "6775956a27eb33ef2c218b8ea88a960f332ce5a0bb12ef267d940f1a0da124a3",
+          "commit": "22d4464"
+        },
+        "docs/verification/reference-check-2026-10-11/release.json": {
+          "sha256": "e4bc8fbe714488a36ad57c2d47f11b6bf43a3a8a59f1259a787106d5a66ec75f",
+          "commit": "898b2fe"
+        },
+        "docs/verification/p6-adversarial-2026-10-11/release.json": {
+          "sha256": "f2d61c62bb4e70ac583299ea15ed7bd96a570025659a7f525783d217e79d68ec",
+          "commit": "017970e"
+        }
+      }
+    }
+  },
+  "capabilities": [
+    {
+      "capability": "fine_airspace_reservations_v1",
+      "decision": "D084",
+      "software_validation": "passed",
+      "source_sha": "6544a9a81ec0731b89328841a5ba8215b2f4135d",
+      "corridors_adopted": false,
+      "existing_catalogs_switched": false,
+      "containment_checked_on_truth": true,
+      "real_devices": false
+    }
+  ],
+  "inputs": {
+    "docs/verification/fine-reservations-2026-10-12/deployment-6544a9a.json": "4cb9783ce1a8cbec1ad3a48dbf4fba64dbd7881c2d9b14961b6a0974ad9e4325",
+    "docs/verification/fine-reservations-2026-10-12/s1/s1-box-v1.json": "f4ad2557804681ced90f10c64c56cf5f11647b3481c6ca5c2c6d9b52fb26c4d0",
+    "docs/verification/fine-reservations-2026-10-12/s1/s1-corridor-v1.json": "d2ffd5be44e2f466a4eb8a03308bf8fef0599ad79af428fe02804a0d88655282",
+    "docs/verification/fine-reservations-2026-10-12/desk/desk-activation.json": "13a5ba23a2419ddaa591a71bcee07bdd61b75cab211c5225cd180593095ae338",
+    "docs/verification/fine-reservations-2026-10-12/desk/http.json": "c32d5909de50f5da1dfe7453fb348a43cefc587142b1caaedc65c3dae89fab90",
+    "docs/verification/fine-reservations-2026-10-12/desk/spoof.json": "a956625fc4ef18cc6852849e7b4cb3abc304da39c06d3fda0a3d07cd738e4b62",
+    "docs/verification/fine-reservations-2026-10-12/attempt-2/box-ladder.json": "87fe6fe91603aac4249178ed593c3991f7db6abca0de06c6570bb59b2725a322",
+    "docs/verification/fine-reservations-2026-10-12/attempt-2/box-long.json": "17b69b16421341d2ab5a69255b17b1c94b3424eb94b7481b8bb00d40948bb26e",
+    "docs/verification/fine-reservations-2026-10-12/attempt-2/box-matrix.json": "5a6e495be28edee9d68be351bd2342b9db605d75a83706188c247f4533f5ac94",
+    "docs/verification/fine-reservations-2026-10-12/attempt-2/corridor-ladder.json": "5d431d6295dd6d20a9a1ec780770f0a5ba50f2fe5f366c2f6a36870bb4cc0f21",
+    "docs/verification/fine-reservations-2026-10-12/attempt-2/corridor-long.json": "a1c26b5ae00f8f0ace0146d08fd3f120c5b0eca6680e4948f85feba57c2271e6",
+    "docs/verification/fine-reservations-2026-10-12/attempt-2/corridor-matrix.json": "24446a12f88494473820793c125187f799016f104d4a85e8ccc425b58d60df80",
+    "docs/verification/fine-reservations-2026-10-12/attempt-2/noise-1.json": "be0c70f0d30d390e979ebadbe775e29f15db94e533ede895bd79c5c0dfe2d808",
+    "docs/verification/fine-reservations-2026-10-12/attempt-2/noise-2.json": "9db1810e2823b61f9e6c0c032e5caeabb03d82954063097650753a674717e60b",
+    "docs/verification/fine-reservations-2026-10-12/attempt-2/preregistration.json": "a0e39207afb1824cafbc0f828985caab25273b3987c1528bbcfe953c9bd9420d"
+  }
+}
