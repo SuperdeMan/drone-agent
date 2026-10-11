@@ -136,6 +136,8 @@ flowchart TB
 | [../planner-clarification.md](../planner-clarification.md) | 规划提示 planner-v2：歧义时请操作者澄清，留出语料、预登记规则与门禁（D080） |
 | [../planner-clarification-readiness.md](../planner-clarification-readiness.md) | D080 验收记录（2026-10-11，`02694be`，采用 planner-v2） |
 | [../planner-binding-readiness.md](../planner-binding-readiness.md) | D081 验收记录（2026-10-11，`b4a17a3`，采用 planner-v3：规划请求写明绑定身份） |
+| [../reference-check.md](../reference-check.md) | 跨站点指代的确定性检查：名称表、别名、匹配规则与评测（D082） |
+| [../reference-check-readiness.md](../reference-check-readiness.md) | D082 验收记录（2026-10-11，`4398938`） |
 | [../p1-implementation.md](../p1-implementation.md) | P1 的 12 项工作包、单机场纵向链、故障矩阵与实现落位 |
 | [../p1-readiness.md](../p1-readiness.md) | P1 验收版本、S0 / S1 与常驻任务台迁移证据 |
 | [../p2-implementation.md](../p2-implementation.md) | P2 持久工作流的语义、API、故障矩阵与实施记录 |

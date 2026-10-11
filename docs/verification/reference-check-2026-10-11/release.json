@@ -1,0 +1,213 @@
+{
+  "schema_version": "0.1.0",
+  "decision_record": "D082",
+  "source_sha": "4398938ae9c27e769c04fe711ee85d0fd7abf8f7",
+  "records_sha": "a35c6682a9a54e5cd88bbb98d91382c4183fad4f",
+  "checked_at": "2026-10-11T12:28:10.012654+00:00",
+  "status": "passed",
+  "criteria": {
+    "scope": {
+      "status": "passed",
+      "base_sha": "32520412710b40b68c388169ebe3bfbfa82c0088",
+      "changed": 18,
+      "outside_scope": [],
+      "onboard_changed": []
+    },
+    "checks": {
+      "status": "passed",
+      "deployment_id": "20261011T115157Z-596345dd",
+      "tests": {
+        "tests": 1470,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "wire_checks": [
+        true,
+        true
+      ]
+    },
+    "evaluation": {
+      "status": "passed",
+      "false_rejections": 0,
+      "caught": 17,
+      "missed": 5,
+      "desk": {
+        "as_expected": 15,
+        "cases": 15,
+        "unexpected": []
+      },
+      "per_corpus": {
+        "plan_ops_v1": {
+          "verdicts": {
+            "clear": 32,
+            "missed": 2,
+            "caught": 4
+          },
+          "missed": [
+            "cross-foreign-id-en",
+            "cross-volume-en"
+          ],
+          "false_rejections": []
+        },
+        "plan_ops_v2": {
+          "verdicts": {
+            "clear": 32,
+            "caught": 4,
+            "missed": 2
+          },
+          "missed": [
+            "cross-campus-blue-en",
+            "cross-rooftop-en"
+          ],
+          "false_rejections": []
+        },
+        "plan_ops_v3": {
+          "verdicts": {
+            "caught": 9,
+            "missed": 1,
+            "clear": 28
+          },
+          "missed": [
+            "cross-rooftop-deck-en"
+          ],
+          "false_rejections": []
+        }
+      },
+      "aliases_sha256": {
+        "p3_campus_v1": "7399164fe5189d6b1b78670aa1a2f81130dac286e0ab5f139c62b9916d25c355",
+        "p5_desk_v1": "fbba998283c24df64eedbbe285bbdeeaa62f0af1510b9f9ff9ecffdf2b1c588d"
+      }
+    },
+    "regression": {
+      "status": "passed",
+      "p1_s0": {
+        "status": "passed",
+        "cases": 42,
+        "expected": 42,
+        "passed": 42,
+        "counts": {
+          "wrong_dispatch": 0,
+          "duplicate_dispatch": 0,
+          "wrong_release": 0,
+          "project_escape": 0,
+          "false_success": 0
+        },
+        "voided_attempts": 0,
+        "problems": [],
+        "summary_sha256": "07983d27db0321dda348f1601cfe6d6a48a9f754a0da8410835c2cef195f39d1"
+      },
+      "authz": {
+        "status": "passed",
+        "escapes": 0,
+        "api_rows": 539,
+        "frame_rows": 248,
+        "methods": 49,
+        "forbidden_refused": 517,
+        "audit_denials": 120,
+        "identities": [
+          "a2a",
+          "admin",
+          "anonymous",
+          "approver",
+          "dock_backend",
+          "event_backend",
+          "non_member",
+          "operator",
+          "other_project",
+          "reviewer",
+          "viewer"
+        ],
+        "catalogs": "p6_desk_v1 workflows and business"
+      }
+    },
+    "desk": {
+      "status": "passed",
+      "activation": {
+        "status": "passed",
+        "problems": [],
+        "catalogs": {
+          "operations": "p5_desk_v1",
+          "workflows": "p6_desk_v1",
+          "scheduling": "p5_desk_v1",
+          "business": "p6_desk_v1"
+        },
+        "switch_drill": "passed"
+      },
+      "planning": {
+        "status": "passed",
+        "problems": [],
+        "requests": {
+          "campus_s1/uav_01": {
+            "targets": [
+              "road_north"
+            ],
+            "model": "MiniMax-M3",
+            "planning_s": 5.0
+          },
+          "fleet_s0/uav_fb": {
+            "targets": [
+              "asset_red_b"
+            ],
+            "model": "MiniMax-M3",
+            "planning_s": 3.6
+          }
+        }
+      },
+      "prompt_versions": [
+        "planner-v3",
+        "planner-v3"
+      ],
+      "foreign_request": {
+        "status": "passed",
+        "problems": [],
+        "issues": [
+          "scope.foreign_reference"
+        ]
+      }
+    },
+    "historical": {
+      "status": "passed",
+      "problems": [],
+      "records": {
+        "docs/verification/p6-recapture-2026-10-10/release.json": {
+          "sha256": "5963d5e659ff18f4e6aecf37db09a7e0dffaf7bf8f6ecc575e571f56060ab735",
+          "commit": "3e83cb2"
+        },
+        "docs/verification/p6-adversarial-2026-10-11/release.json": {
+          "sha256": "f2d61c62bb4e70ac583299ea15ed7bd96a570025659a7f525783d217e79d68ec",
+          "commit": "017970e"
+        },
+        "docs/verification/planner-clarification-2026-10-11/release.json": {
+          "sha256": "4a4eb4ba6674b295248bab2decff7e57e0394a8a0e307a5946c1904d9b32baea",
+          "commit": "99d6e17"
+        },
+        "docs/verification/planner-binding-2026-10-11/release.json": {
+          "sha256": "84243731f13b85486463edacea12a648884955f1ccc406838e136dd7a2ab50b2",
+          "commit": "3252041"
+        }
+      }
+    }
+  },
+  "capabilities": [
+    {
+      "capability": "foreign_reference_check_v1",
+      "decision": "D082",
+      "software_validation": "passed",
+      "source_sha": "4398938ae9c27e769c04fe711ee85d0fd7abf8f7",
+      "deterministic": true,
+      "model_calls": 0,
+      "real_devices": false,
+      "coverage": "names in the catalog and its alias files only"
+    }
+  ],
+  "inputs": {
+    "docs/verification/reference-check-2026-10-11/deployment-4398938.json": "8e857bfbad070f43521bb022b172246525fe60016277a3a0d1382099ab72c7de",
+    "docs/verification/reference-check-2026-10-11/desk/desk-activation.json": "0338c21ed4ae313a352e62c6bfffdb8b952d852ee0a610b9433c296d2fc6b53d",
+    "docs/verification/reference-check-2026-10-11/desk/http.json": "4679d89a193988fb369f365502d2939fdcbd080120589f4f0dfe63910395c8d0",
+    "docs/verification/reference-check-2026-10-11/desk/spoof.json": "a956625fc4ef18cc6852849e7b4cb3abc304da39c06d3fda0a3d07cd738e4b62",
+    "docs/verification/reference-check-2026-10-11/desk/plan-campus.json": "44521b11d05c554812d9baca17c6d68bc645fde5a44799b0ee9d3c4d5f0ae3cc",
+    "docs/verification/reference-check-2026-10-11/desk/plan-fleet.json": "71bc9a4c9498830483e22b65664a25a9edb75dbbe1c50babe61920c20ac94aac",
+    "docs/verification/reference-check-2026-10-11/desk/plan-foreign.json": "99ca4b7d14667153c93568a61690d4e49ee351aa3d68d3cee1ff16d4d2a3dd4c"
+  }
+}
