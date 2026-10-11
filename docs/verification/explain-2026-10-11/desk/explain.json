@@ -1,0 +1,73 @@
+{
+  "schema_version": "0.1.0",
+  "probe": "explain",
+  "hello": {
+    "identity_scheme": "tailnet",
+    "can_write": true,
+    "planner": "live:minimax/MiniMax-M3"
+  },
+  "host_states": [
+    {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "76e7403da4ad06ab1bbac00e79a209b5bb236453",
+      "updated_at": "2026-10-11T13:49:27.585073+00:00"
+    }
+  ],
+  "timeline": [],
+  "errors": [],
+  "sent": [],
+  "reconnects": 0,
+  "request": {
+    "text": "Inspect the red equipment marker at site A.",
+    "project_id": "fleet_s0",
+    "robot_id": "uav_fb",
+    "volume_id": "campus_training"
+  },
+  "mission": {
+    "mission_id": "m-89dcad0cb2f3",
+    "status": "rejected",
+    "issues": [
+      "scope.foreign_reference"
+    ]
+  },
+  "explanation": {
+    "question": "为什么这个请求没有进入审批？",
+    "status": "validated",
+    "explanation": {
+      "answer": "请求未进入审批，是因为在 admission（受理）阶段就被 issue:1 否决了。原因：请求文本里的 \"site A\" 解析为 site_fa，但该任务绑定的是 project fleet_s0、site site_fb、robot uav_fb（见 binding），\"site A\" 属于另一站点，属于 scope.foreign_reference（引用了不属于本站点/本项目的范围）。当前版本 version:1 的状态为 rejected，整次 mission 因此也是 rejected。要修复，需把请求中的 \"site A\" 改写为 site_fb（或改投负责 site_fa 的机器人），并重新提交一次新的请求，新的版本需再次完成 admitted_and_approved_version 才能进入审批/执行。",
+      "citations": [
+        "issue:1",
+        "version:1",
+        "mission",
+        "binding",
+        "request"
+      ],
+      "missing": [
+        "missing:version"
+      ],
+      "change_draft": "Inspect the red equipment marker at site_fb."
+    },
+    "problems": [],
+    "summary": "任务状态：rejected（当前第 1 版）。原因码：scope.foreign_reference。缺口：version。",
+    "model": "minimax/MiniMax-M3",
+    "prompt_version": "explain-v1@a5f0b80ce44d",
+    "fact_ids": [
+      "mission",
+      "request",
+      "binding",
+      "version:1",
+      "issue:1",
+      "missing:version"
+    ],
+    "codes": [
+      "scope.foreign_reference"
+    ],
+    "explain_s": 7.8
+  },
+  "duration_s": 8.0
+}
