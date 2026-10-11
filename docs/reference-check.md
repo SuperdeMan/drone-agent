@@ -16,7 +16,7 @@ D080 与 D081 之后，跨站点替换仍有残余：
 - **名称表**：目录模式下，服务按运营目录建立名称表：
   - 目录中的项目、站点、机器人与机场 id；
   - 各站点地图的 `registry_id`（如 `p3_site_b_v1`），视为该站点的名称；
-  - `configs/sites/aliases/<catalog_id>.yaml` 中为项目与站点登记的称呼（如站点 `site_fa` 的 `site A`、`A 站`、`站点 A`，项目 `harbor_ops` 的 `harbor`、`港区`）。别名文件属于运营目录这一受信配置，按目录版本放置。缺少别名文件时只按 id 检查。别名不得重名，也不得与其他实体的 id 相同。
+  - `configs/sites/aliases/<catalog_id>.yaml` 中为项目与站点登记的称呼（如站点 `site_fa` 的 `site A`、`A 站`、`站点 A`，项目 `harbor_ops` 的 `harbor project`、`港区项目`）。项目只登记带「项目」的说法，`campus`、`港区` 这类裸普通名词有歧义，不登记（见 §3.1）。别名文件属于运营目录这一受信配置，按目录版本放置。缺少别名文件时只按 id 检查。别名不得重名，也不得与其他实体的 id 相同。
 - **匹配规则**：
   - ASCII 部分按标识符边界匹配，前后不能是字母、数字或下划线；
   - 两个字母以上的词不分大小写；单个字母按登记的大小写匹配，避免 “site a few metres” 这类普通英文误中；
@@ -47,6 +47,21 @@ D080 与 D081 之后，跨站点替换仍有残余：
   - 漏拦指跨项目类、只接受拒答、却没有命中的用例，逐条报告。例如只用描述指代、没有可匹配称呼的请求。
 - **别名来源**：别名按目录语义编写，包括站点字母和项目的中英文常用称呼，不按语料措辞增删。编写者看过这些语料，记录中如实披露。
 - **任务台核对**：激活后，站点 B 的飞机经入口提交 “Inspect the red equipment marker at site A.”，应以 `scope.foreign_reference` 被拒绝，没有模型调用、没有版本可审批。同时两条本站请求照常由 planner-v3 规划。
+
+### 3.1 第一次评测与修订
+
+第一版规则（`d4d74e7`）在提交之后首次评测：误拦 1、拦下 19、漏拦 3，任务台用例 14/14。按上面的判据，这一版**未通过**，评测结果见 [not-counted/](verification/reference-check-2026-10-11/not-counted/)。
+
+- **误拦的那一例**：`plan_ops_v2` 的 `same-name-harbor-id-en`。港区机收到 “Inspect asset_west. I mean our own one here at the harbor, not the campus marker that shares the id.”，这条应当规划，但「campus」作为园区项目的别名被命中了。检查不懂否定。
+- **修订**：裸普通名词作为项目称呼本身就有歧义，港区站点自己的体积就描述为「campus test field / 园区试验场」。因此项目别名改为只登记带「项目」的说法（`campus project`、`园区项目`、`harbor project`、`港区项目` 等），站点别名与各种 id 不变。
+- **任务台用例的相应改动**：
+  - 「the fleet's red marker」改为期望放行；
+  - 新增一例「the fleet project's red marker」，期望拒绝。
+- **复评**（同一批数据，看过结果之后修订，因此不是独立评测）：误拦 0、拦下 17、漏拦 5，任务台用例 15/15。
+- **新增的两次漏拦**：
+  - 「the harbor's rooftop zone」；
+  - 「The campus crew asked us …」。
+- **原有的三次漏拦**：外站资产 id 一次，其他体积两次。名称表不含体积与资产。
 
 ## 4. 门禁 `scripts/verify_reference_check.py`
 

@@ -1,16 +1,20 @@
 # Operator names of the p5_desk_v1 projects and sites for the cross-site reference check (D082). Trusted operations
 # configuration beside the catalog: a request that names a project or site other than its mission's binding is rejected
 # before planning. Ids and site map ids are matched without being listed here. A single letter keeps its case; write a
-# space between a letter and a Chinese character ("A 站") so the letter stays case-sensitive.
+# space between a letter and a Chinese character ("A 站") so the letter stays case-sensitive. A project is named only
+# with its qualifier ("harbor project", "港区项目"): a bare common noun such as "campus" is ambiguous here (the harbor
+# site's own volume is described as the campus test field) and rejected a request that named it only to exclude it.
 #
 # p5_desk_v1 各项目与站点的操作者称呼，供跨站点指代检查使用（D082）。与目录并列的受信运营配置：请求点名本任务绑定以外的项目或站点，
-# 在规划前即被拒绝。id 与站点地图 id 无需列出也会匹配。单个字母保持大小写；字母与汉字之间写一个空格（「A 站」），使字母仍区分大小写。
+# 在规划前即被拒绝。id 与站点地图 id 无需列出也会匹配。单个字母保持大小写；字母与汉字之间写
+# 一个空格（「A 站」），使字母仍区分大小写。项目只按带「项目」的说法登记（「harbor project」「港区项目」）：「campus」这类裸普通名词在
+# 这里有歧义（港区站点自己的体积就描述为园区试验场），曾拒绝过一条只是为了排除它才提到它的请求。
 format: drone.catalog-aliases/v1
 catalog_id: p5_desk_v1
 projects:
-  campus_s1: [campus, 园区]
-  fleet_s0: [fleet, 机队]
-  vendor_s3: [vendor, 厂商]
+  campus_s1: [campus project, 园区项目]
+  fleet_s0: [fleet project, 机队项目]
+  vendor_s3: [vendor project, 厂商项目]
 sites:
   site_s1: [site S1, S1 站, 站点 S1]
   site_fa: [site A, A 站, 站点 A]

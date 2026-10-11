@@ -13,7 +13,10 @@ cases:
   - {id: desk-road-north-en, robot: uav_01, text: "Inspect the road segment north of the pad.", expect: clear}
   - {id: desk-b-from-a-zh, robot: uav_fa, text: "检查 B 站的红色标记。", expect: foreign}
   - {id: desk-other-robot-zh, robot: uav_fa, text: "让 uav_fb 去查红色标记。", expect: foreign}
-  - {id: desk-fleet-from-campus-en, robot: uav_01, text: "Inspect the fleet's red marker.", expect: foreign}
+  # Revised after the first evaluation (D082): a bare "fleet" no longer names the project; see the alias file.
+  # 第一次评测后修订（D082）：裸的「fleet」不再指项目，见别名文件。
+  - {id: desk-fleet-from-campus-en, robot: uav_01, text: "Inspect the fleet's red marker.", expect: clear}
+  - {id: desk-fleet-project-from-campus-en, robot: uav_01, text: "Inspect the fleet project's red marker.", expect: foreign}
   - {id: desk-own-vendor-zh, robot: uav_v1, text: "厂商机场这边的标记巡检一次。", expect: clear}
   - {id: desk-site-id-en, robot: uav_fb, text: "Check site_fa's blue marker.", expect: foreign}
   - {id: desk-own-site-s1-en, robot: uav_01, text: "Inspect asset_red at site S1.", expect: clear}

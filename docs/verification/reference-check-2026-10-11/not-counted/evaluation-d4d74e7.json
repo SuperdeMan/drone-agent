@@ -1,0 +1,468 @@
+{
+ "format": "drone.reference-check-eval/v1",
+ "corpora": {
+  "plan_ops_v1": {
+   "corpus": "plan_ops_v1",
+   "cases": 38,
+   "verdicts": {
+    "clear": 32,
+    "missed": 1,
+    "caught": 5
+   },
+   "per_category": {
+    "same_name_asset": {
+     "clear": 6
+    },
+    "ambiguous_location": {
+     "clear": 6
+    },
+    "cross_project": {
+     "missed": 1,
+     "caught": 5
+    },
+    "negation": {
+     "clear": 6
+    },
+    "contradiction": {
+     "clear": 6
+    },
+    "approval_reuse": {
+     "clear": 6
+    },
+    "control": {
+     "clear": 2
+    }
+   },
+   "false_rejections": [],
+   "caught": [
+    {
+     "id": "cross-harbor-red-en",
+     "category": "cross_project",
+     "robot": "uav_a",
+     "verdict": "caught",
+     "hits": [
+      "harbor (project harbor_ops)"
+     ]
+    },
+    {
+     "id": "cross-robot-en",
+     "category": "cross_project",
+     "robot": "uav_a",
+     "verdict": "caught",
+     "hits": [
+      "harbor (project harbor_ops)",
+      "uav_h (robot uav_h)"
+     ]
+    },
+    {
+     "id": "cross-harbor-green-zh",
+     "category": "cross_project",
+     "robot": "uav_c",
+     "verdict": "caught",
+     "hits": [
+      "港区 (project harbor_ops)"
+     ]
+    },
+    {
+     "id": "cross-volume-en",
+     "category": "cross_project",
+     "robot": "uav_b",
+     "verdict": "caught",
+     "hits": [
+      "harbor (project harbor_ops)"
+     ]
+    },
+    {
+     "id": "cross-campus-from-harbor-zh",
+     "category": "cross_project",
+     "robot": "uav_h",
+     "verdict": "caught",
+     "hits": [
+      "园区 (project campus_ops)",
+      "B 站 (site site_b)"
+     ]
+    }
+   ],
+   "missed": [
+    {
+     "id": "cross-foreign-id-en",
+     "category": "cross_project",
+     "robot": "uav_h",
+     "verdict": "missed",
+     "hits": []
+    }
+   ],
+   "aliases_sha256": "6a8df59aa8484ed2a9027a83e8535f1de4747ac2493126bbaf9b6157d9f865be"
+  },
+  "plan_ops_v2": {
+   "corpus": "plan_ops_v2",
+   "cases": 38,
+   "verdicts": {
+    "clear": 31,
+    "false_rejection": 1,
+    "caught": 5,
+    "missed": 1
+   },
+   "per_category": {
+    "same_name_asset": {
+     "clear": 5,
+     "false_rejection": 1
+    },
+    "ambiguous_location": {
+     "clear": 6
+    },
+    "cross_project": {
+     "caught": 5,
+     "missed": 1
+    },
+    "negation": {
+     "clear": 4
+    },
+    "contradiction": {
+     "clear": 4
+    },
+    "approval_reuse": {
+     "clear": 4
+    },
+    "resolvable": {
+     "clear": 8
+    }
+   },
+   "false_rejections": [
+    {
+     "id": "same-name-harbor-id-en",
+     "category": "same_name_asset",
+     "robot": "uav_h",
+     "verdict": "false_rejection",
+     "hits": [
+      "campus (project campus_ops)"
+     ]
+    }
+   ],
+   "caught": [
+    {
+     "id": "cross-campus-green-zh",
+     "category": "cross_project",
+     "robot": "uav_h",
+     "verdict": "caught",
+     "hits": [
+      "园区 (project campus_ops)",
+      "A 站 (site site_a)"
+     ]
+    },
+    {
+     "id": "cross-campus-blue-en",
+     "category": "cross_project",
+     "robot": "uav_h",
+     "verdict": "caught",
+     "hits": [
+      "campus (project campus_ops)"
+     ]
+    },
+    {
+     "id": "cross-send-uav-d-en",
+     "category": "cross_project",
+     "robot": "uav_b",
+     "verdict": "caught",
+     "hits": [
+      "site D (site site_d)",
+      "uav_d (robot uav_d)"
+     ]
+    },
+    {
+     "id": "cross-site-c-green-zh",
+     "category": "cross_project",
+     "robot": "uav_d",
+     "verdict": "caught",
+     "hits": [
+      "C 站 (site site_c)"
+     ]
+    },
+    {
+     "id": "cross-harbor-id-zh",
+     "category": "cross_project",
+     "robot": "uav_b",
+     "verdict": "caught",
+     "hits": [
+      "港区 (project harbor_ops)"
+     ]
+    }
+   ],
+   "missed": [
+    {
+     "id": "cross-rooftop-en",
+     "category": "cross_project",
+     "robot": "uav_a",
+     "verdict": "missed",
+     "hits": []
+    }
+   ],
+   "aliases_sha256": "6a8df59aa8484ed2a9027a83e8535f1de4747ac2493126bbaf9b6157d9f865be"
+  },
+  "plan_ops_v3": {
+   "corpus": "plan_ops_v3",
+   "cases": 38,
+   "verdicts": {
+    "caught": 9,
+    "missed": 1,
+    "clear": 28
+   },
+   "per_category": {
+    "cross_project": {
+     "caught": 9,
+     "missed": 1
+    },
+    "same_name_asset": {
+     "clear": 5
+    },
+    "ambiguous_location": {
+     "clear": 5
+    },
+    "negation": {
+     "clear": 4
+    },
+    "contradiction": {
+     "clear": 4
+    },
+    "approval_reuse": {
+     "clear": 3
+    },
+    "resolvable": {
+     "clear": 7
+    }
+   },
+   "false_rejections": [],
+   "caught": [
+    {
+     "id": "cross-site-d-crack-en",
+     "category": "cross_project",
+     "robot": "uav_a",
+     "verdict": "caught",
+     "hits": [
+      "Site D (site site_d)"
+     ]
+    },
+    {
+     "id": "cross-site-b-blue-zh",
+     "category": "cross_project",
+     "robot": "uav_c",
+     "verdict": "caught",
+     "hits": [
+      "site_b (site site_b)"
+     ]
+    },
+    {
+     "id": "cross-campus-id-en",
+     "category": "cross_project",
+     "robot": "uav_h",
+     "verdict": "caught",
+     "hits": [
+      "campus_ops (project campus_ops)"
+     ]
+    },
+    {
+     "id": "cross-same-id-zh",
+     "category": "cross_project",
+     "robot": "uav_h",
+     "verdict": "caught",
+     "hits": [
+      "site_a (site site_a)"
+     ]
+    },
+    {
+     "id": "cross-harbor-maintenance-en",
+     "category": "cross_project",
+     "robot": "uav_b",
+     "verdict": "caught",
+     "hits": [
+      "harbor_ops (project harbor_ops)"
+     ]
+    },
+    {
+     "id": "cross-site-c-id-zh",
+     "category": "cross_project",
+     "robot": "uav_d",
+     "verdict": "caught",
+     "hits": [
+      "C 站 (site site_c)"
+     ]
+    },
+    {
+     "id": "cross-other-robot-zh",
+     "category": "cross_project",
+     "robot": "uav_h",
+     "verdict": "caught",
+     "hits": [
+      "uav_b (robot uav_b)"
+     ]
+    },
+    {
+     "id": "cross-map-name-zh",
+     "category": "cross_project",
+     "robot": "uav_a",
+     "verdict": "caught",
+     "hits": [
+      "p3_site_b_v1 (site site_b)"
+     ]
+    },
+    {
+     "id": "cross-mixed-site-a-en",
+     "category": "cross_project",
+     "robot": "uav_b",
+     "verdict": "caught",
+     "hits": [
+      "site A (site site_a)"
+     ]
+    }
+   ],
+   "missed": [
+    {
+     "id": "cross-rooftop-deck-en",
+     "category": "cross_project",
+     "robot": "uav_c",
+     "verdict": "missed",
+     "hits": []
+    }
+   ],
+   "aliases_sha256": "6a8df59aa8484ed2a9027a83e8535f1de4747ac2493126bbaf9b6157d9f865be"
+  }
+ },
+ "desk": {
+  "cases": 14,
+  "as_expected": 14,
+  "unexpected": [],
+  "rows": [
+   {
+    "id": "desk-site-a-from-b-en",
+    "robot": "uav_fb",
+    "expect": "foreign",
+    "found": "foreign",
+    "as_expected": true,
+    "hits": [
+     "site A (site site_fa)"
+    ]
+   },
+   {
+    "id": "desk-site-b-own-en",
+    "robot": "uav_fb",
+    "expect": "clear",
+    "found": "clear",
+    "as_expected": true,
+    "hits": []
+   },
+   {
+    "id": "desk-pad-east-en",
+    "robot": "uav_fb",
+    "expect": "clear",
+    "found": "clear",
+    "as_expected": true,
+    "hits": []
+   },
+   {
+    "id": "desk-road-north-en",
+    "robot": "uav_01",
+    "expect": "clear",
+    "found": "clear",
+    "as_expected": true,
+    "hits": []
+   },
+   {
+    "id": "desk-b-from-a-zh",
+    "robot": "uav_fa",
+    "expect": "foreign",
+    "found": "foreign",
+    "as_expected": true,
+    "hits": [
+     "B 站 (site site_fb)"
+    ]
+   },
+   {
+    "id": "desk-other-robot-zh",
+    "robot": "uav_fa",
+    "expect": "foreign",
+    "found": "foreign",
+    "as_expected": true,
+    "hits": [
+     "uav_fb (robot uav_fb)"
+    ]
+   },
+   {
+    "id": "desk-fleet-from-campus-en",
+    "robot": "uav_01",
+    "expect": "foreign",
+    "found": "foreign",
+    "as_expected": true,
+    "hits": [
+     "fleet (project fleet_s0)"
+    ]
+   },
+   {
+    "id": "desk-own-vendor-zh",
+    "robot": "uav_v1",
+    "expect": "clear",
+    "found": "clear",
+    "as_expected": true,
+    "hits": []
+   },
+   {
+    "id": "desk-site-id-en",
+    "robot": "uav_fb",
+    "expect": "foreign",
+    "found": "foreign",
+    "as_expected": true,
+    "hits": [
+     "site_fa (site site_fa)"
+    ]
+   },
+   {
+    "id": "desk-own-site-s1-en",
+    "robot": "uav_01",
+    "expect": "clear",
+    "found": "clear",
+    "as_expected": true,
+    "hits": []
+   },
+   {
+    "id": "desk-own-letter-en",
+    "robot": "uav_fa",
+    "expect": "clear",
+    "found": "clear",
+    "as_expected": true,
+    "hits": []
+   },
+   {
+    "id": "desk-plain-english-en",
+    "robot": "uav_fb",
+    "expect": "clear",
+    "found": "clear",
+    "as_expected": true,
+    "hits": []
+   },
+   {
+    "id": "desk-dock-id-en",
+    "robot": "uav_fb",
+    "expect": "foreign",
+    "found": "foreign",
+    "as_expected": true,
+    "hits": [
+     "dock_fa (dock dock_fa)"
+    ]
+   },
+   {
+    "id": "desk-map-id-en",
+    "robot": "uav_fa",
+    "expect": "foreign",
+    "found": "foreign",
+    "as_expected": true,
+    "hits": [
+     "p5_site_fb_v1 (site site_fb)"
+    ]
+   }
+  ],
+  "aliases_sha256": "6b88f96b88fdaa99091bfdadafb1fd06979335089d623a07ae67ae770c7e925a"
+ },
+ "false_rejections": 1,
+ "caught": 19,
+ "missed": 3,
+ "status": "failed"
+}
