@@ -613,7 +613,7 @@ def main() -> None:
     p6_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
     adv_parser = commands.add_parser("p6-adv", help="record one WP-P6-03 adversarial corpus in the cloud (D079)")
     adv_parser.add_argument("--corpus", choices=["nl_v1", "workflow_v1", "plan_ops_v1", "plan_ops_v2", "plan_ops_v3",
-                                                 "vision_ops_v1", "explain_v1"],
+                                                 "vision_ops_v1", "explain_v1", "explain_v2"],
                             required=True)
     adv_parser.add_argument("--mode", choices=["live", "scripted"], required=True,
                             help="live asks the model once per case and records it; scripted checks the container path")

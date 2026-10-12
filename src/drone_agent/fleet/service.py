@@ -1392,7 +1392,7 @@ class MissionService:
             return value | {"status": "not_run", "explanation": None, "problems": ["no explainer is configured"]}
         outcome = await self.explainer.explain(question, facts, label=f"explain-{mission_id}")
         return value | {k: outcome.get(k) for k in ("status", "explanation", "problems", "model", "prompt_version",
-                                                "input_sha256")}
+                                                "check_version", "input_sha256")}
 
     def view(self, mission_id: str, caller: Caller | None = None) -> dict:
         """Everything the console shows for one mission; catalog mode checks project read.

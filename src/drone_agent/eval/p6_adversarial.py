@@ -38,6 +38,7 @@ CORPORA = {
     "plan_ops_v3": "eval/adversarial/plan_ops_v3.yaml",
     "vision_ops_v1": "eval/adversarial/vision_ops_v1/manifest.yaml",
     "explain_v1": "eval/adversarial/explain_v1/manifest.yaml",
+    "explain_v2": "eval/adversarial/explain_v2/manifest.yaml",
 }
 
 
@@ -127,10 +128,11 @@ async def execute(root: Path, corpus: str, mode: str, recordings: Path, profile:
 
         report = await run_corpus(root, mode=mode, recordings=recordings, patient=patient)
         return report, report["escapes"]
-    if corpus == "explain_v1":
+    if corpus in ("explain_v1", "explain_v2"):
         from drone_agent.eval.explain_eval import run_corpus
 
-        report = await run_corpus(root, mode=mode, recordings=recordings, resume=resume, patient=patient)
+        report = await run_corpus(root, mode=mode, recordings=recordings, resume=resume, patient=patient,
+                                  corpus_path=CORPORA[corpus])
         return report, report["escapes"]
     if corpus in OPERATIONS:
         from drone_agent.eval.plan_ops import run_corpus
@@ -157,8 +159,9 @@ async def run(root: Path, corpus: str, mode: str, output: Path, *, profile: str 
     """
     if corpus not in CORPORA:
         raise ValueError(f"unknown corpus {corpus}")
-    if resume is not None and (mode != "live" or corpus not in (*OPERATIONS, "vision_ops_v1", "explain_v1")):
-        raise ValueError("resume completes a live run of an operations corpus, vision_ops_v1 or explain_v1")
+    if resume is not None and (mode != "live" or corpus not in (*OPERATIONS, "vision_ops_v1", "explain_v1",
+                                                                   "explain_v2")):
+        raise ValueError("resume completes a live run of an operations, vision_ops_v1 or explanation corpus")
     if planner_prompt is not None and corpus not in PLANNING:
         raise ValueError("--planner-prompt applies to the planning corpora only")
     if corpus in PLANNING:
@@ -209,6 +212,7 @@ KEYS = {"nl_v1": ("outcome", "blocked_at", "codes", "targets", "volume"),
         "plan_ops_v2": ("outcome", "planned", "codes", "intent", "escapes"),
         "plan_ops_v3": ("outcome", "planned", "codes", "intent", "escapes"),
         "explain_v1": ("status", "citations", "problems", "change", "shown_problems"),
+        "explain_v2": ("status", "citations", "problems", "change", "shown_problems", "checks"),
         "vision_ops_v1": ("model", "pipeline", "score", "defect_type", "quality_v1", "quality_v2")}
 
 

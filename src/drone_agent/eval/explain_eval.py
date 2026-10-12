@@ -5,9 +5,11 @@ an honest answer citing the decisive fact must pass the check, and every fooled 
 claim of approval or completion, a reuse of an earlier approval) must be rejected. Live mode asks the model once per
 case and records the exchange; replay reproduces it. What reaches an operator is only an answer that passed the check,
 so a shown fabrication is counted as an escape; the raw pass rate, the raw problems and how often the decisive fact is
-cited are reported, never thresholded.
+cited are reported, never thresholded. Each corpus keeps the check its status was decided with (`PINNED_CHECKS`), and
+every answer also carries the problems both check versions find in it, which D086 compares on explain_v2.
 
-解释语料 explain_v1（WP-P6-05，D083），以脚本、回放或实调模式运行。
+解释语料 explain_v1（WP-P6-05，D083），以脚本、回放或实调模式运行。每份语料固定判定状态所用的核对（`PINNED_CHECKS`），每个
+回答另带两版核对发现的问题，D086 在 explain_v2 上比较它们。
 
 每个用例是一个任务状态的冻结服务视图与一个操作者问题。脚本模式运行带标注的替身：引用决定性事实的诚实回答必须通过核对，每个被骗的
 回答（编造的引用或问题码、声称已批准或已完成、沿用旧审批）都必须被拒绝。实调模式对每个用例询问模型一次并录制交互，回放复现它。
@@ -27,6 +29,10 @@ import yaml
 
 CORPUS = "eval/adversarial/explain_v1/manifest.yaml"
 FORMAT = "drone.explain-corpus/v1"
+# The check each corpus decides its status with, so that its recordings replay alike after the service changes check;
+# every answer also carries both versions' problems (D086). / 每份语料判定状态所用的核对，服务换核对后录制仍按原样回放；每个
+# 回答另带两版核对的问题（D086）。
+PINNED_CHECKS = {"explain_v1": "explain-check-v1", "explain_v2": "explain-check-v1"}
 
 
 def load(root: Path, path: str = CORPUS) -> tuple[dict, dict[str, dict]]:
@@ -77,8 +83,8 @@ def doubles(case: dict, facts: list[dict]) -> dict[str, tuple[dict, str]]:
     return found
 
 
-def score(case: dict, outcome: dict, facts: list[dict]) -> dict:
-    from drone_agent.fleet.explain import problems_of
+def score(case: dict, outcome: dict, facts: list[dict], check: str = "explain-check-v1") -> dict:
+    from drone_agent.fleet.explain import CHECK_VERSIONS, problems_of
 
     explanation = outcome.get("explanation") or {}
     draft = outcome.get("draft") or {}
@@ -88,7 +94,9 @@ def score(case: dict, outcome: dict, facts: list[dict]) -> dict:
             "change": bool(explanation.get("change_draft")) if case["change"] else None,
             "answer": (draft.get("answer") or "")[:800],
             # What an operator would see, checked again: a fabrication here is an escape. / 操作者会看到的内容再核对一次：这里的编造即逃逸。
-            "shown_problems": problems_of(explanation, facts) if explanation else []}
+            "shown_problems": problems_of(explanation, facts, check=check) if explanation else [],
+            # Both versions on the same answer (D086). / 两版核对作用于同一个回答（D086）。
+            "checks": {v: problems_of(draft, facts, check=v) for v in CHECK_VERSIONS} if draft else {}}
 
 
 async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | None = None, resume: Path | None = None,
@@ -97,7 +105,7 @@ async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | N
 
     运行语料；实调回答逐例录制，续跑的运行回放已回答的用例。
     """
-    from drone_agent.fleet.explain import MissionExplainer, facts_of
+    from drone_agent.fleet.explain import CHECK_VERSION, MissionExplainer, facts_of
     from drone_agent.planner.engine import ModelIdentity
     from drone_agent.providers import (
         KeyedScriptedProvider,
@@ -108,14 +116,15 @@ async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | N
     )
 
     manifest, views = load(root, corpus_path)
-    recordings = recordings or root / "eval/adversarial/recordings/p6/explain_v1"
+    check = PINNED_CHECKS.get(manifest["corpus"], CHECK_VERSION)
+    recordings = recordings or root / "eval/adversarial/recordings/p6" / manifest["corpus"]
     rows, skipped, resumed, live, config = [], [], [], None, None
     for case in manifest["cases"]:
         facts = facts_of(views[case["state"]])
         if mode == "scripted":
             for name, (answer, expected) in doubles(case, facts).items():
                 explainer = MissionExplainer(KeyedScriptedProvider({case["question"]: answer}),
-                                             ModelIdentity("scripted", "scripted-fixture"))
+                                             ModelIdentity("scripted", "scripted-fixture"), check_version=check)
                 outcome = await explainer.explain(case["question"], facts, label=case["id"])
                 rows.append({"id": f"{case['id']}:{name}", "state": case["state"], "double": name,
                              "status": outcome["status"], "expected": expected,
@@ -143,7 +152,7 @@ async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | N
                 live = patient(live) if patient is not None else live
             provider = RecordingProvider(live)
             identity = ModelIdentity(config.provider_id, config.model, config.endpoint_host)
-        explainer = MissionExplainer(provider, identity)
+        explainer = MissionExplainer(provider, identity, check_version=check)
         outcome = await explainer.explain(case["question"], facts, label=case["id"])
         if isinstance(provider, RecordingProvider):
             recording = provider.recording(source="recorded", provider_id=identity.provider_id, model=identity.model,
@@ -154,24 +163,27 @@ async def run_corpus(root: Path, *, mode: str = "scripted", recordings: Path | N
             if recording.exchanges:
                 file.parent.mkdir(parents=True, exist_ok=True)
                 recording.save(file)
-        rows.append(score(case, outcome, facts))
-    return report(manifest, mode, rows, skipped, resumed, patient=live if mode == "live" else None)
+        rows.append(score(case, outcome, facts, check))
+    return report(manifest, mode, rows, skipped, resumed, patient=live if mode == "live" else None, check=check)
 
 
-def report(manifest: dict, mode: str, rows: list[dict], skipped: list[str], resumed: list[str], patient=None) -> dict:
+def report(manifest: dict, mode: str, rows: list[dict], skipped: list[str], resumed: list[str], patient=None,
+           check: str = "explain-check-v1") -> dict:
     from drone_agent.fleet.explain import PROMPT_VERSION
 
     if mode == "scripted":
         fooled = [r for r in rows if r["double"] != "honest"]
         escapes = sum(1 for r in fooled if r["status"] == "validated")
         return {"corpus": manifest["corpus"], "mode": mode, "cases": len(manifest["cases"]), "doubles": len(rows),
-                "skipped": skipped, "escapes": escapes, "failures": [r for r in rows if not r["passed"]],
+                "check_version": check, "skipped": skipped, "escapes": escapes,
+                "failures": [r for r in rows if not r["passed"]],
                 "status": "passed" if all(r["passed"] for r in rows) else "failed", "results": rows}
     validated = [r for r in rows if r["status"] == "validated"]
     changes = [r for r in rows if r["change"] is not None]
     problems = Counter(p.split(":")[0] for r in rows for p in r["problems"])
     return {"corpus": manifest["corpus"], "mode": mode, "cases": len(rows), "skipped": skipped, "resumed": resumed,
-            "prompt_version": PROMPT_VERSION, "escapes": sum(1 for r in validated if r["shown_problems"]),
+            "prompt_version": PROMPT_VERSION, "check_version": check,
+            "escapes": sum(1 for r in validated if r["shown_problems"]),
             "statuses": dict(Counter(r["status"] for r in rows)),
             "decisive_cited": sum(r["decisive_cited"] for r in validated),
             "changes_drafted": sum(1 for r in changes if r["change"]), "change_cases": len(changes),

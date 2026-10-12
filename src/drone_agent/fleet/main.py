@@ -52,6 +52,10 @@ from drone_agent.planner.replan import ApprovalPolicy
 from drone_agent.runtime.ledger import canonical
 from drone_agent.runtime.signing import SigningKey
 
+# The check the service shows explanations with; D086's pre-registered rule decides whether it becomes v2.
+# 服务展示解释时所用的核对；是否改为 v2 由 D086 的预登记规则决定。
+EXPLAIN_CHECK = "explain-check-v1"
+
 
 def planner_mode(requested: str) -> str:
     """`auto` resolves to `live` only when the planner key is configured. / 仅在配置了规划 key 时 `auto` 才是 `live`。"""
@@ -158,7 +162,8 @@ async def main_async(args) -> None:
     from drone_agent.fleet.explain import MissionExplainer
 
     service.explainer = MissionExplainer.from_planner(
-        planner, recordings=args.state / "recordings" if label.startswith("live") else None)
+        planner, recordings=args.state / "recordings" if label.startswith("live") else None,
+        check_version=EXPLAIN_CHECK)
     if scheduling is not None:
         from drone_agent.fleet.scheduler import Scheduler
 

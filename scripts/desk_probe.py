@@ -340,6 +340,7 @@ def explain(origin: str, args) -> tuple[dict, str | None]:
                                   "explanation": result.get("explanation"), "problems": result.get("problems"),
                                   "summary": result.get("summary"), "model": result.get("model"),
                                   "prompt_version": result.get("prompt_version"),
+                                  "check_version": result.get("check_version"),
                                   "fact_ids": [f["id"] for f in result.get("facts", [])],
                                   "codes": sorted({f["code"] for f in result.get("facts", []) if f.get("code")}),
                                   "explain_s": round(time.monotonic() - asked, 1)}
