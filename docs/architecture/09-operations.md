@@ -174,10 +174,13 @@ D068 已按工作区重组任务台页面：总览、任务与审批、工作流
 | `fleet/analysis.py`、`fleet/findings.py`、`fleet/work_orders.py` | 分析、发现、复核及工单生命周期（P2 的最小工单与复核记录在 `workflow_store.py` / `workflow.py` 中实现，`findings.py` / `work_orders.py` 留给 P4） |
 | `fleet/provenance.py`（P0 已实现）、`fleet/vendor_gateway.py`（后续） | 来源记录与后续厂商任务适配 |
 | `console/`、`eval/`、`configs/`、`scripts/` | 运营页面、分层模拟与裁判、版本化模板及验证入口 |
+| `fleet/capacity_store.py`、`fleet/archive.py`、`fleet/capacity.py`（D085） | 容量迁移与索引、机场状态按日归档、服务容量指标与 `capacity.get` |
 
 继续单仓库、模块化 Python 服务。飞行权威账本留在机载；地面新增运营持久化优先评估 SQLite，媒体保留文件与哈希索引。数据库迁移方案须先列出现有 schema、目标、升级 / 失败恢复和备份验证，再按项目红线获得批准后执行；本次文档设计不执行迁移。新增表也属于 schema 变更，不以“独立运营库”绕过该约束。
 
 轻量服务常驻，SITL 按需，影像分析有队列 / 并发 / 费用上限。P3 先测共享主机两机容量，资源不足记录阻塞并提出具体拓扑，不缩小门禁冒充多机完成，也不自动修改其他项目配额。不预建上述空模块，不引入 Kubernetes / 多数据库；当持久计时、跨天版本迁移和多 worker 故障处理成本超过自建方案时，再评估 Temporal。
+
+D085 起，带运营目录的账本另有容量迁移（`meta.capacity_schema=1`：归档清单 `cap_event_archives` 与 25 个 `cap_` 索引，后置索引由启动时的收敛补建）。机场状态 `status.accepted` 超过保留期（任务台 7 天）后按日写入可校验的 gzip 块，并在同一事务中登记清单、从 `op_events` 移出；其他事件永不移出，不做自动 VACUUM。服务记录每轮处理、写事务、事件循环与接口尾延迟和队列积压，经只读的 `capacity.get` 提供。合成历史增长到 16× 时，带迁移的服务开销基本持平，见[容量验收](../capacity-readiness.md)。
 
 
 ## 10. P0 当前来源接口（D054）

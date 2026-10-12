@@ -1,0 +1,491 @@
+{
+  "schema_version": "0.1.0",
+  "work_package": "WP-P6-07",
+  "decision_record": "D085",
+  "source_sha": "a63f3acf379ac1fe396a9a527d84fe9c5eb594c2",
+  "records_sha": "5172dc3b0797eb518a84215faf27f28a10d33a1b",
+  "checked_at": "2026-10-12T15:15:35.173074+00:00",
+  "status": "passed",
+  "criteria": {
+    "scope": {
+      "status": "passed",
+      "base_sha": "039d15a72403f89f3b1e9f7173020558e14edfbf",
+      "changed": 60,
+      "outside_scope": [],
+      "onboard_changed": []
+    },
+    "checks": {
+      "status": "passed",
+      "deployment_id": "20261012T102006Z-e273ce11",
+      "tests": {
+        "tests": 1563,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "wire_checks": [
+        true,
+        true
+      ]
+    },
+    "prereg": {
+      "status": "passed",
+      "problems": [],
+      "commit": "739958c91d24485d9e0b2a37dafac3203a0fd995",
+      "committed_at": "2026-10-12T20:18:16+08:00"
+    },
+    "reproducible": {
+      "status": "passed",
+      "ledger_sha256": "897b8c017d14ea2e92c4675b7642e4f8d88e5915b577b9d3bfdc6ab29502be10",
+      "expected": "897b8c017d14ea2e92c4675b7642e4f8d88e5915b577b9d3bfdc6ab29502be10"
+    },
+    "ladder": {
+      "status": "passed",
+      "judgement": {
+        "status": "passed",
+        "validity": {
+          "inputs": true,
+          "no_throttling": true,
+          "probes_answered": true,
+          "full_windows": true
+        },
+        "criteria": {
+          "pass_p95": true,
+          "api_p95": true,
+          "reconcile_per_mission": true,
+          "dock_report_p99": true,
+          "archive": true,
+          "no_issues": true
+        }
+      },
+      "summary": {
+        "x1-indexed": {
+          "pass_p95": 8.011,
+          "refresh_mean_ms": 6.126,
+          "reconcile_capped": false,
+          "docks_report_p99": 3.674,
+          "archived": 157282
+        },
+        "x1-plain": {
+          "pass_p95": 45.552,
+          "refresh_mean_ms": 46.246,
+          "reconcile_capped": false,
+          "docks_report_p99": 5.681,
+          "archived": null
+        },
+        "x4-indexed": {
+          "pass_p95": 7.947,
+          "refresh_mean_ms": 6.037,
+          "reconcile_capped": false,
+          "docks_report_p99": 3.936,
+          "archived": 157282
+        },
+        "x4-plain": {
+          "pass_p95": 116.894,
+          "refresh_mean_ms": 165.939,
+          "reconcile_capped": true,
+          "docks_report_p99": 10.46,
+          "archived": null
+        },
+        "x16-indexed": {
+          "pass_p95": 9.002,
+          "refresh_mean_ms": 5.947,
+          "reconcile_capped": false,
+          "docks_report_p99": 3.866,
+          "archived": 157282
+        },
+        "x16-plain": {
+          "pass_p95": 1148.459,
+          "refresh_mean_ms": 642.355,
+          "reconcile_capped": true,
+          "docks_report_p99": 21.147,
+          "archived": null
+        }
+      }
+    },
+    "power": {
+      "status": "passed",
+      "measurements": {
+        "x1-indexed": {
+          "ok": true,
+          "samples": 137,
+          "not_online": [],
+          "largest_gap_s": 5.0
+        },
+        "x1-plain": {
+          "ok": true,
+          "samples": 162,
+          "not_online": [],
+          "largest_gap_s": 5.0
+        },
+        "x4-indexed": {
+          "ok": true,
+          "samples": 156,
+          "not_online": [],
+          "largest_gap_s": 5.0
+        },
+        "x4-plain": {
+          "ok": true,
+          "samples": 301,
+          "not_online": [],
+          "largest_gap_s": 5.0
+        },
+        "x16-indexed": {
+          "ok": true,
+          "samples": 232,
+          "not_online": [],
+          "largest_gap_s": 5.0
+        },
+        "x16-plain": {
+          "ok": true,
+          "samples": 302,
+          "not_online": [],
+          "largest_gap_s": 5.0
+        }
+      },
+      "samples": 1298
+    },
+    "regression": {
+      "status": "passed",
+      "p1": {
+        "status": "passed",
+        "cases": 42,
+        "expected": 42,
+        "passed": 42,
+        "counts": {
+          "wrong_dispatch": 0,
+          "duplicate_dispatch": 0,
+          "wrong_release": 0,
+          "project_escape": 0,
+          "false_success": 0
+        },
+        "voided_attempts": 0,
+        "problems": [],
+        "summary_sha256": "3b4242e7c8bccb6b3044c7ce7a523fda881a211ec7fc62100a6e2e30575da8d6"
+      },
+      "p2": {
+        "status": "passed",
+        "cases": 45,
+        "expected": 45,
+        "passed": 45,
+        "counts": {
+          "duplicate_dispatch": 0,
+          "post_cancel_dispatch": 0,
+          "post_cancel_successor": 0,
+          "false_success": 0,
+          "false_order": 0,
+          "project_escape": 0,
+          "lost_run": 0,
+          "wrong_dispatch": 0,
+          "wrong_release": 0
+        },
+        "voided_attempts": 0,
+        "problems": [],
+        "summary_sha256": "6153c968543a0cff38531d27b29d0d53667b607896d64c642c9806e6db463850"
+      },
+      "p3": {
+        "status": "passed",
+        "cases": 45,
+        "expected": 45,
+        "passed": 45,
+        "counts": {
+          "double_ownership": 0,
+          "duplicate_execution": 0,
+          "lost_task": 0,
+          "conflicting_reservation": 0,
+          "false_success": 0,
+          "stale_epoch_effect": 0,
+          "decision_mismatch": 0,
+          "project_escape": 0,
+          "wrong_dispatch": 0,
+          "duplicate_dispatch": 0,
+          "wrong_release": 0
+        },
+        "voided_attempts": 0,
+        "problems": [],
+        "summary_sha256": "25cee4aaef525a8cf5bff17f7c8a2b0df5b86b65acfbcc70cd90ed957ca6462f"
+      },
+      "p4": {
+        "status": "passed",
+        "cases": 45,
+        "expected": 45,
+        "passed": 45,
+        "counts": {
+          "duplicate_finding": 0,
+          "duplicate_order": 0,
+          "unreviewed_order": 0,
+          "non_human_decision": 0,
+          "false_closure": 0,
+          "unverified_analysis": 0,
+          "verdict_mutation": 0,
+          "post_cancel_effect": 0,
+          "lost_job": 0,
+          "default_verdict": 0,
+          "project_escape": 0,
+          "duplicate_dispatch": 0,
+          "post_cancel_dispatch": 0,
+          "false_success": 0,
+          "wrong_dispatch": 0,
+          "wrong_release": 0
+        },
+        "voided_attempts": 0,
+        "problems": [],
+        "summary_sha256": "bc9cc46f5ce0d6d72e15ce05891a96433bb4826bddf4d3d6a52d35e02d781bbb"
+      },
+      "p5": {
+        "status": "passed",
+        "s0": {
+          "status": "passed",
+          "cases": 24,
+          "expected": 24,
+          "counts": {
+            "duplicate_finding": 0,
+            "duplicate_order": 0,
+            "unreviewed_order": 0,
+            "non_human_decision": 0,
+            "false_closure": 0,
+            "unverified_analysis": 0,
+            "verdict_mutation": 0,
+            "post_cancel_effect": 0,
+            "lost_job": 0,
+            "default_verdict": 0,
+            "project_escape": 0,
+            "duplicate_dispatch": 0,
+            "post_cancel_dispatch": 0,
+            "false_success": 0,
+            "wrong_dispatch": 0,
+            "wrong_release": 0,
+            "duplicate_execution": 0,
+            "post_cancel_execution": 0,
+            "low_level_command": 0,
+            "unknown_as_success": 0,
+            "journal_defect": 0
+          },
+          "problems": [],
+          "summary_sha256": "4f9c157d119dabfd9c1d1e26280b6397148d1fa1bad893bcdea9558456e3caea"
+        },
+        "s3": {
+          "status": "passed",
+          "cases": 36,
+          "expected": 36,
+          "counts": {
+            "duplicate_finding": 0,
+            "duplicate_order": 0,
+            "unreviewed_order": 0,
+            "non_human_decision": 0,
+            "false_closure": 0,
+            "unverified_analysis": 0,
+            "verdict_mutation": 0,
+            "post_cancel_effect": 0,
+            "lost_job": 0,
+            "default_verdict": 0,
+            "project_escape": 0,
+            "duplicate_dispatch": 0,
+            "post_cancel_dispatch": 0,
+            "false_success": 0,
+            "wrong_dispatch": 0,
+            "wrong_release": 0,
+            "duplicate_execution": 0,
+            "post_cancel_execution": 0,
+            "low_level_command": 0,
+            "unknown_as_success": 0,
+            "journal_defect": 0
+          },
+          "problems": [],
+          "summary_sha256": "4f9c157d119dabfd9c1d1e26280b6397148d1fa1bad893bcdea9558456e3caea"
+        }
+      },
+      "p6": {
+        "status": "passed",
+        "cases": 30,
+        "expected": 30,
+        "counts": {
+          "duplicate_finding": 0,
+          "duplicate_order": 0,
+          "unreviewed_order": 0,
+          "non_human_decision": 0,
+          "false_closure": 0,
+          "unverified_analysis": 0,
+          "verdict_mutation": 0,
+          "post_cancel_effect": 0,
+          "lost_job": 0,
+          "default_verdict": 0,
+          "project_escape": 0,
+          "duplicate_dispatch": 0,
+          "post_cancel_dispatch": 0,
+          "false_success": 0,
+          "wrong_dispatch": 0,
+          "wrong_release": 0,
+          "unallowed_recapture": 0,
+          "excess_recapture": 0,
+          "recapture_mismatch": 0,
+          "refused_capture_verdict": 0,
+          "selection_mismatch": 0,
+          "quality_mismatch": 0
+        },
+        "metrics": {
+          "recaptures": 30,
+          "recaptured_completions": 21,
+          "failed_after_recapture": 6,
+          "false_suspected_control": 3,
+          "false_suspected_recapture": 0
+        },
+        "voided_attempts": 0,
+        "problems": [],
+        "summary_sha256": "2184b082849691696f772996ec258a1fd42dcf968f675fa7530ce4e98f76d2fc"
+      },
+      "authz": {
+        "status": "passed",
+        "escapes": 0,
+        "api_rows": 561,
+        "frame_rows": 256,
+        "methods": 51,
+        "forbidden_refused": 536,
+        "audit_denials": 124,
+        "identities": [
+          "a2a",
+          "admin",
+          "anonymous",
+          "approver",
+          "dock_backend",
+          "event_backend",
+          "non_member",
+          "operator",
+          "other_project",
+          "reviewer",
+          "viewer"
+        ],
+        "catalogs": "p6_desk_v1 workflows and business"
+      }
+    },
+    "desk": {
+      "status": "passed",
+      "problems": [],
+      "catalogs": {
+        "operations": "p5_desk_v1",
+        "workflows": "p6_desk_v1",
+        "scheduling": "p5_desk_v1",
+        "business": "p6_desk_v1"
+      },
+      "switch_drill": "passed",
+      "capacity": {
+        "migration": "current",
+        "drill": "passed",
+        "status_retention_days": 7.0
+      }
+    },
+    "desk_capacity": {
+      "status": "passed",
+      "problems": [],
+      "archive": {
+        "chunks": 731,
+        "rows": 1456790,
+        "bytes": 28685719,
+        "files": 10,
+        "first_at": "2026-09-26T01:02:42.679205+00:00",
+        "last_at": "2026-10-05T10:50:24.530360+00:00"
+      },
+      "status_rows": 2216674,
+      "overdue_rows": 0,
+      "startup": {
+        "first": {
+          "deliveries_open": 6,
+          "dock_actions_open": 5,
+          "jobs_runnable": 0,
+          "ledger_bytes": 1198608752,
+          "op_events_last_id": 3713764,
+          "outbox_pending": 0,
+          "refresh_queue": 0,
+          "startup_backlog": 1278,
+          "status_archived_rows": 1454790,
+          "tasks_queued": 0
+        },
+        "reconciled_uptime_s": 242.8
+      },
+      "latest": {
+        "at": "2026-10-12T10:55:24.776490+00:00",
+        "pass": {
+          "max": 83.746,
+          "n": 594,
+          "p50": 3.805,
+          "p95": 6.334,
+          "p99": 8.03
+        },
+        "docks_report": {
+          "max": 11.254,
+          "n": 803,
+          "p50": 1.53,
+          "p95": 2.2,
+          "p99": 4.063
+        },
+        "backlog": {
+          "deliveries_open": 6,
+          "dock_actions_open": 5,
+          "jobs_runnable": 0,
+          "ledger_bytes": 1202683432,
+          "op_events_last_id": 3716590,
+          "outbox_pending": 0,
+          "refresh_queue": 0,
+          "startup_backlog": 0,
+          "status_archived_rows": 1456790,
+          "tasks_queued": 0
+        }
+      }
+    },
+    "historical": {
+      "status": "passed",
+      "problems": [],
+      "records": {
+        "docs/verification/fine-reservations-2026-10-12/release.json": {
+          "sha256": "92918d63f8ef3b6d6042a8e923f339af5743ed40039e507d164e3b890d56a80c",
+          "commit": "5b49d3f"
+        },
+        "docs/verification/explain-2026-10-11/release.json": {
+          "sha256": "6775956a27eb33ef2c218b8ea88a960f332ce5a0bb12ef267d940f1a0da124a3",
+          "commit": "22d4464"
+        },
+        "docs/verification/reference-check-2026-10-11/release.json": {
+          "sha256": "e4bc8fbe714488a36ad57c2d47f11b6bf43a3a8a59f1259a787106d5a66ec75f",
+          "commit": "898b2fe"
+        },
+        "docs/verification/p6-adversarial-2026-10-11/release.json": {
+          "sha256": "f2d61c62bb4e70ac583299ea15ed7bd96a570025659a7f525783d217e79d68ec",
+          "commit": "017970e"
+        }
+      }
+    }
+  },
+  "capabilities": [
+    {
+      "capability": "capacity_retention_v1",
+      "decision": "D085",
+      "software_validation": "passed",
+      "source_sha": "a63f3acf379ac1fe396a9a527d84fe9c5eb594c2",
+      "status_retention_days": 7,
+      "real_devices": false
+    }
+  ],
+  "inputs": {
+    "docs/verification/capacity-retention-2026-10-12/deployment-a63f3ac.json": "6bb74a0434113235bc430796dc7004cf125b05c156825bb2a94cd1d0a22a7c05",
+    "docs/verification/capacity-retention-2026-10-12/desk/desk-activation.json": "e992f0d9dfb41646640176a5c81cca5e3441af49a45027bdc7609bdffe50bbaa",
+    "docs/verification/capacity-retention-2026-10-12/desk/http.json": "9e4d9b9bb2e63b1e8ebb41356c80b0577a1e42d3d177b0775ce88a49257a3cb1",
+    "docs/verification/capacity-retention-2026-10-12/desk/spoof.json": "a956625fc4ef18cc6852849e7b4cb3abc304da39c06d3fda0a3d07cd738e4b62",
+    "docs/verification/capacity-retention-2026-10-12/desk/desk-capacity.json": "e54c69e5e1334e0e190ff39c2a1c5f14ade3eac2d00934466f2bdeb1cf8c7e20",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/check-x1.json": "0f006d9b56760ea1e44bdaef8e1a410d330b389913cc7db3ea8fadc85c23231c",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/check-x16.json": "9c70c10ae1c09c78a61e5599580a03361c0b4d7e57b9049d8e5a2f6f6a5d215d",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/check-x4.json": "504803b5d44155dcf036bfdda165c6a56c4529b53938a67f70a07d28966095c6",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/generated-x1.json": "4d09bf083e8e095c6e6d0b7b68670fb65ec91ca71aee16edd81a1bf926df70ff",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/generated-x16.json": "9ccbff722a7dfa85012493fa8ee6284eda4e988f7e64c3a7c9d7eff293f34888",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/generated-x4.json": "e63e391adb502c55af1b863a1aeca3c686ddcbbdb73b965b31ecb9a15a2ed6f4",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/judgement.json": "af83fd51a9c0af18d02ef25b2b0ae3cff6ff9dfe1c32776bdb135c8d71643fec",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/measure-x1-indexed.json": "a255cd7e00c8753ac5932b6f3edc4e58737b3b98456f5b2405f6a096f9865239",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/measure-x1-plain.json": "647acb5899bf280c3e3d8b1f1a908a6ab6c38a4934fff2c62bb9ed101499fbce",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/measure-x16-indexed.json": "69e99d362c3e59dfd505a37de2e333f7b7ebf735584f62463967713d7d53feca",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/measure-x16-plain.json": "eb55f1dc2199e58d3a9b3eb0d511b634cef22e3eca37f139fb5cf4a50fee60fc",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/measure-x4-indexed.json": "a0fcfec0121794b3d6297d2e211a850f808395577f55ec34ceb1d7517308b5ef",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/measure-x4-plain.json": "453e0069dfb820c09046604d8f612a91b27d144e2ebda50397a1ed3559b11896",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/power.jsonl": "53f09a4bd33246924994f49c270450b1ecb57650ce98cfdd1a2676cd4f8f7aad",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/preregistration.json": "dbc83d8820afee18c19b1dee771e5c2acedd42c9d8b72089518b8c9a2a41428b",
+    "docs/verification/capacity-retention-2026-10-12/attempt-4/template.json": "40b77a77a891e0dc45918e9ba0d82d11f4d7a7514c025322561088b49f951962"
+  }
+}
