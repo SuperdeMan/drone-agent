@@ -9,8 +9,10 @@ recorded (a crash between the two) is cut off before the next chunk is appended.
 
 Every call does bounded work however long the history is. `created_at` has no index, so the rows due are found by a
 binary search over ids for the last row before the cutoff (the service writes `op_events` in time order; a row whose
-clock stepped back behind its id is skipped, never lost), and only that id range is read. A chunk is archived only when
-it is complete: full, or its day is over. After a call that finds nothing complete the archive rests a while.
+clock stepped back behind its id is skipped, never lost), and each call reads at most a window of `WINDOW_IDS` ids of
+that range, so sparse status rows never make a call read far. A window without status rows is remembered as scanned.
+A chunk is archived only when it is complete: full, its day is over, or its window ends before the cutoff. After a
+call that finds nothing complete at the cutoff the archive rests a while.
 
 旧 `status.accepted` 行的归档：可核验的 gzip 成员，逐块移出账本（D085）。服务每接受一条机场报告写一行 `status.accepted`
 审计行，约每个机场每秒一行，`op_events` 中其他事件都远不及此。超过保留期的行每次调用至多移出一块，进入按日的文件
@@ -19,8 +21,9 @@ it is complete: full, or its day is over. After a call that finds nothing comple
 成员（两步之间崩溃）在追加下一块之前被截掉。不触碰任何其他事件类型。
 
 无论历史多长，每次调用的工作量都有上限。`created_at` 没有索引，因此按 id 二分查找截止时刻之前的最后一行（服务按时间顺序写入
-`op_events`；时钟回拨而落在 id 之后的行会被跳过，不会丢失），只读取这段 id 范围。只有完整的块才归档：满块，或该日已结束。
-一次调用没有找到完整的块后，归档会休息一段时间。
+`op_events`；时钟回拨而落在 id 之后的行会被跳过，不会丢失），每次调用至多读取该范围内 `WINDOW_IDS` 个 id 的窗口，状态行
+稀疏时也不会读得很远；没有状态行的窗口记为已扫过。只有完整的块才归档：满块、该日已结束，或其窗口在截止时刻之前结束。在截止
+处没有找到完整的块后，归档会休息一段时间。
 """
 
 from __future__ import annotations
@@ -37,6 +40,7 @@ from drone_agent.contracts import utcnow
 
 KIND = "status.accepted"
 IDLE_S = 30.0
+WINDOW_IDS = 20_000
 
 
 def _line(row: dict) -> str:
@@ -57,6 +61,7 @@ class StatusArchive:
         self.retention = timedelta(days=retention_days)
         self.chunk_rows = chunk_rows
         self._last_id: int | None = None
+        self._scanned = 0  # ids up to here hold no status row due / 到此为止的 id 中没有到期的状态行
         self._idle_until = 0.0
 
     def _cursor(self) -> int:
@@ -115,21 +120,29 @@ class StatusArchive:
         cutoff = (self.clock() - self.retention).isoformat()
         cursor = self._cursor()
         boundary = self._boundary(cursor, cutoff)
-        rows = [] if boundary is None else self.ledger._rows(
-            "SELECT id, subject, kind, actor, body, created_at FROM op_events WHERE id > ? AND id <= ? AND kind=? "
-            "AND created_at < ? ORDER BY id LIMIT ?", (cursor, boundary, KIND, cutoff, self.chunk_rows))
-        if not rows:
+        if boundary is None:
             self._idle_until = self.monotonic() + IDLE_S
+            return None
+        start = max(cursor, self._scanned)
+        upper = min(boundary, start + WINDOW_IDS)
+        rows = self.ledger._rows(
+            "SELECT id, subject, kind, actor, body, created_at FROM op_events WHERE id > ? AND id <= ? AND kind=? "
+            "AND created_at < ? ORDER BY id LIMIT ?", (start, upper, KIND, cutoff, self.chunk_rows))
+        if not rows:
+            if upper < boundary:
+                self._scanned = upper  # no status row in this window; the next call reads on / 本窗口无状态行，下次接着读
+            else:
+                self._idle_until = self.monotonic() + IDLE_S
             return None
         day = rows[0]["created_at"][:10]
         # One chunk never crosses a day, so one member lives in exactly one file; it stays a contiguous id range.
         # 一块不跨日，一个成员只在一个文件中；块保持连续的 id 范围。
         cut = next((i for i, row in enumerate(rows) if row["created_at"][:10] != day), len(rows))
-        if cut == len(rows) < self.chunk_rows:
-            # Short of a full chunk: archive it only once a later status row shows its day is over.
-            # 不足一整块：只有更晚的状态行表明该日已结束时才归档。
-            later = self.ledger._one("SELECT created_at FROM op_events WHERE id > ? AND kind=? ORDER BY id LIMIT 1",
-                                     (rows[-1]["id"], KIND))
+        if cut == len(rows) < self.chunk_rows and upper == boundary and day >= cutoff[:10]:
+            # Short of a full chunk at the cutoff on the cutoff's own day: archive it only once a later status row
+            # shows the day is over. / 在截止处、截止当日不足一整块：只有更晚的状态行表明该日已结束时才归档。
+            later = self.ledger._one("SELECT created_at FROM op_events WHERE id > ? AND id <= ? AND kind=? "
+                                     "ORDER BY id LIMIT 1", (rows[-1]["id"], rows[-1]["id"] + WINDOW_IDS, KIND))
             if later is None or later["created_at"][:10] == day:
                 self._idle_until = self.monotonic() + IDLE_S
                 return None

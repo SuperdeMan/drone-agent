@@ -116,3 +116,37 @@ def test_a_changed_archive_is_detected_and_no_retention_is_refused(tmp_path):
     assert result["status"] == "failed" and "does not match its digest" in result["problems"][0]
     with pytest.raises(ValueError):
         StatusArchive(ledger, tmp_path / "archive", retention_days=0)
+
+
+def test_sparse_status_rows_never_make_one_call_read_far(tmp_path):
+    """A long run of other rows between status rows is crossed a window per call; every due row is still archived.
+
+    状态行之间的大段其他行逐窗口跨过，每次调用都不读很远；到期的行仍全部归档。
+    """
+    ledger = BusinessLedger(tmp_path / "ledger.sqlite3")
+    migrate_operations(ledger, backups=None)
+    migrate_capacity(ledger, backups=None)
+    start = NOW - timedelta(days=9)
+    rows = [("dock:dock_a", KIND, "dock:sim", "{}", (start + timedelta(seconds=i)).isoformat()) for i in range(300)]
+    rows += [(f"workflow:wr-{i:020x}", "node.state", "worker", "{}", (start + timedelta(seconds=300 + i / 10))
+              .isoformat()) for i in range(100_000)]
+    rows += [("dock:dock_a", KIND, "dock:sim", "{}", (start + timedelta(hours=10, seconds=i)).isoformat())
+             for i in range(3000)]
+    with ledger.transaction() as db:
+        db.executemany("INSERT INTO op_events(subject, kind, actor, body, created_at) VALUES (?,?,?,?,?)", rows)
+    archive = StatusArchive(ledger, tmp_path / "archive", retention_days=7, chunk_rows=2000, clock=lambda: NOW)
+    steps, worst, calls = [], 0, 0
+    ledger._db.set_progress_handler(lambda: steps.append(1), 1000)
+    try:
+        while calls < 30:
+            steps.clear()
+            record = archive.step()
+            worst, calls = max(worst, len(steps)), calls + 1
+            if record is None and archive._idle_until:
+                break
+    finally:
+        ledger._db.set_progress_handler(None, 0)
+    archived = ledger._one("SELECT COALESCE(SUM(rows), 0) AS n FROM cap_event_archives")["n"]
+    assert archived == 3300 and archive.due() == 0
+    assert worst < 400, f"{worst} thousand VM steps in one call: it read through the sparse run"
+    assert verify(ledger, tmp_path / "archive")["status"] == "passed"
