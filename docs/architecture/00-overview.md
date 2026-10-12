@@ -141,6 +141,7 @@ flowchart TB
 | [../explain-implementation.md](../explain-implementation.md) | WP-P6-05 运营解释助手：事实表、引用核对、差异草案与评测（D083） |
 | [../explain-readiness.md](../explain-readiness.md) | WP-P6-05 验收记录（2026-10-11，`76e7403`，软件 / SITL 范围） |
 | [../explain-check-v2.md](../explain-check-v2.md) | 解释核对 v2：断言措辞的否定与条件、留出评测与预登记采用规则（D086） |
+| [../explain-check-v2-readiness.md](../explain-check-v2-readiness.md) | D086 验收记录（2026-10-12，`7f7b97b`；按预登记规则不采用 v2） |
 | [../fine-reservations-design.md](../fine-reservations-design.md) | WP-P6-06 精细空域预约：航段走廊、真实轨迹核对、长航线阶梯与预登记规则（D084） |
 | [../fine-reservations-readiness.md](../fine-reservations-readiness.md) | WP-P6-06 验收记录（2026-10-12，`6544a9a`，软件 / SITL 范围；走廊未采用） |
 | [../capacity-retention-design.md](../capacity-retention-design.md) | WP-P6-07 容量观测与数据保留：容量迁移与索引、机场状态归档、容量指标与规模阶梯（D085） |
