@@ -13,6 +13,9 @@ Criteria, bound to the same full commit unless stated:
                  its registered digest byte for byte
   ladder       — the pre-registered judgement (`capacity_growth.judge`) recomputed from the six measurements: valid,
                  and every criterion holds for the migrated variant
+  power        — the host's power log (`eval/host_power.py`) shows mains power through every measurement, with no
+                 gap longer than 30 s: a laptop on battery throttles, and the CPU benchmark before and after a run
+                 cannot see a switch in between (it cost the second attempt its decisive window)
   regression   — run here: the P1-P6 S0 matrices and the authorization matrix on the desk catalogs
   desk         — the resident desk activated on this candidate: every catalog and migration including the capacity
                  migration and its drill on the copy, a 7-day status retention, page, script, health, forged identity
@@ -41,6 +44,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from drone_agent.eval.capacity_growth import ORDER, judge  # noqa: E402
+from drone_agent.eval.host_power import covered  # noqa: E402
 
 PC = runpy.run_path(str(ROOT / "scripts/verify_planner_choice.py"))
 M2, P2, P6R = PC["M2"], PC["P2"], PC["P6R"]
@@ -156,6 +160,17 @@ def ladder(runs: dict, evidence: Path) -> dict:
             "summary": summary}
 
 
+def power(runs: dict, log_path: Path) -> dict:
+    """Mains power through every measurement. / 每次测量全程接交流电。"""
+    if not log_path.is_file() or any(run is None for run in runs.values()):
+        return {"status": "missing", "reason": "the power log and six measurements"}
+    log = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    found = {f"x{scale}-{variant}": covered(log, run["started_at"], run["finished_at"])
+             for (scale, variant), run in runs.items()}
+    return {"status": "passed" if all(item["ok"] for item in found.values()) else "failed", "measurements": found,
+            "samples": len(log)}
+
+
 def regression(sha: str, work: Path) -> dict:
     parts = {"p1": P2["p1_regression"](sha, work / "p1"), "p2": P2["s0_matrix"](sha, work / "p2"),
              "p3": P3["s0_matrix"](sha, work / "p3"), "p4": P4["s0_matrix"](sha, work / "p4"),
@@ -250,7 +265,7 @@ def main() -> None:
         parser.error("gate implementation and runtime must match the clean candidate")
     args.evidence = args.evidence.resolve()
     inputs = [p for p in (args.deployment, args.desk, args.desk_http, args.desk_spoof, args.desk_capacity) if p]
-    inputs += sorted(args.evidence.glob("*.json")) if args.evidence.is_dir() else []
+    inputs += sorted(args.evidence.glob("*.json*")) if args.evidence.is_dir() else []
     crlf = [p.name for p in inputs if b"\r\n" in p.read_bytes()]
     if crlf:
         parser.error(f"convert these inputs to LF line endings first: {crlf}")
@@ -265,6 +280,7 @@ def main() -> None:
         "prereg": prereg(args.sha, args.evidence, runs),
         "reproducible": reproducible(args.sha, args.template, args.evidence, args.work),
         "ladder": ladder(runs, args.evidence),
+        "power": power(runs, args.evidence / "power.jsonl"),
         "regression": regression(args.sha, args.work),
         "desk": desk(load(args.desk), load(args.desk_http), load(args.desk_spoof), args.sha),
         "desk_capacity": desk_capacity(load(args.desk_capacity), args.sha),

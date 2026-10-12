@@ -50,3 +50,22 @@ def test_the_desk_criterion_adds_the_capacity_migration_its_drill_and_the_retent
                      {"migration": {"status": "current"}, "drill": None, "status_retention_days": 7},
                      {"migration": {"status": "current"}, "drill": {"status": "passed"}, "status_retention_days": None}):
         assert GATE["desk"]({"capacity": capacity}, {}, {}, SHA)["status"] == "failed"
+
+
+def test_the_power_criterion_needs_mains_power_through_every_measurement(tmp_path):
+    import json
+    from datetime import UTC, datetime, timedelta
+
+    start = datetime(2026, 10, 12, 9, 0, tzinfo=UTC)
+    runs = {}
+    for index, key in enumerate(GATE["ORDER"]):
+        begin = start + timedelta(minutes=15 * index)
+        runs[key] = {"started_at": begin.isoformat(), "finished_at": (begin + timedelta(minutes=10)).isoformat()}
+    samples = [{"at": (start + timedelta(seconds=5 * i)).isoformat(), "ac": "online"} for i in range(12 * 90)]
+    path = tmp_path / "power.jsonl"
+    path.write_text("".join(json.dumps(s) + "\n" for s in samples), encoding="utf-8")
+    assert GATE["power"](runs, path)["status"] == "passed"
+    samples[200]["ac"] = "battery"
+    path.write_text("".join(json.dumps(s) + "\n" for s in samples), encoding="utf-8")
+    assert GATE["power"](runs, path)["status"] == "failed"
+    assert GATE["power"](runs, tmp_path / "absent.jsonl")["status"] == "missing"
