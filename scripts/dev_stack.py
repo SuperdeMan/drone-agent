@@ -558,6 +558,7 @@ def main() -> None:
     backup_parser.add_argument("--apply", action="store_true")
     drill_parser = commands.add_parser("desk-restore-drill", help="restore the latest backup offline and read it back")
     drill_parser.add_argument("--apply", action="store_true")
+    commands.add_parser("desk-capacity", help="read the desk's capacity status and check its status archive (D085)")
     desk_parser = commands.add_parser("desk-cloud", help="plan or activate the resident M2 mission desk (D035)")
     desk_action = desk_parser.add_mutually_exclusive_group()
     desk_action.add_argument("--apply", action="store_true")
@@ -672,6 +673,10 @@ def main() -> None:
                 return
             if args.command == "desk-members":
                 result = desk_members(connection, apply=args.apply, stage="next" if args.next else None)
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+                return
+            if args.command == "desk-capacity":
+                result = ssh(connection, {"action": "desk_capacity"}, timeout=600)
                 print(json.dumps(result, ensure_ascii=False, indent=2))
                 return
             if args.command in ("desk-world", "desk-soak", "desk-backup", "desk-restore-drill"):

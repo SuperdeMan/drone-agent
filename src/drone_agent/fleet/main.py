@@ -174,6 +174,16 @@ async def main_async(args) -> None:
                 vision_label = f"unavailable: {error}"
         service.business = BusinessEngine(service, business, root=args.root, vision=vision,
                                           recordings=args.state / "recordings" / "analysis")
+    # WP-P6-07 (D085): one capacity snapshot a minute; old `status.accepted` rows archived when a retention is set.
+    # WP-P6-07（D085）：每分钟一份容量快照；设置保留期时归档旧的 `status.accepted` 行。
+    service.capacity_dir = args.state / "capacity"
+    if args.status_retention_days is not None:
+        if operations is None:
+            raise SystemExit("--status-retention-days needs --catalog")
+        from drone_agent.fleet.archive import StatusArchive
+
+        service.status_archive = StatusArchive(ledger, args.state / "archive" / "op_events",
+                                               retention_days=args.status_retention_days)
     vendor = None
     if args.vendor_link:
         from drone_agent.fleet.vendor_gateway import SocketLink, VendorGateway
@@ -215,7 +225,9 @@ async def main_async(args) -> None:
              "business": {"catalog_id": business.catalog.catalog_id, "catalog_sha256": business.catalog.sha256,
                           "migration": business.migration, "vision": vision_label or args.vision}
              if business is not None else None,
-             "execution_backends": list(args.execution_backend), "vendor": vendor}
+             "execution_backends": list(args.execution_backend), "vendor": vendor,
+             "capacity": {"migration": operations.capacity_migration, "status_retention_days": args.status_retention_days}
+             if operations is not None else None}
     (args.state / "ready.json").write_bytes(canonical(ready))
     print(json.dumps(ready), flush=True)
     stop = asyncio.Event()
@@ -279,6 +291,8 @@ def main() -> None:
                         help="P3 scheduling catalog (D059); needs --catalog; migrates (D060)")
     parser.add_argument("--business", type=Path,
                         help="P4 business catalog (D063); needs --workflows; migrates (D064)")
+    parser.add_argument("--status-retention-days", type=float, default=None,
+                        help="archive status.accepted rows older than this out of the ledger (D085); off by default")
     parser.add_argument("--vision", choices=["live", "none"], default="none",
                         help="vision provider of model analyses (P4); none refuses them explicitly")
     parser.add_argument("--vendor-link", type=vendor_link, action="append", default=[],

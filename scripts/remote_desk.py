@@ -303,10 +303,10 @@ def wait_sessions(desk, timeout: float = 120.0) -> dict:
 
 
 def migration_drill(desk, artifact: Path, image: str, members: Path | None = None) -> dict:
-    """D056, D058, D060 and D064 drills in turn on one copy of the live ledger with the new image; only counts and
-    digests are kept.
+    """D056, D058, D060, D064 and D085 drills in turn on one copy of the live ledger with the new image; only counts
+    and digests are kept.
 
-    用新镜像对当前账本的同一副本依次执行 D056、D058、D060 与 D064 演练；只保留计数与摘要。
+    用新镜像对当前账本的同一副本依次执行 D056、D058、D060、D064 与 D085 演练；只保留计数与摘要。
     """
     live = desk.service / "ledger.sqlite3"
     if not live.is_file():
@@ -326,7 +326,8 @@ def migration_drill(desk, artifact: Path, image: str, members: Path | None = Non
         for name, module in (("operations", "drone_agent.fleet.operations_store"),
                              ("workflows", "drone_agent.fleet.workflow_store"),
                              ("scheduling", "drone_agent.fleet.scheduling_store"),
-                             ("business", "drone_agent.fleet.business_store")):
+                             ("business", "drone_agent.fleet.business_store"),
+                             ("capacity", "drone_agent.fleet.capacity_store")):
             output = HELPERS["run"](["docker", "run", "--rm", "--network", "none", "--user",
                                      f"{os.getuid()}:{os.getgid()}", "-v", f"{work}:/drill", image, "python3", "-m",
                                      module, "--drill", "/drill/ledger.sqlite3"], timeout=300)
@@ -348,7 +349,7 @@ def migration_drill(desk, artifact: Path, image: str, members: Path | None = Non
     finally:
         # The copy holds mission data; only the receipt stays. / 副本含任务数据；只保留回执。
         shutil.rmtree(work, ignore_errors=True)
-    result = {"status": "passed" if all(d.get("status") == "passed" for d in drills.values()) and len(drills) == 5
+    result = {"status": "passed" if all(d.get("status") == "passed" for d in drills.values()) and len(drills) == 6
               else "failed", **drills}
     (artifact / "migration-drill.json").write_text(json.dumps(result, indent=2))
     if result.get("status") != "passed":
@@ -459,7 +460,12 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
         residents_changed = True
         stack("up", "-d", "--no-build", "--pull", "never", "--force-recreate", *RESIDENTS, timeout=240)
         command(["sudo", "-n", "systemctl", "restart", UNIT])
-        deadline = time.monotonic() + 120
+        # D085: a first start after the capacity drill migrated the copy also migrates the live ledger before it
+        # answers, at the service's half CPU; four times the drill's unconstrained time bounds that.
+        # D085：容量演练迁移了副本时，首次启动也要先迁移在用账本才应答，且服务只有半个 CPU；以演练无限制用时的四倍为界。
+        capacity_drill = drill.get("capacity") or {}
+        migrating = 4 * float(capacity_drill.get("elapsed_s") or 0) if capacity_drill.get("migration") == "migrated" else 0
+        deadline = time.monotonic() + 120 + min(migrating, 1800)
         while True:
             try:
                 health = probe(value["origin"])
@@ -520,6 +526,9 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
                                 "catalog_sha256": business.get("catalog_sha256"),
                                 "migration": business.get("migration"), "drill": drill.get("business"),
                                 "vision": business.get("vision")},
+                   # D085: the capacity migration, its drill on the copy, and the status retention.
+                   # D085：容量迁移、其在副本上的演练与状态保留期。
+                   "capacity": {**(started.get("capacity") or {}), "drill": drill.get("capacity")},
                    "switch_drill": drill.get("switch", drill), "execution_backends": started.get("execution_backends"),
                    "vendor": started.get("vendor"), "dock_sessions": sessions,
                    "containers": inspect_desk(desk, value["source_sha"]),
@@ -753,9 +762,75 @@ def backup(root: Path, request: dict) -> dict:
               "media_sha256": hashlib.sha256(json.dumps(listing, sort_keys=True).encode()).hexdigest(),
               "catalogs": {k: (read_json(desk.service / "ready.json") or {}).get(k) for k in
                            ("operations", "workflows", "scheduling", "business")}}
+    # D085: archived status rows left the ledger; the backup records the archive files they live in.
+    # D085：归档的状态行已离开账本；备份记录它们所在的归档文件。
+    archive = sorted((desk.service / "archive").rglob("*.gz")) if (desk.service / "archive").is_dir() else []
+    archived = [{"path": str(p.relative_to(desk.service)), "bytes": p.stat().st_size, "sha256": HELPERS["digest"](p)}
+                for p in archive]
+    record["archive_files"] = len(archived)
+    record["archive_sha256"] = hashlib.sha256(json.dumps(archived, sort_keys=True).encode()).hexdigest()
     (target / "media.json").write_text(json.dumps(listing))
+    (target / "archive.json").write_text(json.dumps(archived))
     (target / "backup.json").write_text(json.dumps(record, indent=2))
     return record
+
+
+def capacity(root: Path) -> dict:
+    """Read-only capacity status of the resident desk (D085): the migration marker, the status archive read back chunk by
+    chunk, status rows overdue for archiving, the newest capacity snapshot, and how long the startup reconciliation
+    after the last start took. The ledger is opened read-only; a WAL reader never blocks the service.
+
+    常驻任务台的只读容量状态（D085）：迁移标记、逐块读回核对的状态归档、逾期未归档的状态行、最新容量快照，以及最近一次
+    启动后的启动核对用时。账本以只读方式打开；WAL 读者从不阻塞服务。
+    """
+    import gzip
+    from datetime import timedelta
+
+    desk = SUPERVISOR["Desk"](root)
+    ready_path = desk.service / "ready.json"
+    ready = read_json(ready_path) or {}
+    retention = (ready.get("capacity") or {}).get("status_retention_days")
+    db = sqlite3.connect(f"file:{(desk.service / 'ledger.sqlite3').as_posix()}?mode=ro", uri=True, timeout=10)
+    try:
+        db.execute("PRAGMA query_only=1")
+        meta = dict(db.execute("SELECT key, value FROM meta WHERE key LIKE 'capacity_%'").fetchall())
+        columns = ("chunk_id", "file", "offset", "length", "first_id", "last_id", "rows", "first_at", "last_at",
+                   "sha256")
+        chunks = [dict(zip(columns, row, strict=True)) for row in db.execute(
+            f"SELECT {', '.join(columns)} FROM cap_event_archives ORDER BY chunk_id")] if meta else []
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=(retention or 0) + 1)).isoformat()
+        status_rows, overdue = db.execute("SELECT COUNT(*), COALESCE(SUM(created_at < ?), 0) FROM op_events "
+                                          "WHERE kind='status.accepted'", (cutoff,)).fetchone()
+    finally:
+        db.close()
+    problems = []
+    for chunk in chunks:
+        try:
+            with open(desk.service / "archive" / "op_events" / chunk["file"], "rb") as stream:
+                stream.seek(chunk["offset"])
+                member = stream.read(chunk["length"])
+            if hashlib.sha256(member).hexdigest() != chunk["sha256"]:
+                problems.append(f"chunk {chunk['chunk_id']} does not match its digest")
+            elif gzip.decompress(member).count(b"\n") != chunk["rows"]:
+                problems.append(f"chunk {chunk['chunk_id']} does not hold its rows")
+        except OSError as error:
+            problems.append(f"chunk {chunk['chunk_id']}: {type(error).__name__}")
+    snapshots = []
+    for path in sorted((desk.service / "capacity").glob("capacity-*.jsonl"))[-3:]:
+        snapshots += [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    ready_at = datetime.fromtimestamp(ready_path.stat().st_mtime, timezone.utc) if ready_path.is_file() else None
+    since = [s for s in snapshots if ready_at and datetime.fromisoformat(s["at"]) >= ready_at - timedelta(seconds=5)]
+    reconciled = next((s for s in since if (s.get("backlog") or {}).get("startup_backlog") == 0), None)
+    return {"status": "ok", "checked_at": datetime.now(timezone.utc).isoformat(), "source_sha": ready.get("source_sha"),
+            "capacity": ready.get("capacity"), "meta": meta, "ready_at": ready_at.isoformat() if ready_at else None,
+            "archive": {"chunks": len(chunks), "rows": sum(c["rows"] for c in chunks), "bytes": sum(
+                c["length"] for c in chunks), "files": len({c["file"] for c in chunks}),
+                        "first_at": chunks[0]["first_at"] if chunks else None,
+                        "last_at": chunks[-1]["last_at"] if chunks else None, "problems": problems[:20]},
+            "status_rows": status_rows, "overdue_rows": overdue, "overdue_cutoff": cutoff,
+            "startup": {"first": since[0].get("backlog") if since else None,
+                        "reconciled_uptime_s": reconciled["uptime_s"] if reconciled else None},
+            "latest": snapshots[-1] if snapshots else None}
 
 
 def restore_drill(root: Path, request: dict) -> dict:
@@ -777,6 +852,16 @@ def restore_drill(root: Path, request: dict) -> dict:
         restored = HELPERS["digest"](work / "ledger.sqlite3") == record["ledger"]["sha256"]
         image = (read_json(desk.base / "current.json") or {})["images"]["ground"]
         members = desk.secrets / "members.yaml"
+        # A backup taken before D085 is migrated first, as the service would on a real restore (same order as the
+        # activation drills). / D085 之前的备份先迁移，与真实恢复时服务的做法一致（与激活演练顺序相同）。
+        migrated = subprocess.run(["docker", "run", "--rm", "--network", "none", "--user",
+                                   f"{os.getuid()}:{os.getgid()}", "-v", f"{work}:/drill", image, "python3", "-m",
+                                   "drone_agent.fleet.capacity_store", "--drill", "/drill/ledger.sqlite3"],
+                                  capture_output=True, timeout=900)
+        try:
+            capacity = json.loads(migrated.stdout.decode("utf-8", errors="replace").strip().splitlines()[-1])
+        except (IndexError, ValueError):
+            capacity = {"status": "failed", "exit_code": migrated.returncode}
         result = subprocess.run(["docker", "run", "--rm", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
                                  "-v", f"{work}:/drill", "-v", f"{members}:/members.yaml:ro", image, "python3", "-m",
                                  "drone_agent.fleet.switch_drill", "--ledger", "/drill/ledger.sqlite3",
@@ -799,9 +884,11 @@ def restore_drill(root: Path, request: dict) -> dict:
             ((record.get("catalogs") or {}).get("operations") or {}).get("catalog_sha256")
     finally:
         shutil.rmtree(work, ignore_errors=True)
-    passed = restored and read_back.get("status") == "passed" and not changed and same_catalogs
+    passed = (restored and capacity.get("status") == "passed" and read_back.get("status") == "passed" and not changed
+              and same_catalogs)
     receipt = {"status": "passed" if passed else "failed", "backup_id": record["backup_id"],
                "backup_sha256": record["ledger"]["sha256"], "restored_digest_matches": restored,
+               "capacity_drill": {k: capacity.get(k) for k in ("status", "migration", "elapsed_s", "exit_code")},
                "read_back": read_back, "tables_changed": changed, "catalogs_match": same_catalogs,
                "live_ledger_touched": False, "drill_at": datetime.now(timezone.utc).isoformat()}
     (desk.base / "deployments" / request["run_id"] / "restore-drill.json").write_text(json.dumps(receipt, indent=2))

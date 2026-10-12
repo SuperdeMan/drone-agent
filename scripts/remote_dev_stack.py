@@ -29,7 +29,7 @@ RUN_ID = re.compile(r"^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 RUN_DIR = re.compile(r"^[mp][0-9]+-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}$")
 CASE_DIR = re.compile(r"^[a-z][a-z0-9_]*-[0-9]+$")
 READ_ONLY_ACTIONS = frozenset({"status", "runs", "inspect", "live_status", "console_plan", "console_status",
-                               "desk_plan", "desk_status", "desk_soak_status"})
+                               "desk_plan", "desk_status", "desk_soak_status", "desk_capacity"})
 # P5 desk operations that never wait for the mutation lock (a long batch may hold it for hours).
 # 从不等待变更锁的 P5 任务台操作（长批次可能持锁数小时）。
 DESK_OPERATIONS = frozenset({"desk_world", "desk_soak_stop", "desk_soak_judge", "desk_backup", "desk_restore_drill"})
@@ -415,7 +415,7 @@ def dispatch(request: dict) -> dict:
         with locked(root):
             return console["apply"](root, deployment, request)
     if action in {"desk_plan", "desk_status", "desk_apply", "desk_members", "desk_soak_status", "desk_soak_start",
-                  *DESK_OPERATIONS}:
+                  "desk_capacity", *DESK_OPERATIONS}:
         import runpy
 
         deployment = current(root)
@@ -429,6 +429,8 @@ def dispatch(request: dict) -> dict:
             return desk["plan"](root, deployment)
         if action == "desk_soak_status":
             return desk["soak_status"](root)
+        if action == "desk_capacity":
+            return desk["capacity"](root)
         if action in DESK_OPERATIONS:
             entry = {"desk_world": "world", "desk_soak_stop": "soak_stop", "desk_soak_judge": "soak_judge",
                      "desk_backup": "backup", "desk_restore_drill": "restore_drill"}[action]

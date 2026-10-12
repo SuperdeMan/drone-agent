@@ -19,6 +19,7 @@ import contextlib
 import json
 import sqlite3
 import threading
+import time
 import uuid
 from collections.abc import Callable
 from pathlib import Path
@@ -105,6 +106,9 @@ class BusinessLedger:
         self._db.row_factory = sqlite3.Row
         self._lock = threading.RLock()
         self._depth = 0
+        # Called with the milliseconds of each outermost write transaction (D085 capacity metrics).
+        # 每个最外层写事务结束时以毫秒数调用（D085 容量指标）。
+        self.observer = None
         with self._lock:
             if str(path) != ":memory:":
                 self._db.execute("PRAGMA journal_mode=WAL")
@@ -130,6 +134,7 @@ class BusinessLedger:
                 finally:
                     self._depth -= 1
                 return
+            started = time.perf_counter()
             self._db.execute("BEGIN IMMEDIATE")
             self._depth = 1
             try:
@@ -141,6 +146,8 @@ class BusinessLedger:
                 self._db.execute("COMMIT")
             finally:
                 self._depth = 0
+                if self.observer is not None:
+                    self.observer((time.perf_counter() - started) * 1000)
 
     def backup(self, target: Path) -> None:
         """Online copy of the whole database as one self-contained file (SQLite backup API, no WAL sidecars).

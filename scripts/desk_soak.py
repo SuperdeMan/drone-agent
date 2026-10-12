@@ -987,14 +987,22 @@ class Soak:
         try:
             db = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True, timeout=5)
             try:
-                for table in GROWING:
-                    found[table] = db.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0]
-                found["awaiting_approval"] = db.execute(
+                # One read snapshot for every count, so an archive chunk committed between two of them is never
+                # counted twice (D085); the counts are kept only when all of them were read.
+                # 所有计数共用一个读快照，两次读取之间提交的归档块不会被计两次（D085）；全部读到才记录。
+                db.execute("BEGIN")
+                counts = {table: db.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0] for table in GROWING}
+                counts["awaiting_approval"] = db.execute(
                     "SELECT COUNT(*) FROM missions WHERE status='awaiting_approval'").fetchone()[0]
-                found["queued_jobs"] = db.execute(
+                counts["queued_jobs"] = db.execute(
                     "SELECT COUNT(*) FROM bz_jobs WHERE state IN ('queued','running')").fetchone()[0]
+                # D085: status rows moved to the archive still count towards the record. / 已归档的状态行仍计入记录。
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='cap_event_archives'").fetchone():
+                    counts["op_events_archived"] = db.execute(
+                        "SELECT COALESCE(SUM(rows), 0) FROM cap_event_archives").fetchone()[0]
             finally:
                 db.close()
+            found.update(counts)
         except sqlite3.Error as error:
             found["error"] = str(error)[:200]
         return found

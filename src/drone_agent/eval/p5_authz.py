@@ -161,6 +161,7 @@ class Matrix:
             "resources.eligibility": (p, {"project_id": p, "robot_id": "uav_01"}),
             "resources.maintenance": (p, {"project_id": p, "dock_id": "dock_s1", "action": "unlock",
                                           "reason": "authz probe"}),
+            "capacity.get": (p, {"project_id": p}),
             "docks.report": (p, {"report": {"dock_id": "dock_fa"}}),
             "docks.actions": (p, {"dock_id": "dock_fa"}),
             "docks.ack": (p, {"action_id": "act-none", "accepted": True, "reason": ""}),

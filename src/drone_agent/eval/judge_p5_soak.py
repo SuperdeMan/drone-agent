@@ -94,6 +94,9 @@ class Records:
         db = sqlite3.connect(f"file:{ledger.as_posix()}?mode=ro", uri=True)
         db.row_factory = sqlite3.Row
         try:
+            # One read snapshot for every table, so a status chunk archived meanwhile is counted once (D085).
+            # 所有表共用一个读快照，期间归档的状态块只计一次（D085）。
+            db.execute("BEGIN")
             names = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             self.tables = {name: [dict(row) for row in db.execute(f'SELECT * FROM "{name}"')]
                            for name in ("wf_runs", "wf_triggers", "wf_schedules", "missions", "op_claims",
@@ -105,6 +108,10 @@ class Records:
                 if "events" in names else []
             self.counts = {name: db.execute(f'SELECT COUNT(*) FROM "{name}"').fetchone()[0]
                            for name in GROWING if name in names}
+            if "cap_event_archives" in names and "op_events" in self.counts:
+                # D085: archived status rows still belong to the record. / 已归档的状态行仍属于记录。
+                self.counts["op_events"] += db.execute(
+                    "SELECT COALESCE(SUM(rows), 0) FROM cap_event_archives").fetchone()[0]
         finally:
             db.close()
         self.flight_records = []
@@ -154,11 +161,15 @@ def duration(r: Records) -> dict:
             value = (sample.get("ledger") or {}).get(table)
             if value is None:
                 continue
+            if table == "op_events":
+                # D085: rows moved to the status archive still belong to the record. / 移入状态归档的行仍属于记录。
+                value += (sample.get("ledger") or {}).get("op_events_archived") or 0
             if value < previous.get(table, 0):
                 shrunk.append({"table": table, "at": sample["at"], "from": previous[table], "to": value})
             previous[table] = value
     before_t0 = sum(1 for m in r.tables.get("missions", []) if _at(m["created_at"]) < r.t0)
-    first = (r.samples[0].get("ledger") or {}) if r.samples else {}
+    first = dict((r.samples[0].get("ledger") or {}) if r.samples else {})
+    first["op_events"] = first.get("op_events", 0) + (first.get("op_events_archived") or 0)
     ok = (r.manifest.get("full_length") and hours >= criteria["min_duration_h"] and revisions == [
         r.manifest["source_sha"]] and not shrunk and before_t0 > 0 and bool(r.samples)
         and all(r.counts.get(t, 0) >= first.get(t, 0) for t in GROWING))

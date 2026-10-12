@@ -31,6 +31,7 @@ import asyncio
 import json
 import os
 import sys
+import time
 import uuid
 from pathlib import Path
 
@@ -90,6 +91,8 @@ METHODS: dict[str, tuple[str, frozenset[str]]] = {
     "resources.get": (RESOURCE_READ, frozenset({"project_id", "resource_id"})),
     "resources.eligibility": (RESOURCE_READ, frozenset({"project_id", "robot_id"})),
     "resources.maintenance": (RESOURCE_MAINTAIN, frozenset({"project_id", "dock_id", "action", "reason"})),
+    # WP-P6-07 (D085): the service's capacity snapshot, for a project admin. / 服务的容量快照，供项目管理员读取。
+    "capacity.get": (RESOURCE_MAINTAIN, frozenset({"project_id"})),
     # Dock backends only; the catalog binds each `dock:` identity to its docks. / 仅机场后端；目录把每个 `dock:` 身份绑定到其机场。
     "docks.report": (RESOURCE_REPORT, frozenset({"report"})),
     "docks.actions": (RESOURCE_REPORT, frozenset({"dock_id"})),
@@ -170,7 +173,21 @@ def _error(code: str, message: str = "") -> dict:
 
 
 async def dispatch(service: MissionService, request: dict) -> dict:
-    """Validate, authorize and execute one API request. / 校验、授权并执行一个 API 请求。"""
+    """Validate, authorize and execute one API request, timed per known method (D085).
+
+    校验、授权并执行一个 API 请求，按已知方法计时（D085）。
+    """
+    started = time.perf_counter()
+    try:
+        return await _dispatch(service, request)
+    finally:
+        method = request.get("method") if isinstance(request, dict) else None
+        capacity = getattr(service, "capacity", None)
+        if capacity is not None and isinstance(method, str) and method in METHODS:
+            capacity.record(f"api.{method}", (time.perf_counter() - started) * 1000)
+
+
+async def _dispatch(service: MissionService, request: dict) -> dict:
     if not isinstance(request, dict) or set(request) != {"method", "actor", "trust", "params"}:
         return _error("service.invalid_request", "expected method, actor, trust and params")
     method, actor, params = request["method"], request["actor"], request["params"]
@@ -273,6 +290,8 @@ async def _call(service: MissionService, method: str, params: dict, who: Caller)
     if method == "resources.maintenance":
         return service.maintenance(str(params["project_id"]), str(params["dock_id"]), str(params["action"]),
                                    str(params["reason"])[:300], caller=who)
+    if method == "capacity.get":
+        return service.capacity_report(who, str(params["project_id"]))
     if method == "docks.report":
         if not isinstance(params["report"], dict):
             raise ServiceError("service.invalid_request", "report must be an object")

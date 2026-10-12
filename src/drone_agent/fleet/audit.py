@@ -5,15 +5,17 @@ requests, and the operations audit rows (`op_events`) whose subject belongs to t
 schedule switches, reviews and repair feedback, scheduler tasks and assignments, findings, orders and rounds, reference
 appearances and reuse analyses, dock maintenance locks and actions, delivery claims, voids and releases, and the
 refused attempts of project members (`access.denied`). The dock's once-a-second status reports and the workers' own
-bookkeeping (leases, node transitions) are left out. Each page scans a bounded window of the newest rows, so a call
-costs the same however long the history is; the cursor continues where the window stopped.
+bookkeeping (leases, node transitions) are left out, filtered in SQL through a partial index (D085). Each page reads
+at most a bounded number of the newest other rows, so a call costs the same however long the history is; the cursor
+continues where the page stopped.
 
 项目审计记录（P5，D070）：一个项目里谁做了什么，由服务已保存的记录投影而来。
 
 这里不写入也不判定。记录合并该项目的任务请求、审批与驳回、操作请求，以及主题属于该项目的运营审计行（`op_events`）：工作流的
 启动、取消、排班启停、复核与维修反馈，调度任务单与分配，发现、工单与轮次，参考外观与复用分析，机场维护锁与动作，投递的领取、
 作废与释放，以及项目成员被拒的尝试（`access.denied`）。机场每秒一次的状态报告与工作进程自身的记账（租约、节点迁移）不列入。
-每页只扫描最新的有限窗口，因此无论历史多长，单次调用代价相同；游标从窗口停止处继续。
+它们经部分索引在 SQL 中过滤（D085）。每页至多读取有限条最新的其余行，因此无论历史多长，单次调用代价相同；游标从本页
+停止处继续。
 """
 
 from __future__ import annotations
@@ -21,11 +23,15 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
+from drone_agent.fleet.capacity_store import AUDIT_NOISE
 from drone_agent.runtime.permission import AUDIT_READ, Caller
 
 MAX_LIMIT = 200
 EVENT_WINDOW = 20_000
-NOISE = frozenset({"status.accepted", "lease.taken", "node.state"})
+BATCH = 500
+NOISE = frozenset(AUDIT_NOISE)
+# The same text as the partial index's WHERE clause, so SQLite can use it (D085). / 与部分索引 WHERE 子句同文，SQLite 才能用上（D085）。
+NOISE_SQL = ", ".join(f"'{kind}'" for kind in AUDIT_NOISE)
 FINAL_RUN = frozenset({"completed", "failed", "outcome_unknown", "cancelled"})
 OWNED_TABLES = {"workflow": ("wf_runs", "run_id"), "task": ("sc_tasks", "task_id"),
                 "finding": ("bz_findings", "finding_id"), "order": ("bz_orders", "order_id"),
@@ -143,30 +149,37 @@ class ProjectAudit:
         return found
 
     def _events(self, project: str, before_id: int | None, limit: int) -> tuple[list[dict], int | None]:
-        """The newest audit rows of this project within one bounded window, and where the window stopped.
+        """The newest audit rows of this project, reading at most `EVENT_WINDOW` non-noise rows, and where it stopped.
 
-        一个有限窗口内本项目最新的审计行，以及窗口停止的位置。
+        The noise kinds are filtered in SQL with the same expression as the partial index `cap_op_events_audit`, so
+        the dock reports that make up nearly every row are never read (D085).
+
+        本项目最新的审计行，至多读取 `EVENT_WINDOW` 条非噪声行，以及停止的位置。噪声类型在 SQL 中用与部分索引
+        `cap_op_events_audit` 相同的表达式过滤，因此几乎占满全部行的机场报告从不被读取（D085）。
         """
-        top = before_id if before_id is not None else (self._rows("SELECT MAX(id) AS top FROM op_events")[0]["top"] or 0) + 1
-        rows = self._rows("SELECT id, subject, kind, actor, body, created_at FROM op_events WHERE id < ? AND id >= ? "
-                          "ORDER BY id DESC", (top, max(0, top - EVENT_WINDOW)))
-        found, cache = [], {}
-        stopped = max(0, top - EVENT_WINDOW) if len(rows) else 0
-        for row in rows:
-            if row["kind"] in NOISE:
-                continue
-            body = _load(row["body"])
-            if row["kind"] == "run.state" and body.get("to") not in FINAL_RUN:
-                continue
-            owner, target = self._owner(row["subject"], cache)
-            if owner != project:
-                continue
-            found.append({"at": row["created_at"], "actor": row["actor"], "action": row["kind"], "object": target,
-                          "source": "op_events", "event_id": row["id"], "detail": _small(body)})
-            if len(found) >= limit:
-                stopped = row["id"]
-                break
-        return found, (stopped if stopped > 0 else None)
+        cursor = before_id if before_id is not None else (self._rows("SELECT MAX(id) AS top FROM op_events")[0]["top"]
+                                                           or 0) + 1
+        found, cache, read, stopped = [], {}, 0, None
+        while read < EVENT_WINDOW:
+            rows = self._rows("SELECT id, subject, kind, actor, body, created_at FROM op_events "
+                              f"WHERE kind NOT IN ({NOISE_SQL}) AND id < ? ORDER BY id DESC LIMIT ?",
+                              (cursor, min(BATCH, EVENT_WINDOW - read)))
+            if not rows:
+                return found, None
+            for row in rows:
+                read, cursor = read + 1, row["id"]
+                body = _load(row["body"])
+                if row["kind"] == "run.state" and body.get("to") not in FINAL_RUN:
+                    continue
+                owner, target = self._owner(row["subject"], cache)
+                if owner != project:
+                    continue
+                found.append({"at": row["created_at"], "actor": row["actor"], "action": row["kind"], "object": target,
+                              "source": "op_events", "event_id": row["id"], "detail": _small(body)})
+                if len(found) >= limit:
+                    return found, row["id"]
+            stopped = cursor
+        return found, stopped
 
     # ── the call / 调用 ──
 

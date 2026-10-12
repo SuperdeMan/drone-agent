@@ -24,7 +24,7 @@ $env:UV_DEFAULT_INDEX = 'https://pypi.tuna.tsinghua.edu.cn/simple'
 | 监管者（systemd `drone-agent-desk-supervisor`） | 按 inbox 在 PX4 SITL 中飞每个已接受版本；放置世界文件要求的模型；独立裁判 | 主机 | 持项目锁飞行 |
 | 长稳编排（systemd `drone-agent-desk-soak`，只在长稳期间） | 按冻结计划启动运行、扮演人、注入整容器故障、采样 | 主机 | 只经 API 套接字与开关文件 |
 
-任务台工作区（主机 `~/drone-agent/desk/`）：`service/`（账本、媒体、备份）、`api/`、`robot/`、`flights/`、`judge/`、`fleet/`、`vendor/`、`world/`、`faults/`、`soak/`、`backups/`、`deployments/`（每次激活的回执与演练）、`supervisor/`。密钥在 `~/drone-agent/secrets/desk/`（签名密钥、信任文件、CA 与各证书、成员列表）与 `secrets/m2-model/`（模型 key），只属主可读。
+任务台工作区（主机 `~/drone-agent/desk/`）：`service/`（账本、媒体、备份；D085 起另有 `archive/op_events/` 机场状态归档与 `capacity/` 容量快照）、`api/`、`robot/`、`flights/`、`judge/`、`fleet/`、`vendor/`、`world/`、`faults/`、`soak/`、`backups/`、`deployments/`（每次激活的回执与演练）、`supervisor/`。密钥在 `~/drone-agent/secrets/desk/`（签名密钥、信任文件、CA 与各证书、成员列表）与 `secrets/m2-model/`（模型 key），只属主可读。
 
 ## 2. 部署与升级
 
@@ -35,7 +35,7 @@ $env:UV_DEFAULT_INDEX = 'https://pypi.tuna.tsinghua.edu.cn/simple'
    uv run python scripts/dev_stack.py test
    ```
 3. **成员列表**：列表要指明新项目时（如 P4 → P5 增加 `fleet_s0`、`vendor_s3`），先暂存给下一次激活：`desk-members --next --apply`。旧服务在激活前重启也不会读到它；激活成功后才替换在用列表，失败则恢复原列表。成员不变时用 `desk-members --apply`（立即生效于下次服务启动）。
-4. **激活**：先 `console-cloud --apply`（使 `/fixed/` 的代理与部署版本一致），再 `desk-cloud` 看计划、`desk-cloud --apply`。激活依次：构建 M2 与 P5 仿真镜像、签发证书（含逻辑飞行器）、在当前账本副本上演练 P1–P4 迁移与 P5 目录切换（只保留计数与摘要）、写入激活记录、启动常驻容器与监管者、核对服务以四个任务台目录（P6 起工作流与业务目录为 `p6_desk_v1`，运营与调度目录仍为 `p5_desk_v1`，D078）、三种执行后端与厂商链路启动，并等待四个机场会话都变为活动；最后核对容器边界、Serve 映射与其他应用未变。任何一步失败只恢复本项目组件。
+4. **激活**：先 `console-cloud --apply`（使 `/fixed/` 的代理与部署版本一致），再 `desk-cloud` 看计划、`desk-cloud --apply`。激活依次：构建 M2 与 P5 仿真镜像、签发证书（含逻辑飞行器）、在当前账本副本上演练 P1–P4 迁移、D085 容量迁移与 P5 目录切换（只保留计数与摘要）、写入激活记录、启动常驻容器与监管者、核对服务以四个任务台目录（P6 起工作流与业务目录为 `p6_desk_v1`，运营与调度目录仍为 `p5_desk_v1`，D078）、三种执行后端与厂商链路启动，并等待四个机场会话都变为活动；最后核对容器边界、Serve 映射与其他应用未变。任何一步失败只恢复本项目组件。
 5. **核对**：`desk-cloud --status`；`scripts/desk_probe.py http` 与 `spoof`；`uv run scripts/desk_browser.py --origin <origin> --output <目录>`（全部工作区与 `/fixed/`）。
 
 ## 3. 回退
@@ -46,12 +46,14 @@ $env:UV_DEFAULT_INDEX = 'https://pypi.tuna.tsinghua.edu.cn/simple'
 
 ## 4. 备份与恢复
 
-- **在线备份**：`desk-backup --apply`。用 SQLite 在线备份复制在用账本到 `desk/backups/<运行ID>/`，记录逐表行数、完整性检查与摘要，并为媒体文件写清单（路径、大小、摘要）。不停服务。
-- **恢复演练**：`desk-restore-drill --apply`。把最近一次备份复制到临时目录，用激活版本的镜像在无网络容器中以 P5 目录离线打开并读回（任务、运行、工单与各项目审计），核对摘要、逐表行数（只允许目录表增加）与目录摘要；演练从不触碰在用账本，结束即删除副本，只保留回执。
+- **在线备份**：`desk-backup --apply`。用 SQLite 在线备份复制在用账本到 `desk/backups/<运行ID>/`，记录逐表行数、完整性检查与摘要，并为媒体文件与机场状态归档文件写清单（路径、大小、摘要）。不停服务。
+- **机场状态归档**（D085）：服务以 `--status-retention-days 7` 运行，超过 7 天的 `status.accepted` 行逐块写入 `desk/service/archive/op_events/status-accepted-YYYYMMDD.jsonl.gz` 并登记在 `cap_event_archives` 后移出账本；账本行加归档块是完整记录，归档文件与账本一起保留，不要单独删除。首次启动 D085 版本时先备份、加索引，随后约 10 分钟追平积压。
+- **收缩账本文件**（人工，停机窗口，执行前须确认）：归档释放的页由新写入复用，文件在稳态下不再增长。需要收缩时，先 `desk-backup --apply`，按下面真实恢复第 2 步停止监管者与常驻容器，用激活版本的镜像对 `desk/service/ledger.sqlite3` 执行 `VACUUM`（耗时随文件大小，约每 GB 一分钟），再 `desk-cloud --apply`。服务运行时不要执行。
+- **恢复演练**：`desk-restore-drill --apply`。把最近一次备份复制到临时目录，用激活版本的镜像在无网络容器中先做 D085 容量迁移演练（D085 之前的备份由此迁移，与真实恢复时服务的做法一致），再以 P5 目录离线打开并读回（任务、运行、工单与各项目审计），核对摘要、逐表行数（只允许目录表增加）与目录摘要；演练从不触碰在用账本，结束即删除副本，只保留回执。
 - **真实恢复**（人工步骤，执行前须确认）：
   1. 记录当前状态：`desk-cloud --status`，并对在用账本再做一次 `desk-backup --apply`。
   2. 在主机上停止监管者与常驻容器：`sudo systemctl stop drone-agent-desk-supervisor`，再对任务台 compose 文件执行 `docker compose -p drone-agent-cloud -f <激活部署>/source/sim/compose.desk.yaml stop desk desk-service desk-dock desk-fleet desk-vendor desk-uplink desk-model-proxy`。
-  3. 把 `desk/service/ledger.sqlite3*` 移到带日期的目录（不删除），复制所选备份的 `ledger.sqlite3` 到 `desk/service/`，核对其摘要与备份回执一致。媒体按清单从备份时的媒体目录核对；缺失的文件在任务视图中显示为不可读，不影响账本。
+  3. 把 `desk/service/ledger.sqlite3*` 移到带日期的目录（不删除），复制所选备份的 `ledger.sqlite3` 到 `desk/service/`，核对其摘要与备份回执一致。`desk/service/archive/` 原样保留：恢复的账本清单只登记备份时已有的块，之后追加的块在下次归档时由清单核对截掉。媒体按清单从备份时的媒体目录核对；缺失的文件在任务视图中显示为不可读，不影响账本。
   4. 重新激活：`desk-cloud --apply`（演练在恢复后的账本副本上重跑），再按第 2 节核对。
   5. 已在备份之后发生的飞行与审批不会出现在恢复后的账本中；机载已接受版本按各自的审批有效期处理，过期的不会飞行。
 
@@ -66,6 +68,7 @@ $env:UV_DEFAULT_INDEX = 'https://pypi.tuna.tsinghua.edu.cn/simple'
 | 审计 | 「运行审计」工作区；`audit.list` | 人工动作、系统动作与成员的越权尝试（`access.denied`） |
 | 长稳 | `desk-soak --status` | `running`，`harness_errors` 为 0 或可解释 |
 | 资源 | 长稳采样 `desk/soak/<ID>/samples.jsonl`；`docker stats` | 内存低于限额，重启次数只随注入增加 |
+| 容量（D085） | `dev_stack.py desk-capacity`（只读）；`capacity.get`（项目管理员）；`desk/service/capacity/capacity-YYYYMMDD.jsonl`（每分钟一行，保留 14 天） | 每轮处理 p95 与机场报告入账 p99 低于 100 ms，`overdue_rows` 为 0，归档逐块读回无问题，重启后启动核对完成 |
 
 ## 6. 故障处理
 

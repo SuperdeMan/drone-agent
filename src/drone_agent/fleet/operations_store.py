@@ -291,12 +291,25 @@ class OperationsStore:
     def action_for(self, activity: str, kind: str) -> dict | None:
         return self._one("SELECT * FROM op_dock_actions WHERE activity_key=? AND kind=?", (activity, kind))
 
-    def actions(self, dock_id: str, states: tuple[str, ...] | None = None) -> list[dict]:
-        if states is None:
-            return self._rows("SELECT * FROM op_dock_actions WHERE dock_id=? ORDER BY requested_at", (dock_id,))
-        marks = ",".join("?" * len(states))
-        return self._rows(f"SELECT * FROM op_dock_actions WHERE dock_id=? AND state IN ({marks}) "
-                          "ORDER BY requested_at", (dock_id, *states))
+    def actions(self, dock_id: str, states: tuple[str, ...] | None = None, *, latest: int | None = None,
+                mission_id: str | None = None) -> list[dict]:
+        """A dock's actions by request time: optionally only some states, one mission's activities (a key range, not a
+        scan), or the newest N without reading the rest.
+
+        按请求时间排列的机场动作：可只取某些状态、某个任务的活动（按键范围而非扫描），或只取最新的 N 条而不读取其余。
+        """
+        sql, args = "SELECT * FROM op_dock_actions WHERE dock_id=?", [dock_id]
+        if mission_id is not None:
+            # Activity keys are `mission:<id>:v<n>` and ';' sorts right after ':'; `+dock_id` keeps the planner on the
+            # key range instead of the dock's whole history. / 活动键形如 `mission:<id>:v<n>`，';' 紧排在 ':' 之后；
+            # `+dock_id` 使查询计划走键范围，而不是该机场的全部历史。
+            sql, args = "SELECT * FROM op_dock_actions WHERE +dock_id=? AND activity_key >= ? AND activity_key < ?", [
+                dock_id, f"mission:{mission_id}:", f"mission:{mission_id};"]
+        if states is not None:
+            sql, args = sql + f" AND state IN ({','.join('?' * len(states))})", [*args, *states]
+        if latest is not None:
+            return self._rows(sql + " ORDER BY requested_at DESC LIMIT ?", [*args, latest])[::-1]
+        return self._rows(sql + " ORDER BY requested_at", args)
 
     def ack_action(self, action_id: str, accepted: bool, reason: str) -> bool:
         """The first ACK wins; a duplicate or late ACK changes nothing. / 首个 ACK 生效；重复或迟到的 ACK 不改变任何东西。"""

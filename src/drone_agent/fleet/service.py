@@ -198,6 +198,15 @@ class MissionService:
         # WP-P6-05 (D083): answers questions about a mission from its facts; None shows the summary only.
         # WP-P6-05（D083）：依据事实回答关于任务的问题；为 None 时只展示摘要。
         self.explainer = None
+        # WP-P6-07 (D085): capacity metrics, always on; the status archive and the snapshot directory are attached by
+        # the process entry when configured. / WP-P6-07（D085）：容量指标始终开启；状态归档与快照目录在配置时由进程入口挂上。
+        from drone_agent.fleet.capacity import Capacity
+
+        self.capacity = Capacity()
+        ledger.observer = lambda milliseconds: self.capacity.record("transaction", milliseconds)
+        self.status_archive = None
+        self._archive_paused_until = 0.0
+        self.capacity_dir: Path | None = None
         # P3 (D059): the scheduler, attached by the process entry when a scheduling catalog is loaded.
         # P3（D059）：调度器；加载了调度目录时由进程入口挂上。
         self.scheduler = None
@@ -1239,30 +1248,81 @@ class MissionService:
 
         后台刷新被入账触及的任务，再处理一段启动核对。
         """
-        while not stop.is_set():
-            if self.status_changed:
-                self.status_changed = False
-                self.dirty.update(m["mission_id"] for m in self.ledger.missions(200) if m["status"] == "approved")
-            if self.dispatch is not None:
-                self.tick_operations()
-            if self.workflows is not None:
-                self.tick_workflows()
-            if self.scheduler is not None:
-                self.tick_scheduler()
-            if self.business is not None:
-                await self.tick_analysis()
-            if self.vendor is not None:
-                await self.tick_vendor()
-            for mission_id in sorted(self.dirty):
-                self.dirty.discard(mission_id)
-                await self._reconcile(mission_id)
-            deadline = time.monotonic() + BACKLOG_SLICE_S
-            while self.backlog and time.monotonic() < deadline and not stop.is_set():
-                await self._reconcile(self.backlog.popleft())
+        probe = asyncio.create_task(self._probe_loop(stop))
+        try:
+            while not stop.is_set():
+                await self._pass(stop)
+                try:
+                    await asyncio.wait_for(stop.wait(), period_s)
+                except TimeoutError:
+                    pass
+        finally:
+            probe.cancel()
+
+    async def _pass(self, stop: asyncio.Event) -> None:
+        """One background pass, each part timed for the capacity metrics (D085). / 一轮后台处理，各部分计时（D085）。"""
+        capacity, started = self.capacity, time.perf_counter()
+
+        def timed(name: str, mark: float) -> float:
+            now = time.perf_counter()
+            capacity.record(f"pass.{name}", (now - mark) * 1000)
+            return now
+
+        mark = started
+        if self.status_changed:
+            self.status_changed = False
+            self.dirty.update(m["mission_id"] for m in self.ledger.missions(200) if m["status"] == "approved")
+        if self.dispatch is not None:
+            self.tick_operations()
+            mark = timed("operations", mark)
+        if self.workflows is not None:
+            self.tick_workflows()
+            mark = timed("workflows", mark)
+        if self.scheduler is not None:
+            self.tick_scheduler()
+            mark = timed("scheduler", mark)
+        if self.business is not None:
+            await self.tick_analysis()
+            mark = timed("analysis", mark)
+        if self.vendor is not None:
+            await self.tick_vendor()
+            mark = timed("vendor", mark)
+        for mission_id in sorted(self.dirty):
+            self.dirty.discard(mission_id)
+            await self._reconcile(mission_id)
+        mark = timed("refresh", mark)
+        deadline = time.monotonic() + BACKLOG_SLICE_S
+        while self.backlog and time.monotonic() < deadline and not stop.is_set():
+            await self._reconcile(self.backlog.popleft())
+        mark = timed("backlog", mark)
+        if self.status_archive is not None and time.monotonic() >= self._archive_paused_until:
+            # At most one chunk a pass keeps every pass short (D085). / 每轮至多一块，保持每轮简短（D085）。
             try:
-                await asyncio.wait_for(stop.wait(), period_s)
-            except TimeoutError:
-                pass
+                self.status_archive.step()
+            except Exception as error:  # keep serving; one issue, then a pause / 继续服务；记一条问题后暂停
+                self.ledger.record_issue(issue("service.degraded", f"status archive: {error}"[:300]))
+                self._archive_paused_until = time.monotonic() + 600
+            mark = timed("archive", mark)
+        if capacity.backlog_due():
+            from drone_agent.fleet.capacity import backlog_counts
+
+            capacity.set_backlog(backlog_counts(self))
+        if self.capacity_dir is not None and capacity.log_due():
+            capacity.append_log(self.capacity_dir)
+        capacity.record("pass", (time.perf_counter() - started) * 1000)
+
+    async def _probe_loop(self, stop: asyncio.Event, interval_s: float = 0.2) -> None:
+        """Event-loop lag: how late a short sleep wakes up (D085). / 事件循环延迟：短暂睡眠醒来晚了多少（D085）。"""
+        while not stop.is_set():
+            asked = time.monotonic()
+            await asyncio.sleep(interval_s)
+            self.capacity.record("loop_lag", max(0.0, time.monotonic() - asked - interval_s) * 1000)
+
+    def capacity_report(self, caller: Caller | None, project_id: str) -> dict:
+        """The current capacity snapshot, for a project admin (D085). / 当前容量快照，供项目管理员读取（D085）。"""
+        self._require(caller, project_id, RESOURCE_MAINTAIN)
+        return {**self.capacity.snapshot(), "status_retention": None if self.status_archive is None else {
+            "days": self.status_archive.retention.total_seconds() / 86400}}
 
     async def _reconcile(self, mission_id: str) -> None:
         """Refresh and enrich one mission, then let the API and the fleet endpoint answer.
@@ -1351,8 +1411,7 @@ class MissionService:
                       "verdict": d["verdict"], "reasons": d["body"]["reasons"], "created_at": d["created_at"],
                       "snapshot_sha256": d["body"]["snapshot_sha256"], "policy_version": d["body"]["policy_version"]}
                      for d in store.decisions(mission_id, 40)]
-        actions = [row for row in store.actions(binding["dock_id"])
-                   if row["activity_key"].startswith(f"mission:{mission_id}:")]
+        actions = store.actions(binding["dock_id"], mission_id=mission_id)
         return {"reservations": [r.model_dump(mode="json") for r in store.reservations(mission_id=mission_id)],
                 "decisions": decisions, "claims": store.claims(mission_id), "cancel": store.cancel_intent(mission_id),
                 "dock_actions": actions, "events": store.events(prefix=f"mission:{mission_id}", limit=60)}
@@ -1588,7 +1647,7 @@ class MissionService:
         catalog, store = self.ops.catalog, self.ops.store
         if resource_id in catalog.docks and catalog.sites[catalog.docks[resource_id].site_id].project_id == project_id:
             return {"kind": "dock", **self._dock_row(resource_id),
-                    "actions": store.actions(resource_id)[-20:], "events": store.events(f"dock:{resource_id}", limit=40),
+                    "actions": store.actions(resource_id, latest=20), "events": store.events(f"dock:{resource_id}", limit=40),
                     "reservations": [r.model_dump(mode="json") for r in store.reservations(dock_id=resource_id, latest=20)]}
         if resource_id in catalog.robots and catalog.project_of(resource_id) == project_id:
             return {"kind": "robot", **self._robot_row(resource_id)}

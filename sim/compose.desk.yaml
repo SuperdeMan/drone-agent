@@ -114,7 +114,7 @@ services:
               --workflows, /workspace/configs/workflows/p6_desk_v1.yaml,
               --scheduling, /workspace/configs/scheduling/p5_desk_v1.yaml,
               --business, /workspace/configs/analysis/p6_desk_v1.yaml, --vision, live,
-              --vendor-link, "dock_vd=/vendor/vendor.sock"]
+              --vendor-link, "dock_vd=/vendor/vendor.sock", --status-retention-days, "7"]
     volumes:
       - ${DRONE_DESK_ROOT:?}/service:/state
       - ${DRONE_DESK_ROOT:?}/api:/api

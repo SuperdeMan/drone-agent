@@ -239,3 +239,38 @@ def test_a_start_still_refused_after_the_grace_period_fails_the_occurrence(tmp_p
         advance(harness, clock, 30)
     status = harness.state["occurrences"]["s1_watch-000"]
     assert status["status"] == "failed" and status["reason"] == "start_refused" and status["start_failures"] == 1
+
+
+def test_ledger_counts_share_one_snapshot_and_are_all_or_nothing(tmp_path, monkeypatch):
+    """D085: counts read in one snapshot; a failed read keeps none of them. / D085：计数同一快照；读取失败则一个都不记。"""
+    import sqlite3
+    from types import SimpleNamespace
+
+    from drone_agent.fleet.capacity_store import migrate as migrate_capacity
+    from drone_agent.fleet.ledger import BusinessLedger
+    from drone_agent.fleet.operations_store import migrate as migrate_operations
+
+    service = tmp_path / "service"
+    ledger = BusinessLedger(service / "ledger.sqlite3")
+    migrate_operations(ledger, backups=None)
+    migrate_capacity(ledger, backups=None)
+    ledger.close()
+    soak = SimpleNamespace(desk=SimpleNamespace(service=service))
+    statements = []
+    real = sqlite3.connect
+
+    def connect(*args, **kwargs):
+        db = real(*args, **kwargs)
+        db.set_trace_callback(statements.append)
+        return db
+
+    monkeypatch.setattr(sqlite3, "connect", connect)
+    missing = SOAK["Soak"].ledger_counts(soak)  # this ledger has no workflow or business tables / 无工作流与业务表
+    assert "error" in missing and not set(SOAK["GROWING"]) & set(missing), "a failed read keeps no count"
+    with real(str(service / "ledger.sqlite3")) as db:
+        for table in SOAK["GROWING"]:
+            db.execute(f'CREATE TABLE IF NOT EXISTS "{table}" (state TEXT)')
+    statements.clear()
+    found = SOAK["Soak"].ledger_counts(soak)
+    assert statements[0] == "BEGIN" and found["op_events_archived"] == 0 and "error" not in found
+    assert set(SOAK["GROWING"]) <= set(found), "every growing table was counted"

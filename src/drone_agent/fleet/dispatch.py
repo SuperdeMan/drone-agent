@@ -73,6 +73,9 @@ class Operations:
     # D082: the names of the catalog's projects, sites, robots and docks, checked in requests before planning.
     # D082：目录中项目、站点、机器人与机场的称呼，规划前在请求中检查。
     references: ReferenceIndex | None = None
+    # D085: the capacity migration's report (indexes and the status archive manifest).
+    # D085：容量迁移的报告（索引与状态归档清单）。
+    capacity_migration: dict = field(default_factory=dict)
 
     def registry(self, robot_id: str) -> Registry:
         return self.registries[self.catalog.robots[robot_id].site_id]
@@ -105,7 +108,12 @@ def build_operations(root: Path, ledger: BusinessLedger, catalog_path: Path, mem
     profiles = {dock_id: load_profile(root, dock.backend.profile)
                 for dock_id, dock in catalog.docks.items() if dock.vendor_managed}
     references = ReferenceIndex.build(catalog, registries, catalog_path)
-    return Operations(catalog, directory, store, registries, capabilities, migration, profiles, references)
+    # The capacity indexes and the status archive manifest follow the operations schema (D085).
+    # 容量索引与状态归档清单紧随运营 schema（D085）。
+    from drone_agent.fleet.capacity_store import migrate as migrate_capacity
+
+    capacity = migrate_capacity(ledger, backups=backups, clock=clock)
+    return Operations(catalog, directory, store, registries, capabilities, migration, profiles, references, capacity)
 
 
 def needs_of(record: dict) -> DispatchNeeds:

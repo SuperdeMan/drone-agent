@@ -355,10 +355,11 @@ class WorkflowStore:
                                                          "ORDER BY created_at DESC LIMIT ?", (project_id, limit))]
 
     def active_runs(self) -> list[dict]:
-        marks = ",".join("?" * len(TERMINAL_RUN))
+        # The states still running, named so `wf_runs_state` serves the read; `NOT IN` scanned every run (D085).
+        # 列出仍在运行的状态，使 `wf_runs_state` 能服务这次读取；`NOT IN` 会扫描全部运行（D085）。
+        active = tuple(s.value for s in RunState if s not in TERMINAL_RUN)
         return [self._decode_run(r) for r in self._rows(
-            f"SELECT * FROM wf_runs WHERE state NOT IN ({marks}) ORDER BY created_at",
-            tuple(s.value for s in TERMINAL_RUN))]
+            f"SELECT * FROM wf_runs WHERE state IN ({','.join('?' * len(active))}) ORDER BY created_at", active)]
 
     def children(self, run_id: str) -> list[dict]:
         """Runs a run started (reinspection). / 由本运行启动的运行（复检）。"""
