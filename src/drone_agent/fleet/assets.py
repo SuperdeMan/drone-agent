@@ -40,14 +40,17 @@ from drone_agent.fleet.asset_store import (
     observation_row,
     order_opened,
     recapture_source,
+    recover_maps,
     reference_registered,
     reference_revoked,
     repair_reported,
+    repository_maps,
     reviewed,
     round_concluded,
     run_header,
     stamp,
     step_assets,
+    viewpoint,
 )
 from drone_agent.fleet.business_models import REPAIR_ACTIONS, REQUEST_ID, BusinessModel
 from drone_agent.fleet.service import ServiceError
@@ -89,13 +92,17 @@ def open_archive(service, *, backups: Path | None, clock=utcnow) -> dict:
     engine = service.business
     scheduler = getattr(service, "scheduler", None)
     context = ArchiveContext(service.ops.catalog, scheduler.catalog if scheduler is not None else None,
-                             service.ops.registries)
+                             service.ops.registries, repository_maps(service.root))
     migration = migrate(service.ledger, context, backups=backups, clock=clock)
     config, sha = load_compare(service.root)
     archive = AssetArchive(engine, AssetStore(service.ledger, clock=clock), context, config, sha)
+    # A ledger migrated earlier gains the maps the repository still holds; revisions only (design §3.2).
+    # 早先迁移的账本补上仓库中仍有正文的地图；只追加修订（设计 §3.2）。
+    with service.ledger.transaction() as db:
+        recovered = recover_maps(db, context, stamp(clock()))
     added = archive.snapshot_maps()
     engine.archive = archive
-    return {"migration": migration, "maps": {"revisions_added": added},
+    return {"migration": migration, "maps": {"revisions_added": added, "recovered": recovered},
             "compare": {"version": config.version, "sha256": sha}}
 
 
@@ -235,6 +242,23 @@ class AssetArchive:
         return self.ledger._one("SELECT 1 AS found FROM ar_revisions WHERE asset_key=? LIMIT 1", (asset,)) is not None \
             or self.ledger._one("SELECT 1 AS found FROM ar_observations WHERE asset_key=? LIMIT 1", (asset,)) is not None
 
+    def geometry(self, observation: dict) -> dict:
+        """The stored viewpoint; for an observation written while its map's body was unknown, the viewpoint measured
+        now from the evidence's capture pose once the definition was recovered (design §3.2).
+
+        存储的视角；对写入时地图正文未知的观测，在定义找回之后，用证据中的拍摄位姿当场计算视角（设计 §3.2）。
+        """
+        stored = observation["geometry"]
+        if stored.get("status") == "measured" or stored.get("reason") != "definition_unknown":
+            return stored
+        revision = self.store.revision(observation["asset_key"], observation["registry_sha256"])
+        if revision is None:
+            return stored
+        row = next((r for r in self.ledger.evidence(observation["mission_id"], observation["mission_version"])
+                    if r["evidence_id"] == observation["evidence_id"]), None)
+        measured = viewpoint(((row or {}).get("body") or {}).get("captured_pose"), revision["definition"])
+        return {**measured, "definition_recovered": True} if measured.get("status") == "measured" else stored
+
     def verification(self, observation: dict) -> dict:
         """An observation's verification, the last `verification_changed` winning. / 观测的核验，以最后一次变化为准。"""
         changes = self.store.verification_changes(observation["evidence_id"], observation["asset_key"])
@@ -267,8 +291,9 @@ class AssetArchive:
 
     def _observation_view(self, observation: dict) -> dict:
         return {k: observation[k] for k in ("evidence_id", "mission_id", "mission_version", "step_id", "captured_at",
-                                            "registry_sha256", "media_sha256", "geometry", "recapture_of")} | {
-            "verification": self.verification(observation), "measures": self.measures(observation["evidence_id"])}
+                                            "registry_sha256", "media_sha256", "recapture_of")} | {
+            "geometry": self.geometry(observation), "verification": self.verification(observation),
+            "measures": self.measures(observation["evidence_id"])}
 
     def list(self, caller, project_id) -> dict:
         """The project's assets, each with its latest observation and open findings. / 项目的资产及其最近观测与未结发现。"""
@@ -292,7 +317,7 @@ class AssetArchive:
                                "evidence_id": latest["evidence_id"], "mission_id": latest["mission_id"],
                                "captured_at": latest["captured_at"],
                                "final_verdict": self.verification(latest).get("final_verdict"),
-                               "viewpoint": latest["geometry"].get("status")},
+                               "viewpoint": self.geometry(latest).get("status")},
                            "open_findings": open_findings.get(key, 0)})
         return {"project_id": project_id, "assets": assets,
                 "compare": {"version": self.config.version, "sha256": self.config_sha}}
@@ -427,7 +452,7 @@ class AssetArchive:
     def _viewpoint_factor(self, current: dict, other: dict) -> dict:
         """Whether both captures saw the asset from the same viewpoint, within `compare-v1`. / 两次采集是否同一视角。"""
         evidence = [current["evidence_id"], other["evidence_id"]]
-        a, b = current["geometry"], other["geometry"]
+        a, b = self.geometry(current), self.geometry(other)
         if a.get("status") != "measured" or b.get("status") != "measured":
             reason = a.get("reason") if a.get("status") != "measured" else b.get("reason")
             return {"status": "unknown", "reason": reason, "evidence": evidence}

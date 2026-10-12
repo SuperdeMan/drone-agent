@@ -27,7 +27,7 @@ import json
 import math
 import sqlite3
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -103,16 +103,51 @@ def shared_scope(catalog, scheduling, project_id: str, site_id: str) -> str:
 
 
 @dataclass(frozen=True)
-class ArchiveContext:
-    """What the archive takes from the catalogs: the operations catalog, the scheduling catalog (or None) and each
-    current site's map. The service builds it from its own objects; the drill from the catalog files.
+class MapFile:
+    """A site map of the repository, identified by its content digest. / 仓库中的站点地图，以内容摘要标识。"""
 
-    档案从目录中取用的内容：运营目录、调度目录（或 None）与每个当前站点的地图。服务用自身对象构建它，演练用目录文件构建。
+    data: dict
+    sha256: str
+    path: str
+
+
+def repository_maps(root: Path) -> dict[str, MapFile]:
+    """Every site map in `configs/scenarios/`, by content digest (`Registry.sha256`): a digest a mission recorded
+    names exactly one body, so a map that is no longer current is found here when its file is still in the repository.
+
+    `configs/scenarios/` 中每张站点地图，按内容摘要（`Registry.sha256`）索引：任务记录的摘要只对应一份正文，因此已不再是当前
+    地图、但文件仍在仓库中的地图可以在这里找到。
+    """
+    import yaml
+
+    from drone_agent.runtime.ledger import content_hash
+
+    found = {}
+    for path in sorted((root / "configs/scenarios").glob("*.yaml")):
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, yaml.YAMLError):
+            continue
+        if isinstance(data, dict) and isinstance(data.get("assets"), dict) and isinstance(data.get("frame"), dict):
+            digest = content_hash(data)
+            found[digest] = MapFile(data, digest, path.relative_to(root).as_posix())
+    return found
+
+
+@dataclass(frozen=True)
+class ArchiveContext:
+    """What the archive takes from the catalogs: the operations catalog, the scheduling catalog (or None), each
+    current site's map, and the repository's site maps by digest for maps that are no longer current. The service
+    builds it from its own objects; the drill from the catalog files.
+
+    档案从目录中取用的内容：运营目录、调度目录（或 None）、每个当前站点的地图，以及仓库中按摘要索引的站点地图（用于已不再是
+    当前地图的摘要）。服务用自身对象构建它，演练用目录文件构建。
     """
 
     catalog: object
     scheduling: object | None
     registries: dict
+    archived: dict = field(default_factory=dict)
 
     def key(self, project_id: str, site_id: str, asset_id: str) -> str:
         return f"{project_id}/{shared_scope(self.catalog, self.scheduling, project_id, site_id)}/{asset_id}"
@@ -377,6 +412,7 @@ def backfill(db: sqlite3.Connection, context: ArchiveContext, at: str) -> dict:
     bindings = {row["mission_id"]: row for row in _rows(db, "SELECT mission_id, project_id, site_id FROM op_bindings")}
     # When each site-map digest was first used: the earliest run header that names it. / 每个地图摘要最早被使用的时刻。
     first_use: dict[str, str] = {}
+    uses: dict[str, set[tuple[str, str]]] = {}
     headers: dict[tuple[str, int], str | None] = {}
     packages: dict[tuple[str, int], dict[str, str]] = {}
     for row in db.execute("SELECT mission_id, version, decision, package FROM versions ORDER BY mission_id, version"):
@@ -389,7 +425,17 @@ def backfill(db: sqlite3.Connection, context: ArchiveContext, at: str) -> dict:
             used = stamp(header.timestamp)
             if header.registry_sha256 not in first_use or used < first_use[header.registry_sha256]:
                 first_use[header.registry_sha256] = used
+            binding = bindings[row[0]]
+            uses.setdefault(header.registry_sha256, set()).add((binding["project_id"], binding["site_id"]))
     known: dict[tuple[str, str], dict] = {}
+    current = {registry.sha256 for registry in context.registries.values()}
+    # Digests no longer current whose body the repository still holds (design §3.2). / 已不是当前地图、正文仍在仓库中的摘要。
+    for sha, places in sorted(uses.items()):
+        if sha in current or sha not in context.archived:
+            continue
+        for project_id, site_id in sorted(places):
+            counts["revisions"] += add_map(db, context, context.archived[sha], project_id, site_id,
+                                           first_use[sha], at, known)
     for site_id, project_id, scope, registry in context.current():
         for asset_id in sorted((registry.data.get("assets") or {})):
             found = definition(registry, site_id, asset_id)
@@ -423,6 +469,55 @@ def backfill(db: sqlite3.Connection, context: ArchiveContext, at: str) -> dict:
     for item in backfill_events(db):
         counts["events"] += insert_event(db, item, at)
     return counts
+
+
+def add_map(db, context: ArchiveContext, found: MapFile, project_id: str, site_id: str, first_seen: str, at: str,
+            known: dict | None = None) -> int:
+    """The revisions of every asset of a repository map that a bound mission of the site used.
+
+    某站点已绑定任务用过的仓库地图中每个资产的修订。
+    """
+    added = 0
+    scope = shared_scope(context.catalog, context.scheduling, project_id, site_id)
+    for asset_id in sorted(found.data.get("assets") or {}):
+        revision = {"asset_key": f"{project_id}/{scope}/{asset_id}", "registry_sha256": found.sha256,
+                    "project_id": project_id, "scope": scope, "asset_id": asset_id,
+                    "map_version": str((found.data.get("frame") or {}).get("map_version", "")),
+                    "definition": {**definition(found, site_id, asset_id), "recovered_from": found.path},
+                    "first_seen_at": first_seen}
+        if insert_revision(db, revision):
+            added += 1
+            insert_event(db, revision_seen(revision), at)
+        if known is not None:
+            known[(revision["asset_key"], found.sha256)] = revision["definition"]
+    return added
+
+
+def recover_maps(db: sqlite3.Connection, context: ArchiveContext, at: str) -> int:
+    """On a migrated ledger, add the revisions of observed digests that lack one when the repository holds the body;
+    revisions only, every observation stays as written (design §3.2). Returns the revisions added.
+
+    在已迁移的账本上，为缺少修订的已观测摘要补上修订（仓库中有正文时）；只追加修订，每条观测保持原样（设计 §3.2）。返回新增的
+    修订数。
+    """
+    missing = _rows(db, "SELECT o.mission_id, o.mission_version, o.registry_sha256, o.captured_at, b.project_id, "
+                        "b.site_id FROM ar_observations o JOIN op_bindings b ON b.mission_id = o.mission_id "
+                        "LEFT JOIN ar_revisions r ON r.asset_key = o.asset_key AND r.registry_sha256 = o.registry_sha256 "
+                        "WHERE o.registry_sha256 IS NOT NULL AND r.asset_key IS NULL")
+    places: dict[tuple[str, str, str], str] = {}
+    for row in missing:
+        if row["registry_sha256"] not in context.archived:
+            continue
+        place = (row["registry_sha256"], row["project_id"], row["site_id"])
+        version = db.execute("SELECT decision FROM versions WHERE mission_id=? AND version=?",
+                             (row["mission_id"], row["mission_version"])).fetchone()
+        header = run_header(_load(version[0])) if version else None
+        used = stamp(header.timestamp) if header is not None else row["captured_at"]
+        places[place] = min(places.get(place, used), used)
+    added = 0
+    for (sha, project_id, site_id), first_seen in sorted(places.items()):
+        added += add_map(db, context, context.archived[sha], project_id, site_id, first_seen, at)
+    return added
 
 
 def backfill_events(db: sqlite3.Connection) -> list[dict]:
@@ -637,6 +732,9 @@ def drill(path: Path, context: ArchiveContext, *, clock=utcnow) -> dict:
     try:
         report = migrate(ledger, context, backups=path.parent / "backups", clock=clock)
         again = migrate(ledger, context, backups=path.parent / "backups", clock=clock)
+        # What the service does next at start: the maps the repository still holds. / 与服务启动随后的做法相同：补上仓库中仍有的地图。
+        with ledger.transaction() as db:
+            recovered = recover_maps(db, context, stamp(clock()))
         with sqlite3.connect(str(path)) as db:
             integrity = db.execute("PRAGMA integrity_check").fetchone()[0]
             counts = {name: db.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0] for name in TABLES}
@@ -653,6 +751,7 @@ def drill(path: Path, context: ArchiveContext, *, clock=utcnow) -> dict:
             "migration": report["status"], "again": again["status"], "asset_schema": ASSET_SCHEMA,
             "integrity": integrity, "other_sha256_before": before, "other_sha256_after": after,
             "archive_sha256": archive_digest(path), "rows": counts, "eligible_captures": expected,
+            "recovered_revisions": recovered,
             "viewpoint_unknown": unknown, "backfill": report.get("backfill"), "backup": report.get("backup"),
             "elapsed_s": round(time.monotonic() - started, 1)}
 
@@ -666,7 +765,7 @@ def context_from_files(root: Path, catalog_path: Path, scheduling_path: Path | N
     catalog = load_catalog(catalog_path)
     scheduling = load_scheduling(scheduling_path) if scheduling_path is not None else None
     registries = {site_id: Registry(root, scene=root / site.scene) for site_id, site in catalog.sites.items()}
-    return ArchiveContext(catalog, scheduling, registries)
+    return ArchiveContext(catalog, scheduling, registries, repository_maps(root))
 
 
 # ── the store / 存储 ──

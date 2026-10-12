@@ -109,7 +109,7 @@ class AssetWorld(P6World):
         """
         from datetime import datetime
 
-        from drone_agent.fleet.asset_store import ArchiveContext, migrate
+        from drone_agent.fleet.asset_store import migrate
         from drone_agent.fleet.ledger import BusinessLedger
 
         folder = self.case / "e6"
@@ -129,8 +129,7 @@ class AssetWorld(P6World):
                     db.execute(f"DROP TABLE {table}")
                 db.execute("DROP INDEX ar_jobs_evidence")
                 db.execute("DELETE FROM meta WHERE key LIKE 'asset_%'")
-        ops = self.service.ops
-        context = ArchiveContext(ops.catalog, None, ops.registries)
+        context = self.business.archive.context  # the context the live archive uses / 在线档案所用的上下文
         reports = {}
         for name, runs in (("a", 2), ("b", 1)):
             ledger = BusinessLedger(folder / f"{name}.sqlite3")

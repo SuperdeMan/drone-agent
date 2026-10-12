@@ -8,6 +8,7 @@ WP-P6-04 资产档案（D087）：时间文本、视角、资产键范围、迁�
 
 from __future__ import annotations
 
+import json
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -24,6 +25,7 @@ from drone_agent.fleet.asset_store import (
     asset_schema,
     context_from_files,
     drill,
+    migrate,
     shared_scope,
     stamp,
     viewpoint,
@@ -33,7 +35,7 @@ from drone_agent.fleet.business import BusinessEngine, build_business
 from drone_agent.fleet.business_models import Feedback, Repair
 from drone_agent.fleet.dispatch import build_operations
 from drone_agent.fleet.ledger import BusinessLedger
-from drone_agent.fleet.provenance import source_context
+from drone_agent.fleet.provenance import ModelUse, RunHeader, seal, source_context
 from drone_agent.fleet.resources import load_catalog
 from drone_agent.fleet.scheduler import Scheduler, build_scheduling
 from drone_agent.fleet.scheduling_models import load_scheduling
@@ -188,3 +190,85 @@ def test_the_e4_map_differs_only_in_the_asset_size():
     changed = yaml.safe_load((ROOT / "configs/scenarios/p6_site_b_e4_v1.yaml").read_text(encoding="utf-8"))
     assert changed["assets"]["asset_red"].pop("size_m") == 2.2 and base["assets"]["asset_red"].pop("size_m") == 2
     assert changed == base
+
+
+ASSET = "campus_s1/*/asset_red"
+OLD_MAP = "configs/scenarios/m2_campus_v2.yaml"
+
+
+def seed_capture(service: MissionService, mission_id: str, evidence_id: str, registry_sha: str, at: str,
+                 x: float) -> None:
+    """One bound, verified capture of campus_s1's asset_red whose sealed run header names `registry_sha`.
+
+    campus_s1 的 asset_red 的一次已绑定、已核验采集，其封存的运行头写明 `registry_sha`。
+    """
+    header = RunHeader(mission_id=mission_id, mission_version=1, run_id="run-test", execution_backend="px4_sitl",
+                       default_image_source="sim_render", scenario_sha256="0" * 64, platform_sha256="0" * 64,
+                       registry_sha256=registry_sha, planning=ModelUse(), timestamp=datetime.fromisoformat(at))
+    pose = {"frame": {"frame_id": "map_enu", "map_version": "campus_v2"},
+            "position": {"x": x, "y": 4.0, "z": 4.0, "covariance": [0.01] * 9}}
+    check = {"evidence_id": evidence_id, "mission_id": mission_id, "mission_version": 1, "step_id": "inspect",
+             "final_verdict": "verified", "service_verdict": "verified", "onboard_verdict": "verified",
+             "agrees": True, "checks": {"media": "ok"}, "verified_at": at}
+    with service.ledger.transaction() as db:
+        db.execute("INSERT INTO missions(mission_id, request_id, status, created_at, updated_at) VALUES (?,?,?,?,?)",
+                   (mission_id, "req-" + mission_id, "completed", at, at))
+        db.execute("INSERT INTO versions(mission_id, version, status, origin, package, decision, created_at, "
+                   "updated_at) VALUES (?,?,?,?,?,?,?,?)",
+                   (mission_id, 1, "finished", "console",
+                    json.dumps({"nodes": [{"task_id": "inspect", "params": {"asset_id": "asset_red"}}]}),
+                    json.dumps({"run_provenance": {"run": seal(header)}}), at, at))
+        db.execute("INSERT INTO op_bindings VALUES (?,?,?,?,?,?,?,?)",
+                   (mission_id, "campus_s1", "site_s1", "dock_s1", "uav_01", "px4_sitl", "c" * 64, at))
+        db.execute("INSERT INTO evidence VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                   (evidence_id, "uav_01", mission_id, 1, "inspect", "e" * 64, None, None, None, None,
+                    json.dumps({"evidence_id": evidence_id, "time_window": {"timestamp": at}, "captured_pose": pose,
+                                "subject_ids": ["asset_red"]}), at))
+        db.execute("INSERT INTO verifications VALUES (?,?,?,?,?,?,?,?,?)",
+                   (evidence_id, mission_id, 1, "inspect", "verified", "verified", 1, json.dumps(check), at))
+
+
+async def test_a_map_no_longer_current_is_recovered_by_its_digest(tmp_path):
+    service = desk_service(tmp_path)
+    old, current = Registry(ROOT, scene=ROOT / OLD_MAP).sha256, service.ops.registries["site_s1"].sha256
+    assert old != current
+    seed_capture(service, "m-000000000001", "capture:old", old, "2026-09-28T01:42:02+00:00", 3.2)
+    seed_capture(service, "m-000000000002", "capture:new", current, "2026-10-10T13:28:38+00:00", 3.3)
+    report = open_archive(service, backups=tmp_path / "b")
+    assert report["migration"]["status"] == "migrated" and report["maps"]["recovered"] == 0
+    store = service.business.archive.store
+    recovered = store.revision(ASSET, old)
+    assert recovered["definition"]["recovered_from"] == OLD_MAP
+    assert recovered["first_seen_at"] == stamp("2026-09-28T01:42:02+00:00")
+    assert store.observation("capture:old")["geometry"]["status"] == "measured"
+    answer = await dispatch(service, {"method": "assets.compare", "actor": "harness:p5-viewer", "trust": "first_party",
+                                      "params": {"project_id": "campus_s1", "asset": ASSET, "evidence": None,
+                                                 "against": None}})
+    factors = answer["result"]["factors"]
+    assert answer["result"]["against"]["evidence_id"] == "capture:old"
+    assert factors["definition"]["status"] == "unchanged"  # a new map, the same asset / 新地图，资产不变
+    assert factors["viewpoint"]["status"] == "consistent"
+    service.business.jobs.stop()
+    service.ledger.close()
+
+
+async def test_a_ledger_migrated_earlier_recovers_the_map_and_measures_on_read(tmp_path):
+    service = desk_service(tmp_path)
+    old = Registry(ROOT, scene=ROOT / OLD_MAP).sha256
+    seed_capture(service, "m-000000000001", "capture:old", old, "2026-09-28T01:42:02+00:00", 3.2)
+    # Migrated by a build that did not look in the repository. / 由不查找仓库地图的版本迁移。
+    migrate(service.ledger, ArchiveContext(service.ops.catalog, service.scheduler.catalog, service.ops.registries),
+            backups=tmp_path / "b")
+    stored = json.loads(service.ledger._one("SELECT geometry FROM ar_observations")["geometry"])
+    assert stored == {"status": "unknown", "reason": "definition_unknown"}
+    report = open_archive(service, backups=tmp_path / "b")
+    assert report["migration"]["status"] == "current" and report["maps"]["recovered"] == 2  # asset_red, asset_blue
+    assert json.loads(service.ledger._one("SELECT geometry FROM ar_observations")["geometry"]) == stored
+    answer = await dispatch(service, {"method": "assets.timeline", "actor": "harness:p5-viewer", "trust": "first_party",
+                                      "params": {"project_id": "campus_s1", "asset": ASSET, "before": None,
+                                                 "limit": 20}})
+    shown = next(i for i in answer["result"]["columns"]["fact"] if i["kind"] == "observation")["body"]["geometry"]
+    assert shown["status"] == "measured" and shown["definition_recovered"] is True
+    assert shown["horizontal_m"] == pytest.approx(0.8)
+    service.business.jobs.stop()
+    service.ledger.close()
