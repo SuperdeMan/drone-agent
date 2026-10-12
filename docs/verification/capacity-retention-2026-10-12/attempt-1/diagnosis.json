@@ -1,0 +1,31 @@
+{
+  "schema_version": "0.1.0",
+  "decision": "D085",
+  "attempt": 1,
+  "status": "failed",
+  "failed_criterion": "archive",
+  "preregistration_commit": "3e49422",
+  "candidate_sha": "5ac026f3098b1844d6492f8756130bb0c1ba5660",
+  "finding": "One archive step took 231.7 ms at 16x: the first chunk read through the run of other op_events between the template's own status rows and the status window. The step bounded the status rows it returns, not the rows it reads.",
+  "archive_by_scale": {
+    "x1": {
+      "archive_pass_p99_ms": 68.646,
+      "archive_step_max_ms": 65.298
+    },
+    "x4": {
+      "archive_pass_p99_ms": 70.881,
+      "archive_step_max_ms": 66.0
+    },
+    "x16": {
+      "archive_pass_p99_ms": 236.811,
+      "archive_step_max_ms": 231.721
+    }
+  },
+  "other_rows_between_status_runs": {
+    "x1": 26545,
+    "x4": 158488,
+    "x16": 687077
+  },
+  "fix": "Each call reads at most a window of 20,000 ids; a window without status rows is remembered as scanned; a chunk is also complete when its window ends before the cutoff or its day is before the cutoff's day.",
+  "criteria_changed": false
+}
