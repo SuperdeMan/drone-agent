@@ -64,7 +64,7 @@ def test_a_changed_chunk_is_reported(tmp_path):
     assert "does not match its digest" in DESK["capacity"](root)["archive"]["problems"][0]
 
 
-def test_the_restore_drill_migrates_a_backup_from_before_d085_before_the_switch_drill(tmp_path, monkeypatch):
+def test_the_restore_drill_migrates_an_older_backup_before_the_switch_drill(tmp_path, monkeypatch):
     import hashlib
     import sqlite3
     from types import SimpleNamespace
@@ -87,7 +87,8 @@ def test_the_restore_drill_migrates_a_backup_from_before_d085_before_the_switch_
     def run(argv, **kwargs):
         module = argv[argv.index("-m") + 1]
         calls.append(module)
-        body = ({"status": "passed", "migration": "migrated", "elapsed_s": 2.0} if module.endswith("capacity_store")
+        body = ({"status": "passed", "migration": "migrated", "elapsed_s": 2.0}
+                if module.endswith(("capacity_store", "asset_store"))
                 else {"status": "passed", "catalogs": {"operations": ["p5_desk_v1", "c" * 64]}})
         return SimpleNamespace(stdout=(json.dumps(body) + "\n").encode(), returncode=0)
 
@@ -95,5 +96,8 @@ def test_the_restore_drill_migrates_a_backup_from_before_d085_before_the_switch_
     monkeypatch.setattr(DESK["os"], "getuid", lambda: 1000, raising=False)
     monkeypatch.setattr(DESK["os"], "getgid", lambda: 1000, raising=False)
     receipt = DESK["restore_drill"](tmp_path, {"run_id": "20261012T000000Z-11111111"})
-    assert calls == ["drone_agent.fleet.capacity_store", "drone_agent.fleet.switch_drill"]
+    # D085, then D087, then the switch drill, as the service would on a real restore. / 依次 D085、D087、目录切换演练。
+    assert calls == ["drone_agent.fleet.capacity_store", "drone_agent.fleet.asset_store",
+                     "drone_agent.fleet.switch_drill"]
     assert receipt["status"] == "passed" and receipt["capacity_drill"]["migration"] == "migrated"
+    assert receipt["asset_drill"]["migration"] == "migrated"

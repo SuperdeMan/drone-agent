@@ -38,13 +38,11 @@ class MediaIndex:
 
         调度目录把项目的每个站点放在同一共享坐标中（P3）时为 `*`，否则为站点。
         """
+        from drone_agent.fleet.asset_store import shared_scope
+
         scheduler = self.service.scheduler
-        catalog = self.service.ops.catalog if self.service.ops is not None else None
-        if scheduler is not None and catalog is not None and project_id in catalog.projects:
-            placed = set(scheduler.catalog.airspace.sites)
-            if set(catalog.projects[project_id].sites) <= placed:
-                return "*"
-        return site_id
+        return shared_scope(self.service.ops.catalog if self.service.ops is not None else None,
+                            scheduler.catalog if scheduler is not None else None, project_id, site_id)
 
     def asset_of(self, mission_id: str, asset_id: str) -> str | None:
         binding = self.service._binding(mission_id)

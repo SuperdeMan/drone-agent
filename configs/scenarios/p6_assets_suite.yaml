@@ -1,0 +1,41 @@
+# Asset archive matrix (WP-P6-04, D087). Every case runs in the archive S0 world (eval/p6_assets.py): the P6 world with
+# the asset archive opened as the service opens it. Each case runs for every seed. Beyond every P6, P4, P2 and P1
+# check, the independent judge (eval/judge_assets.py) always checks the archive invariants on the final ledger: one
+# observation per verified capture of an inspected asset and none other, every business transition present as its
+# event with the authority of its kind, no model field in the fact column of any timeline answer or in any comparison
+# factor, and no comparison summary naming a cause. `archive` lists what the case's answers must show against the
+# world's truth (the injected drifts, damage, repair and map change). S0 results never count as physical flights or
+# as model behaviour.
+#
+# 资产档案矩阵（WP-P6-04，D087）。每个用例都在档案 S0 世界（eval/p6_assets.py）中运行：P6 世界加上像服务那样打开的资产
+# 档案。每个用例跑全部种子。除 P6、P4、P2、P1 的全部检查外，独立裁判（eval/judge_assets.py）总在最终账本上检查档案
+# 不变量：被检资产的每次已核验采集恰有一条观测、没有多余观测，每次业务转移都有对应事件且权威等级与其种类相符，任何时间线
+# 回答的事实栏与任何比较因素中都没有模型字段，任何比较摘要都不指明原因。`archive` 列出用例的回答对照世界真值（注入的拍摄
+# 偏差、损坏、维修与地图变更）必须呈现的内容。S0 结果从不计为物理飞行或模型行为。
+format: p6.assets-suite/v1
+seeds: [7, 19, 41]
+s0:
+  - id: p6_e1_repair
+    description: "A damaged marker is found, confirmed, repaired with a structured repair and passes reinspection; the comparison of the reinspection capture with the suspected one lists that repair, the same viewpoint and the same map, and the model beliefs apart. / 受损标记被发现并确认，带结构化维修内容修复后复检通过；复检采集与疑似采集的比较列出这次维修、同一视角与同一地图，模型推测单列。"
+    expected: {flights: 2, runs: {completed: 2}, findings: {resolved: 1}, orders: {closed: 1}, rounds: ["passed|"], reviews: 2, jobs: {completed: 2},
+               archive: {compare: {repairs: 1, viewpoint: consistent, definition: same, role: previous, evidence: reinspection, against: inspection, beliefs: {evidence: normal, against: suspected}}}}
+  - id: p6_e2_angle
+    description: "Three captures of an unchanged marker: from right above, drifted 1.2 m east and drifted 1.2 m north (each drifted recapture declined). The comparisons report a different viewpoint with the bearing, elevation and image offset the poses imply, and no repair. / 未变化标记的三次采集：正上方、向东偏 1.2 m、向北偏 1.2 m（偏差后的补拍都被拒绝）。比较报告视角不同，方位、俯仰与图像偏移与位姿相符，期间无维修。"
+    expected: {flights: 3, runs: {completed: 1, failed: 2}, findings: {}, orders: {}, jobs: {completed: 1, refused: 2}, recaptures: 2, refusals: [quality.target_off_center],
+               archive: {north_vs_east: {viewpoint: different, exceeded: [bearing_diff_deg], repairs: 0}, east_vs_nadir: {viewpoint: different, exceeded: [elevation_diff_deg, offset_diff_side], repairs: 0}}}
+  - id: p6_e3_new_anomaly
+    description: "A normal capture, then the same viewpoint after the marker was damaged (the finding is dismissed). The comparison lists only the same map, the same viewpoint, no repair and the model's suspicion; it draws no conclusion. / 先正常采集，标记受损后同一视角再采（发现被驳回）。比较只列出地图未变、视角一致、期间无维修与模型的疑似，不下结论。"
+    expected: {flights: 2, runs: {completed: 2}, findings: {dismissed: 1}, orders: {}, reviews: 1, jobs: {completed: 2},
+               archive: {compare: {repairs: 0, viewpoint: consistent, definition: same, role: previous, beliefs: {evidence: suspected, against: normal}}}}
+  - id: p6_e4_definition
+    description: "Between two captures the service restarts on a site map where asset_red is 2.2 m instead of 2 m (same registry id). The comparison reports the definition changed in size_m with both values, and the new revision between the captures. / 两次采集之间服务用 asset_red 为 2.2 m（而非 2 m）的站点地图重启（登记表 ID 相同）。比较报告定义的 size_m 已变及两个取值，以及两次采集之间的新修订。"
+    expected: {flights: 2, runs: {completed: 2}, findings: {}, orders: {}, jobs: {completed: 2}, injections: [map_changed],
+               archive: {compare: {definition: changed, changed_fields: [size_m], repairs: 0}}}
+  - id: p6_e5_isolation
+    description: "The model judgement of one analysis is rewritten in the ledger after a comparison. The comparison factors and the fact column are unchanged; the belief column shows the rewritten judgement. / 比较之后在账本中改写一个分析的模型判断。比较因素与事实栏不变；belief 栏如实显示改写后的判断。"
+    expected: {flights: 2, runs: {completed: 2}, findings: {dismissed: 1}, orders: {}, reviews: 1, injections: [judgement_rewritten],
+               archive: {isolation: true}}
+  - id: p6_e6_backfill
+    description: "After a reference (its baseline run fails for want of a reference, as in P6-F05), a finding, an order with a structured repair, a passed reinspection and a maintenance record, two copies of the ledger with the archive removed are migrated at the same instant and one of them again: identical archives, nothing else changed, every verified capture of an inspected asset an observation, and every business event the same as the one written live. / 在参考图（其基线运行因尚无参考图而失败，与 P6-F05 相同）、发现、带结构化维修的工单、复检通过与维护登记之后，把去掉档案的账本复制两份于同一时刻迁移、其中一份再迁移一次：档案相同、其余不变、被检资产的每次已核验采集都成为观测，每条业务事件都与在线写入的相同。"
+    expected: {runs: {completed: 2, failed: 1}, findings: {resolved: 1}, orders: {closed: 1}, rounds: ["passed|"], references: 1, injections: [backfill_copies],
+               archive: {backfill: true}}

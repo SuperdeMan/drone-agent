@@ -275,6 +275,9 @@ class AnalysisJobs:
                     finding_id = engine.findings.attach(job, result)
             if not self.store.finish(job_id, owner=engine.worker, epoch=epoch, result=result, finding_id=finding_id):
                 raise StaleRecord(job_id)
+            if finding_id is not None and engine.archive is not None:
+                # D087: the model's suspicion joins the asset's belief column. / D087：模型的疑似进入资产的 belief 栏。
+                engine.archive.finding_opened(job_id)
             engine.ledger.record_source(inputs.evidence.mission_id, inputs.evidence.mission_version,
                                         f"analysis:{job_id}", AnalysisOrigin(
                                             attempt_id=job_id, evidence_id=inputs.evidence.evidence_id,

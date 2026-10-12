@@ -136,11 +136,21 @@ METHODS: dict[str, tuple[str, frozenset[str]]] = {
     "references.list": (ANALYSIS_READ, frozenset({"project_id"})),
     "references.register": (ANALYSIS_REFERENCE, frozenset({"project_id", "mission_id", "evidence_id", "note"})),
     "references.revoke": (ANALYSIS_REFERENCE, frozenset({"project_id", "reference_id"})),
+    # WP-P6-04 (D087): the asset archive; reads by authority, maintenance outside work orders.
+    # WP-P6-04（D087）：资产档案；按权威等级读取，工单之外的维护登记。
+    "assets.list": (ANALYSIS_READ, frozenset({"project_id"})),
+    "assets.timeline": (ANALYSIS_READ, frozenset({"project_id", "asset", "before", "limit"})),
+    "assets.compare": (ANALYSIS_READ, frozenset({"project_id", "asset", "evidence", "against"})),
+    "assets.maintenance": (WORKFLOW_RUN, frozenset({"project_id", "asset", "request_id", "action", "part",
+                                                    "performed_at", "note"})),
     # P5 (D070): one project's audit trail, newest first; `before` is the cursor of the previous page or null.
     # P5（D070）：一个项目的审计记录，最新在前；`before` 为上一页的游标或 null。
     "audit.list": (AUDIT_READ, frozenset({"project_id", "before", "limit"})),
 }
-BUSINESS_PREFIXES = ("business.", "findings.", "orders.", "analysis.", "references.")
+# Parameters a method may also take; every other method takes exactly its set (D087).
+# 方法另可接受的参数；其他方法都只接受精确的参数集（D087）。
+OPTIONAL: dict[str, frozenset[str]] = {"orders.repair": frozenset({"repair"})}
+BUSINESS_PREFIXES = ("business.", "findings.", "orders.", "analysis.", "references.", "assets.")
 CHANNELS = {"tailnet": RequestChannel.CONSOLE, "local": RequestChannel.CONSOLE, "a2a": RequestChannel.A2A,
             "harness": RequestChannel.HARNESS}
 # The only methods a backend may call, by the kind of backend. / 后端只能调用的方法，按后端种类区分。
@@ -191,7 +201,7 @@ async def _dispatch(service: MissionService, request: dict) -> dict:
     if not isinstance(request, dict) or set(request) != {"method", "actor", "trust", "params"}:
         return _error("service.invalid_request", "expected method, actor, trust and params")
     method, actor, params = request["method"], request["actor"], request["params"]
-    if method not in METHODS or not isinstance(params, dict) or set(params) != METHODS[method][1]:
+    if method not in METHODS or not isinstance(params, dict)             or not METHODS[method][1] <= set(params) <= METHODS[method][1] | OPTIONAL.get(method, frozenset()):
         return _error("service.invalid_request", f"unknown method or parameters for {method}")
     try:
         who = caller(str(actor), str(request["trust"]))
@@ -364,7 +374,8 @@ def _business_call(service: MissionService, method: str, params: dict, who: Call
     if method == "orders.get":
         return engine.orders.get(who, project, params["order_id"])
     if method == "orders.repair":
-        return engine.orders.repair(who, project, params["order_id"], params["request_id"], params["note"])
+        return engine.orders.repair(who, project, params["order_id"], params["request_id"], params["note"],
+                                    params.get("repair"))
     if method == "orders.review":
         return engine.orders.review(who, project, params["order_id"], params["round"], params["decision"],
                                     params["request_id"], params["note"])
@@ -381,6 +392,18 @@ def _business_call(service: MissionService, method: str, params: dict, who: Call
         return engine.references_list(who, project)
     if method == "references.register":
         return engine.reference_register(who, project, params["mission_id"], params["evidence_id"], params["note"])
+    if method.startswith("assets."):
+        archive = engine.archive
+        if archive is None:
+            raise ServiceError("service.invalid_request", "the asset archive is not open")
+        if method == "assets.list":
+            return archive.list(who, project)
+        if method == "assets.timeline":
+            return archive.timeline(who, project, params["asset"], params["before"], params["limit"])
+        if method == "assets.compare":
+            return archive.compare(who, project, params["asset"], params["evidence"], params["against"])
+        return archive.maintenance(who, project, params["asset"], params["request_id"], params["action"],
+                                   params["part"], params["performed_at"], params["note"])
     return engine.reference_revoke(who, project, params["reference_id"])
 
 

@@ -566,6 +566,27 @@ class Session:
                                      question=str(message.get("question", ""))[:500])
             if result is not None:
                 await self.send({"type": "explanation", "result": result})
+        elif kind in ("asset_list", "asset_timeline", "asset_compare"):
+            # WP-P6-04 (D087): read-only archive answers; the service checks the project role like every call.
+            # WP-P6-04（D087）：只读的档案回答；服务与每次调用一样检查项目角色。
+            project = str(message.get("project_id", ""))[:120]
+            asset = str(message.get("asset", ""))[:200]
+            evidence, against, before = (message.get(key) for key in ("evidence", "against", "before"))
+            if kind == "asset_list":
+                result = await self.call("assets.list", project_id=project)
+            elif kind == "asset_timeline":
+                limit = message.get("limit", 50)
+                result = await self.call("assets.timeline", project_id=project, asset=asset,
+                                         before=str(before)[:400] if isinstance(before, str) and before else None,
+                                         limit=limit if isinstance(limit, int) and not isinstance(limit, bool)
+                                         else 50)
+            else:
+                result = await self.call("assets.compare", project_id=project, asset=asset,
+                                         evidence=str(evidence)[:200] if isinstance(evidence, str) and evidence
+                                         else None,
+                                         against=str(against)[:200] if isinstance(against, str) and against else None)
+            if result is not None:
+                await self.send({"type": kind, "result": result})
         elif kind == "audit_watch":
             before = message.get("before")
             self.audit = (str(message.get("project_id", ""))[:120],

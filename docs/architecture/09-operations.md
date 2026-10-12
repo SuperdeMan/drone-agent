@@ -175,6 +175,7 @@ D068 已按工作区重组任务台页面：总览、任务与审批、工作流
 | `fleet/provenance.py`（P0 已实现）、`fleet/vendor_gateway.py`（后续） | 来源记录与后续厂商任务适配 |
 | `console/`、`eval/`、`configs/`、`scripts/` | 运营页面、分层模拟与裁判、版本化模板及验证入口 |
 | `fleet/capacity_store.py`、`fleet/archive.py`、`fleet/capacity.py`（D085） | 容量迁移与索引、机场状态按日归档、服务容量指标与 `capacity.get` |
+| `fleet/asset_store.py`、`fleet/assets.py`（D087） | 资产档案：修订、观测与权威事件三张只追加的表，迁移与回填，`assets.list` / `timeline` / `compare` / `maintenance` |
 
 继续单仓库、模块化 Python 服务。飞行权威账本留在机载；地面新增运营持久化优先评估 SQLite，媒体保留文件与哈希索引。数据库迁移方案须先列出现有 schema、目标、升级 / 失败恢复和备份验证，再按项目红线获得批准后执行；本次文档设计不执行迁移。新增表也属于 schema 变更，不以“独立运营库”绕过该约束。
 

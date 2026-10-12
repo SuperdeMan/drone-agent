@@ -121,6 +121,7 @@ class P1World:
         self.ledger = BusinessLedger(case / "service/ledger.sqlite3")
         self.hub = FleetHub(self.ledger, case / "service/media")
         self.service = self._service()
+        self._assembled()
         ops = self.service.ops
         self.uavs: dict[str, LogicalUav] = {}
         self.docks: dict[str, DockSimulator] = {}
@@ -157,10 +158,14 @@ class P1World:
                                                                 backend=self.backend),
                               operations=operations, backends=(self.backend, *self.extra_backends))
 
+    def _assembled(self) -> None:
+        """Called once the service and everything a subclass attaches to it exist. / 服务及子类挂上的全部对象就绪后调用。"""
+
     def restart_service(self) -> None:
         """A service process restart: a new service object over the same ledger and hub. / 服务进程重启。"""
         self.hub.listeners.clear()
         self.service = self._service()
+        self._assembled()
         self.inject("service_restart")
 
     def reload_members(self, members: MemberList) -> None:

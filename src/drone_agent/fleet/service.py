@@ -840,7 +840,7 @@ class MissionService:
             previous = stored.get(evidence.evidence_id)
             if previous is None or {k: v for k, v in previous.items() if k != "verified_at"} != {
                     k: v for k, v in body.items() if k != "verified_at"}:
-                self.ledger.record_verification(body)
+                self._record_verification(mission_id, version, row, body, registry)
                 if not result.agrees:
                     self.ledger.record_issue(issue(
                         "service.verification_mismatch",
@@ -849,6 +849,18 @@ class MissionService:
             if outcome is not None:
                 verdicts[(version, step)] = result.final_verdict
         return verdicts
+
+    def _record_verification(self, mission_id: str, version: int, row: dict, body: dict, registry: Registry) -> None:
+        """Record the service's verification and, in the same transaction, the asset observation (D087).
+
+        记录服务核验，并在同一事务内写入资产观测（D087）。
+        """
+        archive = getattr(self.business, "archive", None) if self.business is not None else None
+        with self.ledger.transaction():
+            self.ledger.record_verification(body)
+            if archive is not None:
+                archive.observe(mission_id=mission_id, version=version, evidence_row=row, verification=body,
+                                checked_with=registry.sha256)
 
     def _dispatch_state(self, mission_id: str) -> None:
         """Bound missions: voided deliveries end their version; a cancel intent ends or cancels the mission.
@@ -992,7 +1004,7 @@ class MissionService:
             previous = stored.get(evidence.evidence_id)
             if previous is None or {k: v for k, v in previous.items() if k != "verified_at"} != {
                     k: v for k, v in body.items() if k != "verified_at"}:
-                self.ledger.record_verification(body)
+                self._record_verification(mission_id, version, row, body, registry)
             found[step] = result.final_verdict
         return found
 

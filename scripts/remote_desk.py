@@ -79,6 +79,9 @@ CATALOGS = {"operations": "p5_desk_v1", "workflows": "p6_desk_v1", "scheduling":
 CATALOG_FILES = {"--catalog": "configs/sites/p5_desk_v1.yaml", "--workflows": "configs/workflows/p6_desk_v1.yaml",
                  "--scheduling": "configs/scheduling/p5_desk_v1.yaml", "--business": "configs/analysis/p6_desk_v1.yaml"}
 CATALOG_ARGS = [part for flag, path in CATALOG_FILES.items() for part in (flag, "/workspace/" + path)]
+# D087: the asset archive's drill reads the catalogs that set each asset key's scope. / D087：档案演练读取决定资产键范围的目录。
+ASSET_ARGS = ["--catalog", "/workspace/" + CATALOG_FILES["--catalog"],
+              "--scheduling", "/workspace/" + CATALOG_FILES["--scheduling"]]
 BACKENDS = ["px4_sitl", "logical_sim", "vendor_protocol_sim"]
 FLEET = ("uav_fa", "uav_fb")
 DOCKS = ("dock_s1", "dock_fa", "dock_fb", "dock_vd")
@@ -176,8 +179,8 @@ def plan(root: Path, deployment: Path) -> dict:
             "business": CATALOG_FILES["--business"], "execution_backends": BACKENDS,
             "residents": list(RESIDENTS),
             "vision": "live" if (desk.model / "minimax.key").is_file() else "unavailable",
-            "ledger_migration": "drills on a copy first (D056, D058, D060, D064) and the P5 catalog switch drill "
-                                "(D069), then the migrations with verified backups on start",
+            "ledger_migration": "drills on a copy first (D056, D058, D060, D064, D085, D087) and the P5 catalog "
+                                "switch drill (D069), then the migrations with verified backups on start",
             "apply_required": True}
 
 
@@ -303,10 +306,10 @@ def wait_sessions(desk, timeout: float = 120.0) -> dict:
 
 
 def migration_drill(desk, artifact: Path, image: str, members: Path | None = None) -> dict:
-    """D056, D058, D060, D064 and D085 drills in turn on one copy of the live ledger with the new image; only counts
-    and digests are kept.
+    """D056, D058, D060, D064, D085 and D087 drills in turn on one copy of the live ledger with the new image; only
+    counts and digests are kept.
 
-    用新镜像对当前账本的同一副本依次执行 D056、D058、D060、D064 与 D085 演练；只保留计数与摘要。
+    用新镜像对当前账本的同一副本依次执行 D056、D058、D060、D064、D085 与 D087 演练；只保留计数与摘要。
     """
     live = desk.service / "ledger.sqlite3"
     if not live.is_file():
@@ -323,14 +326,15 @@ def migration_drill(desk, artifact: Path, image: str, members: Path | None = Non
         source.close()
     drills = {}
     try:
-        for name, module in (("operations", "drone_agent.fleet.operations_store"),
-                             ("workflows", "drone_agent.fleet.workflow_store"),
-                             ("scheduling", "drone_agent.fleet.scheduling_store"),
-                             ("business", "drone_agent.fleet.business_store"),
-                             ("capacity", "drone_agent.fleet.capacity_store")):
+        for name, module, extra, limit in (("operations", "drone_agent.fleet.operations_store", [], 300),
+                                           ("workflows", "drone_agent.fleet.workflow_store", [], 300),
+                                           ("scheduling", "drone_agent.fleet.scheduling_store", [], 300),
+                                           ("business", "drone_agent.fleet.business_store", [], 300),
+                                           ("capacity", "drone_agent.fleet.capacity_store", [], 300),
+                                           ("assets", "drone_agent.fleet.asset_store", ASSET_ARGS, 900)):
             output = HELPERS["run"](["docker", "run", "--rm", "--network", "none", "--user",
                                      f"{os.getuid()}:{os.getgid()}", "-v", f"{work}:/drill", image, "python3", "-m",
-                                     module, "--drill", "/drill/ledger.sqlite3"], timeout=300)
+                                     module, "--drill", "/drill/ledger.sqlite3", *extra], timeout=limit)
             drills[name] = json.loads(output.strip().splitlines()[-1])
         # P5 (D069): the catalog switch on the same migrated copy, offline, with the desk member list read-only.
         # P5（D069）：在同一已迁移副本上离线执行目录切换，任务台成员列表只读。
@@ -349,7 +353,7 @@ def migration_drill(desk, artifact: Path, image: str, members: Path | None = Non
     finally:
         # The copy holds mission data; only the receipt stays. / 副本含任务数据；只保留回执。
         shutil.rmtree(work, ignore_errors=True)
-    result = {"status": "passed" if all(d.get("status") == "passed" for d in drills.values()) and len(drills) == 6
+    result = {"status": "passed" if all(d.get("status") == "passed" for d in drills.values()) and len(drills) == 7
               else "failed", **drills}
     (artifact / "migration-drill.json").write_text(json.dumps(result, indent=2))
     if result.get("status") != "passed":
@@ -465,6 +469,9 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
         # D085：容量演练迁移了副本时，首次启动也要先迁移在用账本才应答，且服务只有半个 CPU；以演练无限制用时的四倍为界。
         capacity_drill = drill.get("capacity") or {}
         migrating = 4 * float(capacity_drill.get("elapsed_s") or 0) if capacity_drill.get("migration") == "migrated" else 0
+        # D087: likewise the archive's backup and backfill. / D087：档案的备份与回填同理。
+        asset_drill = drill.get("assets") or {}
+        migrating += 4 * float(asset_drill.get("elapsed_s") or 0) if asset_drill.get("migration") == "migrated" else 0
         deadline = time.monotonic() + 120 + min(migrating, 1800)
         while True:
             try:
@@ -497,6 +504,9 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
         if business.get("catalog_id") != CATALOGS["business"] or (business.get("migration") or {}).get(
                 "status") not in ("migrated", "current"):
             raise RuntimeError(f"the mission service did not start with business catalog {CATALOGS['business']} and its tables")
+        assets = started.get("assets") or {}
+        if ((assets.get("migration") or {}).get("status")) not in ("migrated", "current"):
+            raise RuntimeError("the mission service did not start with the asset archive")
         if started.get("execution_backends") != BACKENDS or (started.get("vendor") or {}).get("docks") != ["dock_vd"]:
             raise RuntimeError("the mission service did not start with the three backends and the vendor link")
         sessions = wait_sessions(desk)
@@ -529,6 +539,9 @@ def apply(root: Path, deployment: Path, request: dict) -> dict:
                    # D085: the capacity migration, its drill on the copy, and the status retention.
                    # D085：容量迁移、其在副本上的演练与状态保留期。
                    "capacity": {**(started.get("capacity") or {}), "drill": drill.get("capacity")},
+                   # D087: the archive's migration and backfill, its drill on the copy, and the compare tolerances.
+                   # D087：档案的迁移与回填、其在副本上的演练与比较容差。
+                   "assets": {**assets, "drill": drill.get("assets")},
                    "switch_drill": drill.get("switch", drill), "execution_backends": started.get("execution_backends"),
                    "vendor": started.get("vendor"), "dock_sessions": sessions,
                    "containers": inspect_desk(desk, value["source_sha"]),
@@ -862,6 +875,15 @@ def restore_drill(root: Path, request: dict) -> dict:
             capacity = json.loads(migrated.stdout.decode("utf-8", errors="replace").strip().splitlines()[-1])
         except (IndexError, ValueError):
             capacity = {"status": "failed", "exit_code": migrated.returncode}
+        # A backup taken before D087 gains the asset archive the same way. / D087 之前的备份同样先加上资产档案。
+        archived = subprocess.run(["docker", "run", "--rm", "--network", "none", "--user",
+                                   f"{os.getuid()}:{os.getgid()}", "-v", f"{work}:/drill", image, "python3", "-m",
+                                   "drone_agent.fleet.asset_store", "--drill", "/drill/ledger.sqlite3", *ASSET_ARGS],
+                                  capture_output=True, timeout=900)
+        try:
+            assets = json.loads(archived.stdout.decode("utf-8", errors="replace").strip().splitlines()[-1])
+        except (IndexError, ValueError):
+            assets = {"status": "failed", "exit_code": archived.returncode}
         result = subprocess.run(["docker", "run", "--rm", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
                                  "-v", f"{work}:/drill", "-v", f"{members}:/members.yaml:ro", image, "python3", "-m",
                                  "drone_agent.fleet.switch_drill", "--ledger", "/drill/ledger.sqlite3",
@@ -884,11 +906,12 @@ def restore_drill(root: Path, request: dict) -> dict:
             ((record.get("catalogs") or {}).get("operations") or {}).get("catalog_sha256")
     finally:
         shutil.rmtree(work, ignore_errors=True)
-    passed = (restored and capacity.get("status") == "passed" and read_back.get("status") == "passed" and not changed
-              and same_catalogs)
+    passed = (restored and capacity.get("status") == "passed" and assets.get("status") == "passed"
+              and read_back.get("status") == "passed" and not changed and same_catalogs)
     receipt = {"status": "passed" if passed else "failed", "backup_id": record["backup_id"],
                "backup_sha256": record["ledger"]["sha256"], "restored_digest_matches": restored,
                "capacity_drill": {k: capacity.get(k) for k in ("status", "migration", "elapsed_s", "exit_code")},
+               "asset_drill": {k: assets.get(k) for k in ("status", "migration", "elapsed_s", "exit_code")},
                "read_back": read_back, "tables_changed": changed, "catalogs_match": same_catalogs,
                "live_ledger_touched": False, "drill_at": datetime.now(timezone.utc).isoformat()}
     (desk.base / "deployments" / request["run_id"] / "restore-drill.json").write_text(json.dumps(receipt, indent=2))

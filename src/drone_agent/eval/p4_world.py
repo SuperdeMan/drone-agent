@@ -85,6 +85,13 @@ class P4World(P2World):
                                           recordings=self.case / "service/recordings/analysis")
         return service
 
+    def _assembled(self) -> None:
+        # WP-P6-04 (D087): the asset archive opens like the service process opens it, last.
+        # WP-P6-04（D087）：资产档案与服务进程一样最后打开。
+        from drone_agent.fleet.assets import open_archive
+
+        self.archive_report = open_archive(self.service, backups=self.case / "service/backups", clock=self.clock)
+
     def restart_service(self) -> None:
         """A process restart: the old runner's tasks die with it, the jobs keep their leases. / 进程重启。"""
         old = getattr(self.service, "business", None)

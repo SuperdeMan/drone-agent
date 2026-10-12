@@ -355,6 +355,83 @@ def explain(origin: str, args) -> tuple[dict, str | None]:
     return receipt, login
 
 
+MODEL_FIELDS = {"score", "defect_type", "family", "verdict", "job_verdict", "anomaly_score", "model_id",
+                "reported_model_id", "description"}
+
+
+def _keys(value) -> set[str]:
+    found, stack = set(), [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, dict):
+            found |= set(item)
+            stack.extend(item.values())
+        elif isinstance(item, list):
+            stack.extend(item)
+    return found
+
+
+def assets(origin: str, args) -> tuple[dict, str | None]:
+    """WP-P6-04 (D087): through the entry, list the project's assets, read one asset's timeline and compare its two
+    latest verified captures; read-only. Actors are left out of the receipt.
+
+    WP-P6-04（D087）：经入口列出项目资产、读取一个资产的时间线，并比较其最近两次已核验采集；只读。回执不记录操作者。
+    """
+    started = time.monotonic()
+    client, login, receipt = open_session(origin)
+    client.send({"type": "asset_list", "project_id": args.project})
+    listed = client.next(("asset_list", "error"), 60)
+    if listed["type"] == "error":
+        receipt["errors"].append(listed)
+        client.close()
+        return receipt, login
+    found = listed["result"]["assets"]
+    receipt["assets"] = [{"asset_key": a["asset_key"], "revisions": a["revisions"],
+                          "open_findings": a["open_findings"], "latest": a["latest_observation"]} for a in found]
+    receipt["compare_config"] = listed["result"]["compare"]
+    asset = next((a["asset_key"] for a in found if a["asset_id"] == args.asset), None)
+    if asset is None:
+        receipt["errors"].append({"type": "error", "message": f"no asset {args.asset} in {args.project}"})
+        client.close()
+        return receipt, login
+    client.send({"type": "asset_timeline", "project_id": args.project, "asset": asset, "limit": args.limit})
+    line = client.next(("asset_timeline", "error"), 60)
+    if line["type"] == "error":
+        receipt["errors"].append(line)
+    else:
+        columns = line["result"]["columns"]
+        observations = [i for i in columns["fact"] if i["kind"] == "observation"]
+        receipt["timeline"] = {
+            "asset_key": asset, "items": line["result"]["items"], "has_next": line["result"]["next"] is not None,
+            "kinds": {name: sorted({i["kind"] for i in items}) for name, items in columns.items()},
+            "observations": len(observations),
+            "measured": sum(1 for i in observations if i["body"]["geometry"].get("status") == "measured"),
+            "model_fields_in_fact_column": sorted(_keys(columns["fact"]) & MODEL_FIELDS)}
+    client.send({"type": "asset_compare", "project_id": args.project, "asset": asset})
+    answer = client.next(("asset_compare", "error"), 60)
+    if answer["type"] == "error":
+        receipt["errors"].append(answer)
+    else:
+        result = answer["result"]
+        factors = result["factors"]
+        receipt["compare"] = {
+            "evidence": {k: result["evidence"][k] for k in ("evidence_id", "mission_id", "captured_at")},
+            "against": {k: result["against"][k] for k in ("evidence_id", "mission_id", "captured_at", "role")},
+            "definition": factors["definition"]["status"], "viewpoint": factors["viewpoint"]["status"],
+            "viewpoint_measures": factors["viewpoint"].get("measures"),
+            "exceeded": factors["viewpoint"].get("exceeded"),
+            "geometry": [result[side]["geometry"] for side in ("evidence", "against")],
+            "events": {k: factors["events"][k] for k in ("repairs", "maintenance", "reviews", "settlements",
+                                                          "definition_changes")},
+            "reference": factors["reference"],
+            "model_fields_in_factors": sorted(_keys(factors) & MODEL_FIELDS),
+            "beliefs": {side: [b["verdict"] for b in result["beliefs"][side]] for side in ("evidence", "against")},
+            "summary": result["summary"], "compare": result["compare"]}
+    receipt["duration_s"] = round(time.monotonic() - started, 1)
+    client.close()
+    return receipt, login
+
+
 def plan(origin: str, args) -> tuple[dict, str | None]:
     """P6 (D079): one bound request through the entry; the planned version is recorded, then declined as the page would,
     so nothing is left waiting for approval on the resident desk. The probe approves nothing and flies nothing.
@@ -1121,7 +1198,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("http", "session", "watch", "spoof", "fixed", "resources", "workflow", "tasks", "business", "plan",
-                 "explain"):
+                 "explain", "assets"):
         command = commands.add_parser(name)
         command.add_argument("--origin", required=True, help="https://<node>.<tailnet>.ts.net:8448")
         command.add_argument("--output", type=Path)
@@ -1152,6 +1229,10 @@ def main() -> None:
     asking.add_argument("--volume", default="campus_training")
     asking.add_argument("--plan-timeout", type=float, default=300)
     asking.add_argument("--explain-timeout", type=float, default=180)
+    archive = commands.choices["assets"]
+    archive.add_argument("--project", default="campus_s1")
+    archive.add_argument("--asset", default="asset_red", help="the asset id whose timeline and comparison are read")
+    archive.add_argument("--limit", type=int, default=50)
     flow = commands.choices["workflow"]
     flow.add_argument("--project", default="campus_s1")
     flow.add_argument("--draft-text", help="ask the configured planner for one inactive template draft")
@@ -1209,6 +1290,8 @@ def main() -> None:
         result, login = plan(args.origin, args)
     elif args.command == "explain":
         result, login = explain(args.origin, args)
+    elif args.command == "assets":
+        result, login = assets(args.origin, args)
     else:
         result, login = session(args.origin, args)
     result = redact({"schema_version": "0.1.0", "probe": args.command, **result}, args.origin, login)

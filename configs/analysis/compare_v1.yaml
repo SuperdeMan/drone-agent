@@ -1,0 +1,19 @@
+# Comparison tolerances of the asset archive (WP-P6-04, D087), version compare-v1. `assets.compare` judges only
+# whether two captures saw the asset from the same viewpoint; it never says whether a difference is a repair, the
+# angle or a new anomaly. A change of any value here is a new reviewed version; answers carry this file's digest.
+#
+# 资产档案的比较容差（WP-P6-04，D087），版本 compare-v1。`assets.compare` 只判断两次采集是否从同一视角看到资产，从不判断
+# 差异是维修、角度还是新异常。改动任何取值都是新的评审版本；回答中带本文件的摘要。
+format: drone.asset-compare/v1
+version: compare-v1
+# Bearing of the capture point seen from the asset, compared only when both captures are at least this far from the
+# asset horizontally: right above the asset the bearing means nothing, and elevation and distance tell views apart.
+# 从资产看采集点的方位角；只有两次采集的水平距离都不小于此值时才比较：在资产正上方时方位角没有意义，俯仰角与距离已能区分视角。
+bearing_max_deg: 15
+bearing_min_horizontal_m: 1.0
+elevation_max_deg: 10
+distance_ratio: [0.8, 1.25]
+# Image measures of the quality-v2 analyses: target side in pixels, and the target's offset from the image centre
+# divided by that side. / quality-v2 分析的图像测量：目标边长像素，以及目标偏离画面中心的距离除以该边长。
+scale_ratio: [0.8, 1.25]
+offset_max_side_fraction: 0.25

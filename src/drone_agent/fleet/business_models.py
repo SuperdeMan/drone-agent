@@ -539,12 +539,39 @@ def round_subject(order_id: str, round_number: int) -> str:
 # ── the settlement rule / 结算规则 ──
 
 
+REPAIR_ACTIONS = ("repaired", "replaced", "cleaned", "adjusted", "other")
+
+
+class Repair(BusinessModel):
+    """What the crew did, reported with the feedback (WP-P6-04, D087). / 维修人员做了什么，随维修反馈提交（WP-P6-04，D087）。"""
+
+    action: Literal["repaired", "replaced", "cleaned", "adjusted", "other"]
+    part: str = Field(default="", max_length=80)
+    performed_at: AwareDatetime
+
+
 class Feedback(BusinessModel):
     feedback_id: str
     request_id: str
     reported_by: str
     reported_at: AwareDatetime
     note: str = Field(default="", max_length=300)
+    # D087; left out of the stored form while unset, so feedback without it is stored exactly as before.
+    # D087；未设置时不进入存储形式，因此不带它的反馈与以前完全相同。
+    repair: Repair | None = None
+
+    @model_serializer(mode="wrap")
+    def _canonical(self, handler):
+        data = handler(self)
+        if self.repair is None:
+            data.pop("repair", None)
+        return data
+
+    @model_validator(mode="after")
+    def _performed(self):
+        if self.repair is not None and self.repair.performed_at > self.reported_at:
+            raise ValueError("a repair is performed no later than it is reported")
+        return self
 
 
 class Conclusion(BusinessModel):

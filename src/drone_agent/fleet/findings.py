@@ -114,6 +114,8 @@ class Findings:
             self.store.set_finding(finding_id, version=finding["state_version"], state=state,
                                    review_id=review["review_id"])
             self.store.event(f"finding:{finding_id}", "finding.reviewed", reviewer, {"decision": decision})
+            if self.engine.archive is not None:
+                self.engine.archive.reviewed(review)
         return review
 
     # ── views / 视图 ──

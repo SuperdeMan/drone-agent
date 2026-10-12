@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import uuid
 
+from pydantic import ValidationError
+
 from drone_agent.fleet.business_models import (
     DECISIONS,
     REPAIRABLE,
@@ -29,6 +31,7 @@ from drone_agent.fleet.business_models import (
     JobInputs,
     JobResult,
     OrderState,
+    Repair,
     ReviewSubject,
     RoundState,
     round_subject,
@@ -86,7 +89,7 @@ class WorkOrders:
                 # 没有人工确认，模型发现永远不会成为工单（D052）。
                 raise ServiceError("business.not_confirmed", "the finding has no reviewer confirmation")
             target = payload["reinspection"]
-            order, _ = self.store.create_order(
+            order, created = self.store.create_order(
                 key=key, finding=finding, review_id=review["review_id"],
                 reinspection={**target, "catalog_sha256": run["catalog_sha256"],
                               "asset_id": finding["body"]["asset_id"]},
@@ -94,6 +97,8 @@ class WorkOrders:
                       "defect_types": finding["body"].get("defect_types", []), "run_id": run["run_id"],
                       "evidence": finding["body"].get("evidence", [])[-5:]},
                 actor=run_principal(run["run_id"]))
+            if created and self.engine.archive is not None:
+                self.engine.archive.order_opened(order)
         return order
 
     # ── repair feedback / 维修反馈 ──
@@ -106,14 +111,21 @@ class WorkOrders:
         self.engine.require(caller, project_id, scope)
         return order
 
-    def repair(self, caller, project_id, order_id, request_id, note) -> dict:
-        """A new round of repair feedback and, in the same transaction, its reinspection run (D063 §8).
+    def repair(self, caller, project_id, order_id, request_id, note, repair=None) -> dict:
+        """A new round of repair feedback and, in the same transaction, its reinspection run (D063 §8). `repair`
+        optionally says what was done (D087); feedback without it is stored exactly as before.
 
-        新一轮维修反馈，并在同一事务中启动其复检运行（D063 §8）。
+        新一轮维修反馈，并在同一事务中启动其复检运行（D063 §8）。`repair` 可选地说明做了什么（D087）；不带它的反馈与以前
+        完全相同地存储。
         """
         order = self._order(caller, project_id, order_id, WORKFLOW_RUN)
         if not isinstance(request_id, str) or not REQUEST_ID.fullmatch(request_id):
             raise ServiceError("service.invalid_request", "request_id must be 1-120 safe characters")
+        try:
+            done = Repair.model_validate(repair) if repair is not None else None
+        except ValidationError as error:
+            raise ServiceError("service.invalid_request", "repair is {action, part, performed_at}: "
+                               + str(error.errors()[0].get("msg", ""))[:120]) from error
         workflows = self.engine.workflow_store
         with self.store.transaction():
             order = self.store.order(order["order_id"])
@@ -123,8 +135,13 @@ class WorkOrders:
             if OrderState(order["state"]) not in REPAIRABLE:
                 raise ServiceError("workflow.order_state", f"the order is {order['state']}")
             number = order["round"] + 1
-            feedback = Feedback(feedback_id="fb-" + uuid.uuid4().hex[:16], request_id=request_id,
-                                reported_by=caller.identity, reported_at=self.engine.clock(), note=str(note or "")[:300])
+            try:
+                feedback = Feedback(feedback_id="fb-" + uuid.uuid4().hex[:16], request_id=request_id,
+                                    reported_by=caller.identity, reported_at=self.engine.clock(),
+                                    note=str(note or "")[:300], repair=done)
+            except ValidationError as error:
+                raise ServiceError("service.invalid_request", "a repair is performed no later than it is "
+                                                              "reported") from error
             self.store.create_round(order["order_id"], number, feedback.model_dump(mode="json"))
             target = order["reinspection"]
             spec = workflows.pinned(target["catalog_sha256"]).spec(project_id, target["workflow_id"],
@@ -142,6 +159,8 @@ class WorkOrders:
                                  state=OrderState.REINSPECTION_REQUESTED, round=number)
             self.store.event(f"order:{order['order_id']}", "order.repair_reported", caller.identity,
                              {"round": number, "feedback_id": feedback.feedback_id, "run_id": run_id})
+            if self.engine.archive is not None:
+                self.engine.archive.repair_reported(order, number)
         return self.view(self.store.order(order["order_id"]))
 
     # ── the round's review / 本轮复核 ──
@@ -184,6 +203,8 @@ class WorkOrders:
                                                         "source": job["source"]})
             self.store.event(f"order:{order['order_id']}", "order.round_reviewed", reviewer,
                              {"round": round_number, "decision": decision})
+            if self.engine.archive is not None:
+                self.engine.archive.reviewed(review)
         return review
 
     def _analysis_key(self, round_row: dict) -> str:
@@ -264,6 +285,8 @@ class WorkOrders:
                                    state=FindingState.RESOLVED)
         self.store.event(f"order:{order['order_id']}", f"order.round_{conclusion.status}", self.engine.worker,
                          {"round": number, "reasons": list(conclusion.reasons)})
+        if self.engine.archive is not None:
+            self.engine.archive.round_concluded(order, number, conclusion.model_dump(mode="json"))
 
     def run_ended(self, run: dict) -> None:
         """A reinspection run that ended without settling leaves its round unknown (D063 §9).

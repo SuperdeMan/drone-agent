@@ -53,7 +53,11 @@ IDENTITIES = {
 # 不针对单个项目的调用；改为检查其应答中是否含不可读项目的数据。
 GLOBAL = ("health", "list", "robots", "projects", "audit")
 DATA_FRAMES = ("mission", "missions", "media", "resources", "resource", "workflows", "workflow", "tasks", "task",
-               "business", "finding", "order", "audit", "workflow_draft")
+               "business", "finding", "order", "audit", "workflow_draft", "asset_list", "asset_timeline",
+               "asset_compare")
+# The asset of the archive rows (WP-P6-04): every desk site sits in one shared frame, so the scope is `*`.
+# 档案各行所用的资产（WP-P6-04）：任务台每个站点都在同一共享坐标中，因此范围为 `*`。
+ASSET = f"{TARGET}/*/asset_red"
 
 
 class Matrix:
@@ -206,6 +210,12 @@ class Matrix:
                                         "note": "authz probe"}),
             "references.revoke": (p, {"project_id": p, "reference_id": "ref-none"}),
             "audit.list": (p, {"project_id": p, "before": None, "limit": 20}),
+            "assets.list": (p, {"project_id": p}),
+            "assets.timeline": (p, {"project_id": p, "asset": ASSET, "before": None, "limit": 20}),
+            "assets.compare": (p, {"project_id": p, "asset": ASSET, "evidence": o["evidence"], "against": None}),
+            "assets.maintenance": (p, {"project_id": p, "asset": ASSET, "request_id": f"authz-{n}",
+                                       "action": "cleaned", "part": "", "note": "authz probe",
+                                       "performed_at": self.world.clock().isoformat()}),
         }
         return table[method]
 
@@ -291,6 +301,9 @@ class Matrix:
             ("analysis_submit", {"project_id": p, "mission_id": o["mission"], "evidence_id": o["evidence"],
                                  "analyzer": "signature_s1_v1", "request_id": rid}, "analysis.submit", p),
             ("audit_watch", {"project_id": p}, "audit.list", p),
+            ("asset_list", {"project_id": p}, "assets.list", p),
+            ("asset_timeline", {"project_id": p, "asset": ASSET, "limit": 20}, "assets.timeline", p),
+            ("asset_compare", {"project_id": p, "asset": ASSET, "evidence": o["evidence"]}, "assets.compare", p),
             ("approve", {"mission_id": o["pending"], "version": 1, "package_hash": "0" * 64}, "approve", p),
             ("decline", {"mission_id": o["pending"], "version": 1, "reason": "probe"}, "decline", p),
             ("operate", {"mission_id": o["mission"], "action": "pause", "request_id": rid}, "operate", p),

@@ -115,6 +115,9 @@ class BusinessEngine:
         self.jobs = AnalysisJobs(self)
         self.findings = Findings(self)
         self.orders = WorkOrders(self)
+        # WP-P6-04 (D087): attached by `open_archive` once the service is assembled; None writes nothing.
+        # WP-P6-04（D087）：服务装配完成后由 `open_archive` 挂上；为 None 时不写入任何内容。
+        self.archive = None
         self._profiles: dict[tuple[str, str], object] = {}
 
     @property
@@ -308,9 +311,13 @@ class BusinessEngine:
         asset = self.index.asset_of(mission_id, acquisition["asset_id"])
         body = {k: acquisition[k] for k in ("mission_id", "mission_version", "asset_id", "width", "height",
                                             "captured_at", "image_source")} | {"note": str(note or "")[:300]}
-        reference, _ = self.store.register_reference(project_id=project_id, asset=asset, evidence_id=evidence_id,
-                                                     media_sha256=acquisition["media_sha256"], body=body,
-                                                     actor=caller.identity)
+        with self.store.transaction():
+            reference, created = self.store.register_reference(project_id=project_id, asset=asset,
+                                                               evidence_id=evidence_id,
+                                                               media_sha256=acquisition["media_sha256"], body=body,
+                                                               actor=caller.identity)
+            if created and self.archive is not None:
+                self.archive.reference_changed(reference)
         return reference
 
     def reference_revoke(self, caller, project_id, reference_id) -> dict:
@@ -318,7 +325,9 @@ class BusinessEngine:
         reference = self.store.reference(reference_id) if isinstance(reference_id, str) else None
         if reference is None or reference["project_id"] != project_id:
             raise ServiceError("service.not_found", str(reference_id)[:40])
-        self.store.revoke_reference(reference_id, caller.identity)
+        with self.store.transaction():
+            if self.store.revoke_reference(reference_id, caller.identity) and self.archive is not None:
+                self.archive.reference_changed(self.store.reference(reference_id))
         return self.store.reference(reference_id)
 
     # ── analyses / 分析 ──
