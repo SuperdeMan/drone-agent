@@ -207,6 +207,12 @@ uv run python scripts/dev_stack.py deploy --sha HEAD --apply
   - 常驻任务台 `desk/flights/` 下 119 个，首次压缩。清单在 `desk/flights/ulog-compression.json`，路径相对该目录。任务台飞行的 ULog 只在飞完后的在线 / 回放裁判时读取，长稳裁判只读各飞行的 `flight.json`。
 - 2026-10-11 又压缩了 85 个，共 1.86 GB → 0.52 GB：`artifacts/` 下 82 个（P4 S2 复验、P6 补拍与 P6 对抗录制期间的 S1 与回归批次），任务台 `desk/flights/` 下 3 个；逐个回算解压后的摘要与原件一致才删原件。同次清理删除了 3 个不计入的中间版本镜像（`c660ff9`、`21810bc`、`f68b90f`）和 20 个已解包的传输包，可用空间 48.6 → 50.6 GB，其他项目的容器前后一致。
 
+**sshd 握手限流（2026-10-12，用户批准的系统配置例外）**：
+- **现象**：公网扫描长期占满 sshd 的 10 个未认证名额。`LoginGraceTime 420` 是为微信扫码登录（`pam_qrlogin.so`）保留的，所以扫描连接最长挂 7 分钟。部署、回执与查询的 SSH 握手因此被随机丢弃，表现为 `exit 255` / `no valid JSON`；24 小时内限流 33 次。
+- **改动**：新增 `/etc/ssh/sshd_config.d/60-drone-agent-startups.conf`：`PerSourceMaxStartups 5`、`MaxStartups 40:30:120`；`LoginGraceTime` 不变。
+- **应用方式**：先 `sshd -t` 校验并热加载，再由一条新连接确认；120 s 内没有确认就自动撤销。
+- **撤销**：删除该文件后执行 `systemctl reload ssh`。
+
 **构建缓存与共享主机（2026-09-28）**：
 - BuildKit 构建缓存由本项目与 car-agent 共用。按构建步骤与父层归属后，不被镜像引用的缓存里本项目占大头。当天已按记录 ID 删掉本项目已被取代版本的 292 条、18.64 GB。做法：
   - 同时设 `--max-used-space` 与 `--reserved-space` 作保底；
