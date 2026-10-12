@@ -1,0 +1,76 @@
+{
+  "schema_version": "0.1.0",
+  "decision": "D086",
+  "source_sha": "5bf232df3cae4fd2873ac4a3b459aba33f24e063",
+  "freeze_commit": "0f4fdf97a902b7b0c50f34dff5a1d43282869f5b",
+  "written_at": "2026-10-12T16:06:40+00:00",
+  "digests": {
+    "check": "8387644602cd551fdce9b7457f3edf2f08a0f0f0834a33d99375448388b8e036",
+    "prompt": "a5f0b80ce44df1353156548330a8c04c7f9bb157a9019a1a17b8fc4bc7fc4c3c",
+    "scoring": "ea0f714b1d8f5801d5494ab564fe758a592681d7f6ad3e2311b28b16ebee4d40",
+    "rule": "6c273544d1bbdaf99f5010341b2b83be8a93b616b7dc244cab6916a7cb63239b",
+    "sentences": "2f515d966906c2022147cce3c7c426b1d21e5352f3732221e18448b261a973b0",
+    "corpus": "8d8f32fcbb385e029e1995f95a954bc1585612f9a924ca3d33ecc9c7f7cfea42",
+    "author": "8be0259668f541a3858a0dd437f904b3f0493b67b4db1041dcb2bb25bee51bfd",
+    "labeller": "aca15ca4ab94c017f992a1351def9903192be6c54fdfb1d5f1173863f54dc029"
+  },
+  "held_out_a": {
+    "sentences": 120,
+    "asserting": 60,
+    "per_category": {
+      "direct": 12,
+      "multi_clause": 12,
+      "negation": 12,
+      "condition_requirement": 12,
+      "question": 12,
+      "hedge": 12,
+      "emphasis_double_negation": 12,
+      "contrast": 12,
+      "reported": 12,
+      "multiple_phrases": 12
+    },
+    "per_language": {
+      "zh": 60,
+      "en": 60
+    }
+  },
+  "held_out_b": {
+    "cases": 30,
+    "per_state": {
+      "foreign": 2,
+      "refused": 3,
+      "volume": 2,
+      "energy": 3,
+      "scope": 2,
+      "awaiting": 3,
+      "declined": 3,
+      "replanned": 3,
+      "completed": 2,
+      "lid_jam": 2,
+      "maintenance": 2,
+      "lapsed": 3
+    },
+    "change_requests": 4
+  },
+  "rule": {
+    "code": "drone_agent.eval.explain_check_choice.decide",
+    "adopt_when": [
+      "held-out A: v2 misses at most one asserting sentence",
+      "held-out A: v2 false flags at most half of v1's",
+      "held-out B: no escape under v2 that v1 does not have",
+      "held-out B: v2 false blocks no more than v1's"
+    ]
+  },
+  "order": [
+    "deploy a revision between this source and the candidate; run p6-adv --corpus explain_v2 --mode live once with the planner's model and prompt explain-v1; resume only cases throttled without an answer",
+    "replay the recordings strictly",
+    "a fresh independent agent labels the answers by labeler.md, seeing questions, facts, answers and change drafts only",
+    "decide over held-out A and B with the rule; adopt: fleet/main.py EXPLAIN_CHECK becomes v2 and the desk is activated; keep: the service stays on v1",
+    "gate: scripts/verify_explain_check.py"
+  ],
+  "authors": {
+    "held_out": "a fresh general-purpose agent given only author.md, the explain_v1 manifest and views, and the fact tables generated from them, after the freeze",
+    "labels": "a fresh general-purpose agent given only labeler.md and the answer file, after the live run"
+  },
+  "development_data": "explain_v1's live answers and doubles and eval/adversarial/explain_check_dev.yaml; not evidence"
+}
