@@ -57,8 +57,9 @@ CODE = {"check": "src/drone_agent/fleet/explain.py", "prompt": "src/drone_agent/
 RECEIPT = "eval/adversarial/recordings/p6/explain_v2/receipt.json"
 D083_RECEIPT = "eval/adversarial/recordings/p6/explain_v1/receipt.json"
 LABELS = "eval/adversarial/explain_v2/labels.yaml"
-RECORDS = {"docs/verification/explain-2026-10-11/release.json": "0cc60a3",
-           "docs/verification/fine-reservations-2026-10-12/release.json": "5b49d3f"}
+RECORDS = {"docs/verification/explain-2026-10-11/release.json": "22d4464",
+           "docs/verification/fine-reservations-2026-10-12/release.json": "5b49d3f",
+           "docs/verification/capacity-retention-2026-10-12/release.json": "cd327cb"}
 
 
 def scope(sha: str) -> dict:
