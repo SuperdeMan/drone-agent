@@ -1,0 +1,143 @@
+{
+ "binding": {
+  "legacy": null,
+  "project_id": "campus_ops",
+  "robot_id": "uav_c",
+  "site_id": "site_c"
+ },
+ "dispatch": {
+  "cancel": {
+   "mission_id": "m-73d9f9b359bc",
+   "reason": "operator",
+   "relayed_request_id": null,
+   "request_id": "cancel-73d9f9b359bc-2",
+   "requested_at": "2026-10-11T12:47:31.344510+00:00",
+   "requested_by": "harness:p1-operator"
+  },
+  "decisions": [
+   {
+    "reasons": [],
+    "stage": "preview",
+    "verdict": "eligible",
+    "version": 1
+   },
+   {
+    "reasons": [
+     "dock.lid_not_open"
+    ],
+    "stage": "claim",
+    "verdict": "blocked",
+    "version": 1
+   },
+   {
+    "reasons": [],
+    "stage": "prepare",
+    "verdict": "eligible",
+    "version": 1
+   },
+   {
+    "reasons": [
+     "dock.lid_not_open",
+     "dock.maintenance"
+    ],
+    "stage": "claim",
+    "verdict": "blocked",
+    "version": 1
+   },
+   {
+    "reasons": [
+     "dock.maintenance"
+    ],
+    "stage": "prepare",
+    "verdict": "blocked",
+    "version": 1
+   },
+   {
+    "reasons": [
+     "dock.maintenance"
+    ],
+    "stage": "claim",
+    "verdict": "blocked",
+    "version": 1
+   }
+  ]
+ },
+ "evidence": [],
+ "issues": [
+  {
+   "affected": [],
+   "code": "dispatch.cancelled",
+   "layer": "dispatch",
+   "message": "v1 was never handed out: cancelled"
+  }
+ ],
+ "mission": {
+  "current_version": 1,
+  "mission_id": "m-73d9f9b359bc",
+  "replans": 0,
+  "robot_id": "uav_c",
+  "status": "cancelled"
+ },
+ "operations": [],
+ "report": {
+  "all_targets_completed": false,
+  "summary": {
+   "completed": 0,
+   "not_completed": 1,
+   "uncertain": 0
+  },
+  "targets": {
+   "asset_red": "not_completed"
+  }
+ },
+ "request": {
+  "approved_volume_id": "campus_training",
+  "asset_ids": [],
+  "text": "Inspect the red equipment marker east of the pad and bring back a photo."
+ },
+ "versions": [
+  {
+   "admission": {
+    "accepted": true,
+    "codes": [],
+    "energy_upper_fraction": 0.7696
+   },
+   "approval": {
+    "approved_at": "2026-10-11T12:47:29.252191Z",
+    "expires_at": "2026-10-11T13:17:29.225306Z"
+   },
+   "decision": {
+    "blocked_at": null,
+    "codes": [],
+    "reason": null
+   },
+   "diff": {
+    "added": [
+     "takeoff",
+     "inspect_asset_red",
+     "return_home",
+     "land"
+    ],
+    "changed": [],
+    "removed": []
+   },
+   "events": [],
+   "origin": "harness",
+   "planner": {
+    "decline_reason": "",
+    "notes": "",
+    "prompt_version": "planner-v3",
+    "status": "planned"
+   },
+   "spec": {
+    "targets": [
+     {
+      "asset_id": "asset_red"
+     }
+    ]
+   },
+   "status": "withdrawn",
+   "version": 1
+  }
+ ]
+}

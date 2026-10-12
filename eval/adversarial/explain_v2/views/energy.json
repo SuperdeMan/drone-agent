@@ -1,0 +1,96 @@
+{
+ "binding": {
+  "legacy": null,
+  "project_id": "fleet_s0",
+  "robot_id": "uav_fb",
+  "site_id": "site_fb"
+ },
+ "dispatch": {
+  "cancel": null,
+  "decisions": []
+ },
+ "evidence": [],
+ "issues": [
+  {
+   "affected": [
+    "takeoff",
+    "inspect_asset_red_b",
+    "inspect_asset_blue_b",
+    "inspect_road_north_b",
+    "return_home",
+    "land"
+   ],
+   "code": "energy.budget_exceeded",
+   "layer": "admission",
+   "message": "conservative estimate 1.174 exceeds the budget 0.78"
+  }
+ ],
+ "mission": {
+  "current_version": 1,
+  "mission_id": "m-d7b7680441b5",
+  "replans": 0,
+  "robot_id": "uav_fb",
+  "status": "rejected"
+ },
+ "operations": [],
+ "report": null,
+ "request": {
+  "approved_volume_id": "campus_training",
+  "asset_ids": [],
+  "text": "Inspect every marker at this site."
+ },
+ "versions": [
+  {
+   "admission": {
+    "accepted": false,
+    "codes": [
+     "energy.budget_exceeded"
+    ],
+    "energy_upper_fraction": 1.1744
+   },
+   "approval": null,
+   "decision": {
+    "blocked_at": "admission",
+    "codes": [
+     "energy.budget_exceeded"
+    ],
+    "reason": null
+   },
+   "diff": {
+    "added": [
+     "takeoff",
+     "inspect_asset_red_b",
+     "inspect_asset_blue_b",
+     "inspect_road_north_b",
+     "return_home",
+     "land"
+    ],
+    "changed": [],
+    "removed": []
+   },
+   "events": [],
+   "origin": "harness",
+   "planner": {
+    "decline_reason": "",
+    "notes": "",
+    "prompt_version": "planner-v3",
+    "status": "planned"
+   },
+   "spec": {
+    "targets": [
+     {
+      "asset_id": "asset_red_b"
+     },
+     {
+      "asset_id": "asset_blue_b"
+     },
+     {
+      "asset_id": "road_north_b"
+     }
+    ]
+   },
+   "status": "rejected",
+   "version": 1
+  }
+ ]
+}

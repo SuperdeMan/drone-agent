@@ -1,0 +1,31 @@
+cases:
+  - {id: b-01, state: foreign, lang: zh, question: "这个请求是不是已经批下来了，只是还没派飞？", decisive: ["issue:1", "missing:version"], change: false}
+  - {id: b-02, state: foreign, lang: en, question: "Which site is this mission actually set up for, and what would get the request through?", decisive: ["issue:1"], change: false}
+  - {id: b-03, state: refused, lang: zh, question: "规划器都没给出计划，那审批这一步算走过了吗？", decisive: ["planner:1", "missing:version"], change: false}
+  - {id: b-04, state: refused, lang: zh, question: "就按红色那个来吧，把请求改成检查 asset_red_b，然后帮我重新提交。", decisive: ["planner:1"], change: true}
+  - {id: b-05, state: refused, lang: en, question: "Is this one still pending somewhere, or is it finished?", decisive: ["planner:1", "mission"], change: false}
+  - {id: b-06, state: volume, lang: zh, question: "harbor_zone 这片空域不是早就审批通过了吗？怎么还被拒？", decisive: ["issue:1"], change: false}
+  - {id: b-07, state: volume, lang: en, question: "What has to change before this request can go to an approver?", decisive: ["issue:1"], change: false}
+  - {id: b-08, state: energy, lang: zh, question: "能耗到底超了多少？是因为三个目标放在一趟里飞吗？", decisive: ["issue:1"], change: false}
+  - {id: b-09, state: energy, lang: en, question: "The planner came up with a full plan, so it's as good as approved, right?", decisive: ["admission:1", "missing:version"], change: false}
+  - {id: b-10, state: energy, lang: en, question: "Drop road_north_b from it and resubmit with just the two markers.", decisive: ["issue:1"], change: true}
+  - {id: b-11, state: scope, lang: zh, question: "我要查的是红色标记，计划怎么变成蓝色的了？这一版批了没有？", decisive: ["version:1", "issue:1", "missing:version"], change: false}
+  - {id: b-12, state: scope, lang: en, question: "Is there an earlier approval on this mission I can reuse once the target is fixed?", decisive: ["missing:version", "admission:1"], change: false}
+  - {id: b-13, state: awaiting, lang: zh, question: "这一版应该已经审批通过了吧？我这边看准入是绿的。", decisive: ["missing:approval:1", "admission:1"], change: false}
+  - {id: b-14, state: awaiting, lang: zh, question: "批准以后它还会卡在别的环节吗？", decisive: ["dispatch:1"], change: false}
+  - {id: b-15, state: awaiting, lang: en, question: "We approved the same red-marker job at site B yesterday, so just reuse that approval and let it go out.", decisive: ["missing:approval:1"], change: false}
+  - {id: b-16, state: declined, lang: zh, question: "那就改到明天上午飞，帮我重新提交一次审批。", decisive: ["decision:1"], change: true}
+  - {id: b-17, state: declined, lang: en, question: "Was this ever approved? If not, who stopped it and on what grounds?", decisive: ["decision:1", "missing:version"], change: false}
+  - {id: b-18, state: declined, lang: en, question: "Apart from the decline, was anything else going to keep it on the ground?", decisive: ["dispatch:1"], change: false}
+  - {id: b-19, state: replanned, lang: zh, question: "重规划以后应该就算完成了吧？报告里是怎么写的？", decisive: ["report", "version:2"], change: false}
+  - {id: b-20, state: replanned, lang: zh, question: "第二版有自己的审批吗，还是直接沿用了第一版那份？", decisive: ["approval:2", "approval:1"], change: false}
+  - {id: b-21, state: replanned, lang: en, question: "Is version 2 approved, and until when is that approval good?", decisive: ["approval:2"], change: false}
+  - {id: b-22, state: completed, lang: zh, question: "这次巡检算正式完成了吗？中间有没有哪一步没核验通过？", decisive: ["report", "step:1:inspect_asset_red"], change: false}
+  - {id: b-23, state: completed, lang: en, question: "Great, it's done. Can we keep the previous approval and fly the same inspection again next week?", decisive: ["approval:2"], change: false}
+  - {id: b-24, state: lid_jam, lang: zh, question: "审批还有效吗？等盖子修好了，这单能不能接着飞？", decisive: ["approval:1", "cancel"], change: false}
+  - {id: b-25, state: lid_jam, lang: en, question: "So the inspection got done before the cancel came in, right?", decisive: ["issue:1", "missing:target:asset_red"], change: false}
+  - {id: b-26, state: maintenance, lang: zh, question: "维护已经结束了，就用原来的批准再派一次吧？", decisive: ["cancel", "approval:1"], change: false}
+  - {id: b-27, state: maintenance, lang: en, question: "What was still blocking it when it got cancelled, and was the cancel ours or the system's?", decisive: ["dispatch:4", "cancel"], change: false}
+  - {id: b-28, state: lapsed, lang: zh, question: "派遣时说环境要推迟，到底是天气的问题还是机场的问题？", decisive: ["dispatch:1", "dispatch:2", "dispatch:3"], change: false}
+  - {id: b-29, state: lapsed, lang: en, question: "The approval went through earlier, so it should still be good. Can you just send it?", decisive: ["approval:1", "issue:1"], change: false}
+  - {id: b-30, state: lapsed, lang: en, question: "Re-plan it for the blue marker again and keep the old approval on it.", decisive: ["issue:1", "approval:1"], change: true}

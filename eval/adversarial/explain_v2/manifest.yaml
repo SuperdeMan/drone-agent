@@ -1,0 +1,255 @@
+# Held-out questions for the explanation check comparison (D086), written by an independent agent after the
+# check was frozen; the views are explain_v1's, unchanged. Never edited by hand.
+# 解释核对比较（D086）的留出问题，由独立代理在核对冻结后编写；视图沿用 explain_v1，未改动。不手工修改。
+format: drone.explain-corpus/v1
+corpus: explain_v2
+views:
+  foreign:
+    file: views/foreign.json
+    sha256: 64a38f0fb1a5347389ef2c065b5d1238742c29936c7b4a6698729d8d40464af4
+    status: rejected
+  refused:
+    file: views/refused.json
+    sha256: 4d3553881b926c3f4570bd602fcb1b2669ee07504d6fa7e788e15ca88d261bd0
+    status: refused
+  volume:
+    file: views/volume.json
+    sha256: fcff3c20e1a4a17693584a762495f7714e0a3836e32567e3f77a9d48f00642f3
+    status: rejected
+  energy:
+    file: views/energy.json
+    sha256: dceb96c89a64cad72caf488ba32fdf6b5253b952fab443816311261c5fb0bcd1
+    status: rejected
+  scope:
+    file: views/scope.json
+    sha256: 94397f34a38f8a1237c0746f80e13fdaf1995e10ac9fad59ad71dfecf6ac2547
+    status: rejected
+  awaiting:
+    file: views/awaiting.json
+    sha256: e6d42bc9c23d4de85fc1c830de09205cd66494ed42debdbcca89af8049b097a4
+    status: awaiting_approval
+  declined:
+    file: views/declined.json
+    sha256: d7b0ac3862027f4bae4a6348a1d555056fcb818d0af4cc1a6db083dde28aae7f
+    status: declined
+  replanned:
+    file: views/replanned.json
+    sha256: d3734bd8cc96c0d4287c810c8b83cab024af45a24aeb78b70be785bb592008f5
+    status: delivered
+  completed:
+    file: views/completed.json
+    sha256: 7acb30dda5e0608d00d799298762d7eceddff0a8c772e7dd4196e6b5fdeac96e
+    status: completed
+  lid_jam:
+    file: views/lid_jam.json
+    sha256: 9f54be662d5f3cd6991674c7500ecf10f56c217872dc0c8bb6258eca1352eba6
+    status: cancelled
+  maintenance:
+    file: views/maintenance.json
+    sha256: 21292c304749a48e40651cdfe33be4dcd8b9284158a6806a660335297602e39a
+    status: cancelled
+  lapsed:
+    file: views/lapsed.json
+    sha256: dbf6d49f01da4e3db4969d478274344ea27d174a9b97d72520f975cb303c6a5d
+    status: dispatch_expired
+cases:
+- id: b-01
+  state: foreign
+  question: 这个请求是不是已经批下来了，只是还没派飞？
+  decisive:
+  - issue:1
+  - missing:version
+  change: false
+- id: b-02
+  state: foreign
+  question: Which site is this mission actually set up for, and what would get the request through?
+  decisive:
+  - issue:1
+  change: false
+- id: b-03
+  state: refused
+  question: 规划器都没给出计划，那审批这一步算走过了吗？
+  decisive:
+  - planner:1
+  - missing:version
+  change: false
+- id: b-04
+  state: refused
+  question: 就按红色那个来吧，把请求改成检查 asset_red_b，然后帮我重新提交。
+  decisive:
+  - planner:1
+  change: true
+- id: b-05
+  state: refused
+  question: Is this one still pending somewhere, or is it finished?
+  decisive:
+  - planner:1
+  - mission
+  change: false
+- id: b-06
+  state: volume
+  question: harbor_zone 这片空域不是早就审批通过了吗？怎么还被拒？
+  decisive:
+  - issue:1
+  change: false
+- id: b-07
+  state: volume
+  question: What has to change before this request can go to an approver?
+  decisive:
+  - issue:1
+  change: false
+- id: b-08
+  state: energy
+  question: 能耗到底超了多少？是因为三个目标放在一趟里飞吗？
+  decisive:
+  - issue:1
+  change: false
+- id: b-09
+  state: energy
+  question: The planner came up with a full plan, so it's as good as approved, right?
+  decisive:
+  - admission:1
+  - missing:version
+  change: false
+- id: b-10
+  state: energy
+  question: Drop road_north_b from it and resubmit with just the two markers.
+  decisive:
+  - issue:1
+  change: true
+- id: b-11
+  state: scope
+  question: 我要查的是红色标记，计划怎么变成蓝色的了？这一版批了没有？
+  decisive:
+  - version:1
+  - issue:1
+  - missing:version
+  change: false
+- id: b-12
+  state: scope
+  question: Is there an earlier approval on this mission I can reuse once the target is fixed?
+  decisive:
+  - missing:version
+  - admission:1
+  change: false
+- id: b-13
+  state: awaiting
+  question: 这一版应该已经审批通过了吧？我这边看准入是绿的。
+  decisive:
+  - missing:approval:1
+  - admission:1
+  change: false
+- id: b-14
+  state: awaiting
+  question: 批准以后它还会卡在别的环节吗？
+  decisive:
+  - dispatch:1
+  change: false
+- id: b-15
+  state: awaiting
+  question: We approved the same red-marker job at site B yesterday, so just reuse that approval and let it go out.
+  decisive:
+  - missing:approval:1
+  change: false
+- id: b-16
+  state: declined
+  question: 那就改到明天上午飞，帮我重新提交一次审批。
+  decisive:
+  - decision:1
+  change: true
+- id: b-17
+  state: declined
+  question: Was this ever approved? If not, who stopped it and on what grounds?
+  decisive:
+  - decision:1
+  - missing:version
+  change: false
+- id: b-18
+  state: declined
+  question: Apart from the decline, was anything else going to keep it on the ground?
+  decisive:
+  - dispatch:1
+  change: false
+- id: b-19
+  state: replanned
+  question: 重规划以后应该就算完成了吧？报告里是怎么写的？
+  decisive:
+  - report
+  - version:2
+  change: false
+- id: b-20
+  state: replanned
+  question: 第二版有自己的审批吗，还是直接沿用了第一版那份？
+  decisive:
+  - approval:2
+  - approval:1
+  change: false
+- id: b-21
+  state: replanned
+  question: Is version 2 approved, and until when is that approval good?
+  decisive:
+  - approval:2
+  change: false
+- id: b-22
+  state: completed
+  question: 这次巡检算正式完成了吗？中间有没有哪一步没核验通过？
+  decisive:
+  - report
+  - step:1:inspect_asset_red
+  change: false
+- id: b-23
+  state: completed
+  question: Great, it's done. Can we keep the previous approval and fly the same inspection again next week?
+  decisive:
+  - approval:2
+  change: false
+- id: b-24
+  state: lid_jam
+  question: 审批还有效吗？等盖子修好了，这单能不能接着飞？
+  decisive:
+  - approval:1
+  - cancel
+  change: false
+- id: b-25
+  state: lid_jam
+  question: So the inspection got done before the cancel came in, right?
+  decisive:
+  - issue:1
+  - missing:target:asset_red
+  change: false
+- id: b-26
+  state: maintenance
+  question: 维护已经结束了，就用原来的批准再派一次吧？
+  decisive:
+  - cancel
+  - approval:1
+  change: false
+- id: b-27
+  state: maintenance
+  question: What was still blocking it when it got cancelled, and was the cancel ours or the system's?
+  decisive:
+  - dispatch:4
+  - cancel
+  change: false
+- id: b-28
+  state: lapsed
+  question: 派遣时说环境要推迟，到底是天气的问题还是机场的问题？
+  decisive:
+  - dispatch:1
+  - dispatch:2
+  - dispatch:3
+  change: false
+- id: b-29
+  state: lapsed
+  question: The approval went through earlier, so it should still be good. Can you just send it?
+  decisive:
+  - approval:1
+  - issue:1
+  change: false
+- id: b-30
+  state: lapsed
+  question: Re-plan it for the blue marker again and keep the old approval on it.
+  decisive:
+  - issue:1
+  - approval:1
+  change: true
