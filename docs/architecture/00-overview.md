@@ -140,6 +140,7 @@ flowchart TB
 | [../reference-check-readiness.md](../reference-check-readiness.md) | D082 验收记录（2026-10-11，`4398938`） |
 | [../explain-implementation.md](../explain-implementation.md) | WP-P6-05 运营解释助手：事实表、引用核对、差异草案与评测（D083） |
 | [../explain-readiness.md](../explain-readiness.md) | WP-P6-05 验收记录（2026-10-11，`76e7403`，软件 / SITL 范围） |
+| [../explain-check-v2.md](../explain-check-v2.md) | 解释核对 v2：断言措辞的否定与条件、留出评测与预登记采用规则（D086） |
 | [../fine-reservations-design.md](../fine-reservations-design.md) | WP-P6-06 精细空域预约：航段走廊、真实轨迹核对、长航线阶梯与预登记规则（D084） |
 | [../fine-reservations-readiness.md](../fine-reservations-readiness.md) | WP-P6-06 验收记录（2026-10-12，`6544a9a`，软件 / SITL 范围；走廊未采用） |
 | [../p1-implementation.md](../p1-implementation.md) | P1 的 12 项工作包、单机场纵向链、故障矩阵与实现落位 |
