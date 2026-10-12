@@ -1,0 +1,102 @@
+{
+  "schema_version": "0.1.0",
+  "decision": "D085",
+  "attempt": 2,
+  "status": "void",
+  "preregistration_commit": "d6cf3a7",
+  "candidate_sha": "8fd8a5626e9d5c07597cf1c1da6ad96675666e8b",
+  "registered_rule_verdict": {
+    "status": "failed",
+    "validity": {
+      "inputs": true,
+      "no_throttling": true,
+      "probes_answered": true,
+      "full_windows": true
+    },
+    "criteria": {
+      "pass_p95": false,
+      "api_p95": false,
+      "reconcile_per_mission": true,
+      "dock_report_p99": true,
+      "archive": true,
+      "no_issues": true
+    }
+  },
+  "reason": "The laptop ran on battery for most of the decisive 16x migrated steady window. Windows logged Kernel-Power event 105 with AcOnline=false at 2026-10-12T09:49:17Z and AcOnline=true at 09:56:32Z; the window ran 09:47:40-09:57:40Z. Every part of the service slowed 1.4-1.8x at the median, including parts that depend on nothing that grows (dock action polls, an idle archive check), and write transactions' p95 rose tenfold. The CPU benchmark before and after the run was normal, so the registered validity conditions could not see it.",
+  "steady_window_utc": [
+    "2026-10-12T09:47:40Z",
+    "2026-10-12T09:57:40Z"
+  ],
+  "power_events_utc": [
+    {
+      "at": "2026-10-12T09:49:17Z",
+      "ac_online": false
+    },
+    {
+      "at": "2026-10-12T09:56:32Z",
+      "ac_online": true
+    }
+  ],
+  "x16_indexed_steady_attempt_1_vs_2": {
+    "pass": {
+      "attempt_1_p50": 3.124,
+      "attempt_2_p50": 5.094,
+      "attempt_1_p95": 8.46,
+      "attempt_2_p95": 32.109
+    },
+    "pass.operations": {
+      "attempt_1_p50": 1.535,
+      "attempt_2_p50": 2.725,
+      "attempt_1_p95": 2.648,
+      "attempt_2_p95": 5.425
+    },
+    "pass.archive": {
+      "attempt_1_p50": 0.004,
+      "attempt_2_p50": 0.006,
+      "attempt_1_p95": 0.007,
+      "attempt_2_p95": 0.01
+    },
+    "pass.backlog": {
+      "attempt_1_p50": 0.003,
+      "attempt_2_p50": 0.005,
+      "attempt_1_p95": 0.005,
+      "attempt_2_p95": 0.009
+    },
+    "transaction": {
+      "attempt_1_p50": 0.99,
+      "attempt_2_p50": 1.689,
+      "attempt_1_p95": 2.44,
+      "attempt_2_p95": 23.921
+    },
+    "api.docks.report": {
+      "attempt_1_p50": 1.361,
+      "attempt_2_p50": 2.388,
+      "attempt_1_p95": 2.893,
+      "attempt_2_p95": 25.184
+    },
+    "api.docks.actions": {
+      "attempt_1_p50": 0.094,
+      "attempt_2_p50": 0.154,
+      "attempt_1_p95": 0.224,
+      "attempt_2_p95": 0.535
+    },
+    "api.view": {
+      "attempt_1_p50": 4.038,
+      "attempt_2_p50": 6.733,
+      "attempt_1_p95": 6.14,
+      "attempt_2_p95": 11.281
+    },
+    "api.audit.list": {
+      "attempt_1_p50": 19.833,
+      "attempt_2_p50": 29.788,
+      "attempt_1_p95": 33.185,
+      "attempt_2_p95": 58.486
+    }
+  },
+  "archive_fix_held": {
+    "archive_pass_p99_ms": 65.501,
+    "archive_step_max_ms": 66.881
+  },
+  "next": "attempt 3 adds a power log beside the ladder; the gate requires mains power through every measurement",
+  "criteria_changed": false
+}
