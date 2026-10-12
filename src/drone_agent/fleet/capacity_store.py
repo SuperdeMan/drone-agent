@@ -57,12 +57,37 @@ DDL: tuple[str, ...] = (
     "CREATE INDEX IF NOT EXISTS cap_issues_mission ON issues (mission_id)",
     "CREATE INDEX IF NOT EXISTS cap_op_dock_actions_open ON op_dock_actions (dock_id, state, requested_at)",
     "CREATE INDEX IF NOT EXISTS cap_op_dock_actions_dock ON op_dock_actions (dock_id, requested_at)",
+    # Found by replaying every read of a steady window on the 16x ledger (D085): the audit trail's requests,
+    # approvals and operator requests read newest first, and a dock's newest reservations.
+    # 由在 16 倍账本上重放稳态窗口的全部读取找出（D085）：审计记录按时间倒序读请求、审批与操作请求，以及机场最新的预约。
+    "CREATE INDEX IF NOT EXISTS cap_requests_received ON requests (received_at)",
+    "CREATE INDEX IF NOT EXISTS cap_versions_updated ON versions (updated_at)",
+    # Operator requests only, so the per-pass package scan stays on `cap_deliveries_open`.
+    # 只含操作请求，使每轮的任务包扫描仍走 `cap_deliveries_open`。
+    "CREATE INDEX IF NOT EXISTS cap_deliveries_requests ON deliveries (created_at) WHERE kind = 'operator_request'",
+    "CREATE INDEX IF NOT EXISTS cap_op_reservations_recent ON op_reservations (dock_id, created_at)",
 )
 TABLES = ("cap_event_archives",)
 INDEXES = ("cap_events_mission", "cap_missions_created", "cap_deliveries_mission", "cap_deliveries_open",
            "cap_op_events_audit", "cap_op_reservations_dock", "cap_op_holds_reservation", "cap_op_claims_mission",
            "cap_op_reservations_state", "cap_evidence_mission", "cap_verifications_mission", "cap_facts_mission",
-           "cap_issues_mission", "cap_op_dock_actions_open", "cap_op_dock_actions_dock")
+           "cap_issues_mission", "cap_op_dock_actions_open", "cap_op_dock_actions_dock", "cap_requests_received",
+           "cap_versions_updated", "cap_deliveries_requests", "cap_op_reservations_recent")
+# Indexes on the tables of the workflow, scheduling and business stores: a run's children, outbox and analysis jobs,
+# a project's or a finding's jobs, and a robot's assignments by state. On a fresh ledger those tables appear after
+# this step, so the step builds the ones whose table exists and `converge` adds the rest at a later start.
+# 工作流、调度与业务存储各表上的索引：运行的子运行、出站消息与分析作业，项目或发现的作业，以及机器人按状态的分配。全新账本
+# 上这些表在本步骤之后才出现，因此本步骤只建表已存在的，其余由之后的启动经 `converge` 补建。
+LATE: dict[str, tuple[str, str]] = {
+    "cap_wf_runs_started": ("wf_runs", "CREATE INDEX IF NOT EXISTS cap_wf_runs_started ON wf_runs (started_by, created_at)"),
+    "cap_wf_outbox_run": ("wf_outbox", "CREATE INDEX IF NOT EXISTS cap_wf_outbox_run ON wf_outbox (run_id, created_at)"),
+    "cap_sc_assignments_state": ("sc_assignments",
+                                 "CREATE INDEX IF NOT EXISTS cap_sc_assignments_state ON sc_assignments (state, robot_id)"),
+    "cap_bz_jobs_project": ("bz_jobs", "CREATE INDEX IF NOT EXISTS cap_bz_jobs_project ON bz_jobs (project_id, created_at)"),
+    "cap_bz_jobs_requester": ("bz_jobs",
+                              "CREATE INDEX IF NOT EXISTS cap_bz_jobs_requester ON bz_jobs (requested_by, created_at)"),
+    "cap_bz_jobs_finding": ("bz_jobs", "CREATE INDEX IF NOT EXISTS cap_bz_jobs_finding ON bz_jobs (finding_id, created_at)"),
+}
 
 
 def capacity_schema(ledger: BusinessLedger) -> str | None:
@@ -78,6 +103,27 @@ def _counts(db: sqlite3.Connection) -> dict[str, int]:
 
 def _present(ledger: BusinessLedger, kind: str) -> set[str]:
     return {row["name"] for row in ledger._rows("SELECT name FROM sqlite_master WHERE type=?", (kind,))}
+
+
+def late_due(tables: set[str], indexes: set[str]) -> list[str]:
+    """The late indexes whose table exists but which are not built yet. / 表已存在但尚未建立的后置索引。"""
+    return [name for name, (table, _) in LATE.items() if table in tables and name not in indexes]
+
+
+def converge(ledger: BusinessLedger) -> list[str]:
+    """Build the late indexes of tables that appeared after the capacity step; only indexes, never data (D085).
+
+    为容量步骤之后才出现的表补建后置索引；只建索引，从不改数据（D085）。
+    """
+    with ledger._lock:
+        if capacity_schema(ledger) != CAPACITY_SCHEMA:
+            return []
+        due = late_due(_present(ledger, "table"), _present(ledger, "index"))
+        if due:
+            with ledger.transaction() as db:
+                for name in due:
+                    db.execute(LATE[name][1])
+        return due
 
 
 def migrate(ledger: BusinessLedger, *, backups: Path | None, clock=utcnow) -> dict:
@@ -124,9 +170,12 @@ def migrate(ledger: BusinessLedger, *, backups: Path | None, clock=utcnow) -> di
                     digest.update(chunk)
             backup = {"path": target.name, "sha256": digest.hexdigest(), "rows": counts}
         try:
+            late = late_due(_present(ledger, "table"), _present(ledger, "index"))
             with ledger.transaction() as db:
                 for statement in DDL:
                     db.execute(statement)
+                for name in late:
+                    db.execute(LATE[name][1])
                 db.execute("INSERT INTO meta(key, value) VALUES ('capacity_schema', ?)", (CAPACITY_SCHEMA,))
                 db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES ('capacity_migrated_at', ?)",
                            (clock().isoformat(),))
@@ -174,7 +223,10 @@ def drill(path: Path) -> dict:
     before = other_digest(path)
     ledger = BusinessLedger(path)
     try:
+        # What the service does at start: the marked step, then the late indexes. / 与服务启动时相同：带标记的步骤，再补后置索引。
         report = migrate(ledger, backups=path.parent / "backups")
+        converged = converge(ledger)
+        expected = sorted([*INDEXES, *(name for name, (table, _) in LATE.items() if table in _present(ledger, "table"))])
         with sqlite3.connect(str(path)) as db:
             integrity = db.execute("PRAGMA integrity_check").fetchone()[0]
             tables = sorted(row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -185,11 +237,11 @@ def drill(path: Path) -> dict:
         ledger.close()
     after = other_digest(path)
     return {"status": "passed" if report["status"] in ("migrated", "current") and integrity == "ok"
-            and before == after and tables == sorted(TABLES) and indexes == sorted(INDEXES) else "failed",
-            "migration": report["status"], "capacity_schema": CAPACITY_SCHEMA, "integrity": integrity,
-            "other_sha256_before": before, "other_sha256_after": after, "cap_tables": len(tables),
-            "cap_indexes": len(indexes), "rows_before": report.get("rows_before"), "backup": report.get("backup"),
-            "elapsed_s": round(time.monotonic() - started, 1)}
+            and before == after and tables == sorted(TABLES) and indexes == expected else "failed",
+            "migration": report["status"], "converged": converged, "capacity_schema": CAPACITY_SCHEMA,
+            "integrity": integrity, "other_sha256_before": before, "other_sha256_after": after,
+            "cap_tables": len(tables), "cap_indexes": len(indexes), "rows_before": report.get("rows_before"),
+            "backup": report.get("backup"), "elapsed_s": round(time.monotonic() - started, 1)}
 
 
 def main() -> None:

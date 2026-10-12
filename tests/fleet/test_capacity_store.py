@@ -24,6 +24,8 @@ from drone_agent.fleet.operations_store import drill as operations_drill
 from drone_agent.fleet.operations_store import migrate as migrate_operations
 from tests.fleet.test_operations_store import populated
 
+ROOT = Path(__file__).resolve().parents[2]
+
 
 async def migrated(tmp_path: Path) -> Path:
     """A ledger with a flown mission, at operations schema v2 but without the capacity step.
@@ -131,3 +133,50 @@ async def test_the_drill_fails_when_the_step_touches_other_data(tmp_path, monkey
 
     monkeypatch.setattr(store, "migrate", touching)
     assert store.drill(path)["status"] == "failed"
+
+
+def test_the_late_indexes_converge_and_the_list_and_audit_reads_use_them(tmp_path):
+    """On a fresh desk ledger the workflow, scheduling and business tables appear after the capacity step; `converge`
+    adds their indexes, and the reads found by the replay use them (D085).
+
+    全新任务台账本上工作流、调度与业务表在容量步骤之后才出现；`converge` 补建其索引，重放找出的读取都用上它们（D085）。
+    """
+    from drone_agent.eval.p5_desk_world import P6DeskWorld
+    from drone_agent.fleet.capacity_store import LATE, converge
+
+    world = P6DeskWorld(tmp_path / "desk", ROOT, seed=7)
+    try:
+        assert sorted(converge(world.ledger)) == sorted(LATE) and converge(world.ledger) == []
+        db = world.ledger._db
+        expected = [
+            ("cap_requests_received", "SELECT r.requested_by, r.mission_id, r.body, r.received_at FROM requests r "
+             "JOIN op_bindings b ON b.mission_id = r.mission_id WHERE +b.project_id=? AND r.received_at < ? "
+             "ORDER BY r.received_at DESC LIMIT ?", ("p", "z", 50)),
+            ("cap_versions_updated", "SELECT v.mission_id, v.version FROM versions v JOIN op_bindings b ON "
+             "b.mission_id = v.mission_id WHERE +b.project_id=? AND (v.approval IS NOT NULL OR v.status='declined') "
+             "ORDER BY v.updated_at DESC LIMIT ?", ("p", 200)),
+            ("cap_deliveries_requests", "SELECT d.mission_id FROM deliveries d JOIN op_bindings b ON b.mission_id = "
+             "d.mission_id WHERE +b.project_id=? AND d.kind='operator_request' AND d.created_at < ? "
+             "ORDER BY d.created_at DESC LIMIT ?", ("p", "z", 50)),
+            ("cap_op_reservations_recent", "SELECT * FROM op_reservations WHERE 1=1 AND dock_id=? "
+             "ORDER BY created_at DESC LIMIT ?", ("d", 20)),
+            ("sc_tasks_state", "SELECT * FROM sc_tasks WHERE 1=1 AND +project_id=? AND state IN (?,?) "
+             "ORDER BY created_at, task_id", ("p", "queued", "assigned")),
+            ("sc_tasks_project", "SELECT * FROM sc_tasks WHERE 1=1 AND project_id=? AND state IN (?,?) "
+             "ORDER BY created_at DESC, task_id DESC LIMIT ?", ("p", "completed", "failed", 30)),
+            ("cap_sc_assignments_state", "SELECT * FROM sc_assignments WHERE 1=1 AND +robot_id=? AND state IN (?) "
+             "ORDER BY created_at, task_id, epoch", ("r", "active")),
+            ("cap_wf_runs_started", "SELECT * FROM wf_runs WHERE started_by=? ORDER BY created_at", ("w",)),
+            ("cap_wf_outbox_run", "SELECT * FROM wf_outbox WHERE run_id=? ORDER BY created_at", ("w",)),
+            ("cap_bz_jobs_project", "SELECT * FROM bz_jobs WHERE project_id=? ORDER BY created_at DESC, job_id "
+             "LIMIT ?", ("p", 100)),
+            ("cap_bz_jobs_requester", "SELECT * FROM bz_jobs WHERE requested_by=? ORDER BY created_at DESC, job_id "
+             "LIMIT ?", ("w", 200)),
+            ("cap_bz_jobs_finding", "SELECT * FROM bz_jobs WHERE finding_id=? ORDER BY created_at DESC, job_id "
+             "LIMIT ?", ("f", 50)),
+        ]
+        for index, sql, args in expected:
+            assert index in plan(db, sql, args), (index, plan(db, sql, args))
+    finally:
+        world.service.business.jobs.stop()
+        world.ledger.close()

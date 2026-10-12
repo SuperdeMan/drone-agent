@@ -131,6 +131,12 @@ async def main_async(args) -> None:
     elif workflows is not None and any(getattr(n.params, "findings", False) for w in workflows.catalog.workflows
                                        for n in w.nodes if n.activity == "analyze_evidence"):
         raise SystemExit("the workflow catalog has P4 analysis nodes and needs --business")
+    converged: list[str] = []
+    if operations is not None:
+        # D085: the late capacity indexes of the stores built above. / D085：为上面建立的存储补建后置容量索引。
+        from drone_agent.fleet.capacity_store import converge
+
+        converged = converge(ledger)
     service = MissionService(root=args.root, scene=args.scene, ledger=ledger, hub=hub,
                              signing_key=SigningKey.load(args.signing_key),
                              approval_policy=ApprovalPolicy.from_yaml(args.root / "configs/approval_policy.yaml"),
@@ -226,8 +232,8 @@ async def main_async(args) -> None:
                           "migration": business.migration, "vision": vision_label or args.vision}
              if business is not None else None,
              "execution_backends": list(args.execution_backend), "vendor": vendor,
-             "capacity": {"migration": operations.capacity_migration, "status_retention_days": args.status_retention_days}
-             if operations is not None else None}
+             "capacity": {"migration": operations.capacity_migration, "converged": converged,
+                          "status_retention_days": args.status_retention_days} if operations is not None else None}
     (args.state / "ready.json").write_bytes(canonical(ready))
     print(json.dumps(ready), flush=True)
     stop = asyncio.Event()

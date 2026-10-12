@@ -68,10 +68,14 @@ class ProjectAudit:
 
     # ── sources / 来源 ──
 
+    # Each source reads newest first through its own time index and stops at the page size; `+b.project_id` keeps the
+    # planner off the project's whole history (D085). / 每个来源经自己的时间索引按新到旧读取，取满一页即停；
+    # `+b.project_id` 使查询计划不读取项目的全部历史（D085）。
+
     def _requests(self, project: str, before: str, limit: int) -> list[dict]:
         rows = self._rows(
             "SELECT r.requested_by, r.mission_id, r.body, r.received_at FROM requests r "
-            "JOIN op_bindings b ON b.mission_id = r.mission_id WHERE b.project_id=? AND r.received_at < ? "
+            "JOIN op_bindings b ON b.mission_id = r.mission_id WHERE +b.project_id=? AND r.received_at < ? "
             "ORDER BY r.received_at DESC LIMIT ?", (project, before, limit))
         found = []
         for row in rows:
@@ -84,7 +88,7 @@ class ProjectAudit:
     def _approvals(self, project: str, before: str, limit: int) -> list[dict]:
         rows = self._rows(
             "SELECT v.mission_id, v.version, v.approval, v.decision, v.updated_at FROM versions v "
-            "JOIN op_bindings b ON b.mission_id = v.mission_id WHERE b.project_id=? "
+            "JOIN op_bindings b ON b.mission_id = v.mission_id WHERE +b.project_id=? "
             "AND (v.approval IS NOT NULL OR v.status='declined') ORDER BY v.updated_at DESC LIMIT ?",
             (project, limit * 4))
         found = []
@@ -106,7 +110,7 @@ class ProjectAudit:
     def _operations(self, project: str, before: str, limit: int) -> list[dict]:
         rows = self._rows(
             "SELECT d.mission_id, d.version, d.payload, d.created_at, d.acked_at, d.ack_accepted, d.ack_reason "
-            "FROM deliveries d JOIN op_bindings b ON b.mission_id = d.mission_id WHERE b.project_id=? "
+            "FROM deliveries d JOIN op_bindings b ON b.mission_id = d.mission_id WHERE +b.project_id=? "
             "AND d.kind='operator_request' AND d.created_at < ? ORDER BY d.created_at DESC LIMIT ?",
             (project, before, limit))
         found = []

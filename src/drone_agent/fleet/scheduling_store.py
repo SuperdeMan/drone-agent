@@ -237,14 +237,24 @@ class SchedulingStore:
                                     (requested_by, key)))
 
     def tasks(self, *, project_id: str | None = None, states: tuple[str, ...] | None = None,
-              requested_by: str | None = None, limit: int | None = None) -> list[dict]:
+              requested_by: str | None = None, limit: int | None = None, latest: int | None = None) -> list[dict]:
+        """Matching tasks in creation order; `latest` keeps only the newest N without reading the rest (D085).
+
+        按创建顺序返回匹配的任务单；`latest` 只保留最新的 N 条而不读取其余（D085）。
+        """
         sql, args = "SELECT * FROM sc_tasks WHERE 1=1", []
         if project_id is not None:
-            sql, args = sql + " AND project_id=?", [*args, project_id]
+            # A state filter narrows more than the project's whole history: `+` keeps the planner on the state index.
+            # 状态过滤比项目全部历史更窄：`+` 使查询计划走状态索引。
+            column = "+project_id" if states is not None and latest is None else "project_id"
+            sql, args = sql + f" AND {column}=?", [*args, project_id]
         if requested_by is not None:
             sql, args = sql + " AND requested_by=?", [*args, requested_by]
         if states is not None:
             sql, args = sql + f" AND state IN ({','.join('?' * len(states))})", [*args, *states]
+        if latest is not None:
+            rows = self._rows(sql + " ORDER BY created_at DESC, task_id DESC LIMIT ?", [*args, latest])[::-1]
+            return [self._task(row) for row in rows]
         sql += " ORDER BY created_at, task_id"
         if limit is not None:
             sql, args = sql + " LIMIT ?", [*args, limit]
@@ -326,7 +336,10 @@ class SchedulingStore:
         if task_id is not None:
             sql, args = sql + " AND task_id=?", [*args, task_id]
         if robot_id is not None:
-            sql, args = sql + " AND robot_id=?", [*args, robot_id]
+            # With a state filter, read the few rows in those states rather than the robot's whole history (D085).
+            # 有状态过滤时只读这些状态的少数行，而不是该机器人的全部历史（D085）。
+            column = "+robot_id" if states is not None else "robot_id"
+            sql, args = sql + f" AND {column}=?", [*args, robot_id]
         if states is not None:
             sql, args = sql + f" AND state IN ({','.join('?' * len(states))})", [*args, *states]
         return self._rows(sql + " ORDER BY created_at, task_id, epoch", args)

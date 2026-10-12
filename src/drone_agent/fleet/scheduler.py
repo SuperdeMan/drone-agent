@@ -708,9 +708,11 @@ class Scheduler:
         项目的队列、各机器人的分配与预览判定，以及空域持有与包络。
         """
         self._require(caller, project_id, MISSION_READ)
-        tasks = self.store.tasks(project_id=project_id)
-        live = [t for t in tasks if TaskState(t["state"]) not in TERMINAL_TASK]
-        done = [t for t in tasks if TaskState(t["state"]) in TERMINAL_TASK][-30:]
+        # The open tasks and the newest 30 finished ones, each read on its own; the project's whole history is never
+        # read (D085). / 未结任务单与最新 30 个已结束的各自读取，从不读取项目全部历史（D085）。
+        live = self.store.tasks(project_id=project_id,
+                                states=tuple(s.value for s in TaskState if s not in TERMINAL_TASK))
+        done = self.store.tasks(project_id=project_id, states=tuple(s.value for s in TERMINAL_TASK), latest=30)
         robots = []
         for robot_id in self.project_robots(project_id):
             eligibility = self.service.dispatch.judge(robot_id, stage=Stage.PREVIEW)
