@@ -1,0 +1,518 @@
+{
+  "status": "verified",
+  "source_sha": "8fd8a5626e9d5c07597cf1c1da6ad96675666e8b",
+  "control_sha256": "2971c089cdbe9b9af431c10324a59f069f9bc58c2af151c174736bb58281523c",
+  "deployment_id": "20261012T082734Z-c32552e3",
+  "origin": "https://<tailnet-host>:8448",
+  "listener": "127.0.0.1:8769",
+  "images": {
+    "sim": "drone-agent-p5-sim:8fd8a5626e9d5c07597cf1c1da6ad96675666e8b-2971c089cdbe",
+    "aircraft": "drone-agent-m1-aircraft:8fd8a5626e9d5c07597cf1c1da6ad96675666e8b-2971c089cdbe",
+    "ground": "drone-agent-m1-ground:8fd8a5626e9d5c07597cf1c1da6ad96675666e8b-2971c089cdbe"
+  },
+  "planner": "live",
+  "signer_key_id": "ed25519:6563c47cfafa2a22",
+  "certificate_fingerprints": {
+    "ca": "c0e1bca164a5817a5aa477738aa5a340a24da6e3722f2ed9a57c3341792af2e5",
+    "service": "fcac24effa0c96900d7a9b48ca2dbfbb94f28c29d094f0944aa33d5b94d1a206",
+    "robot": "74f38d4714bbcc1ac0653581c1ef3b1b59a7b13b3cf00b3faaa37dd24bbd1a3e",
+    "robot-tls-uav_fa": "87e388a8943f0f4daf59bac332381ef1731c58643a602a59c6fec91f17dd4b5f",
+    "robot-tls-uav_fb": "ae646bc95f6d585b6295a2ea4f8a2ec5d6ab93f62dae134d07b5ebf7aaea50db"
+  },
+  "planner_label": "live:minimax/MiniMax-M3",
+  "health": {
+    "ok": true,
+    "result": {
+      "status": "ready",
+      "signer_key_id": "ed25519:6563c47cfafa2a22",
+      "robot_id": "uav_01",
+      "planner": "live:minimax/MiniMax-M3",
+      "execution_backend": "px4_sitl",
+      "execution_backends": [
+        "logical_sim",
+        "px4_sitl",
+        "vendor_protocol_sim"
+      ],
+      "source_sha": "8fd8a5626e9d5c07597cf1c1da6ad96675666e8b",
+      "catalog": {
+        "catalog_id": "p5_desk_v1",
+        "sha256": "604d8c6968d91696f8af75f8078551f23a4a7c6fc2b8f7c835bd8136c79fd156"
+      },
+      "workflows": {
+        "catalog_id": "p6_desk_v1",
+        "sha256": "9bf93e8289a3851304273187139582b615cfc0d4097d204a39856e3f9f27da08"
+      },
+      "scheduling": {
+        "catalog_id": "p5_desk_v1",
+        "sha256": "5e61a7098540c7ae45bfdcb2ff359e8ef906340d22676b57a755f893a3b07077"
+      },
+      "business": {
+        "catalog_id": "p6_desk_v1",
+        "sha256": "7eeb5d3e839baa8f4687fed53d1611763ece8ebca95cfe4e2fbdec0a763e434c",
+        "vision": "minimax-vl/MiniMax-M3"
+      }
+    },
+    "console_source_sha": "8fd8a5626e9d5c07597cf1c1da6ad96675666e8b",
+    "fixed": {
+      "status": "ready",
+      "mode": "tailnet",
+      "console_source_sha": "8fd8a5626e9d5c07597cf1c1da6ad96675666e8b",
+      "runtime_source_sha": "8fd8a5626e9d5c07597cf1c1da6ad96675666e8b"
+    },
+    "supervisor": {
+      "schema_version": "0.1.0",
+      "state": "idle",
+      "mission_id": null,
+      "version": null,
+      "detail": null,
+      "queue": [],
+      "source_sha": "8fd8a5626e9d5c07597cf1c1da6ad96675666e8b",
+      "updated_at": "2026-10-12T08:58:30.554790+00:00"
+    },
+    "modes": [
+      "mission",
+      "fixed"
+    ]
+  },
+  "funnel": false,
+  "operations": {
+    "catalog_id": "p5_desk_v1",
+    "catalog_sha256": "604d8c6968d91696f8af75f8078551f23a4a7c6fc2b8f7c835bd8136c79fd156",
+    "migration": {
+      "schema_version": "2",
+      "status": "current"
+    },
+    "drill": {
+      "status": "passed",
+      "migration": "current",
+      "schema_version": "2",
+      "integrity": "ok",
+      "v1_dump_sha256_before": "8b0fb969c5e6a572241d38477785933e1bfe00ef6e42128c0176d73876693a12",
+      "v1_dump_sha256_after": "8b0fb969c5e6a572241d38477785933e1bfe00ef6e42128c0176d73876693a12",
+      "op_tables": 12,
+      "rows_before": null,
+      "backup": null
+    }
+  },
+  "workflows": {
+    "catalog_id": "p6_desk_v1",
+    "catalog_sha256": "9bf93e8289a3851304273187139582b615cfc0d4097d204a39856e3f9f27da08",
+    "migration": {
+      "status": "current",
+      "workflow_schema": "1"
+    },
+    "drill": {
+      "status": "passed",
+      "migration": "current",
+      "workflow_schema": "1",
+      "integrity": "ok",
+      "other_dump_sha256_before": "c903660f02e5699b9227fc438d37ed8eb584ff19ca58762f628118e8957c1aca",
+      "other_dump_sha256_after": "c903660f02e5699b9227fc438d37ed8eb584ff19ca58762f628118e8957c1aca",
+      "wf_tables": 9,
+      "rows_before": null,
+      "backup": null
+    }
+  },
+  "scheduling": {
+    "catalog_id": "p5_desk_v1",
+    "catalog_sha256": "5e61a7098540c7ae45bfdcb2ff359e8ef906340d22676b57a755f893a3b07077",
+    "migration": {
+      "scheduling_schema": "1",
+      "status": "current"
+    },
+    "drill": {
+      "status": "passed",
+      "migration": "current",
+      "scheduling_schema": "1",
+      "integrity": "ok",
+      "other_dump_sha256_before": "8c5d44870e79e7e4e60ea614c03c545cd3f8ce9eb0a85b1240960536d5b21f55",
+      "other_dump_sha256_after": "8c5d44870e79e7e4e60ea614c03c545cd3f8ce9eb0a85b1240960536d5b21f55",
+      "sc_tables": 5,
+      "sc_indexes": 6,
+      "rows_before": null,
+      "backup": null
+    }
+  },
+  "business": {
+    "catalog_id": "p6_desk_v1",
+    "catalog_sha256": "7eeb5d3e839baa8f4687fed53d1611763ece8ebca95cfe4e2fbdec0a763e434c",
+    "migration": {
+      "business_schema": "1",
+      "status": "current"
+    },
+    "drill": {
+      "status": "passed",
+      "migration": "current",
+      "business_schema": "1",
+      "integrity": "ok",
+      "other_dump_sha256_before": "7809f825075bec214c520b509173d95e62821f130e4c32d9a4dedb3ccedf415c",
+      "other_dump_sha256_after": "7809f825075bec214c520b509173d95e62821f130e4c32d9a4dedb3ccedf415c",
+      "bz_tables": 7,
+      "bz_indexes": 6,
+      "rows_before": null,
+      "backup": null
+    },
+    "vision": "live:minimax-vl/MiniMax-M3"
+  },
+  "capacity": {
+    "converged": [],
+    "migration": {
+      "backup": {
+        "path": "ledger-v2-cap-20261012T085843492199Z.sqlite3",
+        "rows": {
+          "bz_catalogs": 3,
+          "bz_findings": 76,
+          "bz_jobs": 1135,
+          "bz_orders": 76,
+          "bz_references": 5,
+          "bz_reviews": 151,
+          "bz_rounds": 80,
+          "deliveries": 1199,
+          "events": 41074,
+          "evidence": 1173,
+          "facts": 0,
+          "issues": 88,
+          "meta": 12,
+          "missions": 1291,
+          "op_bindings": 1261,
+          "op_cancellations": 28,
+          "op_catalogs": 2,
+          "op_claims": 1166,
+          "op_decisions": 4465,
+          "op_dock_actions": 2446,
+          "op_dock_locks": 0,
+          "op_dock_sessions": 94,
+          "op_dock_state": 4,
+          "op_events": 3691725,
+          "op_holds": 14729,
+          "op_reservations": 1236,
+          "operations": 116,
+          "reports": 1178,
+          "requests": 1291,
+          "robots": 4,
+          "sc_assignments": 738,
+          "sc_catalogs": 2,
+          "sc_decisions": 1761,
+          "sc_footprints": 1231,
+          "sc_tasks": 739,
+          "verifications": 1165,
+          "versions": 1294,
+          "wf_analyses": 3,
+          "wf_catalogs": 4,
+          "wf_nodes": 7022,
+          "wf_outbox": 1254,
+          "wf_reviews": 2,
+          "wf_runs": 1169,
+          "wf_schedules": 3,
+          "wf_triggers": 1169,
+          "wf_work_orders": 2
+        },
+        "sha256": "97b562fd52c5d898eaa76ac9b1a4c88a351ce19ff34413b23d33dd12e6391770"
+      },
+      "capacity_schema": "1",
+      "rows_before": {
+        "bz_catalogs": 3,
+        "bz_findings": 76,
+        "bz_jobs": 1135,
+        "bz_orders": 76,
+        "bz_references": 5,
+        "bz_reviews": 151,
+        "bz_rounds": 80,
+        "deliveries": 1199,
+        "events": 41074,
+        "evidence": 1173,
+        "facts": 0,
+        "issues": 88,
+        "meta": 12,
+        "missions": 1291,
+        "op_bindings": 1261,
+        "op_cancellations": 28,
+        "op_catalogs": 2,
+        "op_claims": 1166,
+        "op_decisions": 4465,
+        "op_dock_actions": 2446,
+        "op_dock_locks": 0,
+        "op_dock_sessions": 94,
+        "op_dock_state": 4,
+        "op_events": 3691725,
+        "op_holds": 14729,
+        "op_reservations": 1236,
+        "operations": 116,
+        "reports": 1178,
+        "requests": 1291,
+        "robots": 4,
+        "sc_assignments": 738,
+        "sc_catalogs": 2,
+        "sc_decisions": 1761,
+        "sc_footprints": 1231,
+        "sc_tasks": 739,
+        "verifications": 1165,
+        "versions": 1294,
+        "wf_analyses": 3,
+        "wf_catalogs": 4,
+        "wf_nodes": 7022,
+        "wf_outbox": 1254,
+        "wf_reviews": 2,
+        "wf_runs": 1169,
+        "wf_schedules": 3,
+        "wf_triggers": 1169,
+        "wf_work_orders": 2
+      },
+      "status": "migrated"
+    },
+    "status_retention_days": 7.0,
+    "drill": {
+      "status": "passed",
+      "migration": "migrated",
+      "converged": [],
+      "capacity_schema": "1",
+      "integrity": "ok",
+      "other_sha256_before": "14e0b975f149fb8aca98f143429cc4a0427cb71c4aaad097c5e024d33ced0116",
+      "other_sha256_after": "14e0b975f149fb8aca98f143429cc4a0427cb71c4aaad097c5e024d33ced0116",
+      "cap_tables": 1,
+      "cap_indexes": 25,
+      "rows_before": {
+        "bz_catalogs": 3,
+        "bz_findings": 76,
+        "bz_jobs": 1135,
+        "bz_orders": 76,
+        "bz_references": 5,
+        "bz_reviews": 151,
+        "bz_rounds": 80,
+        "deliveries": 1199,
+        "events": 41074,
+        "evidence": 1173,
+        "facts": 0,
+        "issues": 88,
+        "meta": 12,
+        "missions": 1291,
+        "op_bindings": 1261,
+        "op_cancellations": 28,
+        "op_catalogs": 2,
+        "op_claims": 1166,
+        "op_decisions": 4465,
+        "op_dock_actions": 2446,
+        "op_dock_locks": 0,
+        "op_dock_sessions": 94,
+        "op_dock_state": 4,
+        "op_events": 3689643,
+        "op_holds": 14729,
+        "op_reservations": 1236,
+        "operations": 116,
+        "reports": 1178,
+        "requests": 1291,
+        "robots": 4,
+        "sc_assignments": 738,
+        "sc_catalogs": 2,
+        "sc_decisions": 1761,
+        "sc_footprints": 1231,
+        "sc_tasks": 739,
+        "verifications": 1165,
+        "versions": 1294,
+        "wf_analyses": 3,
+        "wf_catalogs": 4,
+        "wf_nodes": 7022,
+        "wf_outbox": 1254,
+        "wf_reviews": 2,
+        "wf_runs": 1169,
+        "wf_schedules": 3,
+        "wf_triggers": 1169,
+        "wf_work_orders": 2
+      },
+      "backup": {
+        "path": "ledger-v2-cap-20261012T085734692812Z.sqlite3",
+        "sha256": "77db2076b3399c5ead6af28461b9568a97e9598d299de921c1721741c01f40b8",
+        "rows": {
+          "bz_catalogs": 3,
+          "bz_findings": 76,
+          "bz_jobs": 1135,
+          "bz_orders": 76,
+          "bz_references": 5,
+          "bz_reviews": 151,
+          "bz_rounds": 80,
+          "deliveries": 1199,
+          "events": 41074,
+          "evidence": 1173,
+          "facts": 0,
+          "issues": 88,
+          "meta": 12,
+          "missions": 1291,
+          "op_bindings": 1261,
+          "op_cancellations": 28,
+          "op_catalogs": 2,
+          "op_claims": 1166,
+          "op_decisions": 4465,
+          "op_dock_actions": 2446,
+          "op_dock_locks": 0,
+          "op_dock_sessions": 94,
+          "op_dock_state": 4,
+          "op_events": 3689643,
+          "op_holds": 14729,
+          "op_reservations": 1236,
+          "operations": 116,
+          "reports": 1178,
+          "requests": 1291,
+          "robots": 4,
+          "sc_assignments": 738,
+          "sc_catalogs": 2,
+          "sc_decisions": 1761,
+          "sc_footprints": 1231,
+          "sc_tasks": 739,
+          "verifications": 1165,
+          "versions": 1294,
+          "wf_analyses": 3,
+          "wf_catalogs": 4,
+          "wf_nodes": 7022,
+          "wf_outbox": 1254,
+          "wf_reviews": 2,
+          "wf_runs": 1169,
+          "wf_schedules": 3,
+          "wf_triggers": 1169,
+          "wf_work_orders": 2
+        }
+      },
+      "elapsed_s": 60.8
+    }
+  },
+  "switch_drill": {
+    "status": "passed",
+    "catalogs": {
+      "operations": [
+        "p5_desk_v1",
+        "604d8c6968d91696f8af75f8078551f23a4a7c6fc2b8f7c835bd8136c79fd156"
+      ],
+      "workflows": [
+        "p6_desk_v1",
+        "9bf93e8289a3851304273187139582b615cfc0d4097d204a39856e3f9f27da08"
+      ],
+      "scheduling": [
+        "p5_desk_v1",
+        "5e61a7098540c7ae45bfdcb2ff359e8ef906340d22676b57a755f893a3b07077"
+      ],
+      "business": [
+        "p6_desk_v1",
+        "7eeb5d3e839baa8f4687fed53d1611763ece8ebca95cfe4e2fbdec0a763e434c"
+      ],
+      "migrations": {
+        "operations": "current",
+        "workflows": "current",
+        "scheduling": "current",
+        "business": "current"
+      }
+    },
+    "rows_before": 3781590,
+    "rows_after": 3781590,
+    "read": {
+      "missions": 20,
+      "runs": 60,
+      "orders": 48,
+      "audit": {
+        "campus_s1": 50,
+        "fleet_s0": 50,
+        "vendor_s3": 50
+      }
+    },
+    "failures": []
+  },
+  "execution_backends": [
+    "px4_sitl",
+    "logical_sim",
+    "vendor_protocol_sim"
+  ],
+  "vendor": {
+    "docks": [
+      "dock_vd"
+    ]
+  },
+  "dock_sessions": {
+    "dock_s1": "active",
+    "dock_fa": "active",
+    "dock_fb": "active",
+    "dock_vd": "active"
+  },
+  "containers": {
+    "desk-model-proxy": {
+      "container_id": "02a2b2f80a67b99f2029bed3c4c5790fa30d3742ce43811adf52e2e77b0a7b2e",
+      "image_id": "sha256:b2844fdcd4142f4a3d8d00764f6e2b582bc4df7dcd1964205fdec698ef985bd1",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_egress",
+        "drone-agent-cloud_desk_model"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-vendor": {
+      "container_id": "00d33fd09b887fe40f3d95318776b9be262e630f590b51a8d3377a91c928ace8",
+      "image_id": "sha256:b2844fdcd4142f4a3d8d00764f6e2b582bc4df7dcd1964205fdec698ef985bd1",
+      "user": "1000:1001",
+      "networks": [
+        "none"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-service": {
+      "container_id": "94d4568339f77db140568fb74f8724430f8fd39ddf243c3a780e6ad8f165ed78",
+      "image_id": "sha256:b2844fdcd4142f4a3d8d00764f6e2b582bc4df7dcd1964205fdec698ef985bd1",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_model",
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-dock": {
+      "container_id": "cdff60f8077a1c0d8a004a94b03cfdaa920eb051679b2438c653b1a2cfb834cd",
+      "image_id": "sha256:b2844fdcd4142f4a3d8d00764f6e2b582bc4df7dcd1964205fdec698ef985bd1",
+      "user": "1000:1001",
+      "networks": [
+        "none"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-fleet": {
+      "container_id": "ebedd5ccc290a895eeadc07b2b2a62a4866006ef4524fac9c17738ed17c0e8a5",
+      "image_id": "sha256:99c61b0abe9e9798c02ce51ffc1523504bd15ef79a33b5076212b827299c8bee",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk-uplink": {
+      "container_id": "dca549432087b77754e05a8148440526daf09775eab04eff46e43f02f0a62c74",
+      "image_id": "sha256:99c61b0abe9e9798c02ce51ffc1523504bd15ef79a33b5076212b827299c8bee",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_uplink"
+      ],
+      "read_only": true,
+      "docker_access": false
+    },
+    "desk": {
+      "container_id": "ccebeae1fb230431793fdf62cbe12ec17cc4f412ebe635c1406148d162c940a3",
+      "image_id": "sha256:b2844fdcd4142f4a3d8d00764f6e2b582bc4df7dcd1964205fdec698ef985bd1",
+      "user": "1000:1001",
+      "networks": [
+        "drone-agent-cloud_desk_ingress"
+      ],
+      "read_only": true,
+      "docker_access": false
+    }
+  },
+  "other_serve_before_sha256": "349f04197a2a7e4747c39ec22a20f21bd45708ae3c2d9f8a12dd0164fe16b28b",
+  "other_serve_after_sha256": "349f04197a2a7e4747c39ec22a20f21bd45708ae3c2d9f8a12dd0164fe16b28b",
+  "other_containers_before": {
+    "count": 30,
+    "sha256": "31dac7548bd403fcb86177e5e8426ce870760004050344bc0e993c47d94d1f05"
+  },
+  "other_containers_after": {
+    "count": 30,
+    "sha256": "31dac7548bd403fcb86177e5e8426ce870760004050344bc0e993c47d94d1f05"
+  },
+  "supervisor_unit_sha256": "2ccd4b8bd3cd505592d5e862d6aa3902e4471a9b4cde1bcd1aa8b1c8bedbc3f1"
+}

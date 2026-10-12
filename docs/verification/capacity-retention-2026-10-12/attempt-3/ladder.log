@@ -1,0 +1,40 @@
+2026-10-12T10:27:46Z start x1 indexed
+{"part": "measure", "scale": 1, "variant": "indexed", "status": "measured"}
+2026-10-12T10:39:14Z end x1 indexed exit 0
+2026-10-12T10:39:14Z start x1 plain
+{"part": "measure", "scale": 1, "variant": "plain", "status": "measured"}
+2026-10-12T10:52:58Z end x1 plain exit 0
+2026-10-12T10:52:58Z start x4 indexed
+{"part": "measure", "scale": 4, "variant": "indexed", "status": "measured"}
+Task exception was never retrieved
+future: <Task finished name='Task-29' coro=<LogicalUav.fly() done, defined at D:\Personal\AI\Claude Code\产品\drone-agent\src\drone_agent\eval\logical_uav.py:167> exception=ValueError('operation identity mismatch')>
+Traceback (most recent call last):
+  File "D:\Personal\AI\Claude Code\产品\drone-agent\src\drone_agent\eval\logical_uav.py", line 213, in fly
+    result = await executive.run()
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Personal\AI\Claude Code\产品\drone-agent\src\drone_agent\mission\executive.py", line 567, in run
+    await self.execute_phased(node)
+  File "D:\Personal\AI\Claude Code\产品\drone-agent\src\drone_agent\mission\executive.py", line 543, in execute_phased
+    await self._conclude(node, execution, verdict, approach.waypoint)
+  File "D:\Personal\AI\Claude Code\产品\drone-agent\src\drone_agent\mission\executive.py", line 403, in _conclude
+    await self.client.operate(
+  File "D:\Personal\AI\Claude Code\产品\drone-agent\src\drone_agent\eval\logical_flight.py", line 195, in operate
+    result = await self.guardian.operate(operation)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Personal\AI\Claude Code\产品\drone-agent\src\drone_agent\guardian\core.py", line 604, in operate
+    raise ValueError("operation identity mismatch")
+ValueError: operation identity mismatch
+Task exception was never retrieved
+future: <Task finished name='Task-36' coro=<Guardian._recover() done, defined at D:\Personal\AI\Claude Code\产品\drone-agent\src\drone_agent\guardian\core.py:558> exception=ValueError('seek of closed file')>
+Traceback (most recent call last):
+  File "D:\Personal\AI\Claude Code\产品\drone-agent\src\drone_agent\guardian\core.py", line 566, in _recover
+    self.record(
+  File "D:\Personal\AI\Claude Code\产品\drone-agent\src\drone_agent\guardian\core.py", line 138, in record
+    return self.journal.append(kind, {"mission_id": self.package.mission_id, **data})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Personal\AI\Claude Code\产品\drone-agent\src\drone_agent\runtime\ledger.py", line 82, in append
+    self.stream.seek(0, os.SEEK_END)
+ValueError: seek of closed file
+2026-10-12T12:04:34Z end x4 indexed exit 0
+2026-10-12T12:04:35Z start x4 plain
+2026-10-12T12:09:54Z ladder3 done exit 0

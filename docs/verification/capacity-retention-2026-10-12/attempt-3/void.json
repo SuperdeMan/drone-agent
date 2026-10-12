@@ -1,0 +1,142 @@
+{
+  "schema_version": "0.1.0",
+  "decision": "D085",
+  "attempt": 3,
+  "status": "void",
+  "preregistration_commit": "abd629b",
+  "candidate_sha": "a63f3acf379ac1fe396a9a527d84fe9c5eb594c2",
+  "reason": "The laptop was unplugged at 11:00:00Z and its lid closed (or power button pressed) five seconds later; it slept until 12:04:20Z and was then on mains power again. The 4x migrated measurement (started 10:52:59Z) was in its steady window: its power log has two battery samples and a 3857 s gap, which fails the validity condition this attempt added, and two of its four live runs never completed. The two measurements before it were covered throughout.",
+  "power_events_utc": [
+    {
+      "at": "2026-10-12T11:00:00Z",
+      "event": "Kernel-Power 105",
+      "ac_online": false
+    },
+    {
+      "at": "2026-10-12T11:00:05Z",
+      "event": "Kernel-Power 42",
+      "sleep_reason": "Button or Lid"
+    },
+    {
+      "at": "2026-10-12T12:04:20Z",
+      "event": "Kernel-General 1",
+      "clock_moved_from": "2026-10-12T11:00:08Z"
+    },
+    {
+      "at": "2026-10-12T12:04:20Z",
+      "event": "Kernel-Power 105",
+      "ac_online": true
+    }
+  ],
+  "power_coverage": {
+    "x1-indexed": {
+      "ok": true,
+      "samples": 137,
+      "not_online": [],
+      "largest_gap_s": 5.0
+    },
+    "x1-plain": {
+      "ok": true,
+      "samples": 165,
+      "not_online": [],
+      "largest_gap_s": 5.0
+    },
+    "x4-indexed": {
+      "ok": false,
+      "samples": 88,
+      "not_online": [
+        "2026-10-12T11:00:01.718164+00:00",
+        "2026-10-12T11:00:06.719279+00:00"
+      ],
+      "largest_gap_s": 3857.0
+    }
+  },
+  "measurements_kept": [
+    "measure-x1-indexed.json",
+    "measure-x1-plain.json",
+    "measure-x4-indexed.json"
+  ],
+  "not_measured": [
+    "x4-plain (stopped after five minutes)",
+    "x16-indexed",
+    "x16-plain"
+  ],
+  "before_the_sleep": {
+    "x1_indexed": {
+      "reconcile_ms_per_mission": 6.39,
+      "archive_pass": {
+        "n": 81,
+        "p50": 42.774,
+        "p95": 59.646,
+        "p99": 89.957,
+        "max": 89.957
+      },
+      "steady_pass": {
+        "n": 1173,
+        "p50": 3.378,
+        "p95": 8.057,
+        "p99": 23.37,
+        "max": 53.328
+      },
+      "steady_docks_report": {
+        "n": 1725,
+        "p50": 1.578,
+        "p95": 3.188,
+        "p99": 3.745,
+        "max": 12.657
+      }
+    },
+    "x1_plain": {
+      "reconcile_ms_per_mission": 48.192,
+      "steady_pass": {
+        "n": 1124,
+        "p50": 20.638,
+        "p95": 38.182,
+        "p99": 91.727,
+        "max": 154.77
+      }
+    },
+    "x4_indexed": {
+      "reconcile_ms_per_mission": 6.176,
+      "archive_pass": {
+        "n": 88,
+        "p50": 43.041,
+        "p95": 60.558,
+        "p99": 73.919,
+        "max": 73.919
+      },
+      "archive": {
+        "archived": 157282,
+        "chunks": 80,
+        "conserved": true
+      }
+    }
+  },
+  "after_the_sleep": {
+    "x4_indexed_steady_pass": {
+      "n": 477,
+      "p50": 3.705,
+      "p95": 10.225,
+      "p99": 25.44,
+      "max": 74.251
+    },
+    "x4_indexed_live_runs": {
+      "started": 4,
+      "completed": 2
+    },
+    "bench_ms": [
+      134.5,
+      198.3
+    ],
+    "exceptions": [
+      "LogicalUav.fly: operation identity mismatch (the guardian had moved on after the clock jump; stale operations are refused by design)",
+      "Guardian._recover: seek of closed file (recovery ran after the measurement closed its journal)"
+    ]
+  },
+  "stopped": {
+    "at": "2026-10-12T12:09:54Z",
+    "why": "Claude Code stopped the run's background task under host memory pressure; its child processes kept running and were stopped by hand, since the attempt was already void"
+  },
+  "criteria_changed": false,
+  "next": "attempt 4 on the same candidate, criteria, template and ledgers, once the laptop can stay on mains power with its lid open for about two hours; a keep-awake runs beside it"
+}
