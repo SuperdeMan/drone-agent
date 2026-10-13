@@ -146,7 +146,8 @@ flowchart TB
 | [../fine-reservations-readiness.md](../fine-reservations-readiness.md) | WP-P6-06 验收记录（2026-10-12，`6544a9a`，软件 / SITL 范围；走廊未采用） |
 | [../capacity-retention-design.md](../capacity-retention-design.md) | WP-P6-07 容量观测与数据保留：容量迁移与索引、机场状态归档、容量指标与规模阶梯（D085） |
 | [../capacity-readiness.md](../capacity-readiness.md) | WP-P6-07 验收记录（2026-10-12，`a63f3ac`，软件 / SITL 范围） |
-| [../asset-archive-design.md](../asset-archive-design.md) | WP-P6-04 资产时空证据档案：资产修订、观测、权威事件与确定性比较（D087，设计） |
+| [../asset-archive-design.md](../asset-archive-design.md) | WP-P6-04 资产时空证据档案：资产修订、观测、权威事件与确定性比较（D087） |
+| [../asset-archive-readiness.md](../asset-archive-readiness.md) | D087 验收记录（2026-10-13，`6249129`） |
 | [../p1-implementation.md](../p1-implementation.md) | P1 的 12 项工作包、单机场纵向链、故障矩阵与实现落位 |
 | [../p1-readiness.md](../p1-readiness.md) | P1 验收版本、S0 / S1 与常驻任务台迁移证据 |
 | [../p2-implementation.md](../p2-implementation.md) | P2 持久工作流的语义、API、故障矩阵与实施记录 |
