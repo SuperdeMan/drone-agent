@@ -240,7 +240,7 @@ uv run python scripts/dev_stack.py deploy --sha HEAD --apply
   - 可用空间低于 45 GiB 时才回收构建缓存。
   - 回收后仍低于 60 GiB 就记下退避状态，可用空间再降 5 GiB 才重试。
   - 任一项目的锁被占用就跳过这一轮，prune 期间不持锁。
-  - 回收时的保底：2026-10-09 起保留 10 GiB。2026-10-13 两边用户同意撤销保底，由 car-agent 实施：回收时一次清空全部可回收的缓存。原因是删掉任何一条记录后，BuildKit 都会解绑留下记录的缓存键，保底留下的副本再也命中不了，本项目每次回收后的下一次构建照样重建 venv。
+  - 回收时的保底：2026-10-09 起保留 10 GiB。2026-10-13 本项目用户同意撤销保底，由 car-agent 在其用户批准后实施：回收时一次清空全部可回收的缓存。原因是删掉任何一条记录后，BuildKit 都会解绑留下记录的缓存键，保底留下的副本再也命中不了，本项目每次回收后的下一次构建照样重建 venv。
   - 另外两项约定：journald 上限 1G；`/var/lib/apport/coredump` 中的 core 由 apport 自带的 tmpfiles 规则在 3 天后删除，比 GC 的 7 天规则更早。
 - 暂缓的根因修复：`sim/m1.Dockerfile` 的 sim 阶段与 `sim/p3.Dockerfile` 在每次提交都会变的镜像之上执行 `apt-get update` 后安装 `bc`，每次都留下约 275 MB 的软件包索引。
   - 修法是把 `bc` 的安装挪到检查镜像，并在同一步删掉 `/var/lib/apt/lists`。
