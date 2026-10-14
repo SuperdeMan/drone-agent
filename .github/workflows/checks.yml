@@ -24,10 +24,12 @@ jobs:
     timeout-minutes: 45
     steps:
       # Full history: release-gate tests may read committed records. / 完整历史：门禁测试可能读取已提交的记录。
-      - uses: actions/checkout@v4
+      # Node 24 majors (runners dropped Node 20 on 2026-09-23); the smallest step up, approved 2026-10-14 (D077).
+      # 声明 Node 24 的主版本（runner 已于 2026-09-23 移除 Node 20）；升级幅度最小，2026-10-14 获批（D077）。
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           version: "0.11.2"
       - name: Install the locked environment / 按锁文件安装环境
@@ -38,7 +40,7 @@ jobs:
         run: uv run python scripts/generate_contract_fields.py --check
       - name: Pytest
         run: uv run pytest
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
       - name: Console client tests / 任务台客户端测试
