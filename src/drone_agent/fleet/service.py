@@ -1249,6 +1249,10 @@ class MissionService:
             # 即使结果或回执未知也保留取消意图，绝不自动重飞推翻操作者决定。
             return incomplete([issue("replan.cancelled_by_operator", ", ".join(sorted(cancelled)),
                                       affected=sorted(cancelled))])
+        if self._registry(self._robot_of(mission_id)).kind == "ground_site":
+            # A handoff's ground mission is its one version: never retried, never another robot (X1, D088).
+            # 交接的地面任务只有这一个版本：从不重试，也不换车（X1，D088）。
+            return incomplete([issue("replan.not_for_ground", f"{mission_id} v{version} ended unfinished")])
         if mission["replans"] >= self.policy.max_replans_per_mission:
             return incomplete([issue("replan.limit_exceeded", f"{mission['replans']} replans used")])
         package = MissionPackage.model_validate(record["package"])

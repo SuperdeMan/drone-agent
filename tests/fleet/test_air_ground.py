@@ -93,6 +93,37 @@ def test_a_reply_that_disagrees_with_the_robots_map_withdraws_the_offer(world):
     asyncio.run(scenario())
 
 
+def test_a_ground_mission_stopped_by_its_guardian_ends_incomplete_and_is_never_retried(world):
+    w = world
+
+    async def scenario():
+        await w.settle()
+        await w.hold(0.5)
+        task, _ = w.offer(robot_id="ugv_01", target=MID)
+        await w.until(lambda: task_of(w, task["task_id"])["mission_id"] is not None, "ground mission", 15)
+        mission_id = task_of(w, task["task_id"])["mission_id"]
+        await w.approve(mission_id)
+        rover = w.rovers["ugv_01"]
+        # Well away from its parking spot, so a stop there is not a parked robot. / 远离停车位，停在那里不算已停放。
+        await w.until(lambda: not rover.idle and rover.body.mode == "MISSION"
+                      and math.dist(rover.body.position, (0.0, 0.0)) > 1.5, "the rover driving away", 30)
+        # Not an operator's cancel: the guardian stops the robot for its energy. / 不是操作者取消：guardian 因电量停车。
+        rover.battery.fraction = 0.25
+        await w.until(lambda: w.status(mission_id) in TERMINAL, "the ground mission's end", 60)
+        assert w.status(mission_id) == "incomplete"
+        assert [v["version"] for v in w.service.ledger.versions(mission_id)] == [1]
+        assert "replan.not_for_ground" in [i["code"] for i in w.service.ledger.issues(mission_id)]
+        # Stopped on the way, the robot keeps its hold and its task until a person carries it home.
+        # 停在途中的车保留持有与任务单，直到有人把它送回。
+        await w.hold(2.0)
+        assert task_of(w, task["task_id"])["state"] == "assigned"
+        w.carry_home("ugv_01")
+        await w.until(lambda: task_of(w, task["task_id"])["state"] != "assigned", "task settled", 30)
+        settled = task_of(w, task["task_id"])
+        assert (settled["state"], settled["reason"]) == ("failed", "mission.flight_failed")
+    asyncio.run(scenario())
+
+
 def test_a_hold_conflict_keeps_the_offer_accepted_until_it_clears(world):
     w = world
 

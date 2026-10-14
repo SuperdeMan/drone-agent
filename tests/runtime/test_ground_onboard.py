@@ -260,6 +260,32 @@ def ground_adapter(tmp_path, *, speed=0.0, mode="HOLD", age=0.0):
     return adapter, calls
 
 
+@pytest.mark.parametrize(("points", "uploaded"), [([[1.1, 0.0], [3.0, 2.0], [4.0, 5.0]], 2),
+                                                   ([[3.0, 3.0], [4.0, 5.0]], 2), ([[1.2, 0.1]], 1)])
+async def test_a_route_leaves_out_the_points_the_robot_already_stands_on(tmp_path, points, uploaded):
+    # PX4 v1.17 marks such an item reached at the start and now and then never advances past it (X1 S1).
+    # PX4 v1.17 会在启动时把这样的项记为已到达，偶尔就不再推进（X1 S1）。
+    adapter, _ = ground_adapter(tmp_path)
+    plans = []
+
+    async def noop(*args):
+        return None
+
+    async def upload(plan):
+        plans.append(plan)
+
+    async def start():
+        adapter.values["mode"] = NS(name="MISSION")
+
+    adapter._system = NS(mission=NS(set_return_to_launch_after_mission=noop, upload_mission=upload,
+                                    start_mission=start))
+    adapter.values["home"] = NS(latitude_deg=47.0, longitude_deg=8.0)
+    await adapter.route_2d(points, 1.0, lambda: True)
+    assert len(plans[0].mission_items) == uploaded
+    last = plans[0].mission_items[-1]
+    assert last.is_fly_through is False and abs(last.latitude_deg - 47.0 - math.degrees(points[-1][1] / 6378137)) < 1e-9
+
+
 @pytest.mark.parametrize(("speed", "mode", "age"), [(0.4, "HOLD", 0.0), (0.0, "MISSION", 0.0), (0.0, "HOLD", 1.0)])
 async def test_the_real_adapter_refuses_a_disarm_unless_stationary_in_hold(tmp_path, speed, mode, age):
     adapter, calls = ground_adapter(tmp_path, speed=speed, mode=mode, age=age)

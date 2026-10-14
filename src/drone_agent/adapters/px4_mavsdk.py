@@ -415,13 +415,24 @@ class Px4Adapter:
     async def route_2d(self, points, speed, permitted):
         """2D mission waypoints relative to home (the parking spot); passes through every point but the last.
 
-        相对 home（停车位）的二维任务航点；除最后一个点外都不停留。
+        A leading point the robot already stands on (within the acceptance radius) is left out: PX4 v1.17 marks such
+        an item reached as the mission starts and now and then never advances past it (X1 S1, 2026-10-14). The robot
+        then drives from where it stands straight to the next point, the planned leg moved by less than the radius.
+
+        相对 home（停车位）的二维任务航点；除最后一个点外都不停留。车已站在其上（接受半径内）的起始航点不上传：PX4 v1.17 会在
+        任务启动时把这样的项记为已到达，偶尔就停在那里不再推进（X1 S1，2026-10-14）。车于是从所在处直接驶向下一点，即规划
+        的那一段，起点偏移小于接受半径。
         """
         from mavsdk.mission import MissionItem, MissionPlan
 
         origin = self.values["home"]
         # The measured acceptance radius, below the arrival tolerance (X1, D088). / 实测所用的接受半径，小于到点容差。
         radius = self.registry.data["thresholds"]["nav_to"]["acceptance_m"]
+        here = self.snapshot().pose
+        points = list(points)
+        while here is not None and len(points) > 1 and \
+                math.dist(points[0][:2], (here.position.x, here.position.y)) <= radius:
+            points = points[1:]
         items = []
         for index, (east, north) in enumerate(points):
             latitude = origin.latitude_deg + math.degrees(north / 6378137)

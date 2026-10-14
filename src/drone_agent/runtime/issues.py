@@ -135,6 +135,9 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "replan.scope_expanded": IssueLayer.APPROVAL,
     "replan.unverified_edge_added": IssueLayer.APPROVAL,
     "replan.cancelled_by_operator": IssueLayer.APPROVAL,
+    # X1 (D088): a handoff's ground mission is its one version and is never retried. / X1（D088）：交接的地面任务只有
+    # 这一个版本，从不重试。
+    "replan.not_for_ground": IssueLayer.APPROVAL,
     # Onboard acceptance / 机载接受
     "onboard.unsigned": IssueLayer.ONBOARD,
     "onboard.untrusted_signer": IssueLayer.ONBOARD,
