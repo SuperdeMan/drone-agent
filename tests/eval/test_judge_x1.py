@@ -7,6 +7,7 @@ X1 裁判自身规则的构造记录测试（D088）：提议历史、确认、�
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace as NS
@@ -95,3 +96,53 @@ def test_a_hold_inside_a_silent_ground_robots_envelope_is_counted():
     events[1] = reserved("mission:m-2:v1", 4, ["ugv_02.motion", "ground.campus.1.1"], ident=2)
     assert check_envelopes(case(events=events, footprints={activity: footprint}, injections=silent.injections),
                            []) == 0
+
+
+def test_s1_armed_periods_come_from_the_flight_log_spans(tmp_path):
+    from drone_agent.eval.judge_x1 import armed_periods
+
+    path = tmp_path / "arming.json"
+    path.write_text(json.dumps({"files": [
+        # A whole-session log with both transitions. / 含两次迁移的整段日志。
+        {"start_us": 9_640_000, "last_us": 36_132_000, "status": [
+            {"t_us": 9_364_000, "arming_state": 1, "nav_state": 4}, {"t_us": 20_600_000, "arming_state": 2,
+                                                                    "nav_state": 4},
+            {"t_us": 21_592_000, "arming_state": 2, "nav_state": 3},
+            {"t_us": 28_788_000, "arming_state": 1, "nav_state": 4}]},
+        # PX4's default: one file per armed period, which ends with the file. / PX4 默认：每个解锁期一个文件，随文件结束。
+        {"start_us": 50_010_000, "last_us": 70_000_000, "status": [{"t_us": 50_000_000, "arming_state": 2,
+                                                                     "nav_state": 4}]}]}))
+    assert armed_periods(path) == [(20.6, 28.788), (50.0, 70.0)]
+    assert armed_periods(tmp_path / "missing.json") == []
+
+
+def test_s1_truth_rows_are_local_with_differenced_speed_and_armed_flags():
+    from drone_agent.eval.judge_x1 import truth_rows
+
+    rows = []
+    for i in range(80):
+        t = 10.0 + i * 0.05
+        x = 2.0 + min(t - 10.0, 2.0)  # 1 m/s for 2 s, then still / 1 m/s 行驶 2 s 后静止
+        rows.append({"timestamp": at(t), "sim_time": t, "position": [x, -4.0, 0.0]})
+    built = truth_rows(rows, "ugv_01", (2.0, -4.0), ground=True, periods=[(10.0, 12.5)])
+    assert built[0]["position"][:2] == [0.0, 0.0] and built[0]["in_air"] is False
+    assert abs(built[20]["speed"] - 1.0) < 0.05 and built[-1]["speed"] < 0.01
+    assert built[20]["armed"] is True and built[-1]["armed"] is False
+    air = truth_rows([{**rows[0], "position": [0.0, 0.0, 4.0]}], "uav_01", (0.0, 0.0), ground=False, periods=[])
+    assert air[0]["in_air"] is True and air[0]["armed"] is None
+
+
+def test_every_s1_case_materializes_with_an_srgb_compensated_block(tmp_path):
+    from drone_agent.eval.x1_prepare import CASES, block_sdf, load_suite, materialize
+
+    suite = load_suite(ROOT)
+    assert [c["id"] for c in suite["s1"]] == list(CASES)
+    for case in suite["s1"]:
+        for seed in suite["seeds"]:
+            metadata = materialize(ROOT, tmp_path / f"{case['id']}-{seed}", case["id"], seed, "test")
+            assert metadata["inputs"]["asset"] in ("asset_mid", "asset_west")
+            assert (tmp_path / f"{case['id']}-{seed}" / "planner-fixtures.json").is_file()
+    # Gazebo encodes emissive light as sRGB, so 140/255 green is emitted as (140/255) ** 2.2. / Gazebo 按 sRGB 编码
+    # 自发光，所以 140/255 的绿色以其 2.2 次幂发出。
+    assert "<emissive>1.0000 0.2674 0.0000 1</emissive>" in block_sdf(5.0, 4.0, "orange")
+    assert "<diffuse>0 0 0 1</diffuse>" in block_sdf(5.0, 4.0, "orange")

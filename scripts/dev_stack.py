@@ -611,6 +611,11 @@ def main() -> None:
     p6_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
     p6_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to each case's own seeds")
     p6_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
+    x1_parser = commands.add_parser("x1", help="run X1 S1 cases (an x500 and a rover in one PX4 SITL world, D088) in "
+                                                "the cloud")
+    x1_parser.add_argument("--scenario", default="all", help="all or comma-separated S1 case ids")
+    x1_parser.add_argument("--seeds", default="", help="comma-separated seeds; defaults to the suite's seeds")
+    x1_parser.add_argument("--keep-going", action="store_true", help="run every selected case even after a failure")
     adv_parser = commands.add_parser("p6-adv", help="record one WP-P6-03 adversarial corpus in the cloud (D079)")
     adv_parser.add_argument("--corpus", choices=["nl_v1", "workflow_v1", "plan_ops_v1", "plan_ops_v2", "plan_ops_v3",
                                                  "vision_ops_v1", "explain_v1", "explain_v2"],
@@ -745,7 +750,7 @@ def main() -> None:
                                           "mode": args.mode, "profile": args.profile, "resume_of": args.resume_of,
                                           "planner_prompt": args.planner_prompt, "label": args.label},
                              timeout=5 * 3600)
-            elif args.command in ("p1", "p2", "p3", "p4", "p5", "p6"):
+            elif args.command in ("p1", "p2", "p3", "p4", "p5", "p6", "x1"):
                 result = ssh(
                     connection,
                     {

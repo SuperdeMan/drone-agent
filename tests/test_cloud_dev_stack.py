@@ -131,7 +131,7 @@ def test_idle_simulator_does_not_log_and_evaluations_keep_the_px4_default():
     # Not 0: PX4 treats setting its firmware default as a reset, and SITL's later set-default of 1 wins (D062).
     # 不能是 0：PX4 把设为固件默认值当作复位，SITL 随后的 set-default 1 会生效（D062）。
     assert idle["environment"]["PX4_PARAM_SDLOG_MODE"] == "-1"
-    for name in ("m1", "m2", "m3", "p1", "p2", "p3", "p4", "desk"):
+    for name in ("m1", "m2", "m3", "p1", "p2", "p3", "p4", "desk", "x1"):
         overlay = (ROOT / f"sim/compose.{name}.yaml").read_text(encoding="utf-8")
         assert "SDLOG" not in overlay, name
     # Evaluation runs compose their own files; only the deployment tool uses the idle file. The P4 gate merely lists
