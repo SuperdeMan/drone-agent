@@ -7,12 +7,18 @@ and operator requests down, journal rows, evidence, media, status and capability
 `PublishFact` and `OfferHandoff` stay unimplemented in M2 (push delivery, onboard facts and handoff are
 later milestones). Ingest is at-least-once; the ledger deduplicates.
 
+X1 (D088): a handoff offer goes down as a delivery of its own kind, handed out only while the offer is still open and
+addressed to the pulling robot, and the robot answers over `ReplyHandoff`; the hub passes both to the handoff engine.
+
 任务服务与机器人 uplink 之间的 FleetTransport：mTLS gRPC 及其进程内等价实现（WP-M2-12）。
 
 机器人主动拨出（D031）；服务从不连接飞行器。每次调用都绑定到客户端证书 URI SAN 中的机器人身份
 （D030）：报文中写了别的机器人，或写了并未投递给该机器人的任务，一律拒绝。传输的只有任务与证据：
 下行是已签名任务包与操作请求，上行是账本行、证据、媒体、状态与能力。M2 不实现 `DeliverPackage`、
 `PublishFact` 与 `OfferHandoff`（推送投递、机载事实与交接属于后续里程碑）。入账至少一次，账本去重。
+
+X1（D088）：交接提议以单独类型的投递下行，只在提议仍未结、且发给拉取的机器人时交付；机器人经 `ReplyHandoff` 回复；
+hub 把两者都交给交接引擎。
 """
 
 from __future__ import annotations
@@ -64,6 +70,9 @@ class FleetHub:
         # P1 claim gate (D055): decides per pull whether a mission package may be handed out; None keeps M2.
         # P1 领取闸门（D055）：每次拉取时决定任务包能否交付；None 保持 M2 行为。
         self.claim_gate: Callable[[str, dict], bool] | None = None
+        # X1 handoff engine (D088): offers are handed out and replies taken only through it; None refuses both.
+        # X1 交接引擎（D088）：提议的交付与回复的接收都只经由它；None 时两者都拒绝。
+        self.handoffs = None
 
     def _notify(self, robot_id: str, kind: str, mission_id: str | None) -> None:
         for listener in self.listeners:
@@ -180,6 +189,7 @@ class FleetHub:
                 "delivery_id": row["delivery_id"], "cursor": row["cursor"], "kind": row["kind"],
                 "package": MissionPackage.model_validate(payload) if row["kind"] == "mission_package" else None,
                 "operation": OperatorRequest.model_validate(payload) if row["kind"] == "operator_request" else None,
+                "offer": payload if row["kind"] == "handoff_offer" else None,
                 "issued_at": row["created_at"],
             })
         return {"items": items, "cursor": rows[-1]["cursor"] if rows else after_cursor}
@@ -189,6 +199,8 @@ class FleetHub:
 
         操作请求总是通过；任务包只有通过领取闸门才交付，闸门出错时保持不交付。
         """
+        if row["kind"] == "handoff_offer":
+            return self.handoffs is not None and self.handoffs.deliverable(robot_id, row["payload"])
         if self.claim_gate is None or row["kind"] != "mission_package":
             return True
         try:
@@ -208,6 +220,24 @@ class FleetHub:
         delivery = self.ledger.delivery(delivery_id)
         self._notify(robot_id, "ack", delivery["mission_id"])
         return Receipt(True, "", delivery_id)
+
+    def reply_handoff(self, robot_id: str, claimed: str, reply: dict) -> Receipt:
+        """Pass a robot's handoff reply to the engine; acceptance is not ownership (D088).
+
+        把机器人的交接回复交给引擎；接受不等于所有权（D088）。
+        """
+        from drone_agent.fleet.handoff import HandoffRefused
+
+        if not robot_id or claimed != robot_id:
+            return Receipt(False, "auth.robot_mismatch")
+        if self.handoffs is None:
+            return Receipt(False, "handoff.unavailable")
+        try:
+            handoff = self.handoffs.reply(robot_id, reply)
+        except HandoffRefused as error:
+            return Receipt(False, error.code, str(reply.get("handoff_id", "")))
+        self._notify(robot_id, "handoff", None)
+        return Receipt(True, "", handoff["handoff_id"])
 
 
 class LocalFleetClient:
@@ -239,6 +269,9 @@ class LocalFleetClient:
 
     async def acknowledge(self, delivery_id: str, accepted: bool, reason: str = "") -> Receipt:
         return self.hub.acknowledge(self.robot_id, self.robot_id, delivery_id, accepted, reason)
+
+    async def reply_handoff(self, reply: dict) -> Receipt:
+        return self.hub.reply_handoff(self.robot_id, self.robot_id, {**reply, "robot_id": self.robot_id})
 
     async def close(self) -> None:
         return None
@@ -278,7 +311,57 @@ def encode_batch(fleet, batch: dict):
             encode(item["package"], message.package)
         if item["operation"] is not None:
             encode(item["operation"], message.operation)
+        if item.get("offer") is not None:
+            encode_offer(item["offer"], message.offer)
         message.issued_at.FromDatetime(datetime.fromisoformat(item["issued_at"]))
+    return reply
+
+
+def encode_offer(offer: dict, message) -> None:
+    """An offer payload into `HandoffOffer`; it names no mission yet (D088). / 提议载荷编码为 `HandoffOffer`；此时尚无任务。"""
+    from drone_agent.contracts import WorldFact
+    from drone_agent.runtime.wire import encode
+
+    message.schema_version = "0.1.0"
+    for name in ("handoff_id", "task_id", "from_robot_id", "to_robot_id"):
+        setattr(message, name, str(offer[name]))
+    message.expires_at.FromDatetime(datetime.fromisoformat(offer["expires_at"]))
+    message.evidence_refs.extend(offer["evidence_refs"])
+    encode(WorldFact.model_validate(offer["target"]), message.target)
+
+
+def decode_offer(message) -> dict:
+    """`HandoffOffer` back into the payload shape the hub stores. / `HandoffOffer` 还原为 hub 存储的载荷结构。"""
+    from drone_agent.contracts import WorldFact
+    from drone_agent.runtime.wire import decode
+
+    return {"schema_version": message.schema_version, "handoff_id": message.handoff_id, "task_id": message.task_id,
+            "from_robot_id": message.from_robot_id, "to_robot_id": message.to_robot_id,
+            "expires_at": message.expires_at.ToDatetime(tzinfo=timezone.utc).isoformat(),
+            "evidence_refs": list(message.evidence_refs),
+            "target": WorldFact.model_validate(decode(message.target)).model_dump(mode="json")}
+
+
+def reply_message(fleet, robot_id: str, reply: dict):
+    """A reply dict as `HandoffReply`. / 回复字典编码为 `HandoffReply`。"""
+    message = fleet.HandoffReply(schema_version="0.1.0", handoff_id=str(reply["handoff_id"]),
+                                 accepted=bool(reply.get("accepted")), robot_id=robot_id)
+    message.timestamp.FromDatetime(utcnow())
+    for name in ("reason", "reason_code", "map_version"):
+        if reply.get(name):
+            setattr(message, name, str(reply[name])[:300])
+    for name in ("path_length_m", "eta_s"):
+        if reply.get(name) is not None:
+            setattr(message, name, float(reply[name]))
+    return message
+
+
+def reply_dict(message) -> dict:
+    """`HandoffReply` back into the dict the engine reads. / `HandoffReply` 还原为引擎读取的字典。"""
+    reply = {"handoff_id": message.handoff_id, "accepted": message.accepted, "robot_id": message.robot_id}
+    for name in ("reason", "reason_code", "map_version", "path_length_m", "eta_s"):
+        if message.HasField(name):
+            reply[name] = getattr(message, name)
     return reply
 
 
@@ -294,6 +377,7 @@ def decode_batch(fleet, reply) -> dict:
             "package": MissionPackage.model_validate(decode(message.package)) if message.HasField("package") else None,
             "operation": OperatorRequest.model_validate(decode(message.operation))
             if message.HasField("operation") else None,
+            "offer": decode_offer(message.offer) if message.HasField("offer") else None,
             "issued_at": message.issued_at.ToDatetime(tzinfo=timezone.utc).isoformat(),
         })
     return {"items": items, "cursor": reply.cursor}
@@ -359,6 +443,10 @@ async def serve_fleet(hub: FleetHub, address: str, *, cert_pem: bytes, key_pem: 
             robot_id = await self._robot(context)
             return _receipt(fleet, hub.acknowledge(robot_id, request.robot_id, request.delivery_id, request.accepted,
                                                    request.reason))
+
+        async def ReplyHandoff(self, request, context):
+            robot_id = await self._robot(context)
+            return _receipt(fleet, hub.reply_handoff(robot_id, request.robot_id, reply_dict(request)))
 
     server = grpc.aio.server(options=[("grpc.max_receive_message_length", MAX_MESSAGE_BYTES)])
     rpc.add_FleetTransportServicer_to_server(Service(), server)
@@ -433,6 +521,10 @@ class GrpcFleetClient:
         return self._receipt(await self.stub.AcknowledgeDelivery(self.fleet.DeliveryAck(
             schema_version="0.1.0", robot_id=self.robot_id, delivery_id=delivery_id, accepted=accepted,
             reason=reason[:300]), timeout=self.timeout))
+
+    async def reply_handoff(self, reply: dict) -> Receipt:
+        return self._receipt(await self.stub.ReplyHandoff(reply_message(self.fleet, self.robot_id, reply),
+                                                          timeout=self.timeout))
 
     async def close(self) -> None:
         await self.channel.close()

@@ -37,11 +37,13 @@ from drone_agent.fleet.transport import (
     _stubs,
     decode_batch,
     encode_batch,
+    reply_dict,
+    reply_message,
 )
 
 PREFIX = "drone/fleet/v1"
 OPERATIONS = ("publish_event", "publish_evidence", "publish_media", "publish_status", "publish_capability",
-              "fetch_deliveries", "acknowledge")
+              "fetch_deliveries", "acknowledge", "reply_handoff")
 ROBOT_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 
 
@@ -141,6 +143,10 @@ class ZenohFleetServer:
         if operation == "acknowledge":
             request = fleet.DeliveryAck.FromString(body)
             receipt = hub.acknowledge(robot_id, request.robot_id, request.delivery_id, request.accepted, request.reason)
+        elif operation == "reply_handoff":
+            # X1 (D088): the same HandoffReply the gRPC transport carries. / X1（D088）：与 gRPC 传输相同的 HandoffReply。
+            request = fleet.HandoffReply.FromString(body)
+            receipt = hub.reply_handoff(robot_id, request.robot_id, reply_dict(request))
         elif operation == "publish_media":
             request = fleet.EvidenceMedia.FromString(body)
             receipt = hub.publish_media(robot_id, {field.name: value for field, value in request.ListFields()})
@@ -248,6 +254,9 @@ class ZenohFleetClient:
         return await self._publish("acknowledge", self.fleet.DeliveryAck(
             schema_version="0.1.0", robot_id=self.robot_id, delivery_id=delivery_id, accepted=accepted,
             reason=reason[:300]))
+
+    async def reply_handoff(self, reply: dict) -> Receipt:
+        return await self._publish("reply_handoff", reply_message(self.fleet, self.robot_id, reply))
 
     async def close(self) -> None:
         if self.session is not None:
