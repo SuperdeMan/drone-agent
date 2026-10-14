@@ -140,7 +140,7 @@ H1/H2 的采购、系统变更和现场执行条件不因本次文档修订获�
 - [x] WP-P6-07 容量观测与数据保留（D085；新增 1 张表与 25 个索引，用户批准）：2026-10-12 按 `a63f3ac` 验收，规模阶梯第四轮通过，任务台账本迁移并按 7 天保留期归档；72 h 长稳与自动 VACUUM 不在本工作包，见 [容量验收](capacity-readiness.md)。
 - [x] WP-P6-04 资产时空证据档案（D087；新增 3 张表与 4 个索引，用户批准）：2026-10-13 按 `6249129` 验收，档案只给因素、不下归因结论；证据仍不带姿态，视角由位置推出，见 [资产档案验收](asset-archive-readiness.md)。
 - [x] 解释核对 v2（D086）：2026-10-12 评测完成，按预登记规则不采用，服务继续用 v1；v3 需要新的留出集，见 [v2 验收](explain-check-v2-readiness.md)。
-- [ ] P6「证据驱动运营」的其余工作包见[实施任务 §10](operations-implementation.md)；WP-P6-01 已于 2026-10-13 按用户指示采集两批公开候选，共 62 张原图，见[素材审查](p6-materials-review.md)。用户随后明确仅公开数据推进开发评测；[第三批开发诊断](p6-materials-development.md)完成 10 条 MiniMax-M3.1-Flash-Preview 实调及严格回放，6 条与源标签存在分歧，发现漏报和范围混淆风险；许可差异、业务真值、独立地点与清障前后证据仍待处理，正式评测集未冻结、未准出。
+- [ ] P6「证据驱动运营」的其余工作包见[实施任务 §10](operations-implementation.md)；WP-P6-01 已于 2026-10-13 按用户指示采集两批公开候选，共 62 张原图，见[素材审查](p6-materials-review.md)。用户随后明确仅公开数据推进开发评测；[第三批开发诊断](p6-materials-development.md)完成 10 条 MiniMax-M3.1-Flash-Preview 实调及严格回放，6 条与源标签存在分歧，发现漏报和范围混淆风险；2026-10-14 的 [24 条整图 / 分块比较](p6-road-views-development.md)进一步暴露边界问题，分块未设为默认策略；许可差异、业务真值、独立地点与清障前后证据仍待处理，正式评测集未冻结、未准出。
 - [x] 持续检查（D077）：`.github/workflows/checks.yml` 在 main 推送与 PR 上跑 ruff、契约字段、全量 pytest 与客户端测试；不开分支保护。
 
 P4 的 S2 已按 D076 复验通过；VisA 测试拆分已用两次，之后不再用于任何画像，目标业务的识别能力由 WP-P6-01 的评测集验证。P6 补拍的接手项见 [P6 补拍验收](p6-recapture-readiness.md)，P5 的见 [P5 记录](p5-readiness.md)，P4 的见 [P4 记录](p4-readiness.md)，P3 的见 [P3 记录](p3-readiness.md)。每阶段更新入口、对应 readiness 和路线状态；只有实际运行才向 `eval/BASELINES.md` 追加结果。季度技术雷达继续保留。

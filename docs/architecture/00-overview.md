@@ -132,6 +132,7 @@ flowchart TB
 | [../p6-materials-handoff-2026-10-14.md](../p6-materials-handoff-2026-10-14.md) | WP-P6-01 公开素材开发交接、剩余工作与提交范围；P6 仍未整体准出 |
 | [../p6-materials-review.md](../p6-materials-review.md) · [第二批](../p6-materials-round2.md) | 公开来源、许可差异、图像 / 标注审计与正式数据缺口 |
 | [../p6-materials-development.md](../p6-materials-development.md) | 26 条开发输入、10 条实调与严格回放、复核工具及浏览器检查 |
+| [../p6-road-views-development.md](../p6-road-views-development.md) | 道路整图 / 分块的 24 条开发实调、离线工具、边界复核与未采用结论 |
 | [../p6-implementation.md](../p6-implementation.md) | P6 主动补拍与目标区域质量的实施方案（D078，2026-10-10 批准） |
 | [../p6-recapture-readiness.md](../p6-recapture-readiness.md) | WP-P6-02 验收记录（2026-10-10，`ecee452`，软件 / SITL 范围） |
 | [../p6-adversarial-implementation.md](../p6-adversarial-implementation.md) | WP-P6-03 真实模型对抗录制与规划器按站点取上下文的实施方案（D079） |

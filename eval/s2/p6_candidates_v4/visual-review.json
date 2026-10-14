@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-14",
+  "author": "Codex AI visual review",
+  "independent_human_review": false,
+  "previews_reviewed": 6,
+  "global_and_tile_boxes_are_in_source_coordinates": true,
+  "zero_source_support_overlap_is_not_a_correctness_rule": true,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "case_id": "case-8305aeb37905",
+      "image_id": "12494",
+      "notes": "整图与上方分块均圈出左上纵向目标的堆积，下方分块正常；需确认是否同一物体及真实目标范围，不把源 8 自动当业务真值。",
+      "preview_file": "case-8305aeb37905.jpg",
+      "preview_sha256": "87abee8477e59acf93e1a27ba5ea5e514b9858871d5cf97ab79e1fe957b9c381"
+    },
+    {
+      "case_id": "case-d1b8866d1484",
+      "image_id": "12326",
+      "notes": "本轮整图与分块均发现下部堆积；旧 v1 的漏报未在新整图对照复现。分块另增加路口树木和右侧边缘候选。源区域包含路口／停车区域，仍不是已登记资产。",
+      "preview_file": "case-d1b8866d1484.jpg",
+      "preview_sha256": "b667a044d120b4003ca373595d813976795a0b32ff121d6a7fa016cb51486c1a"
+    },
+    {
+      "case_id": "case-3796b34d624b",
+      "image_id": "12494",
+      "notes": "两个新增候选位于底部道路北缘。碎片、树影与车辆附近区域混在框内；需圈实际物体轮廓及其与目标路面的关系，不能用矩形整体替代障碍占道面积。",
+      "preview_file": "case-3796b34d624b.jpg",
+      "preview_sha256": "00a5cf43a7adbe1c16e8d9bafaa580de90d69e8083f5dc52e074b50e6a2e57f5"
+    },
+    {
+      "case_id": "case-98c37eea9470",
+      "image_id": "14431",
+      "notes": "分块多报了道路北侧建筑／空地区域的框，其中两框与源支持域交叠为 0；路口和下缘候选需单独核对真实道路边界，不把交叠阈值当裁判。",
+      "preview_file": "case-98c37eea9470.jpg",
+      "preview_sha256": "e909eaa96ede6e868af209c9586e3b8a722f765bb0cd1d654ed580b87e2ea89c"
+    },
+    {
+      "case_id": "case-b2816a2e7bb3",
+      "image_id": "12892",
+      "notes": "新增候选靠左侧道路右缘，另一个重叠视图只认为有零散小碎片；需确认物体粒度与道路边界，不能凭放大后看起来更大判定实物更大。",
+      "preview_file": "case-b2816a2e7bb3.jpg",
+      "preview_sha256": "7e5e6d097955eabf6dcb5af2c7d1009e1aa121275d8cab4fedf6b3c8b1723d8f"
+    },
+    {
+      "case_id": "case-d382a1ce7ef4",
+      "image_id": "12876",
+      "notes": "整图和两个分块均产生纵向道路堆积候选；分块框有重叠，不能算作两个独立缺陷。",
+      "preview_file": "case-d382a1ce7ef4.jpg",
+      "preview_sha256": "52a11fdad5dbd3208331a0df34d24f1c4a887016976f92942b97ca7da3d07f0c"
+    }
+  ]
+}
