@@ -1,6 +1,6 @@
 # P6 公开道路素材开发诊断
 
-[当前交接](p6-materials-handoff-2026-10-14.md) · [后续整图 / 分块比较](p6-road-views-development.md) · [素材总览](p6-materials-review.md) · [第二批数据](p6-materials-round2.md) · [开发包](../eval/s2/p6_candidates_v3/README.md)
+[当前交接](p6-materials-handoff-2026-10-15.md) · [后续整图 / 分块比较](p6-road-views-development.md) · [素材总览](p6-materials-review.md) · [第二批数据](p6-materials-round2.md) · [开发包](../eval/s2/p6_candidates_v3/README.md)
 
 ## 结论与范围
 

@@ -8,7 +8,7 @@
 
 首场景是园区三处登记设备的周期巡检与外观异常复检。业务流程可跨天，每次飞行仍是有界 MissionSpec；模型只生成类型化草案和业务判断，控制与恢复由确定性运行时承担。先做多站多无人机任务协同，再复用其目录、所有权与预约扩展空地本体。
 
-### 当前实现与阅读边界（2026-09-26）
+### 当前实现与阅读边界（软件 / SITL 范围）
 
 原架构审阅基线为 `9223d74`；P0 验收版本为 `de597d0`，验收见 [P0 记录](../p0-readiness.md)；P1 验收版本为 `b49701b`，见 [P1 记录](../p1-readiness.md)；P2 验收版本为 `3bdbd50`，见 [P2 记录](../p2-readiness.md)；P3 验收版本为 `73fcf23`，见 [P3 记录](../p3-readiness.md)；P4 验收版本为 `8f41112`，S2 在 `f4b1b99` 上复验（D076），见 [P4 记录](../p4-readiness.md)；P5 验收版本为 `1716843`（首个候选 `4c3de14` 未通过，保留为负记录），见 [P5 记录](../p5-readiness.md)。**M2 已完成单机仿真；M3-SITL 已通过，M3-JIL 待硬件；P0–P3 已完成（软件 / SITL 范围）；P4 已完成（2026-10-10，S2 以 MiniMax-M3.1-Flash-Preview 复验通过）；P5 已完成（D069–D073，软件 / SITL / 协议模拟范围）。** 2026-10-10 按外部评审加固航迹覆盖、能源降落平面前提与补全缓存键（D075），并为 P4 的 S2 接入 MiniMax-M3.1-Flash-Preview 视觉档、在校准拆分上冻结画像，在已披露第 2 次使用的测试拆分上复验通过（D076）；加入持续检查（D077）；P6 的 WP-P6-02 主动补拍与目标区域质量经用户批准后在 `ecee452` 准出（D078，见 [P6 补拍验收](../p6-recapture-readiness.md)），WP-P6-03 真实模型对抗录制在 `8d69ae1` 准出（D079，见 [P6 对抗录制验收](../p6-adversarial-readiness.md)），见[评审记录](../research/external-review-2026-10-10.md)。
 
@@ -24,7 +24,7 @@
 | 持久工作流（P2） | 版本化白名单模板、人工 / 排班 / 事件触发、租约与 outbox、取消代次、脚本 / 确定性分析、复核、模拟工单与复检 | [运营层 §12](09-operations.md) |
 | 多站多机调度（P3） | 任务单、确定性分配与可重放判定、空域网格预约与失联包络、领取前撤回、任务级接力、两机同世界 SITL | [运营层 §13](09-operations.md) |
 
-**待实现**：多机调度与时空预约、真实分析器与发现去重、工单关单与复检质量、真实机场；完整语义场景图；Jetson / 真机；地面与厂商平台。M3 事件检测是 CLIP 场景分类，不是通用缺陷识别或机载生成式 VLM。空域已有录制 UOM 后端，没有 live 报备能力；能耗估计限仿真。
+**尚未覆盖**：独立道路业务评测集与现场清障效果、真实机场、完整语义场景图、Jetson / 真机及地面与厂商真实平台。多机调度、分析作业、工单关单与复检已在各自软件 / SITL 范围验证，准确状态见[路线图](../roadmap.md)及 [P6 当前交接](../p6-materials-handoff-2026-10-15.md)。M3 事件检测是 CLIP 场景分类，不是通用缺陷识别或机载生成式 VLM。空域已有录制 UOM 后端，没有 live 报备能力；能耗估计限仿真。
 
 历史验收分别绑定 [M1 `eefe76e`](../m1-readiness.md)、[M2 `f362b9e`](../m2-readiness.md)、[M3-SITL `75382dc`](../m3-readiness.md)。M3 总门禁仍为 `not_passed`，H1 承接 JIL；归档结果不能转借为当前 HEAD 或 P 系列成绩。常驻入口的版本与实调范围见[任务台记录](../tailnet-desk-readiness.md)。
 
@@ -133,6 +133,7 @@ flowchart TB
 | [../p6-materials-review.md](../p6-materials-review.md) · [第二批](../p6-materials-round2.md) | 公开来源、许可差异、图像 / 标注审计与正式数据缺口 |
 | [../p6-materials-development.md](../p6-materials-development.md) | 26 条开发输入、10 条实调与严格回放、复核工具及浏览器检查 |
 | [../p6-road-views-development.md](../p6-road-views-development.md) | 道路整图 / 分块的 24 条开发实调、离线工具、边界复核与未采用结论 |
+| [../p6-road-boundaries-development.md](../p6-road-boundaries-development.md) · [当前交接](../p6-materials-handoff-2026-10-15.md) | 无大小门槛的遮挡候选口径、6 目标 / 13 组 AI 几何草稿与待业务复核项 |
 | [../p6-implementation.md](../p6-implementation.md) | P6 主动补拍与目标区域质量的实施方案（D078，2026-10-10 批准） |
 | [../p6-recapture-readiness.md](../p6-recapture-readiness.md) | WP-P6-02 验收记录（2026-10-10，`ecee452`，软件 / SITL 范围） |
 | [../p6-adversarial-implementation.md](../p6-adversarial-implementation.md) | WP-P6-03 真实模型对抗录制与规划器按站点取上下文的实施方案（D079） |

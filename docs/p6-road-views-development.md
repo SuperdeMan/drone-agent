@@ -2,6 +2,8 @@
 
 [上一批诊断](p6-materials-development.md) · [P6 交接](p6-materials-handoff-2026-10-14.md)
 
+后续解释以 [2026-10-15 边界草稿](p6-road-boundaries-development.md)为补充：用户确认无大小门槛后，原图中的 `12892` 木条应保留为目标内实体遮挡候选。因此本轮三个 normal→suspected 不能都计作误报；本页保留旧提示的原始结果，不作为新口径评分。
+
 ## 目的与边界
 
 2026-10-14，用户授权推送上一批 P6 证据并继续开发。上一批提交 `973e12d` 的草稿 PR 为 [#1](https://github.com/SuperdeMan/drone-agent/pull/1)。本轮独立于该提交推进，不改变在用分析器或准出状态。
