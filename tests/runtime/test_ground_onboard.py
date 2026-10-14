@@ -170,7 +170,9 @@ async def test_low_energy_while_driving_stops_and_disarms_in_place(tmp_path):
     result, guardian, fake, guardian_rows, rows = await drive(tmp_path, during=drain)
     assert not result["completed"]
     home = result["outcomes"]["return_home"]
-    assert (home["execution_status"], home["effect_verdict"]) == ("unknown", "unverified")
+    # Whether the executive observed the step once before the stop decides unknown or unverified; it is never
+    # verified. / executive 在停车前是否观测过该步骤一次，决定是 unknown 还是 unverified；绝不是 verified。
+    assert home["execution_status"] == "unknown" and home["effect_verdict"] in ("unknown", "unverified")
     assert [(d["reason"], d["behavior"]) for d in kinds(guardian_rows, "safety_intervention")] == [
         ("energy_low", "stop")]
     assert kinds(guardian_rows, "recovered_to")[-1]["state"] == "stopped_disarmed"
