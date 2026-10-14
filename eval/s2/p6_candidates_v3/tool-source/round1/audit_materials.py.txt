@@ -1,0 +1,167 @@
+"""Audit source bytes and build review images without making business labels.
+
+审计源字节并生成审查图，不自动生成业务真值标签。
+"""
+import collections
+import hashlib
+import io
+import json
+import re
+import zipfile
+import zlib
+from pathlib import Path
+
+from PIL import Image, ImageDraw, ImageFont
+
+ROOT = Path(__file__).resolve().parent
+AUDIT = ROOT / 'audit'
+THUMBS = AUDIT / 'thumbs'
+SHEETS = AUDIT / 'sheets'
+
+
+def group(name):
+    """Filename hints are not verified places. / 文件名线索不是已核实地点。"""
+    match = re.match(r'(batch_[a-z]?\d+|camera)_', name, re.I)
+    if match:
+        return match[1].lower()
+    return 'unresolved_' + ('gopr' if name.lower().startswith('gopr') else
+                            'photo' if name.lower().startswith('photo') else 'dji')
+
+
+def save(name, value):
+    """Write a local audit artifact. / 写入本地审计产物。"""
+    (AUDIT / name).write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
+
+
+def sheet(rows, filename):
+    """Show original framing with annotation boxes. / 保持原始构图展示标注框。"""
+    width, height, cols = 400, 290, 4
+    out = Image.new('RGB', (width*cols, height*((len(rows)+cols-1)//cols)), '#eeeeee')
+    draw = ImageDraw.Draw(out)
+    font = ImageFont.truetype('C:/Windows/Fonts/arial.ttf', 15)
+    for n, row in enumerate(rows):
+        x, y = (n % cols)*width, (n//cols)*height
+        im = Image.open(THUMBS / f"{row['id']:04d}.jpg")
+        out.paste(im, (x, y))
+        draw.text((x+5, y+238), f"{row['id']:04d}  {row['group_hint']}", font=font, fill='black')
+        draw.text((x+5, y+259), row['file_name'], font=font, fill='black')
+    out.save(SHEETS / filename)
+
+
+def main():
+    """Validate every image and annotation before reporting counts. / 验证每张图片与标注后报告数量。"""
+    receipt_path = AUDIT/'archive-receipt.json'
+    receipt = json.loads(receipt_path.read_text()) if receipt_path.exists() else None
+    for directory in (AUDIT, THUMBS, SHEETS):
+        directory.mkdir(exist_ok=True)
+    archive = ROOT/'raw/UAVVasteDataset.zip'
+    annotations = json.loads((ROOT/'sources/uavvaste-annotations-annotations.json').read_text())
+    splits = json.loads((ROOT/'sources/uavvaste-annotations-train_val_test_distribution_file.json').read_text())
+    source_split = {name: split for split, names in splits.items() for name in names}
+    by_id = collections.defaultdict(list)
+    for ann in annotations['annotations']:
+        by_id[ann['image_id']].append(ann)
+    directory={i['name']:i for i in json.loads((ROOT/'sources/archive-directory.json').read_text())}
+    available = annotations['images'] if receipt else [i for i in annotations['images']
+                 if (ROOT/'raw/uavvaste-images'/i['file_name']).is_file()]
+    rows, errors, small = [], [], collections.Counter()
+    if receipt:
+      with zipfile.ZipFile(archive) as z:
+        for source in ('annotations.json', 'train_val_test_distribution_file.json'):
+            raw = z.read('annotations/'+source)
+            if raw != (ROOT/('sources/uavvaste-annotations-'+source)).read_bytes():
+                raise ValueError(f'archive and pinned repository disagree: {source}')
+    for index, item in enumerate(available):
+            name, ident = item['file_name'], item['id']
+            if receipt:
+                with zipfile.ZipFile(archive) as z:
+                    raw = z.read('images/'+name)
+            else:
+                raw = (ROOT/'raw/uavvaste-images'/name).read_bytes()
+            expected=directory['images/'+name]
+            if len(raw)!=expected['bytes'] or zlib.crc32(raw)!=expected['crc32']:
+                raise ValueError(f'member CRC or size mismatch: {name}')
+            with Image.open(io.BytesIO(raw)) as im:
+                im.load()
+                if im.size != (item['width'], item['height']):
+                    errors.append({'image': name, 'error': 'dimension_mismatch', 'actual': im.size})
+                exif = im.getexif()
+                gray = im.convert('L').resize((17,16), Image.Resampling.LANCZOS)
+                pixels = list(gray.get_flattened_data())
+                bits = [pixels[y*17+x+1] > pixels[y*17+x] for y in range(16) for x in range(16)]
+                dhash = int(''.join('1' if b else '0' for b in bits), 2)
+                thumb = im.convert('RGB')
+                thumb.thumbnail((400,232))
+                tw, th = thumb.size
+                canvas = Image.new('RGB', (400,232), '#d8d8d8')
+                canvas.paste(thumb, (0,0))
+                draw = ImageDraw.Draw(canvas)
+                for ann in by_id[ident]:
+                    x,y,w,h = ann['bbox']
+                    if not (w>0 and h>0 and x>=0 and y>=0 and x+w<=im.width+1 and y+h<=im.height+1):
+                        errors.append({'annotation':ann['id'], 'image':name, 'error':'bbox_out_of_bounds', 'bbox':ann['bbox']})
+                    scaled = min(w,h)*min(1,1344/max(im.size))
+                    small['under_8px_at_1344'] += scaled < 8
+                    small['under_16px_at_1344'] += scaled < 16
+                    draw.rectangle((x*tw/im.width,y*th/im.height,(x+w)*tw/im.width,(y+h)*th/im.height),outline='#e73131',width=1)
+                canvas.save(THUMBS/f'{ident:04d}.jpg',quality=88)
+                rows.append({'id':ident,'file_name':name,'archive_member':'images/'+name,
+                             'sha256':hashlib.sha256(raw).hexdigest(),'bytes':len(raw),'width':im.width,'height':im.height,
+                             'group_hint':group(name),'group_status':'filename_hint_not_verified_location',
+                             'original_split':source_split.get(name),'annotation_count':len(by_id[ident]),
+                             'exif_make':str(exif.get(271,'')),'exif_model':str(exif.get(272,'')),
+                             'exif_date':str(exif.get(306,'')),'has_gps':34853 in exif,
+                             'dhash256':f'{dhash:064x}', 'business_label':'unreviewed', 'p6_split':'unassigned'})
+            if (index+1)%100==0:
+                print(json.dumps({'decoded':index+1,'total':len(annotations['images'])}),flush=True)
+    ids = {i['id'] for i in annotations['images']}
+    for ann in annotations['annotations']:
+        if ann['image_id'] not in ids:
+            errors.append({'annotation':ann['id'],'error':'unknown_image'})
+    save('image-manifest.json', rows)
+    near=[]
+    for n, a in enumerate(rows):
+        for b in rows[n+1:]:
+            distance=(int(a['dhash256'],16)^int(b['dhash256'],16)).bit_count()
+            if distance<=10:
+                near.append({'a':a['id'],'b':b['id'],'distance':distance,
+                             'cross_original_split':a['original_split']!=b['original_split'],
+                             'cross_group_hint':a['group_hint']!=b['group_hint']})
+    save('near-duplicate-candidates.json',near)
+    groups=collections.defaultdict(list)
+    for row in rows:
+        groups[row['group_hint']].append(row)
+    representative=[]
+    for key, values in sorted(groups.items()):
+        values.sort(key=lambda r:r['file_name'].lower())
+        chosen=sorted({0,len(values)//2,len(values)-1})
+        representative.extend(values[i] for i in chosen)
+    save('representative-selection.json',{'rule':'first, middle, last filename per filename-hint group; not random; suitability review only',
+                                        'ids':[r['id'] for r in representative]})
+    for start in range(0,len(representative),20):
+        sheet(representative[start:start+20],f'representative-{start//20+1}.jpg')
+    for start in range(0,len(rows),24):
+        sheet(rows[start:start+24],f'all-{start//24+1:02d}.jpg')
+    summary={'download_scope':'full_archive' if receipt else 'verified_members_only',
+             'source_images':len(annotations['images']),'source_annotations':len(annotations['annotations']),
+             'unavailable_source_images':len(annotations['images'])-len(rows),
+             'images':len(rows),'annotations':sum(r['annotation_count'] for r in rows),'decoded':len(rows),'annotation_errors':errors,
+             'original_splits':dict(collections.Counter(r['original_split'] for r in rows)),
+             'images_without_rubbish_annotations':sum(r['annotation_count']==0 for r in rows),
+             'exact_duplicate_excess':len(rows)-len({r['sha256'] for r in rows}),
+             'near_duplicate_candidates_dhash256_le10':len(near),
+             'near_duplicate_candidates_cross_original_split':sum(r['cross_original_split'] for r in near),
+             'near_duplicate_candidates_cross_group_hint':sum(r['cross_group_hint'] for r in near),
+             'objects_at_profile_resize':dict(small),
+             'exif_model_counts':dict(collections.Counter(r['exif_model'] or 'missing' for r in rows)),
+             'gps_present':sum(r['has_gps'] for r in rows),
+             'groups':[{'hint':key,'images':len(v),'splits':dict(collections.Counter(r['original_split'] for r in v))} for key,v in sorted(groups.items())],
+             'business_labels_confirmed':0,'p6_test_split_frozen':False,'model_calls':0,
+             'archive_sha256':receipt['sha256'] if receipt else None,
+             'script_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+    save('summary.json',summary)
+    print(json.dumps(summary,ensure_ascii=False),flush=True)
+
+
+if __name__=='__main__':
+    main()

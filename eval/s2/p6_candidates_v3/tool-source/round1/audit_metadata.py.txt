@@ -1,0 +1,71 @@
+"""Audit all public metadata without touching evaluation labels.
+
+审计全部公开元数据，不生成或改动评测标签。
+"""
+import collections
+import hashlib
+import json
+from pathlib import Path
+
+from audit_materials import group
+
+ROOT=Path(__file__).resolve().parent
+
+
+def main():
+    """Check counts, bounds, split overlap and small-object scale. / 检查计数、边界、拆分交叉与小目标尺度。"""
+    annotations=ROOT/'sources/uavvaste-annotations-annotations.json'
+    split_path=ROOT/'sources/uavvaste-annotations-train_val_test_distribution_file.json'
+    data=json.loads(annotations.read_text())
+    splits=json.loads(split_path.read_text())
+    images={r['id']:r for r in data['images']}
+    groups=collections.defaultdict(list)
+    for row in images.values():
+        groups[group(row['file_name'])].append(row['file_name'])
+    label_counts=collections.Counter(a['image_id'] for a in data['annotations'])
+    source_splits={name:key for key,names in splits.items() for name in names}
+    dimensions=collections.Counter((i['width'],i['height']) for i in images.values())
+    errors=[]
+    short_sides=[]
+    category_ids={c['id'] for c in data['categories']}
+    for ann in data['annotations']:
+        im=images.get(ann['image_id'])
+        if not im or ann['category_id'] not in category_ids:
+            errors.append({'id':ann['id'],'reason':'invalid_reference'})
+            continue
+        x,y,w,h=ann['bbox']
+        if not (x>=0 and y>=0 and w>0 and h>0 and x+w<=im['width']+1 and y+h<=im['height']+1):
+            errors.append({'id':ann['id'],'reason':'bbox_out_of_bounds','bbox':ann['bbox']})
+        short_sides.append(min(w,h)*min(1,1344/max(im['width'],im['height'])))
+    names=[r['file_name'] for r in images.values()]
+    split_names=[n for v in splits.values() for n in v]
+    summary={
+      'source_repository_commit':(ROOT/'sources/uavvaste-commit.txt').read_text().strip(),
+      'annotation_sha256':hashlib.sha256(annotations.read_bytes()).hexdigest(),
+      'split_file_sha256':hashlib.sha256(split_path.read_bytes()).hexdigest(),
+      'images':len(images),'annotations':len(data['annotations']),'categories':data['categories'],
+      'annotation_errors':errors,
+      'duplicate_image_id_count':len(data['images'])-len(images),
+      'duplicate_annotation_id_count':len(data['annotations'])-len({a['id'] for a in data['annotations']}),
+      'duplicate_filename_count':len(names)-len(set(names)),
+      'duplicate_split_membership_count':len(split_names)-len(set(split_names)),
+      'split_unknown_names':sorted(set(split_names)-set(names)),
+      'split_missing_names':sorted(set(names)-set(split_names)),
+      'images_without_rubbish_annotations':sum(label_counts[i]==0 for i in images),
+      'dimensions':[{'width':k[0],'height':k[1],'count':v} for k,v in sorted(dimensions.items())],
+      'missing_date_captured':sum(not r.get('date_captured') for r in images.values()),
+      'missing_image_level_license':sum(r.get('license') is None for r in images.values()),
+      'official_dataset_license':'CC BY 4.0 (Zenodo metadata; archive record 8214061)',
+      'bbox_short_side_after_1344_resize':{str(t):sum(s<t for s in short_sides) for t in (4,8,16,32)},
+      'small_object_metric_status':'geometric diagnostic only; not a detection threshold',
+      'original_splits':{k:len(v) for k,v in splits.items()},
+      'groups':[{'hint':g,'images':len(v),'original_splits':dict(collections.Counter(source_splits.get(n,'missing') for n in v)),
+                 'location_verified':False} for g,v in sorted(groups.items())],
+      'business_labels_confirmed':0,'formal_split_frozen':False,'external_model_api_calls':0
+    }
+    (ROOT/'audit/metadata-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf-8')
+    print(json.dumps(summary,ensure_ascii=False,indent=2))
+
+
+if __name__=='__main__':
+    main()

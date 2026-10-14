@@ -1,0 +1,119 @@
+"""Verify acquired pairs and render source-label overlays for review.
+
+核验已取得的图像对，并渲染源标签叠加图供审查。
+"""
+import collections
+import hashlib
+import io
+import json
+import math
+import zlib
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+from PIL import Image,ImageDraw,ImageFont
+
+ROOT=Path(__file__).resolve().parent
+
+
+def save(path,value):
+    """Write an audit result. / 写入审计结果。"""
+    path.write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+
+def main():
+    """Never convert source-mask presence into a whole-image business verdict. / 不把源掩码中标签的存在转为整图业务结论。"""
+    path=ROOT/'audit/image-pairs.json'
+    if not path.exists():
+        path=ROOT/'audit/image-pairs-partial.json'
+    rows=json.loads(path.read_text())
+    directory={r['name']:r for r in json.loads((ROOT/'sources/rescuenet-train-directory.json').read_text())}
+    output=ROOT/'audit/previews';output.mkdir(exist_ok=True)
+    sheets=ROOT/'audit/sheets';sheets.mkdir(exist_ok=True)
+    font=ImageFont.truetype('C:/Windows/Fonts/arial.ttf',18)
+    exif_models=collections.Counter();dates=collections.Counter();gps=0
+    tiles=[]
+    captures=[]
+    for row in rows:
+        for prefix in ('image','mask'):
+            member=row[prefix+'_member'];raw=(ROOT/'raw'/member).read_bytes();info=directory[member]
+            assert len(raw)==info['size'] and zlib.crc32(raw)==info['crc32']
+            assert hashlib.sha256(raw).hexdigest()==row[prefix+'_sha256']
+        image=Image.open(ROOT/'raw'/row['image_member']);image.load()
+        mask=Image.open(ROOT/'raw'/row['mask_member']);mask.load()
+        assert image.size==mask.size==(4000,3000)
+        labels=np.asarray(mask);values,counts=np.unique(labels,return_counts=True)
+        assert {str(int(k)):int(v) for k,v in zip(values,counts)}==row['class_pixels']
+        exif=image.getexif();exif_models[str(exif.get(272,'')).rstrip('\x00') or 'missing']+=1
+        dates[str(exif.get(306,'')) or 'missing']+=1;gps+=34853 in exif
+        capture={'id':row['id'],'exif_datetime_raw':str(exif.get(306,'')),'timezone':'not_assumed',
+                 'camera_position_not_target_position':True}
+        gps_ifd=exif.get_ifd(34853) if 34853 in exif else {}
+        if all(k in gps_ifd for k in (1,2,3,4)):
+            def degree(values):
+                return float(values[0])+float(values[1])/60+float(values[2])/3600
+            capture['latitude']=degree(gps_ifd[2])*(-1 if str(gps_ifd[1]).startswith('S') else 1)
+            capture['longitude']=degree(gps_ifd[4])*(-1 if str(gps_ifd[3]).startswith('W') else 1)
+        captures.append(capture)
+        thumb=image.convert('RGB').resize((400,300),Image.Resampling.LANCZOS)
+        small=np.asarray(mask.resize((400,300),Image.Resampling.NEAREST))
+        color=np.zeros((300,400,4),dtype=np.uint8)
+        color[small==7]=(20,220,85,110);color[small==8]=(245,60,40,130)
+        overlay=Image.alpha_composite(thumb.convert('RGBA'),Image.fromarray(color)).convert('RGB')
+        tile=Image.new('RGB',(800,350),'#f4f4f4');tile.paste(thumb,(0,0));tile.paste(overlay,(400,0))
+        draw=ImageDraw.Draw(tile)
+        draw.text((8,305),f"{row['id']} | {row['stratum']} | source mask only",font=font,fill='#161616')
+        draw.text((8,327),f"Green=class 7 clear; red=class 8 blocked; P6 business label pending",font=font,fill='#444444')
+        tile.save(output/f"{row['id']}.jpg",quality=92)
+        tiles.append(tile)
+        pixels=list(image.convert('L').resize((17,16),Image.Resampling.LANCZOS).get_flattened_data())
+        row['dhash256']=f"{int(''.join('1' if pixels[y*17+x+1]>pixels[y*17+x] else '0' for y in range(16) for x in range(16)),2):064x}"
+    for n in range(0,len(tiles),8):
+        batch=tiles[n:n+8];sheet=Image.new('RGB',(1600,350*((len(batch)+1)//2)),'#f4f4f4')
+        for i,tile in enumerate(batch):sheet.paste(tile,((i%2)*800,(i//2)*350))
+        sheet.save(sheets/f'rescuenet-{n//8+1:02d}.jpg',quality=94)
+    near=[]
+    for i,a in enumerate(rows):
+        for b in rows[i+1:]:
+            distance=(int(a['dhash256'],16)^int(b['dhash256'],16)).bit_count()
+            if distance<=10:near.append({'a':a['id'],'b':b['id'],'distance':distance})
+    proximity=[]
+    for index,a in enumerate(captures):
+        for b in captures[index+1:]:
+            if 'latitude' not in a or 'latitude' not in b:
+                continue
+            lat1,lat2=map(math.radians,(a['latitude'],b['latitude']))
+            dlat=lat2-lat1;dlon=math.radians(b['longitude']-a['longitude'])
+            distance=6371000*2*math.asin(min(1,math.sqrt(math.sin(dlat/2)**2+math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2)))
+            try:
+                elapsed=abs((datetime.strptime(a['exif_datetime_raw'],'%Y:%m:%d %H:%M:%S')-datetime.strptime(b['exif_datetime_raw'],'%Y:%m:%d %H:%M:%S')).total_seconds())
+            except ValueError:
+                elapsed=None
+            if distance<=100:
+                proximity.append({'a':a['id'],'b':b['id'],'camera_distance_m':round(distance,2),'exif_time_difference_s':elapsed,
+                                  'status':'review_for_overlap_not_confirmed_same_asset'})
+    save(ROOT/'audit/capture-metadata.json',captures)
+    save(ROOT/'audit/proximity-candidates.json',{'diagnostic_radius_m':100,'not_a_formal_split_rule':True,'pairs':proximity})
+    summary={'source':'RescueNet Figshare train v1','source_image_mask_pairs':3595,
+             'masks_screened':len(json.loads((ROOT/'audit/mask-screen.json').read_text())),
+             'pairs_acquired':len(rows),'strata':dict(collections.Counter(r['stratum'] for r in rows)),
+             'original_image_bytes':sum(r['image_bytes'] for r in rows),
+             'paired_mask_bytes':sum(r['mask_bytes'] for r in rows),'decoded_pairs':len(rows),
+             'per_member_size_crc_sha256_verified':True,'mask_pixel_counts_recomputed':True,
+             'full_zip_md5_verified':False,'formal_test_frozen':False,'external_model_api_calls':0,
+             'exif_model_counts':dict(exif_models),'exif_date_counts':dict(dates),'gps_present':gps,
+             'capture_days':sorted({c['exif_datetime_raw'][:10] for c in captures if c['exif_datetime_raw']}),
+             'camera_proximity_pairs_within_100m':len(proximity),
+             'exact_duplicate_image_excess':len(rows)-len({r['image_sha256'] for r in rows}),
+             'near_duplicate_candidates_dhash256_le10':near,
+             'license_conflict':'Figshare v1 CC0; author GitHub README CC BY-NC-ND; no production-use conclusion',
+             'domain_limitation':'post-hurricane roads, not a validated campus clearance task',
+             'same_asset_before_after_pairs_confirmed':0,'independent_sites_confirmed':0,
+             'business_ground_truth_confirmed':0,'validation_test_source_images_acquired':0}
+    save(ROOT/'audit/pair-manifest.json',rows);save(ROOT/'audit/summary.json',summary)
+    print(json.dumps(summary,ensure_ascii=False),flush=True)
+
+
+if __name__=='__main__':
+    main()

@@ -1,0 +1,223 @@
+{
+  "status": "development_probe_completed_not_release",
+  "run_id": "p6-material-dev-20261013T092809Z",
+  "model": "MiniMax-M3.1-Flash-Preview",
+  "prompt_version": "road-region-dev-v1",
+  "reasoning_effort": "medium",
+  "cases": 10,
+  "answers": 10,
+  "schema_valid": 10,
+  "local_strict_replays": 10,
+  "verdict_counts": {
+    "normal": 6,
+    "suspected": 4
+  },
+  "source_label_disagreements": 6,
+  "accuracy_computed": false,
+  "reason_no_accuracy": "no independent target-business ground truth; exposed development cases and prototype scope differ from source semantic labels",
+  "usage_input_tokens": 40590,
+  "usage_output_tokens": 3637,
+  "estimated_cost": null,
+  "cost_reason": "no verified price source in this probe",
+  "runtime_source_sha": "6249129596b7cfe88c7322f8b425c7b432dba24b",
+  "runner_sha256": "c3e0d56264b2ed22adb78347494a7f96089ddb81e2ea0261ca0adab0f8682536",
+  "config_sha256": "796746a3f1140f0392b92dd49c12664b5819d8b2a7f93803e866a9652c4dc733",
+  "manifest_sha256": "18258a86177a678e72f9583cfa76828f0cc6f33d880be869b7637ecc8f6391ed",
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "case_id": "case-b2816a2e7bb3",
+      "image_id": "12892",
+      "source_class": 7,
+      "ai_development_suggestion": "normal_candidate",
+      "model_verdict": "normal",
+      "source_label_disagreement": false,
+      "reason": "指定道路路面清晰可见，未见大面积实体碎片、倒树或大型物体占用道路；可见杂物较零散。",
+      "uncertainty": "单张图像无法确认车辆移动状态或路面外杂物是否进一步侵入道路。",
+      "obstacle_support_overlap": [],
+      "schema_issues": [],
+      "local_strict_replay": "passed",
+      "human_correctness_verdict": null
+    },
+    {
+      "case_id": "case-98c37eea9470",
+      "image_id": "14431",
+      "source_class": 7,
+      "ai_development_suggestion": "normal_candidate",
+      "model_verdict": "suspected",
+      "source_label_disagreement": true,
+      "reason": "道路上方交叉口内可见成堆树枝及大型残骸，已侵入路面并占用部分通行区域。",
+      "uncertainty": "单张图像无法确认残骸的稳定性、实际通行净空及是否仍会移动。",
+      "obstacle_support_overlap": [
+        {
+          "bbox": [
+            0.523,
+            0.166,
+            0.657,
+            0.28
+          ],
+          "fraction_within_visible_support": 0.1666,
+          "interpretation": "diagnostic clue only; a covering obstacle may lie in a support-mask hole"
+        }
+      ],
+      "schema_issues": [],
+      "local_strict_replay": "passed",
+      "human_correctness_verdict": null
+    },
+    {
+      "case_id": "case-8c1a7f674410",
+      "image_id": "11945",
+      "source_class": 7,
+      "ai_development_suggestion": "normal_candidate",
+      "model_verdict": "normal",
+      "source_label_disagreement": false,
+      "reason": "指定道路主体清晰可见，路面未见成片瓦砾、倒树、沙土堆积或其他大型物体占道。",
+      "uncertainty": "单张图像无法确认车辆是否移动，也不能证明道路实际通行净空或安全状态。",
+      "obstacle_support_overlap": [],
+      "schema_issues": [],
+      "local_strict_replay": "passed",
+      "human_correctness_verdict": null
+    },
+    {
+      "case_id": "case-d1b8866d1484",
+      "image_id": "12326",
+      "source_class": 8,
+      "ai_development_suggestion": "suspected_candidate",
+      "model_verdict": "normal",
+      "source_label_disagreement": true,
+      "reason": "指定道路路面可见范围内未见明显的大面积堆积、倒树或大型物体占用。",
+      "uncertainty": "道路边缘附近存在较多碎片和受损建筑残骸，是否完全位于道路范围外无法由单张图像确定。",
+      "obstacle_support_overlap": [],
+      "schema_issues": [],
+      "local_strict_replay": "passed",
+      "human_correctness_verdict": null
+    },
+    {
+      "case_id": "case-d382a1ce7ef4",
+      "image_id": "12876",
+      "source_class": 8,
+      "ai_development_suggestion": "suspected_candidate",
+      "model_verdict": "suspected",
+      "source_label_disagreement": false,
+      "reason": "指定道路中下段可见大面积木料、板材及金属屋面碎片堆积并占据路面，需人工核查。",
+      "uncertainty": "废墟下方是否仍有道路支撑、实际可通行宽度及障碍厚度无法从单幅影像确定。",
+      "obstacle_support_overlap": [
+        {
+          "bbox": [
+            0.11,
+            0.47,
+            0.207,
+            0.7
+          ],
+          "fraction_within_visible_support": 0.7957,
+          "interpretation": "diagnostic clue only; a covering obstacle may lie in a support-mask hole"
+        },
+        {
+          "bbox": [
+            0.112,
+            0.67,
+            0.207,
+            0.89
+          ],
+          "fraction_within_visible_support": 0.7168,
+          "interpretation": "diagnostic clue only; a covering obstacle may lie in a support-mask hole"
+        }
+      ],
+      "schema_issues": [],
+      "local_strict_replay": "passed",
+      "human_correctness_verdict": null
+    },
+    {
+      "case_id": "case-a6ef3f3adc1a",
+      "image_id": "13370",
+      "source_class": 8,
+      "ai_development_suggestion": "unknown_candidate",
+      "model_verdict": "normal",
+      "source_label_disagreement": true,
+      "reason": "指定道路路面清晰可见，未见大量碎片、倒树或大型物体占道。",
+      "uncertainty": "单张图像无法排除细小或被遮蔽物，也不能证明道路实际通行安全。",
+      "obstacle_support_overlap": [],
+      "schema_issues": [],
+      "local_strict_replay": "passed",
+      "human_correctness_verdict": null
+    },
+    {
+      "case_id": "case-d93151a74650",
+      "image_id": "14528",
+      "source_class": 8,
+      "ai_development_suggestion": "unknown_candidate",
+      "model_verdict": "normal",
+      "source_label_disagreement": true,
+      "reason": "指定道路可见，未见大面积瓦砾、倒树或大型物体占用路面。",
+      "uncertainty": "单幅影像无法确认可见路面掩膜空洞内是否藏有较小障碍物，也不能证明道路完全安全畅通。",
+      "obstacle_support_overlap": [],
+      "schema_issues": [],
+      "local_strict_replay": "passed",
+      "human_correctness_verdict": null
+    },
+    {
+      "case_id": "case-da2dd1fdfc8b",
+      "image_id": "12227",
+      "source_class": 8,
+      "ai_development_suggestion": "unknown_candidate",
+      "model_verdict": "normal",
+      "source_label_disagreement": true,
+      "reason": "指定道路区域清晰可见，仅见少量细小散落物和局部阴影，未见明显的大面积堆积、倒树或大型物体占据道路。",
+      "uncertainty": "单幅图像无法确认细小散落物是否影响通行，也不能证明道路整体安全或无障碍。",
+      "obstacle_support_overlap": [],
+      "schema_issues": [],
+      "local_strict_replay": "passed",
+      "human_correctness_verdict": null
+    },
+    {
+      "case_id": "case-3796b34d624b",
+      "image_id": "12494",
+      "source_class": 7,
+      "ai_development_suggestion": "normal_candidate",
+      "model_verdict": "suspected",
+      "source_label_disagreement": true,
+      "reason": "道路右侧边缘可见大片木质及建筑废料向路面延伸，可能占用道路并需人工复核。",
+      "uncertainty": "仅凭单张影像无法确认废料是否持续、是否完全阻断通行或是否已被清理。",
+      "obstacle_support_overlap": [
+        {
+          "bbox": [
+            0.83,
+            0.78,
+            1.0,
+            0.93
+          ],
+          "fraction_within_visible_support": 0.3027,
+          "interpretation": "diagnostic clue only; a covering obstacle may lie in a support-mask hole"
+        }
+      ],
+      "schema_issues": [],
+      "local_strict_replay": "passed",
+      "human_correctness_verdict": null
+    },
+    {
+      "case_id": "case-8305aeb37905",
+      "image_id": "12494",
+      "source_class": 8,
+      "ai_development_suggestion": "suspected_candidate",
+      "model_verdict": "suspected",
+      "source_label_disagreement": false,
+      "reason": "指定纵向道路下半段可见大面积建筑瓦砾和板材堆积，并侵入路面，需人工复核。",
+      "uncertainty": "仅凭单张图像无法确定堆积物的稳定性、实际占道边界及道路是否可通行。",
+      "obstacle_support_overlap": [
+        {
+          "bbox": [
+            0.249,
+            0.223,
+            0.35,
+            0.537
+          ],
+          "fraction_within_visible_support": 0.8652,
+          "interpretation": "diagnostic clue only; a covering obstacle may lie in a support-mask hole"
+        }
+      ],
+      "schema_issues": [],
+      "local_strict_replay": "passed",
+      "human_correctness_verdict": null
+    }
+  ]
+}

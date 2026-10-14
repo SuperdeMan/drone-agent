@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-13",
+  "status": "passed_for_candidate_package_only",
+  "verified_masks": 80,
+  "verified_original_images": 25,
+  "combined_original_images": 62,
+  "cross_batch_exact_image_duplicates": 0,
+  "checks": [
+    "source snapshot lengths and SHA256",
+    "official ZIP tail parsed to 7190 entries",
+    "all 80 acquired masks match source member size/CRC and recorded SHA256",
+    "all 25 originals match source member size/CRC and recorded SHA256",
+    "25 pair decodes, matching dimensions and pixel-count recomputation in review_rescuenet.py",
+    "review queue IDs match acquired pairs; no invented human decisions",
+    "JSON files parse and new local document links resolve",
+    "final git diff --check passed"
+  ],
+  "formal_dataset_admitted": false,
+  "runtime_code_changed": false,
+  "project_test_suite_rerun": false,
+  "test_scope_reason": "documentation and candidate JSON only; source data integrity checks performed",
+  "artifact_sha256": {
+    "capture-metadata.json": "cfb292433e7a1ccac2870363e3c4958bd1cb42321290ee0e3e12fa8a0cc5c83b",
+    "image-selection.json": "b9ac6ed0b90fc4d028d13ef9afd2156e042e200f9c93a7a80fc3433398869908",
+    "mask-screen.json": "11b22efa798ef92bd3fb6ea68a48cea4074cb21a0788c62486ebd91425d628d5",
+    "mask-selection.json": "3a5c8fb9fe53dc32eb7a5fd6a816ce43996c4b0b72b594e5161a335a06a7f2e4",
+    "pair-manifest.json": "343e00930ff79382cda12fad0e1d96b7a13d005b36bb694b05578f7251f4b0e5",
+    "proximity-candidates.json": "876e92124ed17401a57bcbb185efe4bd888fc59a9582af3fce278901fc12fb43",
+    "review-queue.json": "9663cd32fea29767705374e08f0e7de2e0c36ed795ea598728665879c0d3693b",
+    "selection-plan.json": "a3f891b8b94e34bd2fb614f54796d69a77a11341d67e202985bde8e32ce128db",
+    "source-receipt.json": "1c3ede8726f5dfb03b221fac529ad41ecfcad58766b821905f7993e322aa937d",
+    "sources.json": "0ec0206377aecaefc7c81f19ea660947180afeabab8d290863a368cac262add6",
+    "summary.json": "346a8dfcd2bd351e8b11c988a633a7a39f961804a6e3152f5a366169cb9eac68"
+  },
+  "tools_sha256": {
+    "acquire_rescuenet.py": "462aa7cb3877b6fed34834c28345be67cd0d0d201b68ab4590881648ffdef39c",
+    "publish_round2.py": "120fe1b7f868f0745bd3cd710f4e5c465bb2f2eea8f594d0985a6824d6619fc1",
+    "review_rescuenet.py": "0baa5a70ae5cdc75514e9efdc234912de25a2a73a0284bc3315b4239fbb47c9b"
+  }
+}

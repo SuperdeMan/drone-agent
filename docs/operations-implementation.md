@@ -137,7 +137,7 @@ H2 的飞行程序仍须按届时适用要求核对；本次路线文件不是�
 
 ## 10. P6：证据驱动运营（评审建议）
 
-来源是 [2026-10-10 外部评审](research/external-review-2026-10-10.md)。用户 2026-10-10 选定先做 WP-P6-02（主动补拍与目标区域质量），[实施方案](p6-implementation.md)同日经用户批准（D078），并在 `ecee452` 准出（软件 / SITL 范围，[验收记录](p6-recapture-readiness.md)）。WP-P6-01 等待用户提供素材，WP-P6-03 真实模型对抗录制于 2026-10-11 在 `8d69ae1` 准出（D079，[验收记录](p6-adversarial-readiness.md)）；其接手项「歧义时请操作者澄清」由 D080 完成，planner-v2 同日在 `02694be` 采用（[验收记录](planner-clarification-readiness.md)），planner-v3（规划请求写明绑定身份，D081）同日在 `b4a17a3` 采用（[验收记录](planner-binding-readiness.md)），跨站点指代的确定性检查（D082）同日在 `4398938` 准出（[验收记录](reference-check-readiness.md)）；WP-P6-05 运营解释助手（D083）同日在 `76e7403` 准出（[验收记录](explain-readiness.md)）；WP-P6-06 精细空域预约（D084）2026-10-12 在 `6544a9a` 准出（[验收记录](fine-reservations-readiness.md)），走廊按预登记规则不采用；WP-P6-07 容量观测与数据保留（D085，新增 1 张表与 25 个索引，经用户批准）同日在 `a63f3ac` 准出（[验收记录](capacity-readiness.md)）；解释核对 v2（D086）同日评测完成，按预登记规则不采用（[验收记录](explain-check-v2-readiness.md)）；WP-P6-04 资产时空证据档案（D087，新增 3 张表与 4 个索引，经用户批准）2026-10-13 在 `6249129` 准出（[验收记录](asset-archive-readiness.md)）；其余工作包仍是提议。涉及工作流内核、新表或外部系统的，先写设计与决策，持久化变更按红线先获批准。合并保护已按 D077 加 CI（不开分支保护）。
+来源是 [2026-10-10 外部评审](research/external-review-2026-10-10.md)。用户 2026-10-10 选定先做 WP-P6-02（主动补拍与目标区域质量），[实施方案](p6-implementation.md)同日经用户批准（D078），并在 `ecee452` 准出（软件 / SITL 范围，[验收记录](p6-recapture-readiness.md)）。WP-P6-01 于 2026-10-13 按用户指示启动公开素材采集与审查（[来源与缺口](p6-materials-review.md)），已按用户“仅公开数据”指示完成 [10 条开发实调与回放](p6-materials-development.md)，正式评测集尚未冻结；WP-P6-03 真实模型对抗录制于 2026-10-11 在 `8d69ae1` 准出（D079，[验收记录](p6-adversarial-readiness.md)）；其接手项「歧义时请操作者澄清」由 D080 完成，planner-v2 同日在 `02694be` 采用（[验收记录](planner-clarification-readiness.md)），planner-v3（规划请求写明绑定身份，D081）同日在 `b4a17a3` 采用（[验收记录](planner-binding-readiness.md)），跨站点指代的确定性检查（D082）同日在 `4398938` 准出（[验收记录](reference-check-readiness.md)）；WP-P6-05 运营解释助手（D083）同日在 `76e7403` 准出（[验收记录](explain-readiness.md)）；WP-P6-06 精细空域预约（D084）2026-10-12 在 `6544a9a` 准出（[验收记录](fine-reservations-readiness.md)），走廊按预登记规则不采用；WP-P6-07 容量观测与数据保留（D085，新增 1 张表与 25 个索引，经用户批准）同日在 `a63f3ac` 准出（[验收记录](capacity-readiness.md)）；解释核对 v2（D086）同日评测完成，按预登记规则不采用（[验收记录](explain-check-v2-readiness.md)）；WP-P6-04 资产时空证据档案（D087，新增 3 张表与 4 个索引，经用户批准）2026-10-13 在 `6249129` 准出（[验收记录](asset-archive-readiness.md)）；WP-P6-01 仍在开发阶段。涉及工作流内核、新表或外部系统的，先写设计与决策，持久化变更按红线先获批准。合并保护已按 D077 加 CI（不开分支保护）。
 
 | 工作包 | 交付 / 落位 | 前置 | 验收判据 |
 |---|---|---|---|
@@ -149,5 +149,5 @@ H2 的飞行程序仍须按届时适用要求核对；本次路线文件不是�
 | WP-P6-06 精细时空预约 | 在 D075 空间契约之上做航段走廊、时间窗与高度分层；失联、位置不新鲜时退回大范围 | D075；P3 | 获准运动范围始终在预约内；利用率提升按 S0 阶梯数字说话 |
 | WP-P6-07 容量观测与数据保留 | 事务耗时、调度轮耗时、事件循环延迟、接口尾延迟与队列积压；`op_events` 保留与归档；`events(mission_id, mission_version)` 索引 | 索引与保留策略须用户批准 | 历史数据增长下启动与查询的趋势可外推；长稳判据不退化 |
 
-不建议优先做：增加 Agent 角色、拆微服务或换工作流引擎、把端到端 VLA 放进控制主链（评审同此判断）。合并保护已按 D077 实施第一层（每次推送与 PR 的 ruff、契约字段、全量 pytest 与客户端测试）；运动 / 安全路径的定向回归与定期 SITL 仍按候选在云端运行。
+不建议优先做：增加 Agent 角色、拆微服务或换工作流引擎、把端到端 VLA 放进控制主链（评审同此判断）。合并保护已按 D077 实施第一层（main 推送与 PR 的 ruff、契约字段、全量 pytest 与客户端测试）；运动 / 安全路径的定向回归与定期 SITL 仍按候选在云端运行。
 

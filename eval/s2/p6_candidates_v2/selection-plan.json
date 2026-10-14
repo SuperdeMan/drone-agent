@@ -1,0 +1,15 @@
+{
+  "purpose": "source suitability screening, not formal benchmark",
+  "source": "RescueNet Figshare train v1, 22825511",
+  "mask_sampling": "first 80 image-mask IDs ordered by SHA256(p6-rescuenet-screen-v1:<id>)",
+  "image_sampling": "up to 8 per mask-presence stratum: clear_only, blocked_only, mixed, no_road, in sampled ID order",
+  "mask_classes": {
+    "road_clear": 7,
+    "road_blocked": 8
+  },
+  "stratum_rule": "presence means strictly positive pixel count; this is not a product obstruction threshold",
+  "split": "development_review_only",
+  "external_model_calls": 0,
+  "license_status": "Figshare CC0 versus author GitHub CC BY-NC-ND; preserve conflict, no production eligibility conclusion",
+  "source_validation_test_images": "not acquired or inspected"
+}
