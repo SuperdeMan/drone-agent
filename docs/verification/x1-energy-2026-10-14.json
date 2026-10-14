@@ -1,0 +1,101 @@
+{
+  "schema_version": "0.1.0",
+  "basis": "sim_only",
+  "method": "PX4 SITL linear drain fitted on 46 uncensored ground steps; mean=rate_mean*duration_mean, upper=rate_p95*duration_p95",
+  "drain_rate_per_s": {
+    "mean": 0.000528,
+    "p95": 0.001702,
+    "samples": 46
+  },
+  "flights": [
+    "20261014T070202Z-9b75cfe0/x1-20261014T072315Z-707a44e6/x1_nominal-7/robots/ugv_01/aircraft/m-75e784725841/v1",
+    "20261014T070202Z-9b75cfe0/x1-20261014T072915Z-369bd0c7/x1_cancel_during_recheck-7/robots/ugv_01/aircraft/m-aacebeab335e/v1",
+    "20261014T070202Z-9b75cfe0/x1-20261014T072915Z-369bd0c7/x1_link_loss_driving-7/robots/ugv_01/aircraft/m-41a6eb6990e8/v1",
+    "20261014T070202Z-9b75cfe0/x1-20261014T072915Z-369bd0c7/x1_not_found-7/robots/ugv_01/aircraft/m-72826765434d/v1",
+    "20261014T080750Z-0f909122/x1-20261014T082905Z-2de55fcf/x1_cancel_during_recheck-7/robots/ugv_01/aircraft/m-6531ac3b4b5f/v1",
+    "20261014T080750Z-0f909122/x1-20261014T082905Z-2de55fcf/x1_link_loss_driving-7/robots/ugv_01/aircraft/m-bf19ae43fb9a/v1",
+    "20261014T080750Z-0f909122/x1-20261014T082905Z-2de55fcf/x1_nominal-7/robots/ugv_01/aircraft/m-327226ef32b6/v1",
+    "20261014T080750Z-0f909122/x1-20261014T082905Z-2de55fcf/x1_not_found-7/robots/ugv_01/aircraft/m-5ec2ae7a5b7e/v1",
+    "20261014T080750Z-0f909122/x1-20261014T085203Z-5a936c0e/x1_cancel_during_recheck-19/robots/ugv_01/aircraft/m-09d5f720ca2e/v1",
+    "20261014T080750Z-0f909122/x1-20261014T085203Z-5a936c0e/x1_link_loss_driving-19/robots/ugv_01/aircraft/m-631086508b9c/v1",
+    "20261014T080750Z-0f909122/x1-20261014T085203Z-5a936c0e/x1_nominal-19/robots/ugv_01/aircraft/m-4ea3c42df20d/v1",
+    "20261014T080750Z-0f909122/x1-20261014T085203Z-5a936c0e/x1_not_found-19/robots/ugv_01/aircraft/m-8aadacde52bc/v1",
+    "20261014T080750Z-0f909122/x1-20261014T093034Z-4bc54ef6/x1_cancel_during_recheck-41/robots/ugv_01/aircraft/m-472ade7c995f/v1",
+    "20261014T080750Z-0f909122/x1-20261014T093034Z-4bc54ef6/x1_link_loss_driving-41/robots/ugv_01/aircraft/m-b3461533caac/v1",
+    "20261014T080750Z-0f909122/x1-20261014T093034Z-4bc54ef6/x1_nominal-41/robots/ugv_01/aircraft/m-505d28409936/v1",
+    "20261014T080750Z-0f909122/x1-20261014T093034Z-4bc54ef6/x1_not_found-41/robots/ugv_01/aircraft/m-5e6b4c1c334e/v1",
+    "20261014T094615Z-2d7ebaae/x1-20261014T100726Z-244c2658/x1_cancel_during_recheck-7/robots/ugv_01/aircraft/m-5f2ac8aacad4/v1",
+    "20261014T094615Z-2d7ebaae/x1-20261014T100726Z-244c2658/x1_link_loss_driving-7/robots/ugv_01/aircraft/m-a7b6c402a2a8/v1",
+    "20261014T094615Z-2d7ebaae/x1-20261014T100726Z-244c2658/x1_nominal-7/robots/ugv_01/aircraft/m-1b1bc2500c4a/v1",
+    "20261014T094615Z-2d7ebaae/x1-20261014T100726Z-244c2658/x1_not_found-7/robots/ugv_01/aircraft/m-fe55698f2aa4/v1"
+  ],
+  "skills": {
+    "arm": {
+      "samples": 20,
+      "duration_mean_s": 1.782,
+      "duration_p95_s": 1.988,
+      "mean_fraction": 0.0009,
+      "upper_fraction": 0.0034
+    },
+    "disarm": {
+      "samples": 15,
+      "duration_mean_s": 1.536,
+      "duration_p95_s": 1.885,
+      "mean_fraction": 0.0008,
+      "upper_fraction": 0.0032
+    },
+    "nav_to": {
+      "samples": 16,
+      "duration_mean_s": 7.639,
+      "duration_p95_s": 8.798,
+      "mean_fraction": 0.004,
+      "upper_fraction": 0.015
+    },
+    "recheck": {
+      "samples": 15,
+      "duration_mean_s": 6.029,
+      "duration_p95_s": 6.338,
+      "mean_fraction": 0.0032,
+      "upper_fraction": 0.0108
+    },
+    "return_home": {
+      "samples": 15,
+      "duration_mean_s": 10.317,
+      "duration_p95_s": 11.133,
+      "mean_fraction": 0.0054,
+      "upper_fraction": 0.0189
+    },
+    "stop": {
+      "samples": 15,
+      "duration_mean_s": 1.157,
+      "duration_p95_s": 1.162,
+      "mean_fraction": 0.0006,
+      "upper_fraction": 0.002
+    }
+  },
+  "configured_rate_per_s": 0.000556,
+  "note": "The battery comes to the guardian in whole percent, so a few-second ground step reads either no drain or one percent; the fitted mean holds, its p95 is that one-percent step. / 电量以整数百分比传给 guardian，几秒的地面步骤要么读到 0、要么读到 1%；拟合均值可信，p95 即这 1% 台阶。",
+  "runs": {
+    "20261014T070202Z-9b75cfe0": {
+      "source_sha": "4933bb2446c968293e9712bde50a8164936c2408",
+      "runs": [
+        "x1-20261014T072315Z-707a44e6",
+        "x1-20261014T072915Z-369bd0c7"
+      ]
+    },
+    "20261014T080750Z-0f909122": {
+      "source_sha": "f0849ca0a404b1110f8074493146eebd53a44e11",
+      "runs": [
+        "x1-20261014T082905Z-2de55fcf",
+        "x1-20261014T085203Z-5a936c0e",
+        "x1-20261014T093034Z-4bc54ef6"
+      ]
+    },
+    "20261014T094615Z-2d7ebaae": {
+      "source_sha": "fc6dd6d39915d7141b8486fe7e69f93c468c569e",
+      "runs": [
+        "x1-20261014T100726Z-244c2658"
+      ]
+    }
+  }
+}
