@@ -100,15 +100,16 @@ def flown(uplink: Uplink, tmp_path, *, done: bool, obs: dict | None = None) -> N
         (directory / "status.json").write_text(json.dumps({"observation": obs, "active_step": None}))
 
 
-@pytest.mark.parametrize(("case", "expected"), [
-    (offer(MID), (True, None)),
-    (offer(COMPOUND), (False, "unreachable")),
-    (offer(COMPOUND, kind="search_region", radius=2.0), (True, None)),
-    (offer(MID, map_version="x1_ground_a_v0"), (False, "outside_map")),
-    (offer((40.0, 40.0)), (False, "outside_map")),
-    (offer(MID, ttl=-1), (False, "expired")),
+@pytest.mark.parametrize(("make", "expected"), [
+    (lambda: offer(MID), (True, None)),
+    (lambda: offer(COMPOUND), (False, "unreachable")),
+    (lambda: offer(COMPOUND, kind="search_region", radius=2.0), (True, None)),
+    (lambda: offer(MID, map_version="x1_ground_a_v0"), (False, "outside_map")),
+    (lambda: offer((40.0, 40.0)), (False, "outside_map")),
+    (lambda: offer(MID, ttl=-1), (False, "expired")),
 ], ids=["point", "fenced", "search_region", "other_map", "off_map", "expired"])
-async def test_a_ground_robot_answers_from_its_own_map(tmp_path, case, expected):
+async def test_a_ground_robot_answers_from_its_own_map(tmp_path, make, expected):
+    case = make()  # built when the test runs, so its expiry is fresh / 在测试运行时构造，使其到期时间是新的
     client = Replies(case)
     await rover(tmp_path, client).pull()
     [reply] = client.replies

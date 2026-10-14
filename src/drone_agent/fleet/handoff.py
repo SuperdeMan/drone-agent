@@ -156,13 +156,24 @@ class HandoffEngine:
         return True
 
     def tick(self) -> dict:
-        """One pass: expire overdue offers, then ack accepted ones. / 一轮：先让逾期提议过期，再确认已接受的提议。"""
+        """One pass: expire overdue offers, then ack accepted ones. `assign` returning None retries on the next pass;
+        raising `HandoffRefused` (a deterministic refusal) withdraws the offer and ends its task with the code.
+
+        一轮：先让逾期提议过期，再确认已接受的提议。`assign` 返回 None 时下一轮重试；抛出 `HandoffRefused`（确定性拒绝）
+        时撤回提议并以该原因码终结其任务。
+        """
         expired = [h["handoff_id"] for h in self.store.expired(self.clock().isoformat()) if self._expire(h)]
-        acked = []
+        acked, withdrawn = [], []
         for handoff in self.store.open_offers():
             if handoff["state"] != "accepted":
                 continue
-            epoch = self.assign(handoff)
+            try:
+                epoch = self.assign(handoff)
+            except HandoffRefused as refusal:
+                if self.withdraw(handoff["task_id"], actor=COORDINATOR, reason=refusal.code):
+                    self.reject_task(handoff["task_id"], refusal.code)
+                    withdrawn.append(handoff["handoff_id"])
+                continue
             if epoch is None:
                 continue
             try:
@@ -171,7 +182,7 @@ class HandoffEngine:
             except StaleHandoff:
                 continue
             acked.append(handoff["handoff_id"])
-        return {"expired": expired, "acked": acked}
+        return {"expired": expired, "acked": acked, "withdrawn": withdrawn}
 
     def withdraw(self, task_id: str, *, actor: str, reason: str) -> str | None:
         """Withdraw the task's open offer (the task was cancelled); its delivery leaves the queue.

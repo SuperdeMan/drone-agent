@@ -67,6 +67,9 @@ VERSION_DIR = re.compile(r"^v([1-9][0-9]{0,5})$")
 JOURNALS = ("executive", "guardian")
 RAW_RGB = "image/x-raw-rgb"
 STATE_FORMAT = "drone.uplink-state/v1"
+# X1 (D088): where the guardian's read-only mode writes the observation between missions. / 两次任务之间 guardian
+# 只读模式写入观测的位置。
+IDLE_DIR = "idle"
 
 
 def atomic_write(path: Path, data: bytes) -> None:
@@ -390,10 +393,15 @@ class Uplink:
             active_skill_instance=status.get("active_step"), fc_failsafe_active=obs.fc_failsafe)
 
     def _latest_status(self) -> tuple[dict, FlightObservation] | None:
+        """The most recently written status: a flight's, or the idle observation between missions (X1, D088).
+
+        最近写入的状态：某次飞行的，或两次任务之间的空闲观测（X1，D088）。
+        """
         written = []
-        for _, _, directory in self._version_dirs():
+        paths = [directory / "status.json" for _, _, directory in self._version_dirs()]
+        for path in (*paths, self.aircraft / IDLE_DIR / "status.json"):
             try:
-                written.append(((directory / "status.json").stat().st_mtime_ns, directory / "status.json"))
+                written.append((path.stat().st_mtime_ns, path))
             except OSError:
                 continue
         if not written:

@@ -88,7 +88,7 @@ async def test_acceptance_records_and_only_a_successful_assignment_acks(tmp_path
         accepted = x.engine.reply("ugv_01", accept(handoff))
         assert accepted["state"] == "accepted" and accepted["assignment_epoch"] is None
         # The scheduler side could not assign yet: the offer stays accepted. / 调度一侧暂时无法分配：提议保持 accepted。
-        assert x.engine.tick() == {"expired": [], "acked": []}
+        assert x.engine.tick() == {"expired": [], "acked": [], "withdrawn": []}
         assert x.store.handoff(handoff["handoff_id"])["state"] == "accepted"
         x.epoch = 3
         assert x.engine.tick()["acked"] == [handoff["handoff_id"]]
@@ -107,7 +107,7 @@ async def test_a_rejection_rejects_the_task_with_the_robots_reason(tmp_path):
         rejected = x.engine.reply("ugv_01", {"handoff_id": handoff["handoff_id"], "accepted": False,
                                              "reason_code": "unreachable", "map_version": "ground_a_v1"})
         assert rejected["state"] == "rejected" and x.rejected == [("task-1", "handoff.unreachable")]
-        assert x.engine.tick() == {"expired": [], "acked": []} and x.assigned == []
+        assert x.engine.tick() == {"expired": [], "acked": [], "withdrawn": []} and x.assigned == []
     finally:
         ledger.close()
 

@@ -215,6 +215,78 @@ class Scheduler:
             raise ServiceError("service.idempotency_conflict", "the key was used for another task")
         return task, created
 
+    def tick_handoffs(self) -> None:
+        if self.handoffs is not None:
+            self.handoffs.tick()
+
+    def assign_handoff(self, handoff: dict) -> int | None:
+        """The engine's ack of an accepted offer (D088), in one transaction: the next epoch's assignment, the ground
+        mission version (still awaiting a human approval) and its strict holds. A hold conflict or a changed task rolls
+        everything back and returns None, so the offer stays accepted for the next pass; a reply that disagrees with
+        the robot's map or an admission refusal raises `HandoffRefused`, so the engine withdraws the offer and ends
+        the task. A repeat after a lost ack returns the epoch already written.
+
+        引擎对已接受提议的确认（D088），在一个事务内写入：下一代次的分配、地面任务版本（仍待人工审批）及其严格持有。持有
+        冲突或任务已变化时整体回滚并返回 None，提议保持 accepted 留待下一轮；回复与地面车地图不一致或准入拒绝时抛出
+        `HandoffRefused`，引擎随即撤回提议并终结任务。确认丢失后的重复调用返回已写入的代次。
+        """
+        from drone_agent.admission.ground import reply_issue
+        from drone_agent.contracts import WorldFact
+        from drone_agent.fleet.handoff import HandoffRefused
+
+        task = self.store.task(handoff["task_id"])
+        if task is None:
+            raise HandoffRefused("handoff.task_closed", handoff["task_id"])
+        decision_id = f"handoff:{handoff['handoff_id']}"
+        live = self.store.live(task["task_id"])
+        if live is not None and live["decision_id"] == decision_id:
+            return live["epoch"]
+        if task["state"] != TaskState.QUEUED.value or task["cancel"] is not None:
+            raise HandoffRefused("handoff.task_closed", task["state"])
+        robot, epoch = handoff["to_robot_id"], task["epoch"] + 1
+        fact = WorldFact.model_validate(handoff["target"])
+        radius = fact.value.get("radius_m") if fact.value.get("kind") == "search_region" else None
+        problem = reply_issue(self.ops.registry(robot), (fact.position.x, fact.position.y), radius, handoff["reply"])
+        if problem is not None:
+            raise HandoffRefused(problem.code, problem.message)
+
+        def guard(_db) -> bool:
+            current = self.store.task(task["task_id"])
+            return current is not None and current["state"] == TaskState.QUEUED.value and current["cancel"] is None \
+                and current["state_version"] == task["state_version"]
+
+        rejected = None
+        try:
+            with self.store.transaction():
+                view = self.service.submit_ground_recheck(
+                    principal=task["requested_by"], key=f"{task['idempotency_key']}#a{epoch}",
+                    project_id=task["project_id"], robot_id=robot, handoff=handoff, detail=task["detail"],
+                    guard=guard)
+                if view is None:
+                    return None
+                mission_id, status = view["mission"]["mission_id"], view["mission"]["status"]
+                if status == "rejected":
+                    # Kept for the record; the task ends once the offer is withdrawn. / 保留记录；提议撤回后任务结束。
+                    self.store.insert_assignment(task_id=task["task_id"], epoch=epoch, robot_id=robot,
+                                                 mission_id=mission_id, decision_id=decision_id,
+                                                 state=AssignmentState.ENDED.value, reason="admission_rejected")
+                    rejected = mission_id
+                else:
+                    self.store.insert_assignment(task_id=task["task_id"], epoch=epoch, robot_id=robot,
+                                                 mission_id=mission_id, decision_id=decision_id)
+                    self.store.update_task(task["task_id"], task["state_version"], actor=SCHEDULER,
+                                           state=TaskState.ASSIGNED.value, epoch=epoch, robot_id=robot,
+                                           mission_id=mission_id, reason=None)
+                self.touched.add(mission_id)
+        except (ServiceError, sqlite3.IntegrityError, StaleTask) as error:
+            self.store.event(f"task:{task['task_id']}", "assignment.refused", self.worker,
+                             {"robot_id": robot, "epoch": epoch, "handoff_id": handoff["handoff_id"],
+                              "reason": getattr(getattr(error, "issue", None), "code", type(error).__name__)})
+            return None
+        if rejected is not None:
+            raise HandoffRefused("handoff.admission_rejected", rejected)
+        return epoch
+
     def reject_handoff_task(self, task_id: str, reason: str) -> None:
         """End a handoff task the robot refused or never answered; never re-offered automatically (D088).
 
@@ -311,8 +383,11 @@ class Scheduler:
     # ── the background pass / 后台处理 ──
 
     def tick(self) -> set[str]:
-        """Finish cancels, settle, withdraw, assign; returns missions to refresh. / 收尾取消、结算、撤回、分配。"""
-        for step in (self.finish_cancels, self.settle, self.withdraw, self.assign):
+        """Finish cancels, settle, withdraw, assign, then the handoffs (X1); returns missions to refresh.
+
+        收尾取消、结算、撤回、分配，然后是交接（X1）；返回需要刷新的任务。
+        """
+        for step in (self.finish_cancels, self.settle, self.withdraw, self.assign, self.tick_handoffs):
             try:
                 step()
             except StaleTask:

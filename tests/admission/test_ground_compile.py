@@ -81,9 +81,10 @@ def test_an_unreachable_target_never_compiles():
 
 def test_a_reply_that_disagrees_with_the_compiled_path_is_refused():
     answer = ground().answer(MID)
-    good = {"map_version": "x1_ground_a_v1", "path_length_m": answer.path_m}
+    good = {"accepted": True, "map_version": "x1_ground_a_v1", "path_length_m": answer.path_m}
     assert compile_ground(recheck_spec(), ground(), robot_id="ugv_01", reply=good).ok
-    for bad in ({**good, "map_version": "x1_ground_a_v0"}, {**good, "path_length_m": answer.path_m + 3}):
+    for bad in ({**good, "map_version": "x1_ground_a_v0"}, {**good, "path_length_m": answer.path_m + 3},
+                {**good, "accepted": False}, {"accepted": True}):
         result = compile_ground(recheck_spec(), ground(), robot_id="ugv_01", reply=bad)
         assert not result.ok and result.issues[0].code == "compile.reachability_mismatch"
 

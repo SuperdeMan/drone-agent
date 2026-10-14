@@ -22,16 +22,70 @@ X1 地面编译与准入（D088）：一次复核、来自地面车自身地图�
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 from drone_agent.admission.admission import AdmissionContext, _capability, _Checks, _energy, _params, _time
 from drone_agent.admission.airspace import airspace_issues
 from drone_agent.admission.models import AdmissionResult, CompileResult
-from drone_agent.contracts import MissionPackage, MissionSpec, PackageNode
+from drone_agent.contracts import (
+    EnergyBudget,
+    Frame,
+    GoalType,
+    MissionPackage,
+    MissionSpec,
+    PackageNode,
+    Provenance,
+    SpatialScope,
+    TargetRef,
+    TaskNode,
+    TemporalWindow,
+)
 from drone_agent.mission.ground import ARM, DISARM, NAV_TO, RECHECK, RETURN_HOME, STOP, GroundRegistry
 from drone_agent.mission.registry import distance
 from drone_agent.runtime.issues import Issue, Severity, issue
 
 ORDER = (ARM, NAV_TO, RECHECK, RETURN_HOME, STOP, DISARM)
 TOLERANCE_PATH_M = 0.5  # how far the compiled path may differ from the reply's / 编译路径与回复路径允许的差
+
+
+def recheck_spec(registry: GroundRegistry, *, mission_id: str, asset_id: str, target, kind: str,
+                 radius_m: float | None, signature: str, description: str, provenance: Provenance,
+                 now: datetime) -> MissionSpec:
+    """The deterministic spec of one ground recheck (D088): one recheck task on the ground site's own region, its
+    window, energy budget and recovery policy from the site's defaults, never from a model.
+
+    一次地面复核的确定性规格（D088）：地面站点自身区域内的一个复核任务；时间窗、能源预算与恢复策略取自站点默认值，从不
+    来自模型。
+    """
+    defaults, budget = registry.data["mission_defaults"], registry.data["mission_defaults"]["energy_budget"]
+    task = TaskNode(task_id=f"recheck_{asset_id}", skill_id=RECHECK,
+                    params={"asset_id": asset_id, "target": [float(target[0]), float(target[1])], "target_kind": kind,
+                            "radius_m": float(radius_m or 0.0), "signature": signature})
+    return MissionSpec(
+        mission_id=mission_id, mission_version=1, goal=f"Recheck {asset_id} on the ground", goal_type=GoalType.RECHECK,
+        targets=[TargetRef(asset_id=asset_id, description=description[:200])],
+        spatial_scope=SpatialScope(approved_volume_id=registry.data["approved_volume_id"],
+                                   frame=Frame(**registry.data["frame"])),
+        temporal_window=TemporalWindow(not_before=now - timedelta(seconds=30),
+                                       not_after=now + timedelta(minutes=defaults["window_minutes"])),
+        tasks=[task],
+        energy_budget=EnergyBudget(max_consumption_fraction=budget["max_consumption_fraction"],
+                                   reserve_fraction=budget["reserve_fraction"]),
+        recovery_policy_ref=registry.data["simulation"]["policy_ref"], provenance=provenance)
+
+
+def reply_issue(registry: GroundRegistry, target, radius_m: float | None, reply: dict | None) -> Issue | None:
+    """Whether the robot's reply agrees with the path its map gives: an acceptance on the same map version with a path
+    length within 0.5 m. / 地面车的回复是否与其地图给出的路径一致：同一地图版本上的接受，路径长度相差不超过 0.5 m。"""
+    answer = registry.answer(target, radius_m)
+    try:
+        agrees = (bool(reply) and reply.get("accepted") is True and answer.accepted
+                  and reply.get("map_version") == registry.registry_id
+                  and abs(float(reply["path_length_m"]) - answer.path_m) <= TOLERANCE_PATH_M)
+    except (KeyError, TypeError, ValueError):
+        agrees = False
+    return None if agrees else issue("compile.reachability_mismatch",
+                                     "the robot's reply and the compiled path disagree")
 
 
 def compile_ground(spec: MissionSpec, registry: GroundRegistry, *, robot_id: str,
@@ -61,11 +115,10 @@ def compile_ground(spec: MissionSpec, registry: GroundRegistry, *, robot_id: str
     if not answer.accepted:
         return CompileResult(issues=[issue("compile.ground_unreachable", f"{answer.reason}: {answer.detail}",
                                            affected=[task.task_id])])
-    if reply is not None and (reply.get("map_version") != registry.registry_id
-                              or reply.get("path_length_m") is None
-                              or abs(float(reply["path_length_m"]) - answer.path_m) > TOLERANCE_PATH_M):
-        return CompileResult(issues=[issue("compile.reachability_mismatch",
-                                           "the robot's reply and the compiled path disagree", affected=[task.task_id])])
+    if reply is not None:
+        problem = reply_issue(registry, target, radius, reply)
+        if problem is not None:
+            return CompileResult(issues=[problem])
     defaults, manifests = registry.data["mission_defaults"], registry.manifests
     parking_id, version = defaults["parking_id"], registry.registry_id
     outbound = [[round(x, 4), round(y, 4)] for x, y in answer.waypoints]

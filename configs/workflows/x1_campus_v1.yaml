@@ -1,0 +1,31 @@
+# X1 S0 workflow catalog (D088) for the operations catalog x1_campus_v1. The aircraft of site a inspects its assets and
+# the deterministic signature analyzer judges the frames, as in P4; the ground recheck of a finding is added by the X1
+# business loop. Robots, volumes and assets are the catalog's; every mission still needs a human approval.
+#
+# X1 S0 工作流目录（D088），对应运营目录 x1_campus_v1。站点 a 的飞行器巡检其资产，确定性特征分析器判定画面，与 P4 相同；
+# 发现的地面复核由 X1 业务闭环加入。机器人、体积与资产都取自目录；每个任务仍需人工审批。
+format: drone.workflow-catalog/v1
+schema_version: "0.1.0"
+catalog_id: x1_campus_v1
+operations_catalog: x1_campus_v1
+analyzers:
+  signature_s0_v1:
+    kind: deterministic
+    method: color_signature
+    bands: {asset_mid: [0.075, 0.095], asset_west: [0.075, 0.095]}
+workflows:
+  - workflow_id: mid_watch
+    version: 1
+    project_id: campus_ops
+    title: "Site A appearance watch: inspect, analyse, review the finding / A 站外观巡检：巡检、分析、复核发现"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_mid, asset_west]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_a, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s0_v1, findings: true}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - {node_id: report, activity: build_report, requires: done, after: [review]}
+    budget: {max_missions: 1}

@@ -128,17 +128,27 @@ class P1World:
         for robot_id, entry in ops.catalog.robots.items():
             if entry.execution_backend == "vendor_protocol_sim":
                 continue  # the S3 simulator flies it, never a logical aircraft (P5) / 由 S3 模拟器飞行（P5）
-            battery = Battery(1.0)
-            registry = quick_registry(repo, repo / ops.catalog.sites[entry.site_id].scene, ops.capabilities[robot_id])
-            uav = LogicalUav(case / "robots" / robot_id, registry, self.hub, self.trust, repo / POLICY, battery=battery)
-            self.uavs[robot_id] = uav
-            self.docks[entry.dock_id] = DockSimulator(entry.dock_id, battery=battery, presence=uav.presence, seed=seed)
+            self._add_robot(robot_id, entry)
         self.backends: list[DockBackend] = []
         for principal in sorted({d.backend.principal for d in ops.catalog.docks.values() if not d.vendor_managed}):
             docks = {dock_id: self.docks[dock_id] for dock_id in ops.catalog.docks_of(principal)}
             self.backends.append(DockBackend(principal, docks, self._backend_call(principal)))
         self.last_step = time.monotonic()
         self.last_report: dict[str, float] = {}
+
+    def _add_robot(self, robot_id: str, entry) -> None:
+        """One logical aircraft and its dock; a world with ground robots adds those its own way (X1, D088).
+
+        一架逻辑飞行器及其机场；带地面车的世界以自己的方式加入地面车（X1，D088）。
+        """
+        ops, repo = self.service.ops, self.repo
+        battery = Battery(1.0)
+        registry = quick_registry(repo, repo / ops.catalog.sites[entry.site_id].scene, ops.capabilities[robot_id])
+        uav = LogicalUav(self.case / "robots" / robot_id, registry, self.hub, self.trust, repo / POLICY,
+                         battery=battery)
+        self.uavs[robot_id] = uav
+        self.docks[entry.dock_id] = DockSimulator(entry.dock_id, battery=battery, presence=uav.presence,
+                                                  seed=self.seed)
 
     # ── the service / 服务 ──
 
