@@ -256,11 +256,12 @@ M3 不改 `drone.contracts.v1`、`drone.control.v1` 与 `drone.fleet.v1` 已冻�
 
 | 对象 | 增量 |
 |---|---|
-| `CapabilityDescriptor` | 地面车声明 `embodiment: ground_wheeled`、`control_modes: [mission_upload]`、`can_hover: false`、`recovery_behaviors: [stop, rtl, handover_to_fc_failsafe]`。平台文件按机器人配置加载，不再写死多旋翼平台 |
+| `CapabilityDescriptor` | 地面车声明 `embodiment: ground_wheeled`、`control_modes: [mission_upload]`、`can_hover: false`、`recovery_behaviors: [stop, handover_to_fc_failsafe]`（实测 PX4 地面车 RTL 走直线，首版不用，见安全 §12）。平台文件按机器人配置加载，不再写死多旋翼平台 |
 | `RecoveryBehavior` | 新增 `STOP`（原地停止并保持）。`hold` 的含义不变，仍不对 `can_hover: false` 的平台开放 |
 | `RobotStatus` | 新增 `ground_phase`：`parked` / `moving` / `stopped` / `unknown`，只对地面车填写。`flight_phase` 的含义不变，只对空中本体填写 |
-| `SkillManifest` | 新增 `skill.ground.nav_to`、`skill.ground.recheck`、`skill.ground.return_home`，`embodiments: [ground_wheeled]`。前置条件与持续约束按清单扩展（例如静止、路径在自身地图内、在获准地面区域内、不在禁入区），不按机器人写分支 |
+| `SkillManifest` | 新增 `skill.ground.nav_to`、`skill.ground.recheck`、`skill.ground.return_home`，以及只由编译器插入的骨架技能 `skill.ground.arm`、`skill.ground.stop`、`skill.ground.disarm`；都声明 `embodiments: [ground_wheeled]`，清单放在 `configs/skills/ground/`，与多旋翼平台的清单集合分开核对。前置条件与持续约束按清单扩展（例如静止、路径在自身地图内、在获准地面区域内、不在禁入区），不按机器人写分支 |
 | `MissionPackage` 骨架 | 由编译器按本体生成。空中不变；地面为 arm → … → return_home → stop → disarm，没有起飞与降落 |
+| 地面复核的效果 | `skill.ground.recheck` 的 `verified` 只表示在观察位拿到了有效的观察证据；是否重新定位到异常物由服务对地面证据的确定性检测得出，写入 `bz_rechecks`，不改三元状态 |
 | `WorldFact`（交接目标） | 不改 wire。目标点：`position` 带协方差；搜索区域：`position` 为中心，`value` 写半径与语义描述；都带 `frame` 与地图版本 |
 | `DeliveryKind` | 新增 `DELIVERY_KIND_HANDOFF_OFFER`，承载既有的 `HandoffOffer`，经 `FetchDeliveries` 下发 |
 | `FleetTransport` | 新增 `ReplyHandoff(HandoffReply) → DeliveryReceipt`，由机器人上报交接回复 |
