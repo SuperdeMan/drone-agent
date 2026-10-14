@@ -3860,6 +3860,26 @@
           "title": "Fc Failsafe Active",
           "type": "boolean"
         }
+      },
+      {
+        "name": "ground_phase",
+        "number": 13,
+        "required": false,
+        "cardinality": "optional",
+        "wire_type": "string",
+        "schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "parked | moving | stopped | unknown; ground robots only / 仅地面车填写",
+          "title": "Ground Phase"
+        }
       }
     ],
     "SensorSpec": [
@@ -5033,7 +5053,8 @@
       "RECOVERY_BEHAVIOR_RTL": 3,
       "RECOVERY_BEHAVIOR_LAND_HERE": 4,
       "RECOVERY_BEHAVIOR_LAND_AT": 5,
-      "RECOVERY_BEHAVIOR_HANDOVER_TO_FC_FAILSAFE": 6
+      "RECOVERY_BEHAVIOR_HANDOVER_TO_FC_FAILSAFE": 6,
+      "RECOVERY_BEHAVIOR_STOP": 7
     },
     "RecoveryTrigger": {
       "RECOVERY_TRIGGER_UNSPECIFIED": 0,

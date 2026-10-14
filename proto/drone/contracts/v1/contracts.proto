@@ -121,6 +121,7 @@ enum RecoveryBehavior {
   RECOVERY_BEHAVIOR_LAND_HERE = 4;
   RECOVERY_BEHAVIOR_LAND_AT = 5;
   RECOVERY_BEHAVIOR_HANDOVER_TO_FC_FAILSAFE = 6;
+  RECOVERY_BEHAVIOR_STOP = 7;
 }
 
 enum RecoveryTrigger {
@@ -602,6 +603,7 @@ message RobotStatus {
   optional string active_skill_instance = 10;
   repeated string held_resources = 11;
   optional bool fc_failsafe_active = 12;
+  optional string ground_phase = 13;
 }
 
 message SensorSpec {

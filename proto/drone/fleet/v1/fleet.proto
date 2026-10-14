@@ -19,6 +19,9 @@ service FleetTransport {
   rpc FetchDeliveries(DeliveryRequest) returns (DeliveryBatch);
   rpc AcknowledgeDelivery(DeliveryAck) returns (DeliveryReceipt);
   rpc PublishMedia(EvidenceMedia) returns (DeliveryReceipt);
+  // X1 (D088): a ground robot answers a handoff offer it fetched as a delivery; accepting is not ownership.
+  // X1（D088）：地面车回复以投递方式取到的交接提议；接受不等于所有权。
+  rpc ReplyHandoff(HandoffReply) returns (DeliveryReceipt);
 }
 
 message DeliveryReceipt {
@@ -50,6 +53,15 @@ message HandoffReply {
   google.protobuf.Timestamp timestamp = 5;
   // An accepted offer is not ownership transfer; M4 requires source ack and a new lease.
   // 接受提议不等于所有权转移；M4 仍需原所有者确认与新租约。
+  // X1 (D088): who answers, a controlled reason code (unreachable, outside_map, alignment_insufficient, busy,
+  // energy, expired) and the evidence of the robot's own reachability check.
+  // X1（D088）：回复者身份、受控原因码（unreachable、outside_map、alignment_insufficient、busy、energy、expired），
+  // 以及地面车自身可达性检查的依据。
+  optional string robot_id = 6;
+  optional string reason_code = 7;
+  optional double path_length_m = 8;
+  optional double eta_s = 9;
+  optional string map_version = 10;
 }
 
 // The zero value names no delivery and must never be acted on.
@@ -58,6 +70,9 @@ enum DeliveryKind {
   DELIVERY_KIND_UNSPECIFIED = 0;
   DELIVERY_KIND_MISSION_PACKAGE = 1;
   DELIVERY_KIND_OPERATOR_REQUEST = 2;
+  // X1 (D088): a handoff offer to a ground robot; never a package and never a control instruction.
+  // X1（D088）：发给地面车的交接提议；不是任务包，也不是控制指令。
+  DELIVERY_KIND_HANDOFF_OFFER = 3;
 }
 
 message DeliveryRequest {
@@ -78,6 +93,7 @@ message Delivery {
   drone.contracts.v1.MissionPackage package = 5;
   drone.contracts.v1.OperatorRequest operation = 6;
   google.protobuf.Timestamp issued_at = 7;
+  HandoffOffer offer = 8;
 }
 
 message DeliveryBatch {

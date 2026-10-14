@@ -15,9 +15,11 @@ from collections.abc import Iterable
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from drone_agent.contracts.common import ContractModel, ControlMode, Embodiment
+
+GROUND_PHASES = frozenset({"parked", "moving", "stopped", "unknown"})
 
 
 class RecoveryBehavior(StrEnum):
@@ -32,6 +34,8 @@ class RecoveryBehavior(StrEnum):
     LAND_HERE = "land_here"
     LAND_AT = "land_at"
     HANDOVER_TO_FC_FAILSAFE = "handover_to_fc_failsafe"
+    # X1 (D088): a ground robot stops and holds where it is; never a hover. / X1（D088）：地面车原地停止并保持，不是悬停。
+    STOP = "stop"
 
 
 class SkillRef(ContractModel):
@@ -146,3 +150,14 @@ class RobotStatus(ContractModel):
     active_skill_instance: str | None = None
     held_resources: list[str] = Field(default_factory=list)
     fc_failsafe_active: bool = False
+    # X1 (D088): ground robots report this instead of a flight phase; aerial robots leave it unset.
+    # X1（D088）：地面车填写本字段而不是飞行阶段；空中本体不填写。
+    ground_phase: str | None = Field(default=None, description="parked | moving | stopped | unknown; ground robots "
+                                                               "only / 仅地面车填写")
+
+    @field_validator("ground_phase")
+    @classmethod
+    def _ground_phase(cls, value: str | None) -> str | None:
+        if value is not None and value not in GROUND_PHASES:
+            raise ValueError(f"ground_phase must be one of {sorted(GROUND_PHASES)}")
+        return value
