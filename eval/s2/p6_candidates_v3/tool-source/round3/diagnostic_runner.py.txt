@@ -1,0 +1,106 @@
+"""Run a recorded cloud-only development probe without any flight/service API.
+
+运行可录制的云端开发探针，不访问飞行或任务服务 API。
+"""
+import asyncio
+import base64
+import hashlib
+import json
+import math
+import os
+import time
+from pathlib import Path
+
+from drone_agent.fleet.analysis_jobs import redact_images
+from drone_agent.providers import build_provider
+from drone_agent.providers.replay import Recording,RecordingProvider,ReplayProvider
+
+
+def validate(text,finish):
+    """Check output shape and unknown semantics; not perception accuracy. / 检查结构与未知语义，不判识别精度。"""
+    issues=[]
+    if finish!='stop':issues.append('finish_not_stop')
+    try:
+        value=json.loads(text,parse_constant=lambda x:(_ for _ in ()).throw(ValueError(x)))
+    except (ValueError,TypeError):return None,issues+['not_json']
+    if not isinstance(value,dict):return None,issues+['not_object']
+    if set(value)!=set(('image_usable','target_visible','verdict','obstacles','reason','uncertainty')):issues.append('keys')
+    if type(value.get('image_usable')) is not bool or type(value.get('target_visible')) is not bool:issues.append('booleans')
+    verdict=value.get('verdict');obs=value.get('obstacles')
+    if verdict not in ('normal','suspected','unknown'):issues.append('verdict')
+    if not isinstance(obs,list) or len(obs)>8:issues.append('obstacle_list');obs=[]
+    for item in obs:
+        if not isinstance(item,dict) or set(item)!=set(('type','bbox')):issues.append('obstacle_shape');continue
+        if item['type'] not in ('debris','fallen_tree','large_object','sand_deposit','vehicle_uncertain','unknown'):issues.append('obstacle_type')
+        b=item['bbox']
+        if not isinstance(b,list) or len(b)!=4 or not all(type(x) in (int,float) and math.isfinite(x) and 0<=x<=1 for x in b):issues.append('bbox')
+        elif not (b[0]<b[2] and b[1]<b[3]):issues.append('bbox_order')
+    if verdict=='suspected' and not obs:issues.append('suspected_without_evidence')
+    if verdict=='normal' and obs:issues.append('normal_with_obstacle')
+    if (value.get('image_usable') is False or value.get('target_visible') is False) and verdict!='unknown':issues.append('unknown_not_preserved')
+    if any(not isinstance(value.get(k),str) for k in ('reason','uncertainty')):issues.append('text_fields')
+    return value,issues
+
+
+async def main():
+    """One call per selected case; keep failures and strictly replay every answer. / 每例仅调用一次，保留失败，严格回放每个回答。"""
+    config=json.loads(Path('/config.json').read_text());manifest=json.loads(Path('/input/manifest.json').read_text())
+    out=Path('/output');(out/'recordings').mkdir(exist_ok=True)
+    for row in manifest:
+        for image in row['images']:
+            assert hashlib.sha256((Path('/input')/image['file']).read_bytes()).hexdigest()==image['sha256']
+    provider,pc=build_provider('vision',model=config['model'],guarded=False)
+    header={'status':'running','model_requested':config['model'],'provider':pc.provider_id,'endpoint_host':pc.endpoint_host,
+            'runtime_source_sha':os.environ['DRONE_SOURCE_SHA'],'prompt_version':config['prompt_version'],
+            'config_sha256':hashlib.sha256(Path('/config.json').read_bytes()).hexdigest(),
+            'manifest_sha256':hashlib.sha256(Path('/input/manifest.json').read_bytes()).hexdigest(),
+            'runner_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            'started_at':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'formal_release_eligible':False,
+            'human_ground_truth_available':False,'source':'live_model_development_probe'}
+    (out/'run.json').write_text(json.dumps(header,indent=2))
+    kwargs={'model':config['model'],'temperature':config['temperature'],'max_tokens':config['max_tokens'],
+            'thinking':config['thinking'],'reasoning_effort':config['reasoning_effort'],'timeout_s':config['timeout_s']}
+    results=[];failures=0;last_start=0.0
+    for row in manifest:
+        target=out/(row['case_id']+'.json')
+        if target.exists():raise RuntimeError('refusing to repeat an existing result')
+        content=[{'type':'text','text':config['instruction']}]
+        for image in row['images']:
+            b=(Path('/input')/image['file']).read_bytes()
+            content.append({'type':'image_url','image_url':{'url':'data:image/jpeg;base64,'+base64.b64encode(b).decode(),'detail':'high'}})
+        messages=[{'role':'system','content':config['system_prompt']},{'role':'user','content':content}]
+        await asyncio.sleep(max(0,config['minimum_start_interval_s']-(time.monotonic()-last_start)))
+        last_start=time.monotonic();recorder=RecordingProvider(provider,redact=redact_images)
+        result={'case_id':row['case_id'],'source':'live_model','attempts':1}
+        try:
+            response=await asyncio.wait_for(recorder.complete(messages,**kwargs),timeout=config['timeout_s'])
+            text,used,finish,usage=response
+            recording=recorder.recording(source='recorded',provider_id=pc.provider_id,model=used,endpoint_host=pc.endpoint_host,
+                prompt_version=config['prompt_version'],prompt_sha256=header['config_sha256'],software_revision=header['runtime_source_sha'],label=row['case_id'])
+            path=out/'recordings'/(row['case_id']+'.json');recording.save(path)
+            replay=ReplayProvider(Recording.load(path));again=await replay.complete(messages,**kwargs)
+            assert response==again and replay.exhausted
+            value,issues=validate(text,finish)
+            if used!=config['model']:issues.append('unexpected_model')
+            result.update(status='answered',model_used=used,finish=finish,usage=list(usage),raw_content=text,parsed=value,
+                          schema_issues=issues,strict_replay='passed',recording_sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+            failures=0
+        except Exception as exc:
+            result.update(status='failed',error_type=type(exc).__name__,http_status=getattr(exc,'status_code',None))
+            failures+=1
+        result['duration_s']=round(time.monotonic()-last_start,3)
+        target.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+        results.append(result);(out/'results.json').write_text(json.dumps(results,ensure_ascii=False,indent=2)+'\n')
+        print(json.dumps({'case_id':row['case_id'],'status':result['status'],'done':len(results),'of':len(manifest)}),flush=True)
+        if failures>=3:break
+    header.update(status='completed' if len(results)==len(manifest) else 'stopped_after_consecutive_failures',
+                  cases_attempted=len(results),cases_answered=sum(r['status']=='answered' for r in results),
+                  cases_failed=sum(r['status']=='failed' for r in results),
+                  schema_valid=sum(r['status']=='answered' and not r['schema_issues'] for r in results),
+                  strict_replays=sum(r.get('strict_replay')=='passed' for r in results),
+                  usage_input=sum(r.get('usage',[0,0])[0] for r in results),usage_output=sum(r.get('usage',[0,0])[1] for r in results),
+                  finished_at=time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()))
+    (out/'run.json').write_text(json.dumps(header,indent=2)+'\n');print(json.dumps(header),flush=True)
+
+
+if __name__=='__main__':asyncio.run(main())

@@ -1,0 +1,102 @@
+"""Build neutral development targets and preserve source labels separately.
+
+生成中性开发目标区域，将源标签单独保存。
+"""
+import hashlib
+import json
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+ROOT=Path(__file__).resolve().parent
+SOURCE=ROOT.parent/'p6-materials-20261013-round2'
+REPO=Path('D:/Personal/AI/Claude Code/产品/drone-agent')
+DEST=REPO/'eval/s2/p6_candidates_v3'
+
+
+def write(path,value):
+    """Write canonical UTF-8 JSON. / 写入规范 UTF-8 JSON。"""
+    path.write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+
+def main():
+    """Keep every reviewed input in development; do not manufacture human labels. / 全部输入仅供开发，不制造人工标签。"""
+    for name in ('assets','targets','audit','sources'):
+        (ROOT/name).mkdir(exist_ok=True)
+    DEST.mkdir(exist_ok=True)
+    rows=json.loads((SOURCE/'audit/pair-manifest.json').read_text())
+    edges=json.loads((SOURCE/'audit/proximity-candidates.json').read_text())['pairs']
+    parent={r['id']:r['id'] for r in rows}
+    def find(k):
+        while parent[k]!=k:k=parent[k]
+        return k
+    for edge in edges:
+        a,b=find(edge['a']),find(edge['b'])
+        parent[max(a,b)]=min(a,b)
+    members={}
+    for r in rows:members.setdefault(find(r['id']),[]).append(r['id'])
+    groups=[{'group_id':f'capture-hint-{i+1:02d}','image_ids':sorted(v),'basis':'connected camera proximity <= 100m',
+             'confirmed_independent_site':False,'review_status':'proposed_conservative_group'} for i,(k,v) in enumerate(sorted(members.items()))]
+    image_group={ident:g['group_id'] for g in groups for ident in g['image_ids']}
+    notes={
+      '10792':'右侧道路及交叉口可见木料和碎片侵入；需在图上单独圈出实际障碍。',
+      '10799':'与 10792 相邻拍摄；交叉口木料和散落碎片需定位，不能跨开发与留出拆分。',
+      '14528':'上方支路存在倒伏树枝与阴影混杂；原图略模糊，是否构成目标区域遮挡需复核。',
+      '13370':'道路可见积沙与边缘杂物，源标签为阻塞；当前没有充分依据定位一个明确阻塞物，建议保留不可判。',
+      '12326':'画面下部路口有明显堆积物跨入道路；上方道路较空，必须限定所检查的路段。',
+      '12227':'源道路区域位于左下窄条，积沙使边界不清；不能把画面右侧废墟误当成目标道路障碍。',
+      '11837':'源道路在右侧竖向区域，可见大件碎片靠近或侵入路面；需核对目标边界与实际侵入位置。',
+      '12876':'源道路在画面左侧，前景木料堆跨越其延长方向；中央建筑间空地不是本条源道路。',
+      '12494':'混合标签图已拆为两个开发目标；左上源道路与底部主路分别复核，不给整图统一标签。'
+    }
+    cases=[];inputs=[];proposals=[]
+    for row in rows:
+        ident=row['id'];im=Image.open(SOURCE/'raw'/row['image_member']).convert('RGB')
+        rawmask=np.asarray(Image.open(SOURCE/'raw'/row['mask_member']))
+        thumb=im.copy();thumb.thumbnail((1400,1050));thumb.save(ROOT/'assets'/f'{ident}.jpg',quality=93)
+        small=Image.fromarray(rawmask).resize(thumb.size,Image.Resampling.NEAREST)
+        a=np.asarray(small);rgba=np.zeros((a.shape[0],a.shape[1],4),dtype=np.uint8)
+        rgba[a==7]=(30,185,85,110);rgba[a==8]=(230,55,35,125)
+        Image.fromarray(rgba).save(ROOT/'assets'/f'{ident}-source.png')
+        classes=[k for k in (7,8) if row['class_pixels'].get(str(k),0)] or [None]
+        for class_id in classes:
+            case_id='case-'+hashlib.sha256(f"p6-dev-region-v1:{row['image_sha256']}:{class_id}".encode()).hexdigest()[:12]
+            target=None;target_preview=None
+            if class_id is not None:
+                binary=(rawmask==class_id).astype(np.uint8)*255
+                path=ROOT/'targets'/f'{case_id}.png';Image.fromarray(binary).save(path)
+                target={'kind':'binary_visible_road_support','file':f'targets/{case_id}.png','sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
+                        'width':4000,'height':3000,'values':[0,255],'registered_asset_boundary':False}
+                preview=np.zeros((a.shape[0],a.shape[1],4),dtype=np.uint8);preview[a==class_id]=(49,159,220,105)
+                target_preview=f'assets/{case_id}-target.png';Image.fromarray(preview).save(ROOT/target_preview)
+            suggestion='wrong_target_candidate' if class_id is None else 'normal_candidate' if class_id==7 else 'unknown_candidate' if ident in ('14528','13370','12227') else 'suspected_candidate'
+            note=notes.get(ident,'道路附近的建筑损毁、车辆或阴影不能直接当作目标道路阻塞；源畅通标签仍需按具体目标区域复核。' if class_id==7 else '画面以非道路场景为主；没有源道路标签不能自动推出正式拒判真值。')
+            entry={'case_id':case_id,'image_id':ident,'image_sha256':row['image_sha256'],
+                   'image_file':f"../p6-materials-20261013-round2/raw/{row['image_member']}",
+                   'width':4000,'height':3000,'target_region':target,'split':'development_only'}
+            inputs.append(entry)
+            proposal={'case_id':case_id,'source_class':class_id,'source_stratum':row['stratum'],'ai_suggestion':suggestion,
+                      'ai_notes':note,'author':'Codex AI visual review','independent_human_label':None,
+                      'capture_group_proposal':image_group[ident],'status':'draft_for_review'}
+            proposals.append(proposal)
+            cases.append({**entry,**proposal,'preview':f'assets/{ident}.jpg','source_overlay':f'assets/{ident}-source.png',
+                          'target_preview':target_preview,'original':entry['image_file']})
+    bundle_id=hashlib.sha256(json.dumps(inputs,sort_keys=True).encode()).hexdigest()
+    data={'format':'drone.p6-review-bundle/v1','bundle_id':bundle_id,'cases':cases,
+          'source':'RescueNet Figshare train v1','human_reviews_completed':0,
+          'license_note':'Figshare v1 CC0；GitHub README CC BY-NC-ND。差异已记录，本包未正式准入。'}
+    write(ROOT/'audit/input-index.json',{'format':'drone.p6-development-inputs/v1','bundle_id':bundle_id,'cases':inputs,
+          'eligibility':'development_only_not_release_evidence','reference_images_available':False})
+    write(ROOT/'audit/development-proposals.json',proposals)
+    write(ROOT/'audit/capture-group-proposals.json',{'groups':groups,'rule':'connected GPS proximity <=100m; conservative grouping hint only',
+                                                   'independent_sites_confirmed':0,'formal_split_created':False})
+    write(ROOT/'audit/review-bundle.json',data)
+    payload=json.dumps(data,ensure_ascii=False).replace('<','\\u003c').replace('\u2028','\\u2028').replace('\u2029','\\u2029')
+    (ROOT/'data.js').write_text('/* Embedded review data, no network request. / 内嵌审查数据，无网络请求。 */\nwindow.REVIEW_DATA='+payload+';\n',encoding='utf-8')
+    for name in ('input-index.json','development-proposals.json','capture-group-proposals.json'):
+        (DEST/name).write_bytes((ROOT/'audit'/name).read_bytes())
+    print(json.dumps({'images':len(rows),'cases':len(cases),'neutral_targets':sum(c['target_region'] is not None for c in cases),'provisional_groups':len(groups),'bundle_id':bundle_id}))
+
+
+if __name__=='__main__':main()

@@ -1,0 +1,63 @@
+/* Validate local review records without granting release eligibility. / 校验本地复核记录，不授予准出资格。 */
+(function (root) {
+  'use strict';
+  const verdicts = new Set(['normal', 'suspected', 'unknown', 'wrong_target']);
+  function polygonValid(points) {
+    if (!Array.isArray(points) || points.length < 3 || points.length > 500) return false;
+    if (!points.every(p => Array.isArray(p) && p.length === 2 && p.every(v => Number.isFinite(v) && v >= 0 && v <= 1))) return false;
+    const cross = (a,b,c) => (b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+    const on=(a,b,c)=>Math.abs(cross(a,b,c))<1e-12&&c[0]>=Math.min(a[0],b[0])-1e-12&&c[0]<=Math.max(a[0],b[0])+1e-12&&c[1]>=Math.min(a[1],b[1])-1e-12&&c[1]<=Math.max(a[1],b[1])+1e-12;
+    let area=0;
+    for(let i=0;i<points.length;i++) {
+      const a=points[i], b=points[(i+1)%points.length];
+      if(Math.hypot(a[0]-b[0],a[1]-b[1])<1e-6) return false;
+      area+=a[0]*b[1]-b[0]*a[1];
+      for(let j=i+2;j<points.length;j++) {
+        if(i===0 && j===points.length-1) continue;
+        const c=points[j], d=points[(j+1)%points.length];
+        if((cross(a,b,c)*cross(a,b,d)<0 && cross(c,d,a)*cross(c,d,b)<0)||on(a,b,c)||on(a,b,d)||on(c,d,a)||on(c,d,b)) return false;
+      }
+    }
+    return Math.abs(area)>0.00002;
+  }
+  function validate(record, item) {
+    const errors=[];
+    if (!item || record.case_id!==item.case_id || record.image_sha256!==item.image_sha256) return ['样本身份或图片摘要不匹配'];
+    if (typeof record.reviewer!=='string' || !record.reviewer.trim() || record.reviewer.length>120) errors.push('请填写复核人');
+    if (!verdicts.has(record.verdict)) errors.push('请选择复核结论');
+    if (typeof record.notes!=='string' || !record.notes.trim() || record.notes.length>4000) errors.push('请写明依据或无法判断的原因');
+    const target=record.target_region;
+    const sourceOK=target && target.kind==='source_support' && item.target_region && target.mask_sha256===item.target_region.sha256;
+    const polyOK=target && target.kind==='polygon' && polygonValid(target.points);
+    if (target && !sourceOK && !polyOK) errors.push('目标区域无效或与源文件不匹配');
+    if (['normal','suspected'].includes(record.verdict) && (!(sourceOK||polyOK) || record.target_confirmed!==true)) errors.push('请确认目标区域，或重新描绘目标');
+    if (record.obstruction_region && !polygonValid(record.obstruction_region.points)) errors.push('障碍区域需要有效的闭合多边形');
+    if (record.verdict==='suspected' && !record.obstruction_region) errors.push('疑似障碍需要单独圈出障碍区域');
+    if (record.verdict==='normal' && record.obstruction_region) errors.push('正常结论不能同时保存目标障碍轮廓');
+    if (typeof record.capture_group!=='string' || !record.capture_group.trim() || record.capture_group.length>200) errors.push('请填写或保留采集分组');
+    if (!Number.isFinite(record.active_review_ms) || record.active_review_ms<0) errors.push('复核计时无效');
+    if (!Number.isFinite(Date.parse(record.started_at)) || !Number.isFinite(Date.parse(record.completed_at)) || Date.parse(record.completed_at)<Date.parse(record.started_at)) errors.push('请先开始复核');
+    if (record.review_origin!=='operator_entered') errors.push('来源必须是操作员填写');
+    if (['source_hints_viewed','ai_hints_viewed','group_confirmed'].some(k=>typeof record[k]!=='boolean')) errors.push('查看提示或分组核对状态无效');
+    return errors;
+  }
+  function makeExport(data, records) {
+    const seen=new Set();
+    for (const r of records) {
+      if (seen.has(r.case_id)) throw new Error('重复的复核条目');
+      seen.add(r.case_id);
+      const errors=validate(r,data.cases.find(c=>c.case_id===r.case_id));
+      if(errors.length) throw new Error(errors.join('；'));
+    }
+    return {format:'drone.p6-operator-reviews/v1',bundle_id:data.bundle_id,exported_at:new Date().toISOString(),
+      formal_release_eligible:false,reviewer_identity_authenticated:false,records};
+  }
+  function parseImport(text,data) {
+    const value=JSON.parse(text);
+    if(value.format!=='drone.p6-operator-reviews/v1' || value.bundle_id!==data.bundle_id || !Array.isArray(value.records) || value.records.length>data.cases.length) throw new Error('导入文件不属于当前素材包');
+    return makeExport(data,value.records).records;
+  }
+  const api={polygonValid,validate,makeExport,parseImport};
+  if(typeof module!=='undefined' && module.exports) module.exports=api;
+  else root.ReviewCore=api;
+})(typeof window==='undefined'?globalThis:window);

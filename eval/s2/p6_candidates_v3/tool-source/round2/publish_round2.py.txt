@@ -1,0 +1,70 @@
+"""Publish the second candidate package with explicit review gaps.
+
+发布第二批候选包并保留明确的复核缺口。
+"""
+import hashlib
+import json
+import shutil
+from pathlib import Path
+
+ROOT=Path(__file__).resolve().parent
+REPO=Path('D:/Personal/AI/Claude Code/产品/drone-agent')
+DEST=REPO/'eval/s2/p6_candidates_v2'
+
+
+def save(path,value):
+    """Save reproducible JSON evidence. / 保存可复算 JSON 证据。"""
+    path.write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+
+def main():
+    """Only publish after all 25 selected pairs are verified. / 仅在 25 对已全部核验后发布。"""
+    summary=json.loads((ROOT/'audit/summary.json').read_text())
+    assert summary['pairs_acquired']==25 and summary['decoded_pairs']==25
+    assert summary['strata']=={'clear_only':8,'blocked_only':8,'mixed':1,'no_road':8}
+    rows=json.loads((ROOT/'audit/pair-manifest.json').read_text())
+    selected=json.loads((ROOT/'audit/image-selection.json').read_text())
+    assert {r['id'] for r in rows}=={r['id'] for r in selected}
+    queue=[]
+    for row in rows:
+        queue.append({'id':row['id'],'image_member':row['image_member'],'mask_member':row['mask_member'],
+                      'source_stratum':row['stratum'],'source_class_pixels':row['class_pixels'],
+                      'image_sha256':row['image_sha256'],'mask_sha256':row['mask_sha256'],
+                      'registered_road_id':None,'target_region':None,'p6_business_label':None,
+                      'actual_obstruction_region':None,'refusal_reason':None,'capture_group_confirmed':None,
+                      'reviewer':None,'review_started_at':None,'review_completed_at':None,'review_seconds':None,
+                      'status':'pending_independent_review',
+                      'questions':['确认目标道路区域与资产身份','确认源道路畅通/阻塞含义是否适用于本项目',
+                                   '若阻塞，指出实际障碍而非整片道路掩码','确认是否属于相邻拍摄或重复地点']})
+    save(ROOT/'audit/review-queue.json',queue)
+    sources=[]
+    for path in sorted((ROOT/'sources').iterdir()):
+        if path.is_file():
+            sources.append({'path':str(path.relative_to(ROOT)).replace('\\','/'),'bytes':path.stat().st_size,
+                            'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
+    registry={'format':'drone.p6-material-candidates/v2','status':'development_candidate_only','date':'2026-10-13',
+              'local_root':str(ROOT),'project_base_sha':'57dabf3cb31292eaa3a36e613aa70100360bdea3',
+              'sources':[{'id':'rescuenet_figshare_train_v1','doi':'10.6084/m9.figshare.22825511.v1',
+                          'source_api':'https://api.figshare.com/v2/articles/22825511','source_license':'CC0',
+                          'license_scope':'exact Figshare train v1 publication metadata',
+                          'author_github_commit':'c46580d72fb5b2f3ad7bb624e3c1dc42975a043f',
+                          'author_readme_license':'CC BY-NC-ND','license_discrepancy_resolved':False,
+                          'whole_zip_md5_verified':False,'source_train_pairs':3595,'masks_screened':80,
+                          'image_mask_pairs_acquired':25,'validation_test_images_acquired':0,
+                          'role':'isolated development material suitability review; not formally admitted'},
+                         {'id':'drone_road_7020196','doi':'10.5281/zenodo.7020196','source_license':'CC BY 4.0',
+                          'status':'metadata_review_only','image_count_acquired':0,
+                          'limitation':'orthomosaic road segmentation; no verified obstruction/clearance labels'}],
+              'source_snapshots':sources,'external_model_api_calls':0,'formal_test_frozen':False,
+              'runtime_code_changed':False,'same_asset_clearance_before_after_pairs':0}
+    save(ROOT/'audit/sources.json',registry)
+    DEST.mkdir(exist_ok=True)
+    for name in ('selection-plan.json','mask-selection.json','mask-screen.json','image-selection.json',
+                 'pair-manifest.json','summary.json','source-receipt.json','capture-metadata.json',
+                 'proximity-candidates.json','review-queue.json','sources.json'):
+        shutil.copyfile(ROOT/'audit'/name,DEST/name)
+    print(json.dumps({'published_pairs':25,'original_image_bytes':summary['original_image_bytes'],'pending_reviews':len(queue)},ensure_ascii=False))
+
+
+if __name__=='__main__':
+    main()

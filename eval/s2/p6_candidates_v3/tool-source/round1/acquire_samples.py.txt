@@ -1,0 +1,89 @@
+"""Acquire one deterministic suitability sample per filename group.
+
+按文件名分组各获取一个确定性适用性样本，不作为统计抽样或正式测试集。
+"""
+import concurrent.futures
+import hashlib
+import json
+import struct
+import time
+import urllib.request
+import zlib
+from pathlib import Path
+
+from audit_materials import group
+
+ROOT=Path(__file__).resolve().parent
+URL='https://zenodo.org/records/8214061/files/UAVVasteDataset.zip?download=1'
+DEST=ROOT/'raw/uavvaste-images'
+PARTS=ROOT/'raw/member-parts'
+
+
+def main():
+    """Check source CRC and size, then record SHA256. / 校验源 CRC 和长度后记录 SHA256。"""
+    DEST.mkdir(exist_ok=True)
+    PARTS.mkdir(exist_ok=True)
+    directory=json.loads((ROOT/'sources/archive-directory.json').read_text())
+    members={Path(v['name']).name:{**v,'end':directory[n+1]['offset'] if n+1<len(directory) else v['offset']+v['compressed_bytes']+1024}
+             for n,v in enumerate(directory) if v['name'].startswith('images/') and v['bytes']}
+    metadata=json.loads((ROOT/'sources/uavvaste-annotations-annotations.json').read_text())
+    groups={}
+    for row in metadata['images']:
+        groups.setdefault(group(row['file_name']),[]).append(row)
+    selected=[]
+    for key,rows in sorted(groups.items()):
+        # Prefer already recovered bytes; otherwise select by a salted name digest. / 优先使用已恢复字节；否则按加盐名称摘要选择。
+        existing=[r for r in rows if (DEST/r['file_name']).exists()]
+        chosen=min(existing or rows,key=lambda r:hashlib.sha256(('p6-suitability-v1:'+r['file_name']).encode()).digest())
+        selected.append({'id':chosen['id'],'file_name':chosen['file_name'],'group_hint':key})
+    (ROOT/'audit/sample-selection.json').write_text(json.dumps({'purpose':'suitability_only_not_statistical','rule':'one per filename-hint group; prefer recovered then salted SHA256 order','samples':selected},indent=2))
+
+    def fetch(row):
+        name=row['file_name'];m=members[name];out=DEST/name
+        if out.exists():
+            b=out.read_bytes()
+            if len(b)==m['bytes'] and zlib.crc32(b)==m['crc32']:
+                return {**row,'status':'verified_member','bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),'crc32':m['crc32']}
+            raise ValueError('existing image mismatch')
+        part=PARTS/(name+'.part')
+        target=m['end']-m['offset']
+        for attempt in range(64):
+            have=part.stat().st_size if part.exists() else 0
+            if have>=target:
+                break
+            start=m['offset']+have
+            end=min(start+1024*1024,m['end'])
+            url = URL if attempt % 2 else 'https://zenodo.org/api/records/8214061/files/UAVVasteDataset.zip/content'
+            req=urllib.request.Request(url,headers={'Range':f"bytes={start}-{end-1}",'User-Agent':'drone-agent-material-audit/1'})
+            try:
+                with urllib.request.urlopen(req,timeout=35) as r,part.open('ab') as f:
+                    if r.status!=206 or r.headers.get('Content-Range')!=f"bytes {start}-{end-1}/3010727259":
+                        raise ValueError('unexpected range')
+                    while b:=r.read(65536):
+                        if f.tell()+len(b)>target:
+                            raise ValueError('oversized response')
+                        f.write(b)
+            except Exception as exc:
+                print(json.dumps({'file':name,'attempt':attempt+1,'error':str(exc)}),flush=True)
+                time.sleep(3)
+        data=part.read_bytes()
+        if len(data)!=target or data[:4]!=b'PK\x03\x04':
+            return {**row,'status':'incomplete','received':len(data),'expected':target}
+        nl,xl=struct.unpack_from('<HH',data,26)
+        if data[30:30+nl].decode()!=m['name']:
+            raise ValueError('member name mismatch')
+        raw=zlib.decompress(data[30+nl+xl:30+nl+xl+m['compressed_bytes']],-15)
+        if len(raw)!=m['bytes'] or zlib.crc32(raw)!=m['crc32']:
+            raise ValueError('member integrity mismatch')
+        out.write_bytes(raw)
+        result={**row,'status':'verified_member','bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),'crc32':m['crc32']}
+        print(json.dumps(result),flush=True)
+        return result
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+        results=list(ex.map(fetch,selected))
+    (ROOT/'audit/sample-download-receipt.json').write_text(json.dumps(results,indent=2))
+    print(json.dumps({'verified':sum(r['status']=='verified_member' for r in results),'selected':len(results)}),flush=True)
+
+
+if __name__=='__main__':
+    main()

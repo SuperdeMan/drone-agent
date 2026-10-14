@@ -1,0 +1,85 @@
+"""Verify downloaded recordings and separate source disagreement from accuracy.
+
+核验下载的录制，把源标签分歧与识别准确率区分。
+"""
+import asyncio
+import base64
+import hashlib
+import json
+from collections import Counter
+from pathlib import Path
+
+import numpy as np
+from PIL import Image,ImageDraw,ImageFont
+from drone_agent.providers.replay import Recording,ReplayProvider
+
+ROOT=Path(__file__).resolve().parent
+REPO=Path('D:/Personal/AI/Claude Code/产品/drone-agent')
+
+
+async def main():
+    """Rebuild each request locally; only replay, never call a model. / 本地重建逐例请求，只回放，不调用模型。"""
+    diag=ROOT/'diagnostic';out=diag/'cloud/output'
+    config=json.loads((diag/'config.json').read_text(encoding='utf-8'))
+    manifest=json.loads((diag/'inputs/manifest.json').read_text())
+    header=json.loads((out/'run.json').read_text());results=json.loads((out/'results.json').read_text())
+    bundle=json.loads((ROOT/'audit/review-bundle.json').read_text(encoding='utf-8'))
+    cases={c['case_id']:c for c in bundle['cases']}
+    assert hashlib.sha256((diag/'config.json').read_bytes()).hexdigest()==header['config_sha256']
+    assert hashlib.sha256((diag/'inputs/manifest.json').read_bytes()).hexdigest()==header['manifest_sha256']
+    assert hashlib.sha256((ROOT/'diagnostic_runner.py').read_bytes()).hexdigest()==header['runner_sha256']
+    result_by_id={r['case_id']:r for r in results};rows=[];font=ImageFont.truetype('C:/Windows/Fonts/arial.ttf',18)
+    preview=diag/'review';preview.mkdir(exist_ok=True)
+    for item in manifest:
+        result=result_by_id[item['case_id']]
+        content=[{'type':'text','text':config['instruction']}]
+        for image in item['images']:
+            raw=(diag/'inputs'/image['file']).read_bytes();assert hashlib.sha256(raw).hexdigest()==image['sha256']
+            content.append({'type':'image_url','image_url':{'url':'data:image/jpeg;base64,'+base64.b64encode(raw).decode(),'detail':'high'}})
+        messages=[{'role':'system','content':config['system_prompt']},{'role':'user','content':content}]
+        path=out/'recordings'/(item['case_id']+'.json')
+        assert hashlib.sha256(path.read_bytes()).hexdigest()==result['recording_sha256']
+        replay=ReplayProvider(Recording.load(path))
+        answer=await replay.complete(messages,model=config['model'],temperature=config['temperature'],max_tokens=config['max_tokens'],
+                                     thinking=config['thinking'],reasoning_effort=config['reasoning_effort'],timeout_s=config['timeout_s'])
+        assert replay.exhausted and answer[0]==result['raw_content'] and answer[1]==result['model_used'] and answer[2]==result['finish'] and list(answer[3])==result['usage']
+        c=cases[item['case_id']];value=result['parsed'];mask=np.asarray(Image.open(ROOT/c['target_region']['file']))>0
+        overlaps=[]
+        im=Image.open(diag/'inputs'/item['images'][1]['file']).convert('RGB');im.thumbnail((1000,750));draw=ImageDraw.Draw(im)
+        for obstacle in value['obstacles']:
+            x1,y1,x2,y2=obstacle['bbox'];box=(int(x1*4000),int(y1*3000),min(4000,int(np.ceil(x2*4000))),min(3000,int(np.ceil(y2*3000))))
+            region=mask[box[1]:box[3],box[0]:box[2]]
+            fraction=float(region.mean()) if region.size else None
+            overlaps.append({'bbox':obstacle['bbox'],'fraction_within_visible_support':round(fraction,4) if fraction is not None else None,
+                             'interpretation':'diagnostic clue only; a covering obstacle may lie in a support-mask hole'})
+            draw.rectangle((x1*im.width,y1*im.height,x2*im.width,y2*im.height),outline='#fa9332',width=4)
+        canvas=Image.new('RGB',(im.width,im.height+54),'#f1efe6');canvas.paste(im);ImageDraw.Draw(canvas).text((10,im.height+10),c['image_id']+' | source '+str(c['source_class'])+' | model '+value['verdict'],fill='#1b2b2b',font=font)
+        canvas.save(preview/(item['case_id']+'.jpg'),quality=94)
+        rows.append({'case_id':item['case_id'],'image_id':c['image_id'],'source_class':c['source_class'],
+                     'ai_development_suggestion':c['ai_suggestion'],'model_verdict':value['verdict'],
+                     'source_label_disagreement':(c['source_class']==7 and value['verdict']!='normal') or (c['source_class']==8 and value['verdict']!='suspected'),
+                     'reason':value['reason'],'uncertainty':value['uncertainty'],'obstacle_support_overlap':overlaps,
+                     'schema_issues':result['schema_issues'],'local_strict_replay':'passed','human_correctness_verdict':None})
+    summary={'status':'development_probe_completed_not_release','run_id':json.loads((diag/'launch.json').read_text())['run_id'],
+             'model':header['model_requested'],'prompt_version':header['prompt_version'],'reasoning_effort':config['reasoning_effort'],
+             'cases':len(rows),'answers':header['cases_answered'],'schema_valid':header['schema_valid'],
+             'local_strict_replays':len(rows),'verdict_counts':dict(Counter(r['model_verdict'] for r in rows)),
+             'source_label_disagreements':sum(r['source_label_disagreement'] for r in rows),
+             'accuracy_computed':False,'reason_no_accuracy':'no independent target-business ground truth; exposed development cases and prototype scope differ from source semantic labels',
+             'usage_input_tokens':header['usage_input'],'usage_output_tokens':header['usage_output'],
+             'estimated_cost':None,'cost_reason':'no verified price source in this probe',
+             'runtime_source_sha':header['runtime_source_sha'],'runner_sha256':header['runner_sha256'],
+             'config_sha256':header['config_sha256'],'manifest_sha256':header['manifest_sha256'],
+             'formal_release_eligible':False,'rows':rows}
+    (diag/'diagnostic-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    dest=REPO/'eval/s2/p6_candidates_v3/diagnostic';dest.mkdir(exist_ok=True)
+    for source,name in [(diag/'config.json','config.json'),(diag/'precall.json','precall.json'),(diag/'inputs/manifest.json','input-manifest.json'),
+                        (diag/'diagnostic-summary.json','summary.json'),(out/'run.json','run.json'),(out/'results.json','results.json'),
+                        (diag/'cloud/execution.json','execution.json'),(diag/'launch.json','launch.json')]:
+        (dest/name).write_bytes(source.read_bytes())
+    (dest/'recordings').mkdir(exist_ok=True)
+    for source in (out/'recordings').glob('*.json'):(dest/'recordings'/source.name).write_bytes(source.read_bytes())
+    print(json.dumps({k:v for k,v in summary.items() if k!='rows'},ensure_ascii=False))
+
+
+if __name__=='__main__':asyncio.run(main())
