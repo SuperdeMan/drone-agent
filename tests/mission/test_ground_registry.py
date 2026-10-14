@@ -45,7 +45,7 @@ def test_the_factory_reads_the_kind_and_keeps_aerial_maps_aerial():
 @pytest.mark.parametrize(("point", "inside"), [
     ((0.0, 0.0), True),        # the parking spot / 停车位
     ((-2.0, 4.0), False),      # the aircraft pad / 飞行器机位
-    ((8.0, 17.0), False),      # the fenced compound / 院子
+    ((5.5, 17.0), False),      # the fenced compound / 院子
     ((0.0, 11.0), False),      # the building / 楼
     ((50.0, 0.0), False),      # off the map / 地图之外
     ((float("nan"), 0.0), False),

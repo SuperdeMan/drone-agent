@@ -1,0 +1,55 @@
+# X1 S0 matrix (D088, design section 9): one aircraft finds an anomaly, the coordinator hands the finding to a named
+# ground robot, and the robot rechecks it from its own map; the faults are those of the handoff, the link and the
+# shared apron. Every case runs with seeds 7, 19 and 41 and is judged online and from the recordings by
+# eval/judge_x1.py. `expected` lists what the judge must find besides the invariants that hold in every case (no double
+# ownership, no duplicate execution, no lost task or recheck, a valid handoff history, no false success, the ground
+# robot inside its map and its held cells, no hold inside a silent robot's envelope, and no ground robot on the apron
+# while an aircraft flies from it).
+#
+# X1 S0 矩阵（D088，方案第 9 节）：一架飞行器发现异常物，协调器把发现交给点名的地面车，地面车依据自己的地图复核；故障来自交接、
+# 链路与共享起降区。每个用例用种子 7、19、41 运行，由 eval/judge_x1.py 在线与回放各裁判一次。`expected` 列出裁判除每个用例都要
+# 成立的不变量（无双重所有权、无重复执行、无丢失的任务或复核、交接历史合法、无错误成功、地面车在其地图与所持单元之内、无持有落入
+# 失联机器人的包络、飞行器从起降区起降时没有地面车在区内）之外必须得到的结论。
+format: drone.x1-suite/v1
+schema_version: "0.1.0"
+seeds: [7, 19, 41]
+s0:
+  - id: x1_nominal
+    description: "Finding, handoff, recheck relocated, both evidences, completed / 发现、交接、复核找到、两端证据、已完成"
+    expected: {recheck: relocated, target: point, ground_missions: 1, handoff: completed, ground_report: completed, review: confirmed}
+  - id: x1_unreachable
+    description: "Target inside the fenced compound: the robot refuses unreachable, not completed, nobody else offered / 目标在围栏院内：地面车以不可达拒绝，未完成，不改派"
+    expected: {recheck: not_attempted, reason: handoff.unreachable, handoff: rejected, ground_missions: 0, offers: 1}
+  - id: x1_search_region
+    description: "A coarse aircraft position gives a search region the robot relocates in / 飞行器位置较粗，交付搜索区域，地面车在区域内重新定位"
+    expected: {recheck: relocated, target: search_region, ground_missions: 1, handoff: completed}
+  - id: x1_not_found
+    description: "The block is removed before the robot arrives: not found, uncertain, never normal / 地面车到达前异常物被移走：未找到，不确定，不是正常"
+    expected: {recheck: not_found, ground_missions: 1, handoff: completed, ground_report: completed}
+  - id: x1_false_positive
+    description: "An aerial artefact that was never on the ground: not found / 从未在地面上的空中伪影：未找到"
+    expected: {recheck: not_found, ground_missions: 1, handoff: completed}
+  - id: x1_offer_timeout
+    description: "The robot never answers: the offer times out, nothing is dispatched / 地面车不回复：提议超时，不派遣"
+    expected: {recheck: not_attempted, reason: handoff.timed_out, handoff: timed_out, ground_missions: 0}
+  - id: x1_duplicate_offer
+    description: "A second offer for the task, a foreign reply and a repeated reply are refused / 同一任务的第二个提议、冒名回复与重复回复均被拒绝"
+    expected: {second_offer: handoff.already_open, refused_replies: [auth.robot_mismatch, handoff.not_open], ground_missions: 1, handoff: completed}
+  - id: x1_late_accept
+    description: "An acceptance after the task was cancelled and its offer withdrawn is refused / 任务取消、提议撤回之后的接受被拒绝"
+    expected: {handoff: withdrawn, task: cancelled, refused_replies: [handoff.not_open], ground_missions: 0}
+  - id: x1_accept_after_timeout
+    description: "An acceptance after the offer timed out is refused / 提议超时之后的接受被拒绝"
+    expected: {handoff: timed_out, task: rejected, refused_replies: [handoff.not_open], ground_missions: 0}
+  - id: x1_link_loss_driving
+    description: "The link drops while the robot drives: its holds stay, the second robot waits, reconciled after / 行驶中断链：持有保留，第二台车等待，恢复后对账"
+    expected: {recheck: relocated, second_waited: true}
+  - id: x1_old_owner_continues
+    description: "The silent robot keeps driving after its mission is cancelled: the new receiver never enters its area / 失联的车在任务取消后继续行驶：新接收方不进入其区域"
+    expected: {second_waited: true}
+  - id: x1_shared_pad
+    description: "The robot's path crosses the apron while the aircraft flies from it: the ground mission waits / 地面车路径经过起降区时飞行器正在起降：地面任务等待"
+    expected: {ground_missions: 1, apron_waited: true}
+  - id: x1_cancel_during_recheck
+    description: "Cancel while driving: stop, stopped and disarmed, no successor task / 行驶中取消：停车、停稳上锁，不产生后继任务"
+    expected: {recheck: unknown, ground_missions: 1, ground_terminal: stopped_disarmed}

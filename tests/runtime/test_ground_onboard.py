@@ -284,3 +284,33 @@ async def test_the_real_adapter_disarms_a_stationary_robot_in_hold_and_keeps_bod
         await aircraft.recover(RecoveryBehavior.STOP, lambda: True)
     with pytest.raises(PermissionError):
         await adapter.execute(NS(skill_id="skill.flight.takeoff", params={}), lambda: True)
+
+
+async def test_the_guardians_observe_only_mode_writes_the_idle_status_and_commands_nothing(tmp_path, monkeypatch):
+    import drone_agent.adapters.px4_mavsdk as px4_mavsdk
+    from drone_agent.runtime import launch
+
+    fakes = []
+
+    class Observed(GroundFake):
+        def __init__(self, registry, artifacts, _sensor):
+            super().__init__(registry, artifacts)
+            fakes.append(self)
+
+        async def connect(self):
+            return None
+
+        async def close(self):
+            return None
+
+    monkeypatch.setattr(px4_mavsdk, "Px4Adapter", Observed)
+    args = NS(role="guardian", root=ROOT, scene=ROOT / "configs/scenarios/x1_ground_a_v1.yaml", platform=None,
+              observe_only=True, artifacts=tmp_path / "idle", sensor=tmp_path / "sensor.json")
+    stop = asyncio.Event()
+    task = asyncio.create_task(launch.observe_only(args, ground(), stop))
+    await until(lambda: (tmp_path / "idle/status.json").is_file(), 5)
+    stop.set()
+    await task
+    status = json.loads((tmp_path / "idle/status.json").read_text())
+    assert status["active_step"] is None and status["observation"]["robot_id"] == "ugv_01"
+    assert fakes[0].writes == [] and fakes[0].armed is False

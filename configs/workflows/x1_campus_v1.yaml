@@ -50,7 +50,7 @@ workflows:
       - node_id: recheck
         activity: ground_recheck
         when: [{node: analyze, output: suspected, equals: true}]
-        params: {analysis_from: analyze, robot_id: ugv_01, signature: orange, size_m: 0.8, camera: {width: 160, height: 120, hfov_rad: 1.5707963267948966}, ttl_s: 60}
+        params: {analysis_from: analyze, robot_id: ugv_01, signature: orange, size_m: 0.8, camera: {width: 160, height: 120, hfov_rad: 1.5707963267948966}, ttl_s: 20}
       - {node_id: await_recheck, activity: await_recheck, params: {recheck_from: recheck}}
       - {node_id: review, activity: human_review, after: [await_recheck], requires: done, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
       - {node_id: report, activity: build_report, requires: done, after: [review]}

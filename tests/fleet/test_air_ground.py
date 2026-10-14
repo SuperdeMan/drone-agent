@@ -30,6 +30,8 @@ MID = (3.0, 8.0)  # site a's asset_mid on the ground map / 地面地图中站点
 @pytest.fixture
 def world(tmp_path):
     w = X1World(tmp_path / "case", ROOT, seed=7)
+    # These cases approve ground missions themselves. / 这些用例自行审批地面任务。
+    w.approve_ground = False
     w.rovers["ugv_01"].body.blocks = [Block(*MID, 0.5, COLOURS["orange"])]
     yield w
     w.ledger.close()

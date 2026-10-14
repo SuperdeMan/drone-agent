@@ -33,7 +33,7 @@ SCENE = ROOT / "configs/scenarios/x1_ground_a_v1.yaml"
 POLICY = "rover_campus@v1"
 # Site a's asset_mid (5, 4) seen from the ground map, whose origin is site a's (2, -4). / 地面地图中的站点 a asset_mid。
 MID = [3.0, 8.0]
-COMPOUND = [8.5, 18.0]  # deep inside the fenced compound / 院子深处
+COMPOUND = [5.5, 17.5]  # deep inside the fenced compound / 院子深处
 
 
 @lru_cache(maxsize=1)

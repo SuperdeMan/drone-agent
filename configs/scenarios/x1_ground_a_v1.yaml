@@ -3,13 +3,13 @@
 # shared frame, so a point (x, y) of site a is (x - 2, y + 4) here, and every handoff target must go through that move.
 # The robot spawns and arms at the parking spot, so this frame is also its PX4 local frame and no offset hides in the
 # adapter. The drivable area is the site's area; the aircraft pad (site a's origin) is a no-go zone, a fenced compound
-# in the north-east corner is a no-go zone whose inside no viewing distance reaches, and a building stands between the
-# parking spot and the north assets. Logical robots only (S0); the S1 world gets its own map.
+# in the north is a no-go zone whose middle no viewing distance reaches, and a building stands between the parking
+# spot and the north assets. Logical robots only (S0); the S1 world gets its own map.
 #
 # X1 S0 地面站点 x1_ground_a_v1（D088）：地面车自己的 P3 站点 a 地图。它的坐标系不是站点地图的：原点就是停车位，调度目录把
 # 停车位放在共享坐标中站点 a 原点以东 2 m、以南 4 m 处，因此站点 a 的点 (x, y) 在这里是 (x - 2, y + 4)，每个交接目标都
 # 必须经过这一转换。地面车在停车位生成并解锁，所以本坐标系也是它的 PX4 本地坐标系，适配器里不藏任何偏移。可行驶区域即站点
-# 区域；飞行器机位（站点 a 原点）是禁入区；东北角围起来的院子是禁入区，任何观察距离都够不到其内部；停车位与北侧资产之间有
+# 区域；飞行器机位（站点 a 原点）是禁入区；北侧围起来的院子是禁入区，任何观察距离都够不到其中部；停车位与北侧资产之间有
 # 一栋楼。只用于逻辑机器人（S0）；S1 世界另有地图。
 schema_version: 0.1.0
 kind: ground_site
@@ -37,8 +37,8 @@ ground:
   no_go:
     # The aircraft pad, 2 m around site a's origin. / 飞行器机位，站点 a 原点周围 2 m。
     - [[-4, 2], [0, 2], [0, 6], [-4, 6]]
-    # The fenced compound (site a x 8..12, y 10..16). / 围起来的院子（站点 a 的 x 8..12、y 10..16）。
-    - [[6, 14], [10, 14], [10, 20], [6, 20]]
+    # The fenced compound (site a x 5..10, y 10..16). / 围起来的院子（站点 a 的 x 5..10、y 10..16）。
+    - [[3, 14], [8, 14], [8, 20], [3, 20]]
   parking:
     park_a: {position: [0, 0], heading_deg: 90}
   standoff_m: [1.0, 2.0]
