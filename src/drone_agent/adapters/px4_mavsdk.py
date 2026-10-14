@@ -415,24 +415,24 @@ class Px4Adapter:
     async def route_2d(self, points, speed, permitted):
         """2D mission waypoints relative to home (the parking spot); passes through every point but the last.
 
-        A leading point the robot already stands on (within the acceptance radius) is left out: PX4 v1.17 marks such
-        an item reached as the mission starts and now and then never advances past it (X1 S1, 2026-10-14). The robot
-        then drives from where it stands straight to the next point, the planned leg moved by less than the radius.
+        Every route begins at the point the robot stands on, so PX4 reaches that item at once and MAVSDK's speed-change
+        item after it holds from the first real leg on. The flight controller's own speed limit must not exceed the
+        platform's declared maximum, which the guardian's look-ahead is derived from (safety section 12); a robot
+        whose limit is higher or unknown is refused before anything is uploaded.
 
-        相对 home（停车位）的二维任务航点；除最后一个点外都不停留。车已站在其上（接受半径内）的起始航点不上传：PX4 v1.17 会在
-        任务启动时把这样的项记为已到达，偶尔就停在那里不再推进（X1 S1，2026-10-14）。车于是从所在处直接驶向下一点，即规划
-        的那一段，起点偏移小于接受半径。
+        相对 home（停车位）的二维任务航点；除最后一个点外都不停留。每条航线都从车所在的点开始，PX4 立即到达该项，其后 MAVSDK
+        的改速项从第一段实际行驶起生效。飞控自身的限速不得高于平台声明的最大速度——guardian 的前瞻由它推导（安全 §12）；
+        限速更高或未知的车在上传任何内容之前即被拒绝。
         """
         from mavsdk.mission import MissionItem, MissionPlan
 
+        limit = await self.speed_limit()
+        maximum = self.registry.capability.limits.max_speed_mps
+        if limit is None or limit > maximum + 1e-6:
+            raise PermissionError(f"flight controller speed limit {limit} exceeds the platform's {maximum} m/s")
         origin = self.values["home"]
         # The measured acceptance radius, below the arrival tolerance (X1, D088). / 实测所用的接受半径，小于到点容差。
         radius = self.registry.data["thresholds"]["nav_to"]["acceptance_m"]
-        here = self.snapshot().pose
-        points = list(points)
-        while here is not None and len(points) > 1 and \
-                math.dist(points[0][:2], (here.position.x, here.position.y)) <= radius:
-            points = points[1:]
         items = []
         for index, (east, north) in enumerate(points):
             latitude = origin.latitude_deg + math.degrees(north / 6378137)
@@ -452,6 +452,19 @@ class Px4Adapter:
                 if not permitted():
                     raise PermissionError("route authority changed")
                 await asyncio.sleep(0.05)
+
+    async def speed_limit(self) -> float | None:
+        """The rover's own speed limit (PX4 `RO_SPEED_LIM`), read once; None when it cannot be read.
+
+        地面车飞控自身的限速（PX4 `RO_SPEED_LIM`），只读一次；读不到时为 None。
+        """
+        if getattr(self, "_speed_limit", None) is None:
+            try:
+                self._speed_limit = float(await asyncio.wait_for(
+                    self._system.param.get_param_float("RO_SPEED_LIM"), 5))
+            except Exception:  # an unreadable limit is unknown, never assumed / 读不到的限速是未知，从不假定
+                return None
+        return self._speed_limit
 
     async def disarm_stationary(self, permitted):
         """Disarm a ground robot only when a fresh observation shows it stationary in Hold; refused before any command

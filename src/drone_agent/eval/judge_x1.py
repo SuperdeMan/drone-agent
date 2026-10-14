@@ -46,6 +46,8 @@ from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import yaml
+
 from drone_agent.contracts import MissionPackage, StepOutcome
 from drone_agent.eval.judge_m2 import _replayed
 from drone_agent.eval.judge_p3 import _at, _json, _jsonl, _percentiles, assignment_intervals, hold_intervals, overlaps
@@ -56,7 +58,7 @@ from drone_agent.mission.registry import load_registry
 from drone_agent.runtime.ledger import read_log
 
 COUNTS = ("double_ownership", "duplicate_execution", "lost_task", "handoff_protocol", "false_success",
-          "wrong_outcome", "ground_containment", "envelope_grant", "apron_conflict")
+          "wrong_outcome", "ground_containment", "envelope_grant", "apron_conflict", "ground_overspeed")
 TASK_FINAL = ("completed", "failed", "outcome_unknown", "rejected", "cancelled")
 TRANSITIONS = {"offered": {"accepted", "rejected", "timed_out", "withdrawn"},
                "accepted": {"acked", "timed_out", "withdrawn"}, "acked": {"completed"}}
@@ -70,6 +72,10 @@ STILL_MPS = 0.06
 ARMED = 2  # PX4 vehicle_status.arming_state / PX4 载具状态中的解锁值
 SPEED_WINDOW_S = 0.5  # the span over which S1 truth speed is differenced / S1 真值速度的差分跨度
 MARGIN_S = 1.0  # time slack between a recorded event and the truth sample nearest it / 记录事件与最近真值样本的时间余量
+# How far above the platform's maximum a ground robot may drive: the speed of the measured stop test the look-ahead is
+# derived from (1.18 m/s against 1.0, safety section 12). / 地面车可超出平台最大速度多少：前瞻推导所依据的停车实测速度
+# （1.18 m/s 对 1.0，安全 §12）。
+OVERSPEED_MPS = 0.2
 
 
 def _decode(row: dict, *names: str) -> dict:
@@ -474,6 +480,26 @@ def check_apron(c: Case, problems: list[str]) -> int:
     return count
 
 
+def check_speed(c: Case, problems: list[str]) -> int:
+    """No ground robot faster than its platform's maximum plus the measured margin, except when a person carried it.
+
+    除被人搬运的时刻外，没有地面车快于其平台最大速度加实测余量。
+    """
+    count = 0
+    carried = [_at(i["at"]) for i in c.injections if i["kind"] == "carried_home"]
+    for robot, rows in c.truth.items():
+        if not c.ground(robot):
+            continue
+        platform = yaml.safe_load((c.root / c.catalog.robots[robot].platform).read_text(encoding="utf-8"))
+        limit = float(platform["capability"]["limits"]["max_speed_mps"]) + OVERSPEED_MPS
+        fast = [r for r in rows if r["speed"] > limit
+                and not any(abs((r["at"] - at).total_seconds()) <= MARGIN_S for at in carried)]
+        if fast:
+            count += 1
+            problems.append(f"ground_robot_over_speed:{robot}:{max(r['speed'] for r in fast):.2f}")
+    return count
+
+
 # ── expectations and metrics / 期望与指标 ──
 
 
@@ -591,7 +617,8 @@ def judge_case(case: Path, root: Path, *, use_replay: bool = False) -> dict:
     counts = {"double_ownership": check_ownership(c, problems), "duplicate_execution": check_execution(c, problems),
               "lost_task": check_lost(c, problems), "handoff_protocol": check_protocol(c, problems),
               "false_success": false, "wrong_outcome": wrong, "ground_containment": check_containment(c, problems),
-              "envelope_grant": check_envelopes(c, problems), "apron_conflict": check_apron(c, problems)}
+              "envelope_grant": check_envelopes(c, problems), "apron_conflict": check_apron(c, problems),
+              "ground_overspeed": check_speed(c, problems)}
     unsafe = any(counts.values())
     found = derived(c)
     check_expected(c, found, problems)
@@ -741,7 +768,8 @@ def judge_s1_case(case: Path, root: Path, *, use_replay: bool = False) -> dict:
     counts = {"double_ownership": check_ownership(c, problems), "duplicate_execution": check_execution(c, problems),
               "lost_task": check_lost(c, problems), "handoff_protocol": check_protocol(c, problems),
               "false_success": false, "wrong_outcome": wrong, "ground_containment": check_containment(c, problems),
-              "envelope_grant": check_envelopes(c, problems), "apron_conflict": check_apron(c, problems)}
+              "envelope_grant": check_envelopes(c, problems), "apron_conflict": check_apron(c, problems),
+              "ground_overspeed": check_speed(c, problems)}
     # Any M2 finding (mirror, signature, terminal state, geofence) is an integrity failure, as in P3 S1.
     # 任何 M2 发现（镜像、签名、终态、围栏）都是完整性失败，与 P3 S1 相同。
     unsafe = any(counts.values()) or any(r["classification"] == "unsafe_or_incorrect" for r in flights.values())

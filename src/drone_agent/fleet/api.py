@@ -201,7 +201,8 @@ async def _dispatch(service: MissionService, request: dict) -> dict:
     if not isinstance(request, dict) or set(request) != {"method", "actor", "trust", "params"}:
         return _error("service.invalid_request", "expected method, actor, trust and params")
     method, actor, params = request["method"], request["actor"], request["params"]
-    if method not in METHODS or not isinstance(params, dict)             or not METHODS[method][1] <= set(params) <= METHODS[method][1] | OPTIONAL.get(method, frozenset()):
+    if (method not in METHODS or not isinstance(params, dict)
+            or not METHODS[method][1] <= set(params) <= METHODS[method][1] | OPTIONAL.get(method, frozenset())):
         return _error("service.invalid_request", f"unknown method or parameters for {method}")
     try:
         who = caller(str(actor), str(request["trust"]))

@@ -1,11 +1,11 @@
 {
   "schema_version": "0.1.0",
   "basis": "sim_only",
-  "method": "PX4 SITL linear drain fitted on 46 uncensored ground steps; mean=rate_mean*duration_mean, upper=rate_p95*duration_p95",
+  "method": "PX4 SITL linear drain fitted on 37 uncensored ground steps; mean=rate_mean*duration_mean, upper=rate_p95*duration_p95",
   "drain_rate_per_s": {
-    "mean": 0.000528,
+    "mean": 0.00052,
     "p95": 0.001702,
-    "samples": 46
+    "samples": 37
   },
   "flights": [
     "20261014T070202Z-9b75cfe0/x1-20261014T072315Z-707a44e6/x1_nominal-7/robots/ugv_01/aircraft/m-75e784725841/v1",
@@ -23,50 +23,46 @@
     "20261014T080750Z-0f909122/x1-20261014T093034Z-4bc54ef6/x1_cancel_during_recheck-41/robots/ugv_01/aircraft/m-472ade7c995f/v1",
     "20261014T080750Z-0f909122/x1-20261014T093034Z-4bc54ef6/x1_link_loss_driving-41/robots/ugv_01/aircraft/m-b3461533caac/v1",
     "20261014T080750Z-0f909122/x1-20261014T093034Z-4bc54ef6/x1_nominal-41/robots/ugv_01/aircraft/m-505d28409936/v1",
-    "20261014T080750Z-0f909122/x1-20261014T093034Z-4bc54ef6/x1_not_found-41/robots/ugv_01/aircraft/m-5e6b4c1c334e/v1",
-    "20261014T094615Z-2d7ebaae/x1-20261014T100726Z-244c2658/x1_cancel_during_recheck-7/robots/ugv_01/aircraft/m-5f2ac8aacad4/v1",
-    "20261014T094615Z-2d7ebaae/x1-20261014T100726Z-244c2658/x1_link_loss_driving-7/robots/ugv_01/aircraft/m-a7b6c402a2a8/v1",
-    "20261014T094615Z-2d7ebaae/x1-20261014T100726Z-244c2658/x1_nominal-7/robots/ugv_01/aircraft/m-1b1bc2500c4a/v1",
-    "20261014T094615Z-2d7ebaae/x1-20261014T100726Z-244c2658/x1_not_found-7/robots/ugv_01/aircraft/m-fe55698f2aa4/v1"
+    "20261014T080750Z-0f909122/x1-20261014T093034Z-4bc54ef6/x1_not_found-41/robots/ugv_01/aircraft/m-5e6b4c1c334e/v1"
   ],
   "skills": {
     "arm": {
-      "samples": 20,
-      "duration_mean_s": 1.782,
-      "duration_p95_s": 1.988,
+      "samples": 16,
+      "duration_mean_s": 1.763,
+      "duration_p95_s": 2.11,
       "mean_fraction": 0.0009,
-      "upper_fraction": 0.0034
+      "upper_fraction": 0.0036
     },
     "disarm": {
-      "samples": 15,
-      "duration_mean_s": 1.536,
+      "samples": 12,
+      "duration_mean_s": 1.553,
       "duration_p95_s": 1.885,
       "mean_fraction": 0.0008,
       "upper_fraction": 0.0032
     },
     "nav_to": {
-      "samples": 16,
-      "duration_mean_s": 7.639,
+      "samples": 13,
+      "duration_mean_s": 7.738,
       "duration_p95_s": 8.798,
       "mean_fraction": 0.004,
       "upper_fraction": 0.015
     },
     "recheck": {
-      "samples": 15,
-      "duration_mean_s": 6.029,
+      "samples": 12,
+      "duration_mean_s": 6.046,
       "duration_p95_s": 6.338,
-      "mean_fraction": 0.0032,
+      "mean_fraction": 0.0031,
       "upper_fraction": 0.0108
     },
     "return_home": {
-      "samples": 15,
-      "duration_mean_s": 10.317,
+      "samples": 12,
+      "duration_mean_s": 10.274,
       "duration_p95_s": 11.133,
-      "mean_fraction": 0.0054,
+      "mean_fraction": 0.0053,
       "upper_fraction": 0.0189
     },
     "stop": {
-      "samples": 15,
+      "samples": 12,
       "duration_mean_s": 1.157,
       "duration_p95_s": 1.162,
       "mean_fraction": 0.0006,
@@ -90,12 +86,7 @@
         "x1-20261014T085203Z-5a936c0e",
         "x1-20261014T093034Z-4bc54ef6"
       ]
-    },
-    "20261014T094615Z-2d7ebaae": {
-      "source_sha": "fc6dd6d39915d7141b8486fe7e69f93c468c569e",
-      "runs": [
-        "x1-20261014T100726Z-244c2658"
-      ]
     }
-  }
+  },
+  "excluded": "fc6dd6d's runs left out the route's first point, so their first legs drove at PX4's default 1.8 m/s; they do not represent the routes the candidate drives. / fc6dd6d 的运行去掉了航线首点，首段按 PX4 默认 1.8 m/s 行驶，不代表候选实际行驶的航线。"
 }

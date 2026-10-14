@@ -94,6 +94,10 @@ def test_the_service_runs_the_x1_s1_catalogs_with_air_ground():
 def test_the_simulation_image_keeps_px4s_default_logging_and_sets_the_rover_battery():
     setup = (ROOT / "sim/x1_setup.py").read_text(encoding="utf-8")
     assert "SDLOG" not in setup and "param set-default SIM_BAT_DRAIN 1800" in setup
+    # The rover's own speed limit is the platform's maximum, which the look-ahead is derived from. / 地面车飞控限速即平台
+    # 最大速度，前瞻由它推导。
+    platform = yaml.safe_load((ROOT / "configs/platforms/px4_sitl_rover.yaml").read_text(encoding="utf-8"))
+    assert f"param set-default RO_SPEED_LIM {platform['capability']['limits']['max_speed_mps']}" in setup
     assert "SDLOG" not in (ROOT / "sim/compose.x1.yaml").read_text(encoding="utf-8")
 
 

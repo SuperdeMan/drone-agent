@@ -150,3 +150,26 @@ def test_every_s1_case_materializes_with_an_srgb_compensated_block(tmp_path):
     # 自发光，所以 140/255 的绿色以其 2.2 次幂发出。
     assert "<emissive>1.0000 0.2674 0.0000 1</emissive>" in block_sdf(5.0, 4.0, "orange")
     assert "<diffuse>0 0 0 1</diffuse>" in block_sdf(5.0, 4.0, "orange")
+
+
+def test_a_ground_robot_faster_than_its_platform_is_counted_except_while_carried():
+    from drone_agent.eval.judge_x1 import check_speed
+    from drone_agent.fleet.resources import load_catalog
+
+    catalog = load_catalog(ROOT / "configs/sites/x1_campus_v1.yaml")
+
+    def rows(speed: float) -> list[dict]:
+        return [{"at": T0 + timedelta(seconds=s / 10), "speed": speed if 20 <= s < 25 else 0.5} for s in range(60)]
+
+    def judged(speed: float, injections=()) -> tuple[int, list[str]]:
+        c = NS(truth={"ugv_01": rows(speed), "uav_a": rows(5.0)}, injections=list(injections), catalog=catalog,
+               root=ROOT, ground=lambda robot: catalog.robots[robot].dock_id is None)
+        problems: list[str] = []
+        return check_speed(c, problems), problems
+
+    # 1.0 m/s plus the measured 0.2 m/s margin; aircraft are not checked. / 1.0 m/s 加实测余量 0.2 m/s；不查飞行器。
+    assert judged(1.15) == (0, [])
+    count, problems = judged(1.9)
+    assert count == 1 and problems[0].startswith("ground_robot_over_speed:ugv_01:1.90")
+    # A person carrying the robot home is not driving. / 人把车搬回去不算行驶。
+    assert judged(1.9, [{"kind": "carried_home", "robot_id": "ugv_01", "at": (T0 + timedelta(seconds=2.2)).isoformat()}])[0] == 0

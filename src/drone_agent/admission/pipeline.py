@@ -83,10 +83,12 @@ def evaluate(spec: MissionSpec, compile_ctx: CompileContext, admission_ctx: Admi
     """
     # A ground site compiles and admits its own way (X1, D088). / 地面站点按自己的方式编译与准入（X1，D088）。
     ground = getattr(compile_ctx.registry, "kind", None) == "ground_site"
-    compiled = compile_ground(spec, compile_ctx.registry, robot_id=compile_ctx.robot_id) if ground         else compile_spec(spec, compile_ctx)
+    compiled = (compile_ground(spec, compile_ctx.registry, robot_id=compile_ctx.robot_id) if ground
+                else compile_spec(spec, compile_ctx))
     if not compiled.ok:
         return PipelineOutcome(blocked_at="compiler", issues=compiled.issues, spec=spec, compile=compiled)
-    admitted = admit_ground(compiled.package, admission_ctx) if ground         else admit(compiled.package, admission_ctx, spec=spec)
+    admitted = (admit_ground(compiled.package, admission_ctx) if ground
+                else admit(compiled.package, admission_ctx, spec=spec))
     if not admitted.accepted:
         return PipelineOutcome(blocked_at="admission", issues=admitted.issues, spec=spec, compile=compiled,
                                admission=admitted)
