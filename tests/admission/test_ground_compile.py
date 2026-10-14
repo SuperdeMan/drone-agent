@@ -13,7 +13,7 @@ import math
 import pytest
 
 from drone_agent.admission.compiler import CompileContext
-from drone_agent.admission.ground import ORDER, admit_ground, compile_ground, plan
+from drone_agent.admission.ground import ORDER, admit_ground, compile_ground
 from drone_agent.admission.pipeline import evaluate
 from drone_agent.contracts import PackageNode
 from tests.admission.ground_scene import (
@@ -80,7 +80,7 @@ def test_an_unreachable_target_never_compiles():
 
 
 def test_a_reply_that_disagrees_with_the_compiled_path_is_refused():
-    answer = plan(ground(), MID, None)
+    answer = ground().answer(MID)
     good = {"map_version": "x1_ground_a_v1", "path_length_m": answer.path_m}
     assert compile_ground(recheck_spec(), ground(), robot_id="ugv_01", reply=good).ok
     for bad in ({**good, "map_version": "x1_ground_a_v0"}, {**good, "path_length_m": answer.path_m + 3}):

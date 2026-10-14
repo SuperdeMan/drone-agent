@@ -22,39 +22,16 @@ X1 地面编译与准入（D088）：一次复核、来自地面车自身地图�
 
 from __future__ import annotations
 
-import math
-
 from drone_agent.admission.admission import AdmissionContext, _capability, _Checks, _energy, _params, _time
 from drone_agent.admission.airspace import airspace_issues
 from drone_agent.admission.models import AdmissionResult, CompileResult
 from drone_agent.contracts import MissionPackage, MissionSpec, PackageNode
 from drone_agent.mission.ground import ARM, DISARM, NAV_TO, RECHECK, RETURN_HOME, STOP, GroundRegistry
-from drone_agent.mission.reachability import assess
 from drone_agent.mission.registry import distance
 from drone_agent.runtime.issues import Issue, Severity, issue
 
 ORDER = (ARM, NAV_TO, RECHECK, RETURN_HOME, STOP, DISARM)
 TOLERANCE_PATH_M = 0.5  # how far the compiled path may differ from the reply's / 编译路径与回复路径允许的差
-
-
-def viewing_band(registry: GroundRegistry, radius_m: float | None) -> tuple[float, float] | None:
-    """The viewing distance band: the map's standoff for a point; for a search region far enough that the camera's
-    field of view spans the region, with one metre of slack. / 观察距离区间：目标点用地图的观察距离；搜索区域则要远到
-    相机视场能覆盖整个区域，另留一米余量。"""
-    if radius_m is None:
-        return None
-    near = max(registry.map.ground.standoff_m[0],
-               radius_m / math.tan(math.radians(registry.data["camera"]["hfov_deg"]) / 2))
-    return near, near + 1.0
-
-
-def plan(registry: GroundRegistry, target, radius_m: float | None):
-    """The robot's own answer from its parking spot, as the compiler and the robot both compute it.
-
-    从停车位出发、地面车自己的回答；编译器与地面车以同样方式求得。
-    """
-    return assess(registry.grid, position=registry.parking(), target=tuple(target),
-                  band=viewing_band(registry, radius_m), face_m=registry.thresholds["face_m"])
 
 
 def compile_ground(spec: MissionSpec, registry: GroundRegistry, *, robot_id: str,
@@ -80,7 +57,7 @@ def compile_ground(spec: MissionSpec, registry: GroundRegistry, *, robot_id: str
     except (KeyError, TypeError, ValueError, IndexError):
         return CompileResult(issues=[issue("compile.params_invalid", "the recheck target is malformed",
                                            affected=[task.task_id])])
-    answer = plan(registry, target, radius)
+    answer = registry.answer(target, radius)
     if not answer.accepted:
         return CompileResult(issues=[issue("compile.ground_unreachable", f"{answer.reason}: {answer.detail}",
                                            affected=[task.task_id])])

@@ -32,7 +32,7 @@ import jsonschema
 import yaml
 
 from drone_agent.contracts import CapabilityDescriptor, Embodiment, MissionPackage, SkillManifest, utcnow
-from drone_agent.mission.reachability import Grid, ground_map_of, inside_polygon
+from drone_agent.mission.reachability import Grid, Reachability, assess, ground_map_of, inside_polygon
 from drone_agent.mission.registry import Registry, coordinates, distance
 from drone_agent.runtime.ledger import content_hash
 
@@ -123,10 +123,36 @@ class GroundRegistry(Registry):
             return "unknown"
         if observation.armed or value > self.thresholds["stationary_mps"]:
             return "moving"
-        point = coordinates(observation)
-        parked = any(distance(point[:2], spot.position) <= self.thresholds["parking_radius_m"]
-                     for spot in self.map.ground.parking.values())
-        return "parked" if parked else "stopped"
+        return "parked" if self.resting(observation) else "stopped"
+
+    def resting(self, observation) -> bool:
+        """Disarmed, still and at a registered parking spot, whatever the observation's age: the robot's last known
+        state, never a fresh fact. / 已上锁、静止且位于登记停车位，不论观测新旧：这是地面车最后已知的状态，不是新鲜事实。
+        """
+        value, point = speed(observation), coordinates(observation)
+        return (observation.armed is False and value is not None and value <= self.thresholds["stationary_mps"]
+                and point is not None and any(distance(point[:2], spot.position) <= self.thresholds["parking_radius_m"]
+                                              for spot in self.map.ground.parking.values()))
+
+    # ── handoff answers / 交接作答 ──
+
+    def viewing_band(self, radius_m: float | None) -> tuple[float, float] | None:
+        """The viewing distance band: the map's standoff for a point (None); for a search region far enough that the
+        camera's field of view spans it, with one metre of slack. / 观察距离区间：目标点用地图的观察距离（None）；搜索
+        区域则要远到相机视场能覆盖整个区域，另留一米余量。"""
+        if radius_m is None:
+            return None
+        near = max(self.map.ground.standoff_m[0],
+                   radius_m / math.tan(math.radians(self.data["camera"]["hfov_deg"]) / 2))
+        return near, near + 1.0
+
+    def answer(self, target, radius_m: float | None = None) -> Reachability:
+        """The robot's own answer from its parking spot, with a face leg; the compiler computes the same one.
+
+        地面车从停车位出发、带正对段的自身回答；编译器求得的是同一个。
+        """
+        return assess(self.grid, position=self.parking(), target=(float(target[0]), float(target[1])),
+                      band=self.viewing_band(radius_m), face_m=self.thresholds["face_m"])
 
     def path_problem(self, waypoints) -> str | None:
         """Why a path is not drivable on this map, or None. / 路径在本地图上不可行驶的原因；可行驶时为 None。"""

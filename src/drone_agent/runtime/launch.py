@@ -30,7 +30,7 @@ from pathlib import Path
 
 from drone_agent.contracts import MissionPackage, RecoveryPolicy
 from drone_agent.guardian.external import EXTERNAL_SKILLS
-from drone_agent.mission.registry import Registry
+from drone_agent.mission.registry import load_registry
 from drone_agent.runtime.ipc import GuardianClient, serve
 from drone_agent.runtime.ledger import Journal, canonical
 from drone_agent.runtime.recording import Recorder
@@ -98,7 +98,8 @@ async def wait_for_external(guardian, seconds: float) -> dict:
 
 
 async def main_async(args):
-    registry = Registry(args.root, scene=args.scene)
+    # The scene's kind picks the registry: an aerial site map or a ground site (X1, D088). / 场景类型决定登记表。
+    registry = load_registry(args.root, args.scene, getattr(args, "platform", None))
     package = MissionPackage.model_validate_json(args.package.read_bytes())
     trust = TrustStore.load(args.trust) if args.trust else None
     args.artifacts.mkdir(parents=True, exist_ok=True)
@@ -292,6 +293,8 @@ def main():
     parser.add_argument("--fault", type=Path)
     parser.add_argument("--simulation", action="store_true")
     parser.add_argument("--scene", type=Path, help="registry file; defaults to the M1 campus scene")
+    parser.add_argument("--platform", type=Path,
+                        help="platform file; default by the scene's kind (X1) / 平台文件；默认按场景类型取（X1）")
     parser.add_argument("--trust", type=Path, help="read-only trust file; requires signed approvals (M2)")
     parser.add_argument("--robot-state", type=Path, help="robot-level authority state file (guardian, M2)")
     parser.add_argument("--operator-mailbox", type=Path, help="operator mailbox written by the uplink (executive, M2)")
