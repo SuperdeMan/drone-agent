@@ -155,7 +155,7 @@ flowchart TB
 | [../p3-implementation.md](../p3-implementation.md) | P3 多站多机调度的语义、两机拓扑、故障矩阵与门禁方案 |
 | [../p3-readiness.md](../p3-readiness.md) | P3 验收版本、S0 矩阵与规模阶梯、两机 S1、容量与常驻任务台调度会话 |
 | [../reuse-from-embodied-agent.md](../reuse-from-embodied-agent.md) | 从 `embodied-agent` / `car-agent` 复用什么、怎么迁 |
-| [../research/](../research/) | 前沿调研与 GPT-6 Pro 评估摘要 |
+| [../research/](../research/) | 前沿调研、GPT-6 Pro 评估摘要与季度技术雷达（最近一次：[2026-10](../research/tech-radar-2026-10.md)） |
 | [../m0-readiness.md](../m0-readiness.md) | M0 交付核对与实际验证证据 |
 | [../m1-skill-catalog.md](../m1-skill-catalog.md) | 五个 M1 技能的参数、资源、取消与完成判据 |
 | [../m1-implementation.md](../m1-implementation.md) | M1 实施顺序、运行时边界与证据要求 |
