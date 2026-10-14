@@ -5,11 +5,18 @@ enter the external mode registered by the egress node (the setpoints themselves 
 node, never through here), the mode names of the external nav states and the `land_at` recovery (reposition,
 then land). The guardian, not the adapter, decides whether `external_mode` is currently offered.
 
+X1 (D088) adds the ground robot, by embodiment and never by robot name: its skills drive 2D mission waypoints, its
+recovery set is stop and handover, and its one disarm is refused before any command unless a fresh observation shows
+it stationary in Hold. The measured PX4 rover accepts a disarm while driving, so that refusal is the only barrier.
+
 基于 MAVSDK 的 PX4 适配器：任务模式、恢复命令与进入外部模式。
 
 不提供 Offboard、原始设定值或 kill 接口。M3（D039）增加一条固定的 MAVLink 命令，请求 PX4 进入出口节点注册的
 外部模式（设定值本身经 uXRCE-DDS 由该节点发送，从不经过这里）；增加外部 nav 状态的模式名与 `land_at` 恢复（先重定位
 再降落）。当前是否提供 `external_mode` 由 guardian 而不是适配器决定。
+
+X1（D088）按本体（从不按机器人名）增加地面车：其技能驶过二维任务航点，恢复集合为 stop 与 handover；其唯一的上锁命令
+除非新鲜观测显示车已在 Hold 中静止，否则在发出前即被拒绝。实测 PX4 地面车在行驶中也接受上锁，因此这一拒绝是唯一屏障。
 """
 
 from __future__ import annotations
@@ -25,6 +32,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from drone_agent.contracts import (
+    Embodiment,
     Evidence,
     FlightObservation,
     Frame,
@@ -35,6 +43,8 @@ from drone_agent.contracts import (
     utcnow,
 )
 from drone_agent.runtime.ledger import canonical, durable_artifact
+
+GROUND = "skill.ground."
 
 
 class Px4Adapter:
@@ -52,18 +62,22 @@ class Px4Adapter:
         self.transition_from = None
         self.camera_available = sensor.is_file()
         self.capabilities = registry.capability.model_copy(deep=True)
-        self.capabilities.recovery_behaviors = {
-            RecoveryBehavior.HOLD,
-            RecoveryBehavior.RTL,
-            RecoveryBehavior.LAND_HERE,
-            RecoveryBehavior.LAND_AT,
-            RecoveryBehavior.HANDOVER_TO_FC_FAILSAFE,
-        }
+        self.ground = registry.capability.embodiment is Embodiment.GROUND_WHEELED
+        # The baseline set by embodiment (X1, D088); the aerial set is unchanged. / 按本体取基线集合；空中集合不变。
+        self.capabilities.recovery_behaviors = {RecoveryBehavior.STOP, RecoveryBehavior.HANDOVER_TO_FC_FAILSAFE} \
+            if self.ground else {
+                RecoveryBehavior.HOLD,
+                RecoveryBehavior.RTL,
+                RecoveryBehavior.LAND_HERE,
+                RecoveryBehavior.LAND_AT,
+                RecoveryBehavior.HANDOVER_TO_FC_FAILSAFE,
+            }
         if not self.camera_available:
             # Every camera-dependent skill disappears with the camera. / 相机缺席时所有依赖相机的技能一并缺席。
             self.capabilities.skills = [
                 s for s in self.capabilities.skills
-                if s.skill_id not in {"skill.flight.capture_image", "skill.inspect.asset", "skill.inspect.asset_local"}
+                if s.skill_id not in {"skill.flight.capture_image", "skill.inspect.asset", "skill.inspect.asset_local",
+                                      "skill.ground.recheck"}
             ]
             self.capabilities.sensors = [s for s in self.capabilities.sensors if s.sensor_id != "cam_0"]
         self.command_log = []
@@ -335,6 +349,13 @@ class Px4Adapter:
                 await asyncio.sleep(0.05)
 
     async def execute(self, node, permitted, phase=None):
+        if node.skill_id.startswith(GROUND) or self.ground:
+            # Ground skills only on ground robots, and nothing else on them (X1). / 地面技能只在地面车上执行，地面车也只
+            # 执行地面技能（X1）。
+            if not (node.skill_id.startswith(GROUND) and self.ground):
+                raise PermissionError("skill and embodiment differ")
+            await self._execute_ground(node, permitted, phase)
+            return
         action, p = node.skill_id.rsplit(".", 1)[1], node.params
         if node.skill_id in {"skill.inspect.asset", "skill.inspect.asset_local"}:
             # Approach flies the asset's registered observation route; the local variant approaches in external mode
@@ -366,6 +387,77 @@ class Px4Adapter:
             self.evidence[node.task_id] = await self.capture(node, permitted)
         else:
             raise ValueError("unsupported skill")
+
+    async def _execute_ground(self, node, permitted, phase):
+        """X1 ground skills (D088): arm in Hold, 2D waypoints, the face leg, a frame, stop, the guarded disarm.
+
+        X1 地面技能（D088）：在 Hold 中解锁、二维航点、正对目标的短程、拍一帧、停车、受守卫的上锁。
+        """
+        name, p = node.skill_id.removeprefix(GROUND), node.params
+        if name == "arm":
+            self.expect({"HOLD"})
+            await self._call("ground_hold", self._system.action.hold, permitted)
+            await self._call("ground_arm", self._system.action.arm, permitted)
+        elif name in {"nav_to", "return_home"}:
+            await self.route_2d(p["waypoints"], p["speed_mps"], permitted)
+        elif name == "recheck" and phase == "approach":
+            await self.route_2d([p["goal"], p["face_point"]], p["speed_mps"], permitted)
+        elif name == "recheck" and phase == "capture":
+            self.evidence[node.task_id] = await self.capture(node, permitted)
+        elif name == "stop":
+            self.expect({"HOLD"})
+            await self._call("ground_stop", self._system.action.hold, permitted)
+        elif name == "disarm":
+            await self.disarm_stationary(permitted)
+        else:
+            raise ValueError("unsupported ground skill or phase")
+
+    async def route_2d(self, points, speed, permitted):
+        """2D mission waypoints relative to home (the parking spot); passes through every point but the last.
+
+        相对 home（停车位）的二维任务航点；除最后一个点外都不停留。
+        """
+        from mavsdk.mission import MissionItem, MissionPlan
+
+        origin = self.values["home"]
+        # The measured acceptance radius, below the arrival tolerance (X1, D088). / 实测所用的接受半径，小于到点容差。
+        radius = self.registry.data["thresholds"]["nav_to"]["acceptance_m"]
+        items = []
+        for index, (east, north) in enumerate(points):
+            latitude = origin.latitude_deg + math.degrees(north / 6378137)
+            longitude = origin.longitude_deg + math.degrees(
+                east / (6378137 * math.cos(math.radians(origin.latitude_deg)))
+            )
+            items.append(MissionItem(latitude, longitude, 0.0, speed, index < len(points) - 1, float("nan"),
+                                     float("nan"), MissionItem.CameraAction.NONE, 0.0, float("nan"), radius,
+                                     float("nan"), float("nan"), MissionItem.VehicleAction.NONE))
+        self.expect({"MISSION", "HOLD"})
+        await self._call("route_no_auto_rtl", self._system.mission.set_return_to_launch_after_mission, permitted, False)
+        await self._call("upload_route_2d", self._system.mission.upload_mission, permitted, MissionPlan(items))
+        await asyncio.sleep(1)
+        await self._call("start_route_2d", self._system.mission.start_mission, permitted)
+        async with asyncio.timeout(2):
+            while self.values["mode"].name != "MISSION":
+                if not permitted():
+                    raise PermissionError("route authority changed")
+                await asyncio.sleep(0.05)
+
+    async def disarm_stationary(self, permitted):
+        """Disarm a ground robot only when a fresh observation shows it stationary in Hold; refused before any command
+        otherwise, and never a kill (X1, D088).
+
+        只有新鲜观测显示地面车已在 Hold 中静止时才上锁；否则在发出任何命令之前即拒绝，且绝不是 kill（X1，D088）。
+        """
+        if not self.ground:
+            raise PermissionError("disarm is a ground-robot command only")
+        obs = self.snapshot()
+        velocity = obs.velocity_enu_mps
+        speed = math.hypot(velocity[0], velocity[1]) if velocity else None
+        if (not obs.timestamp <= utcnow() < obs.valid_until or speed is None
+                or speed > self.registry.data["thresholds"]["stationary_mps"] or obs.flight_mode != "HOLD"):
+            raise PermissionError("disarm only a stationary robot in Hold")
+        self.expect({"HOLD"})
+        await self._call("ground_disarm", self._system.action.disarm, permitted)
 
     async def capture(self, node, permitted):
         observation = self.snapshot()
@@ -447,6 +539,12 @@ class Px4Adapter:
         elif behavior == RecoveryBehavior.HOLD:
             self.expect({"HOLD"})
             await self._call("hold", self._system.action.hold, permitted)
+        elif behavior == RecoveryBehavior.STOP:
+            # X1 (D088): a ground robot stops and holds where it is. / X1（D088）：地面车原地停止并保持。
+            if not self.ground:
+                raise ValueError("stop is a ground behaviour")
+            self.expect({"HOLD"})
+            await self._call("stop", self._system.action.hold, permitted)
         elif behavior == RecoveryBehavior.RTL:
             self.expect({"RETURN_TO_LAUNCH", "LAND", "HOLD", "READY"})
             await self._call("rtl", self._system.action.return_to_launch, permitted)

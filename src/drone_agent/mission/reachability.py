@@ -109,6 +109,9 @@ class Reachability:
     goal: Point | None = None
     waypoints: tuple[Point, ...] = ()
     detail: str = ""
+    # Where the short face leg from the goal ends, facing the target (None without a face leg).
+    # 从 goal 出发、正对目标的短程终点（没有正对段时为 None）。
+    face_point: Point | None = None
 
 
 def inside_polygon(point: Point, polygon: Sequence[Point]) -> bool:
@@ -188,19 +191,14 @@ def _start(grid: Grid, position: Point) -> Cell | None:
     return min(near, key=lambda c: (math.dist(grid.centre(c), position), c)) if near else None
 
 
-def _shortest(grid: Grid, start: Cell, goals: frozenset[Cell]) -> tuple[float, list[Cell]] | None:
-    # Dijkstra on the 8-connected grid; a diagonal step needs both side cells free. / 八连通网格上的 Dijkstra；
-    # 斜向一步要求两侧单元都可通行。
+def _distances(grid: Grid, start: Cell) -> tuple[dict[Cell, float], dict[Cell, Cell]]:
+    # Dijkstra over the whole 8-connected grid, in cells; a diagonal step needs both side cells free.
+    # 在整个八连通网格上做 Dijkstra（以单元计）；斜向一步要求两侧单元都可通行。
     best, previous, queue = {start: 0.0}, {}, [(0.0, start)]
     while queue:
         cost, cell = heapq.heappop(queue)
         if cost > best[cell]:
             continue
-        if cell in goals:
-            path = [cell]
-            while path[-1] in previous:
-                path.append(previous[path[-1]])
-            return cost * grid.cell, path[::-1]
         for di, dj in NEIGHBOURS:
             nxt = (cell[0] + di, cell[1] + dj)
             if nxt not in grid.free:
@@ -211,7 +209,14 @@ def _shortest(grid: Grid, start: Cell, goals: frozenset[Cell]) -> tuple[float, l
             if step < best.get(nxt, math.inf):
                 best[nxt], previous[nxt] = step, cell
                 heapq.heappush(queue, (step, nxt))
-    return None
+    return best, previous
+
+
+def _cells_to(previous: dict[Cell, Cell], cell: Cell) -> list[Cell]:
+    path = [cell]
+    while path[-1] in previous:
+        path.append(previous[path[-1]])
+    return path[::-1]
 
 
 def _simplify(grid: Grid, points: list[Point]) -> tuple[Point, ...]:
@@ -228,10 +233,17 @@ def _simplify(grid: Grid, points: list[Point]) -> tuple[Point, ...]:
     return tuple(kept)
 
 
-def assess(grid: Grid, *, position: Point, target: Point, radius_m: float | None = None) -> Reachability:
+def assess(grid: Grid, *, position: Point, target: Point, radius_m: float | None = None,
+           band: tuple[float, float] | None = None, face_m: float = 0.0) -> Reachability:
     """Answer an offer for a target point (`radius_m` None) or a search region from the robot's own map.
 
-    依据地面车自己的地图，回答针对目标点（`radius_m` 为 None）或搜索区域的提议。
+    `band` overrides the viewing distance band. With `face_m` the robot ends on a viewing cell V by a straight face leg
+    of that length pointing at the target, so a differential robot faces it: the goal G lies `face_m` behind V on the
+    line from the target, G must be free and reachable and the leg G -> V clear; the cheapest such pair wins.
+
+    依据地面车自己的地图，回答针对目标点（`radius_m` 为 None）或搜索区域的提议。`band` 覆盖观察距离区间。给出 `face_m`
+    时，地面车以一段长为该值、指向目标的直线正对段停在观察单元 V 上，差速车因此正对目标：goal G 位于 V 沿目标连线向后
+    `face_m` 处，G 必须可通行且可达、G -> V 必须畅通；取代价最小的一对。
     """
     section, version = grid.map.ground, grid.map.registry_id
     start = _start(grid, position)
@@ -240,20 +252,40 @@ def assess(grid: Grid, *, position: Point, target: Point, radius_m: float | None
     near, far = section.standoff_m
     if radius_m is not None:
         near, far = 0.0, radius_m + far
+    if band is not None:
+        near, far = band
     if grid.cell_of(target) is None and not any(grid.cell_of((target[0] + dx * far, target[1] + dy * far))
                                                 for dx, dy in NEIGHBOURS):
         return Reachability(False, OUTSIDE_MAP, version, detail="the target is off the map")
-    goals = frozenset(c for c in grid.free if near <= math.dist(grid.centre(c), target) <= far)
-    if not goals:
+    views = [c for c in grid.free if near <= math.dist(grid.centre(c), target) <= far]
+    if not views:
         return Reachability(False, UNREACHABLE, version, detail="no free cell at a viewing distance")
-    found = _shortest(grid, start, goals)
-    if found is None:
+    best, previous = _distances(grid, start)
+    options = []
+    for view in views:
+        if view not in best:
+            continue
+        if face_m <= 0:
+            options.append((best[view], view, view))
+            continue
+        vx, vy = grid.centre(view)
+        length = math.dist((vx, vy), target)
+        if length == 0:
+            continue
+        ux, uy = (target[0] - vx) / length, (target[1] - vy) / length
+        goal = grid.cell_of((vx - ux * face_m, vy - uy * face_m))
+        if goal is None or goal not in best or not grid.clear(grid.centre(goal), (vx, vy)):
+            continue
+        options.append((best[goal], goal, view))
+    if not options:
         return Reachability(False, UNREACHABLE, version, detail="no path to a viewing cell")
-    length, cells = found
+    cost, goal, view = min(options)
+    length = cost * grid.cell
     if length > section.max_path_m:
         return Reachability(False, UNREACHABLE, version, path_m=round(length, 2),
                             detail=f"path {length:.1f} m exceeds {section.max_path_m} m")
+    cells = _cells_to(previous, goal)
     points = [position, *(grid.centre(c) for c in cells[1:])]
-    goal = grid.centre(cells[-1])
     return Reachability(True, None, version, path_m=round(length, 2), eta_s=round(length / section.cruise_mps, 1),
-                        goal=goal, waypoints=_simplify(grid, points))
+                        goal=grid.centre(goal), waypoints=_simplify(grid, points),
+                        face_point=grid.centre(view) if face_m > 0 else None)

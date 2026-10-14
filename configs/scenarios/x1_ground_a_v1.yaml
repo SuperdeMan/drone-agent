@@ -26,7 +26,9 @@ home:
 assets: {}
 ground:
   cell_m: 0.25
-  robot_radius_m: 0.4
+  # The clearance every planned path keeps from obstacles and no-go zones; see the look-ahead below.
+  # 每条规划路径与障碍、禁入区保持的净空；见下方前瞻。
+  robot_radius_m: 0.6
   drivable:
     - [[-12, -2], [10, -2], [10, 20], [-12, 20]]
   obstacles:
@@ -48,16 +50,23 @@ camera: {camera_id: cam_0, width_px: 160, height_px: 120, hfov_deg: 80, height_m
 thresholds:
   stationary_mps: 0.05
   parking_radius_m: 0.8
-  # Measured: a mission ends within 0.55 m of its last point (acceptance radius 0.5 m). / 实测：任务终点误差 0.55 m。
-  nav_to: {tolerance_m: 0.8, hold_duration_s: 1}
+  # Measured with acceptance radius 0.5 m: a mission ends within 0.55 m of its last point, so the arrival check allows
+  # 0.8 m. Intermediate points are flown through; a right-angle bend cuts at most about 0.35 m, inside the clearance.
+  # 按接受半径 0.5 m 实测：任务终点误差 0.55 m，到点核验容差取 0.8 m。中间航点不停留；90° 拐弯切弯量不超过约 0.35 m，
+  # 小于净空。
+  nav_to: {tolerance_m: 0.8, hold_duration_s: 1, acceptance_m: 0.5}
   return_home: {tolerance_m: 0.8, hold_duration_s: 2}
   arm: {hold_duration_s: 1}
   stop: {hold_duration_s: 1}
   disarm: {hold_duration_s: 1}
   face_m: 1.0
   image: {min_width: 160, min_height: 120, max_age_s: 0.5, max_position_variance: 9, min_edge_contrast: 0.05}
-# Measured: Hold stops 1.2 m/s within 0.5 s and 0.3 m, so a 0.5 s look-ahead at 1.0 m/s stays inside the clearance.
-# 实测：Hold 让 1.2 m/s 在 0.5 s、0.3 m 内停住，因此 1.0 m/s 下 0.5 s 前瞻仍在净空之内。
+# The look-ahead meets two bounds (safety section 12). It never fires on a planned path: 0.5 s at 1.0 m/s is 0.5 m, less
+# than the 0.6 m clearance. It stops the robot outside a polygon: measured Hold stops 1.18 m/s in 0.5 s and 0.313 m, so
+# 1.0 m/s stops in about 0.42 s and 0.21 m; 0.5 s less one 0.1 s period leaves 0.4 m, more than 0.1 m of command latency
+# plus 0.21 m. / 前瞻同时满足两条约束（安全 §12）。正常路径不误报：1.0 m/s 下 0.5 s 为 0.5 m，小于 0.6 m 净空。触发后停在
+# 多边形外：实测 Hold 让 1.18 m/s 在 0.5 s、0.313 m 内停住，1.0 m/s 约 0.42 s、0.21 m 停住；0.5 s 减一个 0.1 s 周期剩
+# 0.4 m，大于 0.1 m 命令延迟加 0.21 m。
 supervision: {observation_timeout_s: 0.5, heartbeat_timeout_s: 2, lease_duration_s: 10, command_timeout_s: 5, period_s: 0.1,
   prediction_s: 0.5, return_margin_fraction: 0.1, max_pause_s: 120}
 simulation: {speed_factor: 1, model: rover_differential, camera_topic: /drone/ugv_cam_0/image, policy_ref: rover_campus@v1}

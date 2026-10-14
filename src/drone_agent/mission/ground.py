@@ -196,7 +196,8 @@ class GroundRegistry(Registry):
                 raise ValueError("camera unavailable")
             if p["quality_profile_ref"] != f"{self.registry_id}.image":
                 raise ValueError("quality profile belongs to another registry")
-            if distance(p["goal"], p["face_point"]) > self.thresholds["face_m"] + 1e-6 \
+            # The goal is a cell centre, so the leg may be up to one cell longer. / goal 取单元中心，正对段最多可长一个单元。
+            if distance(p["goal"], p["face_point"]) > self.thresholds["face_m"] + self.grid.cell \
                     or not self.grid.clear(tuple(p["goal"]), tuple(p["face_point"])):
                 raise ValueError("the face leg is not clear")
 

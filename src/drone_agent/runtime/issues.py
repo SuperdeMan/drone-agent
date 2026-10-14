@@ -83,6 +83,12 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     "compile.no_capable_robot": IssueLayer.COMPILER,
     "compile.params_invalid": IssueLayer.COMPILER,
     "compile.goal_uncovered": IssueLayer.COMPILER,
+    # X1 (D088): a ground recheck's shape, region, reachability on the robot's own map, and agreement with its reply.
+    # X1（D088）：地面复核的形状、区域、在地面车自身地图上的可达性，以及与其回复的一致性。
+    "compile.ground_shape": IssueLayer.COMPILER,
+    "compile.ground_scope": IssueLayer.COMPILER,
+    "compile.ground_unreachable": IssueLayer.COMPILER,
+    "compile.reachability_mismatch": IssueLayer.COMPILER,
     # Admission / 准入层
     "scope.unregistered_volume": IssueLayer.ADMISSION,
     "scope.volume_not_requested": IssueLayer.ADMISSION,
@@ -92,6 +98,9 @@ ISSUE_CODES: dict[str, IssueLayer] = {
     # D082: the request names another project, site, robot or dock. / D082：请求点名了其他项目、站点、机器人或机场。
     "scope.foreign_reference": IssueLayer.ADMISSION,
     "scope.route_outside_volume": IssueLayer.ADMISSION,
+    # X1 (D088): a ground path leg, end or map that the robot's own map does not support. / X1（D088）：地面车自身地图不
+    # 支持的地面路径段、起止点或地图。
+    "scope.ground_path": IssueLayer.ADMISSION,
     "capability.missing_skill": IssueLayer.ADMISSION,
     "capability.missing_control_mode": IssueLayer.ADMISSION,
     "capability.version_mismatch": IssueLayer.ADMISSION,
