@@ -210,7 +210,7 @@ class OperationsStore:
 
         def write(db: sqlite3.Connection) -> None:
             db.execute("INSERT INTO op_bindings VALUES (?,?,?,?,?,?,?,?)",
-                       (mission_id, project_id, robot.site_id, robot.dock_id, robot_id, robot.execution_backend,
+                       (mission_id, project_id, robot.site_id, robot.dock_id or "", robot_id, robot.execution_backend,
                         self.catalog.sha256, self._now()))
         return write
 
@@ -411,7 +411,9 @@ class OperationsStore:
         D084）。
         """
         resources = (*self.catalog.resources(robot_id), *extra)
-        dock_id = self.catalog.robots[robot_id].dock_id
+        # A ground robot has no dock; the NOT NULL column keeps an empty string (X1, D088). / 地面车没有机场；
+        # NOT NULL 列记空串（X1，D088）。
+        dock_id = self.catalog.robots[robot_id].dock_id or ""
         now = self.clock()
         try:
             with self.transaction():

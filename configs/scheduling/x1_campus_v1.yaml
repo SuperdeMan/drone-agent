@@ -1,0 +1,29 @@
+# X1 S0 scheduling catalog (D088) for the operations catalog x1_campus_v1. The shared frame `campus` places site a at
+# its origin, b 12 m east and the harbor fixture 300 m south, as in P3; the ground site g, the ground robot's own map of
+# site a, has its origin at the robot's parking spot, 2 m east and 4 m south of site a's origin, and the `ground`
+# section names the same placement for the ground map and the aerial site it serves. Airspace and ground cells share
+# the 4 m grid under their own prefixes, so they never conflict; the lost-contact rule is P3's.
+#
+# X1 S0 调度目录（D088），对应运营目录 x1_campus_v1。共享坐标 `campus` 与 P3 相同：站点 a 在原点，b 在其东 12 m，港区夹具在
+# 南 300 m；地面站点 g（地面车自己的站点 a 地图）的原点是地面车的停车位，在站点 a 原点以东 2 m、以南 4 m，`ground` 段为该地面
+# 地图写明同一位置及其服务的空中站点。空域单元与地面单元共用 4 m 网格、使用各自的前缀，因此从不冲突；失联规则沿用 P3。
+format: drone.scheduling-catalog/v1
+schema_version: "0.1.0"
+catalog_id: x1_campus_v1
+operations_catalog: x1_campus_v1
+airspace:
+  frame: campus
+  cell_m: 4.0
+  buffer_m: 2.0
+  contact_timeout_s: 5.0
+  envelope_margin_m: 2.0
+  sites:
+    site_a: {origin: [0, 0]}
+    site_b: {origin: [12, 0]}
+    site_g: {origin: [2, -4]}
+    site_h: {origin: [0, -300]}
+ranking: {version: p3-rank-v1, cruise_mps: 2.0, setup_s: 20.0, usage_window_s: 3600.0}
+policy: {version: p3-sched-v1, reassign_after_s: 5.0, max_assignments: 4, task_window_s: 1800.0, max_tasks_per_pass: 50}
+ground:
+  maps:
+    x1_ground_a_v1: {site: site_a, origin: [2, -4]}

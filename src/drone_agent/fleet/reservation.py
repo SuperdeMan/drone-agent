@@ -25,6 +25,13 @@ P3 空域预约：共享坐标、网格单元、航迹覆盖与失联包络（D0
 那里），以及外部模式技能的整个外部模式任务范围——局部规划器为避障可以在其中任意移动。这里没有解析器的技能，或地图未登记的
 名称，使航迹覆盖无法解析：这样的飞行被拒绝预约，而不是被当作不占用空域。
 
+X1 (D088): a ground robot's footprint is the box of every place its ground package drives through (the parking spot,
+the nav_to and return_home waypoints, both ends of the face leg), grown by the buffer and cut into `ground.` cells of
+the same grid, which never conflict with `air.` cells; its lost-contact envelope is bounded by its drivable area.
+
+X1（D088）：地面车的航迹覆盖是其地面任务包经过的全部位置（停车位、nav_to 与 return_home 的航点、正对段两端）的外包矩形，
+按缓冲外扩后切成同一网格的 `ground.` 单元，与 `air.` 单元从不冲突；其失联包络以其可行驶区域为界。
+
 A v2 scheduling catalog may declare per-leg corridors instead of the box (D084): the flight passes its stops in the
 order the executive runs the nodes, and each leg holds the cells near the convex hull of its two stops and every
 recovery target, so a straight return or diversion from anywhere on the leg stays inside. The corridor is cut from
@@ -46,6 +53,7 @@ from drone_agent.fleet.scheduling_models import FOOTPRINT_CORRIDOR
 
 Box = tuple[float, float, float, float]  # (x_min, y_min, x_max, y_max) in the shared frame / 共享坐标中的外包矩形
 PREFIX = "air."
+GROUND_PREFIX = "ground."  # X1 (D088) / X1（D088）
 
 
 def bounds(points) -> Box:
@@ -74,12 +82,13 @@ def grid_cells(box: Box, size: float) -> list[tuple[int, int]]:
     return [(i, j) for i in _span(box[0], box[2], size) for j in _span(box[1], box[3], size)]
 
 
-def cell_resource(frame: str, i: int, j: int) -> str:
-    return f"{PREFIX}{frame}.{i}.{j}"
+def cell_resource(frame: str, i: int, j: int, prefix: str = PREFIX) -> str:
+    return f"{prefix}{frame}.{i}.{j}"
 
 
 def is_cell(resource: str) -> bool:
-    return resource.startswith(PREFIX)
+    """An airspace or a ground cell (X1, D088). / 空域单元或地面单元（X1，D088）。"""
+    return resource.startswith((PREFIX, GROUND_PREFIX))
 
 
 def cell_box(resource: str, size: float) -> Box:
@@ -148,6 +157,52 @@ SKILL_PLACES = {
     "skill.inspect.asset_local": lambda data, p: [_goal(data, p.get("approach_goal_id")), _asset(data, p),
                                                   *local_scope_points(data)],
 }
+
+
+def _waypoints(params: dict) -> list[tuple[float, float]]:
+    points = params.get("waypoints")
+    if not isinstance(points, list) or not points:
+        raise UnresolvedFootprint("a ground path needs its waypoints")
+    return [_xy(p) for p in points]
+
+
+def _ends(params: dict) -> list[tuple[float, float]]:
+    try:
+        return [_xy(params["goal"]), _xy(params["face_point"])]
+    except (KeyError, TypeError, IndexError, ValueError) as error:
+        raise UnresolvedFootprint("a recheck needs its goal and face point") from error
+
+
+# X1 (D088): the places of each ground skill, pinned to the ground manifests like SKILL_PLACES. Arm, stop and disarm
+# stay where the robot is: at the parking spot, which is always included, or inside the box of the legs before them.
+# X1（D088）：各地面技能经过的位置，与 SKILL_PLACES 一样钉在地面技能清单上。arm、stop、disarm 停在原地：停车位（总是包含），
+# 或其之前各段的外包矩形之内。
+GROUND_PLACES = {
+    "skill.ground.arm": lambda data, p: [],
+    "skill.ground.nav_to": lambda data, p: _waypoints(p),
+    "skill.ground.recheck": lambda data, p: _ends(p),
+    "skill.ground.return_home": lambda data, p: _waypoints(p),
+    "skill.ground.stop": lambda data, p: [],
+    "skill.ground.disarm": lambda data, p: [],
+}
+
+
+def ground_points(data: dict, package: dict) -> list[tuple[float, float]]:
+    """Every place of the ground site a ground package may drive through. / 地面任务包可能经过的地面站点全部位置。"""
+    points = [_xy(data["home"]["position"])]
+    for node in package.get("nodes", []):
+        places = GROUND_PLACES.get(node.get("skill_id"))
+        if places is None:
+            raise UnresolvedFootprint(f"skill {node.get('skill_id')!r} has no ground footprint")
+        points += places(data, node.get("params") or {})
+    return points
+
+
+def ground_volume(data: dict) -> dict:
+    """The bounds of a ground site's drivable area, in the shape of a volume. / 地面站点可行驶区域的边界，按体积的形式给出。"""
+    corners = [p for polygon in data["ground"]["drivable"] for p in polygon]
+    xs, ys = [float(p[0]) for p in corners], [float(p[1]) for p in corners]
+    return {"bounds": {"x": [min(xs), max(xs)], "y": [min(ys), max(ys)]}}
 
 
 def recovery_points(data: dict, robot_id: str | None) -> list[tuple[float, float]]:
@@ -387,10 +442,10 @@ class Footprint:
                 "volume_box": list(self.volume_box) if self.volume_box else None}
 
 
-def footprint(grid, origin: tuple[float, float], points, volume: dict | None) -> Footprint:
-    """Translate local points into the shared frame, bound, grow by the buffer and cut into cells.
+def footprint(grid, origin: tuple[float, float], points, volume: dict | None, prefix: str = PREFIX) -> Footprint:
+    """Translate local points into the shared frame, bound, grow by the buffer and cut into cells of `prefix`.
 
-    把局部点平移到共享坐标，求外包矩形、按缓冲外扩并切成单元。
+    把局部点平移到共享坐标，求外包矩形、按缓冲外扩并切成 `prefix` 前缀的单元。
     """
     ox, oy = origin
     shared = [(ox + x, oy + y) for x, y in points]
@@ -399,7 +454,7 @@ def footprint(grid, origin: tuple[float, float], points, volume: dict | None) ->
     if volume is not None:
         xs, ys = volume["bounds"]["x"], volume["bounds"]["y"]
         volume_box = (ox + float(xs[0]), oy + float(ys[0]), ox + float(xs[1]), oy + float(ys[1]))
-    cells = tuple(sorted(cell_resource(grid.frame, i, j) for i, j in grid_cells(box, grid.cell_m)))
+    cells = tuple(sorted(cell_resource(grid.frame, i, j, prefix) for i, j in grid_cells(box, grid.cell_m)))
     return Footprint(grid.frame, cells, box, volume_box)
 
 
@@ -430,7 +485,7 @@ def corridor_footprint(grid, origin: tuple[float, float], stops: list[Stop], tar
     return Footprint(coarse.frame, tuple(cell for cell in coarse.cells if near(cell)), coarse.box, coarse.volume_box)
 
 
-def envelope_cells(grid, fp: Footprint, radius_m: float) -> tuple[str, ...]:
+def envelope_cells(grid, fp: Footprint, radius_m: float, prefix: str = PREFIX) -> tuple[str, ...]:
     """The footprint grown by `radius_m`, bounded by the approved volume; always contains the footprint itself.
 
     按 `radius_m` 外扩并以批准体积为界的航迹覆盖；总是包含航迹覆盖本身。
@@ -438,7 +493,7 @@ def envelope_cells(grid, fp: Footprint, radius_m: float) -> tuple[str, ...]:
     grown = dilate(fp.box, radius_m)
     if fp.volume_box is not None:
         grown = clip(grown, fp.volume_box) or fp.box
-    extra = {cell_resource(grid.frame, i, j) for i, j in grid_cells(grown, grid.cell_m)}
+    extra = {cell_resource(grid.frame, i, j, prefix) for i, j in grid_cells(grown, grid.cell_m)}
     return tuple(sorted(extra | set(fp.cells)))
 
 
@@ -473,12 +528,20 @@ class Airspace:
     def _data(self, robot_id: str) -> dict:
         return self.ops.registry(robot_id).data
 
-    def mission_footprint(self, robot_id: str, package: dict) -> Footprint:
-        """The package's footprint; raises UnresolvedFootprint when any node cannot be bounded (D075).
+    def ground(self, robot_id: str) -> bool:
+        return self.ops.registry(robot_id).kind == "ground_site"
 
-        任务包的航迹覆盖；任一节点无法界定时抛出 UnresolvedFootprint（D075）。
+    def mission_footprint(self, robot_id: str, package: dict) -> Footprint:
+        """The package's footprint; raises UnresolvedFootprint when any node cannot be bounded (D075). A ground
+        robot's is always the box of its ground places in `ground.` cells (X1, D088).
+
+        任务包的航迹覆盖；任一节点无法界定时抛出 UnresolvedFootprint（D075）。地面车的总是其地面位置的外包矩形，用
+        `ground.` 单元（X1，D088）。
         """
         data = self._data(robot_id)
+        if self.ground(robot_id):
+            return footprint(self.grid, self.origin(robot_id), ground_points(data, package), ground_volume(data),
+                             GROUND_PREFIX)
         volume_id = (package.get("spatial_scope") or {}).get("approved_volume_id")
         coarse = footprint(self.grid, self.origin(robot_id), package_points(data, package, robot_id),
                            data.get("volumes", {}).get(volume_id))
@@ -532,10 +595,16 @@ class Airspace:
         departed = [datetime.fromisoformat(e["created_at"]) for e in store.events(reservation.activity_key)
                     if e["kind"] == "activity.departed"]
         status = self.robots.status(reservation.robot_id)
-        dock = store.dock_status(reservation.dock_id)
         latest = claimed_at
         if status is not None and status.timestamp >= claimed_at:
             latest = max(latest, status.timestamp)
+        if not reservation.dock_id:
+            # A ground robot's own status is its only position evidence; it is back once parked after leaving (D088).
+            # 地面车自己的状态是其唯一的位置证据；离开之后再报告停在停车位即为已回（D088）。
+            back = bool(departed) and status is not None and status.ground_phase == "parked" \
+                and status.timestamp > departed[0]
+            return latest, back
+        dock = store.dock_status(reservation.dock_id)
         on_pad = dock is not None and dock.report.aircraft.value == "present"
         if not departed and on_pad:
             latest = max(latest, dock.report.observed_at)
@@ -563,7 +632,8 @@ class Airspace:
             if silence <= self.grid.contact_timeout_s:
                 continue
             speed = self.ops.capabilities[reservation.robot_id].limits.max_speed_mps
-            for cell in envelope_cells(self.grid, fp, speed * silence + self.grid.envelope_margin_m):
+            prefix = GROUND_PREFIX if self.ground(reservation.robot_id) else PREFIX
+            for cell in envelope_cells(self.grid, fp, speed * silence + self.grid.envelope_margin_m, prefix):
                 found.setdefault(cell, reservation.activity_key)
         return found
 

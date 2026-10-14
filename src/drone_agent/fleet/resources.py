@@ -245,13 +245,15 @@ class DockEntry(ResourceModel):
 
 
 class RobotEntry(ResourceModel):
-    """A robot fixed to one dock, with its execution backend (D069: declared per robot by the trusted catalog).
+    """A robot fixed to one dock, with its execution backend (D069: declared per robot by the trusted catalog). A
+    ground robot (X1, D088) rests at a parking spot of its ground site and has no dock.
 
-    固定于一个机场的机器人及其执行后端（D069：由受信目录按机器人声明）。
+    固定于一个机场的机器人及其执行后端（D069：由受信目录按机器人声明）。地面车（X1，D088）停在其地面站点的停车位，
+    没有机场。
     """
 
     site_id: str = Field(pattern=ID)
-    dock_id: str = Field(pattern=ID)
+    dock_id: str | None = Field(default=None, pattern=ID)
     platform: str = Field(min_length=1)
     execution_backend: Literal["logical_sim", "px4_sitl", "vendor_protocol_sim"]
 
@@ -306,6 +308,11 @@ class OperationsCatalog(ResourceModel):
                 if robot is None or robot.dock_id != dock_id or robot.site_id != dock.site_id:
                     raise ValueError(f"{dock_id} serves {robot_id} without a matching robot binding")
         for robot_id, robot in self.robots.items():
+            if robot.dock_id is None:
+                # A ground robot has no dock, so no vendor runs its tasks (X1, D088). / 地面车没有机场，因此不由厂商执行。
+                if robot.execution_backend == "vendor_protocol_sim":
+                    raise ValueError(f"{robot_id} has no dock and cannot run vendor tasks")
+                continue
             dock = self.docks.get(robot.dock_id)
             if dock is None or robot_id not in dock.serves:
                 raise ValueError(f"{robot_id} is not served by its dock")
@@ -335,9 +342,14 @@ class OperationsCatalog(ResourceModel):
         robot = self.robots.get(robot_id)
         return self.sites[robot.site_id].project_id if robot else None
 
-    def resources(self, robot_id: str) -> tuple[str, str, str]:
-        """The exclusive P1 resources of one activity on `robot_id`. / 在 `robot_id` 上一次活动的 P1 独占资源。"""
+    def resources(self, robot_id: str) -> tuple[str, ...]:
+        """The exclusive P1 resources of one activity on `robot_id`; a ground robot has only its motion (X1, D088).
+
+        在 `robot_id` 上一次活动的 P1 独占资源；地面车只有其运动资源（X1，D088）。
+        """
         dock = self.robots[robot_id].dock_id
+        if dock is None:
+            return (f"{robot_id}.motion",)
         return f"{robot_id}.motion", f"{dock}.pad", f"{dock}.charger"
 
     def docks_of(self, principal: str) -> list[str]:
@@ -492,6 +504,9 @@ REASONS: dict[str, Verdict] = {
     "environment.unknown": UNKNOWN,
     "robot.capability_unknown": UNKNOWN,
     "robot.phase_unknown": UNKNOWN,
+    # X1 (D088): a ground robot is judged by its own status. / X1（D088）：地面车按其自身状态判定。
+    "robot.status_missing": UNKNOWN,
+    "robot.status_stale": UNKNOWN,
     "dock.offline": BLOCKED,
     "dock.maintenance": BLOCKED,
     "dock.fault": BLOCKED,
@@ -508,6 +523,8 @@ REASONS: dict[str, Verdict] = {
     "environment.deferred": BLOCKED,
     "environment.wind": BLOCKED,
     "robot.airborne": BLOCKED,
+    "robot.not_parked": BLOCKED,
+    "robot.moving": BLOCKED,
     "robot.failsafe": BLOCKED,
     "robot.unbound": BLOCKED,
     "capability.missing_skill": BLOCKED,
@@ -552,6 +569,31 @@ class DispatchEligibility(ResourceModel):
     valid_until: AwareDatetime
 
 
+def ground_reasons(status: RobotStatus | None, needs: DispatchNeeds | None, now: datetime,
+                   policy: DispatchPolicy) -> set[str]:
+    """X1 (D088): a dockless ground robot needs a fresh status that shows it parked, charged enough and without a
+    failsafe. / X1（D088）：没有机场的地面车需要一份新鲜状态，显示它已停在停车位、电量足够且没有失效保护。"""
+    if status is None:
+        return {"robot.status_missing"}
+    reasons = set()
+    age = (now - status.timestamp).total_seconds()
+    if age > policy.freshness_s or age < -policy.future_skew_s:
+        reasons.add("robot.status_stale")
+    phase = status.ground_phase
+    if phase == "moving":
+        reasons.add("robot.moving")
+    elif phase == "stopped":
+        reasons.add("robot.not_parked")
+    elif phase != "parked":
+        reasons.add("robot.phase_unknown")
+    # A status always carries its energy: the uplink reports none without it. / 状态总带电量：没有电量时 uplink 不上报。
+    if needs and needs.energy_fraction is not None and status.energy.remaining_fraction < needs.energy_fraction:
+        reasons.add("energy.insufficient")
+    if status.fc_failsafe_active:
+        reasons.add("robot.failsafe")
+    return reasons
+
+
 def evaluate(catalog: OperationsCatalog, robot_id: str, *, stage: Stage, now: datetime,
              needs: DispatchNeeds | None = None, capability: CapabilityDescriptor | None = None,
              robot_status: RobotStatus | None = None, dock: DockStatus | None = None,
@@ -574,10 +616,15 @@ def evaluate(catalog: OperationsCatalog, robot_id: str, *, stage: Stage, now: da
     reasons: set[str] = set(extra)
     holders = dict(holders or {})
     dock_id = robot.dock_id if robot else None
+    ground = robot is not None and dock_id is None
     vendor_lid = dock_id is not None and dock_id in catalog.docks and catalog.docks[dock_id].vendor_managed
     if robot is None:
         reasons.add("robot.unbound")
-    if dock is None or dock.dock_id != dock_id:
+    if ground:
+        # X1 (D088): no dock to read; the robot's own fresh status stands in for the pad sensor and the charger.
+        # X1（D088）：没有机场可读；地面车自己的新鲜状态代替机位传感器与充电器。
+        reasons |= ground_reasons(robot_status, needs, now, policy)
+    elif dock is None or dock.dock_id != dock_id:
         reasons.add("dock.status_missing")
     else:
         report = dock.report
@@ -624,7 +671,7 @@ def evaluate(catalog: OperationsCatalog, robot_id: str, *, stage: Stage, now: da
         reasons.add("robot.capability_unknown")
     elif needs and capability.missing_for(skills=needs.skills):
         reasons.add("capability.missing_skill")
-    if robot_status is not None:
+    if robot_status is not None and not ground:
         age = (now - robot_status.timestamp).total_seconds()
         if robot_status.flight_phase == "airborne":
             # The last word from the aircraft is airborne: never assume it came back. / 最后消息为空中：绝不假设已返回。
@@ -658,8 +705,10 @@ def evaluate(catalog: OperationsCatalog, robot_id: str, *, stage: Stage, now: da
         "now": now.isoformat(), "policy": policy.model_dump(mode="json"),
         **({"extra": sorted(set(extra))} if extra else {})})
     valid_until = now
-    if verdict is Verdict.ELIGIBLE and dock is not None:
-        valid_until = dock.report.observed_at + timedelta(seconds=policy.freshness_s)
+    observed = robot_status.timestamp if ground and robot_status is not None else \
+        dock.report.observed_at if dock is not None else None
+    if verdict is Verdict.ELIGIBLE and observed is not None:
+        valid_until = observed + timedelta(seconds=policy.freshness_s)
         if needs and needs.not_after is not None:
             valid_until = min(valid_until, needs.not_after)
     return DispatchEligibility(

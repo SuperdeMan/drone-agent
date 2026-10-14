@@ -229,7 +229,9 @@ class Scheduler:
     # ── snapshots and decisions / 快照与判定 ──
 
     def _candidates(self, task: dict) -> list[str]:
-        robots = self.project_robots(task["project_id"])
+        # Ground robots never take P3 queue tasks; a ground recheck names its robot through a handoff (D088).
+        # 地面车从不承接 P3 队列任务；地面复核经交接点名其地面车（D088）。
+        robots = [r for r in self.project_robots(task["project_id"]) if self.ops.catalog.robots[r].dock_id is not None]
         return [r for r in (task["candidates"] or robots) if r in robots]
 
     def _candidate(self, task: dict, robot_id: str, now: datetime, ignore: set[str], envelopes: dict) -> dict:

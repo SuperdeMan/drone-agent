@@ -221,6 +221,14 @@ class SchedulingCatalog(SchedulingModel):
         unknown = sorted(set(self.airspace.sites) - set(operations.sites))
         if missing or unknown:
             raise ValueError(f"site origins differ from the operations catalog: missing {missing}, unknown {unknown}")
+        for site_id in operations.sites:
+            # A ground site lies where the ground layer places its map (X1, D088). / 地面站点位于地面层放置其地图之处。
+            registry = registries[site_id]
+            if getattr(registry, "kind", None) != "ground_site":
+                continue
+            placement = self.ground.maps.get(registry.registry_id) if self.ground is not None else None
+            if placement is None or tuple(placement.origin) != tuple(self.origin(site_id)):
+                raise ValueError(f"ground site {site_id} needs a ground placement at its own origin")
         places: dict[tuple[str, str], tuple[str, tuple[float, float]]] = {}
         for site_id, site in operations.sites.items():
             ox, oy = self.origin(site_id)

@@ -24,7 +24,7 @@ from pathlib import Path
 
 import yaml
 
-from drone_agent.contracts import ApprovalRecord, CapabilityDescriptor, MissionPackage, utcnow
+from drone_agent.contracts import ApprovalRecord, CapabilityDescriptor, Embodiment, MissionPackage, utcnow
 from drone_agent.fleet.catalog import Catalog
 from drone_agent.fleet.ledger import BusinessLedger
 from drone_agent.fleet.operations_store import OperationsStore, migrate, soft_expiry
@@ -50,7 +50,8 @@ from drone_agent.fleet.resources import (
     load_members,
 )
 from drone_agent.fleet.scheduling_models import CATALOG_FORMAT_V2
-from drone_agent.mission.registry import Registry
+from drone_agent.mission.ground import GROUND_SITE
+from drone_agent.mission.registry import Registry, load_registry
 
 OCCUPYING = (ReservationState.OCCUPIED.value, ReservationState.UNCERTAIN.value)
 # The holder named when a package's airspace footprint cannot be bounded (D075). / 任务包空域覆盖无法界定时给出的持有者。
@@ -100,9 +101,11 @@ def build_operations(root: Path, ledger: BusinessLedger, catalog_path: Path, mem
     directory = ProjectDirectory(catalog, members)
     migration = migrate(ledger, backups=backups, clock=clock)
     store = OperationsStore(ledger, catalog, clock=clock)
-    registries = {site_id: Registry(root, scene=root / site.scene) for site_id, site in catalog.sites.items()}
+    # The scene's kind picks the registry: an aerial site map or a ground site (X1, D088). / 场景类型决定登记表。
+    registries = {site_id: load_registry(root, root / site.scene) for site_id, site in catalog.sites.items()}
     capabilities = {robot_id: static_capability(root, robot.platform, robot_id)
                     for robot_id, robot in catalog.robots.items()}
+    check_ground(catalog, registries, capabilities)
     from drone_agent.fleet.vendor import load_profile
 
     profiles = {dock_id: load_profile(root, dock.backend.profile)
@@ -114,6 +117,19 @@ def build_operations(root: Path, ledger: BusinessLedger, catalog_path: Path, mem
 
     capacity = migrate_capacity(ledger, backups=backups, clock=clock)
     return Operations(catalog, directory, store, registries, capabilities, migration, profiles, references, capacity)
+
+
+def check_ground(catalog: OperationsCatalog, registries: dict, capabilities: dict) -> None:
+    """X1 (D088): a ground site holds no dock, a robot without a dock lives on a ground site, and only ground robots
+    live there. / X1（D088）：地面站点不放机场；没有机场的机器人位于地面站点，且只有地面车位于那里。"""
+    for dock_id, dock in catalog.docks.items():
+        if registries[dock.site_id].kind == GROUND_SITE:
+            raise ValueError(f"{dock_id} stands on the ground site {dock.site_id}")
+    for robot_id, robot in catalog.robots.items():
+        on_ground = registries[robot.site_id].kind == GROUND_SITE
+        wheeled = capabilities[robot_id].embodiment is Embodiment.GROUND_WHEELED
+        if (robot.dock_id is None) != on_ground or wheeled != on_ground:
+            raise ValueError(f"{robot_id}: ground robots have no dock and live on ground sites, and only they do")
 
 
 def needs_of(record: dict) -> DispatchNeeds:
@@ -153,12 +169,13 @@ class Dispatch:
     def judge(self, robot_id: str, *, stage: Stage, needs: DispatchNeeds | None = None,
               activity: str | None = None) -> DispatchEligibility:
         capability, _ = self.robots.capability(robot_id)
-        dock_id = self.catalog.robots[robot_id].dock_id if robot_id in self.catalog.robots else None
+        bound = robot_id in self.catalog.robots
+        dock_id = self.catalog.robots[robot_id].dock_id if bound else None
         opened = self.store.action_for(activity, "open_lid") if activity else None
         return evaluate(self.catalog, robot_id, stage=stage, now=self.clock(), needs=needs, capability=capability,
                         robot_status=self.robots.status(robot_id),
                         dock=self.store.dock_status(dock_id) if dock_id else None,
-                        holders=self.store.holders(self.catalog.resources(robot_id)) if dock_id else {},
+                        holders=self.store.holders(self.catalog.resources(robot_id)) if bound else {},
                         activity=activity, lid_confirmed=bool(opened and opened["state"] == "completed"),
                         extra=self.airspace_reasons(activity, stage))
 
@@ -341,8 +358,9 @@ class Dispatch:
             eligibility = self.judge(binding["robot_id"], stage=Stage.PREPARE, needs=needs_of(record),
                                      activity=activity)
             self.record(eligibility, mission_id, version)
-            if self.catalog.docks[binding["dock_id"]].vendor_managed:
-                # The vendor opens its own lid when it executes the task (D072). / 厂商执行任务时自己开盖（D072）。
+            if not binding["dock_id"] or self.catalog.docks[binding["dock_id"]].vendor_managed:
+                # No lid to open: a ground robot has no dock (D088), and a vendor opens its own (D072).
+                # 没有要开的舱盖：地面车没有机场（D088），厂商自己开盖（D072）。
                 continue
             if eligibility.verdict is Verdict.ELIGIBLE and self.store.action_for(activity, "open_lid") is None:
                 action = self.store.request_action(binding["dock_id"], "open_lid", activity)
@@ -360,6 +378,8 @@ class Dispatch:
                       if c["mission_version"] == reservation.mission_version and c["state"] == "claimed"), None)
         terminal = self.terminal(reservation.mission_id, reservation.mission_version)
         status = self.robots.status(reservation.robot_id)
+        if not reservation.dock_id:
+            return self._ground_release(reservation, claim, terminal, status)
         dock = self.store.dock_status(reservation.dock_id)
         fresh = dock is not None and abs((now - dock.report.observed_at).total_seconds()) <= policy.freshness_s
         if terminal is None:
@@ -402,6 +422,39 @@ class Dispatch:
             "dock": {"boot_id": dock.report.boot_id, "seq": dock.report.seq,
                      "observed_at": dock.report.observed_at.isoformat()}}
 
+    def _ground_release(self, reservation, claim, terminal, status) -> tuple[str, str, dict | None]:
+        """X1 (D088): a ground robot's hold ends only on a fresh status after the mission's end that shows it parked;
+        stopped on the way, still moving or silent keeps it held as uncertain.
+
+        X1（D088）：地面车的持有只在任务结束后有新鲜状态显示其已停回停车位时结束；停在途中、仍在移动或沉默都保持为
+        uncertain 持有。
+        """
+        now, policy = self.clock(), self.catalog.policy
+        fresh = status is not None and abs((now - status.timestamp).total_seconds()) <= policy.freshness_s
+        if terminal is None:
+            if claim is None:
+                return "hold", "unclaimed", None
+            delivery = self.ledger.delivery(claim["delivery_id"])
+            if delivery and delivery["acked_at"] is None and now - datetime.fromisoformat(claim["decided_at"]) > \
+                    timedelta(seconds=policy.claim_ack_timeout_s):
+                return "uncertain", "ack_missing", None
+            return "hold", "in_progress", None
+        kind, at = terminal
+        problems = []
+        if status is None:
+            problems.append("robot_status_missing")
+        else:
+            if not fresh:
+                problems.append("robot_status_stale")
+            if status.timestamp < at:
+                problems.append("robot_status_before_terminal")
+            if status.ground_phase != "parked":
+                problems.append("robot_not_parked")
+        if problems:
+            return "uncertain", ",".join(problems), None
+        return "release", "reconciled", {"terminal": {"kind": kind, "at": at.isoformat()},
+                                         "robot_status_at": status.timestamp.isoformat(), "ground_phase": "parked"}
+
     def _departed(self, reservation) -> bool:
         """This activity was seen leaving the pad after its claim. / 领取后曾看到本活动离开机位。"""
         return any(event["kind"] == "activity.departed" for event in self.store.events(reservation.activity_key))
@@ -418,9 +471,15 @@ class Dispatch:
                 continue
             claimed_at = datetime.fromisoformat(claim["decided_at"])
             status = self.robots.status(reservation.robot_id)
-            dock = self.store.dock_status(reservation.dock_id)
+            dock = self.store.dock_status(reservation.dock_id) if reservation.dock_id else None
             seen = None
-            if status is not None and status.flight_phase == "airborne" and status.timestamp >= claimed_at:
+            if not reservation.dock_id:
+                # A ground robot left once it reports armed or away from its parking spot (D088).
+                # 地面车报告已解锁或不在停车位即算离开（D088）。
+                if status is not None and status.ground_phase in ("moving", "stopped") \
+                        and status.timestamp >= claimed_at:
+                    seen = {"robot_status_at": status.timestamp.isoformat(), "ground_phase": status.ground_phase}
+            elif status is not None and status.flight_phase == "airborne" and status.timestamp >= claimed_at:
                 seen = {"robot_status_at": status.timestamp.isoformat()}
             elif dock is not None and dock.report.aircraft is Presence.ABSENT and dock.report.observed_at >= claimed_at:
                 seen = {"dock_observed_at": dock.report.observed_at.isoformat(), "seq": dock.report.seq}
