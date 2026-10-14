@@ -57,12 +57,13 @@ s0:
 # Gazebo world under the formal service with the scheduler and the handoff engine, run by scripts/remote_x1.py and
 # judged online and from the recordings by eval/judge_x1.py --layer s1. The simulated GPS reports 0.9 m of horizontal
 # uncertainty, so every aerial target is a search region and x1_nominal covers what x1_search_region covers in S0;
-# x1_not_found takes its place. A cancelled ground mission leaves the robot stopped on the way with its hold kept.
+# x1_not_found takes its place. A cancelled ground mission leaves the robot stopped on the way with its hold kept, and
+# its task unsettled, until a person carries it home, as in S0.
 #
 # S1（云端，方案第 9 节，按第 14 节细化）：同一 Gazebo 世界中的 x500 uav_01 与差速地面车 ugv_01，在带调度器与交接引擎的正式
 # 服务之下，由 scripts/remote_x1.py 运行，由 eval/judge_x1.py --layer s1 在线与按录制各裁判一次。模拟 GPS 报告 0.9 m 水平
 # 不确定度，空中目标总是搜索区域，x1_nominal 即覆盖 S0 中 x1_search_region 的内容；由 x1_not_found 代替它。地面任务被取消后，
-# 地面车停在途中，持有保留。
+# 地面车停在途中，持有保留、任务单不结算，直到有人把车送回停车位，与 S0 相同。
 s1:
   - id: x1_nominal
     description: "Finding, handoff of a search region, recheck relocated, both evidences, completed / 发现、交接搜索区域、复核找到、两端证据、已完成"
@@ -77,5 +78,5 @@ s1:
     description: "The robot's link drops for 12 s while it drives: the mission carries on, reconciled after / 行驶中断链 12 s：任务照常执行，恢复后对账"
     expected: {recheck: relocated, ground_missions: 1, handoff: completed, ground_terminal: stopped_disarmed}
   - id: x1_cancel_during_recheck
-    description: "Cancel while driving: stop, stopped and disarmed on the way, no successor task / 行驶中取消：停车，在途中停稳上锁，不产生后继任务"
+    description: "Cancel while driving: stop, stopped and disarmed on the way, carried home, no successor task / 行驶中取消：停车，在途中停稳上锁，送回后释放，不产生后继任务"
     expected: {recheck: unknown, ground_missions: 1, ground_terminal: stopped_disarmed}

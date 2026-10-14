@@ -2,7 +2,8 @@
 
 Without `--output` it prints the S1 part of the suite. A case names the workflow input, where the harness places the
 anomaly block in the shared frame and the case's actions (remove the block once the offer is out, cut the ground
-robot's link while it drives, cancel the ground mission while it drives); the runner reads nothing else. The block's
+robot's link while it drives, cancel the ground mission while it drives and carry the stopped robot home, as a person
+would); the runner reads nothing else. The block's
 Gazebo model is built here: a static cube with an emissive-only material whose channels are the declared colour raised
 to the power 2.2, because Gazebo encodes emissive colours as sRGB (measured 2026-10-14: the declared orange and magenta
 then render exactly as declared, while the plain values render about 55 levels too bright in green). The scripted
@@ -11,8 +12,8 @@ deterministically. `--export` copies the scheduling, workflow, handoff, business
 stopped service's ledger into JSON, read-only, so the judge never opens a live database or reuses service code.
 
 生成一个 X1 S1 用例，并为其裁判导出账本表（D088）。不带 `--output` 时打印场景集的 S1 部分。用例给出工作流输入、编排在共享坐标
-中放置异常物方块的位置，以及用例的动作（提议发出后移走方块、地面车行驶中切断其链路、地面车行驶中取消地面任务）；执行器不读取
-其他内容。方块的 Gazebo 模型在此生成：静态立方体，只有自发光材质，各通道取声明颜色的 2.2 次幂，因为 Gazebo 按 sRGB 编码自发光
+中放置异常物方块的位置，以及用例的动作（提议发出后移走方块、地面车行驶中切断其链路、地面车行驶中取消地面任务并像人一样
+把停住的车送回）；执行器不读取其他内容。方块的 Gazebo 模型在此生成：静态立方体，只有自发光材质，各通道取声明颜色的 2.2 次幂，因为 Gazebo 按 sRGB 编码自发光
 颜色（2026-10-14 实测：这样声明的橙色与品红按声明值成像，而直接取值时绿色通道约亮 55 级）。脚本规划文件只因任务服务的脚本模式
 需要而存在：工作流的任务是确定性编译的。`--export` 以只读方式把已停止服务账本中的调度、工作流、交接、业务、运营与任务表导出为
 JSON，使裁判从不打开运行中的数据库，也不复用服务代码。
@@ -48,8 +49,12 @@ CASES = {
     "x1_unreachable": {"asset": "asset_west", "block": "compound", "actions": []},
     "x1_not_found": {"asset": "asset_mid", "block": "mid", "actions": ["remove_block_after_offer"]},
     "x1_link_loss_driving": {"asset": "asset_mid", "block": "mid", "actions": ["cut_link_while_driving"]},
-    "x1_cancel_during_recheck": {"asset": "asset_mid", "block": "mid", "actions": ["cancel_while_driving"]},
+    "x1_cancel_during_recheck": {"asset": "asset_mid", "block": "mid",
+                                 "actions": ["cancel_while_driving", "carry_home_after_stop"]},
 }
+# Where a person sets the rover down: its parking spot in the world, facing north as it was spawned.
+# 人把地面车放下的位置：其在世界中的停车位，与生成时一样朝北。
+PARKING_POSE = 'name: "rover_differential_1", position: {x: 2, y: -4, z: 0.02}, orientation: {z: 0.7071068, w: 0.7071068}'
 
 
 def load_suite(root: Path) -> dict:
@@ -96,7 +101,7 @@ def materialize(root: Path, output: Path, scenario_id: str, seed: int, sha: str)
                 "robots": {"uav_01": "a", "ugv_01": "g"}, "workflow_id": "anomaly_recheck",
                 "inputs": {"asset": case["asset"]}, "actions": case["actions"],
                 "block": {"x": x, "y": y, "size_m": BLOCK_SIZE_M, "colour": "orange", "model": BLOCK_MODEL,
-                          "sdf": block_sdf(x, y, "orange")},
+                          "sdf": block_sdf(x, y, "orange")}, "parking_pose": PARKING_POSE,
                 "expected": scenario["expected"], "description": scenario["description"]}
     (output / "scenario.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
     (output / "layout.json").write_text(json.dumps(LAYOUT, indent=2), encoding="utf-8")

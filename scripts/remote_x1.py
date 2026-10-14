@@ -11,9 +11,9 @@ exact package hash (the aircraft's inspection and the ground mission the handoff
 every package a claim gate hands out once with a fresh guardian and executive of that robot (the rover's observer
 stops for its mission and starts again afterwards). The case's actions are applied to the world or to the rover's link:
 remove the block once the offer is out, disconnect the rover's uplink from the service network for 12 s while it
-drives, or cancel the ground mission while it drives. Resource samples of every container and of the host are taken
-throughout. Afterwards: wait for the reconciled releases (a cancelled ground mission keeps its hold, as designed),
-export every mission, task and workflow view, the resources, the ledger tables, the API transcript, the injections and
+drives, or cancel the ground mission while it drives and, once the rover stopped and disarmed on the way, carry it to
+its parking spot as a person would (its hold and its task wait for that). Resource samples of every container and of
+the host are taken throughout. Afterwards: wait for the reconciled releases, export every mission, task and workflow view, the resources, the ledger tables, the API transcript, the injections and
 both robots' runs, extract the rover's armed periods from its PX4 flight log, and run the X1 S1 judge online and from
 the recordings. Nothing here reaches a guardian except starting and stopping it.
 
@@ -23,8 +23,9 @@ the recordings. Nothing here reaches a guardian except starting and stopping it.
 的逻辑机场后端、两个 uplink 与地面车的只读观测；等待两台机器人都可派遣。随后在 Gazebo 中放置用例的异常物方块，像人一样行动
 直到用例的工作流运行终结：以编排操作者启动运行，按确切任务包哈希审批每个任务（飞行器的巡检与交接产生的地面任务），确认复核，
 并用该机器人新的 guardian 与 executive 把领取闸门交付的每个任务包执行一次（地面车的观测为其任务停下，结束后重新启动）。用例
-动作作用于世界或地面车的链路：提议发出后移走方块，地面车行驶中把其 uplink 从服务网络断开 12 s，或地面车行驶中取消地面任务。
-全程采样每个容器与主机的资源。之后等待对账释放（被取消的地面任务按设计保留持有），导出每个任务、任务单与工作流视图、资源、
+动作作用于世界或地面车的链路：提议发出后移走方块，地面车行驶中把其 uplink 从服务网络断开 12 s，或地面车行驶中取消地面任务，
+并在车于途中停稳上锁后像人一样把它送回停车位（其持有与任务单都等这一步）。全程采样每个容器与主机的资源。之后等待对账释放，
+导出每个任务、任务单与工作流视图、资源、
 账本表、API 记录、注入与两台机器人的执行记录，从地面车的 PX4 飞行日志取出解锁区间，并在线与按录制各运行一次 X1 S1 裁判。
 除启停 guardian 外，这里没有任何东西触达它。
 """
@@ -350,7 +351,8 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed, subnet) ->
         active: dict[str, dict | None] = {"a": None, "g": None}
         mirroring: list[tuple[str, dict, float]] = []
         flown, approved = set(), set()
-        state = {"removed": False, "cut_at": None, "restored": False, "cancelled": None}
+        state = {"removed": False, "cut_at": None, "restored": False, "cancelled": None, "carry_at": None,
+                 "carried": False}
         deadline = time.monotonic() + CASE_LIMIT_S
         while time.monotonic() < deadline:
             listed = listing()
@@ -394,6 +396,14 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed, subnet) ->
                 HELPERS["run"](["docker", "network", "connect", UPLINK_NETWORK, uplink_container()])
                 state["restored"] = True
                 inject("link_restored", robot_id="ugv_01")
+            if state["carry_at"] is not None and not state["carried"] and time.monotonic() >= state["carry_at"]:
+                # A person brings the robot that stopped on the way back to its parking spot; its hold is released
+                # only once it reports itself parked there. / 由人把停在途中的车送回停车位；它在那里报告已停放后持有
+                # 才会释放。
+                if not gz("set_pose", "gz.msgs.Pose", metadata["parking_pose"]):
+                    raise RuntimeError("the rover could not be carried to its parking spot in the Gazebo world")
+                state["carried"] = True
+                inject("carried_home", robot_id="ugv_01")
             # Each robot runs independently; neither waits for the other. / 两台机器人各自执行，互不等待。
             for key, info in ROBOTS.items():
                 if active[key] is None:
@@ -415,6 +425,9 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed, subnet) ->
                         active[key] = None
                         if info["ground"]:
                             observer(True)
+                            if "carry_home_after_stop" in metadata["actions"] \
+                                    and finished["mission_id"] == state["cancelled"]:
+                                state["carry_at"] = time.monotonic() + 3.0
             for item in list(mirroring):
                 key, entry, limit = item
                 if mirrored(api, entry, case / "robots" / ROBOTS[key]["robot"] / "aircraft"):
@@ -425,7 +438,8 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed, subnet) ->
             settled = run_view.get("run", {}).get("state") in RUN_FINAL \
                 and all(t["state"] in TASK_FINAL for t in tasks) and not mirroring \
                 and all(v is None for v in active.values()) \
-                and (state["cut_at"] is None or state["restored"])
+                and (state["cut_at"] is None or state["restored"]) \
+                and (state["carry_at"] is None or state["carried"])
             if settled:
                 break
             time.sleep(2.0)
@@ -434,12 +448,7 @@ def run_case(root, source, base, images, sha, run_id, scenario, seed, subnet) ->
         wait(lambda: (api("resources.get", actor=JUDGE, record=False, project_id=PROJECT, resource_id="dock_s1a")
                       .get("result") or {}).get("pad") == "free", 150, "the aircraft's reconciled release")
         for entry in runs["g"]:
-            if entry["mission_id"] != state["cancelled"]:
-                wait(lambda entry=entry: released(entry["mission_id"]), 120, "the ground robot's reconciled release")
-        if state["cancelled"]:
-            # The cancelled ground mission keeps its hold until a person handles the robot (as designed); give the
-            # service time to record its uncertain release. / 被取消的地面任务按设计保留持有直到人工处置；留出时间记录。
-            time.sleep(10)
+            wait(lambda entry=entry: released(entry["mission_id"]), 120, "the ground robot's reconciled release")
         snapshot("after")
         task_views = {}
         listed = listing()

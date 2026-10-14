@@ -142,6 +142,10 @@ def test_every_s1_case_materializes_with_an_srgb_compensated_block(tmp_path):
             metadata = materialize(ROOT, tmp_path / f"{case['id']}-{seed}", case["id"], seed, "test")
             assert metadata["inputs"]["asset"] in ("asset_mid", "asset_west")
             assert (tmp_path / f"{case['id']}-{seed}" / "planner-fixtures.json").is_file()
+            # A cancelled ground mission waits for a person to carry the robot home (as in S0). / 被取消的地面任务要等
+            # 人把车送回（与 S0 相同）。
+            assert ("carry_home_after_stop" in metadata["actions"]) == ("cancel_while_driving" in metadata["actions"])
+            assert metadata["parking_pose"].startswith('name: "rover_differential_1", position: {x: 2, y: -4')
     # Gazebo encodes emissive light as sRGB, so 140/255 green is emitted as (140/255) ** 2.2. / Gazebo 按 sRGB 编码
     # 自发光，所以 140/255 的绿色以其 2.2 次幂发出。
     assert "<emissive>1.0000 0.2674 0.0000 1</emissive>" in block_sdf(5.0, 4.0, "orange")
