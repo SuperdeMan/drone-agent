@@ -55,7 +55,9 @@ def test_an_accepted_offer_becomes_a_ground_mission_that_settles_and_releases(wo
         assert w.status(mission_id) == "awaiting_approval"
         [hold] = w.service.ops.store.reservations(mission_id=mission_id)
         assert "ugv_01.motion" in hold.resources and hold.dock_id == ""
-        assert all(r == "ugv_01.motion" or r.startswith("ground.campus.") for r in hold.resources)
+        # The path passes site a's apron, so the mission holds it too. / 路径经过站点 a 的起降区，任务也持有它。
+        assert "shared.pad_a" in hold.resources
+        assert all(r in ("ugv_01.motion", "shared.pad_a") or r.startswith("ground.campus.") for r in hold.resources)
         await w.approve(mission_id)
         await w.until(lambda: w.status(mission_id) in TERMINAL, "ground mission end", 90)
         assert w.status(mission_id) == "completed"

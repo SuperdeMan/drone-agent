@@ -1,9 +1,11 @@
-# X1 S0 workflow catalog (D088) for the operations catalog x1_campus_v1. The aircraft of site a inspects its assets and
-# the deterministic signature analyzer judges the frames, as in P4; the ground recheck of a finding is added by the X1
-# business loop. Robots, volumes and assets are the catalog's; every mission still needs a human approval.
+# X1 S0 workflow catalog (D088) for the operations catalog x1_campus_v1. The aircraft of site a inspects its assets;
+# `mid_watch` judges the marker with the P4 signature bands, and `anomaly_recheck` flags a capture showing a block of
+# a declared anomaly colour, hands the finding to the ground robot and has a person review both ends. Robots, volumes
+# and assets are the catalog's; every mission, the ground one included, still needs a human approval.
 #
-# X1 S0 工作流目录（D088），对应运营目录 x1_campus_v1。站点 a 的飞行器巡检其资产，确定性特征分析器判定画面，与 P4 相同；
-# 发现的地面复核由 X1 业务闭环加入。机器人、体积与资产都取自目录；每个任务仍需人工审批。
+# X1 S0 工作流目录（D088），对应运营目录 x1_campus_v1。站点 a 的飞行器巡检其资产；`mid_watch` 按 P4 特征区间判定标记，
+# `anomaly_recheck` 在采集中出现声明异常颜色的方块时判为疑似，把发现交给地面车，并由人复核两端证据。机器人、体积与资产都取自
+# 目录；每个任务（含地面任务）仍需人工审批。
 format: drone.workflow-catalog/v1
 schema_version: "0.1.0"
 catalog_id: x1_campus_v1
@@ -13,6 +15,10 @@ analyzers:
     kind: deterministic
     method: color_signature
     bands: {asset_mid: [0.075, 0.095], asset_west: [0.075, 0.095]}
+  anomaly_s0_v1:
+    kind: deterministic
+    method: anomaly_block
+    colours: [orange, magenta]
 workflows:
   - workflow_id: mid_watch
     version: 1
@@ -34,13 +40,13 @@ workflows:
     project_id: campus_ops
     title: "Site A anomaly recheck: inspect, analyse, hand the finding to the ground robot, review both ends / A 站异常复核：巡检、分析、把发现交给地面车、复核两端证据"
     inputs:
-      asset: {kind: asset_id, choices: [asset_mid, asset_west]}
+      asset: {kind: asset_id, choices: [asset_mid, asset_west, asset_north]}
     triggers:
       - {trigger_id: manual, kind: manual}
     nodes:
       - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_a, volume_id: campus_training, asset: {input: asset}}}
       - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
-      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s0_v1, findings: true}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: anomaly_s0_v1, findings: true}}
       - node_id: recheck
         activity: ground_recheck
         when: [{node: analyze, output: suspected, equals: true}]

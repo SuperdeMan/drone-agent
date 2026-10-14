@@ -1,13 +1,13 @@
 # X1 S0 catalog (D088): the P3 pair of adjacent sites a/b in `campus_ops`, each with one logical dock and one logical
-# UAV, plus the ground site g, the ground robot's own map of site a, where ugv_01 rests at its parking spot without a
-# dock; and the `harbor_ops` fixture project for the isolation cases. Every robot runs the real onboard
-# executive/guardian/uplink with a logical motion adapter; every dock is the logical simulator. Where each map lies in
-# the shared frame is in configs/scheduling/x1_campus_v1.yaml. Memberships are a separate trusted input
+# UAV; the ground sites g and g2, the two ground robots' own maps of site a, where ugv_01 and ugv_02 rest at their
+# parking spots without a dock; and the `harbor_ops` fixture project for the isolation cases. Every robot runs the real
+# onboard executive/guardian/uplink with a logical motion adapter; every dock is the logical simulator. Where each map
+# lies in the shared frame is in configs/scheduling/x1_campus_v1.yaml. Memberships are a separate trusted input
 # (x1_members_s0.yaml).
 #
-# X1 S0 目录（D088）：`campus_ops` 中 P3 的相邻站点 a/b，每站一个逻辑机场与一台逻辑 UAV；外加地面站点 g，即地面车自己的站点
-# a 地图，ugv_01 停在其停车位，没有机场；以及隔离用例所需的 `harbor_ops` 夹具项目。每台机器人运行真实的机载
-# executive/guardian/uplink 与逻辑运动适配器；每个机场是逻辑模拟器。各地图在共享坐标中的位置写在
+# X1 S0 目录（D088）：`campus_ops` 中 P3 的相邻站点 a/b，每站一个逻辑机场与一台逻辑 UAV；地面站点 g 与 g2，即两台地面车各自的
+# 站点 a 地图，ugv_01 与 ugv_02 停在各自的停车位，没有机场；以及隔离用例所需的 `harbor_ops` 夹具项目。每台机器人运行真实的
+# 机载 executive/guardian/uplink 与逻辑运动适配器；每个机场是逻辑模拟器。各地图在共享坐标中的位置写在
 # configs/scheduling/x1_campus_v1.yaml。成员资格是单独的受信输入（x1_members_s0.yaml）。
 format: drone.operations-catalog/v1
 schema_version: "0.1.0"
@@ -15,12 +15,13 @@ catalog_id: x1_campus_v1
 legacy_project: {project_id: legacy_m2, first_party_roles: [viewer]}
 default_binding: null
 projects:
-  campus_ops: {name: "Campus inspection with a ground robot / 园区巡检（含地面车）", sites: [site_a, site_b, site_g]}
+  campus_ops: {name: "Campus inspection with ground robots / 园区巡检（含地面车）", sites: [site_a, site_b, site_g, site_g2]}
   harbor_ops: {name: "Isolation fixture project / 隔离验证夹具项目", sites: [site_h]}
 sites:
   site_a: {project_id: campus_ops, scene: configs/scenarios/p3_site_a_v1.yaml, max_wind_mps: 8.0}
   site_b: {project_id: campus_ops, scene: configs/scenarios/p3_site_b_v1.yaml, max_wind_mps: 8.0}
   site_g: {project_id: campus_ops, scene: configs/scenarios/x1_ground_a_v1.yaml, max_wind_mps: 8.0}
+  site_g2: {project_id: campus_ops, scene: configs/scenarios/x1_ground_b_v1.yaml, max_wind_mps: 8.0}
   site_h: {project_id: harbor_ops, scene: configs/scenarios/p3_site_h_v1.yaml, max_wind_mps: 8.0}
 docks:
   dock_a: {site_id: site_a, vendor: drone-agent, model: logical-dock-v1, serves: [uav_a], actions: [open_lid, close_lid, start_charge], backend: {kind: logical_sim, principal: "dock:x1-s0-sim"}}
@@ -30,5 +31,6 @@ robots:
   uav_a: {site_id: site_a, dock_id: dock_a, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: logical_sim}
   uav_b: {site_id: site_b, dock_id: dock_b, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: logical_sim}
   ugv_01: {site_id: site_g, platform: configs/platforms/px4_sitl_rover.yaml, execution_backend: logical_sim}
+  ugv_02: {site_id: site_g2, platform: configs/platforms/px4_sitl_rover.yaml, execution_backend: logical_sim}
   uav_h: {site_id: site_h, dock_id: dock_h, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: logical_sim}
 policy: {version: p1-dispatch-v1, freshness_s: 3.0, future_skew_s: 1.0, reconcile_reports: 2, soft_reservation_s: 900, claim_ack_timeout_s: 30, result_grace_s: 5}

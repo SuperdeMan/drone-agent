@@ -100,6 +100,8 @@ def analyze(name: str, analyzer: ScriptedAnalyzer | SignatureAnalyzer, *, asset_
             return refused("analysis.no_scripted_answer")
         return AnalysisResult(**common, verdict=answer.verdict, confidence=answer.confidence,
                               description=answer.description, reasons=("scripted_fixture",))
+    if analyzer.method == "anomaly_block":
+        return _anomaly(analyzer, common, media, width, height)
     band = analyzer.bands.get(asset_id)
     signature = asset.get("visual_signature")
     quality = image_quality(media, width, height)
@@ -119,6 +121,26 @@ def analyze(name: str, analyzer: ScriptedAnalyzer | SignatureAnalyzer, *, asset_
                               description=f"{signature} fraction {fraction:.3f} above {high:.3f}")
     return AnalysisResult(**common, verdict="normal", confidence=1.0, measures=measures, reasons=("within_band",),
                           description=f"{signature} fraction {fraction:.3f} within [{low:.3f}, {high:.3f}]")
+
+
+def _anomaly(analyzer: SignatureAnalyzer, common: dict, media: bytes, width: int, height: int) -> AnalysisResult:
+    """X1 (D088): suspected when a block of a declared anomaly colour is in the capture; the largest one is named.
+
+    X1（D088）：采集中出现声明异常颜色的方块即为疑似；给出最大的那一个。
+    """
+    from drone_agent.fleet.locator import locate
+
+    image = pixels(media, width, height)
+    if image is None:
+        return AnalysisResult(**common, verdict="refused", confidence=0.0, reasons=("analysis.media_missing",))
+    found = [(colour, spot) for colour in analyzer.colours if (spot := locate(image, colour)) is not None]
+    if not found:
+        return AnalysisResult(**common, verdict="normal", confidence=1.0, reasons=("no_anomaly",),
+                              description="no block of a declared anomaly colour")
+    colour, spot = max(found, key=lambda item: item[1].pixels)
+    return AnalysisResult(**common, verdict="suspected", confidence=1.0, reasons=("anomaly_located",),
+                          measures={"u": round(spot.u, 3), "v": round(spot.v, 3), "pixels": float(spot.pixels)},
+                          description=f"{colour} block at ({spot.u:.1f}, {spot.v:.1f})")
 
 
 # ── P4: the quality layer and the model analyzer (D063) / P4：质量层与模型分析器（D063） ──

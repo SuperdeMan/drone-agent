@@ -915,14 +915,18 @@ class ScriptedAnalyzer(WorkflowModel):
 
 
 class SignatureAnalyzer(WorkflowModel):
-    """Measures the registered colour signature and compares it with a per-asset nominal band.
+    """Measures the registered colour signature and compares it with a per-asset nominal band. X1 (D088) adds
+    `anomaly_block`: a capture showing a block of one of the declared anomaly colours is suspected, located by the
+    deterministic anomaly locator; it has colours instead of bands.
 
-    测量登记颜色特征并与逐资产的正常区间比较。
+    测量登记颜色特征并与逐资产的正常区间比较。X1（D088）增加 `anomaly_block`：采集中出现声明异常颜色之一的方块即为疑似，
+    由确定性异常定位器定位；它用颜色列表代替区间。
     """
 
     kind: Literal["deterministic"]
-    method: Literal["color_signature"]
-    bands: dict[str, tuple[float, float]] = Field(min_length=1)
+    method: Literal["color_signature", "anomaly_block"]
+    bands: dict[str, tuple[float, float]] = Field(default_factory=dict)
+    colours: tuple[Literal["orange", "magenta"], ...] = ()
     # P6 (D078): a quality profile of its own, pinned like a model analyzer's, for deployments whose sites have
     # different cameras; left out of the canonical form while unset (the business catalog's default applies).
     # P6（D078）：自带的质量画像，与模型分析器一样固定，用于各站点相机不同的部署；未设置时不进入规范形式（使用业务目录的默认画像）。
@@ -930,6 +934,11 @@ class SignatureAnalyzer(WorkflowModel):
 
     @model_validator(mode="after")
     def _bands(self):
+        if self.method == "color_signature" and (not self.bands or self.colours):
+            raise ValueError("color_signature measures per-asset bands and lists no colours")
+        if self.method == "anomaly_block" and (not self.colours or self.bands
+                                               or len(set(self.colours)) != len(self.colours)):
+            raise ValueError("anomaly_block lists distinct anomaly colours and no bands")
         if any(not 0 <= low < high <= 1 for low, high in self.bands.values()):
             raise ValueError("bands are 0 <= low < high <= 1")
         return self
@@ -939,6 +948,12 @@ class SignatureAnalyzer(WorkflowModel):
         data = handler(self)
         if self.quality is None:
             data.pop("quality", None)
+        # Unused fields stay out, so every color_signature analyzer keeps its digest. / 未使用的字段不进入规范形式，
+        # 使每个 color_signature 分析器的摘要保持不变。
+        if not self.colours:
+            data.pop("colours", None)
+        if not self.bands:
+            data.pop("bands", None)
         return data
 
 
@@ -1112,7 +1127,7 @@ class WorkflowCatalog(WorkflowModel):
             for node in workflow.nodes:
                 if isinstance(node, AnalyzeNode):
                     analyzer = self.analyzers[node.params.analyzer]
-                    if isinstance(analyzer, SignatureAnalyzer):
+                    if isinstance(analyzer, SignatureAnalyzer) and analyzer.method == "color_signature":
                         await_node = workflow.node(node.params.inspection_from)
                         submit = workflow.node(await_node.params.mission_from).params
                         assets = [submit.asset] if isinstance(submit.asset, str) else \

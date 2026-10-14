@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, model_serializer, model_validator
 
 from drone_agent.contracts.common import ContractModel
 from drone_agent.fleet.provenance import digest
@@ -123,12 +123,46 @@ class GroundPlacement(SchedulingModel):
     origin: tuple[float, float]
 
 
+class SharedArea(SchedulingModel):
+    """X1 (D088): a convex ground area aircraft and ground robots both use, in the shared frame, held as
+    `shared.<name>`: an aircraft that takes off or lands at `site` holds it for its whole flight, and a ground robot
+    whose path meets it holds it for its whole mission.
+
+    X1（D088）：空中与地面机器人都会使用的凸地面区域（共享坐标），作为 `shared.<name>` 持有：在 `site` 起降的飞行器整次飞行
+    都持有它，路径经过它的地面车整次任务都持有它。
+    """
+
+    site: str = Field(pattern=ID)
+    polygon: tuple[tuple[float, float], ...] = Field(min_length=3, max_length=16)
+
+    @model_validator(mode="after")
+    def _convex(self):
+        signs = set()
+        points = self.polygon
+        for index, a in enumerate(points):
+            b, c = points[(index + 1) % len(points)], points[(index + 2) % len(points)]
+            cross = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0])
+            if abs(cross) > 1e-9:
+                signs.add(cross > 0)
+        if len(signs) != 1:
+            raise ValueError("a shared area is a convex polygon")
+        return self
+
+
 class GroundLayer(SchedulingModel):
     """X1 (D088): ground maps by version; ground cells use the airspace grid under their own prefix, so they never
-    conflict with airspace cells. / X1（D088）：按版本列出的地面地图；地面单元沿用空域网格、使用各自的前缀，因此从不与空域
-    单元冲突。"""
+    conflict with airspace cells. Shared areas are held by both kinds of robot. / X1（D088）：按版本列出的地面地图；地面
+    单元沿用空域网格、使用各自的前缀，因此从不与空域单元冲突。共享区域由两类机器人共同持有。"""
 
     maps: dict[str, GroundPlacement] = Field(min_length=1)
+    shared: dict[str, SharedArea] = Field(default_factory=dict)
+
+    @model_serializer(mode="wrap")
+    def _canonical(self, handler):
+        data = handler(self)
+        if not self.shared:
+            data.pop("shared", None)
+        return data
 
 
 class Ranking(SchedulingModel):
@@ -182,6 +216,11 @@ class SchedulingCatalog(SchedulingModel):
             strays = sorted({p.site for p in self.ground.maps.values()} - set(self.airspace.sites))
             if strays:
                 raise ValueError(f"ground maps serve sites without an origin: {strays}")
+            if any(not re.fullmatch(ID, key) for key in self.ground.shared):
+                raise ValueError("shared area names must be lower-case slugs")
+            strays = sorted({a.site for a in self.ground.shared.values()} - set(self.airspace.sites))
+            if strays:
+                raise ValueError(f"shared areas name sites without an origin: {strays}")
         return self
 
     def body(self) -> dict:

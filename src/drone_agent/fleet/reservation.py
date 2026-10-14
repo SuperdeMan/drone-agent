@@ -54,6 +54,7 @@ from drone_agent.fleet.scheduling_models import FOOTPRINT_CORRIDOR
 Box = tuple[float, float, float, float]  # (x_min, y_min, x_max, y_max) in the shared frame / 共享坐标中的外包矩形
 PREFIX = "air."
 GROUND_PREFIX = "ground."  # X1 (D088) / X1（D088）
+SHARED_PREFIX = "shared."  # X1 shared ground areas (D088) / X1 共享地面区域（D088）
 
 
 def bounds(points) -> Box:
@@ -87,8 +88,8 @@ def cell_resource(frame: str, i: int, j: int, prefix: str = PREFIX) -> str:
 
 
 def is_cell(resource: str) -> bool:
-    """An airspace or a ground cell (X1, D088). / 空域单元或地面单元（X1，D088）。"""
-    return resource.startswith((PREFIX, GROUND_PREFIX))
+    """An airspace or a ground cell, or a shared ground area (X1, D088). / 空域单元、地面单元或共享地面区域（X1，D088）。"""
+    return resource.startswith((PREFIX, GROUND_PREFIX, SHARED_PREFIX))
 
 
 def cell_box(resource: str, size: float) -> Box:
@@ -485,6 +486,16 @@ def corridor_footprint(grid, origin: tuple[float, float], stops: list[Stop], tar
     return Footprint(coarse.frame, tuple(cell for cell in coarse.cells if near(cell)), coarse.box, coarse.volume_box)
 
 
+def path_meets(path: list[Point], polygon: list[Point]) -> bool:
+    """Whether a polyline touches a convex polygon: a vertex inside, or a leg crossing an edge.
+
+    折线是否触及凸多边形：有顶点在其内，或有一段与其某条边相交。
+    """
+    if any(_inside(point, polygon) for point in path):
+        return True
+    return any(_crosses(a, b, c, d) for a, b in zip(path, path[1:], strict=False) for c, d in _edges(polygon))
+
+
 def envelope_cells(grid, fp: Footprint, radius_m: float, prefix: str = PREFIX) -> tuple[str, ...]:
     """The footprint grown by `radius_m`, bounded by the approved volume; always contains the footprint itself.
 
@@ -540,15 +551,39 @@ class Airspace:
         """
         data = self._data(robot_id)
         if self.ground(robot_id):
-            return footprint(self.grid, self.origin(robot_id), ground_points(data, package), ground_volume(data),
-                             GROUND_PREFIX)
+            path = ground_points(data, package)
+            fp = footprint(self.grid, self.origin(robot_id), path, ground_volume(data), GROUND_PREFIX)
+            return self._shared(robot_id, fp, path)
         volume_id = (package.get("spatial_scope") or {}).get("approved_volume_id")
         coarse = footprint(self.grid, self.origin(robot_id), package_points(data, package, robot_id),
                            data.get("volumes", {}).get(volume_id))
         if self.grid.footprint != FOOTPRINT_CORRIDOR:
-            return coarse
-        return corridor_footprint(self.grid, self.origin(robot_id), package_stops(data, package),
-                                  recovery_points(data, robot_id), coarse)
+            return self._shared(robot_id, coarse)
+        return self._shared(robot_id, corridor_footprint(self.grid, self.origin(robot_id),
+                                                         package_stops(data, package),
+                                                         recovery_points(data, robot_id), coarse))
+
+    def _shared(self, robot_id: str, fp: Footprint, path=None) -> Footprint:
+        """The footprint plus the shared ground areas it uses (X1, D088): an aircraft those of its site, a ground robot
+        those its path meets. A catalog without shared areas leaves every footprint as it was.
+
+        航迹覆盖加上其使用的共享地面区域（X1，D088）：飞行器取其站点的区域，地面车取其路径经过的区域。没有共享区域的目录
+        使每个航迹覆盖保持原样。
+        """
+        layer = self.catalog.ground
+        if layer is None or not layer.shared:
+            return fp
+        if path is not None:
+            ox, oy = self.origin(robot_id)
+            shared = [(ox + x, oy + y) for x, y in path]
+            names = [name for name, area in layer.shared.items() if path_meets(shared, list(area.polygon))]
+        else:
+            site = self.ops.catalog.robots[robot_id].site_id
+            names = [name for name, area in layer.shared.items() if area.site == site]
+        if not names:
+            return fp
+        cells = tuple(sorted({*fp.cells, *(SHARED_PREFIX + name for name in names)}))
+        return Footprint(fp.frame, cells, fp.box, fp.volume_box)
 
     def task_footprint(self, robot_id: str, asset_id: str, volume_id: str) -> Footprint | None:
         key = (robot_id, asset_id, volume_id, self.ops.registry(robot_id).sha256, self.origin(robot_id))
@@ -563,9 +598,10 @@ class Airspace:
             return None
         coarse = footprint(self.grid, self.origin(robot_id), points, data.get("volumes", {}).get(volume_id))
         if self.grid.footprint != FOOTPRINT_CORRIDOR:
-            return coarse
-        return corridor_footprint(self.grid, self.origin(robot_id), task_stops(data, asset_id),
-                                  recovery_points(data, robot_id), coarse)
+            return self._shared(robot_id, coarse)
+        return self._shared(robot_id, corridor_footprint(self.grid, self.origin(robot_id),
+                                                         task_stops(data, asset_id),
+                                                         recovery_points(data, robot_id), coarse))
 
     def footprint_of(self, activity: str) -> Footprint | None:
         row = self.scheduling.footprint(activity)
