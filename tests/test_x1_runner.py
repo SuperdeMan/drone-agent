@@ -95,3 +95,10 @@ def test_the_simulation_image_keeps_px4s_default_logging_and_sets_the_rover_batt
     setup = (ROOT / "sim/x1_setup.py").read_text(encoding="utf-8")
     assert "SDLOG" not in setup and "param set-default SIM_BAT_DRAIN 1800" in setup
     assert "SDLOG" not in (ROOT / "sim/compose.x1.yaml").read_text(encoding="utf-8")
+
+
+def test_the_simulation_image_has_real_line_continuations():
+    dockerfile = (ROOT / "sim/x1.Dockerfile").read_text(encoding="utf-8")
+    assert chr(92) + "n" not in dockerfile
+    run = next(line for line in dockerfile.splitlines() if line.startswith("RUN no_proxy"))
+    assert run.endswith(chr(92))

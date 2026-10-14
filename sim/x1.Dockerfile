@@ -12,7 +12,11 @@ FROM ${AIRCRAFT_IMAGE}
 # bc serves PX4's accelerated-clock startup script, as in sim/p3.Dockerfile; the package index goes in the same
 # step, so no layer keeps it. / bc 供 PX4 加速时钟启动脚本使用，与 sim/p3.Dockerfile 相同；软件包索引在同一步删除，
 # 不留在任何层中。
-RUN no_proxy=mirrors.tuna.tsinghua.edu.cn apt-get \n    -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/ubuntu.sources -o Dir::Etc::sourceparts=- \n    -o Acquire::Retries=1 -o Acquire::https::Timeout=20 update \n    && no_proxy=mirrors.tuna.tsinghua.edu.cn apt-get install -y --no-install-recommends bc \n    && rm -rf /var/lib/apt/lists/*
+RUN no_proxy=mirrors.tuna.tsinghua.edu.cn apt-get \
+    -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/ubuntu.sources -o Dir::Etc::sourceparts=- \
+    -o Acquire::Retries=1 -o Acquire::https::Timeout=20 update \
+    && no_proxy=mirrors.tuna.tsinghua.edu.cn apt-get install -y --no-install-recommends bc \
+    && rm -rf /var/lib/apt/lists/*
 RUN /usr/bin/python3 /workspace/sim/x1_setup.py
 LABEL org.drone-agent.role=sim-x1
 ENV HEADLESS=1
