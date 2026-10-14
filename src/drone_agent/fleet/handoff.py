@@ -173,6 +173,23 @@ class HandoffEngine:
             acked.append(handoff["handoff_id"])
         return {"expired": expired, "acked": acked}
 
+    def withdraw(self, task_id: str, *, actor: str, reason: str) -> str | None:
+        """Withdraw the task's open offer (the task was cancelled); its delivery leaves the queue.
+
+        撤回该任务的未结提议（任务已取消）；其投递离开拉取队列。
+        """
+        handoff = self.store.open_offer(task_id)
+        if handoff is None:
+            return None
+        try:
+            with self.store.transaction():
+                self.store.transition(handoff["handoff_id"], ("offered", "accepted"), "withdrawn", actor=actor,
+                                      body={"reason": reason})
+                self._close_delivery(handoff, False, "handoff.withdrawn")
+        except StaleHandoff:
+            return None
+        return handoff["handoff_id"]
+
     def complete(self, handoff_id: str, *, mission_id: str, outcome: str) -> None:
         """The ground mission of an acked offer settled; the offer is done. / 已确认提议的地面任务已了结；提议完成。"""
         self.store.transition(handoff_id, ("acked",), "completed", actor=COORDINATOR,

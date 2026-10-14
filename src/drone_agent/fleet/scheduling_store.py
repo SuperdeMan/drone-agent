@@ -33,6 +33,9 @@ from drone_agent.fleet.operations_store import MigrationError, schema_version
 from drone_agent.fleet.scheduling_models import CANCELLING_TASK, TERMINAL_TASK, SchedulingCatalog, TaskState
 
 SCHEDULING_SCHEMA = "1"
+# X1 (D088): tasks a coordinator offers to a named ground robot; the P3 queue never serves them.
+# X1（D088）：协调器点名提议给地面车的任务；P3 队列从不处理它们。
+HANDOFF_SOURCE = "handoff"
 DDL: tuple[str, ...] = (
     "CREATE TABLE IF NOT EXISTS sc_catalogs (catalog_sha256 TEXT PRIMARY KEY, catalog_id TEXT NOT NULL, "
     "body TEXT NOT NULL, loaded_at TEXT NOT NULL)",
@@ -261,13 +264,17 @@ class SchedulingStore:
         return [self._task(row) for row in self._rows(sql, args)]
 
     def queue(self) -> list[dict]:
-        """Queued tasks in the order the scheduler serves them. / 按调度顺序排列的排队任务。"""
+        """Queued tasks in the order the scheduler serves them; X1 handoff tasks wait for their offer instead (D088).
+
+        按调度顺序排列的排队任务；X1 交接任务改为等待其提议（D088）。
+        """
         return [self._task(row) for row in self._rows(
-            "SELECT * FROM sc_tasks WHERE state='queued' ORDER BY priority DESC, created_at, task_id")]
+            "SELECT * FROM sc_tasks WHERE state='queued' AND source != ? ORDER BY priority DESC, created_at, task_id",
+            (HANDOFF_SOURCE,))]
 
     def create_task(self, *, requested_by: str, key: str, project_id: str, asset_id: str, volume_id: str,
                     candidates: list[str], priority: int, not_after: str, source: str,
-                    guard=None) -> tuple[dict | None, bool]:
+                    guard=None, detail: dict | None = None) -> tuple[dict | None, bool]:
         """One task per (requester, idempotency key); a repeat returns the first. `guard` may refuse inside the
         transaction (a workflow outbox claim that is no longer ours).
 
@@ -284,7 +291,7 @@ class SchedulingStore:
             self._exec("INSERT INTO sc_tasks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                        (task_id, requested_by, key, project_id, asset_id, volume_id, _dump(list(candidates)),
                         int(priority), not_after, self.catalog.sha256, source, TaskState.QUEUED.value, 1, 0, None,
-                        None, _dump([]), None, None, None, None, now, now))
+                        None, _dump([]), None, None if detail is None else _dump(detail), None, None, now, now))
             self.event(f"task:{task_id}", "task.created", requested_by,
                        {"project_id": project_id, "asset_id": asset_id, "volume_id": volume_id,
                         "candidates": list(candidates), "priority": int(priority), "not_after": not_after,
