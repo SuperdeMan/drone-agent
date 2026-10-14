@@ -1,23 +1,31 @@
 """The X1 gate's own rules on hand-made receipts (D088): S1 coverage, counts, capacity and identities, and the scope.
+Only the Git reading boundary is replaced (the cloud checks image has no `.git`); the gate's decisions are not.
 
-X1 门禁自身规则在构造回执上的测试（D088）：S1 覆盖、计数、容量与身份，以及范围。
+X1 门禁自身规则在构造回执上的测试（D088）：S1 覆盖、计数、容量与身份，以及范围。只替换 Git 读取边界（云端检查镜像没有
+`.git`），不替换门禁判定本身。
 """
 
 from __future__ import annotations
 
 import copy
 import runpy
-import subprocess
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 GATE = runpy.run_path(str(ROOT / "scripts/verify_x1_release.py"))
-HEAD = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+SHA = "a" * 40
 
 
-def receipt(sha: str) -> dict:
+@pytest.fixture
+def worktree(monkeypatch):
+    """Read committed files from the working tree. / 从工作树读取已提交文件。"""
+    monkeypatch.setitem(GATE["s1"].__globals__, "show", lambda sha, path: (ROOT / path).read_bytes())
+
+
+def receipt(sha: str = SHA) -> dict:
     from drone_agent.eval.judge_x1 import COUNTS
 
     suite = yaml.safe_load((ROOT / "configs/scenarios/x1_suite.yaml").read_text(encoding="utf-8"))
@@ -31,27 +39,43 @@ def receipt(sha: str) -> dict:
             "certificate_fingerprints": dict.fromkeys(GATE["FINGERPRINTS"], "x"), "results": rows}
 
 
-def test_s1_needs_every_case_and_seed_with_zero_counts_capacity_and_both_robots():
-    good = receipt(HEAD)
-    assert GATE["s1"]([good], HEAD)["status"] == "passed"
-    assert GATE["s1"]([], HEAD)["status"] == "missing"
+def test_s1_needs_every_case_and_seed_with_zero_counts_capacity_and_both_robots(worktree):
+    good = receipt()
+    assert GATE["s1"]([good], SHA)["status"] == "passed"
+    assert GATE["s1"]([], SHA)["status"] == "missing"
     short = copy.deepcopy(good)
     short["results"].pop()
-    assert GATE["s1"]([short], HEAD)["missing"]
+    assert GATE["s1"]([short], SHA)["missing"]
     counted = copy.deepcopy(good)
     counted["results"][0]["counts"]["false_success"] = 1
-    assert GATE["s1"]([counted], HEAD)["status"] == "failed"
+    assert GATE["s1"]([counted], SHA)["status"] == "failed"
     starved = copy.deepcopy(good)
     starved["results"][3]["capacity"]["verdict"]["sufficient"] = False
-    assert GATE["s1"]([starved], HEAD)["status"] == "failed"
+    assert GATE["s1"]([starved], SHA)["status"] == "failed"
     foreign = copy.deepcopy(good)
     foreign["certificate_fingerprints"] = {"ca": "x", "service": "x", "robot": "x", "robot-tls-uav_02": "x"}
-    assert GATE["s1"]([foreign], HEAD)["status"] == "failed"
-    other = receipt("0" * 40)
-    assert GATE["s1"]([other], HEAD)["status"] == "failed"
+    assert GATE["s1"]([foreign], SHA)["status"] == "failed"
+    assert GATE["s1"]([receipt("b" * 40)], SHA)["status"] == "failed"
+    aircraft_only = copy.deepcopy(good)
+    for row in aircraft_only["results"]:
+        row["flown"]["ugv_01"] = []
+    assert GATE["s1"]([aircraft_only], SHA)["status"] == "failed"
 
 
-def test_the_scope_leaves_the_desk_alone_and_requires_the_onboard_regressions():
-    result = GATE["scope"](HEAD)
+def test_the_scope_leaves_the_desk_alone_and_requires_the_onboard_regressions(monkeypatch):
+    changed = ["src/drone_agent/guardian/core.py", "src/drone_agent/fleet/handoff.py", ".github/workflows/checks.yml"]
+
+    def git(*args):
+        return SHA if args[0] == "rev-parse" else "\n".join(changed)
+
+    monkeypatch.setitem(GATE["scope"].__globals__, "git", git)
+    monkeypatch.setitem(GATE["scope"].__globals__, "ancestor", lambda older, newer: True)
+    result = GATE["scope"](SHA)
     assert result["status"] == "passed" and result["desk_changed"] == []
-    assert result["onboard_changed"] and result["regressions_required"] == ["m1", "m2_e2e", "m3_suite"]
+    assert result["onboard_changed"] == ["src/drone_agent/guardian/core.py"]
+    assert result["regressions_required"] == ["m1", "m2_e2e", "m3_suite"]
+    assert result["approved_outside_code"] == [".github/workflows/checks.yml"]
+    changed.append("sim/compose.desk.yaml")
+    assert GATE["scope"](SHA)["status"] == "failed"
+    monkeypatch.setitem(GATE["scope"].__globals__, "ancestor", lambda older, newer: False)
+    assert GATE["scope"](SHA)["status"] == "failed"
