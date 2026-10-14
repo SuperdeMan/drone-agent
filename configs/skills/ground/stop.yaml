@@ -1,0 +1,41 @@
+# skill.ground.stop (X1, D088): a skeleton step only the compiler inserts; hold the robot still at the end of a task.
+#
+# skill.ground.stop（X1，D088）：只由编译器插入的骨架步骤；任务结束时让车保持静止。
+schema_version: "0.1.0"
+skill_id: skill.ground.stop
+version: "0.1.0"
+description: "Hold the robot still; a skeleton step, never planned. / 让车保持静止；骨架步骤，从不由规划生成。"
+embodiments: [ground_wheeled]
+required_control_modes: [mission_upload]
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: []
+  properties: {}
+preconditions: [package_authorized, armed]
+invariants: [inside_ground_area, observation_fresh, lease_valid, executive_heartbeat_ok, fc_failsafe_inactive]
+resources:
+  - {resource_id: ugv_01.motion, mode: exclusive}
+progress_schema: {type: object, additionalProperties: false, properties: {}}
+cancel:
+  cancel_safe_states: [stopped]
+  cancel_procedure: "Already stopping; the guardian disarms the stationary robot. / 已在停车；由 guardian 为静止的车上锁。"
+pause: {pausable: false}
+completion_evidence:
+  - evidence_type: telemetry
+    criteria: {predicate: ground_stopped_verified, threshold_ref: x1_ground_a_v1.stop, fresh_pose_required: true}
+failure_modes:
+  - {code: stop_unknown, description: "Hold receipt unknown / Hold 回执未知", recovery_hint: guardian_policy}
+timeout_s: 15
+estimated_duration_s: 3
+implementation: {kind: deterministic}
+estimated_energy_fraction: 0.0083
+energy_estimate:
+  basis: sim_only
+  mean_fraction: 0.0017
+  upper_fraction: 0.0083
+  samples: 1
+  method: "Provisional: PX4 SITL drains the simulated battery linearly while armed (measured 2026-10-14); fraction = duration bound / SIM_BAT_DRAIN 1800 s; refit on X1 S1 runs before the gate (D088)"
+  source_revision: b10ef73
+  source_runs: [x1-rover-probe-2026-10-14]

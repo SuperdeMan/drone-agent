@@ -1,0 +1,66 @@
+# skill.ground.recheck (X1, D088): close the last metres towards the target, face it, capture and keep only verified views.
+#
+# skill.ground.recheck（X1，D088）：驶完朝向目标的最后几米并正对它，拍摄并只保留核验通过的画面。
+schema_version: "0.1.0"
+skill_id: skill.ground.recheck
+version: "0.1.0"
+description: "Face the offered target from the viewing goal and capture verified views; whether the anomaly was relocated is the service's finding, never this skill's verdict. / 在观察位正对所提供的目标并拍摄核验通过的画面；是否重新定位到异常物由服务判定，从不是本技能的结论。"
+embodiments: [ground_wheeled]
+required_control_modes: [mission_upload]
+intent_phases:
+  - phase: approach
+    preconditions: [package_authorized, armed, at_goal, face_leg_clear, localization_healthy, motion_lease_valid]
+  - phase: capture
+    preconditions: [package_authorized, camera_available, stationary, observation_pose_valid, camera_lease_valid]
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: [asset_id, target, target_kind, radius_m, signature, goal, face_point, camera_id, quality_profile_ref, max_captures, speed_mps]
+  properties:
+    asset_id: {type: string, minLength: 1}
+    target: {type: array, minItems: 2, maxItems: 2, items: {type: number}}
+    target_kind: {type: string, enum: [point, search_region]}
+    radius_m: {type: number, minimum: 0, maximum: 20}
+    signature: {type: string, minLength: 1}
+    goal: {type: array, minItems: 2, maxItems: 2, items: {type: number}}
+    face_point: {type: array, minItems: 2, maxItems: 2, items: {type: number}}
+    camera_id: {type: string, enum: [cam_0]}
+    quality_profile_ref: {type: string, pattern: "^[a-z][a-z0-9_]*\\.image$"}
+    max_captures: {type: integer, minimum: 1, maximum: 3}
+    speed_mps: {type: number, exclusiveMinimum: 0, maximum: 0.5, unit: m/s}
+preconditions: [package_authorized, armed, at_goal, face_leg_clear, localization_healthy, motion_lease_valid]
+invariants: [inside_ground_area, observation_fresh, lease_valid, executive_heartbeat_ok, energy_above_reserve, fc_failsafe_inactive]
+resources:
+  - {resource_id: ugv_01.motion, mode: exclusive}
+  - {resource_id: ugv_01.camera, mode: exclusive}
+progress_schema:
+  type: object
+  additionalProperties: false
+  required: [phase, attempts]
+  properties:
+    phase: {type: string, enum: [approaching, observing, capturing, verifying]}
+    attempts: {type: integer, minimum: 0, maximum: 3}
+cancel:
+  cancel_safe_states: [before_approach, observing]
+  cancel_procedure: "Stop the approach through the guardian and stop new captures; keep partial evidence marked unverified. / 经 guardian 停止接近并停止新拍摄；部分证据保留并标为未证实。"
+pause: {pausable: false}
+completion_evidence:
+  - evidence_type: image
+    criteria: {predicate: ground_view_verified, threshold_ref: x1_ground_a_v1.image, sha256_required: true, pose_covariance_required: true, fresh_time_window_required: true, max_distance_to_face_point_m: 0.8}
+failure_modes:
+  - {code: approach_timeout, description: "Face point not confirmed in time / 未及时确认到达正对点", recovery_hint: outcome_unknown_then_policy}
+  - {code: image_quality_failed, description: "No capture met the evidence criteria within max_captures / 补拍上限内没有影像满足证据判据", recovery_hint: unverified_then_report}
+  - {code: evidence_write_failed, description: "Evidence persistence failed / 证据持久化失败", recovery_hint: unverified_and_block_dependents}
+timeout_s: 120
+estimated_duration_s: 25
+implementation: {kind: deterministic}
+estimated_energy_fraction: 0.0333
+energy_estimate:
+  basis: sim_only
+  mean_fraction: 0.0139
+  upper_fraction: 0.0333
+  samples: 1
+  method: "Provisional: PX4 SITL drains the simulated battery linearly while armed (measured 2026-10-14); fraction = duration bound / SIM_BAT_DRAIN 1800 s; refit on X1 S1 runs before the gate (D088)"
+  source_revision: b10ef73
+  source_runs: [x1-rover-probe-2026-10-14]

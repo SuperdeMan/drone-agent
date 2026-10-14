@@ -88,8 +88,13 @@ class GroundMap(GroundModel):
     ground: GroundSection
 
 
+def ground_map_of(scene: dict) -> GroundMap:
+    """The map part of a ground site scene (its id, frame and `ground` section). / 地面站点场景中的地图部分。"""
+    return GroundMap.model_validate({key: scene[key] for key in ("registry_id", "frame", "ground")})
+
+
 def load_ground_map(path: Path) -> GroundMap:
-    return GroundMap.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
+    return ground_map_of(yaml.safe_load(path.read_text(encoding="utf-8")))
 
 
 @dataclass(frozen=True)
@@ -106,7 +111,7 @@ class Reachability:
     detail: str = ""
 
 
-def _inside(point: Point, polygon: Sequence[Point]) -> bool:
+def inside_polygon(point: Point, polygon: Sequence[Point]) -> bool:
     # Even-odd ray casting; a point on an edge counts as whichever side the rounding gives. / 奇偶射线法。
     x, y, inside = point[0], point[1], False
     for (x1, y1), (x2, y2) in zip(polygon, [*polygon[1:], polygon[0]], strict=True):
@@ -155,9 +160,9 @@ class Grid:
                 point = self.centre((i, j))
                 # The whole footprint inside one drivable polygon, clear of every blocked one. / 整个覆盖范围在某个
                 # 可行驶多边形内，且远离每个被占多边形。
-                if not any(_inside(point, p) and _edge_distance(point, p) >= radius for p in section.drivable):
+                if not any(inside_polygon(point, p) and _edge_distance(point, p) >= radius for p in section.drivable):
                     continue
-                if any(_inside(point, p) or _edge_distance(point, p) < radius for p in blocked):
+                if any(inside_polygon(point, p) or _edge_distance(point, p) < radius for p in blocked):
                     continue
                 cells.add((i, j))
         return frozenset(cells)

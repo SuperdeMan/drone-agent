@@ -1,32 +1,77 @@
-# X1 S0 ground map x1_ground_a_v1 (D088): the ground robot's own map of P3 site a. Its frame is not the site map's:
-# the scheduling catalog places this map's origin 2 m west and 3 m south of site a's origin in the shared frame, so a
-# point (x, y) of site a is (x + 2, y + 3) here, which every handoff target must go through. The drivable area is the
-# site's area; the aircraft pad (site a's origin) is a no-go zone, a fenced compound in the north-east corner is a
-# no-go zone whose inside no viewing distance reaches, and a building stands between the parking spot and the east
-# assets. Logical robots only (S0); the S1 world gets its own map.
+# X1 S0 ground site x1_ground_a_v1 (D088): the ground robot's own map of P3 site a. Its frame is not the site map's:
+# its origin is the parking spot, which the scheduling catalog places 2 m east and 4 m south of site a's origin in the
+# shared frame, so a point (x, y) of site a is (x - 2, y + 4) here, and every handoff target must go through that move.
+# The robot spawns and arms at the parking spot, so this frame is also its PX4 local frame and no offset hides in the
+# adapter. The drivable area is the site's area; the aircraft pad (site a's origin) is a no-go zone, a fenced compound
+# in the north-east corner is a no-go zone whose inside no viewing distance reaches, and a building stands between the
+# parking spot and the north assets. Logical robots only (S0); the S1 world gets its own map.
 #
-# X1 S0 地面地图 x1_ground_a_v1（D088）：地面车自己的 P3 站点 a 地图。它的坐标系不是站点地图的：调度目录把本地图原点放在
-# 共享坐标中站点 a 原点以西 2 m、以南 3 m 处，因此站点 a 的点 (x, y) 在这里是 (x + 2, y + 3)，每个交接目标都必须经过这一
-# 转换。可行驶区域即站点区域；飞行器机位（站点 a 原点）是禁入区；东北角围起来的院子是禁入区，任何观察距离都够不到其内部；
-# 停车位与东侧资产之间有一栋楼。只用于逻辑机器人（S0）；S1 世界另有地图。
+# X1 S0 地面站点 x1_ground_a_v1（D088）：地面车自己的 P3 站点 a 地图。它的坐标系不是站点地图的：原点就是停车位，调度目录把
+# 停车位放在共享坐标中站点 a 原点以东 2 m、以南 4 m 处，因此站点 a 的点 (x, y) 在这里是 (x - 2, y + 4)，每个交接目标都
+# 必须经过这一转换。地面车在停车位生成并解锁，所以本坐标系也是它的 PX4 本地坐标系，适配器里不藏任何偏移。可行驶区域即站点
+# 区域；飞行器机位（站点 a 原点）是禁入区；东北角围起来的院子是禁入区，任何观察距离都够不到其内部；停车位与北侧资产之间有
+# 一栋楼。只用于逻辑机器人（S0）；S1 世界另有地图。
 schema_version: 0.1.0
+kind: ground_site
 registry_id: x1_ground_a_v1
 frame: {frame_id: map_enu, map_version: x1_ground_a_v1}
+approved_volume_id: x1_ground_a_v1
+volumes:
+  x1_ground_a_v1:
+    airspace_mode: simulation
+    description: The drivable campus area of site a, minus its no-go zones / 站点 a 的可行驶园区区域，扣除禁入区
+home:
+  id: park_a
+  position: [0, 0, 0]
+assets: {}
 ground:
   cell_m: 0.25
   robot_radius_m: 0.4
   drivable:
-    - [[-8, -3], [14, -3], [14, 19], [-8, 19]]
+    - [[-12, -2], [10, -2], [10, 20], [-12, 20]]
   obstacles:
     # The building (site a x 1..3, y 6..9). / 楼（站点 a 的 x 1..3、y 6..9）。
-    - [[3, 9], [5, 9], [5, 12], [3, 12]]
+    - [[-1, 10], [1, 10], [1, 13], [-1, 13]]
   no_go:
     # The aircraft pad, 2 m around site a's origin. / 飞行器机位，站点 a 原点周围 2 m。
-    - [[0, 1], [4, 1], [4, 5], [0, 5]]
+    - [[-4, 2], [0, 2], [0, 6], [-4, 6]]
     # The fenced compound (site a x 8..12, y 10..16). / 围起来的院子（站点 a 的 x 8..12、y 10..16）。
-    - [[10, 13], [14, 13], [14, 19], [10, 19]]
+    - [[6, 14], [10, 14], [10, 20], [6, 20]]
   parking:
-    park_a: {position: [4, -1], heading_deg: 90}
+    park_a: {position: [0, 0], heading_deg: 90}
   standoff_m: [1.0, 2.0]
   max_path_m: 60
   cruise_mps: 1.0
+# The forward camera: image right is the robot's right; the optical axis is level at this height.
+# 前视相机：画面右方是车体右侧；光轴水平，位于此高度。
+camera: {camera_id: cam_0, width_px: 160, height_px: 120, hfov_deg: 80, height_m: 0.5}
+thresholds:
+  stationary_mps: 0.05
+  parking_radius_m: 0.8
+  # Measured: a mission ends within 0.55 m of its last point (acceptance radius 0.5 m). / 实测：任务终点误差 0.55 m。
+  nav_to: {tolerance_m: 0.8, hold_duration_s: 1}
+  return_home: {tolerance_m: 0.8, hold_duration_s: 2}
+  arm: {hold_duration_s: 1}
+  stop: {hold_duration_s: 1}
+  disarm: {hold_duration_s: 1}
+  face_m: 1.0
+  image: {min_width: 160, min_height: 120, max_age_s: 0.5, max_position_variance: 9, min_edge_contrast: 0.05}
+# Measured: Hold stops 1.2 m/s within 0.5 s and 0.3 m, so a 0.5 s look-ahead at 1.0 m/s stays inside the clearance.
+# 实测：Hold 让 1.2 m/s 在 0.5 s、0.3 m 内停住，因此 1.0 m/s 下 0.5 s 前瞻仍在净空之内。
+supervision: {observation_timeout_s: 0.5, heartbeat_timeout_s: 2, lease_duration_s: 10, command_timeout_s: 5, period_s: 0.1,
+  prediction_s: 0.5, return_margin_fraction: 0.1, max_pause_s: 120}
+simulation: {speed_factor: 1, model: rover_differential, camera_topic: /drone/ugv_cam_0/image, policy_ref: rover_campus@v1}
+mission_defaults:
+  planner_skills: [skill.ground.recheck]
+  parking_id: park_a
+  cruise_speed_mps: 1.0
+  approach_speed_mps: 0.3
+  max_captures: 3
+  energy_budget: {max_consumption_fraction: 0.4, reserve_fraction: 0.2}
+  min_reserve_fraction: 0.2
+  window_minutes: 30
+  max_window_minutes: 120
+  max_start_delay_minutes: 10
+site_records:
+  weather: {source: simulated_site_record, wind_mps: 2.0, gust_mps: 3.0, precipitation: none, visibility_km: 10}
+  history: []

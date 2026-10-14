@@ -169,6 +169,10 @@ class RecoveryPolicy(ContractModel):
             errors.append(f"behaviours not supported by platform: {unsupported}")
         if not caps.limits.can_hover and RecoveryBehavior.HOLD in self.nodes:
             errors.append("platform cannot hover; use loiter instead of hold")
+        # X1 (D088): stopping in place is a ground behaviour; an aircraft that "stops" is not stopped.
+        # X1（D088）：原地停止是地面行为；飞行器所谓的「停止」并没有停住。
+        if RecoveryBehavior.STOP in self.nodes and not caps.embodiment.value.startswith("ground_"):
+            errors.append("stop is a ground behaviour; aerial platforms hold or loiter")
         return errors
 
     def unverified_edges(self) -> list[RecoveryEdge]:

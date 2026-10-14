@@ -1,0 +1,42 @@
+# skill.ground.disarm (X1, D088): a skeleton step only the compiler inserts; disarm only a stationary robot in Hold, never a kill.
+#
+# skill.ground.disarm（X1，D088）：只由编译器插入的骨架步骤；只为处于 Hold 且静止的车上锁，绝不是 kill。
+schema_version: "0.1.0"
+skill_id: skill.ground.disarm
+version: "0.1.0"
+description: "Disarm a stationary robot in Hold; PX4 accepts a disarm while driving, so this guard is the only barrier. / 为处于 Hold 且静止的车上锁；PX4 在行驶中也接受上锁，因此本守卫是唯一屏障。"
+embodiments: [ground_wheeled]
+required_control_modes: [mission_upload]
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: []
+  properties: {}
+preconditions: [package_authorized, armed, stationary]
+invariants: [inside_ground_area, observation_fresh, lease_valid, executive_heartbeat_ok, fc_failsafe_inactive]
+resources:
+  - {resource_id: ugv_01.motion, mode: exclusive}
+progress_schema: {type: object, additionalProperties: false, properties: {}}
+cancel:
+  cancel_safe_states: [stopped]
+  cancel_procedure: "Leave the robot stopped; the guardian disarms it once stationary. / 让车保持停止；静止后由 guardian 上锁。"
+pause: {pausable: false}
+completion_evidence:
+  - evidence_type: telemetry
+    criteria: {predicate: ground_disarmed_verified, threshold_ref: x1_ground_a_v1.disarm, fresh_pose_required: true}
+failure_modes:
+  - {code: disarm_refused, description: "Not stationary in Hold, refused before any command / 未在 Hold 中静止，命令发出前即拒绝", recovery_hint: stop_then_retry}
+  - {code: disarm_unknown, description: "Disarm receipt unknown / 上锁回执未知", recovery_hint: relinquish_and_report_unknown}
+timeout_s: 15
+estimated_duration_s: 3
+implementation: {kind: deterministic}
+estimated_energy_fraction: 0.0083
+energy_estimate:
+  basis: sim_only
+  mean_fraction: 0.0017
+  upper_fraction: 0.0083
+  samples: 1
+  method: "Provisional: PX4 SITL drains the simulated battery linearly while armed (measured 2026-10-14); fraction = duration bound / SIM_BAT_DRAIN 1800 s; refit on X1 S1 runs before the gate (D088)"
+  source_revision: b10ef73
+  source_runs: [x1-rover-probe-2026-10-14]

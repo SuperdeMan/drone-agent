@@ -1,0 +1,43 @@
+# skill.ground.arm (X1, D088): a skeleton step only the compiler inserts; arm a stationary ground robot at its parking spot.
+#
+# skill.ground.arm（X1，D088）：只由编译器插入的骨架步骤；在停车位为静止的地面车解锁。
+schema_version: "0.1.0"
+skill_id: skill.ground.arm
+version: "0.1.0"
+description: "Arm a stationary ground robot at its parking spot; a skeleton step, never planned. / 在停车位为静止的地面车解锁；骨架步骤，从不由规划生成。"
+embodiments: [ground_wheeled]
+required_control_modes: [mission_upload]
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: [parking_id]
+  properties:
+    parking_id: {type: string, minLength: 1}
+preconditions: [package_authorized, disarmed, stationary, at_parking, localization_healthy, energy_budget_feasible, motion_lease_valid]
+invariants: [inside_ground_area, observation_fresh, lease_valid, executive_heartbeat_ok, fc_failsafe_inactive]
+resources:
+  - {resource_id: ugv_01.motion, mode: exclusive}
+progress_schema: {type: object, additionalProperties: false, properties: {}}
+cancel:
+  cancel_safe_states: [before_arm]
+  cancel_procedure: "Do not arm; if armed already, the guardian stops and disarms the stationary robot. / 不再解锁；若已解锁，由 guardian 停稳并为静止的车上锁。"
+pause: {pausable: false}
+completion_evidence:
+  - evidence_type: telemetry
+    criteria: {predicate: ground_armed_verified, threshold_ref: x1_ground_a_v1.arm, fresh_pose_required: true}
+failure_modes:
+  - {code: arm_rejected, description: "The flight controller refused to arm / 飞控拒绝解锁", recovery_hint: report_and_stay_disarmed}
+  - {code: arm_unknown, description: "Arm receipt unknown / 解锁回执未知", recovery_hint: reconcile_before_any_resend}
+timeout_s: 15
+estimated_duration_s: 3
+implementation: {kind: deterministic}
+estimated_energy_fraction: 0.0083
+energy_estimate:
+  basis: sim_only
+  mean_fraction: 0.0017
+  upper_fraction: 0.0083
+  samples: 1
+  method: "Provisional: PX4 SITL drains the simulated battery linearly while armed (measured 2026-10-14); fraction = duration bound / SIM_BAT_DRAIN 1800 s; refit on X1 S1 runs before the gate (D088)"
+  source_revision: b10ef73
+  source_runs: [x1-rover-probe-2026-10-14]
