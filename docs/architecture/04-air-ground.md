@@ -2,7 +2,7 @@
 
 [返回架构总览](00-overview.md) · [M4 实施计划](../m4-implementation.md) · [路线图](../roadmap.md)
 
-**状态：目标设计，X1 / H3 待实施（D049，承接原 M4-B / M5）。** P1/P3 先实现无人机资源、调度、所有权与预约，本页复用它们再加地面可通行性与空间对齐；不作为 P5 前置。当前 M2/M3-SITL 仅运行单架 `uav_01`；[直通协调器](../../src/drone_agent/fleet/coordinator.py)校验并记录协同规则为 `recorded_not_executed`，不发起、接受或转移任务。下文的空间对齐、交接和资源预约不能作为现有能力使用。WP-X1-01 的实施方案见 [X1 实施方案](../x1-implementation.md)，2026-10-14 提出，尚待批准。
+**状态：目标设计，X1 / H3 待实施（D049，承接原 M4-B / M5）。** P1/P3 先实现无人机资源、调度、所有权与预约，本页复用它们再加地面可通行性与空间对齐；不作为 P5 前置。当前 M2/M3-SITL 仅运行单架 `uav_01`；[直通协调器](../../src/drone_agent/fleet/coordinator.py)校验并记录协同规则为 `recorded_not_executed`，不发起、接受或转移任务。下文的空间对齐、交接和资源预约不能作为现有能力使用。WP-X1-01 的实施方案见 [X1 实施方案](../x1-implementation.md)，2026-10-14 获批（D088），实施中。
 
 ## 1. 协同模型
 
