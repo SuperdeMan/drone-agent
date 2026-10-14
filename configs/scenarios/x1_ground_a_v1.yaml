@@ -1,0 +1,32 @@
+# X1 S0 ground map x1_ground_a_v1 (D088): the ground robot's own map of P3 site a. Its frame is not the site map's:
+# the scheduling catalog places this map's origin 2 m west and 3 m south of site a's origin in the shared frame, so a
+# point (x, y) of site a is (x + 2, y + 3) here, which every handoff target must go through. The drivable area is the
+# site's area; the aircraft pad (site a's origin) is a no-go zone, a fenced compound in the north-east corner is a
+# no-go zone whose inside no viewing distance reaches, and a building stands between the parking spot and the east
+# assets. Logical robots only (S0); the S1 world gets its own map.
+#
+# X1 S0 地面地图 x1_ground_a_v1（D088）：地面车自己的 P3 站点 a 地图。它的坐标系不是站点地图的：调度目录把本地图原点放在
+# 共享坐标中站点 a 原点以西 2 m、以南 3 m 处，因此站点 a 的点 (x, y) 在这里是 (x + 2, y + 3)，每个交接目标都必须经过这一
+# 转换。可行驶区域即站点区域；飞行器机位（站点 a 原点）是禁入区；东北角围起来的院子是禁入区，任何观察距离都够不到其内部；
+# 停车位与东侧资产之间有一栋楼。只用于逻辑机器人（S0）；S1 世界另有地图。
+schema_version: 0.1.0
+registry_id: x1_ground_a_v1
+frame: {frame_id: map_enu, map_version: x1_ground_a_v1}
+ground:
+  cell_m: 0.25
+  robot_radius_m: 0.4
+  drivable:
+    - [[-8, -3], [14, -3], [14, 19], [-8, 19]]
+  obstacles:
+    # The building (site a x 1..3, y 6..9). / 楼（站点 a 的 x 1..3、y 6..9）。
+    - [[3, 9], [5, 9], [5, 12], [3, 12]]
+  no_go:
+    # The aircraft pad, 2 m around site a's origin. / 飞行器机位，站点 a 原点周围 2 m。
+    - [[0, 1], [4, 1], [4, 5], [0, 5]]
+    # The fenced compound (site a x 8..12, y 10..16). / 围起来的院子（站点 a 的 x 8..12、y 10..16）。
+    - [[10, 13], [14, 13], [14, 19], [10, 19]]
+  parking:
+    park_a: {position: [4, -1], heading_deg: 90}
+  standoff_m: [1.0, 2.0]
+  max_path_m: 60
+  cruise_mps: 1.0

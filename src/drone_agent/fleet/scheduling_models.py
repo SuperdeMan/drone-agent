@@ -113,6 +113,24 @@ class AirspaceGrid(SchedulingModel):
                     "recovery fans (D084) / 航迹覆盖的求法：全部位置的外包矩形，或带恢复扇区的航段走廊（D084）")
 
 
+class GroundPlacement(SchedulingModel):
+    """X1 (D088): where a ground robot's own map lies in the shared frame (translation only) and the site it serves.
+
+    X1（D088）：地面车自己的地图在共享坐标中的位置（仅平移）及其服务的站点。
+    """
+
+    site: str = Field(pattern=ID)
+    origin: tuple[float, float]
+
+
+class GroundLayer(SchedulingModel):
+    """X1 (D088): ground maps by version; ground cells use the airspace grid under their own prefix, so they never
+    conflict with airspace cells. / X1（D088）：按版本列出的地面地图；地面单元沿用空域网格、使用各自的前缀，因此从不与空域
+    单元冲突。"""
+
+    maps: dict[str, GroundPlacement] = Field(min_length=1)
+
+
 class Ranking(SchedulingModel):
     """Versioned candidate order: estimated arrival, recent use, robot id. / 版本化候选顺序：预计到场、近期使用、robot ID。"""
 
@@ -144,6 +162,9 @@ class SchedulingCatalog(SchedulingModel):
     airspace: AirspaceGrid
     ranking: Ranking
     policy: SchedulingPolicy
+    # X1 (D088): only catalogs with ground robots declare it; the others keep their body and digest.
+    # X1（D088）：只有带地面车的目录声明它；其他目录的内容与摘要保持不变。
+    ground: GroundLayer | None = None
 
     @model_validator(mode="after")
     def _ids(self):
@@ -155,6 +176,12 @@ class SchedulingCatalog(SchedulingModel):
             raise ValueError("a v1 scheduling catalog keeps the box footprint; declare the model in a v2 catalog")
         if self.format == CATALOG_FORMAT_V2 and "footprint" not in self.airspace.model_fields_set:
             raise ValueError("a v2 scheduling catalog must declare airspace.footprint")
+        if self.ground is not None:
+            if any(not re.fullmatch(ID, key) for key in self.ground.maps):
+                raise ValueError("ground map versions must be lower-case slugs")
+            strays = sorted({p.site for p in self.ground.maps.values()} - set(self.airspace.sites))
+            if strays:
+                raise ValueError(f"ground maps serve sites without an origin: {strays}")
         return self
 
     def body(self) -> dict:
@@ -166,6 +193,8 @@ class SchedulingCatalog(SchedulingModel):
         body = self.model_dump(mode="json")
         if self.format == CATALOG_FORMAT:
             body["airspace"].pop("footprint")
+        if self.ground is None:
+            body.pop("ground")
         return body
 
     @cached_property
