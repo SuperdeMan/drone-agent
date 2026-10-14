@@ -42,6 +42,7 @@ from drone_agent.fleet.workflow_models import (
     AnalysisOutput,
     AwaitMissionNode,
     EventTrigger,
+    GroundRecheckNode,
     InputRef,
     InspectionOutput,
     InternalTrigger,
@@ -49,6 +50,8 @@ from drone_agent.fleet.workflow_models import (
     MissionOutput,
     NodeState,
     OrderOutput,
+    RecheckOutput,
+    RecheckStarted,
     ReinspectionOutput,
     RepairOutput,
     ReviewOutput,
@@ -85,7 +88,8 @@ from drone_agent.runtime.permission import (
 LEASE_S = 10.0
 REQUEST_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,120}$")
 HOLDING = ("reserved", "occupied", "uncertain")
-EFFECTS = (Activity.SUBMIT_MISSION, Activity.CREATE_WORK_ORDER, Activity.REQUEST_REINSPECTION)
+EFFECTS = (Activity.SUBMIT_MISSION, Activity.CREATE_WORK_ORDER, Activity.REQUEST_REINSPECTION,
+           Activity.GROUND_RECHECK)
 # Consumer refusals that a retry cannot change. / 重试无法改变的消费者拒绝。
 PERMANENT = ("service.not_found", "service.invalid_request", "dispatch.backend_mismatch", "workflow.invalid_draft",
              "workflow.invalid_inputs", "auth.project_denied", "business.not_confirmed", "business.not_configured")
@@ -564,6 +568,8 @@ class WorkflowEngine:
                                "payload": self._payload(run, spec, node_spec, outputs, nodes)})
         elif activity is Activity.AWAIT_MISSION:
             self._move(run, node, epoch, NodeState.WAITING, reason=WaitReason.DELIVERY.value)
+        elif activity is Activity.AWAIT_RECHECK:
+            self._move(run, node, epoch, NodeState.WAITING, reason=WaitReason.HANDOFF.value)
         elif activity in (Activity.HUMAN_REVIEW, Activity.AWAIT_REPAIR):
             timeout = node_spec.params.timeout_s
             self._move(run, node, epoch, NodeState.WAITING,
@@ -658,6 +664,11 @@ class WorkflowEngine:
                 base["recapture"] = {"of": params.recapture_of, "job_id": str(detail.get("job_id") or "")[:40],
                                      "reason": str(refused["reason"] or "")[:60]}
             return {**base, "robot_id": params.robot_id}
+        if isinstance(node_spec, GroundRecheckNode):
+            params = node_spec.params
+            return {"project_id": project, "analysis_id": outputs[params.analysis_from]["analysis_id"],
+                    "robot_id": params.robot_id, "signature": params.signature, "size_m": params.size_m,
+                    "camera": params.camera.model_dump(mode="json"), "ttl_s": params.ttl_s}
         if isinstance(node_spec, WorkOrderNode):
             review = outputs[node_spec.params.review_from]
             analyze_id = spec.node(node_spec.params.review_from).params.analysis_from
@@ -737,6 +748,12 @@ class WorkflowEngine:
                                                 guard=guard, recapture=payload.get("recapture"))
             return None if view is None else MissionOutput(mission_id=view["mission"]["mission_id"]).model_dump(
                 mode="json")
+        if row["kind"] == Activity.GROUND_RECHECK.value:
+            rechecks = getattr(self.service, "rechecks", None)
+            if rechecks is None:
+                raise ServiceError("service.invalid_request", "no air-ground handoffs are configured")
+            started = rechecks.start(run, payload, key, guard)
+            return None if started is None else RecheckStarted(**started).model_dump(mode="json")
         if row["kind"] == Activity.CREATE_WORK_ORDER.value and "finding_id" in payload:
             business = getattr(self.service, "business", None)
             if business is None:
@@ -789,6 +806,10 @@ class WorkflowEngine:
         if row["kind"] == Activity.SUBMIT_MISSION.value:
             mission_id = self.ledger.request_by_key(run_principal(run["run_id"]), key)
             return MissionOutput(mission_id=mission_id).model_dump(mode="json") if mission_id else None
+        if row["kind"] == Activity.GROUND_RECHECK.value:
+            rechecks = getattr(self.service, "rechecks", None)
+            known = rechecks.by_key(key) if rechecks is not None else None
+            return RecheckStarted(**known).model_dump(mode="json") if known else None
         if row["kind"] == Activity.CREATE_WORK_ORDER.value and "finding_id" in payload:
             business = getattr(self.service, "business", None)
             order = business.store.order_by_key(key) if business is not None else None
@@ -815,6 +836,14 @@ class WorkflowEngine:
             if business is not None and activity is Activity.HUMAN_REVIEW else None
         if activity is Activity.AWAIT_MISSION:
             state, reason, detail, result = self._await(run, spec, node_spec, outputs)
+        elif activity is Activity.AWAIT_RECHECK:
+            rechecks = getattr(self.service, "rechecks", None)
+            if rechecks is None:
+                state, reason = NodeState.FAILED, "service.invalid_request"
+            else:
+                state, reason, detail, result = rechecks.poll(outputs[node_spec.params.recheck_from]["recheck_id"])
+                if result is not None:
+                    result = RecheckOutput(**result).model_dump(mode="json")
         elif activity is Activity.ANALYZE_EVIDENCE:
             # Only a P4 analysis node waits: for its job (D063 §3). / 只有 P4 分析节点会等待：等待其作业（D063 §3）。
             if business is None:

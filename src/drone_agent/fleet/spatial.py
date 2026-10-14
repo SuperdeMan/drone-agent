@@ -65,6 +65,7 @@ class AlignmentConfig(ContractModel):
     point_max_semi_major_m: float = Field(gt=0, le=20)
     region_min_radius_m: float = Field(gt=0, le=50)
     region_max_radius_m: float = Field(gt=0, le=200)
+    relocation_tolerance_m: float = Field(gt=0, le=5)
 
 
 def load_alignment(root: Path) -> tuple[AlignmentConfig, str]:

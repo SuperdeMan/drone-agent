@@ -79,7 +79,7 @@ P1 调度侧默认 1 Hz 更新、3 s 新鲜度预算、最多 1 s 未来时钟�
 
 先用 YAML/JSON 定义和时间线，不做拖拽画布。`WorkflowPlanner` 后续可生成类型化草案，确定性校验器限制节点、项目、资产、预算和条件；首版先跑人工选择的固定模板。
 
-活动白名单：`submit_mission`、`await_mission`、`analyze_evidence`、`human_review`、`create_work_order`、`await_repair`、`request_reinspection`、`build_report`。条件使用有类型的谓词，禁止任意 Python / JavaScript、shell、自由 URL 或模型生成代码。外部事件只能触发已批准模板，不能携带审批、飞控命令或新的权限。P4 增加 `settle_reinspection`（D063）；P6 增加无副作用的 `select_analysis` 与谓词输出 `recapture`（D078，见 §6.1）。
+活动白名单：`submit_mission`、`await_mission`、`analyze_evidence`、`human_review`、`create_work_order`、`await_repair`、`request_reinspection`、`build_report`。条件使用有类型的谓词，禁止任意 Python / JavaScript、shell、自由 URL 或模型生成代码。外部事件只能触发已批准模板，不能携带审批、飞控命令或新的权限。P4 增加 `settle_reinspection`（D063）；P6 增加无副作用的 `select_analysis` 与谓词输出 `recapture`（D078，见 §6.1）；X1 增加效果型 `ground_recheck`（把一次 P4 分析的发现交给点名的地面车，经 outbox 按键只执行一次）与等待型 `await_recheck`（等待原因来自提议与地面任务，结论为 relocated / not_found / not_attempted / unknown），见 [X1 方案 §14](../x1-implementation.md)（D088）。
 
 流程状态：`pending → running ↔ waiting → completed/failed/outcome_unknown`；取消分为 `cancel_requested → cancelling → cancelled`。等待原因必须区分审批、设备、环境、证据、复核与维修。节点有独立状态与版本，流程 completed 由全部必需业务节点的结果推导，不能由某次飞行 succeeded 推导。
 

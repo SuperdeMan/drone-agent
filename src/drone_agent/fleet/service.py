@@ -219,6 +219,7 @@ class MissionService:
         # X1 (D088): the handoff engine, attached by `build_air_ground` with `--air-ground`.
         # X1（D088）：交接引擎；带 `--air-ground` 时由 `build_air_ground` 挂上。
         self.handoffs = None
+        self.rechecks = None
         hub.listeners.append(self._ingested)
 
     # ── P1 bindings and project checks / P1 绑定与项目检查 ──

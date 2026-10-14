@@ -25,6 +25,7 @@ from drone_agent.eval.logical_flight import Battery
 from drone_agent.eval.logical_ground import quick_ground
 from drone_agent.eval.logical_rover import LogicalRover
 from drone_agent.eval.p4_world import P4World
+from drone_agent.eval.x1_scene import Anomaly, X1Scene
 from drone_agent.fleet.air_ground import build_air_ground
 from drone_agent.fleet.scheduler import Scheduler, build_scheduling
 from drone_agent.mission.registry import load_registry
@@ -35,6 +36,9 @@ SCHEDULING = "configs/scheduling/x1_campus_v1.yaml"
 WORKFLOWS = "configs/workflows/x1_campus_v1.yaml"
 BUSINESS = "configs/analysis/x1_campus_v1.yaml"
 ROVER_POLICY = "configs/recovery_policies/rover_campus_v1.yaml"
+# RTK-grade aircraft positions for the point cases; the P1 value (1 m^2) gives search regions. / 点目标用例使用 RTK 级
+# 的飞行器位置；P1 的取值（1 m^2）得到搜索区域。
+RTK = (0.04, 0.0, 0.0, 0.0, 0.04, 0.0, 0.0, 0.0, 0.09)
 OPERATOR, REVIEWER, VIEWER, ADMIN, HARBOR, JUDGE = (
     "harness:x1-operator", "harness:x1-reviewer", "harness:x1-viewer", "harness:x1-admin", "harness:x1-harbor",
     "harness:x1-judge")
@@ -53,6 +57,12 @@ class X1World(P4World):
         super().__init__(case, repo, seed=seed, business=repo / BUSINESS, workflows=repo / WORKFLOWS,
                          members=repo / MEMBERS, catalog=repo / CATALOG,
                          signatures={"asset_mid": "green", "asset_west": "red"})
+        ops, scheduling = self.service.ops, self.service.scheduler.catalog
+        self.scene = X1Scene({site_id: scheduling.origin(site_id) for site_id in ops.catalog.sites})
+        for robot_id, uav in self.uavs.items():
+            site = ops.catalog.robots[robot_id].site_id
+            uav.camera = self.scene.aerial_camera(uav, site, ops.registries[site].data)
+            uav.covariance = RTK
 
     def _service(self):
         service = super()._service()
@@ -83,7 +93,9 @@ class X1World(P4World):
 
     async def step(self, dt: float = 0.1) -> None:
         await super().step(dt)
-        for rover in self.rovers.values():
+        catalog = self.service.ops.catalog
+        for robot_id, rover in self.rovers.items():
+            rover.body.blocks = self.scene.ground_blocks(catalog.robots[robot_id].site_id)
             await rover.cycle()
         if not self.scheduler_paused:
             self.service.tick_scheduler()
@@ -123,6 +135,21 @@ class X1World(P4World):
         self.snapshots.append({"label": label, "at": utcnow().isoformat(), "project": project,
                                "resources": response.get("result")})
         return response.get("result") or {}
+
+    # ── the scene / 场景 ──
+
+    def anomaly(self, site_id: str, x: float, y: float, *, size_m: float = 0.8, colour: str = "orange",
+                from_air: bool = True, from_ground: bool = True) -> Anomaly:
+        """Place a declared block in the world, recorded for the judge. / 在世界中放置一个声明方块，记录供裁判读取。"""
+        placed = self.scene.place(site_id, x, y, size_m=size_m, colour=colour, from_air=from_air,
+                                  from_ground=from_ground)
+        self.inject("anomaly_placed", x=placed.x, y=placed.y, size_m=size_m, colour=colour, from_air=from_air,
+                    from_ground=from_ground)
+        return placed
+
+    def remove_anomaly(self, anomaly: Anomaly) -> None:
+        self.scene.remove(anomaly)
+        self.inject("anomaly_removed", x=anomaly.x, y=anomaly.y, colour=anomaly.colour)
 
     # ── handoff helpers / 交接辅助 ──
 

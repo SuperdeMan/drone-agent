@@ -27,11 +27,16 @@ MIN_PIXELS = 12
 
 @dataclass(frozen=True)
 class Located:
-    """Centroid in pixels (u right, v down from the top-left corner) and the pixel count. / 像素质心与像素数。"""
+    """Centroid in pixels (u right, v down from the top-left corner), the pixel count, and the lower edge of the
+    lowest matching row, where a block standing on the ground meets it in a forward view.
+
+    像素质心（u 向右、v 自左上角向下）、像素数，以及最低匹配行的下沿：前视画面中立在地面上的方块在此与地面相接。
+    """
 
     u: float
     v: float
     pixels: int
+    bottom: float = 0.0
 
 
 def locate(image: np.ndarray, colour: str, *, tolerance: int = TOLERANCE, min_pixels: int = MIN_PIXELS
@@ -51,4 +56,4 @@ def locate(image: np.ndarray, colour: str, *, tolerance: int = TOLERANCE, min_pi
         return None
     rows, cols = np.nonzero(mask)
     # +0.5: a pixel's centre, so a block filling pixels 10..19 is centred at 15.0. / +0.5：像素中心。
-    return Located(u=float(cols.mean() + 0.5), v=float(rows.mean() + 0.5), pixels=count)
+    return Located(u=float(cols.mean() + 0.5), v=float(rows.mean() + 0.5), pixels=count, bottom=float(rows.max() + 1))

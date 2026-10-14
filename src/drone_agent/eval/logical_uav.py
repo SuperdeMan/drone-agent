@@ -108,6 +108,9 @@ class LogicalUav:
         # Harness-only capture drift in metres for every next flight (P6); None keeps the exact pose.
         # 只在编排中使用的拍摄偏差（米，P6），作用于之后的每次飞行；None 保持精确位姿。
         self.capture_offset: tuple[float, float] | None = None
+        # Harness-only position covariance of every next flight (X1); None keeps the P1 value.
+        # 只在编排中使用、作用于之后每次飞行的位置协方差（X1）；None 保持 P1 的取值。
+        self.covariance: tuple[float, ...] | None = None
         # The resident fleet (P5) passes its own mTLS client; S0 worlds use the in-process hub.
         # 常驻机队（P5）传入自己的 mTLS 客户端；S0 世界使用进程内 hub。
         inner = client if client is not None else LocalFleetClient(hub, self.robot_id)
@@ -178,6 +181,8 @@ class LogicalUav:
                              camera=self.camera)
         adapter.climb_blocked = self.climb_blocked
         adapter.capture_offset = self.capture_offset
+        if self.covariance is not None:
+            adapter.covariance = self.covariance
         adapter.sim_clock = lambda: time.monotonic() - self.started
         snapshot, holder = adapter.snapshot, {"guardian": None, "last": 0.0}
 

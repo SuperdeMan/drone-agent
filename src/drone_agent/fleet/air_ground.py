@@ -47,6 +47,10 @@ def build_air_ground(service, *, backups: Path | None, clock=utcnow) -> HandoffE
     engine.migration = report
     service.hub.handoffs = engine
     service.handoffs = engine
+    # The recheck activity's service side (D088). / 复核活动的服务一侧（D088）。
+    from drone_agent.fleet.rechecks import Rechecks
+
+    service.rechecks = Rechecks(service, engine, root=service.root)
     scheduler.handoffs = engine
     scheduler.on_handoff_settled = lambda task, live, kind, summary: settle_offer(engine, task, live, kind)
     return engine

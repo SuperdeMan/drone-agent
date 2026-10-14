@@ -29,3 +29,23 @@ workflows:
       - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
       - {node_id: report, activity: build_report, requires: done, after: [review]}
     budget: {max_missions: 1}
+  - workflow_id: anomaly_recheck
+    version: 1
+    project_id: campus_ops
+    title: "Site A anomaly recheck: inspect, analyse, hand the finding to the ground robot, review both ends / A 站异常复核：巡检、分析、把发现交给地面车、复核两端证据"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_mid, asset_west]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_a, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s0_v1, findings: true}}
+      - node_id: recheck
+        activity: ground_recheck
+        when: [{node: analyze, output: suspected, equals: true}]
+        params: {analysis_from: analyze, robot_id: ugv_01, signature: orange, size_m: 0.8, camera: {width: 160, height: 120, hfov_rad: 1.5707963267948966}, ttl_s: 60}
+      - {node_id: await_recheck, activity: await_recheck, params: {recheck_from: recheck}}
+      - {node_id: review, activity: human_review, after: [await_recheck], requires: done, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - {node_id: report, activity: build_report, requires: done, after: [review]}
+    budget: {max_missions: 1}
