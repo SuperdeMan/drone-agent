@@ -72,20 +72,23 @@ def route_heading(data: dict, params: dict) -> float:
     return math.atan2(dy, dx)
 
 
-def forward_ground(camera: dict, capture, heading: float, u: float, bottom: float) -> tuple[float, float] | None:
+def forward_ground(camera: dict, capture, heading: float, u: float, bottom: float, *,
+                   half_depth_m: float = 0.0) -> tuple[float, float] | None:
     """Where a block standing on flat ground lies, from a level forward camera: its column gives the bearing and the
-    row where it meets the ground (`bottom`) the range. None when that row is not below the horizon.
+    row where it meets the ground (`bottom`) the range of its near face, which `half_depth_m` (half the declared size)
+    moves back to the centre. None when that row is not below the horizon.
 
-    由水平前视相机求立在平地上的方块的位置：列号给出方位，与地面相接的行号（`bottom`）给出距离；该行不在地平线以下时为
-    None。
+    由水平前视相机求立在平地上的方块的位置：列号给出方位，与地面相接的行号（`bottom`）给出其近侧面的距离，再加
+    `half_depth_m`（声明尺寸的一半）回到中心；该行不在地平线以下时为 None。
     """
     width, height, h = camera["width_px"], camera["height_px"], camera["height_m"]
     focal = (width / 2) / math.tan(math.radians(camera["hfov_deg"]) / 2)
     below = bottom - height / 2
     if below <= 0.5:
         return None
-    forward = focal * h / below
-    left = forward * (width / 2 - u) / focal
+    near = focal * h / below
+    left = near * (width / 2 - u) / focal
+    forward = near + half_depth_m
     c, s = math.cos(heading), math.sin(heading)
     return capture[0] + forward * c - left * s, capture[1] + forward * s + left * c
 
@@ -313,7 +316,8 @@ class Rechecks:
         heading = math.atan2(params["face_point"][1] - params["goal"][1], params["face_point"][0] - params["goal"][0])
         ground = self.service.ops.registry(recheck_robot(detail)).data
         pose = evidence.captured_pose.position
-        point = forward_ground(ground["camera"], (pose.x, pose.y), heading, found.u, found.bottom)
+        point = forward_ground(ground["camera"], (pose.x, pose.y), heading, found.u, found.bottom,
+                               half_depth_m=float(detail["size_m"]) / 2)
         target = WorldFact.model_validate(detail["target"])
         relocated = None if point is None else [round(point[0], 3), round(point[1], 3)]
         inside = point is not None and within(target, point, self.config.relocation_tolerance_m)

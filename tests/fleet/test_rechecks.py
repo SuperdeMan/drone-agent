@@ -76,9 +76,12 @@ def test_the_forward_range_reads_back_what_the_forward_camera_drew(block, headin
     position = (block[0] - 1.6 * math.cos(heading), block[1] - 1.6 * math.sin(heading))
     raw = view(camera, position, heading, [Block(*block, 0.8, COLOURS["orange"])])
     found = locate(np.frombuffer(raw, dtype=np.uint8).reshape(120, 160, 3), "orange")
-    point = forward_ground(camera, position, heading, found.u, found.bottom)
-    # The block's near face is 0.4 m short of its centre. / 方块近侧面比其中心近 0.4 m。
-    assert math.dist(point, block) <= 0.4 + 0.15
+    point = forward_ground(camera, position, heading, found.u, found.bottom, half_depth_m=0.4)
+    # The ground row ranges the near face; half the declared size gives the centre back. / 地面行测的是近侧面距离，
+    # 加声明尺寸的一半回到中心。
+    assert math.dist(point, block) <= 0.15
+    near = forward_ground(camera, position, heading, found.u, found.bottom)
+    assert 0.25 <= math.dist(near, block) <= 0.55
 
 
 def test_inside_means_the_ellipse_or_the_region_plus_the_tolerance():

@@ -65,10 +65,12 @@ def view(camera: dict, position, heading: float, blocks=()) -> bytes:
     """A level forward camera's RGB frame: sky above the horizon, a textured ground below, and every block in view.
 
     The camera sits `height_m` above the robot's position looking along `heading` (radians, counter-clockwise from +x);
-    image right is the robot's right. The ground texture is fixed in the image and only gives the frame edge contrast.
+    image right is the robot's right. A block shows its near face, half its size short of its centre, as a real cube
+    does in Gazebo. The ground texture is fixed in the image and only gives the frame edge contrast.
 
     水平前视相机的 RGB 帧：地平线以上是天空，以下是有纹理的地面，再画出视野内的每个方块。相机位于车辆位置上方
-    `height_m` 处，沿 `heading`（弧度，自 +x 逆时针）观察；画面右方是车辆右方。地面纹理固定在画面中，只为帧提供边缘对比度。
+    `height_m` 处，沿 `heading`（弧度，自 +x 逆时针）观察；画面右方是车辆右方。方块画出其近侧面，比中心近半个边长，与
+    Gazebo 中真实立方体一致。地面纹理固定在画面中，只为帧提供边缘对比度。
     """
     width, height, h = camera["width_px"], camera["height_px"], camera["height_m"]
     f = (width / 2) / math.tan(math.radians(camera["hfov_deg"]) / 2)
@@ -88,13 +90,14 @@ def view(camera: dict, position, heading: float, blocks=()) -> bytes:
     for block in blocks:
         dx, dy = block.x - position[0], block.y - position[1]
         forward, left = dx * cos + dy * sin, -dx * sin + dy * cos
-        if forward > 0.1:
-            placed.append((forward, left, block))
-    for forward, left, block in sorted(placed, key=lambda item: -item[0]):
-        u0 = width / 2 - f * left / forward
-        half = f * (block.size_m / 2) / forward
-        top = horizon + f * (h - block.size_m) / forward
-        bottom = horizon + f * h / forward
+        near = forward - block.size_m / 2
+        if near > 0.1:
+            placed.append((near, left, block))
+    for near, left, block in sorted(placed, key=lambda item: -item[0]):
+        u0 = width / 2 - f * left / near
+        half = f * (block.size_m / 2) / near
+        top = horizon + f * (h - block.size_m) / near
+        bottom = horizon + f * h / near
         for v in range(max(0, math.floor(top)), min(height, math.ceil(bottom))):
             for u in range(max(0, math.floor(u0 - half)), min(width, math.ceil(u0 + half))):
                 rows[v][u * 3:u * 3 + 3] = bytes(block.colour)
