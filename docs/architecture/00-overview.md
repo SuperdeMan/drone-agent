@@ -164,6 +164,7 @@ flowchart TB
 | [../m2-readiness.md](../m2-readiness.md) | M2 实现范围、候选版本、云端端到端与回归证据、实调准入率基线与发布门禁（已关闭） |
 | [../m3-implementation.md](../m3-implementation.md) | M3 局部自主与降级：测量先行、第二控制路径、四类场景 |
 | [../m4-implementation.md](../m4-implementation.md) | 原 M4 工作包：H2 真机与 X1 空地联合仿真，含 P1/P3 复用映射 |
+| [../x1-implementation.md](../x1-implementation.md) | WP-X1-01 空地联合仿真实施方案：差速地面车、按本体的安全终态、交接协议、空间对齐与分层预约（待批准） |
 | [../cloud-development.md](../cloud-development.md) | 默认云端构建、仿真与验证的操作入口及隔离边界 |
 | [../live-simulation.md](../live-simulation.md) | M1 固定任务的实时操作、连接语义与完整证据入口 |
 | [../live-console-readiness.md](../live-console-readiness.md) | 实时仿真入口的准确版本、HTTP 操作验证与回归范围 |
