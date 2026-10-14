@@ -1,0 +1,28 @@
+# Spatial alignment profile of the X1 handoff (WP-X1-01, D088), version alignment-v1. It turns an aerial capture of an
+# anomaly into the ground target a receiving robot is offered. Evidence carries a position but no attitude, so the
+# heading the flight declares and the unknown tilt only widen the covariance. A change of any value here is a new
+# reviewed version, frozen before the X1 evaluation runs; offers carry this file's digest.
+#
+# X1 交接的空间对齐画像（WP-X1-01，D088），版本 alignment-v1：把空中采集到的异常物转成提供给接收方的地面目标。证据带位置、
+# 不带姿态，所以飞行声明的航向与未知的倾斜只放大协方差。改动任何取值都是新的评审版本，须在 X1 评测运行之前冻结；交接提议
+# 带本文件的摘要。
+format: drone.alignment/v1
+version: alignment-v1
+# 1-sigma error of the declared heading (the bearing of the route leg). P6 measured declared headings within +-20 deg
+# of the Gazebo truth, taken here as two sigma. / 声明航向（航段方位）的 1σ 误差。P6 用 Gazebo 真值核对声明航向在 ±20°
+# 以内，此处按 2σ 计。
+heading_sigma_deg: 10
+# 1-sigma tilt of the camera away from nadir while the multirotor holds or cruises. / 多旋翼悬停或巡航时相机偏离下视的
+# 1σ 倾斜。
+tilt_sigma_deg: 3
+# 1-sigma error of the detector's image centroid. / 检测器图像质心的 1σ 误差。
+pixel_sigma_px: 1.0
+# Added per axis when a target moves between two different map frames (translation-only registration); zero within one
+# frame. / 目标在两个不同地图坐标系之间转换时每轴附加的误差（仅平移配准）；同一坐标系内为零。
+frame_sigma_m: 0.1
+# Semi-major axis of the 95 % ellipse at or below which a target is delivered as a point; above it the receiver gets
+# a search region of that radius (at least the minimum), and above the maximum the offer is refused.
+# 95% 置信椭圆长半轴不超过此值时以点交付；超过时交付以该值为半径（不小于最小值）的搜索区域；超过最大值则拒绝提议。
+point_max_semi_major_m: 2.0
+region_min_radius_m: 1.5
+region_max_radius_m: 12.0
