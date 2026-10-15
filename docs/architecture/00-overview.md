@@ -137,7 +137,7 @@ flowchart TB
 | [../p6-boundary-review-guide.md](../p6-boundary-review-guide.md) | 离线圈绘、道路版本依赖、复核导入导出、来源与几何校验；开发记录不自动升级为正式真值 |
 | [../p6-road-contact-development.md](../p6-road-contact-development.md) | 无大小门槛新提示的六条开发录制、候选范围风险与环境核对失败；未采用 |
 | [../p6-candidate-review-development.md](../p6-candidate-review-development.md) | 逐候选六次实调：环境核对通过、仅两条协议合格、33 项仍待复核；保留首次忙锁记录，协议未采用 |
-| [../p6-candidate-groups-development.md](../p6-candidate-groups-development.md) | 实体群候选开发：分开实体与目标关系、实例分离及材质描述；独立冻结，不改写 v8 |
+| [../p6-candidate-groups-development.md](../p6-candidate-groups-development.md) | 实体群协议六条实调合格：20 项候选 / 3 项范围外 / 10 项待复核；仍有定位矛盾，33 项未经人工确认 |
 | [../p6-implementation.md](../p6-implementation.md) | P6 主动补拍与目标区域质量的实施方案（D078，2026-10-10 批准） |
 | [../p6-recapture-readiness.md](../p6-recapture-readiness.md) | WP-P6-02 验收记录（2026-10-10，`ecee452`，软件 / SITL 范围） |
 | [../p6-adversarial-implementation.md](../p6-adversarial-implementation.md) | WP-P6-03 真实模型对抗录制与规划器按站点取上下文的实施方案（D079） |
