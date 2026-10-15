@@ -10,9 +10,12 @@ X1 地面机载行为（D088）：真实的 guardian 与 executive 驾驶逻辑�
 from __future__ import annotations
 
 import asyncio
+import enum
 import json
 import math
+import sys
 import time
+import types
 from types import SimpleNamespace as NS
 
 import numpy as np
@@ -260,8 +263,47 @@ def ground_adapter(tmp_path, *, speed=0.0, mode="HOLD", age=0.0):
     return adapter, calls
 
 
+@pytest.fixture
+def mission_types(monkeypatch):
+    """MAVSDK's mission types: the real ones where the `flight` dependency group is installed (the checks image),
+    otherwise a stand-in with mavsdk 3.17.4's constructors (CI and a plain `uv sync` install only the dev group).
+
+    MAVSDK 的任务类型：装有 `flight` 依赖组时（云端检查镜像）用真实类型，否则用与 mavsdk 3.17.4 构造参数一致的替身（CI 与
+    普通的 `uv sync` 只安装 dev 组）。
+    """
+    try:
+        import mavsdk.mission  # noqa: F401
+        return
+    except ModuleNotFoundError:
+        pass
+
+    class MissionItem:
+        class CameraAction(enum.Enum):
+            NONE = 0
+
+        class VehicleAction(enum.Enum):
+            NONE = 0
+
+        def __init__(self, latitude_deg, longitude_deg, relative_altitude_m, speed_m_s, is_fly_through,
+                     gimbal_pitch_deg, gimbal_yaw_deg, camera_action, loiter_time_s, camera_photo_interval_s,
+                     acceptance_radius_m, yaw_deg, camera_photo_distance_m, vehicle_action):
+            fields = dict(locals())
+            del fields["self"]
+            vars(self).update(fields)
+
+    class MissionPlan:
+        def __init__(self, mission_items):
+            self.mission_items = mission_items
+
+    package, mission = types.ModuleType("mavsdk"), types.ModuleType("mavsdk.mission")
+    mission.MissionItem, mission.MissionPlan, package.mission = MissionItem, MissionPlan, mission
+    monkeypatch.setitem(sys.modules, "mavsdk", package)
+    monkeypatch.setitem(sys.modules, "mavsdk.mission", mission)
+
+
 @pytest.mark.parametrize("limit", [1.0, 1.8, None])
-async def test_a_route_drives_only_under_a_flight_controller_limit_within_the_platforms(tmp_path, limit):
+async def test_a_route_drives_only_under_a_flight_controller_limit_within_the_platforms(tmp_path, limit,
+                                                                                         mission_types):
     # The look-ahead is derived from the platform's maximum speed; PX4's rover default is 1.8 m/s (X1 S1).
     # 前瞻由平台的最大速度推导；PX4 地面车默认 1.8 m/s（X1 S1）。
     adapter, _ = ground_adapter(tmp_path)
