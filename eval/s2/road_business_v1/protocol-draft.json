@@ -1,0 +1,55 @@
+{
+  "format": "drone.p6-road-protocol/v1",
+  "corpus_id": "p6-road-business-v1",
+  "status": "targets_approved_data_pending",
+  "approval_reference": "User reply on 2026-10-15: 采用这版目标，继续补齐数据",
+  "proposal_date": "2026-10-15",
+  "proposal_document": "docs/p6-business-evaluation.md",
+  "decision_scope": "approved first S2 targets for human-reviewed road candidates; corpus and formal scope still pending, not unattended safe-passage certification",
+  "reviewer_assignment": {
+    "role": "project_owner",
+    "source": "User explicitly chose personal review in this conversation on 2026-10-15",
+    "reviewer_id": null
+  },
+  "minimum_object_size": null,
+  "minimum_occupancy_ratio": null,
+  "defect_types": [
+    "debris",
+    "vegetation",
+    "other_entity"
+  ],
+  "minimum_samples": {
+    "normal": 100,
+    "obstacle": 100,
+    "indeterminate": 30,
+    "wrong_target": 30,
+    "stability_pairs": 30,
+    "sites": 3
+  },
+  "thresholds": {
+    "false_alerts_per_100_normal_max": 5,
+    "typed_miss_rate_max": 0.2,
+    "determinable_coverage_min": 0.9,
+    "false_normal_on_refusable_max": 0,
+    "stable_and_covered_min": 0.9,
+    "review_p95_ms_max": 120000
+  },
+  "additional_requirements": {
+    "minimum_calibration_by_label": {"normal": 20, "obstacle": 20, "indeterminate": 10, "wrong_target": 10},
+    "minimum_test_by_defect_type": {"debris": 30, "vegetation": 30, "other_entity": 30},
+    "maximum_test_site_fraction": 0.5,
+    "minimum_stability_assets": 15,
+    "minimum_timed_reviews": 30,
+    "required_review_coverage": 1
+  },
+  "statistical_rule": "thresholds apply to observed proportions; report Wilson two-sided 95 percent intervals without treating them as certified population bounds",
+  "formal_test_runs": 1,
+  "clearance_effect_evidence": "still missing; same-state repeat pairs do not replace real before/after clearance evidence; formal scope remains to be frozen",
+  "primary_unit": "one primary observation per known asset in each split; repeat captures only enter stability",
+  "metric_scope": "observation-level scene and typed misses, not object-instance recall",
+  "human_timing_phase": "candidate_review",
+  "annotation_time_is_candidate_review_time": false,
+  "unknown_is_normal": false,
+  "all_refused_is_stability_success": false,
+  "formal_release_eligible": false
+}
