@@ -514,3 +514,12 @@
 - **用量**：输入 25,972、输出 10,567 tokens；历史六个整图为 24,624 / 2,935。不估算价格、不把输出增多当作质量改善。
 - **工具验证**：Ruff、41 项定向测试（新增 20 + 既有 21）通过；冻结代码 Windows 全量 1684 通过、1 项既有 Unix socket 跳过、0 失败 / 错误，904.643 秒。代码检查通过与云端环境负记录分别报告，在用画像与 P6 阶段状态不变。
 - **证据**：[报告](../docs/p6-road-contact-development.md)、[v7 包](s2/p6_candidates_v7/README.md)、[原始环境回执](s2/p6_candidates_v7/diagnostic/execution.json)、[分析](s2/p6_candidates_v7/analysis.json)、[工具验证](../docs/verification/p6-road-contact-2026-10-15.json)。
+
+## 2026-10-15 · 逐候选协议与项目锁守卫（锁忙，零实调）
+
+- **冻结**：`70fcc3303c6569e5a1d5d80b461f5ba1938b0ccc`，提示 `road-candidate-review-dev-v1`，输出版本 `0.1.0`。固定六个视图 / 33 个 v7 提案；图像字节不变，输入仅追加提案 ID 与框，旧类型 / 结论 / 解释及 v5 AI 轮廓不送入模型。v7 的环境失败状态保留。
+- **语义**：逐项记录性质、内外关系、分离度、细化框及依据 / 不确定性；缺项和不合格回答保持待复核，不生成整图正常，不计算准确率或召回率。离线检查确认六条旧格式回答均被拒绝，未补字段冒充新回答。
+- **实际尝试**：`p6-candidate-review-dev-20261015T032224Z`，03:22:28 UTC；既有 `stack.lock` 被占用，返回 `blocked_lock_busy`。模型调用 0、诊断容器未启动、未执行容器前后核对，没有新的模型分组。33 项缺席状态保留，不记为模型作出的 33 条未知。
+- **守卫范围**：非阻塞取得部署 / 仿真同一把项目锁，持有至运行后身份核对结束；记录容器 ID、镜像、启动时间与重启次数。锁忙不等待、不停止其他任务、不循环重试；只有已确证零调用忙锁的后续尝试可重新发起，状态不明或已调用时先对账。
+- **工具检查**：Ruff、51 项定向测试通过（新增 31 + 既有 20）；冻结代码 Windows 全量 1715 通过、1 项既有 Unix socket 跳过、0 失败 / 错误，1092.553 秒。Linux 独立测试锁的取得 / 竞争拒绝 / 释放后重取三项通过，没有获取真实项目运行锁或调用模型。准确源码及全量回归见[回执](../docs/verification/p6-candidate-review-2026-10-15.json)。工具验证不是新提示的模型效果验证。
+- **证据与状态**：[协议及入口](../docs/p6-candidate-review-development.md)、[v8 包](s2/p6_candidates_v8/README.md)、[原始忙锁回执](s2/p6_candidates_v8/attempts/20261015T032224Z-execution.json)、[待复核清单](s2/p6_candidates_v8/pending-review.json)。新提示未采用，独立人工真值仍未建立，P6 未准出。

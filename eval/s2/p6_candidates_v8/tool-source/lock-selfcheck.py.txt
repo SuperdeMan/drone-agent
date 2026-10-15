@@ -1,0 +1,17 @@
+import hashlib,json,runpy
+from pathlib import Path
+root=Path('/home/ubuntu/drone-agent/artifacts/p6-candidate-review-dev-20261015T032224Z')
+worker=root/'p6_candidate_remote.py'
+expected='7a58b37a5dd428a2e4ed0b2d19a1a3905e3833c370e4c0bc312f07a6a140248e'
+assert hashlib.sha256(worker.read_bytes()).hexdigest()==expected
+module=runpy.run_path(str(worker))
+qa=root/'lock-selfcheck';qa.mkdir(exist_ok=False)
+(qa/'stack.lock').open('x').close()
+first=module['try_lock'](qa);assert first is not None
+second=module['try_lock'](qa);assert second is None
+first.close()
+third=module['try_lock'](qa);assert third is not None
+third.close()
+receipt={'scope':'isolated test lock only; real project stack.lock not acquired','worker_sha256':expected,'first_lock_acquired':True,'contender_rejected_without_waiting':True,'lock_reacquired_after_release':True,'test_lock_bytes':(qa/'stack.lock').stat().st_size,'provider_invocations':0,'containers_started':0,'formal_release_eligible':False}
+(root/'lock-selfcheck.json').write_text(json.dumps(receipt,indent=2)+'\n')
+print(json.dumps(receipt))

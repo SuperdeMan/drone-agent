@@ -136,6 +136,7 @@ flowchart TB
 | [../p6-road-boundaries-development.md](../p6-road-boundaries-development.md) · [当前交接](../p6-materials-handoff-2026-10-15.md) | 无大小门槛的遮挡候选口径、6 目标 / 13 组 AI 几何草稿与待业务复核项 |
 | [../p6-boundary-review-guide.md](../p6-boundary-review-guide.md) | 离线圈绘、道路版本依赖、复核导入导出、来源与几何校验；开发记录不自动升级为正式真值 |
 | [../p6-road-contact-development.md](../p6-road-contact-development.md) | 无大小门槛新提示的六条开发录制、候选范围风险与环境核对失败；未采用 |
+| [../p6-candidate-review-development.md](../p6-candidate-review-development.md) | 33 个固定提案的逐项语义协议、项目锁守卫与零调用受阻记录；尚无新实调结果 |
 | [../p6-implementation.md](../p6-implementation.md) | P6 主动补拍与目标区域质量的实施方案（D078，2026-10-10 批准） |
 | [../p6-recapture-readiness.md](../p6-recapture-readiness.md) | WP-P6-02 验收记录（2026-10-10，`ecee452`，软件 / SITL 范围） |
 | [../p6-adversarial-implementation.md](../p6-adversarial-implementation.md) | WP-P6-03 真实模型对抗录制与规划器按站点取上下文的实施方案（D079） |

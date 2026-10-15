@@ -32,3 +32,25 @@
 - 配置、提案清单、解析与分组代码及录制器在调用前冻结。若没有取得稳定窗口，本轮完成离线开发与锁检查，实际模型结果保持缺失。
 
 本协议仅用于已曝光材料上的开发核对，与在用画像及数据库契约分开。P6 / WP-P6-01 仍未准出，人工边界确认、正式素材许可、地点与批次隔离及清障前后序列仍待完成。产物见 [v8 包](../eval/s2/p6_candidates_v8/README.md)。
+
+## 本轮执行状态
+
+冻结代码 `70fcc3303c6569e5a1d5d80b461f5ba1938b0ccc`。2026-10-15 03:22:28 UTC 的尝试 `p6-candidate-review-dev-20261015T032224Z` 遇到既有项目锁占用，返回 `blocked_lock_busy`：没有取得锁、没有启动诊断容器、provider 调用为 0。没有排队、停止其他任务或自动重试，也没有运行前后容器核对；本轮不存在新的模型结论。
+
+[原始回执](../eval/s2/p6_candidates_v8/attempts/20261015T032224Z-execution.json)和[尝试摘要](../eval/s2/p6_candidates_v8/attempt-summary.json)均保留。离线汇总将 33 个提案全部标为未获回答的待复核项，观察值与人工结论为空，整图结论为空；这不表示模型对 33 项作出了“未知”判断。[兼容性检查](../eval/s2/p6_candidates_v8/compatibility-audit.json)确认六条 v7 回答均不符合新格式，未被补字段或重标为 v8 回答。
+
+Ruff 与 51 项定向测试通过，包含新增 31 项和既有 20 项。忙锁路径不进入预检 / Docker、持锁覆盖前后检查、容器变化仍失败、未知保持待复核、提案缺失或重复不能形成结论、排除全部提案不能形成整图正常，均有验证。冻结代码 Windows 全量 **1715 通过、1 项既有 Unix socket 跳过、0 失败 / 错误**，1092.553 秒；源码在测试期间未变。准确摘要见[检查回执](verification/p6-candidate-review-2026-10-15.json)。这些是工具检查，逐候选提示尚未完成实调验证。
+
+另在云端独立测试文件上执行了真实 Linux flock 检查：[首次取得、竞争立即拒绝、释放后重取](../eval/s2/p6_candidates_v8/lock-selfcheck.json)均通过。该检查没有取得真实项目运行锁，没有启动容器或调用 provider；它只验证锁实现，不证明模型运行窗口已经可用。收尾时的项目锁可用性检查仍为忙。
+
+## 操作入口
+
+代码位于隔离工作树 `D:/drone-agent-data/p6-road-views-20261014/repo`。本机包位于 `D:/drone-agent-data/p6-candidate-review-20261015/diagnostic/`。以下命令均从该工作树运行，图像与运行输出不进入 Git。
+
+```powershell
+uv run --frozen python scripts/p6_candidate_review.py prepare --previous-batch eval/s2/p6_candidates_v7 --previous-inputs D:/drone-agent-data/p6-road-contact-20261015/diagnostic/inputs --config eval/s2/p6_candidates_v8/config.json --output <新的外部目录>
+uv run --frozen python scripts/p6_candidate_cloud.py --package D:/drone-agent-data/p6-candidate-review-20261015/diagnostic --freeze 70fcc3303c6569e5a1d5d80b461f5ba1938b0ccc
+uv run --frozen python scripts/p6_candidate_review.py replay --package <冻结包目录> --cloud-output <具体尝试下的cloud/output> --output <新的汇总JSON>
+```
+
+再次发起只允许在先前尝试已确证 `blocked_lock_busy`、0 调用且容器未启动时进行，每次生成新的尝试目录；程序不会循环重试。先前有调用、失败状态不明确或回执未拉回时，先核对原记录，不重新调用。重放命令需实际录制，本轮没有 `cloud/output` 可供重放。只改文档的后代提交可继续使用冻结版本，但脚本与输入字节必须和冻结提交一致。
