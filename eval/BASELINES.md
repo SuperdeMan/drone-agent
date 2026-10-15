@@ -503,3 +503,14 @@
 - **数据边界**：空导出和含 3 项 QA 登记的导出通过离线校验，人工道路 / 实体登记均为 0，6 / 13 项人工待办全部保留；不生成整图正常、模型准确率或准出结论。
 - **来源复查**：RescueNet 官方训练版本列表仍只有 v1，Figshare CC0 与作者 README CC BY-NC-ND 差异仍在；ROAD 下载 / 许可仍未开放。本轮没有取得新原图或联系作者。
 - **入口与证据**：[操作说明](../docs/p6-boundary-review-guide.md)、[v6 包](s2/p6_candidates_v6/README.md)、[最终浏览器回执](s2/p6_candidates_v6/browser-qa/final.json)、[来源复查](s2/p6_candidates_v6/source-refresh.json)。当前业务状态仍是开发准备，WP-P6-01 与 P6 整体未准出。
+
+## 2026-10-15 · 无大小门槛道路开发探针（环境核对失败，不采用）
+
+- **冻结与范围**：`424caa3cc347855ad3d4a4119a97657ddf19ec76`，提示 `road-region-contact-dev-v3`；v4 六个整图输入 / 12 个 JPEG 字节不变，只改提示版本与业务指令。每例一次、共六次，没有人工真值或新原图，未向模型提供 v5 AI 轮廓。
+- **运行**：`p6-road-contact-dev-20261015T021842Z`，02:18:49–02:24:06 UTC，MiniMax-M3.1-Flash-Preview / minimax-vl；旧运行时 `6249129596b7cfe88c7322f8b425c7b432dba24b` 与旧录制器 `c3e0d56264b2ed22adb78347494a7f96089ddb81e2ea0261ca0adab0f8682536`。这不是冻结工具提交的服务部署验证。
+- **响应事实**：6 条回答、6 条结构有效，云端 / 本地严格回放各 6 条。全部疑似，共 33 个框；三条历史正常变疑似，三条历史疑似保持。仅记录历史回答变化，不估算准确率、召回率或提示的因果提升。
+- **环境负记录**：采集前后 4 个匹配容器 ID 更换、2 个新增；原定身份不变核对失败。模型诊断进程返回 0，外层启动器返回 1。变更原因未归因；不缩小核对范围或重新调用以改判通过，本批状态为 `not_qualified_environment_changed`。
+- **语义风险**：宽框包含车辆及阴影，`12892` 有首框定位到道路外侧地面的风险；该图整图疑似也未覆盖 v5 E12 的 AI 内域外接框。AI 视觉复核不是人工真值，未据此计误报 / 漏报。下一版需逐候选表达性质、内外关系及不确定性。
+- **用量**：输入 25,972、输出 10,567 tokens；历史六个整图为 24,624 / 2,935。不估算价格、不把输出增多当作质量改善。
+- **工具验证**：Ruff、41 项定向测试（新增 20 + 既有 21）通过；冻结代码 Windows 全量 1684 通过、1 项既有 Unix socket 跳过、0 失败 / 错误，904.643 秒。代码检查通过与云端环境负记录分别报告，在用画像与 P6 阶段状态不变。
+- **证据**：[报告](../docs/p6-road-contact-development.md)、[v7 包](s2/p6_candidates_v7/README.md)、[原始环境回执](s2/p6_candidates_v7/diagnostic/execution.json)、[分析](s2/p6_candidates_v7/analysis.json)、[工具验证](../docs/verification/p6-road-contact-2026-10-15.json)。

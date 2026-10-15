@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-15",
+  "reviewer_kind": "Codex AI visual development review",
+  "independent_human_review": false,
+  "human_reviews_completed": 0,
+  "model_run_environment_guard_passed": false,
+  "viewed_inputs": [
+    {
+      "view_id": "view-4dac40bc3538",
+      "file": "view-4dac40bc3538-target.jpg",
+      "sha256": "7c1ff1b985b262ed9b242e105b94ccc4c7831cb7b5bbdd08da0339c91bd86ee4"
+    },
+    {
+      "view_id": "view-9b4970b5a718",
+      "file": "view-9b4970b5a718-target.jpg",
+      "sha256": "f21d1c4ac84d695c9558d0307cc5d32220eb5793cf0a07101856303cde32ba2d"
+    },
+    {
+      "view_id": "view-f9b70d3e59bd",
+      "file": "view-f9b70d3e59bd-target.jpg",
+      "sha256": "faba706af92b9d30fb9d166780239570a87a07417159ee9d626e1911e3645753"
+    }
+  ],
+  "findings": [
+    {
+      "case_id": "case-3796b34d624b",
+      "candidate_ordinal": 1,
+      "risk": "bbox_overbreadth",
+      "observation": "第二个 debris 框同时覆盖黑色车辆及其阴影；应进一步圈定异物实体，不能把整框当作实例轮廓。",
+      "business_verdict": null
+    },
+    {
+      "case_id": "case-b2816a2e7bb3",
+      "candidate_ordinal": 0,
+      "risk": "target_scope_confusion",
+      "observation": "首框白色板状物落在上方道路外侧的场地地面，有目标范围混淆风险；源支持域交叠为 0 只作几何核对，不单独折算为误报。",
+      "business_verdict": null
+    },
+    {
+      "case_id": "case-b2816a2e7bb3",
+      "prior_entity_id": "E12",
+      "risk": "scene_positive_does_not_establish_specific_entity_detection",
+      "observation": "六个新框均不与 v5 E12 的 AI 内域外接框交叠；整图 suspected 不能证明已找到那段木条。该草稿不是人工真值，不据此统计漏检率。",
+      "business_verdict": null
+    }
+  ],
+  "schema_limitation": "全局 suspected 与整图 uncertainty 文本不能表达每个框的实体性质及内外关系确定性。",
+  "accuracy_computed": false,
+  "default_profile_change": false,
+  "formal_release_eligible": false
+}

@@ -1,0 +1,106 @@
+{
+  "date": "2026-10-15",
+  "completed_at": "2026-10-15T02:41:40.067675+00:00",
+  "batch_status": "not_qualified_environment_changed",
+  "tested_code_commit": "424caa3cc347855ad3d4a4119a97657ddf19ec76",
+  "source_sha256": {
+    "scripts/p6_road_contact.py": "779906474a477c3604a4adefc98e425e9d9fdd9ac2c6cf54028b94a27eec27e7",
+    "scripts/p6_road_contact_cloud.py": "37a57b67ebf3bd09920b232542020e950aa1d35d9356a76d674f87bb9d68cd04",
+    "scripts/p6_road_views.py": "c0cbf78e0300da9d458b6c98f0167ff4aff5b379223c834ebf724f36abbae07f",
+    "tests/test_p6_road_contact.py": "3f64bfa466045f89dd381e388384112a8ba261d32f2f1ebd332b7b5386acbaa1"
+  },
+  "ruff": {
+    "command": "uv run --frozen ruff check .",
+    "exit_code": 0
+  },
+  "targeted_pytest": {
+    "passed": 41,
+    "new_tests": 20,
+    "existing_view_tests": 21
+  },
+  "full_pytest": {
+    "collected": 1685,
+    "passed": 1684,
+    "skipped": 1,
+    "failed": 0,
+    "errors": 0,
+    "seconds": 904.643,
+    "high_qos_at_startup": true,
+    "skip_reason": "tests/fleet/test_api_and_main.py:35; existing Windows Unix socket exclusion",
+    "junit_sha256": "e21019de00b15442f1f3497a7ef7e9abdb92772fb92bddf35ad4f96e56f760e6",
+    "log_sha256": "24f0fa251fec0d941c0f409214feca245a2b34d44e41a7c1cbfe05c20b1ccbb7",
+    "source_unchanged_during_suite": true
+  },
+  "cloud_probe": {
+    "run_id": "p6-road-contact-dev-20261015T021842Z",
+    "started_at": "2026-10-15T02:18:49Z",
+    "finished_at": "2026-10-15T02:24:06Z",
+    "runtime_source_sha": "6249129596b7cfe88c7322f8b425c7b432dba24b",
+    "runtime_image": "sha256:4f84962ee6b75f899ee50afa153dca439942d9bf518b25d7c780c0b17c2b2377",
+    "runner_sha256": "c3e0d56264b2ed22adb78347494a7f96089ddb81e2ea0261ca0adab0f8682536",
+    "model": "MiniMax-M3.1-Flash-Preview",
+    "provider": "minimax-vl",
+    "config_sha256": "b294393e78c0a50204c1a1e1e51715e3ae4b7b2ba8b7aef25186d48a3970e4b0",
+    "manifest_sha256": "f997962c9094afb1a5ffb36647a35a7f7e70d6efc27b8630b833595c946fead0",
+    "new_provider_calls": 6,
+    "attempted": 6,
+    "answered": 6,
+    "cloud_schema_valid": 6,
+    "local_valid": 6,
+    "cloud_strict_replays": 6,
+    "local_strict_replays": 6,
+    "verdicts": {
+      "suspected": 6
+    },
+    "candidate_boxes": 33,
+    "types": {
+      "debris": 28,
+      "vehicle_uncertain": 1,
+      "large_object": 1,
+      "fallen_tree": 3
+    },
+    "views_at_eight_box_cap": [
+      "view-e0f2ecc668d5",
+      "view-4dac40bc3538"
+    ],
+    "local_launcher_exit_code": 1,
+    "container_exit_code": 0,
+    "resident_identity_guard_passed": false,
+    "changed_container_count": 4,
+    "added_container_count": 2,
+    "unchanged_container_count": 9,
+    "container_change_cause_attributed": false,
+    "guard_scope_relaxed_after_results": false
+  },
+  "artifacts": {
+    "analysis_sha256": "77cb3eab4f9b57c484a8673ca5494761fb2506075edaaf6dd3d800de3a5d1c64",
+    "replay_summary_sha256": "19505216ae777f86c7da087faf450b4b8159f3196bd175621e18cdf23c9fe7cf",
+    "raw_results_sha256": "476fc010503653d51e18ecd46528b9d42579a6853362eee8196b998422848932",
+    "execution_sha256": "9b59b48b72abe7c40c707dfd25e77eeabe641c7f91662ba65c55af437f2b4e49",
+    "recordings": {
+      "view-347d6ae24938.json": "3748a6d21f5c73d74aa1333bf624c55eb5400ce08f4337764ab64e43aefe98ae",
+      "view-4dac40bc3538.json": "1ba490d36303e53dbc71676787e9637fe977092ec3dac9eadd03243e03006c5b",
+      "view-6cda4badce65.json": "42b3803e7ab3a7464717ed22fea6993c8ea2e76cfc8f7005a89b0cd4d515de41",
+      "view-9b4970b5a718.json": "5dffe2e458a00da1fc431ce9630b5c3479c2c9aba3be2220a5c7a8f7ef2c6750",
+      "view-e0f2ecc668d5.json": "4bd73e6eee58a6725f0d4e5cceae307fa66c9f3a4bafafdb640b50f8cf480a91",
+      "view-f9b70d3e59bd.json": "0712c9f19242db151c428df2165f272264a868fc38ce45cf3f8f8433a5c27b92"
+    }
+  },
+  "human_reviews_completed": 0,
+  "new_original_images_acquired": 0,
+  "source_images_unchanged_from_v4": true,
+  "service_deployment_commands_issued_by_this_batch": false,
+  "accuracy_computed": false,
+  "default_profile_change": false,
+  "formal_release_eligible": false,
+  "artifact_checks": {
+    "files": 25,
+    "json_files": 23,
+    "relative_links_checked": 195,
+    "staged_bytes_equal_to_working_files": true,
+    "old_v1_to_v6_evidence_unchanged": true,
+    "recording_hashes_verified": 6,
+    "negative_environment_status_retained": true,
+    "source_images_or_credential_payloads_in_git": false
+  }
+}
