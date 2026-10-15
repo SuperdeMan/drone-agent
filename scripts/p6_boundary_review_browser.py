@@ -108,6 +108,8 @@ async def run(package: Path, output: Path) -> None:
             await page.set_viewport_size({"width": 1440, "height": 1000})
             await page.evaluate("document.body.style.zoom='2'")
             check("zoom_200_percent", await page.evaluate("document.documentElement.scrollWidth-innerWidth") <= 1)
+            image_fraction = await page.locator("#canvas").evaluate("el=>el.getBoundingClientRect().width/innerWidth")
+            check("zoom_200_retains_usable_image_width", image_fraction >= .45, viewport_fraction=image_fraction)
             await page.screenshot(path=str(output / "zoom-200.png"), full_page=True)
             await page.evaluate("document.body.style.zoom='1'")
             ids = await page.locator("#queue button").evaluate_all("bs=>bs.map(b=>b.dataset.item)")
