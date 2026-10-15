@@ -543,3 +543,13 @@
 - **用量与边界**：输入 27,647、输出 10,888 tokens；未追加调用、修补回答或调整本批规则。已曝光开发迭代，不计算精确率 / 召回率或因果提升；未改变在用画像，P6 未准出。
 - **软件验证**：Ruff、79 项相关测试（新增 28）通过；冻结代码 Windows 全量 1743 通过、1 项既有 Unix socket 跳过、0 失败 / 错误，JUnit 用时 1096.074 秒。源码在测试期间不变；已完成包经离线检查拒绝再次调用。
 - **证据**：[报告](../docs/p6-candidate-groups-development.md)、[v9 包](s2/p6_candidates_v9/README.md)、[原始环境回执](s2/p6_candidates_v9/attempts/20261015T051249Z/cloud/execution.json)、[严格回放](s2/p6_candidates_v9/attempts/20261015T051249Z/replay-summary.json)、[分析](s2/p6_candidates_v9/attempts/20261015T051249Z/analysis.json)、[复核队列](s2/p6_candidates_v9/attempts/20261015T051249Z/review-queue.json)、[验证回执](../docs/verification/p6-candidate-groups-2026-10-15.json)。
+
+## 2026-10-15 · 固定提案定位对照工具（只读工具，不计业务准出）
+
+- **冻结与范围**：`d8944c8eeb849c645a5cb397f7fe507f02e5f01c`。承接 v9 的 6 个目标 / 33 个提案及 12 项优先队列；全图与局部使用同一 ID 和归一化坐标，切换原始分辨率、实际模型原图、实际道路提示，支持缩放 / 拖动、筛选和本地文件深链接。原框仅是观察窗口，不建立实例标注。
+- **来源**：5 张不同原图、5 份不同模型原图和 6 份道路提示，共 16 份图像按原字节复制到外部包；没有新照片或模型调用。包 SHA-256 为 `431c75f523194b721cd1572bd6d4e53c24c73e140c533ed05b4f51a013e93cac`，入口 `D:/drone-agent-data/p6-proposal-viewer-20261015/viewer-v4/index.html`。黄色框与 ID 是查看图层，未追溯加入 v9 请求。
+- **验证**：Ruff、12 项新增 Python 检查、7 项前端逻辑检查通过。隔离 Edge `155.0.4283.45` 浏览器最终 110 / 110、错误 0，覆盖全部 33 个窗口、四种屏宽、200% 放大、实际视口内选中项和只读状态；5 张最终截图由 AI 实际查看，其他截图不冒充视觉复核。
+- **负记录**：首次检查脚本使用字符串等待条件被 CSP 拒绝；早期 100 项自动通过后看图发现选中项 / 字号问题。扩大检查后依次发现窄屏选中项隐藏、隐藏 SVG 零宽度导致 NaN、200% 下清单超出实际视口。保留 6 份失败或被更严格检查替代的回执，最终修正后才记为工具通过。
+- **全量**：冻结代码 Windows 全量 1755 通过、1 项既有 Unix socket 跳过、0 失败 / 错误，JUnit 用时 865.633 秒；启动即启用进程级 high QoS，源码在测试期间未变。v1–v9 的 245 份历史文件逐字节未变，33 项来源记录与人工空字段原样保留。
+- **边界**：只读页面不登记人工结论、不变更模型分组、不计算准确率，不改在用画像、业务服务或控制链。v6 的 6 道路 / 13 实体登记工具与这里的 33 个提案 ID 不自动互换；人工确认仍为 0，P6 未准出。
+- **证据**：[操作说明](../docs/p6-proposal-viewer-guide.md)、[v10 包](s2/p6_candidates_v10/README.md)、[包回执](s2/p6_candidates_v10/package-receipt.json)、[最终浏览器回执](s2/p6_candidates_v10/browser-qa/final.json)、[看图记录](s2/p6_candidates_v10/visual-review.json)、[最终验证回执](../docs/verification/p6-proposal-viewer-2026-10-15.json)。
