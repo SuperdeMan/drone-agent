@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>P6 · 道路原图标注</title><link rel="icon" href="data:,"><link rel="stylesheet" href="review.css"></head>
+<body>
+<header><div class="brand"><span class="mark">P6</span><div><p class="eyebrow">ROAD EVIDENCE / ANNOTATION</p><h1>完整道路目标标注</h1></div></div><div class="actions"><span id="progress">0 / 0</span><button id="importBtn">导入记录</button><button id="exportBtn" class="primary">导出标注</button><input id="importFile" type="file" accept=".json,application/json" hidden></div></header>
+<div id="qaBanner" class="notice" hidden>QA 测试包 · 全部记录为自动化夹具，不计人工标注。</div>
+<div class="layout">
+<nav aria-label="原图列表"><div class="railhead"><p class="eyebrow">01 / SOURCE POOL</p><h2>待核对原图</h2><label for="filter">列表筛选</label><select id="filter"><option value="all">全部原图</option><option value="pending">尚未登记</option><option value="done">已登记</option></select></div><div id="queue"></div><p class="railfoot">只含完整原图<br>未分配正式拆分</p></nav>
+<main><div class="viewheading"><div><p id="position" class="eyebrow"></p><h2 id="imageTitle">载入原图</h2></div><a id="originalLink" target="_blank" rel="noopener">打开原图 ↗</a></div>
+<p id="imageStatus" class="status" role="status"></p>
+<div class="toolbar" aria-label="图像操作"><button id="fit">全图</button><button id="zoomIn" aria-label="放大图像">＋</button><button id="zoomOut" aria-label="缩小图像">－</button><span class="divider"></span><button id="drawTarget">画目标范围</button><select id="objectKind" aria-label="实体类型"><option value="debris">散落 / 堆积物</option><option value="vegetation">侵入植被</option><option value="other_entity">其他实体</option></select><button id="drawObject">圈实体</button><button id="finishDraw">完成轮廓</button><button id="undo">撤销顶点</button></div>
+<div id="canvasFrame" tabindex="0" aria-label="原图查看区，未绘制时可以拖动平移"><svg id="canvas" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4000 3000"><image id="photo" width="4000" height="3000"></image><g id="layers"></g></svg><span id="loadError" hidden>图片无法读取，请保留完整素材包。</span></div>
+<div class="legend"><span><i class="blue"></i>目标范围</span><span><i class="orange"></i>人工圈定实体</span><span id="drawStatus">查看模式 · 拖动平移</span></div>
+<div id="objectList" aria-label="已圈定实体"></div>
+<div class="underimage"><div class="principle"><span>无尺寸门槛</span><p>先确认整段道路，再查看全部目标。标线、阴影与表面破损不当作实体；不确定时保留不可判。</p></div><div class="pager"><button id="previous">← 上一张</button><button id="next">下一张 →</button></div></div>
+<details id="metadata"><summary>拍摄信息与分组线索</summary><pre id="metadataText"></pre><p>GPS 是相机位置；连接组和相机日期不是已经确认的资产或采集批次。此处不展示源道路类别。</p></details>
+<details><summary>数据来源与许可</summary><p id="sourceCredit"></p><p>原图按原字节保留。原图、标注和计时不会上传；请导出 JSON 留存。</p></details>
+</main>
+<aside><div class="asidehead"><p class="eyebrow">02 / YOUR ANNOTATION</p><h2>登记本张结论</h2><p id="savedState" class="muted">尚未登记</p></div>
+<label for="reviewer">实际复核者</label><input id="reviewer" autocomplete="off" maxlength="120" placeholder="姓名或内部标识">
+<div class="timer"><div><span>标注有效时间</span><strong id="elapsed">00:00</strong></div><button id="timerBtn">开始标注</button></div>
+<section><h3><b>1</b>定义完整检查目标</h3><label for="targetBrief">道路描述与可辨认地标</label><textarea id="targetBrief" maxlength="600" rows="2" placeholder="例如：桥梁西侧，从路口到转弯处的完整路段"></textarea><button id="confirmTarget" class="wide">确认目标定义与轮廓</button><p id="targetState" class="muted">尚未确认目标</p></section>
+<section><h3><b>2</b>完成整幅目标检查</h3><label for="verdict">业务结论</label><select id="verdict"><option value="">请选择</option><option value="normal">正常 · 未发现目标内实体遮挡</option><option value="obstacle">有障碍 · 可见实体进入目标</option><option value="indeterminate">不可判 · 证据不足</option><option value="wrong_target">错目标 · 与已有任务不符</option><option value="excluded_source">素材不适用 · 无法建立检查目标</option></select>
+<label class="check"><input id="fullTarget" type="checkbox"><span>已检查整个确认目标，没有只看局部候选。</span></label>
+<label for="notes">判断依据 / 不可判原因</label><textarea id="notes" maxlength="4000" rows="3" placeholder="说明位置、实体或欠缺的证据"></textarea>
+<div id="taskReferenceField" hidden><label for="taskReference">已有任务定义的可追溯依据</label><input id="taskReference" maxlength="600" placeholder="任务编号、先前登记或参考资料；没有则不选错目标"></div></section>
+<section><h3><b>3</b>如实记录答案暴露</h3><label for="modelSeen">此前是否看过该图的模型回答</label><select id="modelSeen"><option value="">请选择</option><option value="false">未看过</option><option value="true">看过</option></select><label for="sourceSeen">此前是否看过该图的源类别标签</label><select id="sourceSeen"><option value="">请选择</option><option value="false">未看过</option><option value="true">看过</option></select></section>
+<details id="groupFields"><summary>登记已核对的资产 / 地点 / 批次</summary><p>不知道就留空。相邻照片不要为每张建立独立资产。</p><label for="assetId">资产标识</label><input id="assetId" maxlength="80"><label for="siteId">地点标识</label><input id="siteId" maxlength="80"><label for="batchId">真实采集批次</label><input id="batchId" maxlength="80"><label for="duplicateGroup">关联 / 近重复组</label><input id="duplicateGroup" maxlength="80"><label for="groupEvidence">分组依据</label><textarea id="groupEvidence" maxlength="1000" rows="2"></textarea><label class="check"><input id="groupVerified" type="checkbox"><span>上述身份及分组关系已核对，有可追溯依据。</span></label></details>
+<button id="saveBtn" class="primary wide">保存本条标注</button><p id="message" role="status" aria-live="polite"></p><p class="scope">本页记录的是标注制作时间。正式模型候选复核将另行计时；保存不会批准正式评测。</p>
+</aside></div>
+<footer><span id="storageStatus">草稿保存在本机浏览器；请导出文件留存。</span><span>WP-P6-01 / D089</span></footer>
+<script src="shared-core.js"></script><script src="core.js"></script><script src="data.js"></script><script src="app.js"></script>
+</body></html>
