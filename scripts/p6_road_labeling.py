@@ -139,6 +139,7 @@ def build(pool_file: Path, data_root: Path, permission_file: Path, protocol_file
     for name, source in files.items():
         shutil.copyfile(source, output / name)
     shutil.copyfile(license_file, output / "license.html")
+    shutil.copyfile(pool_file, output / "source-inventory.json")
     bundle = {"format": "drone.p6-road-label-bundle/v1", "corpus_id": protocol["corpus_id"], "qa_fixture": qa,
               "source_pool_sha256": digest(pool_file), "permission_sha256": digest(permission_file),
               "protocol_sha256": digest(protocol_file), "builder_sha256": digest(Path(__file__)),
@@ -182,6 +183,9 @@ def verify_bundle(package: Path, expected_sha: str) -> dict:
     source = bundle["source"]
     if digest(within(package, source["license_evidence_file"])) != source["license_evidence_sha256"]:
         raise ValueError("license evidence changed")
+    inventory = package / "source-inventory.json"
+    if inventory.exists() and digest(inventory) != bundle["source_pool_sha256"]:
+        raise ValueError("capture inventory differs from the bound source pool")
     return bundle
 
 
@@ -214,6 +218,9 @@ def import_records(package: Path, expected_sha: str, export_file: Path, output: 
                          "development_exposed": record["model_outputs_seen"],
                          "target": {"status": "human_confirmed" if record["target_confirmed"] and not bundle["qa_fixture"] else "unconfirmed",
                                     "polygon": record["target_polygon"], "brief": record["target_brief"], "task_reference": record["task_reference"]}})
+        if (package / "source-inventory.json").is_file():
+            manifest[-1]["capture_record"] = {"inventory_file": "source-inventory.json", "inventory_sha256": bundle["source_pool_sha256"],
+                                               "source_observation_id": sample["image_id"]}
         origin = "qa_fixture" if bundle["qa_fixture"] else "human"
         labels.append({"sample_id": ident, "image_sha256": sample["image_sha256"], "verdict": record["verdict"],
                        "defect_types": sorted({o["defect_type"] for o in record["objects"]}), "objects": record["objects"],
@@ -231,6 +238,7 @@ def import_records(package: Path, expected_sha: str, export_file: Path, output: 
     write(output / "annotation-sessions.json", {"format": "drone.p6-road-review-sessions/v1", "corpus_id": bundle["corpus_id"], "sessions": sessions})
     receipt = {"format": "drone.p6-road-label-import/v1", "bundle_sha256": expected_sha, "export_sha256": digest(export_file),
                "tool_sha256": digest(Path(__file__)), "records": len(records), "business_labels": len(labels),
+               "parser_dependencies_sha256": {name: digest(Path(__file__).with_name(name)) for name in ("p6_business_eval.py", "p6_boundary_drafts.py")},
                "human_provided_labels": 0 if bundle["qa_fixture"] else len(labels), "excluded_sources": len(records) - len(labels),
                "candidate_review_sessions": 0, "reviewer_identity_authenticated": False, "formal_release_eligible": False}
     write(output / "receipt.json", receipt)

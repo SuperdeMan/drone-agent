@@ -253,3 +253,36 @@ def test_timing_discloses_truth_and_hint_exposure(corpus):
     metrics = C.scores(corpus[0], corpus[1], predictions(corpus), {"format": "drone.p6-road-review-sessions/v1", "corpus_id": "qa", "sessions": [timed()]}, "test")
     assert metrics["human_review"]["exposure_counts"] == {"truth_seen": 1, "hints_seen": 1}
     assert metrics["human_review"]["total_active_ms"] == 20000
+
+
+def test_distinct_originals_can_compare_without_inventing_utc(corpus):
+    manifest, _, _, _, root = corpus
+    pair = manifest["stability_pairs"][0]
+    pair.update(comparison_scope="distinct_original_captures_unordered", distinct_captures_human_confirmed=True)
+    rows = []
+    for ident in pair["sample_ids"]:
+        sample = next(s for s in manifest["samples"] if s["sample_id"] == ident)
+        sample["captured_at"] = None
+        rows.append({"image_id": ident, "image_sha256": sample["image_sha256"], "completeness": "complete_original"})
+    C.write(root / "captures.json", {"format": "drone.floodnet-acquisition-pool/v1", "rows": rows})
+    for ident in pair["sample_ids"]:
+        sample = next(s for s in manifest["samples"] if s["sample_id"] == ident)
+        sample["capture_record"] = {"inventory_file": "captures.json", "inventory_sha256": C.digest(root / "captures.json"), "source_observation_id": ident}
+    assert C.audit(*corpus)["data_ready"]
+    pair["distinct_captures_human_confirmed"] = False
+    assert "distinct_original_capture_identity_missing" in C.audit(*corpus)["issue_counts"]
+    pair["distinct_captures_human_confirmed"] = True
+    (root / "captures.json").write_bytes(b"changed")
+    assert "original_capture_inventory_not_verified" in C.audit(*corpus)["issue_counts"]
+
+
+def test_same_source_observation_is_not_a_new_capture(corpus):
+    manifest = corpus[0]
+    pair = manifest["stability_pairs"][0]
+    pair.update(comparison_scope="distinct_original_captures_unordered", distinct_captures_human_confirmed=True)
+    for ident in pair["sample_ids"]:
+        sample = next(s for s in manifest["samples"] if s["sample_id"] == ident)
+        sample["capture_record"] = {"inventory_file": "missing.json", "inventory_sha256": "a" * 64, "source_observation_id": "same-original"}
+    result = C.audit(*corpus)
+    assert "distinct_original_capture_identity_missing" in result["issue_counts"]
+    assert "original_capture_inventory_not_verified" in result["issue_counts"]

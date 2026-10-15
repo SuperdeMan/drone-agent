@@ -91,9 +91,9 @@ def polygon_valid(points) -> bool:
 
 
 def pair_problems(pair: dict, samples: dict, labels: dict) -> list[str]:
-    """Only distinct, ordered real captures of the same verified state form a pair.
+    """Require distinct real captures of the same state, with explicit temporal scope.
 
-只有同一已确认状态的不同、有序实拍才能构成跨次配对。
+要求同一已确认状态的不同实拍，并明确是否声明时间顺序。
 """
     ids = pair.get("sample_ids", [])
     if len(ids) != 2 or ids[0] == ids[1] or any(i not in samples for i in ids):
@@ -105,11 +105,22 @@ def pair_problems(pair: dict, samples: dict, labels: dict) -> list[str]:
             or not pair.get("reviewer_id") or not pair.get("evidence")
             or any(s.get("media_origin") != "real_capture" for s in (left, right))):
         issues.append("stability_pair_not_verified")
-    try:
-        if timestamp(right["captured_at"]) <= timestamp(left["captured_at"]):
-            issues.append("stability_capture_order_invalid")
-    except (KeyError, TypeError, ValueError):
-        issues.append("stability_capture_time_missing")
+    scope = pair.get("comparison_scope", "ordered_capture_times")
+    if scope == "distinct_original_captures_unordered":
+        records = [s.get("capture_record") or {} for s in (left, right)]
+        identities = [(s.get("source_id"), r.get("source_observation_id")) for s, r in zip((left, right), records, strict=True)]
+        if (pair.get("distinct_captures_human_confirmed") is not True or identities[0] == identities[1]
+                or any(not a or not b for a, b in identities)
+                or any(not r.get("inventory_file") or not r.get("inventory_sha256") for r in records)):
+            issues.append("distinct_original_capture_identity_missing")
+    elif scope == "ordered_capture_times":
+        try:
+            if timestamp(right["captured_at"]) <= timestamp(left["captured_at"]):
+                issues.append("stability_capture_order_invalid")
+        except (KeyError, TypeError, ValueError):
+            issues.append("stability_capture_time_missing")
+    else:
+        issues.append("unknown_stability_comparison_scope")
     first, second = (labels.get(i) for i in ids)
     if (not first or not second or first.get("verdict") not in {"normal", "obstacle"}
             or first.get("verdict") != second.get("verdict")
@@ -226,6 +237,22 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
         pair_ids.add(pair_key)
         for problem in pair_problems(pair, samples, annotations):
             issue(problem, ids[0])
+        if pair.get("comparison_scope") == "distinct_original_captures_unordered":
+            for ident in ids:
+                reference = samples[ident].get("capture_record") or {}
+                try:
+                    inventory_file = within(data_root, reference["inventory_file"])
+                    if digest(inventory_file) != reference["inventory_sha256"]:
+                        raise ValueError("capture inventory bytes changed")
+                    inventory = read(inventory_file)
+                    if inventory.get("format") != "drone.floodnet-acquisition-pool/v1":
+                        raise ValueError("unsupported original capture inventory")
+                    entries = unique(inventory["rows"], "image_id")
+                    original = entries[reference["source_observation_id"]]
+                    if original.get("completeness") != "complete_original" or original.get("image_sha256") != samples[ident]["image_sha256"]:
+                        raise ValueError("capture identity does not bind this original")
+                except (KeyError, OSError, TypeError, ValueError):
+                    issue("original_capture_inventory_not_verified", ident)
     if not samples:
         issue("no_samples")
     if protocol.get("status") != "frozen" or not protocol.get("approval_reference"):
@@ -402,7 +429,8 @@ def scores(manifest: dict, labels: dict, predictions: dict, reviews: dict, split
             "refusal_reasons": dict(Counter(reason for i in primary if found[i]["verdict"] == "refused" for reason in found[i]["reasons"])),
             "stability": {"covered_pair_fraction": fraction(paired, len(pairs)), "agreement_given_covered": fraction(consistent, paired),
                           "consistent_and_covered_fraction": fraction(consistent, len(pairs)), "unresolved_pairs": len(pairs) - paired,
-                          "unique_assets": len({samples[p["sample_ids"][0]]["asset_id"] for p in pairs})},
+                          "unique_assets": len({samples[p["sample_ids"][0]]["asset_id"] for p in pairs}),
+                          "comparison_scope_counts": dict(Counter(p.get("comparison_scope", "ordered_capture_times") for p in pairs))},
             "human_review": {"sessions": len(human_times), "required_observations": len(required), "coverage": fraction(len(human_times), len(required)),
                              "median_ms": median(human_times) if human_times else None,
                              "p95_ms": human_times[math.ceil(.95 * len(human_times)) - 1] if human_times else None,

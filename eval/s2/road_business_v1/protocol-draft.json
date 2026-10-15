@@ -5,7 +5,7 @@
   "approval_reference": "User reply on 2026-10-15: 采用这版目标，继续补齐数据",
   "proposal_date": "2026-10-15",
   "proposal_document": "docs/p6-business-evaluation.md",
-  "decision_scope": "approved first S2 targets for human-reviewed road candidates; corpus and formal scope still pending, not unattended safe-passage certification",
+  "decision_scope": "approved human-reviewed road-candidate S2 acceptance; corpus and formal run still pending; field clearance effects are explicitly outside this gate and unverified",
   "reviewer_assignment": {
     "role": "project_owner",
     "source": "User explicitly chose personal review in this conversation on 2026-10-15",
@@ -35,8 +35,17 @@
     "review_p95_ms_max": 120000
   },
   "additional_requirements": {
-    "minimum_calibration_by_label": {"normal": 20, "obstacle": 20, "indeterminate": 10, "wrong_target": 10},
-    "minimum_test_by_defect_type": {"debris": 30, "vegetation": 30, "other_entity": 30},
+    "minimum_calibration_by_label": {
+      "normal": 20,
+      "obstacle": 20,
+      "indeterminate": 10,
+      "wrong_target": 10
+    },
+    "minimum_test_by_defect_type": {
+      "debris": 30,
+      "vegetation": 30,
+      "other_entity": 30
+    },
     "maximum_test_site_fraction": 0.5,
     "minimum_stability_assets": 15,
     "minimum_timed_reviews": 30,
@@ -44,12 +53,19 @@
   },
   "statistical_rule": "thresholds apply to observed proportions; report Wilson two-sided 95 percent intervals without treating them as certified population bounds",
   "formal_test_runs": 1,
-  "clearance_effect_evidence": "still missing; same-state repeat pairs do not replace real before/after clearance evidence; formal scope remains to be frozen",
+  "clearance_effect_evidence": "not_verified_outside_this_gate; scope clarification explicitly approved by user on 2026-10-15; all D089 numerical, independence, repeat-capture and human-timing requirements retained",
   "primary_unit": "one primary observation per known asset in each split; repeat captures only enter stability",
   "metric_scope": "observation-level scene and typed misses, not object-instance recall",
   "human_timing_phase": "candidate_review",
   "annotation_time_is_candidate_review_time": false,
   "unknown_is_normal": false,
   "all_refused_is_stability_success": false,
-  "formal_release_eligible": false
+  "formal_release_eligible": false,
+  "scope": {
+    "mode": "human_reviewed_road_candidate_s2",
+    "approval_reference": "User reply on 2026-10-15: 按 S2 范围验收（建议）",
+    "real_clearance_effect_required": false,
+    "real_clearance_effect_status": "not_verified_outside_this_gate",
+    "hardware_or_field_operation_claimed": false
+  }
 }
