@@ -1,6 +1,6 @@
 # drone-agent 路线图
 
-[架构](architecture/00-overview.md) · [运营层设计](architecture/09-operations.md) · [全部实施任务](operations-implementation.md) · [P2 详细方案](p2-implementation.md) · [P3 详细方案](p3-implementation.md) · [P4 详细方案](p4-implementation.md) · [修订依据](research/operations-roadmap-review-2026-09-25.md)
+[架构](architecture/00-overview.md) · [运营层设计](architecture/09-operations.md) · [全部实施任务](operations-implementation.md) · [P2 详细方案](p2-implementation.md) · [P3 详细方案](p3-implementation.md) · [P4 详细方案](p4-implementation.md) · [P5 详细方案](p5-implementation.md) · [X1 实施方案](x1-implementation.md) · [修订依据](research/operations-roadmap-review-2026-09-25.md)
 
 **2026-09-25 修订（D049–D053）：软件运营主线 P0–P5、硬件验证线 H1–H3、扩展线 X1–X3 分开推进。** 近期交付无硬件也可验证的园区巡检运营平台：授权目标 → 资源准备 → 工作流 → 飞行取证 → 分析复核 → 工单 → 复检。既有安全运行时继续作为执行底座。
 
@@ -44,10 +44,12 @@ M1/M2 的历史实施清单分别保留在 [M1](m1-implementation.md)、[M2](m2-
 | **P1 云端资源与虚拟机场** | Project / Site / Dock、设备能力与状态、可派遣判断、最小预约、资源入口 | 3 站 / 3 Dock / 3 逻辑 UAV；充电、维护、离线、过期、卡盖不错误派遣；失联占用不错误释放；单机 S1 正式链路通过 | 2026-09-26 完成（`b49701b`）；[P1 详细方案](p1-implementation.md)，[验收](p1-readiness.md) |
 | **P2 持久工作流 v1** | 人工 / 定时 / 事件触发；版本化流程、持久状态、审批、取消、重启对账；分析 / 复核 / 模拟工单 | 巡检—分析—人工复核—模拟工单闭环；重启不丢任务；重复事件不重复派飞；取消后不派后继；未知收尾不算成功 | 2026-09-26 完成（`3bdbd50`）；[P2 详细方案](p2-implementation.md)，[验收](p2-readiness.md) |
 | **P3 多站多机任务调度** | 硬约束过滤、确定性排序、任务所有权、时空预约、故障对账、任务级接力 | S0 10/30/100 逻辑节点阶梯；至少 2 台同世界 S1 ×3 种子；双重所有权、重复执行、丢任务、冲突预约、假成功均 0 | 2026-09-27 完成（`73fcf23`）；[P3 详细方案](p3-implementation.md)，[验收](p3-readiness.md)（D059–D061）；3 台 S1 为容量评估后扩展 |
-| **P4 多模态业务闭环** | 授权素材、通用质量核验、行业分析插件、发现 / 复核 / 工单 / 复检；证据报告 | 冻结测试集与指标；live / recorded / scripted 分开；模型不改变安全 / 效果判定；图像指令无执行权；缺新证据不关单 | P2；WP-P4-01–06；已实施（D063–D066），门禁除 S2 外通过，S2 精确率未达冻结要求、保持开放，[P4 记录](p4-readiness.md) |
-| **P5 无硬件平台 v0.1** | 五工作区集成；一条完整主场景 + 第二业务模板；厂商协议模拟与运维交付 | 72 h 真实墙钟长稳；排班、重启、断网、取消、权限与模型故障可对账；全链路版本 / 来源 / 证据可复算；S3 合同测试通过 | P3 + P4（P4 除 S2 外，D069）；WP-P5-01–05；[P5 详细方案](p5-implementation.md)，[运维手册](operations-guide.md) |
+| **P4 多模态业务闭环** | 授权素材、通用质量核验、行业分析插件、发现 / 复核 / 工单 / 复检；证据报告 | 冻结测试集与指标；live / recorded / scripted 分开；模型不改变安全 / 效果判定；图像指令无执行权；缺新证据不关单 | P2；WP-P4-01–06（D063–D066）；2026-10-10 完成（`8f41112`，S2 按 D076 在 `f4b1b99` 复验通过）；[P4 详细方案](p4-implementation.md)，[验收](p4-readiness.md) |
+| **P5 无硬件平台 v0.1** | 五工作区集成；一条完整主场景 + 第二业务模板；厂商协议模拟与运维交付 | 72 h 真实墙钟长稳；排班、重启、断网、取消、权限与模型故障可对账；全链路版本 / 来源 / 证据可复算；S3 合同测试通过 | P3 + P4（P4 除 S2 外，D069）；WP-P5-01–05；2026-10-09 完成（`1716843`）；[P5 详细方案](p5-implementation.md)，[验收](p5-readiness.md)，[运维手册](operations-guide.md) |
 
 P1/P2 可先做单机场纵向子集；P1 正式关闭仍需三站逻辑验证，P2 正式关闭仍需 P1 和单机 SITL 业务闭环。P3/P4 的准备性研究可提前，完成声明按各自门禁。
+
+P6「证据驱动运营」是 P5 之后按 [2026-10-10 外部评审](research/external-review-2026-10-10.md)增加的七个工作包，各按自己的门禁准出，工作包与判据见[实施任务 §10](operations-implementation.md)，状态见 §1 与 §7。
 
 ```mermaid
 flowchart LR
