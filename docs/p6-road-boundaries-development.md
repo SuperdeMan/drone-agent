@@ -1,6 +1,6 @@
 # P6 道路边界与实体遮挡开发标注
 
-[上一轮整图 / 分块比较](p6-road-views-development.md) · [当前交接](p6-materials-handoff-2026-10-14.md)
+[上一轮整图 / 分块比较](p6-road-views-development.md) · [当前交接](p6-materials-handoff-2026-10-15.md) · [离线复核操作](p6-boundary-review-guide.md)
 
 ## 本轮口径
 

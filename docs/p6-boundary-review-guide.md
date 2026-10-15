@@ -18,7 +18,7 @@
 
 ## 可重复构建与导出校验
 
-工具源码在 [scripts/p6_boundary_review.py](../scripts/p6_boundary_review.py)，静态页面在 [scripts/p6_boundary_review/](../scripts/p6_boundary_review/)。在仓库根目录执行，输出必须是新的外部目录：
+工具源码在 [scripts/p6_boundary_review.py](../scripts/p6_boundary_review.py)，静态页面在 [scripts/p6_boundary_review/](../scripts/p6_boundary_review/)。本批代码位于隔离工作树 `D:/drone-agent-data/p6-road-views-20261014/repo`，尚未同步到原 `main` 工作树；以下命令在这份工作树根目录执行，输出必须是新的外部目录：
 
 ```powershell
 uv run --frozen python scripts/p6_boundary_review.py build --drafts eval/s2/p6_candidates_v5/drafts.json --index eval/s2/p6_candidates_v3/input-index.json --previous-summary eval/s2/p6_candidates_v4/summary.json --data-root D:/drone-agent-data/p6-materials-20261013-round3 --output <新的外部目录>

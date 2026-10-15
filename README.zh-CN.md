@@ -134,7 +134,7 @@ uv run python scripts/generate_proto.py
 | 查看飞行证据与回放 | [评测体系](docs/architecture/08-evaluation.md) · [拉取与查看运行](docs/cloud-development.md#查看与人工核对结果) |
 | 运营层与下一批工作 | [运营架构](docs/architecture/09-operations.md) · [实施任务](docs/operations-implementation.md) · [P4 验收](docs/p4-readiness.md) · [P5 验收](docs/p5-readiness.md) · [P6 补拍验收](docs/p6-recapture-readiness.md) · [P6 对抗录制验收](docs/p6-adversarial-readiness.md) · [P5 方案](docs/p5-implementation.md) · [运维手册](docs/operations-guide.md) |
 | 设计理由与复用来源 | [决策记录](docs/decisions.md) · [姊妹项目复用](docs/reuse-from-embodied-agent.md) |
-| P6 公开素材与剩余工作 | [交接](docs/p6-materials-handoff-2026-10-15.md) · [来源审查](docs/p6-materials-review.md) · [开发诊断](docs/p6-materials-development.md) |
+| P6 公开素材与剩余工作 | [交接](docs/p6-materials-handoff-2026-10-15.md) · [来源审查](docs/p6-materials-review.md) · [开发诊断](docs/p6-materials-development.md) · [离线边界复核](docs/p6-boundary-review-guide.md) |
 
 ## 路线图
 

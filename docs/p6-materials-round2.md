@@ -73,3 +73,11 @@
 - **已查看样本只作开发材料**：本批图片不再声称是未接触的留出集；完整评测仍须先登记协议与独立采集分组，再校准画像并冻结测试。
 
 正式评测前需明确来源许可适用性；若向作者核实，可具体询问：Figshare `22825511.v1` 等记录的 CC0 是否适用于其中原始图片与像素标注，以及与 GitHub README 的 CC BY-NC-ND 如何对应。本轮没有向作者发送消息。
+
+## 2026-10-15 来源复查
+
+本次只做公开信息复查，没有新增下载原图或联系作者。[Figshare 版本列表](https://api.figshare.com/v2/articles/22825511/versions)仍只有 v1；[训练发布 v1 的 API](https://api.figshare.com/v2/articles/22825511/versions/1)仍标 CC0，文件 `40581458` 的声明 MD5 未变。这里核对的是服务端元数据，没有重新下载或核验整个 ZIP。
+
+[作者 GitHub README](https://github.com/BinaLab/RescueNet-A-High-Resolution-Post-Disaster-UAV-Dataset-for-Semantic-Segmentation#license)仍写 CC BY-NC-ND；main 提交仍为 `c46580d72fb5b2f3ad7bb624e3c1dc42975a043f`，README 字节摘要与第二批快照相同。未发现能从这些已核对页面消除差异的新声明。另查 [ROAD 作者页面](https://www.agtbaskara.com/road)，下载和许可仍是 Coming Soon，不能列为新取得素材。
+
+复查范围、原始响应摘要及本机位置见[来源复查记录](../eval/s2/p6_candidates_v6/source-refresh.json)。这些记录不授予正式素材准入资格；已保存的 v2 证据不改写。

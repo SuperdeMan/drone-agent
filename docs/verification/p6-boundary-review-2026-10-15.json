@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-15",
+  "code_freeze_commit": "d754dc105d45a5758abd79c3dbcba92a9e162f18",
+  "code_source_sha256": {
+    "scripts/p6_boundary_review.py": "0f9201ff1fd6c16504ce9db87c5e8aa027a1b956494542995a3fa0bf8e896209",
+    "scripts/p6_boundary_drafts.py": "f2476184e8172312853fcb07e692012b20f0bfb3bdeabf0c754443d90b19fc0b",
+    "scripts/p6_boundary_review_browser.py": "f242d5f810b446a9fad283ddc4da96ef6a4576e7c21e48bae92c4ad8be13d4c0",
+    "scripts/p6_boundary_review/app.js": "52172420b2d8735e34c5c93e9f26c609a1375e13bc4016b14375b06832e3fa5d",
+    "scripts/p6_boundary_review/core.js": "25c7f44cddbc8431ed33038150ece34df3802aae55adcb1a45a667f9e36a18f9",
+    "scripts/p6_boundary_review/index.html": "c92cc07ae7124774cebdc958586356b92003e06dcc16c687e387f90f8cb036ab",
+    "scripts/p6_boundary_review/review.css": "7a6fee74fefaa4ed847cbd46a0000380e7e0d7c68c200841c0b19eb5795a5bbf",
+    "tests/test_p6_boundary_review.py": "04fa5bf3e121d05cbfa679b1536326af8d088383c63bab3bf90b726b07c3b921",
+    "tests/test_p6_boundary_review.cjs": "bb9a117e205a895985111a8885e7a4cddca9709dc28e7614044671f6a2fd392e"
+  },
+  "scope": "offline development review tools; no model accuracy or release qualification",
+  "ruff": {
+    "command": "uv run --frozen ruff check .",
+    "exit_code": 0
+  },
+  "targeted_pytest": {
+    "passed": 56,
+    "new_tests": 30,
+    "existing_geometry_tests": 26,
+    "source_unchanged_at_freeze": true
+  },
+  "node_tests": {
+    "command": "node --test tests/test_p6_boundary_review.cjs",
+    "passed": 10,
+    "source_unchanged_at_freeze": true
+  },
+  "full_pytest": {
+    "status": "passed",
+    "log": "D:\\drone-agent-data\\p6-boundary-review-20261015\\full-pytest-responsive.log",
+    "junit": "D:\\drone-agent-data\\p6-boundary-review-20261015\\full-pytest-responsive.xml",
+    "high_qos_at_startup": true,
+    "exit_code": 0,
+    "collected": 1665,
+    "passed": 1664,
+    "skipped": 1,
+    "failed": 0,
+    "errors": 0,
+    "seconds": 837.829,
+    "skip_reason": "tests/fleet/test_api_and_main.py:35; existing Windows Unix socket exclusion",
+    "junit_sha256": "6e1d9b011ffd3a59a9d64d87548d9b8670ef5971b03ab8d758c678e66786a7ab",
+    "log_sha256": "8e91f845c8270041d88e04b92717fc746283310e21d6a34644e1fe21a7f586f2",
+    "code_unchanged_during_full_suite": true,
+    "worktree_difference_from_code_freeze": "documentation and evidence only"
+  },
+  "browser": {
+    "passed": 50,
+    "failed": 0,
+    "browser_version": "155.0.4283.45",
+    "receipt_sha256": "142ba48df4590468585091a70679735f71f986f13b6149f1ed0ad3e06d94182f",
+    "scope": "isolated Edge; HTTP loopback and file URL; QA fixtures only"
+  },
+  "prior_incomplete_suite": {
+    "code_freeze": "cd4e482e67b3babb30400b38956b5330b09c8f4d",
+    "status": "interrupted_for_layout_fix",
+    "last_reported_progress_percent": 34,
+    "log_sha256": "c4078a5a9ca212e6e420b65e959e2f8e6b5e4227bf3b3b7a478236d4559fc62a",
+    "counted_as_pass": false
+  },
+  "bundle_sha256": "88f71dffed65a68b168c7dc203cbea0f2d282008da6e4bc558f93573f5544c57",
+  "new_provider_calls": 0,
+  "human_reviews_created": 0,
+  "independent_ground_truth": false,
+  "production_runtime_changed": false,
+  "formal_release_eligible": false,
+  "artifact_checks": {
+    "staged_files": 25,
+    "staged_bytes_equal_to_working_files": true,
+    "previous_v1_to_v5_evidence_unchanged": true,
+    "image_or_archive_payloads_in_git": false,
+    "credential_pattern_findings": 0,
+    "qa_export_hashes_verified": 6,
+    "offline_audits_verified": 2,
+    "screenshot_hashes_verified": 5,
+    "changed_document_links_checked": 413,
+    "json_files_parsed": 14
+  },
+  "completed_at": "2026-10-15T00:28:43.708953+00:00"
+}
