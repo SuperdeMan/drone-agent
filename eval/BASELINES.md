@@ -553,3 +553,12 @@
 - **全量**：冻结代码 Windows 全量 1755 通过、1 项既有 Unix socket 跳过、0 失败 / 错误，JUnit 用时 865.633 秒；启动即启用进程级 high QoS，源码在测试期间未变。v1–v9 的 245 份历史文件逐字节未变，33 项来源记录与人工空字段原样保留。
 - **边界**：只读页面不登记人工结论、不变更模型分组、不计算准确率，不改在用画像、业务服务或控制链。v6 的 6 道路 / 13 实体登记工具与这里的 33 个提案 ID 不自动互换；人工确认仍为 0，P6 未准出。
 - **证据**：[操作说明](../docs/p6-proposal-viewer-guide.md)、[v10 包](s2/p6_candidates_v10/README.md)、[包回执](s2/p6_candidates_v10/package-receipt.json)、[最终浏览器回执](s2/p6_candidates_v10/browser-qa/final.json)、[看图记录](s2/p6_candidates_v10/visual-review.json)、[最终验证回执](../docs/verification/p6-proposal-viewer-2026-10-15.json)。
+
+## 2026-10-15 · 道路业务准入与计分核心（数据缺口仍为 missing）
+
+- **冻结**：`b56b8510f8418da6f60b5d023c7e3ee9a5f67635`，新增 `p6_business_eval.py`；用户指定本人复核并采用 D089 的数量与指标目标。协议为 `targets_approved_data_pending`，没有冻结正式清单或执行道路测试。
+- **软件验证**：Ruff、35 项新增针对性测试通过；同候选 Windows 全量 1790 通过、1 项既有 Unix socket 跳过、0 失败 / 错误，JUnit 854.095 秒。启动即启用进程级 high QoS，期间源码未变。计分区分独立资产主观察与重复采集，拒判进入漏检，QA / 标注时间不冒充候选复核，缺分母不填零。
+- **实际数据核对**：对旧 26 条开发材料执行最终准入检查，人工标签 0、正式拆分 0、结果 `missing`；已采用目标没有把缺少的数据变成通过。初始检查原件和最终绑定输入 / 源码摘要的结果同时保留。
+- **公开素材取得**：新增 FloodNet 118 张完整原图，逐图长度 / CRC / SHA 与完整解码核对通过；与旧 62 张无相同 SHA。另 490 张只取得拍摄头部，单列为不完整素材；所有新图隔离待标注。作者 13 GB 包下载超时、镜像锚点 2 张超时、扩充首轮 2 张超时均保留，后者仅续取缺失尾段后验证成功，未改写旧失败。
+- **边界**：新素材业务标签、地点 / 资产 / 批次身份和跨次状态均未确认；GPS 连通与感知相似只提供候选。本轮模型调用、真实人工计时、正式测试均为 0，不改变在用画像或业务服务，WP-P6-01 / P6 仍开放。
+- **证据**：[实施与目标](../docs/p6-business-evaluation.md)、[源码 / 输入入口](s2/road_business_v1/README.md)、[实际缺口结果](s2/road_business_v1/development-audit-final.json)、[来源采集记录](../docs/p6-floodnet-acquisition.md)、[同候选验证](../docs/verification/p6-business-evaluation-2026-10-15.json)。

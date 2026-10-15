@@ -1,0 +1,106 @@
+"""Read JPEG metadata from verified public ZIP byte ranges, without decoding scenes.
+
+从核对过范围的公开 ZIP 字节中读取 JPEG 元数据，不解码场景内容。
+"""
+import hashlib
+import io
+import json
+import re
+import struct
+import subprocess
+import zlib
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
+from pathlib import Path
+
+from PIL import Image
+
+ROOT = Path(__file__).resolve().parent
+INDEX = ROOT / "source-discovery/torchgeo-central-index.json"
+PLAN = ROOT / "floodnet/header-plan-512.json"
+OUTPUT = ROOT / "floodnet/header-inspection-512"
+
+
+def sha(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def save(path, value):
+    with path.open("x", encoding="utf-8") as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2, allow_nan=False)
+
+
+def inspect(entry):
+    ident = Path(entry["member"]).stem
+    if not re.fullmatch(r"[0-9]+", ident) or entry["method"] != 8 or entry["flags"] & 1:
+        raise ValueError("unexpected member")
+    start, end = entry["offset"], entry["offset"] + 65535
+    binary, headers = OUTPUT / "ranges" / (ident + ".bin"), OUTPUT / "ranges" / (ident + ".headers.txt")
+    url = "https://huggingface.co/datasets/torchgeo/floodnet/resolve/c5ea256ffb7832d5ae78cda3f4b812521faf32c5/floodnet.zip"
+    row = {"image_id": ident, "member": entry["member"], "started_at": datetime.now(timezone.utc).isoformat(),
+           "range": [start, end], "status": "failed", "full_image_acquired": False, "full_image_crc_verified": False,
+           "source_split_is_p6_split": False, "p6_split": "unassigned_quarantine", "business_label": None}
+    try:
+        result = subprocess.run(["curl.exe", "--fail", "--silent", "--show-error", "--location", "--max-time", "30",
+                                 "--max-filesize", "65536", "--range", f"{start}-{end}", "--dump-header", str(headers),
+                                 "--output", str(binary), url], capture_output=True, timeout=40)
+        row["curl_exit"] = result.returncode
+        if result.returncode:
+            raise ValueError("range transfer failed")
+        ranges = [line.split(":", 1)[1].strip() for line in headers.read_text(encoding="utf-8", errors="replace").splitlines()
+                  if line.lower().startswith("content-range:")]
+        if not ranges or ranges[-1] != f"bytes {start}-{end}/12835218313":
+            raise ValueError("unexpected response range")
+        raw = binary.read_bytes()
+        if len(raw) != 65536:
+            raise ValueError("incomplete response range")
+        fields = struct.unpack_from("<4s5H3I2H", raw)
+        signature, _, flags, method, _, _, _, _, _, nlen, xlen = fields
+        name = raw[30:30 + nlen].decode("utf-8" if flags & 2048 else "cp437")
+        if signature != b"PK\x03\x04" or name != entry["member"] or method != 8 or flags & 1:
+            raise ValueError("local header mismatch")
+        jpeg = zlib.decompressobj(-15).decompress(raw[30 + nlen + xlen:], 131072)
+        with Image.open(io.BytesIO(jpeg)) as picture:
+            exif = picture.getexif()
+            gps = exif.get_ifd(34853)
+            def degrees(value):
+                return float(value[0]) + float(value[1]) / 60 + float(value[2]) / 3600
+            location = None
+            if all(k in gps for k in (1, 2, 3, 4)):
+                location = [degrees(gps[2]) * (-1 if gps[1] == "S" else 1), degrees(gps[4]) * (-1 if gps[3] == "W" else 1)]
+            row.update(status="metadata_read", range_sha256=sha(raw), width=picture.width, height=picture.height,
+                       exif_make=str(exif.get(271, "")), exif_model=str(exif.get(272, "")),
+                       capture_time_text=str(exif.get(306, "")), capture_timezone=None, gps=location,
+                       source_declared_bytes=entry["original_bytes"], source_declared_crc32=entry["crc32"])
+    except Exception as error:
+        row["error"] = f"{type(error).__name__}: {error}"
+    row["finished_at"] = datetime.now(timezone.utc).isoformat()
+    save(OUTPUT / "receipts" / (ident + ".json"), row)
+    return row
+
+
+def main():
+    index, plan = (json.loads(p.read_text(encoding="utf-8")) for p in (INDEX, PLAN))
+    if plan["index_sha256"] != sha(INDEX.read_bytes()):
+        raise ValueError("plan index identity mismatch")
+    selected = set(plan["members"])
+    entries = [e for e in index["entries"] if e["member"] in selected]
+    if len(entries) != len(selected):
+        raise ValueError("planned members missing")
+    OUTPUT.mkdir(exist_ok=False)
+    (OUTPUT / "ranges").mkdir()
+    (OUTPUT / "receipts").mkdir()
+    rows = []
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for future in as_completed([pool.submit(inspect, e) for e in entries]):
+            rows.append(future.result())
+            if len(rows) % 40 == 0 or len(rows) == len(entries):
+                print(json.dumps({"completed": len(rows), "planned": len(entries), "metadata_read": sum(r["status"] == "metadata_read" for r in rows)}), flush=True)
+    save(OUTPUT / "result.json", {"format": "drone.floodnet-header-inventory/v1", "plan_sha256": sha(PLAN.read_bytes()),
+         "tool_sha256": sha(Path(__file__).read_bytes()), "index_sha256": sha(INDEX.read_bytes()),
+         "agent_semantic_inspection": False, "new_complete_images": 0, "human_business_labels": 0,
+         "rows": sorted(rows, key=lambda r: r["member"]), "formal_release_eligible": False})
+
+
+if __name__ == "__main__":
+    main()

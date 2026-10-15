@@ -1,0 +1,63 @@
+"""Recover only complete CRC-verified entries from an incomplete official ZIP download.
+
+只从未完整下载的官方 ZIP 中恢复完整且 CRC 通过的条目。
+"""
+import hashlib
+import json
+import struct
+import zlib
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent / "floodnet"
+SOURCE = ROOT / "FloodNet.zip.partial"
+OUTPUT = ROOT / "recovered-prefix-a"
+OUTPUT.mkdir(exist_ok=False)
+limit = SOURCE.stat().st_size
+entries = []
+reason = "end_of_prefix"
+with SOURCE.open("rb") as stream:
+    while stream.tell() + 30 <= limit:
+        offset = stream.tell()
+        header = stream.read(30)
+        if header[:4] != b"PK\x03\x04":
+            reason = "not_a_local_file_header"
+            break
+        signature, version, flags, method, mtime, mdate, expected_crc, compressed, uncompressed, name_len, extra_len = struct.unpack("<4s5H3I2H", header)
+        name = stream.read(name_len).decode("utf-8" if flags & 2048 else "cp437")
+        extra = stream.read(extra_len)
+        if flags & 9 or compressed == 0xffffffff or uncompressed == 0xffffffff or method not in (0, 8):
+            reason = "unsupported_entry_requires_complete_archive"
+            break
+        if stream.tell() + compressed > limit:
+            reason = "incomplete_entry_not_counted"
+            break
+        payload = stream.read(compressed)
+        data = payload if method == 0 else zlib.decompress(payload, -15)
+        crc = zlib.crc32(data) & 0xffffffff
+        if crc != expected_crc or len(data) != uncompressed:
+            reason = "crc_or_size_mismatch"
+            break
+        normalized = name.lstrip("/")
+        relative = Path(normalized)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("unsafe archive member")
+        if not normalized or name.endswith("/"):
+            continue
+        target = (OUTPUT / relative).resolve()
+        if not target.is_relative_to(OUTPUT.resolve()):
+            raise ValueError("archive member leaves output")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("xb") as destination:
+            destination.write(data)
+        entries.append({"archive_member": name, "file": target.relative_to(ROOT).as_posix(), "local_header_offset": offset,
+            "compressed_bytes": compressed, "bytes": len(data), "crc32": f"{crc:08x}",
+            "sha256": hashlib.sha256(data).hexdigest(), "crc_verified": True})
+receipt = {"format": "drone.floodnet-prefix-recovery/v1", "checked_at": datetime.now(timezone.utc).isoformat(),
+    "source_url": "https://github.com/BinaLab/FloodNet-Supervised_v1.0", "source_file": str(SOURCE),
+    "downloaded_prefix_bytes": limit, "complete_archive_verified": False, "stop_reason": reason,
+    "entries": entries, "recovery_script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    "photos_viewed_by_agent": 0, "business_labels_created": 0, "formal_release_eligible": False}
+(ROOT / "prefix-recovery.json").write_bytes((json.dumps(receipt, ensure_ascii=False, indent=2) + "\n").encode())
+print(json.dumps({"verified_entries": len(entries), "stop_reason": reason,
+    "first_entries": [e["archive_member"] for e in entries[:8]], "last_entries": [e["archive_member"] for e in entries[-3:]]}, ensure_ascii=False))

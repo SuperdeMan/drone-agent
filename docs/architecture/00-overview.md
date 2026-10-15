@@ -140,6 +140,7 @@ flowchart TB
 | [../p6-candidate-groups-development.md](../p6-candidate-groups-development.md) | 实体群协议六条实调合格：20 项候选 / 3 项范围外 / 10 项待复核；仍有定位矛盾，33 项未经人工确认 |
 | [../p6-proposal-viewer-guide.md](../p6-proposal-viewer-guide.md) | 固定提案 ID 的原图 / 模型视图与局部定位对照；只读开发工具，不登记人工结论 |
 | [../p6-business-evaluation.md](../p6-business-evaluation.md) | WP-P6-01 关闭主线：独立业务标注、道路数据准入、五类指标及冻结顺序；缺失证据不准出 |
+| [../p6-floodnet-acquisition.md](../p6-floodnet-acquisition.md) | 新增公开航拍原图、作者与镜像范围校验、拍摄元数据和未确认分组；完整原图与仅头部记录分开 |
 | [../p6-implementation.md](../p6-implementation.md) | P6 主动补拍与目标区域质量的实施方案（D078，2026-10-10 批准） |
 | [../p6-recapture-readiness.md](../p6-recapture-readiness.md) | WP-P6-02 验收记录（2026-10-10，`ecee452`，软件 / SITL 范围） |
 | [../p6-adversarial-implementation.md](../p6-adversarial-implementation.md) | WP-P6-03 真实模型对抗录制与规划器按站点取上下文的实施方案（D079） |
