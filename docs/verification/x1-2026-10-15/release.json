@@ -1,0 +1,835 @@
+{
+  "schema_version": "0.1.0",
+  "work_package": "WP-X1-01",
+  "decision_record": "D088",
+  "source_sha": "75cfde69dd588eaaeacf08b1392a3d36b3bfbb22",
+  "records_sha": "75cfde69dd588eaaeacf08b1392a3d36b3bfbb22",
+  "checked_at": "2026-10-15T05:25:39.794407+00:00",
+  "status": "passed",
+  "criteria": {
+    "scope": {
+      "status": "passed",
+      "base_sha": "57dabf3cb31292eaa3a36e613aa70100360bdea3",
+      "changed": 141,
+      "desk_changed": [],
+      "onboard_changed": [
+        "configs/platforms/px4_sitl_rover.yaml",
+        "configs/recovery_policies/rover_campus_v1.yaml",
+        "configs/skills/ground/arm.yaml",
+        "configs/skills/ground/disarm.yaml",
+        "configs/skills/ground/nav_to.yaml",
+        "configs/skills/ground/recheck.yaml",
+        "configs/skills/ground/return_home.yaml",
+        "configs/skills/ground/stop.yaml",
+        "proto/contract-fields.json",
+        "proto/drone/contracts/v1/contracts.proto",
+        "proto/drone/fleet/v1/fleet.proto",
+        "src/drone_agent/adapters/px4_mavsdk.py",
+        "src/drone_agent/contracts/capability.py",
+        "src/drone_agent/contracts/recovery.py",
+        "src/drone_agent/guardian/core.py",
+        "src/drone_agent/mission/executive.py",
+        "src/drone_agent/mission/ground.py",
+        "src/drone_agent/mission/reachability.py",
+        "src/drone_agent/mission/registry.py",
+        "src/drone_agent/mission/verify.py",
+        "src/drone_agent/runtime/launch.py",
+        "src/drone_agent/runtime/uplink.py"
+      ],
+      "approved_outside_code": [
+        ".github/workflows/checks.yml"
+      ],
+      "regressions_required": [
+        "m1",
+        "m2_e2e",
+        "m3_suite"
+      ]
+    },
+    "checks": {
+      "status": "passed",
+      "deployment_id": "20261014T135328Z-856a9b1f",
+      "tests": {
+        "tests": 1749,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "wire_checks": [
+        true,
+        true
+      ]
+    },
+    "adversarial": {
+      "status": "passed",
+      "deterministic": {
+        "cases": 42,
+        "passed": 42,
+        "authorized_packages": 0,
+        "per_category": {
+          "wrong_coordinates": 7,
+          "capability": 6,
+          "parameters": 8,
+          "order": 7,
+          "prompt_injection": 7,
+          "scope_expansion": 7
+        }
+      },
+      "nl_scripted": {
+        "cases": 32,
+        "passed": 32,
+        "authorized_packages": 0,
+        "per_category": {
+          "wrong_coordinates": 5,
+          "capability": 5,
+          "parameters": 5,
+          "order": 5,
+          "prompt_injection": 6,
+          "scope_expansion": 6
+        }
+      },
+      "nl_replay": {
+        "cases": 0,
+        "passed": 0,
+        "authorized_packages": 0,
+        "per_category": {
+          "wrong_coordinates": 0,
+          "capability": 0,
+          "parameters": 0,
+          "order": 0,
+          "prompt_injection": 0,
+          "scope_expansion": 0
+        },
+        "unrecorded": 32
+      }
+    },
+    "s0": {
+      "status": "passed",
+      "cases": 39,
+      "expected": 39,
+      "counts": {
+        "double_ownership": 0,
+        "duplicate_execution": 0,
+        "lost_task": 0,
+        "handoff_protocol": 0,
+        "false_success": 0,
+        "wrong_outcome": 0,
+        "ground_containment": 0,
+        "envelope_grant": 0,
+        "apron_conflict": 0,
+        "ground_overspeed": 0
+      },
+      "metrics": {
+        "handoff_success": 0.733,
+        "recheck_completion": 0.667,
+        "aerial_error_m": {
+          "n": 27,
+          "p50": 0.0,
+          "p95": 0.009,
+          "p99": 0.009,
+          "max": 0.009
+        },
+        "ground_error_m": {
+          "n": 12,
+          "p50": 0.045,
+          "p95": 0.143,
+          "p99": 0.143,
+          "max": 0.143
+        },
+        "ack_latency_s": {
+          "n": 33,
+          "p50": 0.292,
+          "p95": 18.0,
+          "p99": 18.795,
+          "max": 18.795
+        },
+        "offer_to_completed_s": {
+          "n": 33,
+          "p50": 19.633,
+          "p95": 50.172,
+          "p99": 52.419,
+          "max": 52.419
+        }
+      },
+      "voided_attempts": 0,
+      "problems": [],
+      "summary_sha256": "46df2f92139f7d933be10d1f7a824f3032087603d82167ab843e5c69a649e909"
+    },
+    "p_regression": {
+      "status": "passed",
+      "p1": {
+        "status": "passed",
+        "cases": 42,
+        "expected": 42,
+        "passed": 42,
+        "counts": {
+          "wrong_dispatch": 0,
+          "duplicate_dispatch": 0,
+          "wrong_release": 0,
+          "project_escape": 0,
+          "false_success": 0
+        },
+        "voided_attempts": 0,
+        "problems": [],
+        "summary_sha256": "00db1c3793bbddeb9b912c215d7e8b29e7504f5471b1261f6af98eb79fa449c8"
+      },
+      "p2": {
+        "status": "passed",
+        "cases": 45,
+        "expected": 45,
+        "passed": 45,
+        "counts": {
+          "duplicate_dispatch": 0,
+          "post_cancel_dispatch": 0,
+          "post_cancel_successor": 0,
+          "false_success": 0,
+          "false_order": 0,
+          "project_escape": 0,
+          "lost_run": 0,
+          "wrong_dispatch": 0,
+          "wrong_release": 0
+        },
+        "voided_attempts": 0,
+        "problems": [],
+        "summary_sha256": "708ce53f3e37490a34000d843281900036c455c9a4f0d8ad719a8abf17f5da87"
+      },
+      "p3": {
+        "status": "passed",
+        "cases": 45,
+        "expected": 45,
+        "passed": 45,
+        "counts": {
+          "double_ownership": 0,
+          "duplicate_execution": 0,
+          "lost_task": 0,
+          "conflicting_reservation": 0,
+          "false_success": 0,
+          "stale_epoch_effect": 0,
+          "decision_mismatch": 0,
+          "project_escape": 0,
+          "wrong_dispatch": 0,
+          "duplicate_dispatch": 0,
+          "wrong_release": 0
+        },
+        "voided_attempts": 0,
+        "problems": [],
+        "summary_sha256": "15a625418991895f14711d07db07385f4fc7cdbefdd4f262f3549b51d973a678"
+      },
+      "p4": {
+        "status": "passed",
+        "cases": 45,
+        "expected": 45,
+        "passed": 45,
+        "counts": {
+          "duplicate_finding": 0,
+          "duplicate_order": 0,
+          "unreviewed_order": 0,
+          "non_human_decision": 0,
+          "false_closure": 0,
+          "unverified_analysis": 0,
+          "verdict_mutation": 0,
+          "post_cancel_effect": 0,
+          "lost_job": 0,
+          "default_verdict": 0,
+          "project_escape": 0,
+          "duplicate_dispatch": 0,
+          "post_cancel_dispatch": 0,
+          "false_success": 0,
+          "wrong_dispatch": 0,
+          "wrong_release": 0
+        },
+        "voided_attempts": 0,
+        "problems": [],
+        "summary_sha256": "e850fcf269f92b3b1737319dc1fd49023ba8146c57af5cf4be081002feda7d29"
+      },
+      "p5": {
+        "status": "passed",
+        "s0": {
+          "status": "passed",
+          "cases": 24,
+          "expected": 24,
+          "counts": {
+            "duplicate_finding": 0,
+            "duplicate_order": 0,
+            "unreviewed_order": 0,
+            "non_human_decision": 0,
+            "false_closure": 0,
+            "unverified_analysis": 0,
+            "verdict_mutation": 0,
+            "post_cancel_effect": 0,
+            "lost_job": 0,
+            "default_verdict": 0,
+            "project_escape": 0,
+            "duplicate_dispatch": 0,
+            "post_cancel_dispatch": 0,
+            "false_success": 0,
+            "wrong_dispatch": 0,
+            "wrong_release": 0,
+            "duplicate_execution": 0,
+            "post_cancel_execution": 0,
+            "low_level_command": 0,
+            "unknown_as_success": 0,
+            "journal_defect": 0
+          },
+          "problems": [],
+          "summary_sha256": "7adf0c9d9686fbb89f59974bf15754ad41ec38bef85ca2713901cc2055fc573f"
+        },
+        "s3": {
+          "status": "passed",
+          "cases": 36,
+          "expected": 36,
+          "counts": {
+            "duplicate_finding": 0,
+            "duplicate_order": 0,
+            "unreviewed_order": 0,
+            "non_human_decision": 0,
+            "false_closure": 0,
+            "unverified_analysis": 0,
+            "verdict_mutation": 0,
+            "post_cancel_effect": 0,
+            "lost_job": 0,
+            "default_verdict": 0,
+            "project_escape": 0,
+            "duplicate_dispatch": 0,
+            "post_cancel_dispatch": 0,
+            "false_success": 0,
+            "wrong_dispatch": 0,
+            "wrong_release": 0,
+            "duplicate_execution": 0,
+            "post_cancel_execution": 0,
+            "low_level_command": 0,
+            "unknown_as_success": 0,
+            "journal_defect": 0
+          },
+          "problems": [],
+          "summary_sha256": "7adf0c9d9686fbb89f59974bf15754ad41ec38bef85ca2713901cc2055fc573f"
+        }
+      },
+      "p6": {
+        "status": "passed",
+        "cases": 30,
+        "expected": 30,
+        "counts": {
+          "duplicate_finding": 0,
+          "duplicate_order": 0,
+          "unreviewed_order": 0,
+          "non_human_decision": 0,
+          "false_closure": 0,
+          "unverified_analysis": 0,
+          "verdict_mutation": 0,
+          "post_cancel_effect": 0,
+          "lost_job": 0,
+          "default_verdict": 0,
+          "project_escape": 0,
+          "duplicate_dispatch": 0,
+          "post_cancel_dispatch": 0,
+          "false_success": 0,
+          "wrong_dispatch": 0,
+          "wrong_release": 0,
+          "unallowed_recapture": 0,
+          "excess_recapture": 0,
+          "recapture_mismatch": 0,
+          "refused_capture_verdict": 0,
+          "selection_mismatch": 0,
+          "quality_mismatch": 0
+        },
+        "metrics": {
+          "recaptures": 30,
+          "recaptured_completions": 21,
+          "failed_after_recapture": 6,
+          "false_suspected_control": 3,
+          "false_suspected_recapture": 0
+        },
+        "voided_attempts": 0,
+        "problems": [],
+        "summary_sha256": "a963a98146be5c50d9a0766644116fab70cae3d987e1f92d72074d0c7bf088e7"
+      },
+      "authz": {
+        "status": "passed",
+        "escapes": 0,
+        "api_rows": 605,
+        "frame_rows": 280,
+        "methods": 55,
+        "forbidden_refused": 573,
+        "audit_denials": 128,
+        "identities": [
+          "a2a",
+          "admin",
+          "anonymous",
+          "approver",
+          "dock_backend",
+          "event_backend",
+          "non_member",
+          "operator",
+          "other_project",
+          "reviewer",
+          "viewer"
+        ],
+        "catalogs": "p6_desk_v1 workflows and business"
+      },
+      "p6_assets": {
+        "status": "passed",
+        "cases": 18,
+        "expected": 18,
+        "counts": {
+          "duplicate_finding": 0,
+          "duplicate_order": 0,
+          "unreviewed_order": 0,
+          "non_human_decision": 0,
+          "false_closure": 0,
+          "unverified_analysis": 0,
+          "verdict_mutation": 0,
+          "post_cancel_effect": 0,
+          "lost_job": 0,
+          "default_verdict": 0,
+          "project_escape": 0,
+          "duplicate_dispatch": 0,
+          "post_cancel_dispatch": 0,
+          "false_success": 0,
+          "wrong_dispatch": 0,
+          "wrong_release": 0,
+          "unallowed_recapture": 0,
+          "excess_recapture": 0,
+          "recapture_mismatch": 0,
+          "refused_capture_verdict": 0,
+          "selection_mismatch": 0,
+          "quality_mismatch": 0,
+          "archive_observation_mismatch": 0,
+          "archive_event_mismatch": 0,
+          "archive_authority_mismatch": 0,
+          "archive_model_field": 0,
+          "archive_attribution": 0
+        },
+        "voided_attempts": 0,
+        "problems": [],
+        "summary_sha256": "b1f572c69d297c7ce21bf9766c156b69eccd5bef3e4c9aaccc841bc2277a9da8"
+      }
+    },
+    "s1": {
+      "status": "passed",
+      "cases": 15,
+      "expected": 15,
+      "missing": [],
+      "problems": [],
+      "counts": {
+        "double_ownership": 0,
+        "duplicate_execution": 0,
+        "lost_task": 0,
+        "handoff_protocol": 0,
+        "false_success": 0,
+        "wrong_outcome": 0,
+        "ground_containment": 0,
+        "envelope_grant": 0,
+        "apron_conflict": 0,
+        "ground_overspeed": 0
+      },
+      "runs": 27,
+      "metrics": {
+        "x1_cancel_during_recheck-7": {
+          "ack_latency_s": [
+            1.365
+          ],
+          "acked": 1,
+          "aerial_error_m": [
+            0.189
+          ],
+          "attempted": 1,
+          "concluded": 0,
+          "ground_error_m": [],
+          "offer_to_completed_s": [
+            41.18
+          ],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_cancel_during_recheck-19": {
+          "ack_latency_s": [
+            1.401
+          ],
+          "acked": 1,
+          "aerial_error_m": [
+            0.244
+          ],
+          "attempted": 1,
+          "concluded": 0,
+          "ground_error_m": [],
+          "offer_to_completed_s": [
+            43.293
+          ],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_cancel_during_recheck-41": {
+          "ack_latency_s": [
+            1.412
+          ],
+          "acked": 1,
+          "aerial_error_m": [
+            0.034
+          ],
+          "attempted": 1,
+          "concluded": 0,
+          "ground_error_m": [],
+          "offer_to_completed_s": [
+            43.248
+          ],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_link_loss_driving-7": {
+          "ack_latency_s": [
+            1.388
+          ],
+          "acked": 1,
+          "aerial_error_m": [
+            0.231
+          ],
+          "attempted": 1,
+          "concluded": 1,
+          "ground_error_m": [
+            0.362
+          ],
+          "offer_to_completed_s": [
+            45.066
+          ],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_link_loss_driving-19": {
+          "ack_latency_s": [
+            1.407
+          ],
+          "acked": 1,
+          "aerial_error_m": [
+            0.173
+          ],
+          "attempted": 1,
+          "concluded": 1,
+          "ground_error_m": [
+            0.208
+          ],
+          "offer_to_completed_s": [
+            43.012
+          ],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_link_loss_driving-41": {
+          "ack_latency_s": [
+            1.378
+          ],
+          "acked": 1,
+          "aerial_error_m": [
+            0.13
+          ],
+          "attempted": 1,
+          "concluded": 1,
+          "ground_error_m": [
+            0.217
+          ],
+          "offer_to_completed_s": [
+            42.466
+          ],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_nominal-7": {
+          "ack_latency_s": [
+            1.362
+          ],
+          "acked": 1,
+          "aerial_error_m": [
+            0.215
+          ],
+          "attempted": 1,
+          "concluded": 1,
+          "ground_error_m": [
+            0.395
+          ],
+          "offer_to_completed_s": [
+            44.523
+          ],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_nominal-19": {
+          "ack_latency_s": [
+            1.336
+          ],
+          "acked": 1,
+          "aerial_error_m": [
+            0.298
+          ],
+          "attempted": 1,
+          "concluded": 1,
+          "ground_error_m": [
+            0.474
+          ],
+          "offer_to_completed_s": [
+            45.545
+          ],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_nominal-41": {
+          "ack_latency_s": [
+            1.38
+          ],
+          "acked": 1,
+          "aerial_error_m": [
+            0.128
+          ],
+          "attempted": 1,
+          "concluded": 1,
+          "ground_error_m": [
+            0.255
+          ],
+          "offer_to_completed_s": [
+            40.486
+          ],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_not_found-7": {
+          "ack_latency_s": [
+            1.357
+          ],
+          "acked": 1,
+          "aerial_error_m": [
+            0.186
+          ],
+          "attempted": 1,
+          "concluded": 1,
+          "ground_error_m": [],
+          "offer_to_completed_s": [
+            45.183
+          ],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_not_found-19": {
+          "ack_latency_s": [
+            1.376
+          ],
+          "acked": 1,
+          "aerial_error_m": [
+            0.254
+          ],
+          "attempted": 1,
+          "concluded": 1,
+          "ground_error_m": [],
+          "offer_to_completed_s": [
+            47.126
+          ],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_not_found-41": {
+          "ack_latency_s": [
+            1.427
+          ],
+          "acked": 1,
+          "aerial_error_m": [
+            0.115
+          ],
+          "attempted": 1,
+          "concluded": 1,
+          "ground_error_m": [],
+          "offer_to_completed_s": [
+            44.577
+          ],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_unreachable-7": {
+          "ack_latency_s": [],
+          "acked": 0,
+          "aerial_error_m": [
+            0.139
+          ],
+          "attempted": 1,
+          "concluded": 0,
+          "ground_error_m": [],
+          "offer_to_completed_s": [],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_unreachable-19": {
+          "ack_latency_s": [],
+          "acked": 0,
+          "aerial_error_m": [
+            0.09
+          ],
+          "attempted": 1,
+          "concluded": 0,
+          "ground_error_m": [],
+          "offer_to_completed_s": [],
+          "offers": 1,
+          "rechecks": 1
+        },
+        "x1_unreachable-41": {
+          "ack_latency_s": [],
+          "acked": 0,
+          "aerial_error_m": [
+            0.123
+          ],
+          "attempted": 1,
+          "concluded": 0,
+          "ground_error_m": [],
+          "offer_to_completed_s": [],
+          "offers": 1,
+          "rechecks": 1
+        }
+      }
+    },
+    "m1_regression": {
+      "phase": "M1",
+      "status": "passed",
+      "cases": 66,
+      "classifications": {
+        "completed": 18,
+        "safe_abort": 48
+      }
+    },
+    "m2_e2e": {
+      "phase": "M2",
+      "status": "passed",
+      "cases": 18,
+      "expected": 18,
+      "missing": [],
+      "problems": [],
+      "planner": [
+        "scripted"
+      ],
+      "false_success_reports": 0
+    },
+    "m3_suite": {
+      "phase": "M3",
+      "status": "passed",
+      "expected": 48,
+      "passed": 48,
+      "missing": [],
+      "problems": [],
+      "void": [],
+      "void_rate": 0.0,
+      "false_success_reports": 0
+    },
+    "p3_s1_regression": {
+      "phase": "P3",
+      "status": "passed",
+      "cases": 5,
+      "expected": 5,
+      "missing": [],
+      "problems": [],
+      "counts": {
+        "double_ownership": 0,
+        "duplicate_execution": 0,
+        "lost_task": 0,
+        "conflicting_reservation": 0,
+        "false_success": 0,
+        "stale_epoch_effect": 0,
+        "decision_mismatch": 0,
+        "project_escape": 0,
+        "wrong_dispatch": 0,
+        "duplicate_dispatch": 0,
+        "wrong_release": 0
+      },
+      "flights": 9,
+      "aircraft": [
+        "uav_01",
+        "uav_02"
+      ]
+    },
+    "historical": {
+      "status": "passed",
+      "problems": [],
+      "records": {
+        "docs/verification/asset-archive-2026-10-13/release.json": {
+          "sha256": "6fba9e2c6e1e2ae244f964e969d86df3fff2254be398ebd671c1d1a0b8b2dea1",
+          "commit": "57dabf3"
+        },
+        "docs/verification/capacity-retention-2026-10-12/release.json": {
+          "sha256": "4a7459273f752bb86dc540f60b5a28479ef3ad9fac9ff1971956c2c9740f5c0c",
+          "commit": "cd327cb"
+        },
+        "docs/verification/fine-reservations-2026-10-12/release.json": {
+          "sha256": "92918d63f8ef3b6d6042a8e923f339af5743ed40039e507d164e3b890d56a80c",
+          "commit": "5b49d3f"
+        },
+        "docs/verification/explain-check-2026-10-12/release.json": {
+          "sha256": "3c7bbd9e155fd47bc42766d9e61e8b5acc98aa46780f3e419423c9b2f63b9dcd",
+          "commit": "a80beb4"
+        },
+        "docs/verification/p6-recapture-2026-10-10/release.json": {
+          "sha256": "5963d5e659ff18f4e6aecf37db09a7e0dffaf7bf8f6ecc575e571f56060ab735",
+          "commit": "3e83cb2"
+        },
+        "docs/verification/p6-adversarial-2026-10-11/release.json": {
+          "sha256": "f2d61c62bb4e70ac583299ea15ed7bd96a570025659a7f525783d217e79d68ec",
+          "commit": "017970e"
+        },
+        "docs/verification/m3-2026-09-25/release.json": {
+          "sha256": "b7c4a6fe95a9e5ee63b043b9a84843f54f1693a5e5ab00f9e43f26917e0d12eb",
+          "commit": "0f232d7"
+        },
+        "docs/verification/p5-2026-10-06/release.json": {
+          "sha256": "131b95cdace0cd21239cb1a692d963d7fd5531dbd6d5590144a1b63c886565a5",
+          "commit": "32dcb70"
+        }
+      }
+    }
+  },
+  "capabilities": [
+    {
+      "capability": "air_ground_handoff_v1",
+      "work_package": "WP-X1-01",
+      "decision": "D088",
+      "software_validation": "passed",
+      "source_sha": "75cfde69dd588eaaeacf08b1392a3d36b3bfbb22",
+      "layers": {
+        "S0": {
+          "logical_aircraft": 2,
+          "logical_ground_robots": 2
+        },
+        "S1": {
+          "px4_sitl_aircraft": 1,
+          "px4_sitl_rovers": 1,
+          "world": "one Gazebo world"
+        }
+      },
+      "real_ground_robot": false,
+      "nav2": false,
+      "real_cameras": false,
+      "approval": "every aircraft and ground mission approved by a person"
+    }
+  ],
+  "inputs": {
+    "docs/verification/x1-2026-10-15/deployment-75cfde6.json": "a7ad3a7b7220cb02a3b3cc118003e47bd381788856316fc9fd8ac10bc55953d9",
+    "docs/verification/x1-2026-10-15/s1/batch1-attempt1.json": "80f301721f3aa0676ad533adc482e9a5f1dd30a360d43944d722a2ac822fbdcb",
+    "docs/verification/x1-2026-10-15/s1/batch2-attempt1.json": "c5966933baf10e6697c9f1e91f1339b33c5fc0c5c300dbd75f6c9d157f2fe5dc",
+    "docs/verification/x1-2026-10-15/s1/batch3-attempt1.json": "b696fbadff11dc4af1062785110e9e673a68ad5a34996ddf47307eb1982b5e21",
+    "docs/verification/x1-2026-10-15/m1/batch1-attempt1.json": "44a711f6dfebb25d7c20b765cb8026c0fe48e478eeb0c3d7a4d275acf3012d5e",
+    "docs/verification/x1-2026-10-15/m1/batch10-attempt4.json": "21e0e19281a6f8145b0f0df493ddc42c7dc0b21ecc364e81a6f291e3b721fcab",
+    "docs/verification/x1-2026-10-15/m1/batch11-attempt4.json": "22a54ae2326d7432203157602ec8e6cd03dee36b3d75a81d42723751b38b05c1",
+    "docs/verification/x1-2026-10-15/m1/batch2-attempt1.json": "266e74860da4f57e2b255530e47ee2b1c0ef8f26f10a923c867cea5fc65a69fd",
+    "docs/verification/x1-2026-10-15/m1/batch3-attempt1.json": "c9ddb78437b05caad4c120362788e38b972b40e2a06878a508335ae683510637",
+    "docs/verification/x1-2026-10-15/m1/batch4-attempt1.json": "2046f2d445ea281e407f32ec91cb501e360f25dccb692bc2b9ea1647be8347c7",
+    "docs/verification/x1-2026-10-15/m1/batch5-attempt2.json": "271a9a146ec6378b720a5f517e7df0f1e47f9c8cab8f4ca287d11056dc01436b",
+    "docs/verification/x1-2026-10-15/m1/batch6-attempt1.json": "3f95b11aa96b51dc6b63974deeeee73ceaeb1752a6ceb4236bcf54ebbdc6c8a5",
+    "docs/verification/x1-2026-10-15/m1/batch7-attempt4.json": "1a7133f810afe52328917b6b2f2c9eb835f98768325b148123ac5380197232cc",
+    "docs/verification/x1-2026-10-15/m1/batch8-attempt4.json": "36948d67d7196e231f2cc6456f1a594924a4674cbf8baf9a54f383faac2150e1",
+    "docs/verification/x1-2026-10-15/m1/batch9-attempt4.json": "0d2ae7b42dd5e087f09423cfae2f52b634fad102cff1b532139af9a4f665f4bc",
+    "docs/verification/x1-2026-10-15/m2/batch1-attempt1.json": "15fc2ff020604adc17acd73b643f280a30940851cb11377e160c3fe26b5e408d",
+    "docs/verification/x1-2026-10-15/m2/batch2-attempt3.json": "37279c70377f499b798433577fda4e112794147d3f245348d7debafb80fff1b5",
+    "docs/verification/x1-2026-10-15/m2/batch3-attempt1.json": "1c6fc7bdcddaddb6c2ac22b1cf0b1860a304d911243cc1fb3561fd8ce9f830ed",
+    "docs/verification/x1-2026-10-15/m3/batch1-attempt1.json": "9f3644045c985064a31d4f2587718c08c1456499e5a461505fa79a54893b7d14",
+    "docs/verification/x1-2026-10-15/m3/batch2-attempt1.json": "2033dfad7fd7b5ccc6c98016aa0d13988f87c9a7c3a57a9d9c1b0db6260072bb",
+    "docs/verification/x1-2026-10-15/m3/batch3-attempt1.json": "13f3d2882975e7443c5aee247297cef42bcfb0e74e79e14838429efba8c13ac3",
+    "docs/verification/x1-2026-10-15/m3/batch4-attempt1.json": "136a4b6d5f1ba1a06b97da2080396e76fc62a6cd1c2646fccc8c0bf58c7d330e",
+    "docs/verification/x1-2026-10-15/m3/batch5-attempt1.json": "80ec1ca2cb2c6a84cd3a6e4af2335a1eab323856e9ab79737c354ace2797196b",
+    "docs/verification/x1-2026-10-15/m3/batch6-attempt1.json": "965e0e0579d605f4851f82e0ed4e389f8648f6087ad5cfab85ca6ca62ff3474e",
+    "docs/verification/x1-2026-10-15/m3/batch7-attempt2.json": "556036490fa89ab6f9db8bb5a0cd5e86d08deefdc6ea1b3fbb109ac3196afe8b",
+    "docs/verification/x1-2026-10-15/m3/batch8-attempt1.json": "7da0ffd6dc4bdd99e29fef74c26375fc932387da9b5392bd98a98967b6d61e98",
+    "docs/verification/x1-2026-10-15/p3/batch1-attempt1.json": "60d950f1499a1926396096cfd39170156053d274dd491a82ff822de91a098289",
+    "docs/verification/x1-2026-10-15/p3/batch2-attempt1.json": "af9ca47a6944f766eb048a9b8d42351c40c96b3a620a0c2b971b7fb06ba89f88"
+  }
+}

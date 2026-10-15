@@ -250,9 +250,9 @@ M3 不改 `drone.contracts.v1`、`drone.control.v1` 与 `drone.fleet.v1` 已冻�
 
 新增服务侧对象统一带 schema_version，项目权限由服务端校验。P0/P1 的运营元数据留在云端；跨到机载的任何新增执行绑定必须另行定义兼容字段、进入哈希 / 签名边界并跑 wire 检查，不能藏入自由 JSON 绕过冻结。
 
-## 13. X1 增量（D088，目标设计）
+## 13. X1 增量（D088，2026-10-15 在 SITL 准出）
 
-语义与安全边界见[安全体系 §12](03-safety.md) 与 [X1 实施方案](../x1-implementation.md)。下面的 wire 变化全部只增，不改既有字段号与含义；字段号在实施时定稿，并过契约字段核对与 wire 锁更新。
+语义与安全边界见[安全体系 §12](03-safety.md) 与 [X1 实施方案](../x1-implementation.md)，验证见 [X1 验收记录](../x1-readiness.md)。下面的 wire 变化全部只增，不改既有字段号与含义；字段号已在实施中定稿（如 `RobotStatus.ground_phase = 13`、`RECOVERY_BEHAVIOR_STOP = 7`、`DELIVERY_KIND_HANDOFF_OFFER = 3`），契约字段清单与 wire 锁随之更新，候选的云端检查中 wire 核对全部通过。
 
 | 对象 | 增量 |
 |---|---|

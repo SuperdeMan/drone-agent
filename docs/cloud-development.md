@@ -289,3 +289,13 @@ P0 的 `verify_p0_release.py` 用法与证据见 [P0 记录](p0-readiness.md)。
 P1/P2 联调复用现有云端单机 mission_upload 与项目锁，不需要 Jetson。P3 的两机同世界拓扑与容量预算见 D061；S0 的 10/30/100 逻辑节点规模与 S1 物理实例数分别记录。保持 guardian 独立配额、项目隔离与按需 SITL，不自动改动其他项目或系统配置。
 
 H1 承接 M3-JIL。原 `verify_m3_release.py` 的总门禁仍会因 JIL 缺席而 `not_passed`；P 系列未来门禁单列所需软件能力与硬件缺项，不覆盖历史结果。运营存储 schema / 迁移的具体方案先完成审查并按项目红线获批，再实施（D056、D058 均已获批）。
+
+## X1 空地联合仿真（2026-10-15，D088）
+
+| 用途 | 命令 | 说明 |
+|---|---|---|
+| S0 矩阵 | `uv run python -m drone_agent.eval.x1_world --output <目录> [--scenario …] [--seeds …]` | 本机即可运行；13 场景 × 3 种子：P4 世界按 `--air-ground` 装配调度器与交接引擎，逻辑飞行器与逻辑地面车各 2 台（真实 uplink / guardian / executive）；独立裁判 `eval/judge_x1.py` 在线与回放各判一次，十项必须为零的计数；时间敏感，以高 QoS 运行 |
+| S1 用例 | `uv run python scripts/dev_stack.py x1 --scenario all [--seeds 7] [--keep-going]` | 云端 X1 仿真镜像（`sim/x1.Dockerfile`）：一个无界面 Gazebo 世界，PX4 实例 0 为 x500 `uav_01`，实例 1 为差速地面车 `ugv_01`（飞控限速 `RO_SPEED_LIM` 1.0）；执行器先停本项目空闲 SITL、选空闲私网段、等安静窗口；编排经 Gazebo 服务放置 / 移除方块、断开地面车 uplink 12 s、取消后把车送回停车位（`set_pose`）；裁判 `--layer s1` 在线与回放各一次，按两路 Gazebo 真值核对，含地面车超速；共 5 例 |
+| 发布门禁 | `uv run python scripts/verify_x1_release.py ...` | 当场重跑 X1 与 P1–P6 S0；见 [X1 验收记录](x1-readiness.md) |
+
+`dev_stack.py fetch` 的运行名校验目前只接受 `m*` / `p*`，X1 的 `x1-<运行ID>` 还不能拉取与生成证据浏览器（接手项）。常驻任务台不接入 X1：服务只有带 `--air-ground`（须同时带 `--scheduling` 与 `--business`）时才迁移交接表并挂上交接引擎。

@@ -40,7 +40,7 @@
 
 ## 3. 总体分层
 
-**目标架构。** 当前链路在 SITL 中覆盖空中一侧的 L0–L6：M1 / M2 的 PX4/MAVSDK 航线路径，加上 M3 的 L4 局部自主（px4_ros2 外部模式，经 guardian 的 CBF 过滤与短时授权，M3-SITL 已验证，Jetson-in-the-loop 待硬件）；运营层在 P1–P5 引入；地面机器人在 P3 后的 X1 / H3 引入，其他飞控与学习策略按后续里程碑接入。M2 的协调器只为单机分配任务，协同规则只记录不执行。
+**目标架构。** 当前链路在 SITL 中覆盖空中一侧的 L0–L6：M1 / M2 的 PX4/MAVSDK 航线路径，加上 M3 的 L4 局部自主（px4_ros2 外部模式，经 guardian 的 CBF 过滤与短时授权，M3-SITL 已验证，Jetson-in-the-loop 待硬件）；运营层在 P1–P5 引入；地面一侧由 X1 在 SITL 中验证（D088）：PX4 差速地面车经协调器交接接受地面复核，用同一套机载 uplink / executive / guardian 以 PX4 任务模式行驶（地面 L4 的 Nav2 留给 X1-02），真实地面平台在 H3 引入，其他飞控与学习策略按后续里程碑接入。M2 的协调器只为单机分配任务，协同规则只记录不执行。
 
 ```mermaid
 flowchart TB
@@ -71,32 +71,35 @@ flowchart TB
     guardian -->|"CBF 过滤后的短时授权"| egress
     egress -->|"uXRCE-DDS · 外部模式"| flightController
 
-    groundExecutive["L3 地面任务执行 · X1 / H3 计划"]
-    groundAutonomy["L4 导航与操作"]
-    groundGuardian["L5 本体安全监督"]
-    groundAdapter["L6 地面平台适配"]
-    groundController["本体控制器"]
+    groundExecutive["L3 地面任务执行 · X1 SITL"]
+    groundAutonomy["L4 导航与操作 · X1-02 / H3 计划"]
+    groundGuardian["L5 本体安全监督 · X1 SITL"]
+    groundAdapter["L6 PX4 地面车适配（guardian 内）"]
+    groundController["PX4 差速地面车控制与失效保护"]
 
-    admission -.->|"授权任务包 · 规划中"| groundExecutive
+    admission -->|"交接后的签名任务包 · 地面车 uplink"| groundExecutive
+    groundExecutive -->|"地面技能意图"| groundGuardian
     groundExecutive -.-> groundAutonomy
     groundAutonomy -.-> groundGuardian
-    groundGuardian -.-> groundAdapter
-    groundAdapter -.-> groundController
+    groundGuardian --> groundAdapter
+    groundAdapter -->|"PX4 任务模式 · 飞控限速"| groundController
 
     classDef implemented stroke:#277563,stroke-width:2px
     classDef planned stroke:#8793a3,stroke-dasharray:5 4
     classDef safety stroke:#b88219,stroke-width:3px
     class entry,planner,admission,uplink,executive,autonomy,egress,adapter,flightController implemented
-    class groundExecutive,groundAutonomy,groundGuardian,groundAdapter,groundController planned
-    class guardian safety
+    class groundExecutive,groundAdapter,groundController implemented
+    class groundAutonomy planned
+    class guardian,groundGuardian safety
 ```
 
-实线表示当前执行路径（M1 / M2 的航线路径与 M3 的外部模式路径，后者在 SITL 中验证），虚线及标注“计划”的节点表示后续扩展；金色边框的 guardian 是唯一决定写与不写的进程，出口节点只是它在 ROS 2 一侧的延伸（D039）。图中表示任务与控制意图的下行关系，观测、证据和状态按同一边界回传。
+实线表示当前执行路径（M1 / M2 的航线路径与 M3 的外部模式路径，后者在 SITL 中验证；X1 的地面车航线路径也只在 SITL 中验证），虚线及标注“计划”的节点表示后续扩展；金色边框的 guardian 是各本体上唯一决定写与不写的进程，出口节点只是它在 ROS 2 一侧的延伸（D039）。图中表示任务与控制意图的下行关系，观测、证据和状态按同一边界回传。
 
 - **L0–L2**：Web / A2A / API 入口；Planner、只读工具、Catalog、业务账本与证据复核；确定性编译、准入及审批签名。M2 的 Coordinator 为单机直通；P3 起调度器跨站点、跨飞行器分配任务并独占航迹经过的空域单元，近距离协同与编队不在范围内。
 - **机载边界**：独立 uplink 拉取任务包；executive 与 guardian 各自验签；飞控连接只在 guardian 内，飞控失效保护与 RC / GCS 接管始终保留。
 - **L4（M3，SITL）**：定位健康、深度局部地图与短时域规划、颜色特征感知与事件检测；规划片段只是候选，guardian 过滤后以短时授权经出口节点下发，学习策略只影子运行（D039–D048）。
-- **后续扩展**：Jetson-in-the-loop（H1）与受限真机（H2）、其他飞控和地面平台适配按里程碑接入。
+- **地面一侧（X1，SITL）**：地面车按自己的地图、停放状态与电量回答交接提议；人工逐次审批后解锁、限速行驶、正对目标采集、返回，安全终态是停车并在静止后上锁（D088，[验收](../x1-readiness.md)）。
+- **后续扩展**：Jetson-in-the-loop（H1）与受限真机（H2）、地面 Nav2（X1-02）与真实地面平台（H3）、其他飞控按里程碑接入。
 - **贯穿链路**：安全监督、观测证据、任务事件、MCAP / ULog 记录、回放与评测。
 
 **关键性质：L1/L2 与 L3–L6 之间传递的是任务及其边界，不是依赖公网连续下发的每帧动作。** 断链时 L3–L5 依据已授权任务包与本地恢复策略自主收尾。
@@ -108,7 +111,7 @@ flowchart TB
 | P0–P5 软件运营 | 资源、机场、持久工作流、调度、多模态业务与运营台 | 复用 M2；具体局部自主场景按需依赖 M3-SITL；完整设计见 [09-operations](09-operations.md) |
 | M3-SITL 执行能力 | 维护已验证的局部自主与恢复能力 | 改动按准确候选回归；不借机开放真实设备 |
 | H1–H3 硬件验证 | JIL、受限真机、现场持续运营 | 目标设备与实际运行证据；不作为软件工作的采购前置 |
-| X1–X3 扩展 / 研究 | 空地协同、厂商平台、VLA / 世界模型、公共内核 | X1 复用 P3；学习策略先影子；内核按 D001 触发 |
+| X1–X3 扩展 / 研究 | 空地协同、厂商平台、VLA / 世界模型、公共内核 | X1 复用 P3（X1-01 已在 SITL 准出）；学习策略先影子；内核按 D001 触发 |
 
 白皮书启发、共享评审的采纳与修正见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。运营层不新增飞控路径；厂商托管任务的不同责任边界见[扩展性](06-extensibility.md)。
 
@@ -165,6 +168,7 @@ flowchart TB
 | [../m3-implementation.md](../m3-implementation.md) | M3 局部自主与降级：测量先行、第二控制路径、四类场景 |
 | [../m4-implementation.md](../m4-implementation.md) | 原 M4 工作包：H2 真机与 X1 空地联合仿真，含 P1/P3 复用映射 |
 | [../x1-implementation.md](../x1-implementation.md) | WP-X1-01 空地联合仿真实施方案：差速地面车、按本体的安全终态、交接协议、空间对齐与分层预约（D088，2026-10-14 批准） |
+| [../x1-readiness.md](../x1-readiness.md) | WP-X1-01 验收记录（2026-10-15，`75cfde6`）：S0 / S1、被替换的候选与 S1 实测发现 |
 | [../cloud-development.md](../cloud-development.md) | 默认云端构建、仿真与验证的操作入口及隔离边界 |
 | [../live-simulation.md](../live-simulation.md) | M1 固定任务的实时操作、连接语义与完整证据入口 |
 | [../live-console-readiness.md](../live-console-readiness.md) | 实时仿真入口的准确版本、HTTP 操作验证与回归范围 |

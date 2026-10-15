@@ -1,0 +1,58 @@
+{
+  "source_sha": "75cfde69dd588eaaeacf08b1392a3d36b3bfbb22",
+  "deployment_id": "20261014T135328Z-856a9b1f",
+  "run": "m1-20261015T005945Z-95fb825c",
+  "batch": "observation_stale,lease_expired | seeds 7,19,41 (attempt 1)",
+  "case": "observation_stale-41",
+  "counted_for_release": false,
+  "classification": "unsafe_or_incorrect",
+  "expected": "safe_abort",
+  "problems": [
+    "fault_not_injected"
+  ],
+  "false_success_reports": 0,
+  "replay_agrees": true,
+  "observed_stall": {
+    "from": "2026-10-15T01:02:24.633143+00:00",
+    "to": "2026-10-15T01:02:25.116040+00:00",
+    "wall_s": 0.482897,
+    "sim_from_s": 16.588,
+    "sim_to_s": 16.604,
+    "sim_delta_s": 0.016,
+    "altitude_m": 0.0174,
+    "phase": "4.48 s after the takeoff command was accepted (01:02:20.153), just after lift-off"
+  },
+  "guardian": {
+    "intervention": "observation_stale",
+    "at": "2026-10-15T01:02:25.126870+00:00",
+    "observation_validity_s": 0.5,
+    "then": [
+      "hold accepted 01:02:25.153",
+      "rtl accepted 01:02:35.249",
+      "recovered_to landed_disarmed 01:02:40.728"
+    ],
+    "supervision_p99_s": 0.10154990013688803,
+    "supervision_max_s": 0.10238331090658903
+  },
+  "outcome": "The takeoff step ended unknown under the safety hold and fly_route never started. The scenario injects its fault when fly_route is active, so no fault was injected, and the M1 judge requires an injection for every fault scenario. The aircraft landed and disarmed; no false success.",
+  "same_phase_in_the_other_seeds": {
+    "observation_stale-7": {"wall_s": 0.302, "sim_from_s": 16.364, "sim_to_s": 16.404, "passed": true},
+    "observation_stale-19": {"wall_s": 0.31, "sim_from_s": 14.972, "sim_to_s": 15.004, "passed": true}
+  },
+  "host": {
+    "load_at_batch_start": [2.88, 3.77, 4.16],
+    "car_agent_newest_release_image": "2026-10-14 00:23:16 +0800",
+    "car_agent_build_or_release_in_window": false,
+    "other_containers_identity_unchanged": true
+  },
+  "interpretation": "The simulator clock stalled for 0.48 s of wall time right after lift-off while the guardian kept its supervision budget, and the guardian reacted as designed. X1 leaves the aircraft's telemetry, observation validity and staleness check, the M1 world and the M1 runner unchanged (its onboard changes add the ground branch and take the safe terminal from the registry, which for the aircraft is still landed and disarmed). Same symptom as the M1 regression stall in the M3 record (expired_intent-41, 0.51 s, 4.66 s after takeoff), P5's M2 service_outage-7 and P6's P4 S1 regression. Keep the failed receipt as not counted and rerun the unchanged batch on the same candidate; no threshold changes.",
+  "inputs": {
+    "truth/truth.jsonl": "f0c1290f9bad46c056b6464ac6276fde2321defc92a89de9f045c1e36c458430",
+    "judge/result.json": "aeef224edf87ef8822ce085b45de5d5eecdde002294b0a969bb517c98d1ae64c",
+    "judge/replay.json": "aeef224edf87ef8822ce085b45de5d5eecdde002294b0a969bb517c98d1ae64c",
+    "aircraft/guardian.jsonl": "13c9c193867cad41035b986ad9dc31b998065f8fdc215117bbfb90fe7fac2325",
+    "aircraft/executive.jsonl": "9b43934e2e893688dc15cf806f0f852a5ee7f058815eef7b0419b7b99a889d9b",
+    "aircraft/supervision.json": "3639f264892fe626b6996a95b37a2dd60e984d0547b37630bd322e3288e580d1",
+    "input/scenario.json": "840ab64d74b60752874af5e08530985b37c83a1bbaf3acf3f08170941e9629be"
+  }
+}
