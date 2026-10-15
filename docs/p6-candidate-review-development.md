@@ -1,5 +1,7 @@
 # P6 逐候选语义复核开发协议
 
+**六次实调已完成，运行环境核对通过；协议暂不采用。** 六条回答中两条通过冻结校验，共保留七项模型观察；其余四条整条隔离，涉及 26 个提案。最终 33 项均待复核，未形成可采用的候选分组，也不代表道路没有实体遮挡。当前结果见下文及[实调回执](verification/p6-candidate-live-2026-10-15.json)。
+
 本轮处理 [v7 的具体风险](p6-road-contact-development.md)：整图疑似及一段全局不确定性说明无法区分每个框中的实体、车辆、阴影和道路外物体。新提示 `road-candidate-review-dev-v1` 只复核上一批六个视图中的 33 个固定提案，不开展新的候选发现，也不把 v7 的环境负记录改成通过。
 
 ## 输入与输出
@@ -15,7 +17,7 @@
 | 条件 | 分组 |
 |---|---|
 | 结构不合格、缺项、来源不匹配，或图片 / 目标不可确认 | `needs_review`，保留全部原提案 |
-| 性质 / 关系 / 分离度未知、边缘不明、混杂或写有相关不确定性 | `needs_review` |
+| 性质 / 关系 / 分离度未知、边缘不明、混杂或任何非空不确定性说明 | `needs_review` |
 | 可单独辨认的阴影或表面变化，其他声明无不确定性 | `non_entity` |
 | 可单独辨认且明确位于目标外 | `outside_target` |
 | 车辆位于目标内 | `needs_review`，不由静态图自动认定阻碍 |
@@ -33,24 +35,47 @@
 
 本协议仅用于已曝光材料上的开发核对，与在用画像及数据库契约分开。P6 / WP-P6-01 仍未准出，人工边界确认、正式素材许可、地点与批次隔离及清障前后序列仍待完成。产物见 [v8 包](../eval/s2/p6_candidates_v8/README.md)。
 
-## 本轮执行状态
+## 六次实调结果
 
-冻结代码 `70fcc3303c6569e5a1d5d80b461f5ba1938b0ccc`。2026-10-15 03:22:28 UTC 的尝试 `p6-candidate-review-dev-20261015T032224Z` 遇到既有项目锁占用，返回 `blocked_lock_busy`：没有取得锁、没有启动诊断容器、provider 调用为 0。没有排队、停止其他任务或自动重试，也没有运行前后容器核对；本轮不存在新的模型结论。
+冻结代码仍为 `70fcc3303c6569e5a1d5d80b461f5ba1938b0ccc`，提示、输入、解析与分组代码均未改。第二次尝试 `p6-candidate-review-dev-20261015T040711Z` 成功取得项目锁；MiniMax-M3.1-Flash-Preview 于 2026-10-15 **04:07:17–04:10:31 UTC** 返回六条回答，调用失败 0，云端 / 本地严格回放各六条。输入 26,967、输出 14,916 tokens，不估算价格。没有追加调用、修补回答或事后放宽规则。
 
-[原始回执](../eval/s2/p6_candidates_v8/attempts/20261015T032224Z-execution.json)和[尝试摘要](../eval/s2/p6_candidates_v8/attempt-summary.json)均保留。离线汇总将 33 个提案全部标为未获回答的待复核项，观察值与人工结论为空，整图结论为空；这不表示模型对 33 项作出了“未知”判断。[兼容性检查](../eval/s2/p6_candidates_v8/compatibility-audit.json)确认六条 v7 回答均不符合新格式，未被补字段或重标为 v8 回答。
+[原始环境回执](../eval/s2/p6_candidates_v8/attempts/20261015T040711Z/cloud/execution.json)记录锁持续覆盖前后检查，9 个驻留项目容器的名称、ID、镜像、启动时间与重启次数一致。复用运行时 `6249129596b7cfe88c7322f8b425c7b432dba24b` 和原不可变镜像；这是本次隔离批次的环境核对，不是当前业务服务发布回归，也不追溯改变 v7 的环境失败记录。
 
-Ruff 与 51 项定向测试通过，包含新增 31 项和既有 20 项。忙锁路径不进入预检 / Docker、持锁覆盖前后检查、容器变化仍失败、未知保持待复核、提案缺失或重复不能形成结论、排除全部提案不能形成整图正常，均有验证。冻结代码 Windows 全量 **1715 通过、1 项既有 Unix socket 跳过、0 失败 / 错误**，1092.553 秒；源码在测试期间未变。准确摘要见[检查回执](verification/p6-candidate-review-2026-10-15.json)。这些是工具检查，逐候选提示尚未完成实调验证。
+| 视图 / 原图 | 提案数 | 冻结校验结果 |
+|---|---:|---|
+| `6cda4badce65` / 12494 上段 | 3 | 合格；三项均声明为混杂实体，其中一项边缘不明，全部待复核。 |
+| `e0f2ecc668d5` / 12326 | 8 | 不合格；p01 声明目标内车辆，却缺少冻结协议要求的不确定性原因。 |
+| `4dac40bc3538` / 12494 下段 | 8 | 不合格；p02 目标内车辆缺少原因，p04 细化框右端从原框上限 0.454 延至 0.566。 |
+| `9b4970b5a718` / 14431 | 4 | 不合格；p02 细化框下端 0.307 超过原框 0.306；未裁切修正。 |
+| `f9b70d3e59bd` / 12892 | 6 | 不合格；p06 重复给出 `separability` 键，即使两次均为 `unknown`，严格 JSON 解析仍拒绝。 |
+| `347d6ae24938` / 12876 | 4 | 合格；三项混杂，一项单独实体但材质 / 类型不明，全部待复核。 |
 
-另在云端独立测试文件上执行了真实 Linux flock 检查：[首次取得、竞争立即拒绝、释放后重取](../eval/s2/p6_candidates_v8/lock-selfcheck.json)均通过。该检查没有取得真实项目运行锁，没有启动容器或调用 provider；它只验证锁实现，不证明模型运行窗口已经可用。收尾时的项目锁可用性检查仍为忙。
+原始回答与请求摘要见[录制目录](../eval/s2/p6_candidates_v8/attempts/20261015T040711Z/cloud/output/recordings/)，逐项定位见[诊断分析](../eval/s2/p6_candidates_v8/attempts/20261015T040711Z/analysis.json)。冻结规则按整条回答验收：**26 项因所在回答不合格而隔离，另 7 项有合格模型观察但仍需复核**。没有从失败回答中挽救部分条目；不能把总数描述成“模型对 33 项都判断未知”。[严格回放汇总](../eval/s2/p6_candidates_v8/attempts/20261015T040711Z/replay-summary.json)保留全部提案、空人工结论和空整图结论。
+
+汇总中四条失败回答还带有 `raw_parsed_or_remote_validation_mismatch` 联合标记：当前代码在远端 `schema_issues` 非空时也会添加该标记。本次六条原文的重新解析值及校验问题都与远端记录一致，没有据此认定录制内容损坏。失败原因以上表及原始问题列表为准。
+
+## 对下一版协议的判断
+
+当前规则把候选存在、单件分离与材质辨认绑在一起，超出了用户已确认的“目标内实体遮挡候选”口径。例如 12876 的 p01 已声明可见实体、目标内且可单独辨认，仅材质 / 类型不明仍被阻断；另外六项合格观察均为混杂碎片，无法拆成每一件不等于没有实体遮挡。这里是在审查协议与业务目标的关系，不证明这些模型声明正确。
+
+下一版应分别表达实体存在、目标相交关系、单件 / 群组定位及会改变候选结论的不确定性。材质细分类未知不应自动否定候选；混杂实体群应允许保留群组候选，边界或实体性不清仍待复核。逐项容错是否合适也需单独定义，重复 ID、重复 JSON 键和来源不一致仍须拒绝。上述是后续设计方向，**本次未修改或重算任何 v8 结论**。新协议须另行冻结、另批开发评测；本批已曝光材料不成为留出测试集。
+
+## 历史首次尝试与工具验证
+
+2026-10-15 03:22:28 UTC 的第一次尝试 `p6-candidate-review-dev-20261015T032224Z` 遇到既有项目锁占用，返回 `blocked_lock_busy`：没有取得锁、没有启动诊断容器、provider 调用为 0。该次没有排队、停止其他任务或自动重试，也没有运行前后容器核对；该次不存在模型结论。
+
+[原始回执](../eval/s2/p6_candidates_v8/attempts/20261015T032224Z-execution.json)和[尝试摘要](../eval/s2/p6_candidates_v8/attempt-summary.json)均原样保留。该次[离线缺席快照](../eval/s2/p6_candidates_v8/pending-review.json)将 33 个提案标为未获回答，观察值与人工结论为空，整图结论为空；不覆盖为本次实调结果。[兼容性检查](../eval/s2/p6_candidates_v8/compatibility-audit.json)确认六条 v7 回答均不符合新格式，未被补字段或重标为 v8 回答。
+
+冻结代码此前的 Ruff 与 51 项定向测试通过，包含新增 31 项和既有 20 项。忙锁路径不进入预检 / Docker、持锁覆盖前后检查、容器变化仍失败、未知保持待复核、提案缺失或重复不能形成结论、排除全部提案不能形成整图正常，均有验证。Windows 全量 **1715 通过、1 项既有 Unix socket 跳过、0 失败 / 错误**，1092.553 秒；源码在测试期间未变。准确摘要见[原工具检查回执](verification/p6-candidate-review-2026-10-15.json)。本次仅归档实调证据和文档，源码逐字节匹配冻结版本，未重跑全量测试；模型协议结果与工具检查分别报告。
+
+此前在云端独立测试文件上执行的真实 Linux flock 检查：[首次取得、竞争立即拒绝、释放后重取](../eval/s2/p6_candidates_v8/lock-selfcheck.json)均通过。该检查没有取得真实项目运行锁，没有启动容器或调用 provider；它只验证锁实现。其后的收尾检查仍忙，记录与本次成功持锁实调分开保存。
 
 ## 操作入口
 
-代码位于隔离工作树 `D:/drone-agent-data/p6-road-views-20261014/repo`。本机包位于 `D:/drone-agent-data/p6-candidate-review-20261015/diagnostic/`。以下命令均从该工作树运行，图像与运行输出不进入 Git。
+代码位于隔离工作树 `D:/drone-agent-data/p6-road-views-20261014/repo`。本机包位于 `D:/drone-agent-data/p6-candidate-review-20261015/diagnostic/`。原图、掩码、传输包及日志留在仓库外；脱敏录制和元数据已逐字节归档。以下命令只使用已有录制进行离线回放，不再调用模型。
 
 ```powershell
-uv run --frozen python scripts/p6_candidate_review.py prepare --previous-batch eval/s2/p6_candidates_v7 --previous-inputs D:/drone-agent-data/p6-road-contact-20261015/diagnostic/inputs --config eval/s2/p6_candidates_v8/config.json --output <新的外部目录>
-uv run --frozen python scripts/p6_candidate_cloud.py --package D:/drone-agent-data/p6-candidate-review-20261015/diagnostic --freeze 70fcc3303c6569e5a1d5d80b461f5ba1938b0ccc
-uv run --frozen python scripts/p6_candidate_review.py replay --package <冻结包目录> --cloud-output <具体尝试下的cloud/output> --output <新的汇总JSON>
+uv run --frozen python scripts/p6_candidate_review.py replay --package D:/drone-agent-data/p6-candidate-review-20261015/diagnostic --cloud-output eval/s2/p6_candidates_v8/attempts/20261015T040711Z/cloud/output --output <新的仓库外汇总JSON>
 ```
 
-再次发起只允许在先前尝试已确证 `blocked_lock_busy`、0 调用且容器未启动时进行，每次生成新的尝试目录；程序不会循环重试。先前有调用、失败状态不明确或回执未拉回时，先核对原记录，不重新调用。重放命令需实际录制，本轮没有 `cloud/output` 可供重放。只改文档的后代提交可继续使用冻结版本，但脚本与输入字节必须和冻结提交一致。
+再次发起只允许在全部先前尝试已确证 `blocked_lock_busy`、0 调用且容器未启动时进行，每次生成新的尝试目录；程序不会循环重试。**当前包已完成六次调用，因此不能再次发起实调。** 只改文档的后代提交仍可回放，但脚本与输入字节必须和冻结提交一致。诊断驱动按[原始源码](../eval/s2/p6_candidates_v8/tool-source/analyze_live.py.txt)保存，仅定位失败原因，不修补回答或改变接受结果。

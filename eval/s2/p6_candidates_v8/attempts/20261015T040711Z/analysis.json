@@ -1,0 +1,216 @@
+{
+  "format": "drone.candidate-review-live-analysis/v1",
+  "attempt_id": "p6-candidate-review-dev-20261015T040711Z",
+  "freeze_commit": "70fcc3303c6569e5a1d5d80b461f5ba1938b0ccc",
+  "freeze_before_calls": true,
+  "execution_status": "completed_with_environment_guard_passed",
+  "protocol_status": "not_adopted_contract_failures_and_no_usable_candidate_group",
+  "project_lock_held": true,
+  "resident_snapshots_equal": true,
+  "resident_containers_checked": 9,
+  "snapshot_fields": [
+    "name",
+    "id",
+    "image",
+    "started_at",
+    "restart_count"
+  ],
+  "calls": 6,
+  "answers": 6,
+  "call_failures": 0,
+  "valid_responses": 2,
+  "cloud_strict_replays": 6,
+  "local_strict_replays": 6,
+  "proposals": 33,
+  "observations_in_valid_responses": 7,
+  "proposals_quarantined_by_atomic_case_validation": 26,
+  "valid_observation_separability": {
+    "mixed": 6,
+    "isolated": 1
+  },
+  "model_disposition_counts": {
+    "needs_review": 33
+  },
+  "validation_details": [
+    {
+      "view_id": "view-6cda4badce65",
+      "case_issues": [],
+      "item_diagnostics": [],
+      "duplicate_keys": [],
+      "diagnostics_do_not_change_case_acceptance": true
+    },
+    {
+      "view_id": "view-e0f2ecc668d5",
+      "case_issues": [
+        "uncertainty_reason_missing"
+      ],
+      "item_diagnostics": [
+        {
+          "proposal_id": "view-e0f2ecc668d5-p01",
+          "issues": [
+            "uncertainty_reason_missing"
+          ],
+          "source_bbox": [
+            0.035,
+            0.132,
+            0.072,
+            0.216
+          ],
+          "returned_bbox": [
+            0.037,
+            0.134,
+            0.071,
+            0.216
+          ],
+          "entity_kind": "vehicle",
+          "target_relation": "inside",
+          "separability": "isolated",
+          "uncertainty": ""
+        }
+      ],
+      "duplicate_keys": [],
+      "diagnostics_do_not_change_case_acceptance": true
+    },
+    {
+      "view_id": "view-4dac40bc3538",
+      "case_issues": [
+        "refinement_leaves_proposal",
+        "uncertainty_reason_missing"
+      ],
+      "item_diagnostics": [
+        {
+          "proposal_id": "view-4dac40bc3538-p02",
+          "issues": [
+            "uncertainty_reason_missing"
+          ],
+          "source_bbox": [
+            0.108,
+            0.79,
+            0.227,
+            0.88
+          ],
+          "returned_bbox": [
+            0.108,
+            0.797,
+            0.186,
+            0.88
+          ],
+          "entity_kind": "vehicle",
+          "target_relation": "inside",
+          "separability": "isolated",
+          "uncertainty": ""
+        },
+        {
+          "proposal_id": "view-4dac40bc3538-p04",
+          "issues": [
+            "refinement_leaves_proposal"
+          ],
+          "source_bbox": [
+            0.342,
+            0.85,
+            0.454,
+            0.93
+          ],
+          "returned_bbox": [
+            0.378,
+            0.895,
+            0.566,
+            0.93
+          ],
+          "entity_kind": "surface_change",
+          "target_relation": "inside",
+          "separability": "isolated",
+          "uncertainty": ""
+        }
+      ],
+      "duplicate_keys": [],
+      "diagnostics_do_not_change_case_acceptance": true
+    },
+    {
+      "view_id": "view-9b4970b5a718",
+      "case_issues": [
+        "refinement_leaves_proposal"
+      ],
+      "item_diagnostics": [
+        {
+          "proposal_id": "view-9b4970b5a718-p02",
+          "issues": [
+            "refinement_leaves_proposal"
+          ],
+          "source_bbox": [
+            0.534,
+            0.244,
+            0.579,
+            0.306
+          ],
+          "returned_bbox": [
+            0.541,
+            0.244,
+            0.573,
+            0.307
+          ],
+          "entity_kind": "physical_object",
+          "target_relation": "outside",
+          "separability": "isolated",
+          "uncertainty": ""
+        }
+      ],
+      "duplicate_keys": [],
+      "diagnostics_do_not_change_case_acceptance": true
+    },
+    {
+      "view_id": "view-f9b70d3e59bd",
+      "case_issues": [
+        "invalid_json"
+      ],
+      "item_diagnostics": [],
+      "duplicate_keys": [
+        {
+          "proposal_id": "view-f9b70d3e59bd-p06",
+          "key": "separability",
+          "count": 2,
+          "values": [
+            "unknown",
+            "unknown"
+          ]
+        }
+      ],
+      "diagnostics_do_not_change_case_acceptance": true
+    },
+    {
+      "view_id": "view-347d6ae24938",
+      "case_issues": [],
+      "item_diagnostics": [],
+      "duplicate_keys": [],
+      "diagnostics_do_not_change_case_acceptance": true
+    }
+  ],
+  "token_usage": {
+    "input": 26967,
+    "output": 14916,
+    "cost_estimated": false
+  },
+  "analysis_observations": [
+    "The seven accepted observations are all still needs_review: six mixed regions and one isolated object with unresolved material/type text.",
+    "The frozen rule treats any uncertainty text as needs_review; material/type uncertainty can remain even when visible physical nature and an in-target location are declared.",
+    "One invalid observation rejects its entire response under the frozen atomic rule. Other observations from that response are not silently salvaged.",
+    "A response with repeated separability keys is rejected by the frozen strict JSON parser even when the repeated values happen to be identical.",
+    "Neither a mixed debris group nor an unresolved fine material subtype proves that no business candidate exists. Candidate utility and single-instance localization must be distinguished in a future protocol."
+  ],
+  "old_busy_attempt_preserved": true,
+  "v7_environment_failure_requalified": false,
+  "responses_modified": false,
+  "partial_observations_salvaged": false,
+  "additional_provider_calls_after_batch": 0,
+  "human_reviews_completed": 0,
+  "accuracy_computed": false,
+  "recall_computed": false,
+  "scene_verdict": null,
+  "default_profile_change": false,
+  "formal_release_eligible": false,
+  "analysis_script_sha256": "0e37bb7676c35bbf09b5b422f1208712664f505774a726acc8d904b9980db185",
+  "replay_summary_sha256": "29876b449b1898866e5d9178a49ef1100663e7ac6b33803155f8a4a97eb6a339",
+  "execution_sha256": "e8c4ab8418b5d2a90496ebe454c3b437d624eb5c34441e83bf068b8df65b2ad4",
+  "results_sha256": "9f593f7ef6282802a392c3a6b76aef4565e19584f564b06e28abc92f08509fe8",
+  "configured_model": "MiniMax-M3.1-Flash-Preview"
+}
