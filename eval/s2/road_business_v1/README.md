@@ -13,7 +13,7 @@
 | `development-audit-final.json` | `b56b851` 对照 D089 的实际缺口核对，结果 `missing` |
 | `source-acquisition/` | FloodNet 作者 / 镜像版本、许可声明、下载和范围校验、元数据、失败尝试与工具快照 |
 
-代码入口为 `scripts/p6_business_eval.py` 的 `audit`、`score`、`assess`。五类指标保留分子 / 分母、描述性统计区间和提示暴露；原始结果表无实调来源认证能力，目标比较即使满足数值也不自动授予准出。接口与完整目标见[实施文档](../../../docs/p6-business-evaluation.md)，当前数量与剩余工作见[交接](../../../docs/p6-materials-handoff-2026-10-16.md)。
+代码入口为 `scripts/p6_business_eval.py` 的 `audit`、`score`、`assess`。五类指标保留分子 / 分母、描述性统计区间和提示暴露；原始结果表无实调来源认证能力，目标比较即使满足数值也不自动授予准出。接口与完整目标见[实施文档](../../../docs/p6-business-evaluation.md)，当前数量与剩余工作见[交接](../../../docs/p6-ai-labeling-handoff-2026-10-16.md)。
 
 源图片、压缩范围、完整原图和原始下载前缀在 `D:/drone-agent-data/p6-business-eval-20261015/`。本目录不含原图。仅取得 JPEG 文件头的条目不是完整素材，目录中 `train` / `validation` / `test` 是源数据命名，不是本项目评测拆分；GPS 连接组仅为防泄漏复核线索，不是已确认的独立地点或资产。
 

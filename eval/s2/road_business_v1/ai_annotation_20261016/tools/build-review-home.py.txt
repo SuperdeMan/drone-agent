@@ -1,0 +1,55 @@
+"""Create a local navigation page only after all three review packages exist.
+
+仅在三批核对包齐全后创建本机导航页。
+"""
+import hashlib
+import json
+from pathlib import Path
+
+root = Path(__file__).resolve().parent
+counts, seen = [], set()
+for n in (1, 2, 3):
+    receipt = json.loads((root / f'review-batch{n}-receipt.json').read_text(encoding='utf-8'))
+    bundle_file = root / f'review-batch{n}/bundle.json'
+    assert hashlib.sha256(bundle_file.read_bytes()).hexdigest() == receipt['bundle_sha256']
+    bundle = json.loads(bundle_file.read_text(encoding='utf-8'))
+    ids = {s['sample_id'] for s in bundle['samples']}
+    assert not seen & ids
+    seen.update(ids)
+    counts.append(len(ids))
+assert counts == [15, 188, 212] and len(seen) == 415
+cards = ''.join(f'<a class="batch" href="review-batch{n}/index.html"><span class="number">0{n}</span>'
+                f'<span class="label">第{n}批</span><strong>{count}<small> 张原图</small></strong>'
+                f'<span class="open">打开核对页 <b>↗</b></span></a>' for n, count in enumerate(counts, 1))
+html = '''<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>P6 · AI 草稿核对</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f1f0e8;color:#203a32;font-family:Georgia,"Microsoft YaHei",serif;line-height:1.65}
+header{background:#203a32;border-top:5px solid #b6532c;color:#faf9f0;padding:36px max(24px,calc((100vw - 1080px)/2))}
+.brand{font-size:14px;letter-spacing:2px;color:#c7d5c8}h1{font-size:clamp(30px,5vw,48px);font-weight:500;line-height:1.25;margin:18px 0 12px}
+header p{max-width:760px;color:#d1dbcf;margin:0;font-family:"Microsoft YaHei",sans-serif;font-size:15px}
+main{max-width:1132px;margin:0 auto;padding:36px 26px 55px}.intro{display:flex;justify-content:space-between;gap:20px;align-items:baseline;margin-bottom:24px}
+.intro strong{font-size:25px;font-weight:500}.intro span{font:14px "Microsoft YaHei",sans-serif;color:#69766a}
+.batches{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.batch{display:flex;flex-direction:column;min-height:265px;background:#fcfcf6;border:1px solid #cbd2c4;padding:22px 24px;text-decoration:none;color:inherit;transition:transform .15s,border-color .15s}
+.batch:hover,.batch:focus-visible{transform:translateY(-3px);border-color:#b6532c;outline:2px solid #b6532c;outline-offset:3px}.number{font:12px Consolas,monospace;color:#8a927f;letter-spacing:2px}.label{margin-top:18px;font-size:21px}.batch strong{font-size:47px;font-weight:400;line-height:1.4}.batch small{font:13px "Microsoft YaHei",sans-serif;color:#6c786b}.open{border-top:1px solid #d8ddcf;margin-top:auto;padding-top:15px;color:#ac4c26;font:14px "Microsoft YaHei",sans-serif}.open b{float:right;font-size:19px}
+.steps{display:grid;grid-template-columns:210px 1fr;gap:30px;margin-top:36px;padding-top:27px;border-top:1px solid #cbd2c4}.steps h2{font-size:23px;font-weight:500;margin:0}.steps ol{font:14px/1.9 "Microsoft YaHei",sans-serif;margin:0;padding-left:21px}.steps li{padding:0 0 6px 4px}.note{margin-top:25px;padding:16px 20px;border-left:3px solid #b6532c;background:#e8ecdf;font:13px/1.85 "Microsoft YaHei",sans-serif}.note p{margin:0}footer{margin-top:24px;font:12px "Microsoft YaHei",sans-serif;color:#74806f}
+@media(max-width:680px){header{padding:26px 22px}main{padding:27px 20px}.intro{display:block}.intro span{display:block;margin-top:6px}.batches{grid-template-columns:1fr;gap:13px}.batch{min-height:190px;padding:18px 22px}.label{margin-top:8px}.batch strong{font-size:39px}.steps{grid-template-columns:1fr;gap:16px}}
+</style></head><body>
+<header><div class="brand">P6 / ROAD ANNOTATION</div><h1>AI 已预标，等你核对</h1><p>415 张原图已逐张生成草稿，按画面情况提供道路范围、实体轮廓、建议结论及不确定项，可直接核对或修改。</p></header>
+<main><div class="intro"><strong>选择一批开始</strong><span>三批没有重复图片 · 可以分次保存和导出</span></div>
+<div class="batches">''' + cards + '''</div>
+<section class="steps"><h2>不用从零画起</h2><ol>
+<li>填写实际复核者，点「开始标注」，再点「载入草稿，开始核对」。</li>
+<li>对照原图检查道路和实体；需要时修改范围、结论或依据，再确认目标。</li>
+<li>选择草稿处理结果，完成核对勾选和提示暴露记录，点「保存本条标注」。</li>
+<li>完成几张即可点右上角「导出标注」；把下载 JSON 文件的完整路径发回对话。</li>
+</ol></section>
+<div class="note"><p>页面中的「已登记」是你保存的核对结果数量，初始为 0。AI 草稿已在页面中，不会自动替你确认。每批分别导出；未保存的草稿不包含在导出文件中。</p></div>
+<footer>原图和草稿保存在本机。请保留完整文件夹，并及时导出已保存记录。</footer></main></body></html>
+'''
+path = root / 'index.html'
+with path.open('x', encoding='utf-8', newline='\n') as stream:
+    stream.write(html)
+print(json.dumps({'entry_point': str(path), 'images': len(seen), 'batches': counts, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}))

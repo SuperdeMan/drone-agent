@@ -1,0 +1,95 @@
+"""Snapshot completed independent drafts into an immutable operator package.
+
+把已完成的独立草稿快照构建为不可覆盖的操作员素材包。
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import runpy
+from datetime import UTC, datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+REPO = Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+DATA = Path('D:/drone-agent-data')
+C = runpy.run_path(str(REPO / 'scripts/p6_road_labeling.py'))
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--batch', required=True)
+    parser.add_argument('--first', type=int)
+    parser.add_argument('--exclude', type=Path)
+    parser.add_argument('--sources-file', type=Path)
+    parser.add_argument('--available', action='store_true')
+    args = parser.parse_args()
+    configured = C['read'](args.sources_file) if args.sources_file else None
+    context_file = Path(configured['context_file']) if configured else ROOT / 'annotation-context.json'
+    context = C['read'](context_file)
+    assignments = [C['read'](ROOT / f'assignment-{n}.json') for n in range(1, 4)]
+    order = [s['sample_id'] for triple in zip(*(a['samples'] for a in assignments), strict=False) for s in triple]
+    order += [s['sample_id'] for a in assignments for s in a['samples'] if s['sample_id'] not in order]
+    excluded = set(C['read'](args.exclude)['sample_ids']) if args.exclude else set()
+    selected = [i for i in order if i not in excluded]
+    if args.first:
+        selected = selected[:args.first]
+    docs, lookup = [], {}
+    inputs = [Path(p) for p in configured['source_files']] if configured else [ROOT / f'worker-{n}/drafts.json' for n in range(1, 4)]
+    for file in inputs:
+        raw = file.read_bytes()
+        document = json.loads(raw.decode('utf-8-sig'))
+        rows = C['CORE']['ai_suggestions'](document)
+        C['CORE']['ai_context'](context, document, rows)
+        if set(rows) & set(lookup):
+            raise ValueError('duplicate worker assignment')
+        lookup.update(rows)
+        docs.append(raw)
+    if args.available:
+        selected = [i for i in selected if i in lookup]
+    missing = set(selected) - set(lookup)
+    if missing:
+        raise ValueError(f'{len(missing)} assigned images have no completed suggestion')
+    source = ROOT / (args.batch + '-source')
+    source.mkdir(exist_ok=False)
+    bindings = []
+    suggestion_files = []
+    for n, raw in enumerate(docs, start=1):
+        original = source / f'worker-{n}.original.json'
+        normalized = source / f'worker-{n}.json'
+        original.write_bytes(raw)
+        normalized.write_bytes(raw.removeprefix(b'\xef\xbb\xbf'))
+        suggestion_files.append(normalized)
+        bindings.append({'source_ordinal': n, 'source_file': str(inputs[n - 1]), 'author_id': json.loads(raw.decode('utf-8-sig'))['author_id'],
+                         'original_sha256': C['digest'](original), 'normalized_sha256': C['digest'](normalized),
+                         'change': 'remove UTF-8 BOM only' if raw != normalized.read_bytes() else 'none'})
+    parent = DATA / 'p6-business-closeout-20261015/inventory-v4.json'
+    inventory = C['read'](parent)
+    ids = {i.removeprefix('floodnet-') for i in selected}
+    rows = [r for r in inventory['rows'] if r['image_id'] in ids]
+    if len(rows) != len(selected):
+        raise ValueError('source image inventory mismatch')
+    groups = [{'candidate_group_id': g['candidate_group_id'], 'image_ids': [i for i in g['image_ids'] if i in ids],
+               'partial_membership_view': True} for g in inventory['gps_group_candidates']['250'] if set(g['image_ids']) & ids]
+    pool = {'format': 'drone.floodnet-acquisition-pool/v1', 'parent_inventory_sha256': C['digest'](parent),
+            'selection_scope': 'completed AI drafts for individual human adjudication; no formal split assigned',
+            'rows': rows, 'gps_group_candidates': {'250': groups},
+            'near_duplicate_candidates': [p for p in inventory['near_duplicate_candidates'] if set(p['image_ids']) & ids]}
+    C['write'](source / 'pool.json', pool)
+    C['write'](source / 'source-bindings.json', {'created_at': datetime.now(UTC).isoformat(), 'files': bindings,
+                                               'builder_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()})
+    selection = {'sample_ids': selected, 'count': len(selected), 'human_reviews_created': 0, 'formal_release_eligible': False}
+    C['write'](ROOT / (args.batch + '-selection.json'), selection)
+    result = C['build'](source / 'pool.json', DATA, DATA / 'p6-business-closeout-20261015/source-permission-common-root.json',
+                        REPO / 'eval/s2/road_business_v1/protocol-draft.json', ROOT / args.batch,
+                        suggestions=suggestion_files, context_file=context_file)
+    C['verify_bundle'](ROOT / args.batch, result['bundle_sha256'])
+    result.update(entry_point=str(ROOT / args.batch / 'index.html'), created_at=datetime.now(UTC).isoformat(),
+                  offline_integrity_verified=True, annotation_method='independent_ai_then_human')
+    C['write'](ROOT / (args.batch + '-receipt.json'), result)
+    print(json.dumps(result, ensure_ascii=False))
+
+
+if __name__ == '__main__':
+    main()
