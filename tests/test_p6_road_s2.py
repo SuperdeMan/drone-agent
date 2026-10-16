@@ -167,3 +167,41 @@ def test_source_image_edits_fail_before_preparing_a_package(package, tmp_path):
 def test_actual_profile_draft_remains_unselected():
     profile = copy.deepcopy(C.read(ROOT / "eval/s2/road_business_v1/road-profile-draft.json"))
     assert profile["status"] == "draft" and profile["calibration_record_sha256"] is None
+
+
+@pytest.mark.parametrize("changed", ["polygon", "brief"])
+def test_formal_model_task_cannot_use_a_different_labeled_target(package, tmp_path, monkeypatch, changed):
+    _, source = package
+    manifest, tasks = C.read(source / "manifest.json"), C.read(source / "tasks.json")
+    labels = []
+    for sample, task in zip(manifest["samples"], tasks["rows"], strict=True):
+        sample["split"] = "calibration"
+        sample["target"] = {"polygon": copy.deepcopy(task["target_polygon"]), "brief": task["target_brief"]}
+        task["origin"] = "human_task"
+        labels.append({"sample_id": sample["sample_id"], "recorded_at": "2026-10-15T00:01:00Z"})
+    if changed == "polygon":
+        manifest["samples"][0]["target"]["polygon"][0][0] = .2
+    else:
+        manifest["samples"][0]["target"]["brief"] = "A different road segment"
+    for name, value in [("formal-manifest.json", manifest), ("formal-tasks.json", tasks), ("labels.json", {"rows": labels}), ("protocol.json", {}), ("exposure.json", {})]:
+        C.write(source / name, value)
+    monkeypatch.setitem(C.METRICS, "audit", lambda *args: {"data_ready": True})
+    with pytest.raises(ValueError, match="differs from the labeled target"):
+        C.prepare(source / "formal-manifest.json", source / "formal-tasks.json", source / "profile.json", source,
+                  tmp_path / "mismatched", "calibration", labels_file=source / "labels.json", protocol_file=source / "protocol.json", exposure_file=source / "exposure.json")
+    assert not (tmp_path / "mismatched").exists()
+
+
+def test_orientation_cannot_silently_change_model_coordinates(package, tmp_path):
+    _, source = package
+    with Image.open(source / "0.png") as image:
+        picture = image.copy()
+    exif = Image.Exif()
+    exif[274] = 3
+    picture.save(source / "0.png", exif=exif)
+    manifest, tasks = C.read(source / "manifest.json"), C.read(source / "tasks.json")
+    manifest["samples"][0]["image_sha256"] = tasks["rows"][0]["image_sha256"] = C.digest(source / "0.png")
+    C.write(source / "oriented-manifest.json", manifest)
+    C.write(source / "oriented-tasks.json", tasks)
+    with pytest.raises(ValueError, match="orientation"):
+        C.prepare(source / "oriented-manifest.json", source / "oriented-tasks.json", source / "profile.json", source, tmp_path / "oriented", "development")

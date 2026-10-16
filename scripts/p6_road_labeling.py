@@ -115,7 +115,9 @@ def build(pool_file: Path, data_root: Path, permission_file: Path, protocol_file
         if digest(original) != row["image_sha256"]:
             raise ValueError("original bytes changed")
         with Image.open(original) as picture:
-            picture.verify()
+            if picture.getexif().get(274, 1) != 1:
+                raise ValueError("unsupported image orientation for original-byte annotation")
+            picture.load()
             if list(picture.size) != [row["width"], row["height"]]:
                 raise ValueError("image dimensions changed")
         verified.append((row, original))

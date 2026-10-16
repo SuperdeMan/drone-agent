@@ -145,3 +145,17 @@ def test_builder_keeps_sources_immutable_and_refuses_output_reuse(package):
     with pytest.raises(ValueError, match="new"):
         C.build(source / "pool.json", source, source / "permission.json", source / "protocol.json", output, qa=True)
     assert (source / "0.png").read_bytes() == before
+
+
+def test_orientation_metadata_cannot_rotate_the_annotated_coordinate_frame(package, tmp_path):
+    _, _, source = package
+    with Image.open(source / "0.png") as image:
+        picture = image.copy()
+    exif = Image.Exif()
+    exif[274] = 3
+    picture.save(source / "0.png", exif=exif)
+    pool = C.read(source / "pool.json")
+    pool["rows"][0]["image_sha256"] = C.digest(source / "0.png")
+    C.write(source / "oriented-pool.json", pool)
+    with pytest.raises(ValueError, match="orientation"):
+        C.build(source / "oriented-pool.json", source, source / "permission.json", source / "protocol.json", tmp_path / "oriented", qa=True)

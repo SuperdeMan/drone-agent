@@ -159,6 +159,21 @@ def make_messages(profile: dict, row: dict, package: Path) -> list[dict]:
     return [{"role": "system", "content": profile["system_prompt"]}, {"role": "user", "content": content}]
 
 
+def matching_targets(samples: list[dict], tasks: dict) -> None:
+    """Bind every formal model task to the exact target for which truth was recorded.
+
+将每个正式模型任务绑定到记录真值时采用的确切目标。
+"""
+    if {s["sample_id"] for s in samples} != set(tasks):
+        raise ValueError("formal tasks do not cover labeled observations")
+    for sample in samples:
+        task, target = tasks[sample["sample_id"]], sample.get("target") or {}
+        if (not polygon_valid(target.get("polygon")) or target["polygon"] != task.get("target_polygon")
+                or not target.get("brief") or target["brief"] != task.get("target_brief")
+                or sample["image_sha256"] != task.get("image_sha256")):
+            raise ValueError("registered model task differs from the labeled target")
+
+
 def prepare(manifest_file: Path, tasks_file: Path, profile_file: Path, data_root: Path, output: Path, split: str,
             *, labels_file: Path | None = None, protocol_file: Path | None = None, exposure_file: Path | None = None,
             calibration_file: Path | None = None) -> dict:
@@ -187,6 +202,7 @@ def prepare(manifest_file: Path, tasks_file: Path, profile_file: Path, data_root
         labels = METRICS["unique"](read(labels_file)["rows"], "sample_id")
         admission = {"status": "data_admitted", "labels_sha256": digest(labels_file), "protocol_sha256": digest(protocol_file),
                      "exposure_sha256": digest(exposure_file)}
+        matching_targets(samples, by_task)
     if split == "test":
         if profile["status"] != "frozen" or calibration_file is None or digest(calibration_file) != profile["calibration_record_sha256"]:
             raise ValueError("test profile must be selected and frozen after calibration")
@@ -229,6 +245,8 @@ def prepare(manifest_file: Path, tasks_file: Path, profile_file: Path, data_root
         if digest(original) != sample["image_sha256"]:
             raise ValueError("source image changed")
         with Image.open(original) as picture:
+            if picture.getexif().get(274, 1) != 1:
+                raise ValueError("unsupported image orientation; register a normalized coordinate frame first")
             picture.load()
             if list(picture.size) != [sample["width"], sample["height"]]:
                 raise ValueError("source dimensions changed")

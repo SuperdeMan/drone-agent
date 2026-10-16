@@ -14,7 +14,7 @@ import subprocess
 from pathlib import Path
 from statistics import median
 
-from p6_road_s2 import METRICS, VERSION, digest, read, replay, verify_package, within, write
+from p6_road_s2 import METRICS, VERSION, digest, matching_targets, read, replay, verify_package, within, write
 
 RUNTIME = "6249129596b7cfe88c7322f8b425c7b432dba24b"
 IMAGE = "sha256:4f84962ee6b75f899ee50afa153dca439942d9bf518b25d7c780c0b17c2b2377"
@@ -162,10 +162,15 @@ async def judge(evidence_file: Path, data_root: Path) -> dict:
               and scope.get("real_clearance_effect_required") is False and scope.get("hardware_or_field_operation_claimed") is False)
         audit = METRICS["audit"](manifest, labels, protocol, exposure, data_root)
         check("data_admission", audit["data_ready"], audit["issue_counts"])
-        profile, _, plan = verify_package(paths["test_package"])
+        profile, test_inputs, plan = verify_package(paths["test_package"])
         check("frozen_test_profile", plan["split"] == "test" and profile["status"] == "frozen")
         check("test_source_manifest", plan["source_manifest_sha256"] == digest(paths["manifest"]))
         check("independent_model_tasks", tasks.get("corpus_id") == manifest["corpus_id"] and plan["tasks_sha256"] == digest(paths["tasks"]))
+        task_lookup = METRICS["unique"](tasks["rows"], "sample_id")
+        matching_targets([s for s in manifest["samples"] if s["split"] == "test"], task_lookup)
+        check("test_target_binding", all(row["task_sha256"] == canonical_digest(task_lookup[row["sample_id"]])
+              and row["target_brief"] == task_lookup[row["sample_id"]]["target_brief"]
+              and row["image_sha256"] == task_lookup[row["sample_id"]]["image_sha256"] for row in test_inputs["rows"]))
         expected_admission = {"status": "data_admitted", "labels_sha256": digest(paths["labels"]),
                               "protocol_sha256": digest(paths["protocol"]), "exposure_sha256": digest(paths["exposure"])}
         check("frozen_admission_inputs", plan["data_admission"] == expected_admission)
@@ -179,7 +184,7 @@ async def judge(evidence_file: Path, data_root: Path) -> dict:
         check("candidate_source_commit_binding", candidate_sources_match(candidate))
         if any(not c["passed"] for c in checks):
             return result
-        calibration_profile, _, calibration_plan = verify_package(paths["calibration_package"])
+        calibration_profile, calibration_inputs, calibration_plan = verify_package(paths["calibration_package"])
         selection = read(paths["calibration_selection"])
         calibration_candidate = selection.get("calibration_candidate_commit", "")
         check("calibration_selection_identity", selection.get("format") == "drone.p6-road-profile-selection/v1"
@@ -192,6 +197,11 @@ async def judge(evidence_file: Path, data_root: Path) -> dict:
               and calibration_plan["source_manifest_sha256"] == digest(paths["manifest"])
               and calibration_plan["tasks_sha256"] == digest(paths["calibration_tasks"])
               and calibration_profile["model"] == profile["model"])
+        calibration_tasks = METRICS["unique"](read(paths["calibration_tasks"])["rows"], "sample_id")
+        matching_targets([s for s in manifest["samples"] if s["split"] == "calibration"], calibration_tasks)
+        check("calibration_target_binding", all(row["task_sha256"] == canonical_digest(calibration_tasks[row["sample_id"]])
+              and row["target_brief"] == calibration_tasks[row["sample_id"]]["target_brief"]
+              and row["image_sha256"] == calibration_tasks[row["sample_id"]]["image_sha256"] for row in calibration_inputs["rows"]))
         if any(not c["passed"] for c in checks):
             return result
         calibration_predictions = await live_evidence(paths["calibration_package"], paths["calibration_cloud"], calibration_candidate)
