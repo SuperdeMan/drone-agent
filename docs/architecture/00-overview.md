@@ -24,7 +24,7 @@
 | 持久工作流（P2） | 版本化白名单模板、人工 / 排班 / 事件触发、租约与 outbox、取消代次、脚本 / 确定性分析、复核、模拟工单与复检 | [运营层 §12](09-operations.md) |
 | 多站多机调度（P3） | 任务单、确定性分配与可重放判定、空域网格预约与失联包络、领取前撤回、任务级接力、两机同世界 SITL | [运营层 §13](09-operations.md) |
 
-**尚未覆盖**：独立道路业务评测集与现场清障效果、真实机场、完整语义场景图、Jetson / 真机及地面与厂商真实平台。多机调度、分析作业、工单关单与复检已在各自软件 / SITL 范围验证，准确状态见[路线图](../roadmap.md)及 [P6 当前交接](../p6-materials-handoff-2026-10-15.md)。M3 事件检测是 CLIP 场景分类，不是通用缺陷识别或机载生成式 VLM。空域已有录制 UOM 后端，没有 live 报备能力；能耗估计限仿真。
+**尚未覆盖**：独立道路业务评测集与现场清障效果、真实机场、完整语义场景图、Jetson / 真机及地面与厂商真实平台。多机调度、分析作业、工单关单与复检已在各自软件 / SITL 范围验证，准确状态见[路线图](../roadmap.md)及 [P6 当前交接](../p6-materials-handoff-2026-10-16.md)。M3 事件检测是 CLIP 场景分类，不是通用缺陷识别或机载生成式 VLM。空域已有录制 UOM 后端，没有 live 报备能力；能耗估计限仿真。
 
 历史验收分别绑定 [M1 `eefe76e`](../m1-readiness.md)、[M2 `f362b9e`](../m2-readiness.md)、[M3-SITL `75382dc`](../m3-readiness.md)。M3 总门禁仍为 `not_passed`，H1 承接 JIL；归档结果不能转借为当前 HEAD 或 P 系列成绩。常驻入口的版本与实调范围见[任务台记录](../tailnet-desk-readiness.md)。
 
@@ -129,11 +129,11 @@ flowchart TB
 | [../roadmap.md](../roadmap.md) | P/H/X 里程碑、历史映射与退出标准 |
 | [../p0-readiness.md](../p0-readiness.md) | P0 当前验收、来源语义、能力清单与准确候选证据 |
 | [../operations-implementation.md](../operations-implementation.md) | P0–P5 / H / X 工作包、责任、依赖与验收；§10 为评审提议的 P6 |
-| [../p6-materials-handoff-2026-10-15.md](../p6-materials-handoff-2026-10-15.md) | WP-P6-01 公开素材开发交接、剩余工作与提交范围；P6 仍未整体准出 |
+| [../p6-materials-handoff-2026-10-16.md](../p6-materials-handoff-2026-10-16.md) | WP-P6-01 公开素材开发交接、剩余工作与提交范围；P6 仍未整体准出 |
 | [../p6-materials-review.md](../p6-materials-review.md) · [第二批](../p6-materials-round2.md) | 公开来源、许可差异、图像 / 标注审计与正式数据缺口 |
 | [../p6-materials-development.md](../p6-materials-development.md) | 26 条开发输入、10 条实调与严格回放、复核工具及浏览器检查 |
 | [../p6-road-views-development.md](../p6-road-views-development.md) | 道路整图 / 分块的 24 条开发实调、离线工具、边界复核与未采用结论 |
-| [../p6-road-boundaries-development.md](../p6-road-boundaries-development.md) · [当前交接](../p6-materials-handoff-2026-10-15.md) | 无大小门槛的遮挡候选口径、6 目标 / 13 组 AI 几何草稿与待业务复核项 |
+| [../p6-road-boundaries-development.md](../p6-road-boundaries-development.md) · [当前交接](../p6-materials-handoff-2026-10-16.md) | 无大小门槛的遮挡候选口径、6 目标 / 13 组 AI 几何草稿与待业务复核项 |
 | [../p6-boundary-review-guide.md](../p6-boundary-review-guide.md) | 离线圈绘、道路版本依赖、复核导入导出、来源与几何校验；开发记录不自动升级为正式真值 |
 | [../p6-road-contact-development.md](../p6-road-contact-development.md) | 无大小门槛新提示的六条开发录制、候选范围风险与环境核对失败；未采用 |
 | [../p6-candidate-review-development.md](../p6-candidate-review-development.md) | 逐候选六次实调：环境核对通过、仅两条协议合格、33 项仍待复核；保留首次忙锁记录，协议未采用 |

@@ -1,0 +1,107 @@
+"""Verify newly acquired originals and retain a blind, unassigned combined inventory.
+
+核对新取得的原图，保留未查看业务内容且未分配拆分的合并清单。
+"""
+import argparse
+import hashlib
+import json
+from collections import Counter
+from pathlib import Path
+
+from PIL import Image
+
+ROOT = Path(__file__).resolve().parent
+BASE = ROOT.parent
+PRIOR = BASE / "p6-business-eval-20261015"
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def read(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def save(path, value):
+    with path.open("x", encoding="utf-8") as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2, allow_nan=False)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--attempt", action="append", required=True)
+    args = parser.parse_args()
+    parent = PRIOR / "floodnet/acquisition-pool.json"
+    pool = read(parent)
+    records = {r["image_id"]: dict(r) for r in pool["rows"]}
+    for row in records.values():
+        if row["completeness"] == "complete_original":
+            row["file"] = (PRIOR / row["file"]).relative_to(BASE).as_posix()
+    acquired, receipts = set(), {}
+    for folder_name in args.attempt:
+        folder = (ROOT / folder_name).resolve()
+        if not folder.is_relative_to(ROOT.resolve()):
+            raise ValueError("attempt directory outside task root")
+        result = folder / "result.json"
+        receipts[result.relative_to(BASE).as_posix()] = sha(result)
+        for receipt in read(result)["rows"]:
+            if not receipt["image_verified"]:
+                continue
+            ident = receipt["image_id"]
+            if ident in acquired or records[ident]["completeness"] == "complete_original":
+                raise ValueError("acquisition would duplicate an existing original")
+            file = folder / receipt["image_file"]
+            if sha(file) != receipt["image_sha256"]:
+                raise ValueError("acquired original bytes changed")
+            row = records[ident]
+            with Image.open(file) as picture:
+                picture.load()
+                if list(picture.size) != [row["width"], row["height"]]:
+                    raise ValueError("image dimensions differ from header inventory")
+                exif = picture.getexif()
+                if str(exif.get(306, "")).strip("\0 ") != row["capture_time_text"].strip("\0 "):
+                    raise ValueError("capture time differs from header inventory")
+                if str(exif.get(272, "")).strip("\0 ") != row["exif_model"].strip("\0 "):
+                    raise ValueError("camera model differs from header inventory")
+                pixels = picture.convert("L").resize((17, 16), Image.Resampling.BILINEAR).load()
+                fingerprint = 0
+                for y in range(16):
+                    for x in range(16):
+                        fingerprint = (fingerprint << 1) | (pixels[x, y] > pixels[x + 1, y])
+            row.update(completeness="complete_original", file=file.relative_to(BASE).as_posix(),
+                       image_sha256=receipt["image_sha256"], bytes=receipt["image_bytes"],
+                       dhash256=f"{fingerprint:064x}", dhash_method="L,17x16,bilinear,row-major,left-greater-than-right,msb-first/v1",
+                       all_pixels_decoded=True, full_image_crc_verified=True, full_image_acquired=True,
+                       acquisition_receipt_file=(folder / "receipts" / (ident + ".json")).relative_to(BASE).as_posix(),
+                       acquisition_receipt_sha256=sha(folder / "receipts" / (ident + ".json")),
+                       asset_id=None, site_id=None, capture_batch_id=None, captured_at=None, capture_timezone=None,
+                       p6_split="unassigned_quarantine", business_label=None, human_grouping_verified=False,
+                       agent_semantic_inspection=False)
+            acquired.add(ident)
+            if len(acquired) % 40 == 0:
+                print(json.dumps({"new_originals_fully_decoded": len(acquired)}), flush=True)
+    rows = sorted(records.values(), key=lambda r: int(r["image_id"]))
+    complete = [r for r in rows if r["completeness"] == "complete_original"]
+    if len({r["image_sha256"] for r in complete}) != len(complete):
+        raise ValueError("duplicate original bytes")
+    pairs = []
+    for i, left in enumerate(complete):
+        for right in complete[:i]:
+            distance = (int(left["dhash256"], 16) ^ int(right["dhash256"], 16)).bit_count()
+            if distance <= 32:
+                pairs.append({"image_ids": [left["image_id"], right["image_id"]], "dhash256_distance": distance, "same_asset_verified": False})
+    result = {**pool, "parent_inventory_sha256": sha(parent), "acquisition_receipts": receipts,
+              "tool_sha256": sha(Path(__file__)), "complete_originals": len(complete), "unique_original_hashes": len(complete),
+              "new_complete_originals": len(acquired), "header_only_images": len(rows) - len(complete),
+              "complete_capture_date_counts": dict(Counter(r["capture_time_text"][:10] for r in complete)),
+              "complete_bytes": sum(r["bytes"] for r in complete), "near_duplicate_candidates": pairs, "rows": rows,
+              "data_root": str(BASE), "human_business_labels": 0, "formal_split_assigned": 0, "formal_release_eligible": False}
+    save(args.output, result)
+    print(json.dumps({k: result[k] for k in ("complete_originals", "new_complete_originals", "header_only_images", "complete_capture_date_counts", "complete_bytes")}
+                     | {"similar_pairs": len(pairs)}, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

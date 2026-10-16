@@ -5,7 +5,7 @@
 ## 当前阶段
 
 - M0–M2 已完成，M3-SITL 已通过；原 M3 未关闭，Jetson-in-the-loop 由 H1 承接。P0–P5 已完成软件 / SITL 范围验证，厂商机场只验证到协议模拟器。准确提交、负记录、门禁与历史成绩见 [路线图](docs/roadmap.md)及各 readiness；不得把历史成绩转借给新提交。
-- P6 的 WP-P6-02–07 已按各自范围准出；航段走廊与解释核对 v2 按预登记规则不采用。WP-P6-01 仅完成公开素材开发批次，正式业务评测集未冻结、P6 未整体准出；接手见 [P6 素材交接](docs/p6-materials-handoff-2026-10-15.md)。X1 按已批准方案（D088）推进，具体状态见路线图。
+- P6 的 WP-P6-02–07 已按各自范围准出；航段走廊与解释核对 v2 按预登记规则不采用。WP-P6-01 已完成素材、标注与 S2 工具准备；正式业务清单和真实评测尚未完成，P6 未整体准出；接手见 [P6 素材交接](docs/p6-materials-handoff-2026-10-16.md)。X1 按已批准方案（D088）推进，具体状态见路线图。
 - 常驻任务台配置以 `desk-cloud --status` 和实际回执为准；最近已验证的工作流 / 业务目录为 `p6_desk_v1`，运营 / 调度目录为 `p5_desk_v1`，视觉画像 change-v3、规划提示 planner-v3、解释核对 v1。统一入口为 8448（`/` 任务台，`/fixed/` M1）；激活按 console-cloud 再 desk-cloud 并核对两条版本。M3 外部模式尚未接入常驻任务台。
 - 账本的运营 schema v2 与 workflow / scheduling / business / capacity / asset 子版本各自独立；详细表与迁移见 [运营架构](docs/architecture/09-operations.md)、[运维指南](docs/operations-guide.md)和相应设计。任何新增持久化表仍属于 schema 变更，须先设计并获批准。
 - 执行 / 安全语义变更先改契约与安全文档，再改代码。工作流不直接控制飞行，模板审批不替代逐次飞行批准；取消阻断后续派遣，失联占用先对账，模型业务发现不升级飞行判定（D050–D053）。
