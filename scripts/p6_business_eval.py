@@ -90,6 +90,118 @@ def polygon_valid(points) -> bool:
     return SIMPLE_POLYGON(points)
 
 
+def canonical_digest(value: dict) -> str:
+    """Bind a suggestion independent of JSON formatting. / 不依赖 JSON 排版绑定建议。"""
+    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+
+
+def ai_suggestions(document: dict) -> dict:
+    """Validate isolated AI drafts without creating human annotations. / 校验隔离 AI 草稿，不创建人工标注。"""
+    if (document.get("format") != "drone.p6-road-ai-suggestions/v1" or document.get("author_kind") != "isolated_ai_annotator"
+            or not document.get("author_id") or document.get("human_reviews_created") != 0
+            or document.get("formal_release_eligible") is not False
+            or document.get("isolation") != {"parent_history": "none", "evaluation_prompt_seen": False,
+                                             "evaluation_outputs_seen": False, "source_labels_seen": False}):
+        raise ValueError("AI draft independence or scope missing")
+    timestamp(document["created_at"])
+    rows = unique(document["rows"], "sample_id")
+    fields = {"sample_id", "image_sha256", "target_brief", "target_polygon", "verdict", "objects", "notes",
+              "uncertainties", "inspected_at", "inspection_files"}
+    for row in rows.values():
+        if (set(row) != fields or row["verdict"] not in {"normal", "obstacle", "indeterminate", "excluded_source"}
+                or not isinstance(row["notes"], str) or not row["notes"].strip() or len(row["notes"]) > 4000
+                or not isinstance(row["target_brief"], str) or len(row["target_brief"]) > 600):
+            raise ValueError("invalid AI suggestion fields")
+        timestamp(row["inspected_at"])
+        if (row["target_polygon"] is not None and not polygon_valid(row["target_polygon"])) or (
+                row["verdict"] in {"normal", "obstacle"} and (not polygon_valid(row["target_polygon"]) or not row["target_brief"].strip())):
+            raise ValueError("invalid AI target geometry")
+        if not isinstance(row["objects"], list) or len(row["objects"]) > 100 or ((row["verdict"] == "obstacle") != bool(row["objects"])):
+            raise ValueError("AI obstacle evidence missing or inconsistent")
+        for obj in row["objects"]:
+            if (set(obj) != {"defect_type", "polygon"} or obj["defect_type"] not in {"debris", "vegetation", "other_entity"}
+                    or not polygon_valid(obj["polygon"])):
+                raise ValueError("invalid AI object geometry")
+        for key in ("uncertainties", "inspection_files"):
+            if not isinstance(row[key], list) or any(not isinstance(v, str) or not v.strip() for v in row[key]):
+                raise ValueError("invalid AI inspection evidence")
+        if not row["inspection_files"]:
+            raise ValueError("AI original inspection evidence missing")
+    return rows
+
+
+def ai_context(context: dict, document: dict, rows: dict) -> None:
+    """Check the orchestrator's separate assignment record. / 核对编排者的独立分工登记。"""
+    author = context.get("annotators", {}).get(document["author_id"], {})
+    if (context.get("format") != "drone.p6-independent-ai-context/v1" or not context.get("authorization_reference")
+            or context.get("human_reviews_created") != 0 or context.get("formal_release_eligible") is not False
+            or not author.get("task_name") or author.get("history_fork") != "none"
+            or any(author.get(k) is not False for k in ("evaluation_prompt_provided", "evaluation_outputs_provided", "source_labels_provided"))
+            or not author.get("provider") or author["provider"] == context.get("evaluated_provider_id")):
+        raise ValueError("AI assignment is not independently isolated")
+    if any(author.get("assigned_images", {}).get(i) != r["image_sha256"] for i, r in rows.items()):
+        raise ValueError("AI draft is outside the registered assignment")
+
+
+def assisted_label_issues(sample: dict, label: dict, protocol: dict, data_root: Path, cache: dict) -> list[str]:
+    """Require original drafts and actual operator export for assisted truth. / 辅助真值必须绑定原始草稿和操作员导出。"""
+    def bound(file, expected):
+        key = (file, expected)
+        if key not in cache:
+            path = within(data_root, file)
+            if digest(path) != expected:
+                raise ValueError("assistance evidence bytes changed")
+            cache[key] = read(path)
+        return cache[key]
+
+    try:
+        a, policy = label["ai_assistance"], protocol.get("annotation_policy", {})
+        if (policy.get("mode") != "blind_or_independent_ai_human_adjudicated" or not policy.get("approval_reference")
+                or policy.get("human_adjudication_required") is not True or policy.get("evaluated_model_outputs_must_be_unseen") is not True
+                or a.get("method") != "independent_ai_then_human" or a.get("context_sha256") != policy.get("independent_context_sha256")
+                or label.get("model_outputs_seen") is not True or label.get("hints_seen") is not True
+                or type(a.get("evaluated_model_outputs_seen")) is not bool or a.get("original_checked") is not True
+                or (sample.get("split") != "development" and a["evaluated_model_outputs_seen"] is not False)):
+            return ["assisted_annotation_policy_or_exposure_invalid"]
+        document = bound(a["draft_file"], a["draft_sha256"])
+        rows = ai_suggestions(document)
+        context = bound(a["context_file"], a["context_sha256"])
+        ai_context(context, document, rows)
+        if any(context.get(k) != policy.get(k) for k in ("evaluated_provider_id", "evaluated_model")):
+            return ["assisted_annotation_evaluated_model_mismatch"]
+        original = rows[sample["sample_id"]]
+        if (original["image_sha256"] != sample["image_sha256"] or canonical_digest(original) != a["suggestion_sha256"]
+                or document["author_id"] != a["author_id"] or a.get("decision") not in {"accepted", "revised", "rejected"}):
+            return ["assisted_annotation_source_mismatch"]
+        export = bound(a["operator_export_file"], a["operator_export_sha256"])
+        record = unique(export["records"], "sample_id")[sample["sample_id"]]
+        if (export.get("format") != "drone.p6-road-operator-labels/v1" or export.get("qa_fixture") is not False
+                or export.get("formal_release_eligible") is not False or export.get("corpus_id") != protocol["corpus_id"]
+                or record.get("origin") != "operator_entered" or record.get("phase") != "annotation"
+                or record.get("ai_draft_sha256") != a["suggestion_sha256"] or record.get("ai_draft_decision") != a["decision"]
+                or record.get("ai_original_checked") is not True or record.get("model_outputs_seen") is not True
+                or record.get("evaluated_model_outputs_seen") is not a["evaluated_model_outputs_seen"]
+                or type(record.get("source_labels_seen")) is not bool
+                or any(record.get(k) != label.get(k) for k in ("sample_id", "image_sha256", "reviewer_id", "verdict", "objects", "notes", "full_target_inspected"))
+                or record.get("completed_at") != label.get("recorded_at")
+                or record.get("target_polygon") != sample.get("target", {}).get("polygon")
+                or record.get("target_brief") != sample.get("target", {}).get("brief")):
+            return ["assisted_annotation_operator_export_mismatch"]
+        elapsed = (timestamp(record["completed_at"]) - timestamp(record["started_at"])).total_seconds() * 1000
+        if (type(record.get("active_ms")) is not int or not 0 < record["active_ms"] <= elapsed + 1000
+                or elapsed <= 0 or timestamp(original["inspected_at"]) > timestamp(record["started_at"])):
+            return ["assisted_annotation_human_timing_invalid"]
+        if record["verdict"] in {"normal", "obstacle"} and (record.get("target_confirmed") is not True
+                or not timestamp(record["started_at"]) <= timestamp(record["target_registered_at"]) <= timestamp(record["completed_at"])):
+            return ["assisted_annotation_target_confirmation_missing"]
+        same = all(record.get(k) == original[k] for k in ("target_brief", "target_polygon", "verdict", "objects", "notes"))
+        if (a["decision"] == "accepted" and not same) or (a["decision"] == "revised" and same):
+            return ["assisted_annotation_decision_mismatch"]
+    except (OSError, KeyError, TypeError, ValueError, AttributeError):
+        return ["assisted_annotation_evidence_missing_or_invalid"]
+    return []
+
+
 def pair_problems(pair: dict, samples: dict, labels: dict) -> list[str]:
     """Require distinct real captures of the same state, with explicit temporal scope.
 
@@ -146,6 +258,7 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
     exposed = set(exposure["image_sha256"])
     types = set(protocol["defect_types"])
     issues, reviewed, counts, primaries = [], 0, Counter(), set()
+    assistance_cache = {}
     associations = {key: defaultdict(set) for key in ("asset_id", "site_id", "capture_batch_id", "near_duplicate_group", "image_sha256")}
 
     def issue(code, sample_id=None, **details):
@@ -220,7 +333,12 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
             target = sample.get("target") or {}
             if target.get("status") != "human_confirmed" or not polygon_valid(target.get("polygon")):
                 issue("confirmed_target_geometry_missing", ident)
-        if split == "test" and label.get("model_outputs_seen") is not False:
+        if sample.get("ai_suggestion") and "ai_assistance" not in label:
+            issue("assisted_annotation_provenance_missing", ident)
+        if "ai_assistance" in label:
+            for code in assisted_label_issues(sample, label, protocol, data_root, assistance_cache):
+                issue(code, ident)
+        elif split == "test" and label.get("model_outputs_seen") is not False:
             issue("test_label_model_exposure_unknown_or_present", ident)
     for key, groups in associations.items():
         for value, splits in groups.items():
@@ -312,6 +430,8 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
         issue("full_candidate_review_coverage_required")
     return {"format": "drone.p6-road-data-audit/v1", "status": "ready_for_scoped_evaluation" if not issues else "missing",
             "samples": len(samples), "split_counts": dict(counts), "human_labels_present": reviewed,
+            "ai_assisted_labels_declared": sum("ai_assistance" in row for row in annotations.values()),
+            "annotation_claim": "AI-assisted labels are human adjudications, not blind labels; provenance checked separately",
             "stability_pairs": len(pair_ids), "issue_counts": dict(Counter(i["code"] for i in issues)), "issues": issues,
             "data_ready": not issues, "formal_release_eligible": False, "model_quality_verified": False}
 

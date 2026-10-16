@@ -1,6 +1,6 @@
-"""Build a blind whole-target workbench and validate operator annotation exports.
+"""Build whole-target workbenches and validate blind or assisted operator exports.
 
-构建不展示模型答案的完整目标工作台，并校验操作员标注导出。
+构建完整目标工作台，校验盲标或辅助标注的操作员导出。
 """
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ FIELDS = {"sample_id", "image_sha256", "revision", "reviewer_id", "origin", "pha
           "active_ms", "target_brief", "target_registered_at", "target_polygon", "target_confirmed", "full_target_inspected",
           "verdict", "objects", "notes", "task_reference", "model_outputs_seen", "source_labels_seen", "metadata_seen",
           "asset_id", "site_id", "capture_batch_id", "near_duplicate_group", "grouping_verified", "grouping_evidence"}
+AI_FIELDS = {"ai_draft_sha256", "ai_draft_decision", "ai_original_checked", "evaluated_model_outputs_seen"}
 
 
 def encoded(value) -> bytes:
@@ -40,7 +41,8 @@ def validate(record: dict, sample: dict, qa: bool) -> None:
 
 核对身份、完整目标判断及仅用于标注的计时。
 """
-    if not isinstance(record, dict) or set(record) != FIELDS:
+    expected = FIELDS | AI_FIELDS if "ai_suggestion" in sample else FIELDS
+    if not isinstance(record, dict) or set(record) != expected:
         raise ValueError("unexpected annotation fields")
     r = record
     if r["sample_id"] != sample["sample_id"] or r["image_sha256"] != sample["image_sha256"]:
@@ -89,12 +91,23 @@ def validate(record: dict, sample: dict, qa: bool) -> None:
     if r["grouping_verified"] and (not all(r[k] for k in ("asset_id", "site_id", "capture_batch_id", "near_duplicate_group"))
                                    or not r["grouping_evidence"].strip()):
         raise ValueError("confirmed grouping needs identities and evidence")
+    if "ai_suggestion" in sample:
+        suggestion = sample["ai_suggestion"]
+        if (r["ai_draft_sha256"] != sample["ai_suggestion_sha256"] or r["model_outputs_seen"] is not True
+                or r["ai_original_checked"] is not True or type(r["evaluated_model_outputs_seen"]) is not bool
+                or r["ai_draft_decision"] not in {"accepted", "revised", "rejected"}
+                or timestamp(suggestion["inspected_at"]) > timestamp(r["started_at"])):
+            raise ValueError("AI assistance needs original-image adjudication and explicit exposure")
+        same = all(r[k] == suggestion[k] for k in ("target_brief", "target_polygon", "verdict", "objects", "notes"))
+        if (r["ai_draft_decision"] == "accepted" and not same) or (r["ai_draft_decision"] == "revised" and same):
+            raise ValueError("AI draft decision differs from actual edits")
 
 
-def build(pool_file: Path, data_root: Path, permission_file: Path, protocol_file: Path, output: Path, *, qa: bool = False) -> dict:
-    """Copy original bytes and metadata; never prefill labels or allocate a test split.
+def build(pool_file: Path, data_root: Path, permission_file: Path, protocol_file: Path, output: Path, *, qa: bool = False,
+          suggestions: list[Path] | None = None, context_file: Path | None = None) -> dict:
+    """Copy originals and optional AI drafts; never prefill human attestations.
 
-复制原图和元数据，不预填标签或分配测试拆分。
+复制原图及可选 AI 草稿，不预填人工确认。
 """
     pool, permission, protocol = read(pool_file), read(permission_file), read(protocol_file)
     if pool.get("format") != "drone.floodnet-acquisition-pool/v1" or protocol.get("corpus_id") != "p6-road-business-v1":
@@ -107,6 +120,25 @@ def build(pool_file: Path, data_root: Path, permission_file: Path, protocol_file
     selected = [r for r in pool["rows"] if r.get("completeness") == "complete_original"]
     if not selected or len(selected) > 2000 or len({r["image_id"] for r in selected}) != len(selected):
         raise ValueError("empty, excessive or duplicated image inventory")
+    prepared, suggested = [], {}
+    if suggestions:
+        if context_file is None:
+            raise ValueError("independent annotation context required")
+        context = read(context_file)
+        if not qa and digest(context_file) != protocol.get("annotation_policy", {}).get("independent_context_sha256"):
+            raise ValueError("annotation context is not approved by protocol")
+        for i, file in enumerate(suggestions):
+            document = read(file)
+            rows = CORE["ai_suggestions"](document)
+            CORE["ai_context"](context, document, rows)
+            source = {"file": f"ai-drafts/{i + 1}.json", "sha256": digest(file), "author_id": document["author_id"]}
+            prepared.append((file, source))
+            for ident, row in rows.items():
+                if ident in suggested:
+                    raise ValueError("duplicate AI suggestion")
+                suggested[ident] = {"ai_suggestion": row, "ai_suggestion_sha256": CORE["canonical_digest"](row), "ai_source": source}
+        if any("floodnet-" + r["image_id"] not in suggested for r in selected):
+            raise ValueError("assisted package requires one suggestion per selected image")
     verified = []
     for row in selected:
         if re.fullmatch(r"[0-9]+", row["image_id"]) is None or re.fullmatch(r"[0-9a-f]{64}", row["image_sha256"]) is None:
@@ -121,6 +153,8 @@ def build(pool_file: Path, data_root: Path, permission_file: Path, protocol_file
             if list(picture.size) != [row["width"], row["height"]]:
                 raise ValueError("image dimensions changed")
         verified.append((row, original))
+        if suggestions and suggested["floodnet-" + row["image_id"]]["ai_suggestion"]["image_sha256"] != row["image_sha256"]:
+            raise ValueError("AI suggestion image identity differs")
     output.mkdir(parents=True)
     (output / "images").mkdir()
     samples = []
@@ -136,6 +170,8 @@ def build(pool_file: Path, data_root: Path, permission_file: Path, protocol_file
                         "gps_group_hint": group["candidate_group_id"] if group else None,
                         "related_image_ids": [i for p in pool.get("near_duplicate_candidates", []) if row["image_id"] in p["image_ids"]
                                               for i in p["image_ids"] if i != row["image_id"]], "p6_split": "unassigned_quarantine"})
+        if suggestions:
+            samples[-1].update(suggested[samples[-1]["sample_id"]])
     files = {name: ASSETS / name for name in ("index.html", "review.css", "core.js", "app.js")}
     files["shared-core.js"] = Path(__file__).with_name("p6_boundary_review") / "core.js"
     for name, source in files.items():
@@ -151,6 +187,15 @@ def build(pool_file: Path, data_root: Path, permission_file: Path, protocol_file
                          "license_evidence_sha256": digest(license_file), "license": permission["license"],
                          "source_url": permission.get("author_repository", ""), "attribution": permission.get("attribution", "")},
               "samples": samples, "formal_release_eligible": False, "human_reviews_created": 0}
+    if suggestions:
+        (output / "ai-drafts").mkdir()
+        for file, source in prepared:
+            shutil.copyfile(file, output / source["file"])
+            if digest(output / source["file"]) != source["sha256"]:
+                raise ValueError("AI draft changed during package creation")
+        shutil.copyfile(context_file, output / "annotation-context.json")
+        bundle["ai_assistance"] = {"method": "independent_ai_then_human", "sources": [s for _, s in prepared],
+                                   "context_file": "annotation-context.json", "context_sha256": digest(context_file)}
     bundle["bundle_id"] = hashlib.sha256(encoded(bundle)).hexdigest()
     (output / "bundle.json").write_bytes(encoded(bundle))
     javascript = json.dumps(bundle, sort_keys=True, ensure_ascii=False, allow_nan=False).replace("<", "\\u003c")
@@ -188,6 +233,25 @@ def verify_bundle(package: Path, expected_sha: str) -> dict:
     inventory = package / "source-inventory.json"
     if inventory.exists() and digest(inventory) != bundle["source_pool_sha256"]:
         raise ValueError("capture inventory differs from the bound source pool")
+    if "ai_assistance" in bundle:
+        assistance = bundle["ai_assistance"]
+        context = within(package, assistance["context_file"])
+        if digest(context) != assistance["context_sha256"]:
+            raise ValueError("independent annotation context changed")
+        documents = {}
+        for source in assistance["sources"]:
+            file = within(package, source["file"])
+            if digest(file) != source["sha256"]:
+                raise ValueError("AI suggestion bytes changed")
+            document = read(file)
+            rows = CORE["ai_suggestions"](document)
+            CORE["ai_context"](read(context), document, rows)
+            documents[source["file"]] = (source, rows)
+        for sample in bundle["samples"]:
+            source, rows = documents[sample["ai_source"]["file"]]
+            if (sample["ai_source"] != source or rows[sample["sample_id"]] != sample["ai_suggestion"]
+                    or CORE["canonical_digest"](sample["ai_suggestion"]) != sample["ai_suggestion_sha256"]):
+                raise ValueError("AI page suggestion differs from original")
     return bundle
 
 
@@ -209,19 +273,26 @@ def import_records(package: Path, expected_sha: str, export_file: Path, output: 
     for ident, record in records.items():
         validate(record, samples[ident], bundle["qa_fixture"])
     manifest, labels, sessions = [], [], []
+    root = package.resolve()
+    if "ai_assistance" in bundle:
+        root = next((p for p in (root, *root.parents) if output.resolve().is_relative_to(p)), None)
+        if root is None:
+            raise ValueError("assisted import and package must share a data root")
+    def relative(path):
+        return path.resolve().relative_to(root).as_posix()
     for ident, record in records.items():
         sample = samples[ident]
         if record["verdict"] == "excluded_source":
             continue
-        manifest.append({**sample, "source_id": "floodnet", "split": None, "evaluation_role": None,
+        manifest.append({**sample, "image_file": relative(package / sample["image_file"]), "source_id": "floodnet", "split": None, "evaluation_role": None,
                          **{k: record[k] or None for k in ("asset_id", "site_id", "capture_batch_id", "near_duplicate_group")},
                          "grouping_verified": record["grouping_verified"], "grouping_evidence": record["grouping_evidence"] or None,
                          "captured_at": None, "media_origin": "qa_fixture" if bundle["qa_fixture"] else "real_capture",
-                         "development_exposed": record["model_outputs_seen"],
+                         "development_exposed": record.get("evaluated_model_outputs_seen", record["model_outputs_seen"]),
                          "target": {"status": "human_confirmed" if record["target_confirmed"] and not bundle["qa_fixture"] else "unconfirmed",
                                     "polygon": record["target_polygon"], "brief": record["target_brief"], "task_reference": record["task_reference"]}})
         if (package / "source-inventory.json").is_file():
-            manifest[-1]["capture_record"] = {"inventory_file": "source-inventory.json", "inventory_sha256": bundle["source_pool_sha256"],
+            manifest[-1]["capture_record"] = {"inventory_file": relative(package / "source-inventory.json"), "inventory_sha256": bundle["source_pool_sha256"],
                                                "source_observation_id": sample["image_id"]}
         origin = "qa_fixture" if bundle["qa_fixture"] else "human"
         labels.append({"sample_id": ident, "image_sha256": sample["image_sha256"], "verdict": record["verdict"],
@@ -229,12 +300,21 @@ def import_records(package: Path, expected_sha: str, export_file: Path, output: 
                        "origin": origin, "reviewer_id": record["reviewer_id"], "full_target_inspected": record["full_target_inspected"],
                        "notes": record["notes"], "hints_seen": record["source_labels_seen"] or record["model_outputs_seen"],
                        "model_outputs_seen": record["model_outputs_seen"], "recorded_at": record["completed_at"]})
+        if "ai_suggestion" in sample:
+            a, source = bundle["ai_assistance"], sample["ai_source"]
+            labels[-1]["ai_assistance"] = {"method": a["method"], "context_file": relative(package / a["context_file"]),
+                "context_sha256": a["context_sha256"], "draft_file": relative(package / source["file"]), "draft_sha256": source["sha256"],
+                "author_id": source["author_id"], "suggestion_sha256": sample["ai_suggestion_sha256"],
+                "decision": record["ai_draft_decision"], "original_checked": record["ai_original_checked"],
+                "evaluated_model_outputs_seen": record["evaluated_model_outputs_seen"],
+                "operator_export_file": relative(output / "operator-export.json"), "operator_export_sha256": digest(export_file)}
         sessions.append({"sample_id": ident, "phase": "annotation", "origin": origin, "reviewer_id": record["reviewer_id"],
                          "started_at": record["started_at"], "ended_at": record["completed_at"], "active_ms": record["active_ms"]})
     output.mkdir(parents=True, exist_ok=False)
     shutil.copyfile(export_file, output / "operator-export.json")
     write(output / "manifest-draft.json", {"format": "drone.p6-road-corpus-draft/v1", "corpus_id": bundle["corpus_id"],
-          "sources": {"floodnet": bundle["source"]}, "samples": manifest, "stability_pairs": [], "data_root": str(package.resolve()),
+          "sources": {"floodnet": {**bundle["source"], "license_evidence_file": relative(package / bundle["source"]["license_evidence_file"])}},
+          "samples": manifest, "stability_pairs": [], "data_root": str(root),
           "status": "independent_grouping_and_split_required", "formal_release_eligible": False})
     write(output / "labels.json", {"format": "drone.p6-road-labels/v1", "corpus_id": bundle["corpus_id"], "rows": labels})
     write(output / "annotation-sessions.json", {"format": "drone.p6-road-review-sessions/v1", "corpus_id": bundle["corpus_id"], "sessions": sessions})
@@ -255,12 +335,15 @@ def main() -> None:
     for name in ("pool", "data-root", "permission", "protocol", "output"):
         create.add_argument("--" + name, type=Path, required=True)
     create.add_argument("--qa-fixture", action="store_true")
+    create.add_argument("--suggestions", type=Path, nargs="+")
+    create.add_argument("--annotation-context", type=Path)
     consume = commands.add_parser("import")
     for name in ("package", "export", "output"):
         consume.add_argument("--" + name, type=Path, required=True)
     consume.add_argument("--bundle-sha256", required=True)
     args = parser.parse_args()
-    result = (build(args.pool, args.data_root, args.permission, args.protocol, args.output, qa=args.qa_fixture) if args.command == "build"
+    result = (build(args.pool, args.data_root, args.permission, args.protocol, args.output, qa=args.qa_fixture,
+                    suggestions=args.suggestions, context_file=args.annotation_context) if args.command == "build"
               else import_records(args.package, args.bundle_sha256, args.export, args.output))
     print(json.dumps(result, ensure_ascii=False))
 

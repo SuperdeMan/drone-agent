@@ -163,6 +163,10 @@ async def judge(evidence_file: Path, data_root: Path) -> dict:
         audit = METRICS["audit"](manifest, labels, protocol, exposure, data_root)
         check("data_admission", audit["data_ready"], audit["issue_counts"])
         profile, test_inputs, plan = verify_package(paths["test_package"])
+        if audit["ai_assisted_labels_declared"]:
+            policy = protocol.get("annotation_policy", {})
+            check("annotation_evaluated_model_binding", policy.get("evaluated_model") == profile["model"]
+                  and policy.get("evaluated_provider_id") == "minimax-vl")
         check("frozen_test_profile", plan["split"] == "test" and profile["status"] == "frozen")
         check("test_source_manifest", plan["source_manifest_sha256"] == digest(paths["manifest"]))
         check("independent_model_tasks", tasks.get("corpus_id") == manifest["corpus_id"] and plan["tasks_sha256"] == digest(paths["tasks"]))
@@ -210,6 +214,8 @@ async def judge(evidence_file: Path, data_root: Path) -> dict:
         predictions = await live_evidence(paths["test_package"], paths["test_cloud"], candidate)
         check("recorded_live_and_strict_replay", predictions["live_environment_verified"])
         metrics = METRICS["scores"](manifest, labels, predictions, read(paths["human_reviews"]), "test")
+        metrics["annotation_provenance"] = {"ai_assisted_labels_declared": audit["ai_assisted_labels_declared"],
+                                           "claim": audit["annotation_claim"], "data_admission_verified": True}
         metrics["provenance_verified"] = True
         metrics["counted_as_formal_live_result"] = True
         metrics["scope"] = "recomputed after exact candidate data admission, recorded live execution and strict replay; final gate checks remain separate"

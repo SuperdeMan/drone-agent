@@ -185,7 +185,7 @@ def test_formal_model_task_cannot_use_a_different_labeled_target(package, tmp_pa
         manifest["samples"][0]["target"]["brief"] = "A different road segment"
     for name, value in [("formal-manifest.json", manifest), ("formal-tasks.json", tasks), ("labels.json", {"rows": labels}), ("protocol.json", {}), ("exposure.json", {})]:
         C.write(source / name, value)
-    monkeypatch.setitem(C.METRICS, "audit", lambda *args: {"data_ready": True})
+    monkeypatch.setitem(C.METRICS, "audit", lambda *args: {"data_ready": True, "ai_assisted_labels_declared": 0})
     with pytest.raises(ValueError, match="differs from the labeled target"):
         C.prepare(source / "formal-manifest.json", source / "formal-tasks.json", source / "profile.json", source,
                   tmp_path / "mismatched", "calibration", labels_file=source / "labels.json", protocol_file=source / "protocol.json", exposure_file=source / "exposure.json")

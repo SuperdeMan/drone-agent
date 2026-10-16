@@ -3,12 +3,16 @@
   'use strict';
   const shared=typeof module!=='undefined'&&module.exports?require('../p6_boundary_review/core.js'):root.BoundaryCore;
   const fields=['sample_id','image_sha256','revision','reviewer_id','origin','phase','started_at','completed_at','active_ms','target_brief','target_registered_at','target_polygon','target_confirmed','full_target_inspected','verdict','objects','notes','task_reference','model_outputs_seen','source_labels_seen','metadata_seen','asset_id','site_id','capture_batch_id','near_duplicate_group','grouping_verified','grouping_evidence'];
+  const aiFields=['ai_draft_sha256','ai_draft_decision','ai_original_checked','evaluated_model_outputs_seen'];
+  const expected=s=>s?.ai_suggestion?fields.concat(aiFields):fields;
+  const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
+  const unchanged=(r,s)=>['target_brief','target_polygon','verdict','objects','notes'].every(k=>JSON.stringify(canonical(r[k]))===JSON.stringify(canonical(s.ai_suggestion[k])));
   const kinds=['debris','vegetation','other_entity'],verdicts=['normal','obstacle','indeterminate','wrong_target','excluded_source'];
   const exact=shared.exact,text=(v,n,required=false)=>typeof v==='string'&&v.length<=n&&(!required||v.trim().length>0);
   const date=v=>typeof v==='string'&&/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(v)&&Number.isFinite(Date.parse(v));
   function validate(r,s,qa=false){
     const errors=[];
-    if(!exact(r,fields))return ['标注字段不完整或包含未知字段'];
+    if(!exact(r,expected(s)))return ['标注字段不完整或包含未知字段'];
     if(!s||r.sample_id!==s.sample_id||r.image_sha256!==s.image_sha256)errors.push('图片身份不匹配');
     if(r.origin!==(qa?'qa_fixture':'operator_entered')||r.phase!=='annotation')errors.push('标注来源或阶段不匹配');
     if(!Number.isInteger(r.revision)||r.revision<1||!verdicts.includes(r.verdict))errors.push('请选择结论');
@@ -31,16 +35,23 @@
     }
     for(const k of ['asset_id','site_id','capture_batch_id','near_duplicate_group'])if(typeof r[k]!=='string'||(r[k]&&!/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/.test(r[k])))errors.push('分组标识请使用英文字母、数字或 . _ : -，未知可留空');
     if(r.grouping_verified&&(!['asset_id','site_id','capture_batch_id','near_duplicate_group'].every(k=>r[k])||!text(r.grouping_evidence,1000,true)))errors.push('已核对分组需要全部身份和依据');
+    if(s?.ai_suggestion){
+      if(r.ai_draft_sha256!==s.ai_suggestion_sha256||r.model_outputs_seen!==true||r.ai_original_checked!==true||typeof r.evaluated_model_outputs_seen!=='boolean'||!['accepted','revised','rejected'].includes(r.ai_draft_decision))errors.push('请逐项核对原图、选择草稿处理结果并填写待评模型暴露');
+      if(Date.parse(s.ai_suggestion.inspected_at)>Date.parse(r.started_at))errors.push('人工核对不能早于 AI 草稿');
+      if((r.ai_draft_decision==='accepted'&&!unchanged(r,s))||(r.ai_draft_decision==='revised'&&unchanged(r,s)))errors.push('草稿处理结果与实际修改不符');
+    }
     return [...new Set(errors)];
   }
-  function blank(s,qa=false){return {sample_id:s.sample_id,image_sha256:s.image_sha256,revision:1,reviewer_id:'',origin:qa?'qa_fixture':'operator_entered',phase:'annotation',started_at:null,completed_at:null,active_ms:0,target_brief:'',target_registered_at:null,target_polygon:null,target_confirmed:false,full_target_inspected:false,verdict:'',objects:[],notes:'',task_reference:'',model_outputs_seen:null,source_labels_seen:null,metadata_seen:false,asset_id:'',site_id:'',capture_batch_id:'',near_duplicate_group:'',grouping_verified:false,grouping_evidence:''};}
+  function blank(s,qa=false){return {sample_id:s.sample_id,image_sha256:s.image_sha256,revision:1,reviewer_id:'',origin:qa?'qa_fixture':'operator_entered',phase:'annotation',started_at:null,completed_at:null,active_ms:0,target_brief:'',target_registered_at:null,target_polygon:null,target_confirmed:false,full_target_inspected:false,verdict:'',objects:[],notes:'',task_reference:'',model_outputs_seen:s.ai_suggestion?true:null,source_labels_seen:null,metadata_seen:false,asset_id:'',site_id:'',capture_batch_id:'',near_duplicate_group:'',grouping_verified:false,grouping_evidence:'',...(s.ai_suggestion?{ai_draft_sha256:s.ai_suggestion_sha256,ai_draft_decision:'',ai_original_checked:false,evaluated_model_outputs_seen:null}:{})};}
+  function applySuggestion(r,s){if(!s.ai_suggestion)throw Error('本图没有 AI 草稿');const next=structuredClone(r);for(const k of ['target_brief','target_polygon','verdict','objects','notes'])next[k]=structuredClone(s.ai_suggestion[k]);return {...next,target_confirmed:false,target_registered_at:null,full_target_inspected:false,model_outputs_seen:true,ai_original_checked:false,ai_draft_decision:'',ai_draft_sha256:s.ai_suggestion_sha256};}
   function restoreDraft(r,s,qa=false){
     const initial=blank(s,qa);
-    if(!exact(r,fields)||r.sample_id!==s.sample_id||r.image_sha256!==s.image_sha256||r.origin!==initial.origin||r.phase!=='annotation')return initial;
+    if(!exact(r,expected(s))||r.sample_id!==s.sample_id||r.image_sha256!==s.image_sha256||r.origin!==initial.origin||r.phase!=='annotation')return initial;
     if(!['reviewer_id','target_brief','notes','task_reference','asset_id','site_id','capture_batch_id','near_duplicate_group','grouping_evidence'].every(k=>typeof r[k]==='string'))return initial;
     if(!Number.isInteger(r.active_ms)||r.active_ms<0||!Array.isArray(r.objects)||r.objects.length>100||r.objects.some(o=>!exact(o,['defect_type','polygon'])||!kinds.includes(o.defect_type)||!shared.polygonValid(o.polygon)))return initial;
     if(r.target_polygon!==null&&!shared.polygonValid(r.target_polygon))return initial;
     if(!['target_confirmed','full_target_inspected','metadata_seen','grouping_verified'].every(k=>typeof r[k]==='boolean')||!['model_outputs_seen','source_labels_seen'].every(k=>r[k]===null||typeof r[k]==='boolean'))return initial;
+    if(s.ai_suggestion&&(r.ai_draft_sha256!==s.ai_suggestion_sha256||r.model_outputs_seen!==true||typeof r.ai_original_checked!=='boolean'||!['','accepted','revised','rejected'].includes(r.ai_draft_decision)||!(r.evaluated_model_outputs_seen===null||typeof r.evaluated_model_outputs_seen==='boolean')))return initial;
     return structuredClone(r);
   }
   function makeExport(bundle,records){
@@ -54,6 +65,6 @@
     if(!exact(v,['format','bundle_id','corpus_id','qa_fixture','records','formal_release_eligible','reviewer_identity_authenticated'])||v.format!=='drone.p6-road-operator-labels/v1'||v.bundle_id!==bundle.bundle_id||v.corpus_id!==bundle.corpus_id||v.qa_fixture!==bundle.qa_fixture||v.formal_release_eligible!==false||v.reviewer_identity_authenticated!==false)throw Error('导入文件的素材包、来源或权限标记不匹配');
     return makeExport(bundle,v.records);
   }
-  const api={validate,blank,restoreDraft,makeExport,parseImport,polygonValid:shared.polygonValid,ActiveClock:shared.ActiveClock};
+  const api={validate,blank,restoreDraft,makeExport,parseImport,applySuggestion,unchanged,polygonValid:shared.polygonValid,ActiveClock:shared.ActiveClock};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.RoadLabelCore=api;
 })(typeof window==='undefined'?globalThis:window);

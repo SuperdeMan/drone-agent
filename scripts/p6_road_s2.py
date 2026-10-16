@@ -196,9 +196,14 @@ def prepare(manifest_file: Path, tasks_file: Path, profile_file: Path, data_root
     if split != "development":
         if any(p is None for p in (labels_file, protocol_file, exposure_file)):
             raise ValueError("formal preparation requires labels, protocol and exposure registry")
-        checked = METRICS["audit"](manifest, read(labels_file), read(protocol_file), read(exposure_file), data_root)
+        protocol = read(protocol_file)
+        checked = METRICS["audit"](manifest, read(labels_file), protocol, read(exposure_file), data_root)
         if checked["data_ready"] is not True:
             raise ValueError("formal road data admission is missing: " + ",".join(checked["issue_counts"]))
+        if checked["ai_assisted_labels_declared"] and (
+                protocol.get("annotation_policy", {}).get("evaluated_model") != profile["model"]
+                or protocol.get("annotation_policy", {}).get("evaluated_provider_id") != "minimax-vl"):
+            raise ValueError("assisted annotation independence was registered for a different evaluated model")
         labels = METRICS["unique"](read(labels_file)["rows"], "sample_id")
         admission = {"status": "data_admitted", "labels_sha256": digest(labels_file), "protocol_sha256": digest(protocol_file),
                      "exposure_sha256": digest(exposure_file)}

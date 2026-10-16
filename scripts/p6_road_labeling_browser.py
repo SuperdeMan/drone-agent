@@ -36,6 +36,9 @@ async def run(package: Path, output: Path) -> None:
     bundle = json.loads((package / "bundle.json").read_bytes())
     if bundle.get("qa_fixture") is not True or len(bundle["samples"]) != 2:
         raise ValueError("browser QA requires exactly two synthetic fixture images")
+    if "ai_assistance" in bundle:
+        await assisted_run(package, output, bundle)
+        return
     output.mkdir(parents=True, exist_ok=False)
     checks, errors, requests = [], [], []
     receipt = {"scope": "synthetic whole-target annotation UI only", "human_labels_created": 0, "model_invocations": 0,
@@ -167,6 +170,126 @@ async def run(package: Path, output: Path) -> None:
         raise
     finally:
         server.shutdown()
+        receipt["finished_at"] = datetime.now(UTC).isoformat()
+        receipt["passed"] = sum(c["passed"] for c in checks)
+        receipt["failed"] = sum(not c["passed"] for c in checks)
+        (output / "receipt.json").write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+async def assisted_run(package: Path, output: Path, bundle: dict) -> None:
+    """Exercise assisted adjudication without creating real human evidence. / 验证辅助裁定流程，不创建真实人工证据。"""
+    output.mkdir(parents=True, exist_ok=False)
+    checks, errors, requests = [], [], []
+    receipt = {"scope": "synthetic AI-assisted annotation UI only", "human_labels_created": 0, "model_invocations": 0,
+               "started_at": datetime.now(UTC).isoformat(), "bundle_sha256": hashlib.sha256((package / "bundle.json").read_bytes()).hexdigest(),
+               "driver_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), "formal_release_eligible": False,
+               "checks": checks, "errors": errors}
+
+    def check(name, value):
+        checks.append({"name": name, "passed": bool(value)})
+        if not value:
+            raise AssertionError(name)
+
+    async def ready(page):
+        await page.locator("#canvasFrame[data-ready='true']").wait_for(state="attached")
+
+    async def export(page, filename):
+        async with page.expect_download() as pending:
+            await page.locator("#exportBtn").click()
+        download = await pending.value
+        await download.save_as(output / filename)
+        return json.loads((output / filename).read_bytes())
+
+    try:
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch(channel="msedge", headless=True)
+            receipt["browser_version"] = browser.version
+            context = await browser.new_context(viewport={"width": 1440, "height": 1100}, accept_downloads=True)
+            page = await context.new_page()
+            page.on("pageerror", lambda e: errors.append(str(e)))
+            page.on("request", lambda r: requests.append(r.url))
+            await page.goto((package / "index.html").as_uri(), wait_until="load")
+            await ready(page)
+            check("qa_banner_visible", await page.locator("#qaBanner").is_visible())
+            check("draft_visible_not_saved", await page.locator("#aiPanel").is_visible() and "0 / 2" in await page.locator("#progress").inner_text())
+            check("ai_exposure_locked", await page.locator("#modelSeen").is_disabled() and await page.locator("#modelSeen").input_value() == "true")
+            check("no_prefilled_human_attestations", await page.locator("#verdict").input_value() == "" and not await page.locator("#aiOriginal").is_checked())
+            await page.locator("#useSuggestion").click()
+            check("loading_requires_real_clock", await page.locator("#verdict").input_value() == "")
+            await page.locator("#reviewer").fill("QA_FIXTURE_NOT_HUMAN")
+            await page.locator("#timerBtn").click()
+            await page.locator("#useSuggestion").click()
+            check("suggestion_loaded", await page.locator("#verdict").input_value() == bundle["samples"][0]["ai_suggestion"]["verdict"])
+            check("load_does_not_confirm_target", await page.locator("#fullTarget").is_disabled() and await page.locator("#aiDecision").input_value() == "")
+            await page.locator("#confirmTarget").click()
+            await page.locator("#fullTarget").check()
+            await page.locator("#sourceSeen").select_option("false")
+            await page.locator("#aiDecision").select_option("accepted")
+            await page.locator("#evaluatedSeen").select_option("false")
+            await page.locator("#saveBtn").click()
+            check("original_review_required", "0 / 2" in await page.locator("#progress").inner_text())
+            await page.locator("#aiOriginal").check()
+            await page.locator("#saveBtn").click()
+            check("actual_adjudication_saved", "1 / 2" in await page.locator("#progress").inner_text())
+            value = await export(page, "qa-accepted.json")
+            row = value["records"][0]
+            check("ai_origin_retained", row["model_outputs_seen"] is True and row["evaluated_model_outputs_seen"] is False and row["ai_draft_sha256"] == bundle["samples"][0]["ai_suggestion_sha256"])
+            check("qa_is_not_human", value["qa_fixture"] is True and row["origin"] == "qa_fixture" and value["formal_release_eligible"] is False)
+            check("clock_is_annotation_only", row["active_ms"] > 0 and row["phase"] == "annotation")
+            await page.locator("#notes").fill("Synthetic operator correction / 合成操作员修改")
+            await page.locator("#saveBtn").click()
+            check("editing_requires_resume", "计时" in await page.locator("#message").inner_text())
+            await page.locator("#timerBtn").click()
+            await page.locator("#saveBtn").click()
+            check("changed_draft_not_accepted_unchanged", "修改不符" in await page.locator("#message").inner_text())
+            await page.locator("#aiDecision").select_option("revised")
+            await page.locator("#saveBtn").click()
+            value = await export(page, "qa-revised.json")
+            check("revised_decision_exported", value["records"][0]["ai_draft_decision"] == "revised" and value["records"][0]["revision"] == 2)
+            await page.reload(wait_until="load")
+            await ready(page)
+            check("reload_preserves_assistance", await page.locator("#modelSeen").is_disabled() and await page.locator("#aiDecision").input_value() == "revised")
+            check("reload_pauses_clock", "继续" in await page.locator("#timerBtn").inner_text())
+            await page.locator("#next").click()
+            await ready(page)
+            check("next_has_no_human_confirmation", not await page.locator("#aiOriginal").is_checked() and await page.locator("#evaluatedSeen").input_value() == "")
+            await page.locator("#timerBtn").click()
+            await page.locator("#useSuggestion").click()
+            check("excluded_source_draft", await page.locator("#verdict").input_value() == "excluded_source")
+            await page.locator("#sourceSeen").select_option("false")
+            await page.locator("#aiDecision").select_option("accepted")
+            await page.locator("#aiOriginal").check()
+            await page.locator("#evaluatedSeen").select_option("false")
+            await page.locator("#saveBtn").click()
+            check("excluded_source_saves_without_fake_target", "2 / 2" in await page.locator("#progress").inner_text())
+            final = await export(page, "qa-final.json")
+            check("two_real_qa_exports_only", len(final["records"]) == 2 and all(r["origin"] == "qa_fixture" for r in final["records"]))
+            await page.locator("#previous").click()
+            await ready(page)
+            for width, height in [(1440, 1100), (390, 844)]:
+                await page.set_viewport_size({"width": width, "height": height})
+                await page.screenshot(path=str(output / f"assisted-{width}.png"), full_page=True)
+                check("no_horizontal_overflow_" + str(width), await page.evaluate("document.documentElement.scrollWidth<=innerWidth+1"))
+            await page.set_viewport_size({"width": 1440, "height": 1100})
+            await page.evaluate("document.documentElement.style.zoom='2'")
+            await page.screenshot(path=str(output / "assisted-zoom200.png"), full_page=True)
+            check("zoom200_no_horizontal_overflow", await page.evaluate("document.documentElement.scrollWidth<=innerWidth+1"))
+            await context.close()
+            other = await browser.new_context(accept_downloads=True)
+            page2 = await other.new_page()
+            await page2.goto((package / "index.html").as_uri(), wait_until="load")
+            await ready(page2)
+            await page2.locator("#importFile").set_input_files(output / "qa-final.json")
+            await page2.locator("#progress").filter(has_text="2 / 2").wait_for()
+            check("assisted_import_roundtrip", await page2.locator("#aiDecision").input_value() == "revised")
+            await other.close()
+            await browser.close()
+            check("no_external_requests", all(r.startswith((package.as_uri() + "/", "data:")) for r in requests))
+            check("no_javascript_errors", not errors)
+    except Exception as error:
+        receipt["error"] = f"{type(error).__name__}: {error}"
+        raise
+    finally:
         receipt["finished_at"] = datetime.now(UTC).isoformat()
         receipt["passed"] = sum(c["passed"] for c in checks)
         receipt["failed"] = sum(not c["passed"] for c in checks)
