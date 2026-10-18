@@ -143,8 +143,131 @@ def ai_context(context: dict, document: dict, rows: dict) -> None:
         raise ValueError("AI draft is outside the registered assignment")
 
 
+def delegated_ai_approved(protocol: dict) -> bool:
+    """Recognize explicit AI delegation without calling it human truth. / 识别明确 AI 授权，不称为真人真值。"""
+    policy = protocol.get("annotation_policy", {})
+    return (policy.get("mode") == "independent_ai_verified_reference" and bool(policy.get("approval_reference"))
+            and policy.get("human_adjudication_required") is False and policy.get("delegated_ai_adjudication_approved") is True
+            and policy.get("evaluated_model_outputs_must_be_unseen") is True)
+
+
+def timing_deferred(protocol: dict) -> bool:
+    """Only an explicit scope amendment can defer human efficiency. / 只有明确范围修订可以延期真人效率验证。"""
+    policy = protocol.get("review_timing_policy", {})
+    return (policy.get("mode") == "deferred_to_operations" and bool(policy.get("approval_reference"))
+            and policy.get("human_efficiency_verified") is False
+            and set(policy.get("retained_targets", [])) == {"review_p95_ms_max", "minimum_timed_reviews", "required_review_coverage"})
+
+
+def bound_evidence(data_root: Path, file: str, expected: str, cache: dict):
+    """Check bound review evidence including original absolute inspection paths.
+
+核对绑定的复核证据，兼容原始检查记录中的绝对路径。
+"""
+    path = (data_root / file).resolve()
+    if not path.is_relative_to(data_root.resolve()):
+        raise ValueError("review evidence outside data root")
+    key = (str(path), expected)
+    if key not in cache:
+        if digest(path) != expected:
+            raise ValueError("review evidence bytes changed")
+        cache[key] = read(path)
+    return cache[key]
+
+
+def delegated_label_issues(sample: dict, label: dict, protocol: dict, data_root: Path, cache: dict) -> list[str]:
+    """Bind each AI adjudication to its separate review, first draft and assignment.
+
+将每条 AI 裁定绑定到独立二审、初稿和分工，不制造人类记录。
+"""
+    try:
+        a, policy = label["ai_assistance"], protocol.get("annotation_policy", {})
+        if (not delegated_ai_approved(protocol) or label.get("origin") != "delegated_ai"
+                or a.get("method") != "independent_ai_then_ai" or label.get("model_outputs_seen") is not True
+                or label.get("hints_seen") is not True or a.get("original_checked") is not True
+                or a.get("evaluated_model_outputs_seen") is not False
+                or a.get("context_sha256") != policy.get("independent_context_sha256")
+                or a.get("verification_context_sha256") != policy.get("verification_context_sha256")):
+            return ["delegated_annotation_policy_or_exposure_invalid"]
+        def bound(file, expected):
+            return bound_evidence(data_root, file, expected, cache)
+        document = bound(a["draft_file"], a["draft_sha256"])
+        first_rows = ai_suggestions(document)
+        context = bound(a["context_file"], a["context_sha256"])
+        ai_context(context, document, first_rows)
+        if any(context.get(k) != policy.get(k) for k in ("evaluated_provider_id", "evaluated_model")):
+            return ["delegated_annotation_evaluated_model_mismatch"]
+        original = first_rows[sample["sample_id"]]
+        registration = bound(a["verification_context_file"], a["verification_context_sha256"])
+        review = bound(a["review_file"], a["review_sha256"])
+        isolation = {"parent_history": "none", "evaluation_prompt_seen": False, "evaluation_outputs_seen": False,
+                     "source_labels_seen": False, "assigned_first_pass_seen": True}
+        if (registration.get("format") != "drone.p6-ai-review-registration/v1" or not registration.get("approval_reference")
+                or registration.get("method") != "independent_ai_draft_then_separate_ai_verification"
+                or not registration.get("provider") or registration["provider"] == policy.get("evaluated_provider_id")
+                or registration.get("human_reviews_created") != 0 or registration.get("formal_release_eligible") is not False
+                or review.get("format") != "drone.p6-road-ai-verification/v1" or review.get("reviewer_kind") != "isolated_ai_reviewer"
+                or not review.get("reviewer_id") or review["reviewer_id"] == document["author_id"]
+                or review.get("isolation") != isolation or review.get("human_reviews_created") != 0
+                or review.get("formal_release_eligible") is not False):
+            return ["delegated_annotation_independence_missing"]
+        registered = unique(registration["assignments"], "reviewer_id")[review["reviewer_id"]]
+        if registered["sha256"] != review["assignment_sha256"]:
+            return ["delegated_annotation_assignment_mismatch"]
+        assignment = bound(registered["file"], registered["sha256"])
+        if (assignment.get("format") != "drone.p6-ai-review-assignment/v1" or assignment.get("parent_history") != "none"
+                or assignment.get("reviewer_id") != review["reviewer_id"]
+                or any(assignment.get(k) != "forbidden" for k in ("evaluation_prompt_access", "evaluation_outputs_access", "source_class_label_access"))):
+            return ["delegated_annotation_assignment_mismatch"]
+        source = unique(assignment["samples"], "sample_id")[sample["sample_id"]]
+        record = unique(review["rows"], "sample_id")[sample["sample_id"]]
+        final = record["final_row"]
+        if (source["image_sha256"] != sample["image_sha256"] or original["image_sha256"] != sample["image_sha256"]
+                or source["first_author_id"] != document["author_id"] or a.get("author_id") != document["author_id"]
+                or source["first_row"] != original or record["first_row_sha256"] != canonical_digest(original)
+                or a.get("suggestion_sha256") != canonical_digest(original)
+                or record["image_sha256"] != sample["image_sha256"] or record["reviewer_id"] != review["reviewer_id"]
+                or record["first_author_id"] != document["author_id"] or record.get("original_image_checked") is not True
+                or record.get("decision") not in {"accepted", "revised"} or record.get("decision") != a.get("decision")
+                or not isinstance(record.get("findings"), list) or not record["findings"]
+                or any(not isinstance(v, str) or not v.strip() for v in record["findings"])
+                or canonical_digest(final) != record["final_row_sha256"]
+                or canonical_digest(record) != a.get("review_row_sha256")):
+            return ["delegated_annotation_source_or_review_mismatch"]
+        changes = record["changes"]
+        if (not isinstance(changes, dict) or set(changes) - {"target_brief", "target_polygon", "verdict", "objects", "notes", "uncertainties"}
+                or (record["decision"] == "revised") != bool(changes)
+                or (changes and all(original[k] == v for k, v in changes.items()))):
+            return ["delegated_annotation_decision_mismatch"]
+        expected_final = {**original, **changes, "inspected_at": record["reviewed_at"], "inspection_files": record["inspected_files"]}
+        if final != expected_final or timestamp(record["reviewed_at"]) < max(timestamp(original["inspected_at"]), timestamp(assignment["created_at"]), timestamp(review["created_at"])):
+            return ["delegated_annotation_revision_or_time_mismatch"]
+        ai_suggestions({**document, "rows": [final]})
+        paths = [Path(p).resolve() for p in record["inspected_files"]]
+        if Path(source["image_file"]).resolve() not in paths or set(record["inspection_file_sha256"]) != set(record["inspected_files"]):
+            return ["delegated_annotation_original_inspection_missing"]
+        if digest((data_root / source["image_file"]).resolve()) != sample["image_sha256"]:
+            return ["delegated_annotation_inspection_bytes_changed"]
+        for file, expected in record["inspection_file_sha256"].items():
+            path = (data_root / file).resolve()
+            if not path.is_relative_to(data_root.resolve()) or digest(path) != expected:
+                return ["delegated_annotation_inspection_bytes_changed"]
+        if (any(label.get(k) != final[k] for k in ("sample_id", "image_sha256", "verdict", "objects", "notes"))
+                or label.get("reviewer_id") != review["reviewer_id"] or label.get("recorded_at") != record["reviewed_at"]
+                or label.get("full_target_inspected") is not True
+                or sample.get("target", {}).get("polygon") != final["target_polygon"]
+                or sample.get("target", {}).get("brief") != final["target_brief"]
+                or set(label.get("defect_types", [])) != {o["defect_type"] for o in final["objects"]}):
+            return ["delegated_annotation_final_label_mismatch"]
+    except (OSError, KeyError, TypeError, ValueError, AttributeError):
+        return ["delegated_annotation_evidence_missing_or_invalid"]
+    return []
+
+
 def assisted_label_issues(sample: dict, label: dict, protocol: dict, data_root: Path, cache: dict) -> list[str]:
     """Require original drafts and actual operator export for assisted truth. / 辅助真值必须绑定原始草稿和操作员导出。"""
+    if label.get("origin") == "delegated_ai":
+        return delegated_label_issues(sample, label, protocol, data_root, cache)
     def bound(file, expected):
         key = (file, expected)
         if key not in cache:
@@ -202,6 +325,48 @@ def assisted_label_issues(sample: dict, label: dict, protocol: dict, data_root: 
     return []
 
 
+def delegated_pair_issues(pair: dict, samples: dict, protocol: dict, data_root: Path, cache: dict) -> list[str]:
+    """Require a separately registered visual review for an AI-verified capture pair.
+
+AI 跨次配对必须有单独登记的逐对视觉核验。
+"""
+    try:
+        reference, policy = pair["ai_verification"], protocol.get("annotation_policy", {})
+        if not delegated_ai_approved(protocol) or reference["context_sha256"] != policy.get("pair_context_sha256"):
+            return ["delegated_pair_policy_missing"]
+        context = bound_evidence(data_root, reference["context_file"], reference["context_sha256"], cache)
+        document = bound_evidence(data_root, reference["file"], reference["sha256"], cache)
+        if (context.get("format") != "drone.p6-ai-pair-context/v1" or not context.get("approval_reference")
+                or document.get("format") != "drone.p6-ai-pair-verification/v1"
+                or document.get("origin") != "delegated_ai" or not document.get("reviewer_id")
+                or document.get("isolation") != {"parent_history": "none", "evaluation_prompt_seen": False,
+                                                "evaluation_outputs_seen": False, "source_labels_seen": False}):
+            return ["delegated_pair_independence_missing"]
+        row = unique(document["rows"], "pair_id")[reference["pair_id"]]
+        registered = context["reviewers"][document["reviewer_id"]]
+        if (registered.get("history_fork") != "none" or not registered.get("provider")
+                or registered["provider"] == policy.get("evaluated_provider_id")
+                or any(registered.get(k) is not False for k in ("evaluation_prompt_provided", "evaluation_outputs_provided", "source_labels_provided"))
+                or row["sample_ids"] != pair["sample_ids"] or row["sample_ids"] != registered["pairs"][reference["pair_id"]]
+                or canonical_digest(row) != reference["row_sha256"] or row.get("same_asset") is not True
+                or row.get("same_condition") is not True or row.get("distinct_captures") is not True
+                or row.get("asset_id") != samples[row["sample_ids"][0]].get("asset_id")
+                or document["reviewer_id"] != pair.get("reviewer_id") or not row.get("evidence")):
+            return ["delegated_pair_review_mismatch"]
+        timestamp(row["reviewed_at"])
+        for ident in pair["sample_ids"]:
+            sample = samples[ident]
+            observed = row["images"][ident]
+            image_path = (data_root / observed["file"]).resolve()
+            if (observed.get("image_sha256") != sample["image_sha256"] or observed.get("original_checked") is not True
+                    or not image_path.is_relative_to(data_root.resolve()) or digest(image_path) != sample["image_sha256"]
+                    or observed.get("target_polygon") != sample.get("target", {}).get("polygon")):
+                return ["delegated_pair_original_mismatch"]
+    except (OSError, KeyError, TypeError, ValueError, AttributeError):
+        return ["delegated_pair_evidence_missing_or_invalid"]
+    return []
+
+
 def pair_problems(pair: dict, samples: dict, labels: dict) -> list[str]:
     """Require distinct real captures of the same state, with explicit temporal scope.
 
@@ -212,8 +377,11 @@ def pair_problems(pair: dict, samples: dict, labels: dict) -> list[str]:
         return ["invalid_stability_pair_identity"]
     left, right = (samples[i] for i in ids)
     issues = []
+    delegated = pair.get("origin") == "delegated_ai"
+    condition_flag = "same_condition_ai_verified" if delegated else "same_condition_human_confirmed"
+    capture_flag = "distinct_captures_ai_verified" if delegated else "distinct_captures_human_confirmed"
     if (not left.get("asset_id") or left["asset_id"] != right.get("asset_id") or left["split"] != right["split"]
-            or left["image_sha256"] == right["image_sha256"] or pair.get("same_condition_human_confirmed") is not True
+            or left["image_sha256"] == right["image_sha256"] or pair.get(condition_flag) is not True
             or not pair.get("reviewer_id") or not pair.get("evidence")
             or any(s.get("media_origin") != "real_capture" for s in (left, right))):
         issues.append("stability_pair_not_verified")
@@ -221,7 +389,7 @@ def pair_problems(pair: dict, samples: dict, labels: dict) -> list[str]:
     if scope == "distinct_original_captures_unordered":
         records = [s.get("capture_record") or {} for s in (left, right)]
         identities = [(s.get("source_id"), r.get("source_observation_id")) for s, r in zip((left, right), records, strict=True)]
-        if (pair.get("distinct_captures_human_confirmed") is not True or identities[0] == identities[1]
+        if (pair.get(capture_flag) is not True or identities[0] == identities[1]
                 or any(not a or not b for a, b in identities)
                 or any(not r.get("inventory_file") or not r.get("inventory_sha256") for r in records)):
             issues.append("distinct_original_capture_identity_missing")
@@ -258,6 +426,7 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
     exposed = set(exposure["image_sha256"])
     types = set(protocol["defect_types"])
     issues, reviewed, counts, primaries = [], 0, Counter(), set()
+    ai_reviewed = 0
     assistance_cache = {}
     associations = {key: defaultdict(set) for key in ("asset_id", "site_id", "capture_batch_id", "near_duplicate_group", "image_sha256")}
 
@@ -317,12 +486,14 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
             raise ValueError("obstacle types and label disagree")
         if label.get("image_sha256") != sample["image_sha256"]:
             raise ValueError("annotation image mismatch")
-        if (label.get("origin") != "human" or not isinstance(label.get("reviewer_id"), str) or not label["reviewer_id"].strip()
+        delegated = label.get("origin") == "delegated_ai" and delegated_ai_approved(protocol)
+        if ((label.get("origin") != "human" and not delegated) or not isinstance(label.get("reviewer_id"), str) or not label["reviewer_id"].strip()
                 or label["reviewer_id"] == "QA_FIXTURE_NOT_HUMAN"
                 or not isinstance(label.get("notes"), str) or not label["notes"].strip() or type(label.get("hints_seen")) is not bool):
             issue("independent_business_review_missing", ident)
         else:
-            reviewed += 1
+            reviewed += not delegated
+            ai_reviewed += delegated
         try:
             timestamp(label["recorded_at"])
         except (KeyError, TypeError, ValueError, AttributeError):
@@ -331,9 +502,9 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
             if label.get("full_target_inspected") is not True:
                 issue("whole_target_not_reviewed", ident)
             target = sample.get("target") or {}
-            if target.get("status") != "human_confirmed" or not polygon_valid(target.get("polygon")):
+            if target.get("status") != ("ai_verified" if delegated else "human_confirmed") or not polygon_valid(target.get("polygon")):
                 issue("confirmed_target_geometry_missing", ident)
-        if sample.get("ai_suggestion") and "ai_assistance" not in label:
+        if (sample.get("ai_suggestion") or delegated) and "ai_assistance" not in label:
             issue("assisted_annotation_provenance_missing", ident)
         if "ai_assistance" in label:
             for code in assisted_label_issues(sample, label, protocol, data_root, assistance_cache):
@@ -355,6 +526,9 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
         pair_ids.add(pair_key)
         for problem in pair_problems(pair, samples, annotations):
             issue(problem, ids[0])
+        if pair.get("origin") == "delegated_ai":
+            for problem in delegated_pair_issues(pair, samples, protocol, data_root, assistance_cache):
+                issue(problem, ids[0])
         if pair.get("comparison_scope") == "distinct_original_captures_unordered":
             for ident in ids:
                 reference = samples[ident].get("capture_record") or {}
@@ -430,8 +604,10 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
         issue("full_candidate_review_coverage_required")
     return {"format": "drone.p6-road-data-audit/v1", "status": "ready_for_scoped_evaluation" if not issues else "missing",
             "samples": len(samples), "split_counts": dict(counts), "human_labels_present": reviewed,
+            "delegated_ai_labels_present": ai_reviewed,
             "ai_assisted_labels_declared": sum("ai_assistance" in row for row in annotations.values()),
-            "annotation_claim": "AI-assisted labels are human adjudications, not blind labels; provenance checked separately",
+            "annotation_claim": "AI-reviewed reference labels, not independent human truth" if ai_reviewed else
+                                "AI-assisted labels are human adjudications, not blind labels; provenance checked separately",
             "stability_pairs": len(pair_ids), "issue_counts": dict(Counter(i["code"] for i in issues)), "issues": issues,
             "data_ready": not issues, "formal_release_eligible": False, "model_quality_verified": False}
 
@@ -586,9 +762,15 @@ def assess(protocol: dict, metrics: dict) -> dict:
         check("defect_types", None, None)
     stability, review = metrics.get("stability", {}), metrics.get("human_review", {})
     check("stable_and_covered", stability.get("consistent_and_covered_fraction", {}).get("value"), limits.get("stable_and_covered_min"), True)
-    check("review_p95_ms", review.get("p95_ms"), limits.get("review_p95_ms_max"))
-    check("timed_reviews", review.get("sessions"), extra.get("minimum_timed_reviews"), True)
-    check("review_coverage", review.get("coverage", {}).get("value"), extra.get("required_review_coverage"), True)
+    deferred = timing_deferred(protocol)
+    for name, observed, required, minimum in (("review_p95_ms", review.get("p95_ms"), limits.get("review_p95_ms_max"), False),
+            ("timed_reviews", review.get("sessions"), extra.get("minimum_timed_reviews"), True),
+            ("review_coverage", review.get("coverage", {}).get("value"), extra.get("required_review_coverage"), True)):
+        if deferred:
+            checks.append({"name": name, "observed": observed, "required": required, "status": "deferred",
+                           "comparison": ">=" if minimum else "<=", "approval_reference": protocol["review_timing_policy"]["approval_reference"]})
+        else:
+            check(name, observed, required, minimum)
     check("stability_assets", stability.get("unique_assets"), extra.get("minimum_stability_assets"), True)
     for name in sorted(LABELS):
         check("test_samples." + name, metrics.get("label_counts", {}).get(name, 0), protocol.get("minimum_samples", {}).get(name), True)
@@ -597,7 +779,8 @@ def assess(protocol: dict, metrics: dict) -> dict:
     return {"format": "drone.p6-road-target-comparison/v1", "corpus_id": protocol["corpus_id"],
             "metric_status": "missing" if "missing" in states else "not_met" if "not_met" in states else "met",
             "protocol_status": protocol.get("status"), "split": metrics.get("split"), "checks": checks,
-            "formal_release_eligible": False, "scope": "observed targets only; data admission, frozen protocol, actual run and human evidence must be verified separately"}
+            "human_efficiency_verified": False if deferred else None,
+            "formal_release_eligible": False, "scope": "observed in-scope targets only; data admission, approved reference provenance and actual run are separate"}
 
 
 def main() -> None:

@@ -249,6 +249,20 @@ def test_missing_human_time_cannot_meet_adopted_targets(corpus):
     assert any(c["name"] == "typed_miss.vegetation" and c["status"] == "not_met" for c in result["checks"])
 
 
+@pytest.mark.parametrize("approved", [True, False])
+def test_approved_timing_deferral_is_not_a_pass_or_quality_waiver(corpus, approved):
+    corpus[2]["review_timing_policy"] = {"mode": "deferred_to_operations", "approval_reference": "SYNTHETIC" if approved else "",
+        "human_efficiency_verified": False, "retained_targets": ["review_p95_ms_max", "minimum_timed_reviews", "required_review_coverage"]}
+    metrics = C.scores(corpus[0], corpus[1], predictions(corpus), {"format": "drone.p6-road-review-sessions/v1", "corpus_id": "qa", "sessions": []}, "test")
+    result = C.assess(corpus[2], metrics)
+    checks = {c["name"]: c for c in result["checks"]}
+    assert checks["review_p95_ms"]["status"] == ("deferred" if approved else "missing")
+    assert checks["typed_miss.vegetation"]["status"] == "not_met"
+    assert result["metric_status"] != "met" and not result["formal_release_eligible"]
+    if approved:
+        assert result["human_efficiency_verified"] is False
+
+
 def test_timing_discloses_truth_and_hint_exposure(corpus):
     metrics = C.scores(corpus[0], corpus[1], predictions(corpus), {"format": "drone.p6-road-review-sessions/v1", "corpus_id": "qa", "sessions": [timed()]}, "test")
     assert metrics["human_review"]["exposure_counts"] == {"truth_seen": 1, "hints_seen": 1}

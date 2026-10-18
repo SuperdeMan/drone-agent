@@ -1,6 +1,6 @@
-"""Judge the approved road S2 scope from actual independent, live and human evidence.
+"""Judge approved road S2 using bound reference labels and actual live evidence.
 
-以真实独立数据、实调和人工证据判定已批准的道路 S2 范围。
+使用来源绑定的参考标签与真实实调证据判定已批准的道路 S2 范围。
 """
 from __future__ import annotations
 
@@ -140,8 +140,18 @@ async def judge(evidence_file: Path, data_root: Path) -> dict:
         checks.append({"name": name, "passed": bool(passed), "detail": detail})
 
     paths = {}
+    protocol_value = evidence.get("paths", {}).get("protocol")
+    declared_protocol = {}
+    if isinstance(protocol_value, str) and protocol_value:
+        protocol_path = within(root, protocol_value)
+        if protocol_path.is_file():
+            declared_protocol = read(protocol_path)
+    human_timing_deferred = METRICS["timing_deferred"](declared_protocol)
     for name in sorted(PATHS):
         value = evidence.get("paths", {}).get(name)
+        if name == "human_reviews" and not value and human_timing_deferred:
+            check("human_timing_scope_amendment", True, "deferred to operations; no human efficiency claim")
+            continue
         if not isinstance(value, str) or not value:
             check(name, False, "missing path")
         else:
@@ -150,7 +160,9 @@ async def judge(evidence_file: Path, data_root: Path) -> dict:
     candidate = evidence.get("candidate_commit", "")
     check("exact_candidate_commit", isinstance(candidate, str) and re.fullmatch(r"[0-9a-f]{40}", candidate) is not None)
     result = {"format": "drone.p6-road-business-judgment/v1", "candidate_commit": candidate, "checks": checks,
-              "scope": "human-reviewed road-candidate S2 only", "field_clearance_effect": "not_verified_outside_this_gate",
+              "scope": "delegated-AI-reviewed road-candidate S2 only" if METRICS["delegated_ai_approved"](declared_protocol) else "human-reviewed road-candidate S2 only",
+              "human_review_efficiency": "not_verified_deferred_to_operations" if human_timing_deferred else "required",
+              "field_clearance_effect": "not_verified_outside_this_gate",
               "gate_source_sha256": digest(Path(__file__)), "evidence_sha256": digest(evidence_file),
               "status": "missing", "wp_p6_01_closed": False, "formal_release_eligible": False}
     if any(not c["passed"] for c in checks):
@@ -158,11 +170,14 @@ async def judge(evidence_file: Path, data_root: Path) -> dict:
     try:
         manifest, labels, protocol, exposure, tasks = (read(paths[k]) for k in ("manifest", "labels", "protocol", "exposure", "tasks"))
         scope = protocol.get("scope", {})
-        check("approved_s2_scope", scope.get("mode") == "human_reviewed_road_candidate_s2" and bool(scope.get("approval_reference"))
+        ai_scope = (scope.get("mode") == "delegated_ai_reviewed_road_candidate_s2" and METRICS["delegated_ai_approved"](protocol)
+                    and scope.get("independent_human_truth_claimed") is False)
+        check("approved_s2_scope", (scope.get("mode") == "human_reviewed_road_candidate_s2" or ai_scope) and bool(scope.get("approval_reference"))
               and scope.get("real_clearance_effect_required") is False and scope.get("hardware_or_field_operation_claimed") is False)
         audit = METRICS["audit"](manifest, labels, protocol, exposure, data_root)
         check("data_admission", audit["data_ready"], audit["issue_counts"])
         profile, test_inputs, plan = verify_package(paths["test_package"])
+        check("reference_method_binding", bool(plan.get("delegated_ai_reference")) == METRICS["delegated_ai_approved"](protocol))
         if audit["ai_assisted_labels_declared"]:
             policy = protocol.get("annotation_policy", {})
             check("annotation_evaluated_model_binding", policy.get("evaluated_model") == profile["model"]
@@ -213,8 +228,12 @@ async def judge(evidence_file: Path, data_root: Path) -> dict:
               and selection.get("calibration_execution_sha256") == digest(paths["calibration_cloud"] / "execution.json"))
         predictions = await live_evidence(paths["test_package"], paths["test_cloud"], candidate)
         check("recorded_live_and_strict_replay", predictions["live_environment_verified"])
-        metrics = METRICS["scores"](manifest, labels, predictions, read(paths["human_reviews"]), "test")
+        reviews = read(paths["human_reviews"]) if "human_reviews" in paths else {
+            "format": "drone.p6-road-review-sessions/v1", "corpus_id": manifest["corpus_id"], "sessions": []}
+        metrics = METRICS["scores"](manifest, labels, predictions, reviews, "test")
         metrics["annotation_provenance"] = {"ai_assisted_labels_declared": audit["ai_assisted_labels_declared"],
+                                           "delegated_ai_labels_present": audit.get("delegated_ai_labels_present", 0),
+                                           "human_labels_present": audit["human_labels_present"],
                                            "claim": audit["annotation_claim"], "data_admission_verified": True}
         metrics["provenance_verified"] = True
         metrics["counted_as_formal_live_result"] = True

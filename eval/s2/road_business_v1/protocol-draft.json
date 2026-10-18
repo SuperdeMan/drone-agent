@@ -5,10 +5,10 @@
   "approval_reference": "User reply on 2026-10-15: 采用这版目标，继续补齐数据",
   "proposal_date": "2026-10-15",
   "proposal_document": "docs/p6-business-evaluation.md",
-  "decision_scope": "approved human-reviewed road-candidate S2 acceptance; corpus and formal run still pending; field clearance effects are explicitly outside this gate and unverified",
+  "decision_scope": "approved delegated-AI-reviewed road-candidate S2 acceptance; corpus and formal run pending; human review efficiency and field clearance effects remain unverified outside this gate",
   "reviewer_assignment": {
-    "role": "project_owner",
-    "source": "User explicitly chose personal review in this conversation on 2026-10-15",
+    "role": "delegated_independent_ai_reviewer",
+    "source": "User 2026-10-18: 不用真人逐张复核，你的复核可以代表人类",
     "reviewer_id": null
   },
   "minimum_object_size": null,
@@ -53,7 +53,7 @@
   },
   "statistical_rule": "thresholds apply to observed proportions; report Wilson two-sided 95 percent intervals without treating them as certified population bounds",
   "formal_test_runs": 1,
-  "clearance_effect_evidence": "not_verified_outside_this_gate; scope clarification explicitly approved by user on 2026-10-15; all D089 numerical, independence, repeat-capture and human-timing requirements retained",
+  "clearance_effect_evidence": "not_verified_outside_this_gate; D089 scope clarification 2026-10-15 and AI delegation 2026-10-18; model-quality, independence and repeat-capture requirements retained",
   "primary_unit": "one primary observation per known asset in each split; repeat captures only enter stability",
   "metric_scope": "observation-level scene and typed misses, not object-instance recall",
   "human_timing_phase": "candidate_review",
@@ -62,22 +62,38 @@
   "all_refused_is_stability_success": false,
   "formal_release_eligible": false,
   "scope": {
-    "mode": "human_reviewed_road_candidate_s2",
-    "approval_reference": "User reply on 2026-10-15: 按 S2 范围验收（建议）",
+    "mode": "delegated_ai_reviewed_road_candidate_s2",
+    "approval_reference": "User 2026-10-18: 不用真人逐张复核，你的复核可以代表人类; separate timing reply: 移至后续运营验证，继续完成本次验收",
     "real_clearance_effect_required": false,
     "real_clearance_effect_status": "not_verified_outside_this_gate",
-    "hardware_or_field_operation_claimed": false
+    "hardware_or_field_operation_claimed": false,
+    "independent_human_truth_claimed": false,
+    "human_review_efficiency_status": "not_verified_deferred_to_operations"
   },
   "annotation_policy": {
-    "mode": "blind_or_independent_ai_human_adjudicated",
-    "approval_reference": "User reply on 2026-10-16: 正式测试集也用独立 AI 预标后由我逐张核对；请修订协议并披露辅助来源，保留其余验收门槛",
+    "mode": "independent_ai_verified_reference",
+    "approval_reference": "User 2026-10-18: 不用真人逐张复核，你的复核可以代表人类",
     "independent_context_sha256": "01f15568956b31baa89413f38d215111e1a62c5d37ea95d5ec59a615879c1b9a",
     "evaluated_provider_id": "minimax-vl",
     "evaluated_model": "MiniMax-M3.1-Flash-Preview",
-    "human_adjudication_required": true,
+    "human_adjudication_required": false,
     "evaluated_model_outputs_must_be_unseen": true,
     "report_assisted_truth_separately": true,
-    "all_other_requirements_unchanged": true,
-    "context_extension_reference": "p6-ai-annotation-20261016/{reassignment,fresh-context-reassignment,suffix-reassignment}.json; original registrations retained; formal assembly binds cumulative context-v4 and retains prior receipts"
+    "all_other_requirements_unchanged": false,
+    "context_extension_reference": "p6-ai-annotation-20261016/{reassignment,fresh-context-reassignment,suffix-reassignment}.json; original registrations retained; formal assembly binds cumulative context-v4 and retains prior receipts",
+    "delegated_ai_adjudication_approved": true,
+    "verification_context_sha256": "dbd00fb58e171f644ee924e19c355a71f2beefa06ef23521f1eab5691c2a92da",
+    "reference_claim": "AI-reviewed reference labels; no independent human ground truth",
+    "unchanged_requirements": "all model-quality, asset count, site isolation, real repeat capture and exposure requirements; only label adjudication method and human timing scope amended"
+  },
+  "review_timing_policy": {
+    "mode": "deferred_to_operations",
+    "approval_reference": "User 2026-10-18: 移至后续运营验证，继续完成本次验收",
+    "human_efficiency_verified": false,
+    "retained_targets": [
+      "review_p95_ms_max",
+      "minimum_timed_reviews",
+      "required_review_coverage"
+    ]
   }
 }

@@ -169,6 +169,35 @@ def test_actual_profile_draft_remains_unselected():
     assert profile["status"] == "draft" and profile["calibration_record_sha256"] is None
 
 
+@pytest.mark.parametrize("approved", [True, False])
+def test_delegated_tasks_require_scope_approval_and_do_not_send_review_notes(package, tmp_path, monkeypatch, approved):
+    _, source = package
+    manifest, tasks = C.read(source / "manifest.json"), C.read(source / "tasks.json")
+    labels = []
+    for sample, task in zip(manifest["samples"], tasks["rows"], strict=True):
+        sample["split"] = "calibration"
+        sample["target"] = {"polygon": task["target_polygon"], "brief": task["target_brief"]}
+        task["origin"] = "delegated_ai_task"
+        labels.append({"sample_id": sample["sample_id"], "recorded_at": "2026-10-15T00:01:00Z", "notes": "SECRET_REVIEW_NOT_FOR_MODEL"})
+    protocol = {"annotation_policy": {"mode": "independent_ai_verified_reference", "approval_reference": "SYNTHETIC" if approved else "",
+        "human_adjudication_required": False, "delegated_ai_adjudication_approved": True, "evaluated_model_outputs_must_be_unseen": True}}
+    for name, value in [("ai-manifest.json", manifest), ("ai-tasks.json", tasks), ("labels.json", {"rows": labels}),
+                         ("protocol.json", protocol), ("exposure.json", {})]:
+        C.write(source / name, value)
+    monkeypatch.setitem(C.METRICS, "audit", lambda *args: {"data_ready": True, "ai_assisted_labels_declared": 0})
+    arguments = (source / "ai-manifest.json", source / "ai-tasks.json", source / "profile.json", source, tmp_path / "delegated", "calibration")
+    keywords = {"labels_file": source / "labels.json", "protocol_file": source / "protocol.json", "exposure_file": source / "exposure.json"}
+    if not approved:
+        with pytest.raises(ValueError, match="formal task registration"):
+            C.prepare(*arguments, **keywords)
+        return
+    C.prepare(*arguments, **keywords)
+    profile, inputs, plan = C.verify_package(tmp_path / "delegated")
+    assert plan["delegated_ai_reference"] is True
+    messages = C.make_messages(profile, inputs["rows"][0], tmp_path / "delegated")
+    assert "SECRET_REVIEW" not in json.dumps(messages)
+
+
 @pytest.mark.parametrize("changed", ["polygon", "brief"])
 def test_formal_model_task_cannot_use_a_different_labeled_target(package, tmp_path, monkeypatch, changed):
     _, source = package

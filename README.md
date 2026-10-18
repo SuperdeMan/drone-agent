@@ -11,7 +11,7 @@
 
 A drone inspection operations platform built on a safety-constrained mission runtime: typed missions, admission and approval, local execution, durable workflows, fleet scheduling, and evidence-based review, work orders and reinspection.
 
-> **Current scope:** P0–P5 have passed their software / SITL gates. M3 local autonomy has passed in simulation; Jetson and field validation remain on the H track. P6 work packages 02–07 have passed within their documented scopes; corridor reservations and explanation check v2 were not adopted. **WP-P6-01 remains open:** the owner has adopted the road evaluation targets (D089); 415 independently prepared AI drafts are ready for individual owner review, while human-adjudicated labels, sufficient independent assets and the formal evaluation remain pending. See the [P6 handoff](docs/p6-ai-labeling-handoff-2026-10-16.md) and [roadmap](docs/roadmap.md) for current counts and exact evidence boundaries.
+> **Current scope:** P0–P5 have passed their software / SITL gates. M3 local autonomy has passed in simulation; Jetson and field validation remain on the H track. P6 work packages 02–07 have passed within their documented scopes; corridor reservations and explanation check v2 were not adopted. **WP-P6-01 remains open:** the owner has authorized separate AI verification of all 415 draft annotations and deferred human review timing to operational validation. Independent asset coverage and the formal evaluation remain pending. See the [P6 handoff](docs/p6-ai-verification-handoff-2026-10-18.md) and [roadmap](docs/roadmap.md) for current counts and exact evidence boundaries.
 
 [Try locally](#try-locally) · [Design](#design) · [Validation](#validation) · [Documentation](#documentation) · [Roadmap](#roadmap)
 
@@ -133,7 +133,7 @@ Read [CLAUDE.md](CLAUDE.md) before contributing ([AGENTS.md](AGENTS.md) is the c
 | Cloud simulation and the mission desk | [Cloud development](docs/cloud-development.md) · [Mission desk](docs/tailnet-desk.md) |
 | Review flight evidence and replay | [Evaluation](docs/architecture/08-evaluation.md) · [Fetch and view a run](docs/cloud-development.md#查看与人工核对结果) |
 | Operations design and next work | [Operations architecture](docs/architecture/09-operations.md) · [Implementation tasks](docs/operations-implementation.md) · [P4 validation](docs/p4-readiness.md) · [P5 validation](docs/p5-readiness.md) · [P6 recapture validation](docs/p6-recapture-readiness.md) · [P6 adversarial validation](docs/p6-adversarial-readiness.md) · [P5 plan](docs/p5-implementation.md) · [Operations guide](docs/operations-guide.md) |
-| P6 public materials and remaining work | [Handoff](docs/p6-ai-labeling-handoff-2026-10-16.md) · [Sources](docs/p6-materials-review.md) · [Whole-road annotation](docs/p6-road-labeling-guide.md) · [Development diagnostic](docs/p6-materials-development.md) |
+| P6 public materials and remaining work | [Handoff](docs/p6-ai-verification-handoff-2026-10-18.md) · [Sources](docs/p6-materials-review.md) · [Whole-road annotation](docs/p6-road-labeling-guide.md) · [Development diagnostic](docs/p6-materials-development.md) |
 | Design rationale and reuse | [Decisions](docs/decisions.md) · [Sibling-project reuse](docs/reuse-from-embodied-agent.md) |
 
 ## Roadmap

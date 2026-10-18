@@ -113,6 +113,21 @@ def test_missing_real_evidence_cannot_close_wp01(modules, tmp_path, monkeypatch)
     assert result["field_clearance_effect"] == "not_verified_outside_this_gate"
 
 
+@pytest.mark.parametrize("approved", [True, False])
+def test_timing_deferral_only_removes_human_record_requirement_not_other_evidence(modules, tmp_path, approved):
+    protocol = {"review_timing_policy": {"mode": "deferred_to_operations", "approval_reference": "SYNTHETIC" if approved else "",
+        "human_efficiency_verified": False, "retained_targets": ["review_p95_ms_max", "minimum_timed_reviews", "required_review_coverage"]}}
+    (tmp_path / "protocol.json").write_text(json.dumps(protocol), encoding="utf-8")
+    evidence = tmp_path / "evidence.json"
+    evidence.write_text(json.dumps({"format": "drone.p6-road-business-evidence/v1", "candidate_commit": "a" * 40,
+                                    "paths": {"protocol": "protocol.json"}}), encoding="utf-8")
+    result = asyncio.run(modules[2].judge(evidence, tmp_path))
+    missing = {row["name"] for row in result["checks"] if not row["passed"]}
+    assert ("human_reviews" not in missing) == approved
+    assert {"manifest", "labels", "test_cloud", "calibration_cloud"} <= missing
+    assert result["status"] == "missing" and not result["wp_p6_01_closed"]
+
+
 def test_evidence_paths_cannot_escape_the_declared_root(modules, tmp_path):
     evidence = tmp_path / "evidence.json"
     evidence.write_text(json.dumps({"format": "drone.p6-road-business-evidence/v1", "candidate_commit": "a" * 40,

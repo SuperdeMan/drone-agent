@@ -30,6 +30,8 @@ M1/M2/M3-SITL 已有可执行裁判与归档证据；P/H/X 的新增指标是待
 
 ## 3. 裁判（Judge）
 
+WP-P6-01 的公开道路 S2 参考标签自 2026-10-18 按用户授权采用独立 AI 初标及另一 AI 逐张核验，明确标为 AI 参考标签，不冒充真人真值；真人候选复核耗时单独移至后续运营验证。该修订不改变飞行裁判、资产 / 地点隔离、真实跨次和模型质量门槛，具体证据格式及范围见[道路业务评测](../p6-business-evaluation.md#当前有效的-ai-代行核验修订2026-10-18)。
+
 - 独立进程，只读 TruthWorld + 事件流 + 证据；被测 agent 只读 BeliefWorld。
 - 裁判规则可执行、可版本化；M1 阈值在 `configs/scenarios/m1_campus_v1.yaml`，逐故障期望在 `m1_expectations.yaml`，实现为 `src/drone_agent/eval/judge.py`。后续场景可按目录组织独立判据。
 - 「完成」判据与技能 `completion_evidence` 对齐，但裁判用真值核对（例如影像实际覆盖的是不是目标资产）。

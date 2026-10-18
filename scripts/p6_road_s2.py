@@ -192,7 +192,7 @@ def prepare(manifest_file: Path, tasks_file: Path, profile_file: Path, data_root
     if not samples or set(by_task) != {s["sample_id"] for s in samples}:
         raise ValueError("tasks must cover the selected split exactly once")
     admission = None
-    labels = {}
+    labels, protocol = {}, {}
     if split != "development":
         if any(p is None for p in (labels_file, protocol_file, exposure_file)):
             raise ValueError("formal preparation requires labels, protocol and exposure registry")
@@ -241,10 +241,11 @@ def prepare(manifest_file: Path, tasks_file: Path, profile_file: Path, data_root
         if (set(task) != TASK_KEYS or task["image_sha256"] != sample["image_sha256"] or not polygon_valid(task["target_polygon"])
                 or not isinstance(task["target_brief"], str) or not 1 <= len(task["target_brief"].strip()) <= 600
                 or not isinstance(task["registration_reference"], str) or not task["registration_reference"].strip()
-                or task["origin"] not in {"human_task", "development_draft", "qa_fixture"}):
+                or task["origin"] not in {"human_task", "delegated_ai_task", "development_draft", "qa_fixture"}):
             raise ValueError("every observation needs an independently registered complete task")
         registered = timestamp(task["registered_at"])
-        if split != "development" and (task["origin"] != "human_task" or registered > timestamp(labels[ident]["recorded_at"])):
+        allowed_origin = task["origin"] == "human_task" or (task["origin"] == "delegated_ai_task" and METRICS["delegated_ai_approved"](protocol))
+        if split != "development" and (not allowed_origin or registered > timestamp(labels[ident]["recorded_at"])):
             raise ValueError("formal task registration cannot come from QA or follow the business label")
         original = within(data_root, sample["image_file"])
         if digest(original) != sample["image_sha256"]:
@@ -281,6 +282,7 @@ def prepare(manifest_file: Path, tasks_file: Path, profile_file: Path, data_root
             "calls_per_sample": 1, "source_manifest_sha256": digest(manifest_file), "tasks_sha256": digest(tasks_file),
             "profile_sha256": digest(output / "profile.json"), "inputs_sha256": digest(output / "inputs.json"),
             "profile_identity": profile_identity(profile), "data_admission": admission,
+            "delegated_ai_reference": METRICS["delegated_ai_approved"](protocol),
             "source_sha256": {name: digest(Path(__file__).with_name(name)) for name in ("p6_road_s2.py", "p6_business_eval.py", "p6_boundary_drafts.py")},
             "truth_used_in_model_messages": False, "normal_reference_claimed": False, "formal_release_eligible": False}
     exposure_keys = set()
@@ -328,8 +330,9 @@ def verify_package(package: Path) -> tuple[dict, dict, dict]:
                 or re.fullmatch(r"[A-Za-z0-9_-]{1,80}", row["sample_id"]) is None
                 or re.fullmatch(r"[0-9a-f]{64}", row["image_sha256"]) is None
                 or not isinstance(row["target_brief"], str) or not 1 <= len(row["target_brief"].strip()) <= 600
-                or row["task_origin"] not in {"human_task", "development_draft", "qa_fixture"}
-                or (plan["split"] != "development" and row["task_origin"] != "human_task")):
+                or row["task_origin"] not in {"human_task", "delegated_ai_task", "development_draft", "qa_fixture"}
+                or (plan["split"] != "development" and row["task_origin"] == "delegated_ai_task" and plan.get("delegated_ai_reference") is not True)
+                or (plan["split"] != "development" and row["task_origin"] not in {"human_task", "delegated_ai_task"})):
             raise ValueError("invalid frozen model input row")
         if len(row["images"]) != 2 or [r["role"] for r in row["images"]] != ["current", "target"]:
             raise ValueError("two current-image inputs required")
