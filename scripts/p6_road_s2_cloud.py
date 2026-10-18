@@ -16,7 +16,7 @@ from dev_stack import Connection
 from p6_road_s2 import digest, input_file, read, verify_package, write
 
 REPO = Path(__file__).resolve().parents[1]
-SOURCES = ("p6_road_s2.py", "p6_business_eval.py", "p6_boundary_drafts.py", "p6_road_s2_runner.py", "p6_road_s2_remote.py", "p6_candidate_remote.py")
+SOURCES = ("p6_road_s2.py", "p6_business_eval.py", "p6_boundary_drafts.py", "p6_raster_replay.py", "p6_road_s2_runner.py", "p6_road_s2_remote.py", "p6_candidate_remote.py")
 IMAGE = "sha256:4f84962ee6b75f899ee50afa153dca439942d9bf518b25d7c780c0b17c2b2377"
 RUNTIME = "6249129596b7cfe88c7322f8b425c7b432dba24b"
 

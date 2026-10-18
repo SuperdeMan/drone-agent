@@ -20,7 +20,7 @@ RUNTIME = "6249129596b7cfe88c7322f8b425c7b432dba24b"
 IMAGE = "sha256:4f84962ee6b75f899ee50afa153dca439942d9bf518b25d7c780c0b17c2b2377"
 PATHS = {"manifest", "labels", "protocol", "exposure", "tasks", "test_package", "test_cloud", "human_reviews", "software_verification",
          "calibration_package", "calibration_cloud", "calibration_tasks", "calibration_selection"}
-SOFTWARE = ("p6_road_s2.py", "p6_business_eval.py", "p6_boundary_drafts.py", "p6_road_s2_runner.py",
+SOFTWARE = ("p6_road_s2.py", "p6_business_eval.py", "p6_boundary_drafts.py", "p6_raster_replay.py", "p6_road_s2_runner.py",
             "p6_road_s2_remote.py", "p6_road_s2_cloud.py", "p6_candidate_remote.py", "p6_road_labeling.py", "verify_p6_road_business.py")
 
 
@@ -68,7 +68,7 @@ async def live_evidence(package: Path, cloud: Path, candidate: str) -> dict:
             or envelope.get("runtime_image") != IMAGE or envelope.get("runtime_source_sha") != RUNTIME
             or envelope.get("run_id") != execution.get("run_id")):
         raise ValueError("execution envelope differs from receipt")
-    if set(envelope.get("source_sha256", {})) != {"p6_road_s2.py", "p6_business_eval.py", "p6_boundary_drafts.py", "p6_road_s2_runner.py", "p6_road_s2_remote.py", "p6_candidate_remote.py"}:
+    if set(envelope.get("source_sha256", {})) != {"p6_road_s2.py", "p6_business_eval.py", "p6_boundary_drafts.py", "p6_raster_replay.py", "p6_road_s2_runner.py", "p6_road_s2_remote.py", "p6_candidate_remote.py"}:
         raise ValueError("execution source bindings incomplete")
     for name, expected in envelope["source_sha256"].items():
         if Path(name).name != name or digest(Path(__file__).with_name(name)) != expected:

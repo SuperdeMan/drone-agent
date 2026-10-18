@@ -283,7 +283,7 @@ def prepare(manifest_file: Path, tasks_file: Path, profile_file: Path, data_root
             "profile_sha256": digest(output / "profile.json"), "inputs_sha256": digest(output / "inputs.json"),
             "profile_identity": profile_identity(profile), "data_admission": admission,
             "delegated_ai_reference": METRICS["delegated_ai_approved"](protocol),
-            "source_sha256": {name: digest(Path(__file__).with_name(name)) for name in ("p6_road_s2.py", "p6_business_eval.py", "p6_boundary_drafts.py")},
+            "source_sha256": {name: digest(Path(__file__).with_name(name)) for name in ("p6_road_s2.py", "p6_business_eval.py", "p6_boundary_drafts.py", "p6_raster_replay.py")},
             "truth_used_in_model_messages": False, "normal_reference_claimed": False, "formal_release_eligible": False}
     exposure_keys = set()
     if split == "test":
@@ -308,7 +308,7 @@ def verify_package(package: Path) -> tuple[dict, dict, dict]:
             or plan["split"] not in METRICS["SPLITS"] or plan.get("formal_release_eligible") is not False
             or plan.get("truth_used_in_model_messages") is not False or plan.get("normal_reference_claimed") is not False):
         raise ValueError("road package identity mismatch")
-    if set(plan.get("source_sha256", {})) != {"p6_road_s2.py", "p6_business_eval.py", "p6_boundary_drafts.py"}:
+    if set(plan.get("source_sha256", {})) != {"p6_road_s2.py", "p6_business_eval.py", "p6_boundary_drafts.py", "p6_raster_replay.py"}:
         raise ValueError("complete source binding required")
     if plan["split"] != "development" and (not plan.get("data_admission") or plan["data_admission"].get("status") != "data_admitted"):
         raise ValueError("formal package lacks data admission")

@@ -8,6 +8,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 import runpy
 from collections import Counter, defaultdict
 from datetime import datetime
@@ -25,11 +26,15 @@ LIMIT_KEYS = {"false_alerts_per_100_normal_max", "typed_miss_rate_max", "determi
 EXTRA_KEYS = {"minimum_calibration_by_label", "minimum_test_by_defect_type", "maximum_test_site_fraction",
               "minimum_stability_assets", "minimum_timed_reviews", "required_review_coverage"}
 SIMPLE_POLYGON = runpy.run_path(str(Path(__file__).with_name("p6_boundary_drafts.py")))["simple_polygon"]
+VERIFY_RASTER_WINDOW = runpy.run_path(str(Path(__file__).with_name("p6_raster_replay.py")))["verify_window"]
+GROUP_KEYS = ("asset_id", "site_id", "capture_batch_id", "near_duplicate_group")
+DERIVED_SCOPE = "distinct_author_dated_derived_captures_unordered"
 
 
 def digest(path: Path) -> str:
     """Hash original bytes. / 对原字节求摘要。"""
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
 def read(path: Path):
@@ -176,8 +181,306 @@ def bound_evidence(data_root: Path, file: str, expected: str, cache: dict):
     return cache[key]
 
 
+def sha256_value(value) -> bool:
+    """Accept only complete SHA-256 identities. / 只接受完整 SHA-256 身份。"""
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+
+def derived_file(data_root: Path, file: str, expected: str, cache: dict) -> Path:
+    """Recheck acquired bytes once per unchanged file inside one audit.
+
+每次审计中，对数据根内未变化的实际文件只重算一次摘要。
+"""
+    path = (data_root / file).resolve()
+    if not path.is_relative_to(data_root.resolve()) or ".." in Path(file).parts or not sha256_value(expected):
+        raise ValueError("invalid derived evidence path or digest")
+    stat = path.stat()
+    key = ("derived_bytes", str(path), expected, stat.st_size, stat.st_mtime_ns)
+    if key not in cache:
+        if digest(path) != expected:
+            raise ValueError("derived evidence bytes changed")
+        cache[key] = True
+    return path
+
+
+def author_date_group(source: dict) -> str | None:
+    """Use agreeing author dates without inventing a flight time.
+
+只采用来源表与作者代码一致的日期，不虚构飞行时刻。
+"""
+    try:
+        table = datetime.strptime(source["author_statistics"]["Date (mm/dd/yyy)"], "%m/%d/%Y").date()
+        code = datetime.strptime(source["author_code_date_mm_dd_yyyy"], "%m-%d-%Y").date()
+        if table == code and source.get("author_code_date_marked_double_check") is False:
+            return table.isoformat()
+    except (KeyError, TypeError, ValueError):
+        pass
+    return None
+
+
+def verify_source_ranges(document: dict, source: dict, data_root: Path, cache: dict) -> None:
+    """Verify every acquired range, its HTTP receipt and its exact parent identity.
+
+重核全部已取得范围、HTTP 回执及准确父图身份，不把局部下载说成完整父图。
+"""
+    identity_keys = ("orthomosaic", "source_commit", "imagery_path", "imagery_url", "imagery_published_bytes",
+                     "imagery_published_lfs_sha256", "author_statistics", "author_code_date_mm_dd_yyyy",
+                     "author_code_date_marked_double_check")
+    if (document.get("format") != "drone.p6-raster-source-ranges/v1"
+            or any(document["source"].get(k) != source[k] for k in identity_keys)):
+        raise ValueError("range manifest parent mismatch")
+    key = ("verified_source_ranges", canonical_digest(document))
+    if key in cache:
+        return
+    size, block = source["imagery_published_bytes"], document["block_bytes"]
+    if type(size) is not int or size <= 0 or type(block) is not int or block <= 0:
+        raise ValueError("invalid parent size or range block size")
+    rows = document["ranges"]
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("no actual source ranges")
+    previous, acquired, files, complete, parent_hash = -1, 0, set(), True, hashlib.sha256()
+    for row in sorted(rows, key=lambda r: r["range"]):
+        start, end = row["range"]
+        if (type(start) is not int or type(end) is not int or not 0 <= start <= end < size
+                or start <= previous or start % block or end != min(start + block, size) - 1):
+            raise ValueError("duplicate, overlapping or invalid source range")
+        complete = complete and start == previous + 1
+        previous = end
+        path = derived_file(data_root, row["file"], row["sha256"], cache)
+        if path in files or path.stat().st_size != end - start + 1:
+            raise ValueError("source range length or file reuse mismatch")
+        files.add(path)
+        receipt_path = derived_file(data_root, row["receipt_file"], row["receipt_sha256"], cache)
+        receipt = bound_evidence(data_root, str(receipt_path), row["receipt_sha256"], cache)
+        if (receipt.get("url") != source["imagery_url"] or receipt.get("range") != [start, end]
+                or receipt.get("total_bytes") != size or receipt.get("received_bytes") != end - start + 1
+                or receipt.get("sha256") != row["sha256"] or receipt.get("http_status") != 206
+                or receipt.get("content_range") != f"bytes {start}-{end}/{size}"
+                or receipt.get("linked_etag_seen") is not True or receipt.get("repo_commit_seen") is not True):
+            raise ValueError("source HTTP range receipt mismatch")
+        timestamp(receipt["recorded_at"])
+        acquired += end - start + 1
+        if document.get("whole_parent_sha256_verified") is True:
+            with path.open("rb") as stream:
+                while chunk := stream.read(1024 * 1024):
+                    parent_hash.update(chunk)
+    if document.get("cached_bytes_accessed") != acquired or type(document.get("whole_parent_sha256_verified")) is not bool:
+        raise ValueError("source byte accounting or full-parent claim missing")
+    if document["whole_parent_sha256_verified"] and (not complete or previous != size - 1
+            or parent_hash.hexdigest() != source["imagery_published_lfs_sha256"]):
+        raise ValueError("whole parent hash not actually verified")
+    cache[key] = True
+
+
+def verify_extracted_image(receipt: dict, data_root: Path, cache: dict) -> None:
+    """Check native window geometry, stored JPEG and separate alpha bytes.
+
+核对原生窗口几何、已保存 JPEG 和单独 alpha 字节。
+"""
+    raster = receipt["raster"]
+    width, height = receipt["width"], receipt["height"]
+    x, y, w, h = receipt["native_window_xywh"]
+    transform, window_transform = raster["transform"], receipt["window_transform"]
+    if (any(type(v) is not int for v in (width, height, x, y, w, h, raster["width"], raster["height"]))
+            or min(width, height, w, h) <= 0 or min(x, y) < 0 or [width, height] != [w, h]
+            or x + w > raster["width"] or y + h > raster["height"] or raster.get("bands") != 4
+            or raster.get("dtypes") != ["uint8"] * 4 or not raster.get("crs")
+            or len(transform) != 9 or len(window_transform) != 9
+            or any(type(v) not in (int, float) or not math.isfinite(v) for v in transform + window_transform)
+            or transform[6:] != [0, 0, 1] or transform[0] * transform[4] == transform[1] * transform[3]
+            or not sha256_value(receipt.get("native_rgb_sha256"))):
+        raise ValueError("invalid native extraction window or raster")
+    expected = list(transform)
+    expected[2] += x * transform[0] + y * transform[1]
+    expected[5] += x * transform[3] + y * transform[4]
+    if any(not math.isclose(a, b, rel_tol=0, abs_tol=1e-8) for a, b in zip(expected, window_transform, strict=True)):
+        raise ValueError("window affine transform mismatch")
+    image_path = derived_file(data_root, receipt["image_file"], receipt["image_sha256"], cache)
+    mask_path = derived_file(data_root, receipt["mask_file"], receipt["mask_sha256"], cache)
+    for path, image_format, mode in ((image_path, "JPEG", "RGB"), (mask_path, "PNG", "L")):
+        with Image.open(path) as image:
+            if image.format != image_format or image.mode != mode or image.size != (w, h):
+                raise ValueError("extraction image or alpha dimensions/format mismatch")
+            image.verify()
+    with Image.open(image_path) as image:
+        image.load()
+    with Image.open(mask_path) as alpha:
+        if not math.isclose(1 - alpha.histogram()[0] / (w * h), receipt["valid_pixel_fraction"], abs_tol=1e-9):
+            raise ValueError("alpha coverage differs from extraction receipt")
+
+
+def verify_extraction_replay(replay: dict, receipt: dict, binding: dict, policy: dict, data_root: Path, cache: dict) -> None:
+    """Require a separately persisted cache-only extraction with identical native/output bytes.
+
+要求单独保存的纯缓存重提取，原生像素与输出字节均须一致。
+"""
+    expected = {"format": "drone.p6-derived-capture-replay/v1", "mode": "offline_cached_ranges", "network_requests": 0,
+                "source_observation_id": receipt["sample_id"], "parent_sha256": receipt["source_published_lfs_sha256"],
+                "extraction_sha256": binding["extraction_sha256"], "range_manifest_sha256": binding["range_manifest_sha256"],
+                "extractor_sha256": policy["extractor_sha256"], "range_tool_sha256": policy["range_tool_sha256"]}
+    if (any(replay.get(k) != v for k, v in expected.items()) or type(replay.get("network_requests")) is not int
+            or timestamp(replay["started_at"]) < timestamp(receipt["finished_at"])
+            or timestamp(replay["finished_at"]) < timestamp(replay["started_at"])):
+        raise ValueError("offline replay identity, isolation or timing mismatch")
+    reproduced = bound_evidence(data_root, replay["replay_extraction_file"], replay["replay_extraction_sha256"], cache)
+    keys = ("sample_id", "asset_group_id", "bounded_target_id", "source_orthomosaic", "source_commit",
+            "source_published_lfs_sha256", "media_origin", "status", "world_scope", "raster", "native_window_xywh",
+            "window_transform", "width", "height", "image_sha256", "mask_sha256", "native_rgb_sha256", "valid_pixel_fraction",
+            "source_geometry_sha256", "source_alignment_sha256", "source_date", "source_date_double_check_flag")
+    if (any(reproduced.get(k) != receipt[k] for k in keys)
+            or timestamp(reproduced["started_at"]) < timestamp(replay["started_at"])
+            or timestamp(reproduced["finished_at"]) > timestamp(replay["finished_at"])
+            or timestamp(reproduced["finished_at"]) < timestamp(reproduced["started_at"])
+            or any((data_root / reproduced[k]).resolve() == (data_root / receipt[k]).resolve() for k in ("image_file", "mask_file"))):
+        raise ValueError("offline replay does not reproduce this extraction")
+    verify_extracted_image(reproduced, data_root, cache)
+
+
+def derived_capture(sample: dict, protocol: dict, data_root: Path, cache: dict, *, scope_before: datetime | None = None) -> dict:
+    """Admit only a bound, acquired UAS derivative; return its reverified capture row.
+
+只准入绑定了实际 UAS 字节与提取产物的派生图，返回重新核对的采集条目。
+"""
+    binding, policy = sample["derivation"], protocol["derived_capture_policy"]
+    if (binding.get("format") != "drone.p6-derived-capture-binding/v1"
+            or policy.get("mode") != "traceable_uas_orthomosaic" or policy.get("claim_raw_camera_frames") is not False
+            or policy.get("synthetic_scene_content_allowed") is not False
+            or sample.get("captured_at") is not None
+            or binding["source_inventory_sha256"] != policy.get("source_inventory_sha256")):
+        raise ValueError("derived capture policy or binding missing")
+    bound = {}
+    for name in ("extraction", "extraction_plan", "source_inventory", "range_manifest", "replay"):
+        path = within(data_root, binding[name + "_file"])
+        bound[name] = bound_evidence(data_root, str(path), binding[name + "_sha256"], cache)
+    receipt, plan = bound["extraction"], bound["extraction_plan"]
+    inventory = unique(bound["source_inventory"], "orthomosaic")
+    source = inventory[receipt["source_orthomosaic"]]
+    if (receipt.get("status") != "extracted" or receipt.get("media_origin") != "real_capture_derivative"
+            or receipt["source_commit"] != source["source_commit"]
+            or receipt["source_published_lfs_sha256"] != source["imagery_published_lfs_sha256"]
+            or not sha256_value(source["imagery_published_lfs_sha256"])
+            or source["author_statistics"].get("Source") not in {"UAS", "sUAS"}
+            or source["author_statistics"].get("Orthomosaic") != source["orthomosaic"]
+            or not source["author_statistics"].get("Platform / Provider")
+            or "/imagery/UAS/" not in source["imagery_path"]
+            or f"/resolve/{source['source_commit']}/{source['imagery_path']}" not in source["imagery_url"]
+            or plan.get("tool_sha256") != policy.get("extractor_sha256")
+            or plan.get("range_tool_sha256") != policy.get("range_tool_sha256")
+            or any(not sha256_value(policy.get(k)) for k in ("extractor_sha256", "range_tool_sha256"))
+            or receipt["source_orthomosaic"] not in plan["source_names"]
+            or timestamp(receipt["finished_at"]) < timestamp(receipt["started_at"])
+            or timestamp(receipt["started_at"]) < timestamp(plan["created_at"])):
+        raise ValueError("derived capture source or extraction tool mismatch")
+    source_plan = bound_evidence(data_root, plan["source_plan_file"], plan["source_plan_sha256"], cache)
+    planned_source = unique(source_plan["images"], "orthomosaic")[source["orthomosaic"]]
+    planned = unique(planned_source["items"], "extraction_item_id")[receipt["sample_id"]]
+    scope = receipt["world_scope"]
+    if (planned_source["imagery_lfs_sha256"] != source["imagery_published_lfs_sha256"]
+            or planned_source["imagery_url"] != source["imagery_url"] or planned["target"] != scope
+            or any(planned[k] != receipt[k] for k in ("asset_group_id", "bounded_target_id"))
+            or scope.get("frozen_before_business_annotation_and_model_output") is not True
+            or scope.get("source_condition_polygons_or_model_outputs_used_for_scope") is not False
+            or not sha256_value(scope.get("freeze_scope_sha256"))
+            or timestamp(scope["frozen_at_utc"]) > timestamp(plan["created_at"])
+            or scope_before is not None and timestamp(scope["frozen_at_utc"]) > scope_before
+            or receipt["source_geometry_sha256"] != source["rda_json_sha256"]
+            or receipt["source_alignment_sha256"] != planned["view"]["source_alignment_sha256"]
+            or receipt["source_date"] != source["author_statistics"]["Date (mm/dd/yyy)"]
+            or receipt["source_date_double_check_flag"] is not source["author_code_date_marked_double_check"]):
+        raise ValueError("extraction does not bind the preregistered physical target")
+    for name in ("source_geometry", "source_alignment"):
+        derived_file(data_root, receipt[name + "_file"], receipt[name + "_sha256"], cache)
+    verify_source_ranges(bound["range_manifest"], source, data_root, cache)
+    verify_extracted_image(receipt, data_root, cache)
+    VERIFY_RASTER_WINDOW(receipt, bound["range_manifest"], data_root, cache, binding["range_manifest_sha256"])
+    verify_extraction_replay(bound["replay"], receipt, binding, policy, data_root, cache)
+    if (receipt["image_sha256"] != sample["image_sha256"]
+            or derived_file(data_root, receipt["image_file"], receipt["image_sha256"], cache) != within(data_root, sample["image_file"])
+            or [receipt["width"], receipt["height"]] != [sample["width"], sample["height"]]):
+        raise ValueError("extraction output is not this observation")
+    reference = sample["capture_record"]
+    capture_inventory = bound_evidence(data_root, str(within(data_root, reference["inventory_file"])), reference["inventory_sha256"], cache)
+    if capture_inventory.get("format") != "drone.p6-derived-capture-inventory/v1":
+        raise ValueError("unsupported derived capture inventory")
+    row = unique(capture_inventory["rows"], "source_observation_id")[reference["source_observation_id"]]
+    date = author_date_group(source)
+    expected = {"source_observation_id": receipt["sample_id"], "source_id": sample["source_id"],
+                "image_sha256": sample["image_sha256"], "source_orthomosaic": source["orthomosaic"],
+                "source_commit": source["source_commit"], "parent_sha256": source["imagery_published_lfs_sha256"],
+                "author_date_group": date, "author_date_verified": date is not None,
+                "observed": sample["observed"], "derivation_sha256": canonical_digest(binding)}
+    if (any(row.get(k) != v for k, v in expected.items())
+            or any(reference.get(k) != expected[k] for k in ("source_observation_id", "parent_sha256", "author_date_group", "author_date_verified"))
+            or sample["observed"].get("asset_id") != receipt["asset_group_id"]
+            or any(not isinstance(sample["observed"].get(k), str) or not sample["observed"][k] for k in GROUP_KEYS)
+            or type(sample["observed"].get("development_exposed")) is not bool):
+        raise ValueError("derived capture inventory does not bind this observation")
+    return row
+
+
+def first_annotation_at(sample: dict, label: dict, data_root: Path, cache: dict) -> datetime:
+    """Use actual bound first-pass and final annotation times, never a claimed scope flag.
+
+使用真实绑定的初标与最终标注时间，不以范围声明布尔值代替。
+"""
+    moments = [timestamp(label["recorded_at"])]
+    assistance = label.get("ai_assistance", {})
+    if assistance or sample.get("ai_suggestion") or label.get("origin") == "delegated_ai":
+        draft = bound_evidence(data_root, assistance["draft_file"], assistance["draft_sha256"], cache)
+        first = unique(draft["rows"], "sample_id")[sample["sample_id"]]
+        if first["image_sha256"] != sample["image_sha256"]:
+            raise ValueError("first annotation belongs to another observation")
+        moments.append(timestamp(first["inspected_at"]))
+    return min(moments)
+
+
+def verified_prior_task(sample: dict, label: dict, protocol: dict, data_root: Path, cache: dict) -> dict:
+    """Require a prior task and an inspected real reference even for human derivative labels.
+
+派生人工标签同样必须有事前任务及实际检查的真实参考。
+"""
+    assistance = label.get("ai_assistance", {})
+    evidence = assistance if "prior_task_file" in assistance or "prior_task_sha256" in assistance else label["task_evidence"]
+    prior_sha256 = evidence["prior_task_sha256"]
+    task = bound_evidence(data_root, evidence["prior_task_file"], evidence["prior_task_sha256"], cache)
+    expected = task["expected_reference"]
+    first_at = first_annotation_at(sample, label, data_root, cache)
+    if (task.get("format") != "drone.p6-road-prior-task/v1" or task.get("origin") not in {"human_task", "delegated_ai_task"}
+            or not task.get("registrar_id") or not task.get("registration_evidence")
+            or task.get("sample_id") != sample["sample_id"] or task.get("image_sha256") != sample["image_sha256"]
+            or not task.get("expected_asset_id") or task["expected_asset_id"] != sample["asset_id"]
+            or expected.get("asset_id") != task["expected_asset_id"] or expected.get("image_sha256") == sample["image_sha256"]
+            or not task.get("target_brief") or task["target_brief"] != sample.get("target", {}).get("brief")
+            or not polygon_valid(task.get("target_polygon")) or task["target_polygon"] != sample.get("target", {}).get("polygon")
+            or not expected.get("source_reference") or not expected.get("target_brief")
+            or not polygon_valid(expected.get("target_polygon")) or timestamp(task["registered_at"]) > first_at):
+        raise ValueError("prior task identity, target geometry or registration time mismatch")
+    if expected.get("media_origin") == "real_capture_derivative":
+        derived_capture(expected, protocol, data_root, cache, scope_before=min(timestamp(task["registered_at"]), first_at))
+        if expected["asset_id"] != expected["observed"]["asset_id"]:
+            raise ValueError("expected reference observes another asset")
+    elif expected.get("media_origin") != "real_capture" or expected.get("derivation"):
+        raise ValueError("expected reference is not an original or verified derivative")
+    expected_path = derived_file(data_root, expected["image_file"], expected["image_sha256"], cache)
+    with Image.open(expected_path) as image:
+        image.verify()
+    if label.get("origin") == "human":
+        evidence = label["task_evidence"]
+        if (evidence.get("prior_task_sha256") != prior_sha256
+                or evidence.get("expected_reference_checked") is not True or evidence.get("expected_target_present") is not False
+                or not isinstance(evidence.get("evidence"), str) or not evidence["evidence"].strip()):
+            raise ValueError("human wrong-target reference inspection missing")
+        inspected = {(data_root / file).resolve(): sha for file, sha in evidence["inspection_file_sha256"].items()}
+        if (inspected.get(expected_path) != expected["image_sha256"]
+                or inspected.get((data_root / sample["image_file"]).resolve()) != sample["image_sha256"]):
+            raise ValueError("human wrong-target original and reference were not both inspected")
+        for file, sha in evidence["inspection_file_sha256"].items():
+            derived_file(data_root, file, sha, cache)
+    return expected
+
+
 def wrong_target_review_issues(sample: dict, original: dict, final: dict, source: dict, record: dict,
-                              assistance: dict, data_root: Path, cache: dict) -> list[str]:
+                              assistance: dict, data_root: Path, cache: dict, protocol: dict | None = None) -> list[str]:
     """Require a prior task and an inspected expected-asset reference for wrong-target truth.
 
 错目标裁定必须有先登记任务及实际检查过的预期资产参考，不把无道路当错目标。
@@ -199,12 +502,15 @@ def wrong_target_review_issues(sample: dict, original: dict, final: dict, source
                 or not polygon_valid(task.get("target_polygon"))
                 or timestamp(task["registered_at"]) > timestamp(original["inspected_at"])):
             return ["wrong_target_prior_task_or_mismatch_missing"]
-        if (reference.get("asset_id") != task["expected_asset_id"] or reference.get("media_origin") != "real_capture"
+        if (reference.get("asset_id") != task["expected_asset_id"] or reference.get("media_origin") not in {"real_capture", "real_capture_derivative"}
                 or not reference.get("source_reference") or not reference_path.is_relative_to(data_root.resolve())
                 or reference.get("image_sha256") == sample["image_sha256"]
                 or digest(reference_path) != reference.get("image_sha256")
                 or not polygon_valid(reference.get("target_polygon")) or not reference.get("target_brief")):
             return ["wrong_target_expected_reference_invalid"]
+        if reference["media_origin"] == "real_capture_derivative":
+            derived_capture(reference, protocol or {}, data_root, cache,
+                            scope_before=min(timestamp(task["registered_at"]), timestamp(original["inspected_at"])))
         inspected = {(data_root / name).resolve(): expected for name, expected in record["inspection_file_sha256"].items()}
         if inspected.get(reference_path) != reference["image_sha256"]:
             return ["wrong_target_expected_reference_not_inspected"]
@@ -284,7 +590,7 @@ def delegated_label_issues(sample: dict, label: dict, protocol: dict, data_root:
             return ["delegated_annotation_revision_or_time_mismatch"]
         final_for_shape = final
         if final["verdict"] == "wrong_target":
-            problems = wrong_target_review_issues(sample, original, final, source, record, a, data_root, cache)
+            problems = wrong_target_review_issues(sample, original, final, source, record, a, data_root, cache, protocol)
             if problems:
                 return problems
             final_for_shape = {**final, "verdict": "indeterminate"}
@@ -425,15 +731,33 @@ def pair_problems(pair: dict, samples: dict, labels: dict) -> list[str]:
     left, right = (samples[i] for i in ids)
     issues = []
     delegated = pair.get("origin") == "delegated_ai"
+    scope = pair.get("comparison_scope", "ordered_capture_times")
+    media_origin = "real_capture_derivative" if scope == DERIVED_SCOPE else "real_capture"
     condition_flag = "same_condition_ai_verified" if delegated else "same_condition_human_confirmed"
     capture_flag = "distinct_captures_ai_verified" if delegated else "distinct_captures_human_confirmed"
     if (not left.get("asset_id") or left["asset_id"] != right.get("asset_id") or left["split"] != right["split"]
             or left["image_sha256"] == right["image_sha256"] or pair.get(condition_flag) is not True
             or not pair.get("reviewer_id") or not pair.get("evidence")
-            or any(s.get("media_origin") != "real_capture" for s in (left, right))):
+            or any(s.get("media_origin") != media_origin for s in (left, right))):
         issues.append("stability_pair_not_verified")
-    scope = pair.get("comparison_scope", "ordered_capture_times")
-    if scope == "distinct_original_captures_unordered":
+    if scope == DERIVED_SCOPE:
+        records = [s.get("capture_record") or {} for s in (left, right)]
+        dates = [r.get("author_date_group") for r in records]
+        if (pair.get(capture_flag) is not True or dates[0] == dates[1]
+                or records[0].get("parent_sha256") == records[1].get("parent_sha256")
+                or any(r.get("author_date_verified") is not True or not sha256_value(r.get("parent_sha256"))
+                       or not r.get("source_observation_id") or not r.get("inventory_file")
+                       or not sha256_value(r.get("inventory_sha256")) for r in records)
+                or any(not isinstance(d, str) or re.fullmatch(r"\d{4}-\d{2}-\d{2}", d) is None for d in dates)
+                or any(s.get("observed", {}).get("asset_id") != s["asset_id"] for s in (left, right))):
+            issues.append("distinct_derived_capture_identity_missing")
+        try:
+            for value in dates:
+                datetime.strptime(value, "%Y-%m-%d")
+        except (TypeError, ValueError):
+            if "distinct_derived_capture_identity_missing" not in issues:
+                issues.append("distinct_derived_capture_identity_missing")
+    elif scope == "distinct_original_captures_unordered":
         records = [s.get("capture_record") or {} for s in (left, right)]
         identities = [(s.get("source_id"), r.get("source_observation_id")) for s, r in zip((left, right), records, strict=True)]
         if (pair.get(capture_flag) is not True or identities[0] == identities[1]
@@ -474,11 +798,28 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
     types = set(protocol["defect_types"])
     issues, reviewed, counts, primaries = [], 0, Counter(), set()
     ai_reviewed = 0
-    assistance_cache = {}
-    associations = {key: defaultdict(set) for key in ("asset_id", "site_id", "capture_batch_id", "near_duplicate_group", "image_sha256")}
+    assistance_cache, admitted_derivatives = {}, {}
+    associations = {key: defaultdict(set) for key in (*GROUP_KEYS, "image_sha256", "parent_sha256")}
 
     def issue(code, sample_id=None, **details):
         issues.append({"code": code, "sample_id": sample_id, **details})
+
+    def associate(entity, split, ident, *, reference=False):
+        for key in (*GROUP_KEYS, "image_sha256"):
+            value = entity.get(key)
+            if not isinstance(value, str) or not value:
+                issue("grouping_identity_missing", ident, field=key, expected_reference=reference)
+            else:
+                associations[key][value].add(split)
+        parent = entity.get("capture_record", {}).get("parent_sha256")
+        if parent:
+            associations["parent_sha256"][parent].add(split)
+        groups = exposure.get("groups", {})
+        known_exposed = (entity.get("image_sha256") in exposed or parent in exposed
+                         or any(entity.get(k) in groups.get(k, []) for k in GROUP_KEYS)
+                         or parent is not None and parent in groups.get("parent_sha256", []))
+        if split != "development" and (known_exposed or entity.get("development_exposed") is not False):
+            issue("exposed_expected_reference_outside_development" if reference else "exposed_image_outside_development", ident)
 
     for ident, sample in samples.items():
         split = sample.get("split")
@@ -511,19 +852,44 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
             evidence = within(data_root, source["license_evidence_file"])
             if not evidence.is_file() or digest(evidence) != source["license_evidence_sha256"]:
                 issue("license_evidence_missing_or_changed", ident)
-        for key, groups in associations.items():
-            value = sample.get(key)
-            if not isinstance(value, str) or not value:
-                issue("grouping_identity_missing", ident, field=key)
-            else:
-                groups[value].add(split)
+        associate(sample, split, ident)
+        observed = sample.get("observed")
+        if observed:
+            associate({**observed, "image_sha256": sample["image_sha256"], "capture_record": sample.get("capture_record", {})}, split, ident)
         if sample.get("grouping_verified") is not True or not sample.get("grouping_evidence"):
             issue("grouping_not_verified", ident)
-        if split != "development" and (sample["image_sha256"] in exposed or sample.get("development_exposed") is not False):
-            issue("exposed_image_outside_development", ident)
-        if split != "development" and sample.get("media_origin") != "real_capture":
-            issue("nonreal_sample_in_formal_split", ident)
         label = annotations.get(ident)
+        if sample.get("media_origin") == "real_capture_derivative":
+            try:
+                admitted_derivatives[ident] = derived_capture(sample, protocol, data_root, assistance_cache,
+                                                              scope_before=first_annotation_at(sample, label or {}, data_root, assistance_cache))
+                if annotations.get(ident, {}).get("verdict") != "wrong_target" and sample["asset_id"] != sample["observed"]["asset_id"]:
+                    raise ValueError("observed asset differs from the requested target")
+            except (OSError, KeyError, TypeError, ValueError, AttributeError, IndexError) as exc:
+                admitted_derivatives.pop(ident, None)
+                issue("derived_capture_not_verified", ident, reason=str(exc))
+        elif sample.get("derivation"):
+            issue("derived_capture_media_origin_mismatch", ident)
+        elif split != "development" and sample.get("media_origin") != "real_capture":
+            issue("nonreal_sample_in_formal_split", ident)
+        assistance = (label or {}).get("ai_assistance", {})
+        needs_task = sample.get("media_origin") == "real_capture_derivative" and (label or {}).get("verdict") == "wrong_target"
+        task_valid = False
+        if needs_task or (label or {}).get("task_evidence") or "prior_task_file" in assistance or "prior_task_sha256" in assistance:
+            try:
+                expected = verified_prior_task(sample, label or {}, protocol, data_root, assistance_cache)
+                associate(expected, split, ident, reference=True)
+                if not observed:
+                    raise ValueError("wrong-target observed grouping missing")
+                if expected.get("observed"):
+                    associate({**expected["observed"], "image_sha256": expected["image_sha256"],
+                               "capture_record": expected.get("capture_record", {})}, split, ident, reference=True)
+                task_valid = True
+            except (OSError, KeyError, TypeError, ValueError, AttributeError, IndexError) as exc:
+                issue("wrong_target_reference_provenance_not_verified", ident, reason=str(exc))
+        if needs_task and not task_valid:
+            admitted_derivatives.pop(ident, None)
+            issue("derived_wrong_target_prior_task_not_verified", ident)
         if not label or label.get("verdict") is None:
             issue("business_label_missing", ident)
             continue
@@ -576,6 +942,14 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
         if pair.get("origin") == "delegated_ai":
             for problem in delegated_pair_issues(pair, samples, protocol, data_root, assistance_cache):
                 issue(problem, ids[0])
+        if pair.get("comparison_scope") == DERIVED_SCOPE:
+            if any(ident not in admitted_derivatives for ident in ids):
+                issue("derived_pair_inventory_not_verified", ids[0])
+            else:
+                captures = [bound_evidence(data_root, samples[i]["derivation"]["extraction_file"],
+                                          samples[i]["derivation"]["extraction_sha256"], assistance_cache) for i in ids]
+                if any(captures[0][k] != captures[1][k] for k in ("bounded_target_id", "world_scope")):
+                    issue("derived_pair_fixed_target_mismatch", ids[0])
         if pair.get("comparison_scope") == "distinct_original_captures_unordered":
             for ident in ids:
                 reference = samples[ident].get("capture_record") or {}
@@ -654,6 +1028,7 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
             "delegated_ai_labels_present": ai_reviewed,
             "ai_verified_pairs_declared": sum(pair.get("origin") == "delegated_ai" for pair in manifest.get("stability_pairs", [])),
             "ai_assisted_labels_declared": sum("ai_assistance" in row for row in annotations.values()),
+            "derived_captures_verified": len(admitted_derivatives),
             "annotation_claim": "AI-reviewed reference labels, not independent human truth" if ai_reviewed else
                                 "AI-assisted labels are human adjudications, not blind labels; provenance checked separately",
             "stability_pairs": len(pair_ids), "issue_counts": dict(Counter(i["code"] for i in issues)), "issues": issues,
