@@ -1,0 +1,86 @@
+{
+  "format": "drone.p6-ai-verification-summary/v1",
+  "created_at": "2026-10-18T09:04:59.160832+00:00",
+  "reviewed": 415,
+  "expected": 415,
+  "complete": true,
+  "first_pass_verdicts": {
+    "excluded_source": 84,
+    "normal": 173,
+    "indeterminate": 119,
+    "obstacle": 39
+  },
+  "second_pass_verdicts": {
+    "excluded_source": 80,
+    "normal": 130,
+    "indeterminate": 173,
+    "obstacle": 32
+  },
+  "transitions": {
+    "excluded_source -> excluded_source": 80,
+    "normal -> normal": 126,
+    "indeterminate -> indeterminate": 112,
+    "normal -> indeterminate": 46,
+    "indeterminate -> normal": 3,
+    "obstacle -> obstacle": 27,
+    "excluded_source -> indeterminate": 3,
+    "indeterminate -> obstacle": 4,
+    "obstacle -> indeterminate": 12,
+    "normal -> obstacle": 1,
+    "excluded_source -> normal": 1
+  },
+  "decisions": {
+    "accepted": 287,
+    "revised": 128
+  },
+  "changed_fields": {
+    "target_polygon": 69,
+    "target_brief": 26,
+    "verdict": 70,
+    "notes": 87,
+    "uncertainties": 84,
+    "objects": 24
+  },
+  "integrity_issues": [],
+  "usable_reference_observations": 335,
+  "excluded_source_observations": 80,
+  "human_labels_created": 0,
+  "verified_independent_assets": 0,
+  "verified_stability_pairs": 0,
+  "registered_wrong_target_tasks": 0,
+  "formal_model_calls": 0,
+  "formal_release_eligible": false,
+  "remaining": [
+    "asset/site/capture/near-duplicate verification",
+    "obstacle and wrong-target coverage",
+    "real same-asset same-state repeat capture pairs",
+    "calibration and test freeze, live recording and final gate"
+  ],
+  "human_timing": "explicitly deferred to operations, not measured or passed",
+  "guidance_exposure": "floodnet-6337 and verified associated groups must be accounted for before any held-out selection",
+  "assembler_sha256": "f3a6c49490be3c3fceec356dc9c660cb2cac61f74785c74f311f3292e5066a73",
+  "verification_tool_sha256": "9f4cbc958a4501c666e9322ead551e0ccb105ac594179ab39cb76ea3f054605f",
+  "defect_observation_counts": {
+    "debris": 9,
+    "other_entity": 20,
+    "vegetation": 4
+  },
+  "unexposed_observation_upper_bounds": {
+    "normal": 129,
+    "indeterminate": 173,
+    "obstacle": 32
+  },
+  "test_plus_calibration_minimum_primaries": {
+    "normal": 120,
+    "obstacle": 120,
+    "indeterminate": 40,
+    "wrong_target": 40
+  },
+  "minimum_additional_observations_before_identity_checks": {
+    "normal": 0,
+    "obstacle": 88,
+    "indeterminate": 0,
+    "wrong_target": 40
+  },
+  "coverage_bounds_caveat": "upper bounds assume every unexposed observation could be an independent admissible asset; actual site/capture/asset checks can only reduce these counts; not formal coverage"
+}

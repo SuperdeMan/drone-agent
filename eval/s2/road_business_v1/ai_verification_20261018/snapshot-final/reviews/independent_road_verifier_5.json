@@ -1,0 +1,219 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "independent_road_verifier_5",
+  "created_at": "2026-10-18T09:02:44.979635+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-ai-verification-20261018\\assignment-5.json",
+  "assignment_sha256": "a21b591bf60bf2781f6c4005229368a675ffd4d85358dd1476e2b68041c5e6af",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "floodnet-7099",
+      "decision": "revised",
+      "findings": [
+        "实际查看了 4000×3000 原图、上缘原始裁图、轮辙区域 2 倍裁图及新旧轮廓叠图。首稿指向的浅色双轮辙土路真实存在，不属于无可用道路目标。",
+        "首稿 polygon 确实向图像上方错位，主体落在双轮辙上方的草地和围栏附近；例如 x≈1235 像素处，首稿轮廓约覆盖 y=196–218，而实际双轮辙路幅约在 y=219–241。不能以旧轮廓中的草地空旷支持原来的道路判断。",
+        "已按原图重画从左端轮迹显现至右端轮迹淡出的完整可见土路段，包含两条轮辙及其间路幅，而非只圈单条浅色轮迹；新轮廓约位于 x=1080–1644、y=169–273 像素。",
+        "修正后的完整可见路幅连续、无树冠遮挡，未见可辨认的独立实体侵入。上下两侧门栏与围栏、混凝土涵口、建筑侧拖挂物和草地内草卷均位于路幅外，因此最终 verdict 仍为 normal、objects 仍为空；此次修正的是目标几何和对应说明。"
+      ],
+      "changes": {
+        "target_brief": "图像左上区域、蓝绿色屋顶建筑右下方，横跨水渠两处混凝土涵口之间的浅色双轮辙土路完整可见段，包含两条轮辙及其间路幅",
+        "target_polygon": [
+          [
+            0.27,
+            0.086
+          ],
+          [
+            0.28875,
+            0.08
+          ],
+          [
+            0.30875,
+            0.073
+          ],
+          [
+            0.3275,
+            0.067
+          ],
+          [
+            0.3425,
+            0.063
+          ],
+          [
+            0.3625,
+            0.061
+          ],
+          [
+            0.3825,
+            0.058333
+          ],
+          [
+            0.4,
+            0.056333
+          ],
+          [
+            0.41,
+            0.056333
+          ],
+          [
+            0.411,
+            0.060667
+          ],
+          [
+            0.4,
+            0.062333
+          ],
+          [
+            0.3825,
+            0.064
+          ],
+          [
+            0.3625,
+            0.066333
+          ],
+          [
+            0.3425,
+            0.070333
+          ],
+          [
+            0.3275,
+            0.074
+          ],
+          [
+            0.30875,
+            0.080333
+          ],
+          [
+            0.28875,
+            0.086667
+          ],
+          [
+            0.2745,
+            0.091
+          ]
+        ],
+        "notes": "AI 独立纠错核验：依据原图及放大裁图，将原来偏向上方草地和围栏的轮廓纠正为实际浅色双轮辙土路；覆盖从左端轮迹显现至右端轮迹淡出的完整可见段及两轮辙之间的路幅。该路幅连续可见，未见独立实体侵入；门栏、围栏、混凝土涵口、拖挂物及草卷位于路幅外。最终结论 normal，非人类核验记录。"
+      },
+      "inspected_files": [
+        "D:/drone-agent-data/p6-ai-annotation-20261016/review-batch3/images/b65f6828f7fb2b318b5ef776ed7e98701f6ec65486e3a67b151fed95b4173bd4.jpg",
+        "D:/drone-agent-data/p6-ai-verification-20261018/reviewer-5/7099-top-original-crop.png",
+        "D:/drone-agent-data/p6-ai-verification-20261018/reviewer-5/7099-track-original-crop-2x.png",
+        "D:/drone-agent-data/p6-ai-verification-20261018/reviewer-5/7099-first-polygon-reference-2x.png",
+        "D:/drone-agent-data/p6-ai-verification-20261018/reviewer-5/7099-corrected-polygon-reference-3x.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "b65f6828f7fb2b318b5ef776ed7e98701f6ec65486e3a67b151fed95b4173bd4",
+      "first_author_id": "independent_road_annotator_6",
+      "first_row_sha256": "ae2f9b2efc20af446e23fc63f54865af40410309ef53793ad77dc5019e807149",
+      "reviewed_at": "2026-10-18T09:02:44.987301+00:00",
+      "reviewer_id": "independent_road_verifier_5",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-ai-annotation-20261016/review-batch3/images/b65f6828f7fb2b318b5ef776ed7e98701f6ec65486e3a67b151fed95b4173bd4.jpg": "b65f6828f7fb2b318b5ef776ed7e98701f6ec65486e3a67b151fed95b4173bd4",
+        "D:/drone-agent-data/p6-ai-verification-20261018/reviewer-5/7099-top-original-crop.png": "8129afea43ecd1425b8b24c35293c14bd84767c50f96544f658bd430d86d7933",
+        "D:/drone-agent-data/p6-ai-verification-20261018/reviewer-5/7099-track-original-crop-2x.png": "d9e6084759d681c85488ca942811358a7c5623e1c8706dc89802b89504f29a2d",
+        "D:/drone-agent-data/p6-ai-verification-20261018/reviewer-5/7099-first-polygon-reference-2x.png": "07f1b82a905eac1033f670e1cba92456424bdb70ce56d2a9fd1c9701681aafee",
+        "D:/drone-agent-data/p6-ai-verification-20261018/reviewer-5/7099-corrected-polygon-reference-3x.png": "140069c048bb5abddb3bf523827bf2e95abdb0b839b545d1793ec82d0337320f"
+      },
+      "final_row": {
+        "image_sha256": "b65f6828f7fb2b318b5ef776ed7e98701f6ec65486e3a67b151fed95b4173bd4",
+        "inspected_at": "2026-10-18T09:02:44.987301+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-ai-annotation-20261016/review-batch3/images/b65f6828f7fb2b318b5ef776ed7e98701f6ec65486e3a67b151fed95b4173bd4.jpg",
+          "D:/drone-agent-data/p6-ai-verification-20261018/reviewer-5/7099-top-original-crop.png",
+          "D:/drone-agent-data/p6-ai-verification-20261018/reviewer-5/7099-track-original-crop-2x.png",
+          "D:/drone-agent-data/p6-ai-verification-20261018/reviewer-5/7099-first-polygon-reference-2x.png",
+          "D:/drone-agent-data/p6-ai-verification-20261018/reviewer-5/7099-corrected-polygon-reference-3x.png"
+        ],
+        "notes": "AI 独立纠错核验：依据原图及放大裁图，将原来偏向上方草地和围栏的轮廓纠正为实际浅色双轮辙土路；覆盖从左端轮迹显现至右端轮迹淡出的完整可见段及两轮辙之间的路幅。该路幅连续可见，未见独立实体侵入；门栏、围栏、混凝土涵口、拖挂物及草卷位于路幅外。最终结论 normal，非人类核验记录。",
+        "objects": [],
+        "sample_id": "floodnet-7099",
+        "target_brief": "图像左上区域、蓝绿色屋顶建筑右下方，横跨水渠两处混凝土涵口之间的浅色双轮辙土路完整可见段，包含两条轮辙及其间路幅",
+        "target_polygon": [
+          [
+            0.27,
+            0.086
+          ],
+          [
+            0.28875,
+            0.08
+          ],
+          [
+            0.30875,
+            0.073
+          ],
+          [
+            0.3275,
+            0.067
+          ],
+          [
+            0.3425,
+            0.063
+          ],
+          [
+            0.3625,
+            0.061
+          ],
+          [
+            0.3825,
+            0.058333
+          ],
+          [
+            0.4,
+            0.056333
+          ],
+          [
+            0.41,
+            0.056333
+          ],
+          [
+            0.411,
+            0.060667
+          ],
+          [
+            0.4,
+            0.062333
+          ],
+          [
+            0.3825,
+            0.064
+          ],
+          [
+            0.3625,
+            0.066333
+          ],
+          [
+            0.3425,
+            0.070333
+          ],
+          [
+            0.3275,
+            0.074
+          ],
+          [
+            0.30875,
+            0.080333
+          ],
+          [
+            0.28875,
+            0.086667
+          ],
+          [
+            0.2745,
+            0.091
+          ]
+        ],
+        "uncertainties": [],
+        "verdict": "normal"
+      },
+      "final_row_sha256": "cf235cb75071889baa60744e192064530b23a4150d314a7855183f34ce552bec"
+    }
+  ]
+}

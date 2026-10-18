@@ -1,0 +1,154 @@
+"""Assemble immutable AI-review snapshots without filling human or asset facts.
+
+汇总不可覆盖的 AI 二审快照，不填造人工或资产事实。
+"""
+import argparse
+import hashlib
+import json
+import runpy
+import shutil
+from collections import Counter
+from datetime import UTC, datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+REPO = Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+DATA = Path('D:/drone-agent-data')
+SOURCE = DATA / 'p6-ai-annotation-20261016'
+CORE = runpy.run_path(str(REPO / 'scripts/p6_business_eval.py'))
+
+def read(path):
+    return json.loads(path.read_text(encoding='utf-8-sig'))
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def relative(path):
+    return path.resolve().relative_to(DATA.resolve()).as_posix()
+
+def save(path, value):
+    with path.open('x', encoding='utf-8', newline='\n') as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2)
+        stream.write('\n')
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--output', type=Path, required=True)
+parser.add_argument('--complete', action='store_true')
+args = parser.parse_args()
+args.output.mkdir(parents=True, exist_ok=False)
+(args.output / 'reviews').mkdir()
+protocol = read(REPO / 'eval/s2/road_business_v1/protocol-draft.json')
+registry_file = ROOT / 'registration-v3.json'
+registry = read(registry_file)
+save(args.output / 'protocol.json', protocol)
+sources = {}
+for i in (1, 2, 3):
+    folder = SOURCE / f'review-batch{i}'
+    for row in read(folder / 'bundle.json')['samples']:
+        assert row['sample_id'] not in sources
+        sources[row['sample_id']] = (folder, row)
+labels, samples, tasks, exclusions, findings = [], [], [], [], []
+before, after, transitions, decisions, changed_fields = (Counter() for _ in range(5))
+seen = set()
+cache = {}
+for selection in registry['selection']:
+    live = Path(selection['file'])
+    if not live.exists():
+        continue
+    reviewer_id = selection['reviewer_id']
+    archived = args.output / 'reviews' / (reviewer_id + '.json')
+    shutil.copyfile(live, archived)
+    review = read(archived)
+    if args.complete:
+        assert len(review['rows']) == selection['count']
+    for row in review['rows']:
+        ident = row['sample_id']
+        assert ident not in seen
+        seen.add(ident)
+        folder, source = sources[ident]
+        original, final = source['ai_suggestion'], row['final_row']
+        before[original['verdict']] += 1
+        after[final['verdict']] += 1
+        transitions[original['verdict'] + ' -> ' + final['verdict']] += 1
+        decisions[row['decision']] += 1
+        changed_fields.update(row['changes'].keys())
+        target_changed = any(k in row['changes'] for k in ('target_brief', 'target_polygon'))
+        registered = row['reviewed_at'] if target_changed else original['inspected_at']
+        sample = {'sample_id': ident, 'image_file': relative(folder / source['image_file']), 'image_sha256': final['image_sha256'],
+                  'width': source['width'], 'height': source['height'], 'source_id': 'floodnet', 'split': None,
+                  'evaluation_role': None, 'asset_id': None, 'site_id': None, 'capture_batch_id': None,
+                  'near_duplicate_group': None, 'grouping_verified': False, 'grouping_evidence': None,
+                  'media_origin': 'real_capture', 'development_exposed': ident == 'floodnet-6337',
+                  'target': {'status': 'ai_verified', 'brief': final['target_brief'], 'polygon': final['target_polygon'],
+                             'registered_at': registered}, 'ai_suggestion': original,
+                  'capture_time_text': source.get('capture_time_text'), 'capture_timezone': source.get('capture_timezone'),
+                  'gps': source.get('gps'), 'gps_group_hint': source.get('gps_group_hint'),
+                  'capture_record': {'source_observation_id': source['image_id'],
+                      'inventory_file': 'p6-business-closeout-20261015/inventory-v4.json',
+                      'inventory_sha256': sha(DATA / 'p6-business-closeout-20261015/inventory-v4.json')}}
+        label = {'sample_id': ident, 'image_sha256': final['image_sha256'], 'verdict': final['verdict'],
+                 'defect_types': sorted({o['defect_type'] for o in final['objects']}), 'objects': final['objects'],
+                 'origin': 'delegated_ai', 'reviewer_id': review['reviewer_id'], 'full_target_inspected': True,
+                 'notes': final['notes'], 'hints_seen': True, 'model_outputs_seen': True, 'recorded_at': row['reviewed_at'],
+                 'ai_assistance': {'method': 'independent_ai_then_ai', 'original_checked': True,
+                     'evaluated_model_outputs_seen': False, 'draft_file': relative(folder / source['ai_source']['file']),
+                     'draft_sha256': source['ai_source']['sha256'], 'author_id': source['ai_source']['author_id'],
+                     'suggestion_sha256': source['ai_suggestion_sha256'],
+                     'context_file': 'p6-ai-annotation-20261016/annotation-context-v4.json',
+                     'context_sha256': sha(SOURCE / 'annotation-context-v4.json'),
+                     'verification_context_file': relative(registry_file),
+                     'verification_context_sha256': sha(registry_file),
+                     'review_file': relative(archived), 'review_sha256': sha(archived),
+                     'review_row_sha256': CORE['canonical_digest'](row), 'decision': row['decision']}}
+        issues = CORE['delegated_label_issues'](sample, label, protocol, DATA, cache)
+        if issues:
+            findings.append({'sample_id': ident, 'issues': issues})
+        if final['verdict'] == 'excluded_source':
+            exclusions.append({'sample': sample, 'review_reference': label, 'uncertainties': final['uncertainties']})
+            continue
+        samples.append(sample)
+        labels.append(label)
+        tasks.append({'sample_id': ident, 'image_sha256': final['image_sha256'], 'target_brief': final['target_brief'],
+                      'target_polygon': final['target_polygon'], 'origin': 'delegated_ai_task', 'registered_at': registered,
+                      'registration_reference': 'Existing target definition in bound first-pass record' if not target_changed else
+                                                'Revised target definition in bound AI verification record'})
+if args.complete:
+    assert seen == set(sources)
+permission = read(DATA / 'p6-business-closeout-20261015/source-permission-common-root.json')
+manifest = {'format': 'drone.p6-road-corpus-draft/v1', 'corpus_id': protocol['corpus_id'], 'data_root': str(DATA),
+    'samples': samples, 'stability_pairs': [], 'formal_release_eligible': False,
+    'sources': {'floodnet': {'permission_status': permission['permission_status'],
+        'license_evidence_file': permission['license_snapshot_file'], 'license_evidence_sha256': permission['license_snapshot_sha256']}}}
+save(args.output / 'manifest-draft.json', manifest)
+save(args.output / 'labels.json', {'format': 'drone.p6-road-labels/v1', 'corpus_id': protocol['corpus_id'], 'rows': labels,
+    'reference_claim': 'AI second-review reference labels, not independent human truth', 'human_labels_created': 0,
+    'formal_release_eligible': False})
+save(args.output / 'tasks-draft.json', {'format': 'drone.p6-road-model-tasks/v1', 'corpus_id': protocol['corpus_id'],
+    'rows': tasks, 'formal_release_eligible': False})
+save(args.output / 'excluded.json', {'rows': exclusions, 'formal_release_eligible': False})
+summary = {'format': 'drone.p6-ai-verification-summary/v1', 'created_at': datetime.now(UTC).isoformat(),
+    'reviewed': len(seen), 'expected': len(sources), 'complete': seen == set(sources),
+    'first_pass_verdicts': dict(before), 'second_pass_verdicts': dict(after), 'transitions': dict(transitions),
+    'decisions': dict(decisions), 'changed_fields': dict(changed_fields), 'integrity_issues': findings,
+    'usable_reference_observations': len(labels), 'excluded_source_observations': len(exclusions),
+    'human_labels_created': 0, 'verified_independent_assets': 0, 'verified_stability_pairs': 0,
+    'registered_wrong_target_tasks': 0, 'formal_model_calls': 0, 'formal_release_eligible': False,
+    'remaining': ['asset/site/capture/near-duplicate verification', 'obstacle and wrong-target coverage',
+                  'real same-asset same-state repeat capture pairs', 'calibration and test freeze, live recording and final gate'],
+    'human_timing': 'explicitly deferred to operations, not measured or passed',
+    'guidance_exposure': 'floodnet-6337 and verified associated groups must be accounted for before any held-out selection'}
+summary['assembler_sha256'] = sha(Path(__file__))
+summary['verification_tool_sha256'] = sha(REPO / 'scripts/p6_business_eval.py')
+summary['defect_observation_counts'] = dict(Counter(kind for label in labels for kind in set(label['defect_types'])))
+exposed = set(read(REPO / 'eval/s2/road_business_v1/exposure-registry.json')['image_sha256'])
+available = Counter(label['verdict'] for label in labels if label['image_sha256'] not in exposed)
+summary['unexposed_observation_upper_bounds'] = dict(available)
+summary['test_plus_calibration_minimum_primaries'] = {key: protocol['minimum_samples'][key] +
+    protocol['additional_requirements']['minimum_calibration_by_label'][key] for key in ('normal', 'obstacle', 'indeterminate', 'wrong_target')}
+summary['minimum_additional_observations_before_identity_checks'] = {key: max(0, count - available[key])
+    for key, count in summary['test_plus_calibration_minimum_primaries'].items()}
+summary['coverage_bounds_caveat'] = 'upper bounds assume every unexposed observation could be an independent admissible asset; actual site/capture/asset checks can only reduce these counts; not formal coverage'
+save(args.output / 'summary.json', summary)
+print(json.dumps({k: v for k, v in summary.items() if k not in {'transitions', 'changed_fields', 'remaining'}}, ensure_ascii=False))
+if findings:
+    raise SystemExit(1)

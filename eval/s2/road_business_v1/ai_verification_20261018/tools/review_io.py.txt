@@ -1,0 +1,66 @@
+"""Persist actual visual review batches without long commands. / 分批保存真实视觉复核，避免长命令。"""
+import argparse
+import hashlib
+import json
+from datetime import UTC, datetime
+from pathlib import Path
+
+def read(path):
+    return json.loads(path.read_text(encoding='utf-8-sig'))
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def canonical(value):
+    return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+
+def save(path, value):
+    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
+
+parser = argparse.ArgumentParser()
+parser.add_argument('mode', choices=['append', 'status'])
+parser.add_argument('--assignment', type=Path, required=True)
+parser.add_argument('--batch', type=Path)
+parser.add_argument('--expected-count', type=int)
+args = parser.parse_args()
+assignment = read(args.assignment)
+folder = Path(assignment['worker_dir'])
+path = folder / 'reviews.json'
+doc = read(path) if path.exists() else {'format': 'drone.p6-road-ai-verification/v1',
+    'reviewer_kind': 'isolated_ai_reviewer', 'reviewer_id': assignment['reviewer_id'],
+    'created_at': datetime.now(UTC).isoformat(), 'assignment_file': str(args.assignment),
+    'assignment_sha256': sha(args.assignment), 'isolation': {'parent_history': 'none',
+    'evaluation_prompt_seen': False, 'evaluation_outputs_seen': False, 'source_labels_seen': False,
+    'assigned_first_pass_seen': True}, 'human_reviews_created': 0, 'formal_release_eligible': False, 'rows': []}
+if args.mode == 'append':
+    assert len(doc['rows']) == args.expected_count and doc['reviewer_id'] == assignment['reviewer_id']
+    batch = read(args.batch)
+    assert isinstance(batch, list) and 1 <= len(batch) <= 10
+    allowed = {s['sample_id']: s for s in assignment['samples']}
+    seen = {r['sample_id'] for r in doc['rows']}
+    for item in batch:
+        assert set(item) == {'sample_id', 'decision', 'findings', 'changes', 'inspected_files', 'original_image_checked'}
+        ident = item['sample_id']
+        assert ident in allowed and ident not in seen and item['original_image_checked'] is True
+        source = allowed[ident]
+        assert item['decision'] in {'accepted', 'revised'}
+        assert isinstance(item['findings'], list) and item['findings'] and all(isinstance(t, str) and t.strip() for t in item['findings'])
+        assert isinstance(item['changes'], dict) and set(item['changes']) <= {'target_brief', 'target_polygon', 'verdict', 'objects', 'notes', 'uncertainties'}
+        assert (item['decision'] == 'revised') == bool(item['changes'])
+        assert Path(source['image_file']).resolve() in [Path(p).resolve() for p in item['inspected_files']]
+        assert all(Path(p).is_file() for p in item['inspected_files'])
+        assert sha(Path(source['image_file'])) == source['image_sha256']
+        final = {**source['first_row'], **item['changes']}
+        assert final['verdict'] in {'normal', 'obstacle', 'indeterminate', 'excluded_source'}
+        assert (final['verdict'] == 'obstacle') == bool(final['objects'])
+        assert (final['target_polygon'] is None) == (final['verdict'] == 'excluded_source')
+        stamp = datetime.now(UTC).isoformat()
+        final.update(inspected_at=stamp, inspection_files=item['inspected_files'])
+        doc['rows'].append({**item, 'image_sha256': source['image_sha256'],
+            'first_author_id': source['first_author_id'], 'first_row_sha256': source['first_row_sha256'],
+            'reviewed_at': stamp, 'reviewer_id': assignment['reviewer_id'],
+            'inspection_file_sha256': {p: sha(Path(p)) for p in item['inspected_files']},
+            'final_row': final, 'final_row_sha256': canonical(final)})
+        seen.add(ident)
+    save(path, doc)
+print(json.dumps({'saved': len(doc['rows']), 'assigned': len(assignment['samples']), 'file': str(path)}))

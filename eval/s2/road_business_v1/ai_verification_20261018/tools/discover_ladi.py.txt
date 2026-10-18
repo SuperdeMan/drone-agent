@@ -1,0 +1,26 @@
+"""Read individual-image and annotation indexes, never remote code execution.
+
+只读单图与元数据索引，不执行远端代码。
+"""
+import json
+import runpy
+from pathlib import Path
+
+# Reuse the bounded downloader without rerunning its entry point. / 复用有界下载函数，不重跑入口。
+path = Path(__file__).with_name('discover_sources.py')
+source = path.read_text(encoding='utf-8').split('with ThreadPoolExecutor(max_workers=4) as pool:')[0]
+namespace = {'__file__': str(path)}
+exec(compile(source, str(path), 'exec'), namespace)
+requests = {
+    'ladi-images-root.xml': 'https://ladi.s3.amazonaws.com/?list-type=2&delimiter=/&prefix=Images/',
+    'ladi-labels-root.xml': 'https://ladi.s3.amazonaws.com/?list-type=2&delimiter=/&prefix=Labels/',
+    'ladi-loader.py.txt': 'https://huggingface.co/datasets/MITLL/LADI-v2-dataset/raw/script/LADI-v2-dataset.py',
+    'ladi-source-readme.md': 'https://huggingface.co/datasets/MITLL/LADI-v2-dataset/raw/script/README.md',
+    'ladi-author-readme-master.md': 'https://raw.githubusercontent.com/LADI-Dataset/ladi-overview/master/README.md',
+    'ladi-hf-api.json': 'https://huggingface.co/api/datasets/MITLL/LADI-v2-dataset/revision/script',
+}
+with namespace['ThreadPoolExecutor'](max_workers=4) as pool:
+    rows = list(pool.map(namespace['fetch'], requests.items()))
+with (namespace['ROOT'] / 'ladi-discovery-receipt.json').open('x', encoding='utf-8') as stream:
+    json.dump({'sources': rows, 'images_acquired': 0}, stream, indent=2)
+print(json.dumps(rows))

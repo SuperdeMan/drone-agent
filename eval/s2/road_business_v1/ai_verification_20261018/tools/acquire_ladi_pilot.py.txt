@@ -1,0 +1,89 @@
+"""Acquire a small source-suitability pilot with explicit sampling and original bytes.
+
+取得小规模来源适用性样本，披露抽样并保留原图字节。
+"""
+import csv
+import hashlib
+import json
+import urllib.parse
+import urllib.request
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
+from pathlib import Path
+
+from PIL import ExifTags, Image
+
+ROOT = Path(__file__).resolve().parent
+OUTPUT = ROOT / 'ladi-pilot'
+OUTPUT.mkdir(exist_ok=False)
+(OUTPUT / 'images').mkdir()
+labels = ROOT / 'source-discovery/ladi-v2a-all.csv'
+with labels.open(encoding='utf-8') as stream:
+    rows = list(csv.DictReader(stream))
+groups = defaultdict(list)
+for row in rows:
+    if row['roads_damage'] == '1' and row['debris_any'] == '1' and row['flooding_any'] == '0':
+        parts = urllib.parse.urlparse(row['url']).path.split('/')
+        groups[parts[2]].append(row)
+selected = []
+for group in sorted(groups):
+    selected.append(sorted(groups[group], key=lambda row: row['url'])[0])
+    if len(selected) == 8:
+        break
+chosen_groups = {urllib.parse.urlparse(row['url']).path.split('/')[2] for row in selected}
+for group in sorted(chosen_groups)[:4]:
+    available = [row for row in rows if urllib.parse.urlparse(row['url']).path.split('/')[2] == group
+                 and row['roads_any'] == '1' and row['roads_damage'] == '0' and row['debris_any'] == '0']
+    if available:
+        selected.append(sorted(available, key=lambda row: row['url'])[0])
+plan = {'format': 'drone.p6-source-suitability-plan/v1', 'created_at': datetime.now(UTC).isoformat(),
+    'source': 'LADI v2a', 'index_sha256': hashlib.sha256(labels.read_bytes()).hexdigest(),
+    'selection': 'first lexicographic image from each of first eight source event groups with source roads_damage and debris_any and no flooding_any; plus one source clear-road image from first four selected groups',
+    'source_labels_are_business_truth': False, 'source_event_ids_are_verified_sites': False,
+    'platform_scope': 'CAP airborne imagery; individual drone origin is not established; source suitability pilot only',
+    'sample_count': len(selected), 'samples': selected, 'formal_release_eligible': False}
+with (OUTPUT / 'plan.json').open('x', encoding='utf-8') as stream:
+    json.dump(plan, stream, indent=2)
+
+def acquire(row):
+    url = row['url']
+    parsed = urllib.parse.urlparse(url)
+    assert parsed.scheme == 'https' and parsed.netloc == 'fema-cap-imagery.s3.amazonaws.com'
+    ident = hashlib.sha256(url.encode()).hexdigest()[:16]
+    result = {'sample_id': 'ladi-' + ident, 'source_url': url, 'started_at': datetime.now(UTC).isoformat(), 'status': 'failed'}
+    try:
+        with urllib.request.urlopen(url, timeout=35) as response:
+            declared = response.headers.get('Content-Length')
+            data = response.read(50 * 1024 * 1024 + 1)
+            etag = response.headers.get('ETag')
+        if len(data) > 50 * 1024 * 1024 or (declared and len(data) != int(declared)):
+            raise ValueError('incomplete or oversized original')
+        path = OUTPUT / 'images' / (ident + '.jpg')
+        with path.open('xb') as stream:
+            stream.write(data)
+        with Image.open(path) as image:
+            image.load()
+            exif = image.getexif()
+            metadata = {ExifTags.TAGS.get(k, str(k)): str(v).strip('\x00') for k, v in exif.items() if k in (271, 272, 274, 306, 36867, 36868)}
+            size = list(image.size)
+            gps_raw = exif.get_ifd(34853) if 34853 in exif else {}
+            gps = {ExifTags.GPSTAGS.get(k, str(k)): str(v) for k, v in gps_raw.items()}
+        result.update(status='complete_original', file=str(path), bytes=len(data), image_sha256=hashlib.sha256(data).hexdigest(),
+                      source_etag=etag, dimensions=size, exif=metadata, gps_raw=gps,
+                      agent_semantic_inspection=False, business_label=None, formal_split=None)
+    except Exception as error:
+        result['error'] = f'{type(error).__name__}: {error}'
+    result['finished_at'] = datetime.now(UTC).isoformat()
+    with (OUTPUT / (ident + '-receipt.json')).open('x', encoding='utf-8') as stream:
+        json.dump(result, stream, indent=2)
+    return result
+
+with ThreadPoolExecutor(max_workers=4) as pool:
+    acquired = list(pool.map(acquire, selected))
+summary = {'format': 'drone.p6-source-suitability-acquisition/v1', 'source': 'LADI v2a',
+    'requested': len(selected), 'complete_originals': sum(row['status'] == 'complete_original' for row in acquired),
+    'rows': acquired, 'formal_release_eligible': False, 'source_labels_are_business_truth': False}
+with (OUTPUT / 'result.json').open('x', encoding='utf-8') as stream:
+    json.dump(summary, stream, indent=2)
+print(json.dumps({k: v for k, v in summary.items() if k != 'rows'}))

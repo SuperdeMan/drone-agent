@@ -1,0 +1,72 @@
+"""Keep exact-candidate software checks separate from annotation evidence.
+
+把准确候选的软件检查与标注证据分开保存。
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import time
+import xml.etree.ElementTree as ET
+from datetime import UTC, datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+REPO = Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+
+
+def save(name, value):
+    with (ROOT / name).open('x', encoding='utf-8', newline='\n') as stream:
+        stream.write(json.dumps(value, ensure_ascii=False, indent=2) + '\n')
+
+
+def snapshot():
+    files = subprocess.check_output(['git', 'ls-files', '--', 'src', 'scripts', 'tests', 'configs', 'proto', 'ros2_ws',
+                                     'pyproject.toml', 'uv.lock'], cwd=REPO, text=True).splitlines()
+    files += [str(p.relative_to(REPO)).replace('\\', '/') for p in (REPO / 'eval').glob('*.py')]
+    files += ['eval/s2/road_business_v1/protocol-draft.json', 'eval/s2/road_business_v1/road-profile-draft.json']
+    return {name: hashlib.sha256((REPO / name).read_bytes()).hexdigest() for name in sorted(set(files))}
+
+
+def main():
+    candidate = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip()
+    if candidate != 'b5c78763dc33ba9f35748a9ebf5fa80befbf23bd':
+        raise ValueError('unexpected candidate')
+    env = os.environ.copy()
+    env['PYTHONPATH'] = str(REPO / 'scripts/high_qos') + os.pathsep + str(REPO / 'src')
+    probe = subprocess.check_output([sys.executable, '-c', 'import sys,json; print(json.dumps({"sitecustomize":getattr(sys.modules.get("sitecustomize"),"__file__",None)}))'], cwd=REPO, env=env, text=True)
+    high_qos = json.loads(probe)
+    if Path(high_qos['sitecustomize']).resolve() != (REPO / 'scripts/high_qos/sitecustomize.py').resolve():
+        raise ValueError('process-level high QoS was not loaded')
+    for name, command in [('ruff', ['uv', 'run', '--frozen', 'ruff', 'check', '.'])]:
+        with (ROOT / (name + '-final.log')).open('xb') as log:
+            result = subprocess.run(command, cwd=REPO, env=env, stdout=log, stderr=subprocess.STDOUT, check=False)
+        if result.returncode:
+            raise RuntimeError(name + ' failed')
+    before = snapshot()
+    started = datetime.now(UTC).isoformat()
+    save('full-pytest-start.json', {'candidate_commit': candidate, 'started_at': started, 'source_sha256': before,
+                                   'interpreter': sys.executable, 'startup_probe': high_qos})
+    begin = time.monotonic()
+    with (ROOT / 'full-pytest.log').open('xb') as log:
+        result = subprocess.run([sys.executable, '-m', 'pytest', '-q', '--junitxml=' + str(ROOT / 'full-pytest.xml')],
+                                cwd=REPO, env=env, stdout=log, stderr=subprocess.STDOUT, check=False)
+    after = snapshot()
+    summary = {'candidate_commit': candidate, 'started_at': started, 'finished_at': datetime.now(UTC).isoformat(),
+               'exit_code': result.returncode, 'wall_seconds': time.monotonic() - begin, 'source_unchanged_during_suite': before == after,
+               'high_qos_at_startup': True}
+    if (ROOT / 'full-pytest.xml').exists():
+        suite = ET.parse(ROOT / 'full-pytest.xml').getroot().find('testsuite')
+        summary['junit'] = dict(suite.attrib)
+        summary['failures'] = [c.attrib for c in suite.findall('testcase') if c.find('failure') is not None or c.find('error') is not None]
+    save('full-pytest-result.json', summary)
+    print(json.dumps(summary, ensure_ascii=False))
+    if result.returncode or before != after:
+        raise SystemExit(1)
+
+
+if __name__ == '__main__':
+    main()

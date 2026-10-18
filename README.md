@@ -11,7 +11,7 @@
 
 A drone inspection operations platform built on a safety-constrained mission runtime: typed missions, admission and approval, local execution, durable workflows, fleet scheduling, and evidence-based review, work orders and reinspection.
 
-> **Current scope:** P0–P5 have passed their software / SITL gates. M3 local autonomy has passed in simulation; Jetson and field validation remain on the H track. P6 work packages 02–07 have passed within their documented scopes; corridor reservations and explanation check v2 were not adopted. **WP-P6-01 remains open:** the owner has authorized separate AI verification of all 415 draft annotations and deferred human review timing to operational validation. Independent asset coverage and the formal evaluation remain pending. See the [P6 handoff](docs/p6-ai-verification-handoff-2026-10-18.md) and [roadmap](docs/roadmap.md) for current counts and exact evidence boundaries.
+> **Current scope:** P0–P5 have passed their software / SITL gates. M3 local autonomy has passed in simulation; Jetson and field validation remain on the H track. P6 work packages 02–07 have passed within their documented scopes; corridor reservations and explanation check v2 were not adopted. **WP-P6-01 remains open:** all 415 annotations have received the owner-authorized AI verification, with 128 revised. Human review timing is deferred to operational validation. Independent asset coverage, matched repeat targets and the formal evaluation remain pending. See the [P6 handoff](docs/p6-ai-verification-handoff-2026-10-18.md) and [roadmap](docs/roadmap.md) for current counts and exact evidence boundaries.
 
 [Try locally](#try-locally) · [Design](#design) · [Validation](#validation) · [Documentation](#documentation) · [Roadmap](#roadmap)
 
