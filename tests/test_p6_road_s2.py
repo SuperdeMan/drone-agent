@@ -180,7 +180,8 @@ def test_delegated_tasks_require_scope_approval_and_do_not_send_review_notes(pac
         task["origin"] = "delegated_ai_task"
         labels.append({"sample_id": sample["sample_id"], "recorded_at": "2026-10-15T00:01:00Z", "notes": "SECRET_REVIEW_NOT_FOR_MODEL"})
     protocol = {"annotation_policy": {"mode": "independent_ai_verified_reference", "approval_reference": "SYNTHETIC" if approved else "",
-        "human_adjudication_required": False, "delegated_ai_adjudication_approved": True, "evaluated_model_outputs_must_be_unseen": True}}
+        "human_adjudication_required": False, "delegated_ai_adjudication_approved": True, "evaluated_model_outputs_must_be_unseen": True,
+        "evaluated_provider_id": "minimax-vl", "evaluated_model": C.read(source / "profile.json")["model"]}}
     for name, value in [("ai-manifest.json", manifest), ("ai-tasks.json", tasks), ("labels.json", {"rows": labels}),
                          ("protocol.json", protocol), ("exposure.json", {})]:
         C.write(source / name, value)
@@ -196,6 +197,22 @@ def test_delegated_tasks_require_scope_approval_and_do_not_send_review_notes(pac
     assert plan["delegated_ai_reference"] is True
     messages = C.make_messages(profile, inputs["rows"][0], tmp_path / "delegated")
     assert "SECRET_REVIEW" not in json.dumps(messages)
+
+
+def test_ai_pairs_with_human_labels_still_bind_actual_evaluated_model(package, tmp_path, monkeypatch):
+    _, source = package
+    manifest, tasks = C.read(source / "manifest.json"), C.read(source / "tasks.json")
+    for sample, task in zip(manifest["samples"], tasks["rows"], strict=True):
+        sample["split"] = "calibration"
+        task["origin"] = "human_task"
+    for name, value in [("paired-manifest.json", manifest), ("paired-tasks.json", tasks), ("paired-labels.json", {"rows": []}),
+                         ("paired-protocol.json", {"annotation_policy": {"evaluated_provider_id": "another-provider", "evaluated_model": "another-model"}}),
+                         ("paired-exposure.json", {})]:
+        C.write(source / name, value)
+    monkeypatch.setitem(C.METRICS, "audit", lambda *args: {"data_ready": True, "ai_assisted_labels_declared": 0, "ai_verified_pairs_declared": 1})
+    with pytest.raises(ValueError, match="different evaluated model"):
+        C.prepare(source / "paired-manifest.json", source / "paired-tasks.json", source / "profile.json", source, tmp_path / "pairs", "calibration",
+                  labels_file=source / "paired-labels.json", protocol_file=source / "paired-protocol.json", exposure_file=source / "paired-exposure.json")
 
 
 @pytest.mark.parametrize("changed", ["polygon", "brief"])

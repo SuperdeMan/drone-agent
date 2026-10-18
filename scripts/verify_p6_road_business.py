@@ -178,7 +178,7 @@ async def judge(evidence_file: Path, data_root: Path) -> dict:
         check("data_admission", audit["data_ready"], audit["issue_counts"])
         profile, test_inputs, plan = verify_package(paths["test_package"])
         check("reference_method_binding", bool(plan.get("delegated_ai_reference")) == METRICS["delegated_ai_approved"](protocol))
-        if audit["ai_assisted_labels_declared"]:
+        if audit["ai_assisted_labels_declared"] or audit.get("ai_verified_pairs_declared"):
             policy = protocol.get("annotation_policy", {})
             check("annotation_evaluated_model_binding", policy.get("evaluated_model") == profile["model"]
                   and policy.get("evaluated_provider_id") == "minimax-vl")
@@ -233,6 +233,7 @@ async def judge(evidence_file: Path, data_root: Path) -> dict:
         metrics = METRICS["scores"](manifest, labels, predictions, reviews, "test")
         metrics["annotation_provenance"] = {"ai_assisted_labels_declared": audit["ai_assisted_labels_declared"],
                                            "delegated_ai_labels_present": audit.get("delegated_ai_labels_present", 0),
+                                           "ai_verified_pairs_declared": audit.get("ai_verified_pairs_declared", 0),
                                            "human_labels_present": audit["human_labels_present"],
                                            "claim": audit["annotation_claim"], "data_admission_verified": True}
         metrics["provenance_verified"] = True

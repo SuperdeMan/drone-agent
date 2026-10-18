@@ -148,7 +148,8 @@ def delegated_ai_approved(protocol: dict) -> bool:
     policy = protocol.get("annotation_policy", {})
     return (policy.get("mode") == "independent_ai_verified_reference" and bool(policy.get("approval_reference"))
             and policy.get("human_adjudication_required") is False and policy.get("delegated_ai_adjudication_approved") is True
-            and policy.get("evaluated_model_outputs_must_be_unseen") is True)
+            and policy.get("evaluated_model_outputs_must_be_unseen") is True
+            and all(isinstance(policy.get(k), str) and policy[k].strip() for k in ("evaluated_provider_id", "evaluated_model")))
 
 
 def timing_deferred(protocol: dict) -> bool:
@@ -173,6 +174,45 @@ def bound_evidence(data_root: Path, file: str, expected: str, cache: dict):
             raise ValueError("review evidence bytes changed")
         cache[key] = read(path)
     return cache[key]
+
+
+def wrong_target_review_issues(sample: dict, original: dict, final: dict, source: dict, record: dict,
+                              assistance: dict, data_root: Path, cache: dict) -> list[str]:
+    """Require a prior task and an inspected expected-asset reference for wrong-target truth.
+
+错目标裁定必须有先登记任务及实际检查过的预期资产参考，不把无道路当错目标。
+"""
+    try:
+        expected_sha = assistance["prior_task_sha256"]
+        task = bound_evidence(data_root, assistance["prior_task_file"], expected_sha, cache)
+        mismatch = record["task_mismatch"]
+        reference = task["expected_reference"]
+        reference_path = (data_root / reference["image_file"]).resolve()
+        if (task.get("format") != "drone.p6-road-prior-task/v1" or task.get("origin") not in {"human_task", "delegated_ai_task"}
+                or not task.get("registrar_id") or not task.get("registration_evidence")
+                or task.get("sample_id") != sample["sample_id"] or task.get("image_sha256") != sample["image_sha256"]
+                or not task.get("expected_asset_id") or task["expected_asset_id"] != sample.get("asset_id")
+                or source.get("prior_task_sha256") != expected_sha or mismatch.get("prior_task_sha256") != expected_sha
+                or mismatch.get("expected_target_present") is not False or mismatch.get("expected_reference_checked") is not True
+                or not isinstance(mismatch.get("evidence"), str) or not mismatch["evidence"].strip()
+                or any(task.get(k) != final[k] for k in ("target_brief", "target_polygon"))
+                or not polygon_valid(task.get("target_polygon"))
+                or timestamp(task["registered_at"]) > timestamp(original["inspected_at"])):
+            return ["wrong_target_prior_task_or_mismatch_missing"]
+        if (reference.get("asset_id") != task["expected_asset_id"] or reference.get("media_origin") != "real_capture"
+                or not reference.get("source_reference") or not reference_path.is_relative_to(data_root.resolve())
+                or reference.get("image_sha256") == sample["image_sha256"]
+                or digest(reference_path) != reference.get("image_sha256")
+                or not polygon_valid(reference.get("target_polygon")) or not reference.get("target_brief")):
+            return ["wrong_target_expected_reference_invalid"]
+        inspected = {(data_root / name).resolve(): expected for name, expected in record["inspection_file_sha256"].items()}
+        if inspected.get(reference_path) != reference["image_sha256"]:
+            return ["wrong_target_expected_reference_not_inspected"]
+        with Image.open(reference_path) as picture:
+            picture.verify()
+    except (OSError, KeyError, TypeError, ValueError, AttributeError):
+        return ["wrong_target_evidence_missing_or_invalid"]
+    return []
 
 
 def delegated_label_issues(sample: dict, label: dict, protocol: dict, data_root: Path, cache: dict) -> list[str]:
@@ -242,7 +282,13 @@ def delegated_label_issues(sample: dict, label: dict, protocol: dict, data_root:
         expected_final = {**original, **changes, "inspected_at": record["reviewed_at"], "inspection_files": record["inspected_files"]}
         if final != expected_final or timestamp(record["reviewed_at"]) < max(timestamp(original["inspected_at"]), timestamp(assignment["created_at"]), timestamp(review["created_at"])):
             return ["delegated_annotation_revision_or_time_mismatch"]
-        ai_suggestions({**document, "rows": [final]})
+        final_for_shape = final
+        if final["verdict"] == "wrong_target":
+            problems = wrong_target_review_issues(sample, original, final, source, record, a, data_root, cache)
+            if problems:
+                return problems
+            final_for_shape = {**final, "verdict": "indeterminate"}
+        ai_suggestions({**document, "rows": [final_for_shape]})
         paths = [Path(p).resolve() for p in record["inspected_files"]]
         if Path(source["image_file"]).resolve() not in paths or set(record["inspection_file_sha256"]) != set(record["inspected_files"]):
             return ["delegated_annotation_original_inspection_missing"]
@@ -337,6 +383,7 @@ AI 跨次配对必须有单独登记的逐对视觉核验。
         context = bound_evidence(data_root, reference["context_file"], reference["context_sha256"], cache)
         document = bound_evidence(data_root, reference["file"], reference["sha256"], cache)
         if (context.get("format") != "drone.p6-ai-pair-context/v1" or not context.get("approval_reference")
+                or any(context.get(k) != policy.get(k) for k in ("evaluated_provider_id", "evaluated_model"))
                 or document.get("format") != "drone.p6-ai-pair-verification/v1"
                 or document.get("origin") != "delegated_ai" or not document.get("reviewer_id")
                 or document.get("isolation") != {"parent_history": "none", "evaluation_prompt_seen": False,
@@ -605,6 +652,7 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
     return {"format": "drone.p6-road-data-audit/v1", "status": "ready_for_scoped_evaluation" if not issues else "missing",
             "samples": len(samples), "split_counts": dict(counts), "human_labels_present": reviewed,
             "delegated_ai_labels_present": ai_reviewed,
+            "ai_verified_pairs_declared": sum(pair.get("origin") == "delegated_ai" for pair in manifest.get("stability_pairs", [])),
             "ai_assisted_labels_declared": sum("ai_assistance" in row for row in annotations.values()),
             "annotation_claim": "AI-reviewed reference labels, not independent human truth" if ai_reviewed else
                                 "AI-assisted labels are human adjudications, not blind labels; provenance checked separately",

@@ -186,6 +186,7 @@ def test_ai_pair_requires_two_originals_and_registered_same_state_review(delegat
     sample["asset_id"] = "synthetic-road"
     samples = {"one": sample, "two": {**sample, "sample_id": "two", "image_sha256": C.digest(second)}}
     context = {"format": "drone.p6-ai-pair-context/v1", "approval_reference": "SYNTHETIC",
+        "evaluated_provider_id": "minimax-vl", "evaluated_model": "synthetic-evaluated-model",
         "reviewers": {"pair-reviewer": {"history_fork": "none", "provider": "synthetic-ai",
             "evaluation_prompt_provided": False, "evaluation_outputs_provided": False, "source_labels_provided": False,
             "pairs": {"pair-one": ["one", "two"]}}}}
@@ -211,6 +212,98 @@ def test_ai_pair_requires_two_originals_and_registered_same_state_review(delegat
     pair = {"origin": "delegated_ai", "sample_ids": ["one", "two"], "reviewer_id": "pair-reviewer", "ai_verification": reference}
     issues = C.delegated_pair_issues(pair, samples, protocol, root, {})
     assert bool(issues) == (tamper is not None)
+
+
+def prepare_wrong_target(value):
+    sample, label, protocol, root = value
+    reference = root / "expected-road.png"
+    Image.new("RGB", (20, 20), (120, 50, 70)).save(reference)
+    sample["asset_id"] = "expected-road"
+    original = C.read(root / "draft.json")["rows"][0]
+    task = {"format": "drone.p6-road-prior-task/v1", "origin": "delegated_ai_task", "registrar_id": "synthetic-registrar",
+        "registration_evidence": "SYNTHETIC UNIT TEST ONLY", "registered_at": "2026-10-17T23:00:00Z",
+        "sample_id": sample["sample_id"], "image_sha256": sample["image_sha256"], "expected_asset_id": "expected-road",
+        "target_brief": original["target_brief"], "target_polygon": original["target_polygon"],
+        "expected_reference": {"image_file": reference.name, "image_sha256": C.digest(reference), "asset_id": "expected-road",
+            "media_origin": "real_capture", "source_reference": "SYNTHETIC UNIT TEST ONLY",
+            "target_brief": "Synthetic expected road", "target_polygon": POLYGON}}
+    task_sha = save(root / "prior-task.json", task)
+    assignment = C.read(root / "assignment.json")
+    assignment["samples"][0]["prior_task_sha256"] = task_sha
+    assignment_sha = save(root / "assignment.json", assignment)
+    registry = C.read(root / "registry.json")
+    registry["assignments"][0]["sha256"] = assignment_sha
+    registry_sha = save(root / "registry.json", registry)
+    protocol["annotation_policy"]["verification_context_sha256"] = registry_sha
+    label["ai_assistance"].update(verification_context_sha256=registry_sha, prior_task_file="prior-task.json", prior_task_sha256=task_sha, decision="revised")
+    label["verdict"] = "wrong_target"
+
+    def change(document):
+        document["assignment_sha256"] = assignment_sha
+        row = document["rows"][0]
+        row.update(decision="revised", changes={"verdict": "wrong_target"}, task_mismatch={"prior_task_sha256": task_sha,
+            "expected_target_present": False, "expected_reference_checked": True, "evidence": "Synthetic expected landmark differs"})
+        row["inspected_files"].append(str(reference))
+        row["inspection_file_sha256"][str(reference)] = C.digest(reference)
+        row["final_row"].update(verdict="wrong_target", inspection_files=row["inspected_files"])
+        row["final_row_sha256"] = C.canonical_digest(row["final_row"])
+
+    rewrite_review(value, change)
+
+
+def test_wrong_target_requires_prior_task_and_inspected_expected_asset(delegated):
+    prepare_wrong_target(delegated)
+    assert check(delegated) == []
+    original = C.read(delegated[3] / "draft.json")
+    original["rows"][0]["verdict"] = "wrong_target"
+    with pytest.raises(ValueError, match="invalid AI suggestion"):
+        C.ai_suggestions(original)
+
+
+@pytest.mark.parametrize("tamper", ["missing_task", "not_checked", "target_present", "missing_reason", "reference_not_viewed", "late_task"])
+def test_wrong_target_cannot_be_invented_from_missing_road_or_after_review(delegated, tamper):
+    prepare_wrong_target(delegated)
+    if tamper == "missing_task":
+        delegated[1]["ai_assistance"].pop("prior_task_file")
+    elif tamper == "late_task":
+        root = delegated[3]
+        task = C.read(root / "prior-task.json")
+        task["registered_at"] = "2026-10-19T00:00:00Z"
+        new_sha = save(root / "prior-task.json", task)
+        delegated[1]["ai_assistance"]["prior_task_sha256"] = new_sha
+        assignment = C.read(root / "assignment.json")
+        assignment["samples"][0]["prior_task_sha256"] = new_sha
+        assignment_sha = save(root / "assignment.json", assignment)
+        registry = C.read(root / "registry.json")
+        registry["assignments"][0]["sha256"] = assignment_sha
+        registry_sha = save(root / "registry.json", registry)
+        delegated[2]["annotation_policy"]["verification_context_sha256"] = registry_sha
+        delegated[1]["ai_assistance"]["verification_context_sha256"] = registry_sha
+
+        def late(document):
+            document["assignment_sha256"] = assignment_sha
+            document["rows"][0]["task_mismatch"]["prior_task_sha256"] = new_sha
+
+        rewrite_review(delegated, late)
+    else:
+        def change(document):
+            row = document["rows"][0]
+            if tamper == "not_checked":
+                row["task_mismatch"]["expected_reference_checked"] = False
+            elif tamper == "target_present":
+                row["task_mismatch"]["expected_target_present"] = True
+            elif tamper == "missing_reason":
+                row["task_mismatch"]["evidence"] = ""
+            elif tamper == "reference_not_viewed":
+                row["inspection_file_sha256"].pop(str(delegated[3] / "expected-road.png"))
+        rewrite_review(delegated, change)
+    assert check(delegated)
+
+
+@pytest.mark.parametrize("key", ["evaluated_provider_id", "evaluated_model"])
+def test_delegation_without_evaluated_identity_is_never_approved(delegated, key):
+    delegated[2]["annotation_policy"].pop(key)
+    assert not C.delegated_ai_approved(delegated[2])
 
 
 def test_review_evidence_must_remain_inside_declared_data_root(delegated):

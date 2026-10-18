@@ -200,7 +200,7 @@ def prepare(manifest_file: Path, tasks_file: Path, profile_file: Path, data_root
         checked = METRICS["audit"](manifest, read(labels_file), protocol, read(exposure_file), data_root)
         if checked["data_ready"] is not True:
             raise ValueError("formal road data admission is missing: " + ",".join(checked["issue_counts"]))
-        if checked["ai_assisted_labels_declared"] and (
+        if (checked["ai_assisted_labels_declared"] or checked.get("ai_verified_pairs_declared")) and (
                 protocol.get("annotation_policy", {}).get("evaluated_model") != profile["model"]
                 or protocol.get("annotation_policy", {}).get("evaluated_provider_id") != "minimax-vl"):
             raise ValueError("assisted annotation independence was registered for a different evaluated model")
