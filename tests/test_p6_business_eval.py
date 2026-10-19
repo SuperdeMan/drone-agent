@@ -300,3 +300,20 @@ def test_same_source_observation_is_not_a_new_capture(corpus):
     result = C.audit(*corpus)
     assert "distinct_original_capture_identity_missing" in result["issue_counts"]
     assert "original_capture_inventory_not_verified" in result["issue_counts"]
+
+
+def test_wrong_target_expected_identity_does_not_multiply_the_same_observed_asset(corpus):
+    manifest = corpus[0]
+    first, second = (next(s for s in manifest["samples"] if s["sample_id"] == i) for i in ("p", "w"))
+    first["observed"] = {k: first[k] for k in (*C.GROUP_KEYS, "development_exposed")}
+    second["observed"] = dict(first["observed"])
+    assert first["asset_id"] != second["asset_id"]
+    assert "duplicate_primary_observation" in C.audit(*corpus)["issue_counts"]
+
+
+def test_relabeling_identical_photo_as_a_new_asset_does_not_expand_primary_denominator(corpus):
+    manifest, labels, _, _, _ = corpus
+    first, second = (next(s for s in manifest["samples"] if s["sample_id"] == i) for i in ("p", "w"))
+    second.update(image_file=first["image_file"], image_sha256=first["image_sha256"])
+    next(r for r in labels["rows"] if r["sample_id"] == "w")["image_sha256"] = first["image_sha256"]
+    assert "duplicate_primary_observation" in C.audit(*corpus)["issue_counts"]

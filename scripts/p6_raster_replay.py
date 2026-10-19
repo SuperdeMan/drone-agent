@@ -126,7 +126,7 @@ class LocalRaster:
         return RangeFile(self, gdal_callback=True)
 
 
-def verify_window(receipt: dict, manifest: dict, data_root: Path, cache: dict, manifest_sha256: str) -> None:
+def verify_window(receipt: dict, manifest: dict, data_root: Path, cache: dict, manifest_sha256: str, *, expected_bands: int = 4) -> None:
     """Decode real source bytes and recompute native RGB, JPEG and alpha digests.
 
 解码实际源字节并重算原生 RGB、JPEG 与 alpha 摘要。
@@ -135,7 +135,9 @@ def verify_window(receipt: dict, manifest: dict, data_root: Path, cache: dict, m
     if (any(type(v) is not int for v in (x, y, width, height)) or min(x, y) < 0 or min(width, height) <= 0
             or width * height > MAX_WINDOW_PIXELS):
         raise ValueError("native window exceeds the 60 MP decoder bound")
-    key = ("p6_decoded_source_window", manifest_sha256, x, y, width, height)
+    if expected_bands not in {3, 4}:
+        raise ValueError("unsupported source channel contract")
+    key = ("p6_decoded_source_window", manifest_sha256, expected_bands, x, y, width, height)
     if key not in cache:
         try:
             import numpy as np
@@ -150,16 +152,17 @@ def verify_window(receipt: dict, manifest: dict, data_root: Path, cache: dict, m
         try:
             with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_PAM_ENABLED="NO"):
                 with rasterio.open(source.name, "r", driver="GTiff", opener=source, sharing=False) as dataset:
-                    if (dataset.driver != "GTiff" or dataset.count != 4 or dataset.dtypes != ("uint8",) * 4
-                            or dataset.colorinterp != (ColorInterp.red, ColorInterp.green, ColorInterp.blue, ColorInterp.alpha)
+                    colors = (ColorInterp.red, ColorInterp.green, ColorInterp.blue) + ((ColorInterp.alpha,) if expected_bands == 4 else ())
+                    if (dataset.driver != "GTiff" or dataset.count != expected_bands or dataset.dtypes != ("uint8",) * expected_bands
+                            or dataset.colorinterp != colors
                             or x + width > dataset.width or y + height > dataset.height):
                         raise ValueError("actual TIFF format, channels or window bounds disagree")
                     window = Window(x, y, width, height)
-                    pixels = dataset.read([1, 2, 3, 4], window=window)
-                    if source.failed_reads or pixels.shape != (4, height, width):
+                    pixels = dataset.read(list(range(1, expected_bands + 1)), window=window)
+                    alpha = pixels[3] if expected_bands == 4 else dataset.dataset_mask(window=window)
+                    if source.failed_reads or pixels.shape != (expected_bands, height, width) or alpha.shape != (height, width):
                         raise ValueError("not all required local TIFF bytes were available")
                     rgb = np.ascontiguousarray(pixels[:3].transpose(1, 2, 0))
-                    alpha = pixels[3]
                     jpeg, mask = io.BytesIO(), io.BytesIO()
                     Image.fromarray(rgb).save(jpeg, format="JPEG", quality=98, subsampling=0)
                     Image.fromarray(alpha).save(mask, format="PNG")
@@ -181,3 +184,19 @@ def verify_window(receipt: dict, manifest: dict, data_root: Path, cache: dict, m
             or any(not math.isclose(a, b, rel_tol=0, abs_tol=1e-8) for a, b in zip(actual["window_transform"], receipt["window_transform"], strict=True))
             or not math.isclose(actual["valid_pixel_fraction"], receipt["valid_pixel_fraction"], abs_tol=1e-9)):
         raise ValueError("actual local TIFF pixels or georeferencing do not match the extraction")
+
+
+def verify_full_window(receipt: dict, parent: Path, parent_sha256: str, data_root: Path, cache: dict) -> None:
+    """Decode an already validated complete RGB TIFF, without inventing HTTP ranges.
+
+解码已验证的完整 RGB TIFF；内部文件视图不冒充 HTTP 范围回执。
+"""
+    parent = parent.resolve()
+    if not parent.is_relative_to(data_root.resolve()):
+        raise ValueError("full raster is outside the data root")
+    size = parent.stat().st_size
+    if not 0 < size <= MAX_READ_BYTES:
+        raise ValueError("full-object raster exceeds the bounded source allowance")
+    local_view = {"source": {"imagery_published_bytes": size}, "block_bytes": size,
+                  "ranges": [{"range": [0, size - 1], "file": str(parent), "sha256": parent_sha256}]}
+    verify_window(receipt, local_view, data_root, cache, "full_object:" + parent_sha256, expected_bands=3)

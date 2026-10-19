@@ -27,6 +27,8 @@ EXTRA_KEYS = {"minimum_calibration_by_label", "minimum_test_by_defect_type", "ma
               "minimum_stability_assets", "minimum_timed_reviews", "required_review_coverage"}
 SIMPLE_POLYGON = runpy.run_path(str(Path(__file__).with_name("p6_boundary_drafts.py")))["simple_polygon"]
 VERIFY_RASTER_WINDOW = runpy.run_path(str(Path(__file__).with_name("p6_raster_replay.py")))["verify_window"]
+VERIFY_FULL_RASTER_WINDOW = runpy.run_path(str(Path(__file__).with_name("p6_raster_replay.py")))["verify_full_window"]
+VERIFY_OAM_CAPTURE = runpy.run_path(str(Path(__file__).with_name("p6_oam_capture.py")))["derived_capture"]
 GROUP_KEYS = ("asset_id", "site_id", "capture_batch_id", "near_duplicate_group")
 DERIVED_SCOPE = "distinct_author_dated_derived_captures_unordered"
 
@@ -81,6 +83,8 @@ def unique(rows: list[dict], key: str) -> dict:
 
 def timestamp(value: str) -> datetime:
     """Require an explicit timezone for temporal claims. / 时序声明必须有明确时区。"""
+    if not isinstance(value, str):
+        raise ValueError("timestamp is not a string")
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     if parsed.tzinfo is None:
         raise ValueError("timestamp lacks timezone")
@@ -272,7 +276,7 @@ def verify_source_ranges(document: dict, source: dict, data_root: Path, cache: d
     cache[key] = True
 
 
-def verify_extracted_image(receipt: dict, data_root: Path, cache: dict) -> None:
+def verify_extracted_image(receipt: dict, data_root: Path, cache: dict, *, expected_bands: int = 4) -> None:
     """Check native window geometry, stored JPEG and separate alpha bytes.
 
 核对原生窗口几何、已保存 JPEG 和单独 alpha 字节。
@@ -283,8 +287,8 @@ def verify_extracted_image(receipt: dict, data_root: Path, cache: dict) -> None:
     transform, window_transform = raster["transform"], receipt["window_transform"]
     if (any(type(v) is not int for v in (width, height, x, y, w, h, raster["width"], raster["height"]))
             or min(width, height, w, h) <= 0 or min(x, y) < 0 or [width, height] != [w, h]
-            or x + w > raster["width"] or y + h > raster["height"] or raster.get("bands") != 4
-            or raster.get("dtypes") != ["uint8"] * 4 or not raster.get("crs")
+            or x + w > raster["width"] or y + h > raster["height"] or expected_bands not in {3, 4} or raster.get("bands") != expected_bands
+            or raster.get("dtypes") != ["uint8"] * expected_bands or not raster.get("crs")
             or len(transform) != 9 or len(window_transform) != 9
             or any(type(v) not in (int, float) or not math.isfinite(v) for v in transform + window_transform)
             or transform[6:] != [0, 0, 1] or transform[0] * transform[4] == transform[1] * transform[3]
@@ -341,6 +345,12 @@ def derived_capture(sample: dict, protocol: dict, data_root: Path, cache: dict, 
 
 只准入绑定了实际 UAS 字节与提取产物的派生图，返回重新核对的采集条目。
 """
+    if sample["derivation"].get("format") == "drone.p6-oam-derived-capture-binding/v1":
+        return VERIFY_OAM_CAPTURE(sample, protocol, data_root, cache, scope_before=scope_before,
+                                  helpers={"read_bound": bound_evidence, "file_bound": derived_file, "within": within,
+                                           "timestamp": timestamp, "canonical": canonical_digest, "unique": unique,
+                                           "sha256_value": sha256_value, "image": verify_extracted_image,
+                                           "pixels": VERIFY_FULL_RASTER_WINDOW, "group_keys": GROUP_KEYS})
     binding, policy = sample["derivation"], protocol["derived_capture_policy"]
     if (binding.get("format") != "drone.p6-derived-capture-binding/v1"
             or policy.get("mode") != "traceable_uas_orthomosaic" or policy.get("claim_raw_camera_frames") is not False
@@ -797,6 +807,7 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
     exposed = set(exposure["image_sha256"])
     types = set(protocol["defect_types"])
     issues, reviewed, counts, primaries = [], 0, Counter(), set()
+    primary_observations = set()
     ai_reviewed = 0
     assistance_cache, admitted_derivatives = {}, {}
     associations = {key: defaultdict(set) for key in (*GROUP_KEYS, "image_sha256", "parent_sha256")}
@@ -834,6 +845,15 @@ def audit(manifest: dict, labels: dict, protocol: dict, exposure: dict, data_roo
             if key in primaries:
                 issue("duplicate_primary_asset", ident)
             primaries.add(key)
+        if role == "primary":
+            observed_asset = (sample.get("observed") or sample).get("asset_id")
+            for field, value in (("observed_asset_id", observed_asset), ("image_sha256", sample.get("image_sha256"))):
+                if not value:
+                    continue
+                key = (split, field, value)
+                if key in primary_observations:
+                    issue("duplicate_primary_observation", ident, field=field)
+                primary_observations.add(key)
         image = within(data_root, sample["image_file"])
         if not image.is_file() or digest(image) != sample["image_sha256"]:
             issue("image_bytes_missing_or_changed", ident)
