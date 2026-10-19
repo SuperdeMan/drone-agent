@@ -25,6 +25,15 @@ ANSWER_KEYS = {"schema_version", "image_usable", "target_present", "boundary_cer
 TYPES = {"debris", "vegetation", "other_entity"}
 REASONS = {"quality.unusable", "target.absent_or_unresolved", "target.boundary_uncertain", "entity.uncertain", "relation.uncertain", "vehicle.context_missing"}
 ARGUMENTS = ("model", "temperature", "max_tokens", "thinking", "reasoning_effort", "timeout_s")
+# Fixed before any formal run: only attempts without a recorded answer are retried (D090).
+# 正式运行前固定：只重试没有录得回答的尝试（D090）。
+RETRY_POLICY = {"version": "unanswered-only-v1", "max_attempts_per_observation": 3, "backoff_s": 60,
+                "stop_after_unanswered_observations": 2, "answered_observations_never_reasked": True}
+
+
+def attempt_marker(ident: str, attempt: int) -> str:
+    """Name the started marker of one attempt. / 命名单次尝试的开始标记。"""
+    return ident + (".started.json" if attempt == 1 else f".retry-{attempt}.started.json")
 
 
 def strict_json(text: str):

@@ -13,6 +13,29 @@ from pathlib import Path
 MAX_WINDOW_PIXELS = 60_000_000
 MAX_READ_BYTES = 256 * 1024 * 1024
 MAX_BLOCK_CACHE_BYTES = 64 * 1024 * 1024
+# Absolute data roots under which evidence paths were recorded (local workstation, cloud audit host).
+# 证据路径被记录时使用的绝对数据根（本机、云端核验主机）。
+RECORDED_DATA_ROOTS = ("D:/drone-agent-data/", "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/")
+
+
+def portable(name) -> str:
+    """Map an absolute path recorded under a known data root to its data-root-relative form.
+
+Other paths are returned unchanged, so containment and digest checks still decide admission.
+
+将记录在已知数据根下的绝对路径映射为相对数据根的形式；其他路径原样返回，
+是否准入仍由包含关系与摘要核对决定。
+"""
+    text = str(name).replace("\\", "/")
+    for prefix in RECORDED_DATA_ROOTS:
+        if text.startswith(prefix):
+            return text[len(prefix):]
+    return str(name)
+
+
+def rooted(data_root: Path, name) -> Path:
+    """Resolve a recorded evidence path inside the current data root. / 在当前数据根内解析记录的证据路径。"""
+    return (data_root / portable(name)).resolve()
 
 
 class RangeFile(io.RawIOBase):
@@ -74,8 +97,8 @@ class RangeFile(io.RawIOBase):
                 self.source.missing.add(start)
                 raise OSError(f"required local TIFF block is missing: {start}")
             row = self.source.rows[start]
-            path = (self.source.root / row["file"]).resolve()
-            if not path.is_relative_to(self.source.root) or ".." in Path(row["file"]).parts:
+            path = rooted(self.source.root, row["file"])
+            if not path.is_relative_to(self.source.root) or ".." in Path(portable(row["file"])).parts:
                 raise OSError("TIFF block is outside data root")
             cache_key = (str(path), row["sha256"])
             block = self.source.blocks.pop(cache_key, None)

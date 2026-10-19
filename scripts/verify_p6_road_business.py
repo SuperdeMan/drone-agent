@@ -14,7 +14,19 @@ import subprocess
 from pathlib import Path
 from statistics import median
 
-from p6_road_s2 import METRICS, VERSION, digest, matching_targets, read, replay, verify_package, within, write
+from p6_road_s2 import (
+    METRICS,
+    RETRY_POLICY,
+    VERSION,
+    attempt_marker,
+    digest,
+    matching_targets,
+    read,
+    replay,
+    verify_package,
+    within,
+    write,
+)
 
 RUNTIME = "6249129596b7cfe88c7322f8b425c7b432dba24b"
 IMAGE = "sha256:4f84962ee6b75f899ee50afa153dca439942d9bf518b25d7c780c0b17c2b2377"
@@ -78,10 +90,16 @@ async def live_evidence(package: Path, cloud: Path, candidate: str) -> dict:
             or run.get("model") != profile["model"] or run.get("eval_source_commit") != candidate
             or run.get("runtime_source_sha") != RUNTIME or run.get("plan_sha256") != digest(package / "plan.json")
             or run.get("profile_sha256") != plan["profile_sha256"] or run.get("inputs_sha256") != plan["inputs_sha256"]
-            or run.get("runner_sha256") != envelope["source_sha256"]["p6_road_s2_runner.py"] or run.get("responses_failed") != 0):
+            or run.get("runner_sha256") != envelope["source_sha256"]["p6_road_s2_runner.py"] or run.get("responses_failed") != 0
+            or run.get("retry_policy") != RETRY_POLICY):
         raise ValueError("recorded run provenance differs")
-    if any(v != plan["planned_calls"] for v in (execution.get("attempts_started"), execution.get("responses_recorded"),
-                                                run.get("attempts_started"), run.get("responses_recorded"), run.get("planned_calls"))):
+    failed_attempts = run.get("failed_attempts")
+    # Every observation has exactly one answer; extra attempts must each be an unanswered failure.
+    # 每个观察恰好一个回答；多出的尝试必须都是无回答的失败尝试。
+    if (type(failed_attempts) is not int or failed_attempts < 0
+            or any(v != plan["planned_calls"] for v in (execution.get("responses_recorded"), run.get("responses_recorded"), run.get("planned_calls")))
+            or execution.get("attempts_started") != run.get("attempts_started")
+            or run.get("attempts_started") != plan["planned_calls"] + failed_attempts):
         raise ValueError("live call or response coverage incomplete")
     if plan["split"] == "test":
         claim = read(cloud / "test-exposure.json")
@@ -91,17 +109,28 @@ async def live_evidence(package: Path, cloud: Path, candidate: str) -> dict:
                 or reservation.get("required") is not True or reservation.get("reserved_keys") != len(plan["test_exposure_keys"])
                 or reservation.get("claim_sha256") != digest(cloud / "test-exposure.json")):
             raise ValueError("single-use test exposure reservation is missing")
-    latencies, usage = [], []
+    latencies, usage, failed_seen = [], [], 0
     for row in inputs["rows"]:
         ident = row["sample_id"]
         recording = read(folder / "recordings" / (ident + ".json"))
-        result, marker = read(folder / (ident + ".result.json")), read(folder / (ident + ".started.json"))
+        result = read(folder / (ident + ".result.json"))
+        attempts = result.get("attempts")
+        if (not isinstance(attempts, list) or result.get("attempt") != len(attempts) + 1
+                or len(attempts) >= RETRY_POLICY["max_attempts_per_observation"]
+                or any(a.get("attempt") != n + 1 or a.get("answer_recorded") is not False for n, a in enumerate(attempts))
+                or (folder / attempt_marker(ident, result["attempt"] + 1)).exists()):
+            raise ValueError("retried observation is not a sequence of unanswered attempts ending in one answer")
+        failed_seen += len(attempts)
+        for number in range(1, result["attempt"] + 1):
+            marker = read(folder / attempt_marker(ident, number))
+            if (marker.get("sample_id") != ident or marker.get("attempt") != number or marker.get("source") != "recorded"
+                    or marker.get("plan_sha256") != digest(package / "plan.json")):
+                raise ValueError("one attempt marker has inconsistent provenance")
         if (recording.get("source") != "recorded" or recording.get("provider_id") != "minimax-vl"
                 or recording.get("endpoint_host") != "api.minimaxi.com" or recording.get("software_revision") != RUNTIME
                 or recording.get("prompt_version") != VERSION or any(e.get("model_used") != profile["model"] for e in recording["exchanges"])
                 or result.get("status") != "answered" or result.get("source") != "recorded" or result.get("strict_replay") != "passed"
-                or result.get("recording_sha256") != digest(folder / "recordings" / (ident + ".json"))
-                or marker.get("sample_id") != ident or marker.get("source") != "recorded" or marker.get("plan_sha256") != digest(package / "plan.json")):
+                or result.get("recording_sha256") != digest(folder / "recordings" / (ident + ".json"))):
             raise ValueError("one recorded observation has inconsistent provenance")
         for exchange in recording["exchanges"]:
             latency, counters = exchange.get("latency_ms"), exchange.get("usage")
@@ -110,6 +139,8 @@ async def live_evidence(package: Path, cloud: Path, candidate: str) -> dict:
                 raise ValueError("recorded model usage or latency is invalid")
             latencies.append(latency)
             usage.append(counters)
+    if failed_seen != failed_attempts:
+        raise ValueError("failed attempt accounting differs from run receipt")
     predictions = await replay(package, folder / "recordings")
     if not predictions["strict_replay_complete"] or predictions["recording_origins"] != ["recorded"]:
         raise ValueError("all observations need strict recorded replay")

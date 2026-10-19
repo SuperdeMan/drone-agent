@@ -29,6 +29,8 @@ SIMPLE_POLYGON = runpy.run_path(str(Path(__file__).with_name("p6_boundary_drafts
 VERIFY_RASTER_WINDOW = runpy.run_path(str(Path(__file__).with_name("p6_raster_replay.py")))["verify_window"]
 VERIFY_FULL_RASTER_WINDOW = runpy.run_path(str(Path(__file__).with_name("p6_raster_replay.py")))["verify_full_window"]
 VERIFY_OAM_CAPTURE = runpy.run_path(str(Path(__file__).with_name("p6_oam_capture.py")))["derived_capture"]
+PORTABLE = runpy.run_path(str(Path(__file__).with_name("p6_raster_replay.py")))
+portable, rooted = PORTABLE["portable"], PORTABLE["rooted"]
 GROUP_KEYS = ("asset_id", "site_id", "capture_batch_id", "near_duplicate_group")
 DERIVED_SCOPE = "distinct_author_dated_derived_captures_unordered"
 
@@ -63,7 +65,7 @@ def write(path: Path, value) -> None:
 
 def within(root: Path, name: str) -> Path:
     """Read only explicit relative files within the data root. / 只读取数据根内明确的相对文件。"""
-    relative = Path(name)
+    relative = Path(portable(name))
     target = (root / relative).resolve()
     if relative.is_absolute() or ".." in relative.parts or not target.is_relative_to(root.resolve()):
         raise ValueError("file outside data root")
@@ -174,7 +176,7 @@ def bound_evidence(data_root: Path, file: str, expected: str, cache: dict):
 
 核对绑定的复核证据，兼容原始检查记录中的绝对路径。
 """
-    path = (data_root / file).resolve()
+    path = rooted(data_root, file)
     if not path.is_relative_to(data_root.resolve()):
         raise ValueError("review evidence outside data root")
     key = (str(path), expected)
@@ -195,8 +197,8 @@ def derived_file(data_root: Path, file: str, expected: str, cache: dict) -> Path
 
 每次审计中，对数据根内未变化的实际文件只重算一次摘要。
 """
-    path = (data_root / file).resolve()
-    if not path.is_relative_to(data_root.resolve()) or ".." in Path(file).parts or not sha256_value(expected):
+    path = rooted(data_root, file)
+    if not path.is_relative_to(data_root.resolve()) or ".." in Path(portable(file)).parts or not sha256_value(expected):
         raise ValueError("invalid derived evidence path or digest")
     stat = path.stat()
     key = ("derived_bytes", str(path), expected, stat.st_size, stat.st_mtime_ns)
@@ -335,7 +337,7 @@ def verify_extraction_replay(replay: dict, receipt: dict, binding: dict, policy:
             or timestamp(reproduced["started_at"]) < timestamp(replay["started_at"])
             or timestamp(reproduced["finished_at"]) > timestamp(replay["finished_at"])
             or timestamp(reproduced["finished_at"]) < timestamp(reproduced["started_at"])
-            or any((data_root / reproduced[k]).resolve() == (data_root / receipt[k]).resolve() for k in ("image_file", "mask_file"))):
+            or any(rooted(data_root, reproduced[k]) == rooted(data_root, receipt[k]) for k in ("image_file", "mask_file"))):
         raise ValueError("offline replay does not reproduce this extraction")
     verify_extracted_image(reproduced, data_root, cache)
 
@@ -480,9 +482,9 @@ def verified_prior_task(sample: dict, label: dict, protocol: dict, data_root: Pa
                 or evidence.get("expected_reference_checked") is not True or evidence.get("expected_target_present") is not False
                 or not isinstance(evidence.get("evidence"), str) or not evidence["evidence"].strip()):
             raise ValueError("human wrong-target reference inspection missing")
-        inspected = {(data_root / file).resolve(): sha for file, sha in evidence["inspection_file_sha256"].items()}
+        inspected = {rooted(data_root, file): sha for file, sha in evidence["inspection_file_sha256"].items()}
         if (inspected.get(expected_path) != expected["image_sha256"]
-                or inspected.get((data_root / sample["image_file"]).resolve()) != sample["image_sha256"]):
+                or inspected.get(rooted(data_root, sample["image_file"])) != sample["image_sha256"]):
             raise ValueError("human wrong-target original and reference were not both inspected")
         for file, sha in evidence["inspection_file_sha256"].items():
             derived_file(data_root, file, sha, cache)
@@ -500,7 +502,7 @@ def wrong_target_review_issues(sample: dict, original: dict, final: dict, source
         task = bound_evidence(data_root, assistance["prior_task_file"], expected_sha, cache)
         mismatch = record["task_mismatch"]
         reference = task["expected_reference"]
-        reference_path = (data_root / reference["image_file"]).resolve()
+        reference_path = rooted(data_root, reference["image_file"])
         if (task.get("format") != "drone.p6-road-prior-task/v1" or task.get("origin") not in {"human_task", "delegated_ai_task"}
                 or not task.get("registrar_id") or not task.get("registration_evidence")
                 or task.get("sample_id") != sample["sample_id"] or task.get("image_sha256") != sample["image_sha256"]
@@ -521,7 +523,7 @@ def wrong_target_review_issues(sample: dict, original: dict, final: dict, source
         if reference["media_origin"] == "real_capture_derivative":
             derived_capture(reference, protocol or {}, data_root, cache,
                             scope_before=min(timestamp(task["registered_at"]), timestamp(original["inspected_at"])))
-        inspected = {(data_root / name).resolve(): expected for name, expected in record["inspection_file_sha256"].items()}
+        inspected = {rooted(data_root, name): expected for name, expected in record["inspection_file_sha256"].items()}
         if inspected.get(reference_path) != reference["image_sha256"]:
             return ["wrong_target_expected_reference_not_inspected"]
         with Image.open(reference_path) as picture:
@@ -605,13 +607,13 @@ def delegated_label_issues(sample: dict, label: dict, protocol: dict, data_root:
                 return problems
             final_for_shape = {**final, "verdict": "indeterminate"}
         ai_suggestions({**document, "rows": [final_for_shape]})
-        paths = [Path(p).resolve() for p in record["inspected_files"]]
-        if Path(source["image_file"]).resolve() not in paths or set(record["inspection_file_sha256"]) != set(record["inspected_files"]):
+        paths = [rooted(data_root, p) for p in record["inspected_files"]]
+        if rooted(data_root, source["image_file"]) not in paths or set(record["inspection_file_sha256"]) != set(record["inspected_files"]):
             return ["delegated_annotation_original_inspection_missing"]
-        if digest((data_root / source["image_file"]).resolve()) != sample["image_sha256"]:
+        if digest(rooted(data_root, source["image_file"])) != sample["image_sha256"]:
             return ["delegated_annotation_inspection_bytes_changed"]
         for file, expected in record["inspection_file_sha256"].items():
-            path = (data_root / file).resolve()
+            path = rooted(data_root, file)
             if not path.is_relative_to(data_root.resolve()) or digest(path) != expected:
                 return ["delegated_annotation_inspection_bytes_changed"]
         if (any(label.get(k) != final[k] for k in ("sample_id", "image_sha256", "verdict", "objects", "notes"))
@@ -720,7 +722,7 @@ AI 跨次配对必须有单独登记的逐对视觉核验。
         for ident in pair["sample_ids"]:
             sample = samples[ident]
             observed = row["images"][ident]
-            image_path = (data_root / observed["file"]).resolve()
+            image_path = rooted(data_root, observed["file"])
             if (observed.get("image_sha256") != sample["image_sha256"] or observed.get("original_checked") is not True
                     or not image_path.is_relative_to(data_root.resolve()) or digest(image_path) != sample["image_sha256"]
                     or observed.get("target_polygon") != sample.get("target", {}).get("polygon")):
