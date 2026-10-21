@@ -1,0 +1,153 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "bounded_verifier_22",
+  "created_at": "2026-10-21T13:45:12.617643+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_22\\assignment.json",
+  "assignment_sha256": "8634f8578c94a907b2b1be9b7aef3e154b42f3f6f7d5957d39b91602c3bafc74",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-3596bf155495b7",
+      "decision": "revised",
+      "findings": [
+        "已在原生像素裁片核对完整 A/B 路段、两端横断面及双侧路缘；mask 全白，没有源覆盖缺口。",
+        "A 前的白色道路车辆位于固定范围外，北侧另一白车位于铺装道路边缘外。",
+        "范围内可见暗色路面纹理及树木、电杆阴影，未见可确认的散落物、植被侵入或行人实体。",
+        "静态图不能确认 A 前白车的运动状态；保留 normal，仅修正 notes 中的 moving 表述。"
+      ],
+      "changes": {
+        "notes": "The full fixed A-B road surface is visible without a confirmed physical obstruction. The white road vehicle lies before A, and the northern white vehicle is off the carriageway. Road streaks and tree/utility shadows do not show a confirmed physical obstacle. The still image does not establish vehicle movement."
+      },
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-3596bf155495b7.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-3596bf155495b7.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-3596bf155495b7.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_22/native-full-target.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_22/native-a-middle.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_22/native-middle-b.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_22/target-boundary-check.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "035cdfc3f2121e958d02d7ba051668c14f7c72eea3a1a94eb43b21744a2d8cd8",
+      "first_author_id": "bounded_annotator_11",
+      "first_row_sha256": "5bed5364914ef151a030824fd446513a71f77876d8e12a05081c8dc8b26a502d",
+      "reviewed_at": "2026-10-21T13:45:12.622649+00:00",
+      "reviewer_id": "bounded_verifier_22",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-3596bf155495b7.jpg": "035cdfc3f2121e958d02d7ba051668c14f7c72eea3a1a94eb43b21744a2d8cd8",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-3596bf155495b7.jpg": "9bcc306eb52e718f0d6200c8015e6ab9d0b179e79e2697142f9bfbf297ce3c5e",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-3596bf155495b7.png": "700c2b728766f23f427fff5a7783e8b8c77d42def911f80f16748427b7b7d89a",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_22/native-full-target.png": "f21f26249f305de3c950fd7f278c3dd3c2abd1d13f2f059b7d6eac0b9246f3e6",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_22/native-a-middle.png": "0cbfe8de5e9194d5cdb87f82e005bee76d50a57d42bdb89565cad7d159a51503",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_22/native-middle-b.png": "d80d130989a98a308d4fb32f1e2822c411be35cb18a1e89104ee69a6f8494487",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_22/target-boundary-check.png": "dc69ef9a378cb93f250c39b0d5072dc7968722f90427b5b4159a8033472eb100"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-3596bf155495b7",
+        "image_sha256": "035cdfc3f2121e958d02d7ba051668c14f7c72eea3a1a94eb43b21744a2d8cd8",
+        "target_brief": "A is the left fixed cross-section just beyond the white road vehicle; B is the right-side southern junction cross-section. The polygon follows both pavement edges along the shallow bend for the full registered interval, excluding driveways and vegetation verges.",
+        "verdict": "normal",
+        "objects": [],
+        "notes": "The full fixed A-B road surface is visible without a confirmed physical obstruction. The white road vehicle lies before A, and the northern white vehicle is off the carriageway. Road streaks and tree/utility shadows do not show a confirmed physical obstacle. The still image does not establish vehicle movement.",
+        "uncertainties": [],
+        "target_polygon": [
+          [
+            0.16875983961216107,
+            0.39104733230062394
+          ],
+          [
+            0.34033613,
+            0.46
+          ],
+          [
+            0.43697478999999995,
+            0.49111111
+          ],
+          [
+            0.62184874,
+            0.50222222
+          ],
+          [
+            0.71428571,
+            0.49111111
+          ],
+          [
+            0.8345291199143045,
+            0.4644498246470847
+          ],
+          [
+            0.8328484499143044,
+            0.6288942746470847
+          ],
+          [
+            0.71428571,
+            0.62888889
+          ],
+          [
+            0.62184874,
+            0.62888889
+          ],
+          [
+            0.43697478999999995,
+            0.61555556
+          ],
+          [
+            0.34033613,
+            0.5844444400000001
+          ],
+          [
+            0.16203714961216106,
+            0.4999362223006239
+          ]
+        ],
+        "inspected_at": "2026-10-21T13:45:12.622649+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-3596bf155495b7.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-3596bf155495b7.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-3596bf155495b7.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_22/native-full-target.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_22/native-a-middle.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_22/native-middle-b.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_22/target-boundary-check.png"
+        ]
+      },
+      "final_row_sha256": "b1d961118788e8f689ebe7025ca07fc836a8bf49796ab694be1deb98cda6ffcc",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_22\\review-payload.json",
+        "observer_payload_sha256": "343a19c5260a70690a4e8b2eee8f177eacd08498c54dbe986d7029d5ad7c269c",
+        "payload_file_modified_at_utc": "2026-10-21T13:32:58.748381+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-21T13:45:12.022825+00:00",
+        "business_fields_changed": false,
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    }
+  ],
+  "persistence_events": [
+    {
+      "operator": "root_orchestrator_deterministic_storage_only",
+      "observer_declared_status": "complete",
+      "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_22\\review-payload.json",
+      "observer_payload_sha256": "343a19c5260a70690a4e8b2eee8f177eacd08498c54dbe986d7029d5ad7c269c",
+      "payload_file_modified_at_utc": "2026-10-21T13:32:58.748381+00:00",
+      "filesystem_time_is_not_claimed_visual_inspection_time": true,
+      "stored_at_utc": "2026-10-21T13:45:12.022825+00:00",
+      "business_fields_changed": false,
+      "new_visual_inspection_claimed": false,
+      "observer_storage_cli_execution_claimed": false
+    }
+  ]
+}

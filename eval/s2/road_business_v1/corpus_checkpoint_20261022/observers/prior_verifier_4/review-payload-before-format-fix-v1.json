@@ -1,0 +1,49 @@
+{
+  "format": "drone.p6-independent-observer-prior-review-payload/v1",
+  "reviewer_id": "prior_verifier_4",
+  "assignment_sha256": "9c663418e111c9983cf059af1b211dc2da8fbf4139de5e9076480f6a41b1726f",
+  "status": "complete",
+  "full_assigned_target_checked": true,
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-a3d5329d973398",
+      "decision": "revised",
+      "findings": [
+        "真实参考原图可见一条近竖直窄路，北接十字路口，南接斜向双黄线道路；南端有白色停止线，北端路口西南角有黄色叶片的小树。西侧白色长条金属屋顶与围栏地块、东侧树木及住宅的位置组合与登记描述对应。",
+        "当前原图可见道路从左上斜向右下延伸，在右下方转弯并接另一条斜路，沿线有连续路缘、人行道和住宅前场；未出现参考图的北端十字路口、南端双黄线接口及两端之间的直路组合。",
+        "当前固定目标包围框的六张相互覆盖原生裁片完整覆盖像素范围 x=[2363,4991)、y=[1142,4374)：上部为住宅前场、深色瓦屋顶与草地，中部横过一条斜路，下部为住宅屋顶、停车前场和白色停车位线，登记轮廓内并不存在贯通南北两端的预期直路。",
+        "当前图的建筑排列为多组深色瓦屋顶住宅与宽铺装前场，不具有参考图西侧白色长屋顶、围栏地块和路口角树的固定相对布局。道路几何、两端连接和建筑设施三组可见特征均不对应，足以确认预期目标缺席；没有移动登记目标。"
+      ],
+      "changes": {
+        "verdict": "wrong_target",
+        "objects": [],
+        "notes": "独立查看当前原图、真实参考原图以及完整覆盖固定目标的六张当前原生裁片和一张参考原生裁片后，确认当前图不包含登记的南北直路及其南端双黄线接口、北端十字路口组合。参考图中的西侧白色长条金属屋顶与围栏地块、东侧树木住宅及北端黄色叶片小树，与当前图的深色瓦屋顶住宅、宽前场、连续路缘斜路和右下弯道的固定布局不对应。当前登记范围实际跨越前场、草地、屋顶及斜路，目标缺席有可见结构证据，故将初稿 indeterminate 修订为 wrong_target。target_brief 与 target_polygon 原样保留；objects 为空。",
+        "uncertainties": []
+      },
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-a3d5329d973398.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/reserve-extract-79060d64458e1a.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_4/current-fixed-target-native-r1c1.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_4/current-fixed-target-native-r1c2.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_4/current-fixed-target-native-r2c1.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_4/current-fixed-target-native-r2c2.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_4/current-fixed-target-native-r3c1.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_4/current-fixed-target-native-r3c2.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_4/reference-fixed-target-native-r1c1.png"
+      ],
+      "original_image_checked": true,
+      "task_mismatch": {
+        "prior_task_sha256": "35a79c3cfd2d2c1bf887f86b1b1e27b6a636dc2a0f25b9b8df727ee1d0c5a496",
+        "expected_target_present": false,
+        "expected_reference_checked": true,
+        "evidence": [
+          "参考图为北端十字路口至南端斜向双黄线道路之间的连续直窄路，南端白色停止线可见；当前图的道路斜向贯穿后在右下转弯，缺少这一对端部与其间直路的连接结构。",
+          "参考图西侧为白色长条金属屋顶及围栏地块，东侧为树木和住宅，北端西南角有黄色叶片小树；当前可见的是多组深色瓦屋顶住宅、宽铺装前场、路缘人行道，不存在该固定设施与建筑的相对布局。",
+          "固定目标全范围的原生裁片显示，上端为前场和屋顶、中段为草地及斜路、下端为停车位与住宅，未形成登记的道路及端部展开。判断依据为实际可见地表和设施的结构差异，未依据文件名、来源标签或其他任务结果。"
+        ]
+      }
+    }
+  ]
+}

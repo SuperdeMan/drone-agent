@@ -1,0 +1,104 @@
+{
+  "format": "drone.p6-neutral-road-target-registration/v1",
+  "registrar_id": "calibration_registrar_3",
+  "provider": "codex-session",
+  "exact_model_identifier": null,
+  "parent_history": "none",
+  "human_records_created": 0,
+  "business_labels_created": 0,
+  "created_at": "2026-10-21T15:51:48.032532+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\assignment.json",
+  "assignment_sha256": "583531c82c67234b0c8ae75f6322792d7b2ab3397c83069f42e18a515038deb7",
+  "rows": [
+    {
+      "sample_id": "bounded-extract-119776af0d4580",
+      "status": "unresolved",
+      "target_brief": "图中横向铺装道路的固定100米区间，对应chain-12-0020站位223.34746822970925至323.34746822970925米。A为图左侧固定地理横截面，中心约(620.929,620.013)像素，世界端点(-93.872524131,30.2160297707)；B为图右侧十字路口中心的固定横截面，中心约(3068.552,630.862)像素，世界端点(-93.8714851946,30.2160330175)。目标身份是两横截面之间的完整铺装道路本体与两侧边缘，沿分配的两段中心线延伸至B。沿线可见多处混凝土庭院车道入口和两侧排水沟；A不是经图像确认的设施边界。",
+      "target_polygon": null,
+      "identity_landmarks": [
+        "B处与图中纵向铺装道路构成的十字路口，以及左下角排水沟的涵洞口。",
+        "区间上侧两条较宽混凝土庭院车道及右侧较窄步道；上侧庭院内的蓝色多边形泳池。",
+        "区间下侧约x=1110至1250及x=1820至2050处的混凝土车道入口。",
+        "道路两侧平行的草沟与局部石衬排水设施。"
+      ],
+      "scope_evidence": "实际查看3689×1259原图、1800×614 guide与同原图尺寸mask；三者SHA256均与assignment一致，mask所有像素为255。以原图像素坐标[left,top,right,bottom]生成并逐张查看原生裁片[480,400,1450,870]、[1350,400,2350,870]、[2250,400,3210,870]，均未缩放。裁片连续重叠，完整覆盖A至B、两端横截面、道路两侧及中心线在约(2639.552,638.862)处的转折。A与B固定世界端点及全部100米范围保持不变。A附近两侧部分边界无法由图像直接支持，因此整项完成检查后记unresolved，未将目标缩到右侧可辨认的道路片段。",
+      "uncertainties": [
+        "原图约x=620至1000、y=540至710附近的枝叶遮住了A附近道路的部分铺装边缘与横截面端部，不能连续确认完整道路外轮廓。",
+        "其余可见路段及固定地标足以确认道路身份，但不足以补出被遮挡处的真实铺装边界；因此target_polygon为null。"
+      ],
+      "inspection_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\images\\bounded-extract-119776af0d4580.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\guides\\bounded-extract-119776af0d4580.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\masks\\bounded-extract-119776af0d4580.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\bounded-extract-119776af0d4580-native-1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\bounded-extract-119776af0d4580-native-2.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\bounded-extract-119776af0d4580-native-3.png"
+      ],
+      "image_sha256": "637790d0bc230a94fedbcf420eb4fa6d26ab4dab9af8cef44f1e0b7086a7d211",
+      "asset_group_id": "crasar-road-08d4198c740a3f",
+      "bounded_target_id": "target-v2-83f012b2c2151004",
+      "scope_sha256": "83f012b2c2151004749a8fb7edb1f62f958e9cf765f6336d5ca2970018e8f823",
+      "inspected_at": "2026-10-21T15:51:48.032532+00:00",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\images\\bounded-extract-119776af0d4580.jpg": "637790d0bc230a94fedbcf420eb4fa6d26ab4dab9af8cef44f1e0b7086a7d211",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\guides\\bounded-extract-119776af0d4580.jpg": "360b89f88cee910c3de4a0e80b4a6b93ff88d2a2fea3f559c5cbd34dfe78c553",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\masks\\bounded-extract-119776af0d4580.png": "0542e56ec76ee84ae9d8525a2a5805c7929282a21fff3df7ecab6f5da8064c5b",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\bounded-extract-119776af0d4580-native-1.png": "30d3389b379e7d34cbc0979adcda10652c617d8ec63dd9d4d67b5bb66bd12716",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\bounded-extract-119776af0d4580-native-2.png": "26492d603e535c66769293151ad588f11d85e047b4c743f4eac92b8284e79dec",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\bounded-extract-119776af0d4580-native-3.png": "dff73eb0acec2443d06841118802b833b4c4236fc058e4f3e13c8d2a73a240d3"
+      }
+    },
+    {
+      "sample_id": "bounded-extract-1bb71d601d757d",
+      "status": "unresolved",
+      "target_brief": "图中纵向铺装道路上两个向右接支路的丁字路口之间的完整区间，对应chain-12-0030站位0至106.18742618522676米。A为图下方丁字路口中心固定横截面，中心约(620.000,3239.000)像素，世界端点(-93.8748851049,30.2227870288)；B为图上方丁字路口中心固定横截面，中心约(635.667,620.333)像素，世界端点(-93.8748940054,30.2237451814)。目标沿分配的直线中心线自A至B，范围包含两端之间连续铺装道路本体、两侧边缘及端部路口衔接。沿线左侧可见排水沟、电杆线及住宅混凝土入口，右侧可见屋顶和庭院入口。",
+      "target_polygon": null,
+      "identity_landmarks": [
+        "A处右接横向支路的丁字路口与西侧排水沟旁的电杆。",
+        "B处右接横向支路的丁字路口及其右上侧草地中的电杆。",
+        "图左侧中下段白色屋顶住宅前通向道路的矩形混凝土车道。",
+        "图右侧中下段青绿色屋顶建筑与其上侧庭院入口。",
+        "沿道路左侧延伸的排水沟和电杆线。"
+      ],
+      "scope_evidence": "实际查看1256×3859原图、586×1800 guide与同原图尺寸mask；三者SHA256均与assignment一致，mask所有像素为255。逐张查看未缩放原生裁片[400,500,1100,1500]、[400,1400,1100,2400]、[400,2300,1256,3360]，相邻裁片重叠100像素，完整覆盖y=620.333至3239.000的A/B区间、两侧道路边缘和两个端部路口。原图另提供两条右接支路及周边设施的整体位置。保留A至B全部106.18742618522676米及原定端点；未因树冠邻接而改变目标或截取局部道路作为完整目标。",
+      "uncertainties": [
+        "右侧树冠贴接铺装边缘的中段，尤其原图约y=1400至1600及y=1750至1970附近，部分真实外缘位于枝叶下，不能从原图连续辨出。",
+        "左侧外缘、较下方双侧外缘及两个端部路口可辨认，但这些信息不能确定被遮挡处的完整边界；不能以树冠边缘或相邻路宽替代，故target_polygon为null。"
+      ],
+      "inspection_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\images\\bounded-extract-1bb71d601d757d.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\guides\\bounded-extract-1bb71d601d757d.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\masks\\bounded-extract-1bb71d601d757d.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\bounded-extract-1bb71d601d757d-native-1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\bounded-extract-1bb71d601d757d-native-2.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\bounded-extract-1bb71d601d757d-native-3.png"
+      ],
+      "image_sha256": "1f8dd634f221bb0079e385474862c5a17f42a05d41dab48a5437ac8c2c0dc136",
+      "asset_group_id": "crasar-road-0fe890c201e673",
+      "bounded_target_id": "target-v2-c733f55c17a1364b",
+      "scope_sha256": "c733f55c17a1364b3c6f3c4d7683ccfb89a9da5fc8149dbdaa40fd55c0dfc175",
+      "inspected_at": "2026-10-21T15:51:48.032532+00:00",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\images\\bounded-extract-1bb71d601d757d.jpg": "1f8dd634f221bb0079e385474862c5a17f42a05d41dab48a5437ac8c2c0dc136",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\guides\\bounded-extract-1bb71d601d757d.jpg": "ca70de6111adbc70fdd4f7ac955bb6dd2f5888d22921fa54728fd484e1f28c24",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\masks\\bounded-extract-1bb71d601d757d.png": "7fb3418164eac08af89c00c38b0849cb20b279462ec1575c0fe1c96f60864f4d",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\bounded-extract-1bb71d601d757d-native-1.png": "1730857861070c6b724ed8f15f8c04e9f5b11c95bbb6ce8367c3c751f14935dc",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\bounded-extract-1bb71d601d757d-native-2.png": "6d24bb01864984634fcba3b877da65a164ec8d96bfa4c00e2dfb9bfbe4ba536a",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\bounded-extract-1bb71d601d757d-native-3.png": "d5c40353a3db9984e771a1662882b8a30050f56791b003591c325519bfc90b82"
+      }
+    }
+  ],
+  "formal_release_eligible": false,
+  "persistence_provenance": {
+    "operator": "root_orchestrator_deterministic_storage_only",
+    "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\reference-payload.json",
+    "observer_payload_sha256": "854f1a4ad7194d3f98c080fa5cfeb5b6ae603fe95e43a2ded89c5b21e00a87d9",
+    "actual_context_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\reference-registration\\calibration_registrar_3\\actual-context.json",
+    "actual_context_sha256": "7d5cba9148dd13d6e3f430549272dfb9da857f955c2bc443c6f17a2835549599",
+    "payload_file_modified_at_utc": "2026-10-21T15:50:06.792814+00:00",
+    "stored_at_utc": "2026-10-21T15:51:48.032532+00:00",
+    "inspected_at_is_storage_timestamp_not_new_visual_inspection": true,
+    "business_fields_changed": false,
+    "human_timing_claimed": false
+  }
+}

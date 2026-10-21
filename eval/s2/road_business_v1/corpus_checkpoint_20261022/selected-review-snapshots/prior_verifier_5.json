@@ -1,0 +1,237 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "prior_verifier_5",
+  "created_at": "2026-10-21T16:58:01.772560+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\assignment.json",
+  "assignment_sha256": "42d5c6c6a511064d61bc884a285c4e5415f6932b472cc735f9298392e21f7437",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-caf65e6520a008",
+      "decision": "revised",
+      "findings": [
+        "真实参考图显示北端圆形绿化岛接林间浅色弯曲通道，左侧有独立平行窄道；当前图对应环境是两排住宅之间的沥青支路，北端接横向道路，没有该圆形岛及双通道布局。",
+        "参考图中上段可见通道旁的弧形设施及跨路阴影，B 下方右侧可见独立白色四坡亭顶；当前图同一区段及全图是住宅、庭院、树木和电力设施，未见这一固定设施组合。",
+        "当前图南端支路接入另一条横向沥青路，沿线有多处住宅入口；参考图目标南端仍为草地与树林之间的浅色通道，向下接亭前区域，两端及沿线建筑布局均无法对应。",
+        "已查看两张原图及当前图三片、参考图两片原生重叠裁片，完整覆盖固定多边形；保留 target_brief 与 target_polygon 原样，固定目标不能移到当前住宅支路上。"
+      ],
+      "changes": {
+        "verdict": "wrong_target",
+        "objects": [],
+        "notes": "已独立核验当前原图、真实参考原图及完整固定目标的原生重叠裁片。参考目标的圆形绿化岛、林间双通道、弧形设施和右下独立亭子与当前住宅支路的两端横路、连续住宅及入户前场在固定结构上不匹配，确认预期登记 A–B 目标不在当前图。登记描述与多边形保持原样，不对当前住宅支路重选目标或判定障碍。",
+        "uncertainties": []
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-caf65e6520a008.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\reserve-extract-aa855c8ae4d10a.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-current-native-1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-current-native-2.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-current-native-3.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-expected-native-1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-expected-native-2.png"
+      ],
+      "original_image_checked": true,
+      "task_mismatch": {
+        "prior_task_sha256": "89dfe1296b662f5fb99f347f649290c8091129fa73414079177b9d694daf749f",
+        "expected_target_present": false,
+        "expected_reference_checked": true,
+        "evidence": "实际比较两张原图及覆盖各自固定目标包围框的无缩放重叠裁片：参考图北端是圆形绿化岛南侧接入浅色弯曲通道，通道左侧另有平行窄道，中上段可见弧形构件，B 下方右侧为独立白色四坡亭顶；当前图北端为横向沥青路与住宅间支路相接，中段两侧连续出现住宅屋顶和入户前场，南端再次接入横向沥青路。当前全图未出现参考图的圆形岛、双通道、弧形设施与独立亭子这一固定空间组合；固定目标轮廓上部落入树木及住宅边缘，无法对应参考图 A–B 通道。差异由清晰可见的路口形状、道路材质与建筑布局共同确认，非仅依据文件不同或局部遮挡。"
+      },
+      "image_sha256": "b332c208e1fe7d8ea98e2101c1507fb76547ac9c6ff8d9f9c642918b0771e962",
+      "first_author_id": "prior_annotator_3",
+      "first_row_sha256": "145a1a6bb2ebe0fdfcebee4f2509d00930cb901d04ba61715b071b13213bb5b8",
+      "reviewed_at": "2026-10-21T16:58:01.793288+00:00",
+      "reviewer_id": "prior_verifier_5",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-caf65e6520a008.jpg": "b332c208e1fe7d8ea98e2101c1507fb76547ac9c6ff8d9f9c642918b0771e962",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\reserve-extract-aa855c8ae4d10a.jpg": "fc08b511349785d1b1693915ae4ad1014d971d1f5392ef9048edfab2a7075dea",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-current-native-1.png": "002d32bc0151a688d69424ac567b5fb2c8adc095bbf7f7b94c7709e2659535df",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-current-native-2.png": "7df9e7f167d4176e2030da8f5d6dbeda3c46f2b41938e62746d4f8c67c6580c0",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-current-native-3.png": "843ed1f17bac8cbe08617c7c59127e3d9f208546fe9d4ee1d738013b8e9f70d5",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-expected-native-1.png": "8ae797175e78c7bdbfcaf68e977a575e5e8548e2f9950cb25e7fc8988d76acd4",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-expected-native-2.png": "7392f5174e065a47920a1ca39b8e9d6dd7b7e0d2c765e3b79c4b17581dfe8cba"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-caf65e6520a008",
+        "image_sha256": "b332c208e1fe7d8ea98e2101c1507fb76547ac9c6ff8d9f9c642918b0771e962",
+        "target_brief": "从上方圆形绿化岛南侧 A 接入处，沿林间弯曲浅色通道向下到 B 固定截面。左侧另有平行窄道，中上段有一道横跨通道的弧形门架，B 下方右侧为白色四坡屋顶亭子。登记 A–B 之间完整铺装宽度，北端在岛南侧截面截止，不包含绕岛整圈或亭前区域。",
+        "target_polygon": [
+          [
+            0.427802,
+            0.225
+          ],
+          [
+            0.479526,
+            0.268889
+          ],
+          [
+            0.496767,
+            0.304444
+          ],
+          [
+            0.503233,
+            0.34
+          ],
+          [
+            0.496767,
+            0.391111
+          ],
+          [
+            0.491379,
+            0.435
+          ],
+          [
+            0.476293,
+            0.470556
+          ],
+          [
+            0.447198,
+            0.507778
+          ],
+          [
+            0.426724,
+            0.551111
+          ],
+          [
+            0.404095,
+            0.603889
+          ],
+          [
+            0.393319,
+            0.637778
+          ],
+          [
+            0.390086,
+            0.672222
+          ],
+          [
+            0.394397,
+            0.73
+          ],
+          [
+            0.397629,
+            0.776111
+          ],
+          [
+            0.479526,
+            0.776111
+          ],
+          [
+            0.475216,
+            0.736111
+          ],
+          [
+            0.471983,
+            0.694444
+          ],
+          [
+            0.476293,
+            0.657222
+          ],
+          [
+            0.491379,
+            0.623889
+          ],
+          [
+            0.516164,
+            0.584444
+          ],
+          [
+            0.536638,
+            0.539444
+          ],
+          [
+            0.559267,
+            0.499444
+          ],
+          [
+            0.572198,
+            0.463333
+          ],
+          [
+            0.582974,
+            0.432778
+          ],
+          [
+            0.586207,
+            0.410556
+          ],
+          [
+            0.577586,
+            0.378333
+          ],
+          [
+            0.582974,
+            0.346111
+          ],
+          [
+            0.59375,
+            0.31
+          ],
+          [
+            0.614224,
+            0.277778
+          ],
+          [
+            0.630388,
+            0.247222
+          ],
+          [
+            0.644397,
+            0.223889
+          ]
+        ],
+        "verdict": "wrong_target",
+        "objects": [],
+        "notes": "已独立核验当前原图、真实参考原图及完整固定目标的原生重叠裁片。参考目标的圆形绿化岛、林间双通道、弧形设施和右下独立亭子与当前住宅支路的两端横路、连续住宅及入户前场在固定结构上不匹配，确认预期登记 A–B 目标不在当前图。登记描述与多边形保持原样，不对当前住宅支路重选目标或判定障碍。",
+        "uncertainties": [],
+        "inspected_at": "2026-10-21T16:58:01.793288+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-caf65e6520a008.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\reserve-extract-aa855c8ae4d10a.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-current-native-1.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-current-native-2.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-current-native-3.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-expected-native-1.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\bounded-extract-caf65e6520a008-expected-native-2.png"
+        ]
+      },
+      "final_row_sha256": "1adb151a0264953292eb0e2284db16f3223e82088cdeadf4b5e70142f8de817c",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\review-payload.json",
+        "observer_payload_sha256": "d2ff9cb85ef1c313a777ebb3db5afa0d415d6d26b4ddf694169fb15a5380ddbb",
+        "payload_file_modified_at_utc": "2026-10-21T16:57:41.386629+00:00",
+        "stored_at_utc": "2026-10-21T16:58:01.772560+00:00",
+        "business_fields_changed": false,
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not additional visual inspection or human timing."
+      }
+    }
+  ],
+  "persistence_events": [
+    {
+      "operator": "root_orchestrator_deterministic_storage_only",
+      "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_5\\review-payload.json",
+      "observer_payload_sha256": "d2ff9cb85ef1c313a777ebb3db5afa0d415d6d26b4ddf694169fb15a5380ddbb",
+      "payload_file_modified_at_utc": "2026-10-21T16:57:41.386629+00:00",
+      "stored_at_utc": "2026-10-21T16:58:01.772560+00:00",
+      "business_fields_changed": false,
+      "new_visual_inspection_claimed": false,
+      "observer_storage_cli_execution_claimed": false,
+      "filesystem_time_is_not_claimed_visual_inspection_time": true,
+      "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not additional visual inspection or human timing."
+    }
+  ]
+}

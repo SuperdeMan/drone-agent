@@ -1,6 +1,8 @@
-# P6 道路材料当前交接 · 2026-10-21
+# P6 道路材料历史交接 · 2026-10-21
 
-**WP-P6-01 仍开放，P6 未整体准出。** 当前事实以本页和[增量B检查点](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/README.md)为准；[前一检查点](../eval/s2/road_business_v1/corpus_checkpoint_20261021/README.md)与[2026-10-19历史交接](p6-road-corpus-handoff-2026-10-19.md)保持原样。正式独立资产、正式跨次配对、冻结数据和正式模型实调均为0。真人候选处理计时已延期至运营验证，现场清障效果未验证，其他D089门槛不变。
+本页保留2026-10-21 B检查点；当前事实和后续工具见[2026-10-22交接](p6-road-corpus-handoff-2026-10-22.md)。
+
+**WP-P6-01 仍开放，P6 未整体准出。** 当时事实以本页和[增量B检查点](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/README.md)为准；[前一检查点](../eval/s2/road_business_v1/corpus_checkpoint_20261021/README.md)与[2026-10-19历史交接](p6-road-corpus-handoff-2026-10-19.md)保持原样。正式独立资产、正式跨次配对、冻结数据和正式模型实调均为0。真人候选处理计时已延期至运营验证，现场清障效果未验证，其他D089门槛不变。
 
 工作树为 `D:/drone-agent-data/p6-road-views-20261014/repo`，分支 `work/p6-road-views-20261014`；材料根为 `D:/drone-agent-data/p6-corpus-completion-20261018`，本轮工具在 `resume-20261021-b/`。原仓库的并行X1工作未混入本批，`de07338`已在本工作分支。
 

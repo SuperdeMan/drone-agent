@@ -1,0 +1,996 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "claude_verifier_02",
+  "created_at": "2026-10-19T14:11:38.943669+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\assignment.json",
+  "assignment_sha256": "e5f5e42bc53f4de967216acd356dbde294e615289d7a17e496df3912761966e0",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-dd045a4e226497",
+      "decision": "revised",
+      "findings": [
+        "整图与 guide：A–B 为西北—东南走向的双车道沥青公路，提示线沿黄色中心虚线；掩膜显示目标全段有影像。",
+        "沿 A–B 做 4 段 900×900 原生裁切并放大关键处：倒伏木杆连横担从西侧碎石地斜伸过西侧沥青路肩和白色边线，末端进入西车道约 30 px（约 (0.47,0.50)），首稿 other_entity 轮廓正确。",
+        "西侧受损小屋前的碎片（白色/深色织物团、红褐色板条、白色长管、粉色保温棉碎屑）铺到西侧路肩并越过白色边线；首稿 debris 轮廓内确有织物团，类型正确。",
+        "路幅内另有小件：约 (0.296,0.277) 西侧路肩上的白色弯折条、约 (0.530,0.485) 东车道约 20 px 的浅色小棍、木杆附近路面的交叉细暗线（一处有小圈，像落地线缆，也可能是封缝）；都不改变结论，未逐件补轮廓。东车道几段浅褐长条与黄色中心虚线间距一致，是标线不是木条。",
+        "目标多边形：首稿矩形在 A 附近西侧多含约 30 px 草地，在 y≈0.62–0.82 东侧少约 15–50 px 沥青路肩（与混凝土场地的不规则接缝处）。按 0.01 网格量取两侧铺装边后改为梯形，两端截面仍过 A、B 且垂直于道路。",
+        "首稿 target_brief 用 A/B 标记界定两端，改写为以东侧建筑和西侧地物界定。"
+      ],
+      "changes": {
+        "target_brief": "西侧沼泽草地与东侧临水住宅/码头之间、西北—东南走向的双车道沥青公路（黄色中心虚线，两侧白色边线外各有窄沥青路肩）。北端截面约与东侧最北一栋灰色金属屋顶建筑（其北侧为白色碎石空地）的西北角平齐；路段向东南经过东侧蓝色屋顶受损房屋、白色屋顶房屋和大片空地，西侧经过一根倒伏木杆和一栋屋顶塌损的小房屋及其碎片散落区；南端截面在西侧碎片区以南的高草路段，东侧约与米色屋顶住宅南邻那栋屋面板外露房屋的南端平齐。目标为两侧铺装边之间的全宽，不含东侧碎石/混凝土场地和车道入口。",
+        "target_polygon": [
+          [
+            0.2326,
+            0.1895
+          ],
+          [
+            0.3277,
+            0.1614
+          ],
+          [
+            0.788,
+            0.8043
+          ],
+          [
+            0.6776,
+            0.8369
+          ]
+        ]
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-dd045a4e226497.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-dd045a4e226497.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-dd045a4e226497.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-view.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-guide.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-overlay.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-mask.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c1-raw.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c1-ov.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c2-raw.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c2-ov.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c3-raw.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c3-ov.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c4-raw.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c4-ov.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c1-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c2-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c3-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c4-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z1-raw-x3.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z2-raw-x3.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z3-raw-x3.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z4-raw-x3.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z5-raw-x2.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z6-raw-x3.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z6-ov-x3.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z7-raw-x3.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-n1-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-n2-ov-grid.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "194e0adec522e021ccfa926810a3eaf9b37bb36d17b8bf47ef5f1e7624604be3",
+      "first_author_id": "bounded_annotator_3",
+      "first_row_sha256": "06bdd2964eaf6fac99067892d942b1a0d51791bbcf6455c6319269c100b60c59",
+      "reviewed_at": "2026-10-19T14:11:38.966248+00:00",
+      "reviewer_id": "claude_verifier_02",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-dd045a4e226497.jpg": "194e0adec522e021ccfa926810a3eaf9b37bb36d17b8bf47ef5f1e7624604be3",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-dd045a4e226497.jpg": "8b51ccc55fcee58601f56bc746fc5f40761a21b18aa07dba6ca190628be7caf1",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-dd045a4e226497.png": "120c07eebb3a773ffab4feb766abd65c7ea8786c45c4b6af14e5d5e72172e596",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-view.jpg": "47550c5e3d76f7efbfc74feb1329f55ff4f4038d21d073c4ab874222e2b9701c",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-guide.jpg": "8961e41a1886502b27b1b6c3df8bc73320bc76d4ba4a6bfe05b963aaa56eb87b",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-overlay.jpg": "ed91e522421337030bb94028c5be6fa14dfc612820b94a72db56adec6a6f2c51",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-mask.jpg": "dcc746d0baf0842bc9e5964d9cd6331cb77ac4e9d2bfa15d6cf08d02a58c54a7",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c1-raw.jpg": "1248b8eed679c1f4d120d6d0a0eff4994f6c9708c8ff80261c04fd725ea9a984",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c1-ov.jpg": "51c04b8d397856db485bf2a1be9630b2609c0e6de64fea96a52bb0d685197c6f",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c2-raw.jpg": "14ec199b863348cf23c7a51da92562082b9dcb9b61c9ff2454ca96a93881f0e0",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c2-ov.jpg": "db641668ed999b11ebc66f66523e9547973af9e0110601c9eb85701aee938285",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c3-raw.jpg": "215a0049c2bd1ce482b36fe6bec252e80cd3cb9eecc6b05e9f0e39b4861712cf",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c3-ov.jpg": "44d47d8d990589fd51e476f7cdf3b8f2acc985f4085b8c7a3f0321eae544f562",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c4-raw.jpg": "b35d9dbb4eeaf54673249d5408c88a18bd6229debc6fb366244e833ae86f6159",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c4-ov.jpg": "9f563b42a11afecd8ea12819a43972b750e1aff9469c59db70808be7b2228ea5",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c1-ov-grid.jpg": "520015c9c664ef4f69a1128fc89848c591a8ed321af5d25c5311c52f90b343d1",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c2-ov-grid.jpg": "cc424696edf405afa639cc79185607ec12f7a98c498ee7cf8297cac32a688330",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c3-ov-grid.jpg": "dd67e48cf31ace685297b91be47076d850eb5dba8d08c1c8aaf0178fa21e3a48",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c4-ov-grid.jpg": "9fa92b4a91c5e755513d868c96e7d9bf0a028766e8eaa280157b863f2deef4ec",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z1-raw-x3.jpg": "fcb73ea3ce9d2ae80264ff0f911e45f1bc368808397c9ddaf8ce0c18d0d7fd4e",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z2-raw-x3.jpg": "df67a79ad11df1bc7e7d928f84c36d8adc29385c2d72daa23bae0d3444b87d07",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z3-raw-x3.jpg": "b7606dc5c7fdaff7dc440e1690eff604eb7887d3e2c2da013df96caf583858a9",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z4-raw-x3.jpg": "80f6f3345d1fa6e0748b2cfd5771a4bcaadff75100f561dd959ec11242e92c68",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z5-raw-x2.jpg": "cc4d33432440477e5d66409e78afcf90cc1c15ae387ae50a7fc49d87c04233bc",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z6-raw-x3.jpg": "24186b95960f3521bc65ab9c82bbb8a44ca5f4f0742fec6e9b9c2c35754f5ead",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z6-ov-x3.jpg": "97818da228e562c3c0bf61e63d4ce625c1e7066a1ad22ef0017377757761fae7",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z7-raw-x3.jpg": "4997ce802335a63f224f5327c54ee745b6247bdce00c1bc1606f3d5b529b230b",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-n1-ov-grid.jpg": "781b8c65ee31dd730775f9e6ec7e2b15b12f7df269ea3f3ff0e683867eeb861b",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-n2-ov-grid.jpg": "0386323f61d47eacbe65318af9f97c24b22676bb4f785ae94bf6f87347074d05"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-dd045a4e226497",
+        "image_sha256": "194e0adec522e021ccfa926810a3eaf9b37bb36d17b8bf47ef5f1e7624604be3",
+        "target_brief": "西侧沼泽草地与东侧临水住宅/码头之间、西北—东南走向的双车道沥青公路（黄色中心虚线，两侧白色边线外各有窄沥青路肩）。北端截面约与东侧最北一栋灰色金属屋顶建筑（其北侧为白色碎石空地）的西北角平齐；路段向东南经过东侧蓝色屋顶受损房屋、白色屋顶房屋和大片空地，西侧经过一根倒伏木杆和一栋屋顶塌损的小房屋及其碎片散落区；南端截面在西侧碎片区以南的高草路段，东侧约与米色屋顶住宅南邻那栋屋面板外露房屋的南端平齐。目标为两侧铺装边之间的全宽，不含东侧碎石/混凝土场地和车道入口。",
+        "target_polygon": [
+          [
+            0.2326,
+            0.1895
+          ],
+          [
+            0.3277,
+            0.1614
+          ],
+          [
+            0.788,
+            0.8043
+          ],
+          [
+            0.6776,
+            0.8369
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "other_entity",
+            "polygon": [
+              [
+                0.305,
+                0.532
+              ],
+              [
+                0.468,
+                0.5
+              ],
+              [
+                0.473,
+                0.506
+              ],
+              [
+                0.315,
+                0.542
+              ],
+              [
+                0.322,
+                0.569
+              ],
+              [
+                0.312,
+                0.572
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.53,
+                0.596
+              ],
+              [
+                0.552,
+                0.599
+              ],
+              [
+                0.565,
+                0.614
+              ],
+              [
+                0.555,
+                0.623
+              ],
+              [
+                0.537,
+                0.613
+              ]
+            ]
+          }
+        ],
+        "notes": "原生中段裁切显示倒伏木杆从西侧地块跨过白色边线伸入车道，旁边还有散落结构碎片伸入铺装。双侧边线和铺装接缝连续，固定范围没有缺像。未要求看见木杆下方地面。",
+        "uncertainties": [
+          "木杆是否仍连通线路不能从图像确定；只记录其实体占路关系。"
+        ],
+        "inspected_at": "2026-10-19T14:11:38.966248+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-dd045a4e226497.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-dd045a4e226497.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-dd045a4e226497.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-view.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-guide.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-overlay.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-mask.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c1-raw.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c1-ov.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c2-raw.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c2-ov.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c3-raw.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c3-ov.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c4-raw.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c4-ov.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c1-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c2-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c3-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-c4-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z1-raw-x3.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z2-raw-x3.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z3-raw-x3.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z4-raw-x3.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z5-raw-x2.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z6-raw-x3.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z6-ov-x3.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-z7-raw-x3.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-n1-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\01-dd045a4e226497-n2-ov-grid.jpg"
+        ]
+      },
+      "final_row_sha256": "ef6d18ba8bf16d28003c2a3e201b71bf056064f8715efaf69c1874bca0a05d81"
+    },
+    {
+      "sample_id": "bounded-extract-e7065eb1ad2aaf",
+      "decision": "revised",
+      "findings": [
+        "整图、guide、全景与掩膜：A–B 为两侧建筑之间的南北向深色窄路，北端为西侧横路汇入的丁字口；目标全段有影像。",
+        "做了 4 段 1000 px 原生裁切、9 段 0.01 网格带状裁切（2 倍）和中段低倍纹理图。路面为无标线深色沥青/碎石，宽约 0.10–0.12（约 210–255 px，按皮卡宽度估约 4–5 m）；西界是与混凝土车道地坪/草地的清晰分界，首稿西边线吻合。",
+        "首稿东边线在 y≈0.62–0.83 比路面东缘偏东约 0.045–0.05（约 100–110 px），压进东侧碎石场地、混凝土地坪和草地；y≈0.24–0.32 多含约 35 px 褐色土场；B 端截面与 B 处向西南偏转的道路方向约偏 20°。按网格逐段量取的东缘重画多边形，B 端截面改为过 B 且垂直于道路。",
+        "西缘约 (0.41–0.48, 0.48–0.51) 带木龙骨的白色墙板一半压在路面上，约 (0.42–0.44, 0.555–0.58) 白色板件在路面西半部，两个首稿 debris 轮廓正确；路中偏东约 (0.51–0.565, 0.485–0.515) 另有一堆白色板件，西半部在路面内，未另画轮廓。",
+        "多处细线斜跨路面，像垂落或落地的线缆，无法判断是否落地，不作为实体；东侧码头木平台（约 0.66–0.72, 0.21–0.24）是固定设施，不算障碍。",
+        "target_brief 原文用 A/B 标记界定两端，改写为以路口与两侧建筑界定；notes 中“没有换成东侧院地”与首稿多边形不符，随多边形一并改写，并补充不确定项。"
+      ],
+      "changes": {
+        "target_brief": "西侧独立住宅与东侧临水船屋/码头之间、南北走向（南段略向西南偏）的无标线深色窄路。北端截面在西侧横路汇入的丁字路口南沿（西侧为草坪转角，东侧为一栋白屋顶临水建筑，其南有码头木栈道和木平台）；向南经过西侧屋顶受损房屋、停着白色皮卡的混凝土车道、大白屋及其南侧屋面板外露的房屋，东侧经过褐色土场、大片碎石场地、蓝色屋顶船屋和混凝土地坪；南端截面约与西侧一栋白屋顶房屋前混凝土地坪的南部平齐，东侧为草地小水湾以南的浅色碎石场地，再往南路东有棕榈和白屋顶船屋。目标为路面两侧边界之间的全宽，不含两侧院地、车道地坪和码头。",
+        "target_polygon": [
+          [
+            0.551,
+            0.159
+          ],
+          [
+            0.692,
+            0.172
+          ],
+          [
+            0.663,
+            0.22
+          ],
+          [
+            0.643,
+            0.26
+          ],
+          [
+            0.622,
+            0.3
+          ],
+          [
+            0.605,
+            0.34
+          ],
+          [
+            0.592,
+            0.38
+          ],
+          [
+            0.572,
+            0.42
+          ],
+          [
+            0.553,
+            0.46
+          ],
+          [
+            0.534,
+            0.5
+          ],
+          [
+            0.515,
+            0.54
+          ],
+          [
+            0.495,
+            0.58
+          ],
+          [
+            0.47,
+            0.62
+          ],
+          [
+            0.452,
+            0.66
+          ],
+          [
+            0.446,
+            0.7
+          ],
+          [
+            0.43,
+            0.74
+          ],
+          [
+            0.41,
+            0.765
+          ],
+          [
+            0.395,
+            0.785
+          ],
+          [
+            0.385,
+            0.805
+          ],
+          [
+            0.381,
+            0.8345
+          ],
+          [
+            0.2836,
+            0.824
+          ],
+          [
+            0.39,
+            0.56
+          ],
+          [
+            0.485,
+            0.34
+          ]
+        ],
+        "notes": "西缘带木龙骨的白色墙板一半压在路面上，路面西半部另有一块白色板件，路中偏东一堆白色板件的西半部也在路面内；首稿两个 debris 轮廓支持碎片类型。路面为无标线深色沥青/碎石，西界是与混凝土车道地坪、草地的分界；提示线下半段贴近路面东缘。目标东界按路面与东侧土场、碎石场地、混凝土地坪、草地的分界划定，不含东侧院地。",
+        "uncertainties": [
+          "中段（约 y 0.40–0.58）路面与东侧深色碎石场地之间没有明显路缘，东界按两端可见路宽连续推定，误差约 ±20 px。",
+          "多处细线斜跨路面（约 y 0.355–0.365 一条虚线状，y 0.74–0.83 两条），疑似垂落或落地的线缆，单幅俯视图无法判断是否落地，未作为实体。",
+          "东侧院地另有板件与木料，未并入目标。"
+        ]
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-e7065eb1ad2aaf.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-e7065eb1ad2aaf.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-e7065eb1ad2aaf.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\overviews\\bounded-extract-e7065eb1ad2aaf.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-view.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-guide.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-overlay.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-mask.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c1-raw.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c1-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c2-raw.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c2-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c3-raw.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c3-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c4-raw.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c4-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-e1-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-e2-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-e3-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b1-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b2-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b3-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b4-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b5-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b6-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b7-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b8-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b9-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-m1-raw-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-rev-overlay.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-r2-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-r5-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-r7-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-r9-ov-grid.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "65d0dd33a0918ded4e3262add9b705ba0aaba6f2586cd323f1051d6d73e61528",
+      "first_author_id": "bounded_annotator_3",
+      "first_row_sha256": "173cc772bb0d1d3887dd0d4f6352ed9e7b1fb8de06bb387550452c9112f54985",
+      "reviewed_at": "2026-10-19T14:11:39.011892+00:00",
+      "reviewer_id": "claude_verifier_02",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-e7065eb1ad2aaf.jpg": "65d0dd33a0918ded4e3262add9b705ba0aaba6f2586cd323f1051d6d73e61528",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-e7065eb1ad2aaf.jpg": "580cf73c5b4810a58d4edab49027f95d6f4b1790eccf2207325639cf405bfdc2",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-e7065eb1ad2aaf.png": "61fdec497060df7d8559641a7115717cb075caf39f2e402f77abdc9aa5a70e12",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\overviews\\bounded-extract-e7065eb1ad2aaf.jpg": "e03dbcded6027edd9b2b3df3b909bf0c8297f6a37e3b3dedafdc98cacd7d802f",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-view.jpg": "30e387d8e0307ab05964c103feee52aa56cb6d00c10b28adbbb41153b1424ddb",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-guide.jpg": "4fe3a13e41d870ec76baa85ddb2007a5a2c7cd2e0b512b40ea65d795e72c6957",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-overlay.jpg": "b6e3524dc75aac91bb394ff35b987db170256bfa5e69bb87052f936cc625fabc",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-mask.jpg": "7005c8d50dced460ff64e052287d0409cb73ddbd25f91f9676e261f85b8696e9",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c1-raw.jpg": "fc53ed725dc0c923d048703c620ed149e65a5b2d4f757c414c7df92bc4e3ba23",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c1-ov-grid.jpg": "1aa380823f50d93fd42e27a7a77d2b7c21cc59318aa8346002b268c6bd8315c3",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c2-raw.jpg": "2ab3e45fb1f5863123964725d2106ea5f5346fdf0d066ed45098afb6ae95613f",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c2-ov-grid.jpg": "0ad4c61781bdd3cdeb7c5d12843d0e8e34240fe8e0648c198ea368fc06534de8",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c3-raw.jpg": "4c8835ad8b6cb04a6828d9b1f71802ba8b220843bcf5f8d7d2549340ecf14183",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c3-ov-grid.jpg": "03c4b700d8ccf7e8b0da6e0992837c199387bbde2e0f23daeb36510a77aef58d",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c4-raw.jpg": "774ede61d5e4f774ee3bd21734db860d8631fbda4bf38b6399ea1eed536ea432",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c4-ov-grid.jpg": "977d612ea64f3329952a52c704fc8b7c7d21cb2892b48317abab496f362cfaed",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-e1-ov-grid.jpg": "7ee61a3fb92c6aff6e3b510f3a40e3638364d91d682544aef8fd09d7a33707a4",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-e2-ov-grid.jpg": "a6bdd61dc1535d3b847e2802cd884d106a5ac0b6d6cdd938ee80e1f4ef3fc260",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-e3-ov-grid.jpg": "d435f2d1b93a90f4fd416f11a854b1a56c612015a7e5ee32346f5fe45cc76673",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b1-ov-grid.jpg": "22802448ad5fcce314fce85757e15640b2fcd7da9bbfb049ba975387f1c0c3f0",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b2-ov-grid.jpg": "59f4b05d4d5ed44644f6a297e6124b78e43a138a55a058ebeb61e47b7a6d9354",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b3-ov-grid.jpg": "daef8aabc68d647e9a0b56829d5dcde21b70152ccc4ba580c52dc4d73903a5ee",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b4-ov-grid.jpg": "eeefaa6d2a5e4b8f3280c554519e4f13642f189ff5b6debef5d5cef5a7daf8a7",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b5-ov-grid.jpg": "c3dafcf2c7491f4e8c5c2e1885f12ed456e647da42654d4070077323c3c6c500",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b6-ov-grid.jpg": "3bbd68859bb62697a57acb236f2f862f21a82ed1ac7531299bdb05d3da4307d9",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b7-ov-grid.jpg": "f63838934ddb0e9a57791566bdd3ebf831e460fecb569db38c9075f343ae4e48",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b8-ov-grid.jpg": "63b0c3c2c5a2f72d1e2ac5d47f10e1618ae7284e8696b76c87b1fd3938d74fba",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b9-ov-grid.jpg": "8883857c6120266068307048e8c6b0b03c38818d9437d97080cd74f391dad67b",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-m1-raw-grid.jpg": "0f241c92499a2c858e9bf8e0f86fca98679e709d827b3a9d6f41b393eca83d6e",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-rev-overlay.jpg": "6689bf391ab6ea27c2db792c824427ef3e55b1ac070b07297df0aab02135c3b2",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-r2-ov-grid.jpg": "e7cecf0bdfad02bcccb98b88c8d37de423caef1a955ac46c9a091137b505a034",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-r5-ov-grid.jpg": "d48aeb0f0eeffbd531f24d3b268b089a842b17e898513625674ee4b9aeaf7013",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-r7-ov-grid.jpg": "2095babb9b05214532cafa9c8a753c7e681aa84f891092ba344449e554a5f002",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-r9-ov-grid.jpg": "7e333f9385aa5edac969465255ffc24bfb3289bd43b16deca7eb774cfda7a98d"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-e7065eb1ad2aaf",
+        "image_sha256": "65d0dd33a0918ded4e3262add9b705ba0aaba6f2586cd323f1051d6d73e61528",
+        "target_brief": "西侧独立住宅与东侧临水船屋/码头之间、南北走向（南段略向西南偏）的无标线深色窄路。北端截面在西侧横路汇入的丁字路口南沿（西侧为草坪转角，东侧为一栋白屋顶临水建筑，其南有码头木栈道和木平台）；向南经过西侧屋顶受损房屋、停着白色皮卡的混凝土车道、大白屋及其南侧屋面板外露的房屋，东侧经过褐色土场、大片碎石场地、蓝色屋顶船屋和混凝土地坪；南端截面约与西侧一栋白屋顶房屋前混凝土地坪的南部平齐，东侧为草地小水湾以南的浅色碎石场地，再往南路东有棕榈和白屋顶船屋。目标为路面两侧边界之间的全宽，不含两侧院地、车道地坪和码头。",
+        "target_polygon": [
+          [
+            0.551,
+            0.159
+          ],
+          [
+            0.692,
+            0.172
+          ],
+          [
+            0.663,
+            0.22
+          ],
+          [
+            0.643,
+            0.26
+          ],
+          [
+            0.622,
+            0.3
+          ],
+          [
+            0.605,
+            0.34
+          ],
+          [
+            0.592,
+            0.38
+          ],
+          [
+            0.572,
+            0.42
+          ],
+          [
+            0.553,
+            0.46
+          ],
+          [
+            0.534,
+            0.5
+          ],
+          [
+            0.515,
+            0.54
+          ],
+          [
+            0.495,
+            0.58
+          ],
+          [
+            0.47,
+            0.62
+          ],
+          [
+            0.452,
+            0.66
+          ],
+          [
+            0.446,
+            0.7
+          ],
+          [
+            0.43,
+            0.74
+          ],
+          [
+            0.41,
+            0.765
+          ],
+          [
+            0.395,
+            0.785
+          ],
+          [
+            0.385,
+            0.805
+          ],
+          [
+            0.381,
+            0.8345
+          ],
+          [
+            0.2836,
+            0.824
+          ],
+          [
+            0.39,
+            0.56
+          ],
+          [
+            0.485,
+            0.34
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.414,
+                0.488
+              ],
+              [
+                0.457,
+                0.48
+              ],
+              [
+                0.48,
+                0.501
+              ],
+              [
+                0.442,
+                0.512
+              ],
+              [
+                0.416,
+                0.503
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.414,
+                0.559
+              ],
+              [
+                0.428,
+                0.555
+              ],
+              [
+                0.44,
+                0.575
+              ],
+              [
+                0.424,
+                0.581
+              ]
+            ]
+          }
+        ],
+        "notes": "西缘带木龙骨的白色墙板一半压在路面上，路面西半部另有一块白色板件，路中偏东一堆白色板件的西半部也在路面内；首稿两个 debris 轮廓支持碎片类型。路面为无标线深色沥青/碎石，西界是与混凝土车道地坪、草地的分界；提示线下半段贴近路面东缘。目标东界按路面与东侧土场、碎石场地、混凝土地坪、草地的分界划定，不含东侧院地。",
+        "uncertainties": [
+          "中段（约 y 0.40–0.58）路面与东侧深色碎石场地之间没有明显路缘，东界按两端可见路宽连续推定，误差约 ±20 px。",
+          "多处细线斜跨路面（约 y 0.355–0.365 一条虚线状，y 0.74–0.83 两条），疑似垂落或落地的线缆，单幅俯视图无法判断是否落地，未作为实体。",
+          "东侧院地另有板件与木料，未并入目标。"
+        ],
+        "inspected_at": "2026-10-19T14:11:39.011892+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-e7065eb1ad2aaf.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-e7065eb1ad2aaf.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-e7065eb1ad2aaf.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\overviews\\bounded-extract-e7065eb1ad2aaf.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-view.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-guide.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-overlay.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-mask.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c1-raw.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c1-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c2-raw.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c2-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c3-raw.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c3-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c4-raw.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-c4-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-e1-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-e2-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-e3-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b1-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b2-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b3-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b4-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b5-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b6-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b7-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b8-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-b9-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-m1-raw-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-rev-overlay.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-r2-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-r5-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-r7-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\02-e7065eb1ad2aaf-r9-ov-grid.jpg"
+        ]
+      },
+      "final_row_sha256": "798d7e2046131491d9f83fe6c04fd17c9880b793b843b277c02f53559469f67e"
+    },
+    {
+      "sample_id": "bounded-extract-edb191854e9066",
+      "decision": "revised",
+      "findings": [
+        "整图与 guide：A–B 为东西向双车道主路及西端弯道，A 在北侧入口支路汇入处，B 在西侧交叉口东南、弯道转向南南西处；掩膜显示目标区全为有效影像（黑色缺像在南侧草坪）。",
+        "做了 4 段原生裁切、8 段 2.4 倍路面条带和弯道 2 倍放大：路面无确定的散落物或倒伏植被；两辆皮卡为正常行驶车辆；横跨路面的长暗条是南侧电杆、横担和标牌的影子，淡横线是配电线影子；横跨弯道的直细线是架空配电线。",
+        "x≈0.42–0.53 多条细而清晰的弯曲暗线跨过两车道并延伸到两侧车道入口和草地，连接南侧电杆与北侧住宅，单幅正射图分不清悬空线、其影子或落地线；弯道北侧高大倾斜棕榈的冠层悬在北车道上方（树干影子朝西北），冠层下路面不可见。同意首稿 indeterminate。",
+        "多边形：直线段两侧与路缘相差 ≤15 px（北侧略含路缘外草地），可接受；弯道内侧首稿边线比逐点像素扫描得到的铺装边（白色路缘外草地起点）偏内 32–40 px，漏掉部分南车道，东南角又越出约 18 px。按扫描点重画内侧，外侧（沿渠化斑马线岛和白色虚线封口）与两端截面沿用首稿。",
+        "notes 中“南侧倾倒电线设施”不准确：电杆有长影，仍在站立（直立或倾斜）；notes 与 uncertainties 按实际依据改写。target_brief 改写为不依赖 A/B 标记的描述。"
+      ],
+      "changes": {
+        "target_brief": "住宅区南侧的东西向双车道主路（双黄中心线、两侧白色边线），连同其西端向南转弯的弯道。东端截面约在北侧一条入口支路汇入处；西端截面在西侧四路交叉口东南角、渠化斑马线岛东南侧，此处道路已转向南南西。路段北侧为一排独立住宅及其车道入口，南侧为草带、沿路电线走廊和人行步道，弯道内侧为草坪和弧形步道。目标为两侧路缘之间的全宽，不含交叉口、北侧支路和住宅车道。",
+        "target_polygon": [
+          [
+            0.11,
+            0.562
+          ],
+          [
+            0.14,
+            0.459
+          ],
+          [
+            0.205,
+            0.368
+          ],
+          [
+            0.264,
+            0.357
+          ],
+          [
+            0.869,
+            0.346
+          ],
+          [
+            0.869,
+            0.445
+          ],
+          [
+            0.8,
+            0.448
+          ],
+          [
+            0.7,
+            0.451
+          ],
+          [
+            0.6,
+            0.454
+          ],
+          [
+            0.5,
+            0.4576
+          ],
+          [
+            0.4,
+            0.4624
+          ],
+          [
+            0.34,
+            0.4672
+          ],
+          [
+            0.3,
+            0.4726
+          ],
+          [
+            0.27,
+            0.4798
+          ],
+          [
+            0.2461,
+            0.49
+          ],
+          [
+            0.2327,
+            0.4994
+          ],
+          [
+            0.22,
+            0.5117
+          ],
+          [
+            0.2095,
+            0.5208
+          ],
+          [
+            0.1996,
+            0.5331
+          ],
+          [
+            0.1917,
+            0.5468
+          ],
+          [
+            0.185,
+            0.5548
+          ],
+          [
+            0.1734,
+            0.5748
+          ],
+          [
+            0.1626,
+            0.5972
+          ],
+          [
+            0.1525,
+            0.6234
+          ],
+          [
+            0.147,
+            0.6398
+          ]
+        ],
+        "notes": "全段原生裁切及 2 倍路面条带查看：路面无确定的散落物、倒伏植被或其他实体；两辆皮卡为正常行驶车辆，横跨路面的长暗条是南侧电杆、横担和标牌的影子，淡横线是沿路配电线的影子。x≈0.42–0.53 有多条细而清晰的弯曲暗线跨过两条车道并延伸到两侧车道入口和草地，连接南侧电杆与北侧住宅，像入户线或其影子，单幅正射图无法判断是悬空、低垂还是落地。弯道北侧一棵高大倾斜棕榈的冠层伸到北车道上方，树干影子朝西北，属悬垂冠层，冠层下路面不可见。因此不宣称整段正常。",
+        "uncertainties": [
+          "跨路细线是悬空线缆、其影子还是落地线缆无法确定。",
+          "弯道北车道上方棕榈冠层下的路面不能完全排除实体。",
+          "南车道约 (0.27–0.31, 0.43–0.44) 有几个 5–8 px 白色小斑点，北车道约 (0.205, 0.428) 有一块约 10 px 的深灰矩形斑块，可能是涂料残迹、碎屑或检修盖，无法确认。"
+        ]
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-edb191854e9066.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-edb191854e9066.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-edb191854e9066.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-view.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-guide.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-overlay.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-mask.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t1-raw.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t1-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t2-raw.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t2-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t3-raw.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t4-raw.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t4-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-w1-raw-x2.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-w2-raw-x2.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k1-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k2-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k3-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k4-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k5-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k6-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k7-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k8-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k9-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-s1-raw-x4.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-s2-raw-x4.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-s3-raw-x4.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-j1-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-p1-ov-grid.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r1-raw-x2.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r2-raw-x2.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r3-raw-x2.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r4-raw-x2.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r5-raw-x2.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r6-raw-x2.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r7-raw-x2.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r8-raw-x2.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-q1-raw-x2.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-q2-raw-x2.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-v1-ov-grid.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "68bdab750767618c326957b69b12ef0e85c6f84f11e2d9dbc0d3a907acccb5b7",
+      "first_author_id": "bounded_annotator_3",
+      "first_row_sha256": "17729c3c0cd1346984e3b8829957a6d2fbacd0949f36bee6ed86d57f87911bd3",
+      "reviewed_at": "2026-10-19T14:11:39.062846+00:00",
+      "reviewer_id": "claude_verifier_02",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-edb191854e9066.jpg": "68bdab750767618c326957b69b12ef0e85c6f84f11e2d9dbc0d3a907acccb5b7",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-edb191854e9066.jpg": "169d99af1d22eb566ca1b80eff2a4dee1922a726888b365d62e078418fafebb6",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-edb191854e9066.png": "b1dbba7792d894215a547eb454365905b68fa126a07e2cae0af813f59e54cc75",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-view.jpg": "469e275f543a92d139dd07f714096131275743ded8e1aa4bd8a71b1d4d29721f",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-guide.jpg": "11f49262ab8ef188af0f61f7f23da819253de4c2bcc79063a65fde9727f27c3e",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-overlay.jpg": "dca37311bc8c5b80d1f6f7c7a94eb823253f4ec7257286bae9d87421535d70bc",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-mask.jpg": "81f426cd24999eadac952db4cc6e313f869862ac6b25271e33f9ca1969173ab0",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t1-raw.jpg": "3fcf00b80bff7ac91186d7d8175dff29b41f959c6ef7a2a98a9f2efbe7cf370f",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t1-ov-grid.jpg": "53f52e2a0ee294bb4844e0e3f87394044a6847beaa2ed81fb9951ebe0d5f08b5",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t2-raw.jpg": "24898c4f039d5fd21de4017e68577dcf71ceb62cccf03df34aa8e1f7ca3f1f93",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t2-ov-grid.jpg": "5aa1751dc806736041a329a2e9af07c91ffd026162212207210d56244a1c7cf7",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t3-raw.jpg": "0f44ec66fcc7656560288cf48b3925d7a1aea04ec46e6e9231da5244e74d3d1f",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t4-raw.jpg": "2b4e85e09d4e3a97518e527cbfaad645bd02e15fab0992085c7f71a4c93e6c60",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t4-ov-grid.jpg": "854f9c6af4ee7b0b135d4ab3bef3ca24f2992902810c8ff11bd6b5be9a5d9c16",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-w1-raw-x2.jpg": "fb6e79ba7bbe06f345e2d0afaf7617f55da7912cfa7424b20997ccb9be04076d",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-w2-raw-x2.jpg": "4dc508491fe12486af009f033c8f0a7abf852b05e0b227cada94ac729d461e04",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k1-ov-grid.jpg": "cb65964aab46ca0a29e9975ca73d3c1189c72808d129fee04559649b32dcadc5",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k2-ov-grid.jpg": "e2d10f0a5a44ba7753e7a647cd7afd3c2e51cf38bfdd1c2a648af589de1b5778",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k3-ov-grid.jpg": "0be72f4dc274464a1b78938078e68253948b3c890a62ed706c4ea61e895f5c30",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k4-ov-grid.jpg": "7671977a47864e364830025015f6830508fcecee5765940ff317497dc7ed15f4",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k5-ov-grid.jpg": "51cb945d00d8571c0f42bf3761217b7c154796e9605892e90b979adc3358565e",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k6-ov-grid.jpg": "c150a2a594087fe5c22f64baa18fa162a66caf41ad5457f39134f85cbdfe65ea",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k7-ov-grid.jpg": "4ae1c401e3f413da748c275e72c18c2201b0dc3bb216d94fcf52ddc95be3150d",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k8-ov-grid.jpg": "2170ae5d5783ddb0176873428e1343006860d6b6697947cddfedd4de616a6e8e",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k9-ov-grid.jpg": "a074cbc81ba52e1924c2dd1ef79e0fd95fca34eddd723ca1c25eee96379a558d",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-s1-raw-x4.jpg": "bdcf6ae0d6c1c037e3533dd05509d13977f5061ee4a9af95e5000aacda4d9aa1",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-s2-raw-x4.jpg": "dbe8359c005bc59fd7eabe0a596ef7a045fd82a74772448481f31aba86ee2edb",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-s3-raw-x4.jpg": "b6ac599ccbcae06a08c043d0febbbed5c122007b43faedbe5833b8f76f6826d5",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-j1-ov-grid.jpg": "264120ae042074c081ff148e37f631dd2c067781280979cbe447c0919e99079a",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-p1-ov-grid.jpg": "e0cfb40ecf7ac045f51af5941378aede0da65f326e59d5ff1b9ad2ce9651cb4c",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r1-raw-x2.jpg": "28d3c83df8543187502427430f0054940a8fb1efcd119a36ed8c42135ccc21b0",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r2-raw-x2.jpg": "3a95a60f5644a5291db8e2158d987db0d76d2fbe7d0d47d7bf1c971762ec7cf1",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r3-raw-x2.jpg": "b93747b8bc482ee9658476e18b977a293fb15e3175d3c577a9b3c22504c1f293",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r4-raw-x2.jpg": "b5c5571acba0128fcbb90a0390eb78fc0219c474f0a5927b95edab06ec31d190",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r5-raw-x2.jpg": "3b582cb89546a2a32e10ff95b0e22c0234494cf888856e7cea57c90782cfedad",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r6-raw-x2.jpg": "b21d9d7465c6fc48bdfc92d6fd8aeabf6822e20a59a0f3f06daf4c89ab9269c4",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r7-raw-x2.jpg": "1b4a5fc814f06a397b556ded8153c145ef16f78497cc7b9d2d2687864c1b58b2",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r8-raw-x2.jpg": "260794421361dc9dd344e64b938d2146893af76d88a7329a38a5a41b3d5476b0",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-q1-raw-x2.jpg": "ea7743e80f166a70238e0f03f7067beb13581fda315e3b815a9c1c3c11c433d7",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-q2-raw-x2.jpg": "faf4956465375fb3b44d69547b0e4eb9a1fe334986041f458922681e1b7af0b7",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-v1-ov-grid.jpg": "6ced6b3d830b22cb0446e33e69665a1cba859ce8d9f9bcfd190114c1166f983a"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-edb191854e9066",
+        "image_sha256": "68bdab750767618c326957b69b12ef0e85c6f84f11e2d9dbc0d3a907acccb5b7",
+        "target_brief": "住宅区南侧的东西向双车道主路（双黄中心线、两侧白色边线），连同其西端向南转弯的弯道。东端截面约在北侧一条入口支路汇入处；西端截面在西侧四路交叉口东南角、渠化斑马线岛东南侧，此处道路已转向南南西。路段北侧为一排独立住宅及其车道入口，南侧为草带、沿路电线走廊和人行步道，弯道内侧为草坪和弧形步道。目标为两侧路缘之间的全宽，不含交叉口、北侧支路和住宅车道。",
+        "target_polygon": [
+          [
+            0.11,
+            0.562
+          ],
+          [
+            0.14,
+            0.459
+          ],
+          [
+            0.205,
+            0.368
+          ],
+          [
+            0.264,
+            0.357
+          ],
+          [
+            0.869,
+            0.346
+          ],
+          [
+            0.869,
+            0.445
+          ],
+          [
+            0.8,
+            0.448
+          ],
+          [
+            0.7,
+            0.451
+          ],
+          [
+            0.6,
+            0.454
+          ],
+          [
+            0.5,
+            0.4576
+          ],
+          [
+            0.4,
+            0.4624
+          ],
+          [
+            0.34,
+            0.4672
+          ],
+          [
+            0.3,
+            0.4726
+          ],
+          [
+            0.27,
+            0.4798
+          ],
+          [
+            0.2461,
+            0.49
+          ],
+          [
+            0.2327,
+            0.4994
+          ],
+          [
+            0.22,
+            0.5117
+          ],
+          [
+            0.2095,
+            0.5208
+          ],
+          [
+            0.1996,
+            0.5331
+          ],
+          [
+            0.1917,
+            0.5468
+          ],
+          [
+            0.185,
+            0.5548
+          ],
+          [
+            0.1734,
+            0.5748
+          ],
+          [
+            0.1626,
+            0.5972
+          ],
+          [
+            0.1525,
+            0.6234
+          ],
+          [
+            0.147,
+            0.6398
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "全段原生裁切及 2 倍路面条带查看：路面无确定的散落物、倒伏植被或其他实体；两辆皮卡为正常行驶车辆，横跨路面的长暗条是南侧电杆、横担和标牌的影子，淡横线是沿路配电线的影子。x≈0.42–0.53 有多条细而清晰的弯曲暗线跨过两条车道并延伸到两侧车道入口和草地，连接南侧电杆与北侧住宅，像入户线或其影子，单幅正射图无法判断是悬空、低垂还是落地。弯道北侧一棵高大倾斜棕榈的冠层伸到北车道上方，树干影子朝西北，属悬垂冠层，冠层下路面不可见。因此不宣称整段正常。",
+        "uncertainties": [
+          "跨路细线是悬空线缆、其影子还是落地线缆无法确定。",
+          "弯道北车道上方棕榈冠层下的路面不能完全排除实体。",
+          "南车道约 (0.27–0.31, 0.43–0.44) 有几个 5–8 px 白色小斑点，北车道约 (0.205, 0.428) 有一块约 10 px 的深灰矩形斑块，可能是涂料残迹、碎屑或检修盖，无法确认。"
+        ],
+        "inspected_at": "2026-10-19T14:11:39.062846+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-edb191854e9066.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-edb191854e9066.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-edb191854e9066.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-view.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-guide.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-overlay.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-mask.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t1-raw.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t1-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t2-raw.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t2-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t3-raw.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t4-raw.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-t4-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-w1-raw-x2.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-w2-raw-x2.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k1-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k2-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k3-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k4-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k5-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k6-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k7-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k8-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-k9-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-s1-raw-x4.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-s2-raw-x4.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-s3-raw-x4.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-j1-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-p1-ov-grid.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r1-raw-x2.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r2-raw-x2.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r3-raw-x2.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r4-raw-x2.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r5-raw-x2.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r6-raw-x2.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r7-raw-x2.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-r8-raw-x2.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-q1-raw-x2.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-q2-raw-x2.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\claude_verifier_02\\inspection\\03-edb191854e9066-v1-ov-grid.jpg"
+        ]
+      },
+      "final_row_sha256": "2a58f4833895fe808b1d200b44b52bc6bd365cda41d438ab2017baa2e341ac1f"
+    }
+  ]
+}
