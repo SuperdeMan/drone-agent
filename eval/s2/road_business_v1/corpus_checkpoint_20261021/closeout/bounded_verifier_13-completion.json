@@ -1,0 +1,160 @@
+{
+  "format": "drone.p6-road-ai-verification-completion/v1",
+  "reviewer_id": "bounded_verifier_13",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "completed_at": "2026-10-21T09:26:01.124318+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_13\\assignment.json",
+  "assignment_sha256": "e27ffef3ab55f2bcce5d74a8ccd6dae0030faf4119a4b6bdacc3e93abc51b736",
+  "reviews_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_13\\reviews.json",
+  "reviews_sha256": "53e1f2090fac6f57d323a3314476472b62ef6ae4b030998b6e5c41073398f1f9",
+  "assigned_count": 4,
+  "saved_count": 4,
+  "decision_counts": {
+    "accepted": 3,
+    "revised": 1
+  },
+  "verdict_counts": {
+    "normal": 1,
+    "indeterminate": 2,
+    "excluded_source": 1
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "scope": "Only assigned four originals, their assigned first-pass rows, annotation_io.py and verification_io.py. No network, evaluation prompts, evaluation outputs or source labels accessed. Main MPO frame 0 only; embedded previews are not independent captures.",
+  "checks": {
+    "utf8_and_json_valid": true,
+    "assignment_hash_valid": true,
+    "original_and_draft_and_first_row_hashes_valid": true,
+    "inspection_receipt_and_final_row_hashes_valid": true,
+    "required_fields_valid": true,
+    "normalized_target_and_object_geometries_valid": true,
+    "geometry_method": "Finite normalized vertices, unique vertices, nonadjacent segment intersection checks and positive shoelace area. Empty object arrays for all four rows.",
+    "native_crops_exact_frame0_pixels": true,
+    "native_crops_cover_all_present_targets": true,
+    "rows": [
+      {
+        "sample_id": "floodnet-7143",
+        "decision": "accepted",
+        "verdict": "normal",
+        "inspected_file_count": 5,
+        "hashes_valid": true,
+        "fields_valid": true
+      },
+      {
+        "sample_id": "floodnet-9114",
+        "decision": "accepted",
+        "verdict": "indeterminate",
+        "inspected_file_count": 6,
+        "hashes_valid": true,
+        "fields_valid": true
+      },
+      {
+        "sample_id": "floodnet-9098",
+        "decision": "revised",
+        "verdict": "indeterminate",
+        "inspected_file_count": 5,
+        "hashes_valid": true,
+        "fields_valid": true
+      },
+      {
+        "sample_id": "floodnet-8624",
+        "decision": "accepted",
+        "verdict": "excluded_source",
+        "inspected_file_count": 4,
+        "hashes_valid": true,
+        "fields_valid": true
+      }
+    ],
+    "geometries": [
+      {
+        "sample_id": "floodnet-7143",
+        "valid": true,
+        "normalized_area": 0.048818400000000005,
+        "native_crops_cover_target_bbox": true,
+        "pixel_bbox": [
+          3171.0,
+          0,
+          4000,
+          2163.0
+        ]
+      },
+      {
+        "sample_id": "floodnet-9114",
+        "valid": true,
+        "normalized_area": 0.09407250000000007,
+        "native_crops_cover_target_bbox": true,
+        "pixel_bbox": [
+          0,
+          2580.0,
+          4000,
+          3000
+        ]
+      },
+      {
+        "sample_id": "floodnet-9098",
+        "valid": true,
+        "normalized_area": 0.10150000000000006,
+        "native_crops_cover_target_bbox": true,
+        "pixel_bbox": [
+          2208.0,
+          0,
+          2836.0,
+          3000
+        ]
+      },
+      {
+        "sample_id": "floodnet-8624",
+        "valid": true,
+        "target_polygon": null,
+        "reason": "No confirmed paved-road target"
+      }
+    ],
+    "primary_frames": [
+      {
+        "sample_id": "floodnet-7143",
+        "format": "MPO",
+        "frame_inspected": 0,
+        "embedded_preview_inspected": false,
+        "n_frames": 2,
+        "image_sha256": "b60f53682744e644533fefdb8cfa9aee9011c336a898d65d26a08df0f36b9a64"
+      },
+      {
+        "sample_id": "floodnet-9114",
+        "format": "MPO",
+        "frame_inspected": 0,
+        "embedded_preview_inspected": false,
+        "n_frames": 2,
+        "image_sha256": "44ab37e6583c9a30e1342bf635800b8f8cc86ea7b2b872e9cf9489fa3b8ca088"
+      },
+      {
+        "sample_id": "floodnet-9098",
+        "format": "MPO",
+        "frame_inspected": 0,
+        "embedded_preview_inspected": false,
+        "n_frames": 2,
+        "image_sha256": "c4f59772b44b34aed2130d660a15d04b23d07a90e22b95a426eac5cee7ca6bc0"
+      },
+      {
+        "sample_id": "floodnet-8624",
+        "format": "MPO",
+        "frame_inspected": 0,
+        "embedded_preview_inspected": false,
+        "n_frames": 2,
+        "image_sha256": "e07b9eb4b4d811eb5578d20b993a887702ffcdda9b00218c34a6475e7e5a3075"
+      }
+    ]
+  },
+  "unresolved_issues": [
+    {
+      "sample_id": "floodnet-9114",
+      "kind": "business_state_indeterminate",
+      "detail": "Native-resolution marks on the light concrete section do not reliably distinguish surface damage from loose fragments."
+    },
+    {
+      "sample_id": "floodnet-9098",
+      "kind": "business_state_indeterminate",
+      "detail": "Tree crowns conceal portions of the fixed roadway; ground entities below the crowns cannot be reliably determined from this original."
+    }
+  ],
+  "operational_blockers": []
+}

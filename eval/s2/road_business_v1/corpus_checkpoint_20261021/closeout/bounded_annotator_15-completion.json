@@ -1,0 +1,37 @@
+{
+  "author_id": "bounded_annotator_15",
+  "assigned": 4,
+  "saved": 4,
+  "verdict_counts": {"normal": 1, "obstacle": 0, "indeterminate": 2, "excluded_source": 1},
+  "self_reported_model": "unknown",
+  "files_read_outside_assignment": [],
+  "completed_at": "2026-10-21T08:56:02+00:00",
+  "assignment_sha256": "1334ce8ff474c34d447749e32c41956a801e640818c24f8899b70c60aff5db22",
+  "suggestions_sha256": "901b1c6ac9f4ac4209e96e2beeb816052c8dbfb6b4b05bcbeedc2b755b49ad5f",
+  "permitted_support_files_read": [
+    "D:/drone-agent-data/p6-corpus-completion-20261018/claude-orchestrator/instructions/annotator-floodnet-v1.md",
+    "D:/drone-agent-data/p6-corpus-completion-20261018/annotation_io.py",
+    "D:/drone-agent-data/p6-corpus-completion-20261018/claude-orchestrator/tools/view_helper.py"
+  ],
+  "validation": {
+    "exact_row_fields": true,
+    "utf8_decoding": true,
+    "source_image_hashes": true,
+    "inspection_receipt_hashes": true,
+    "simple_normalized_polygons": true,
+    "selection_brief_and_polygon_match_saved_rows": true,
+    "target_selection_precedes_inspected_at": true,
+    "batches_match_snapshots_and_suggestions": true,
+    "all_listed_inspection_images_actually_viewed": true,
+    "source_frame_index_inspected": 0,
+    "auxiliary_mpo_frames_not_counted": true
+  },
+  "notes": [
+    "仅基于分配的四张原图主帧0作独立AI初标；四个文件实际均为两帧MPO，只使用主帧0，未将附属帧作为新样本。",
+    "每张先实际查看整原图，保存不含verdict的target-selection记录，再检查目标状态。7143与9114的几何曾依叠图校准至真实铺装边；未因状态改变目标道路或裁短目标。",
+    "7143为normal；9114因桥面灰色小斑点无法可靠区分表面缺损与碎片而indeterminate；9098因普通车辆阻碍关系、树冠下路面及局部小物性质未明而indeterminate；8624无公共铺装道路，excluded_source且target_polygon为null。",
+    "两批各2条均先通过view_helper几何检查，再使用根annotation_io.py保存，保存后未修改批次、快照或检查图。",
+    "未联网，未读取代码仓库、待评模型提示或输出、源标签或语义mask、其他标注与复核。files_read_outside_assignment指未授权文件；上列三项为任务明确许可的中性说明和工具。",
+    "最终本地核对字段、UTF-8、assignment与原图SHA256、所有inspection回执哈希、多边形几何、四份先选记录与最终记录一致性、先选时间顺序和快照一致性，全部通过。"
+  ]
+}

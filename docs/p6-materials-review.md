@@ -1,6 +1,6 @@
 # P6 目标业务素材审查
 
-[当前交接](p6-ai-verification-handoff-2026-10-18.md) · [实施任务](operations-implementation.md#10-p6证据驱动运营评审建议) · [路线图](roadmap.md) · [道路业务定义](p5-implementation.md#35-第二业务模板园区道路障碍候选复核d071)
+[当前交接](p6-road-corpus-handoff-2026-10-21.md) · [实施任务](operations-implementation.md#10-p6证据驱动运营评审建议) · [路线图](roadmap.md) · [道路业务定义](p5-implementation.md#35-第二业务模板园区道路障碍候选复核d071)
 
 ## 范围与结论
 

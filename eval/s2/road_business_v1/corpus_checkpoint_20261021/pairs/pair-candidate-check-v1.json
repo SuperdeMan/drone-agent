@@ -1,0 +1,52 @@
+{
+  "format": "drone.p6-pair-candidate-check/v1",
+  "recorded_at": "2026-10-21T12:52:00.220230+00:00",
+  "source_sha256": "d0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2",
+  "review_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\review.json",
+  "review_sha256": "88d26a4faaca25c0e6caf3974cf54ee29deb2f78652ecf1c579f8d18a2b419aa",
+  "integrity_sha256": "628d87db8242c57bd99406c4fef058b14b646efb1e973c6e710592f27cd006ad",
+  "pair": {
+    "pair_id": "bounded-repeat-4bd072792fc2d2",
+    "sample_ids": [
+      "bounded-extract-e5e042c327f83a",
+      "bounded-extract-785300c43ff308"
+    ],
+    "origin": "delegated_ai",
+    "reviewer_id": "pair_verifier_1",
+    "comparison_scope": "distinct_author_dated_derived_captures_unordered",
+    "same_condition_ai_verified": null,
+    "distinct_captures_ai_verified": true,
+    "evidence": "I personally inspected the two original panoramas, both guides and validity masks, both full-target native crops, both fixed-scope overlays, and all six overlapping native-resolution tiles for each image. The tiles cover the complete supplied polygon bounding boxes, including both A/B endpoints; no endpoint, centerline, or target polygon was moved or reduced. All six supplied image/guide/mask hashes match the assignment. The unchanged polygons contain 700488 and 848543 rasterized pixels respectively; each has only mask value 255 and zero invalid pixels. This checks image validity coverage, not absence of occlusion. same_asset=True is based on visual correspondence, not the asset identifier: in both images the same elongated red multi-hip roof has a smaller projecting rear/service roof on its west side and a white awning on its southern/front side; the same narrow rear lane runs north-south west of that building, rounds the southwest corner, and becomes a diagonal front lane with matching parking-bay stripes, pavement cracks and directional arrows. The long landscaped island between the front lane and diagonal public road has the same small silver-roofed sign/panel structure and a red object near its eastern end. The upper apron, northwest masonry enclosure, west public road, and island of palms also agree in relative placement. Assigned A is the cross-section near the front-lane/east turn, southeast of the small quadrilateral landscaped parking island (approximately pixel 2016,1598 in the first image and 2022,1602 in the second). Assigned B is where the west rear lane meets the broad upper apron and left-road entrance, south of the masonry enclosure (approximately 802,723 and 805,725). The route between these fixed endpoints is visibly the same physical lane around the building. same_condition=None: both images visibly contain confirmed non-vegetation debris on the western rear pavement beside the building, including irregular rectangular panels, box-like pieces and mixed piled fragments extending into the fixed road corridor (clearest in native-r2c1 for each image). The exposed southern bend and front diagonal lane can be compared throughout and show pavement, markings and scattered fragments; the debris layout, lighting and vehicle placements are not identical. The confirmed visible neutral type set is {debris} in each image, but I cannot certify that this is the complete set over both full fixed targets: canopy overlap and strong shadow along the northern part of the west lane obscure local ground/edge details, especially at the palm island. I did not classify planted palms, their crowns or their shadows as actual vegetation intrusion. Ordinary parked or road vehicles were not counted as obstacles; no object-size threshold was applied. No additional other_entity was confirmed. This is an indeterminate comparison, not a finding that conditions differ. distinct_captures=True is limited to the supplied unordered, distinct-author-dated UAV-derived capture scope: source 1001-Kennedy-Green-Mobile-Homes.geo.tif has author date group 2022-10-01 and parent SHA256 ffab4194aaeddbbc214649647a53954201b12c0cd42b3127f0b10c8fc2d3da82, whereas 1002-Palm-Acers.4.geo.tif has author date group 2022-10-02 and parent SHA256 8c7eb124e355b41c74c0dd49cb18c3eae130da559a2d54731d9ddd34691e84e4. The provided assignment has no conflicting date fields for these sources; both flight IDs are null and raw_camera_frame_claimed is false. I did not independently verify flight identity, UTC acquisition time or original camera frames. No clearing cause or human efficiency was inferred.",
+    "ai_verification": {
+      "file": "p6-corpus-completion-20261018/pair-verification/pair_verifier_1/review.json",
+      "sha256": "88d26a4faaca25c0e6caf3974cf54ee29deb2f78652ecf1c579f8d18a2b419aa",
+      "context_file": "p6-corpus-completion-20261018/resume-20261021/pair-context-v1.json",
+      "context_sha256": "67b6c76393f4f503c1741e4bb4a7a038707ac7dd6d738a6449ec4456758375ca",
+      "pair_id": "bounded-repeat-4bd072792fc2d2",
+      "row_sha256": "8fd61fa0a5129e235efac2664c2b207ae7a8e9100d767eb3918a8b7ab651fe00"
+    }
+  },
+  "delegated_pair_issues": [
+    "delegated_pair_review_mismatch"
+  ],
+  "pair_problems": [
+    "stability_pair_not_verified"
+  ],
+  "independent_observer_conclusions": {
+    "same_asset": true,
+    "same_condition": null,
+    "distinct_captures": true,
+    "uncertainties": [
+      "Canopy overlap and strong local shadows in the upper western fixed corridor prevent a full-target guarantee of the complete neutral entity-type set, so same_condition remains null despite visible debris in both.",
+      "The validity masks cover the complete supplied polygons but do not establish ground visibility beneath canopy or shadows.",
+      "A and B are the supplied projected cross-sections. Their surrounding road geometry matches visually, but no independent painted terminal line or survey proves exact natural/facility boundary placement.",
+      "The polygons include verge and planted-island edges. Apparent crown overlap is not sufficient to establish actual vegetation intrusion into the road.",
+      "Distinct capture status relies only on the supplied distinct parent digests and nonconflicting 2022-10-01/2022-10-02 author-date groups; no flight ID, UTC timestamp, raw-frame lineage, temporal ordering or clearing event was independently verified.",
+      "This is a delegated AI visual inspection only; no human verification or formal release decision was created."
+    ]
+  },
+  "candidate_passes_pair_binding_and_state_checks": false,
+  "scope": "Pair observation binding and same-state check only; whole-corpus source, identity, split, independence and coverage admission remains required.",
+  "formal_pair_admitted": false,
+  "formal_release_eligible": false
+}

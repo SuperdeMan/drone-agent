@@ -1,0 +1,46 @@
+{
+  "format": "drone.p6-road-ai-verification-completion/v1",
+  "reviewer_id": "bounded_verifier_10",
+  "completed_at_utc": "2026-10-21T08:28:01.609768+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_10\\assignment.json",
+  "assignment_sha256": "33fa1df94605a85f681c92f5fe0f9e9bd5aaf71fbe69a287c641fc4d785d0f23",
+  "reviews_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_10\\reviews.json",
+  "reviews_sha256": "040cde6048794ee7ac1d4124019c71f5c2e5169ee1cc024d23f87f33e441314f",
+  "assigned_count": 10,
+  "saved_count": 10,
+  "decision_counts": {"revised": 4, "accepted": 6},
+  "verdict_counts": {"excluded_source": 2, "indeterminate": 7, "obstacle": 1},
+  "validation": {
+    "sample_ids_complete_unique": true,
+    "six_field_batches_checked": 5,
+    "utf8_no_bom_or_replacement": true,
+    "assignment_hash_verified": true,
+    "all_original_and_guide_hashes_verified": true,
+    "all_inspection_file_hashes_verified": true,
+    "inspection_file_references_checked": 35,
+    "first_and_final_row_hashes_verified": true,
+    "changes_only_differing_fields": true,
+    "non_obstacle_objects_empty": true,
+    "normalized_nonzero_simple_target_polygons_checked": 1,
+    "normalized_nonzero_simple_object_polygons_checked": 4,
+    "fixed_endpoints_retained": true,
+    "final_outline_visually_checked": "check-09-final-outline.jpg"
+  },
+  "isolation": {
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "other_annotation_answers_seen": false,
+    "repo_read": false,
+    "assigned_first_pass_seen": true,
+    "only_worker_dir_written": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "notes": [
+    "全部 10 条逐张实际查看原图和 guide；只使用分配的首稿及本 worker 自制检查图。",
+    "2 条无法可靠表达固定完整道路目标，修为 excluded_source/null；7 条保留水沙遮蔽或边界关系不明导致的 indeterminate/null。",
+    "1 条 obstacle 保留两端截面并纠正全幅轮廓偏移，保留 debris，增加路内材质不明实体的 other_entity 定位。",
+    "所有检查图与批次 JSON 作为复核证据留在 worker_dir。"
+  ]
+}

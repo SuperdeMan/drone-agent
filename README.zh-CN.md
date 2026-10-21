@@ -11,7 +11,7 @@
 
 无人机巡检运营平台，以安全约束任务运行时为底座，提供类型化任务、准入与审批、本地执行、持久工作流、资源调度，以及基于证据的复核、工单与复检。
 
-> **当前范围：**P0–P5 已通过软件 / SITL 门禁；M3 局部自主已通过仿真验证，Jetson 与现场验证走 H 主线。P6 的 02–07 工作包已按各自范围准出；航段走廊和解释核对 v2 未采用。**WP-P6-01 仍未完成：**当前公开无人机数据批次已封存交接，用户授权的独立 AI 初标与核验尚待完成；真人候选计时移至后续运营验证。独立资产覆盖、真实跨次配对与正式评测仍待补齐，P6 未整体准出。当前数量、剩余工作与证据边界见 [P6 交接](docs/p6-road-corpus-handoff-2026-10-19.md)和[路线图](docs/roadmap.md)。
+> **当前范围：**P0–P5 已通过软件 / SITL 门禁；M3 局部自主已通过仿真验证，Jetson 与现场验证走 H 主线。P6 的 02–07 工作包已按各自范围准出；航段走廊和解释核对 v2 未采用。**WP-P6-01 仍未完成：**公开无人机材料收集及用户授权的独立 AI 初标与核验继续推进；真人候选计时移至后续运营验证。独立资产覆盖、真实跨次配对与正式评测仍待补齐，P6 未整体准出。当前数量、剩余工作与证据边界见 [P6 交接](docs/p6-road-corpus-handoff-2026-10-21.md)和[路线图](docs/roadmap.md)。
 
 [本机体验](#本机体验) · [设计](#设计) · [验证记录](#验证记录) · [文档导航](#文档导航) · [路线图](#路线图)
 
@@ -134,7 +134,7 @@ uv run python scripts/generate_proto.py
 | 查看飞行证据与回放 | [评测体系](docs/architecture/08-evaluation.md) · [拉取与查看运行](docs/cloud-development.md#查看与人工核对结果) |
 | 运营层与下一批工作 | [运营架构](docs/architecture/09-operations.md) · [实施任务](docs/operations-implementation.md) · [P4 验收](docs/p4-readiness.md) · [P5 验收](docs/p5-readiness.md) · [P6 补拍验收](docs/p6-recapture-readiness.md) · [P6 对抗录制验收](docs/p6-adversarial-readiness.md) · [P5 方案](docs/p5-implementation.md) · [运维手册](docs/operations-guide.md) |
 | 设计理由与复用来源 | [决策记录](docs/decisions.md) · [姊妹项目复用](docs/reuse-from-embodied-agent.md) |
-| P6 公开素材与剩余工作 | [交接](docs/p6-road-corpus-handoff-2026-10-19.md) · [来源审查](docs/p6-materials-review.md) · [完整道路标注](docs/p6-road-labeling-guide.md) · [开发诊断](docs/p6-materials-development.md) |
+| P6 公开素材与剩余工作 | [交接](docs/p6-road-corpus-handoff-2026-10-21.md) · [来源审查](docs/p6-materials-review.md) · [完整道路标注](docs/p6-road-labeling-guide.md) · [开发诊断](docs/p6-materials-development.md) |
 
 ## 路线图
 
