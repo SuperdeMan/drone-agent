@@ -1,0 +1,33 @@
+{
+  "recorded_at": "2026-10-21T14:30:57.231462+00:00",
+  "reviewer_task": "/root/prior_binding_metadata_audit",
+  "history_fork": "none",
+  "review_scope": "Read-only helper/metadata review; no images, evaluated prompts, model outputs, cloud execution or business adjudication.",
+  "finding": {
+    "affected_versions": [
+      "check_current_ai_records_v6.py",
+      "combine_annotation_audits_v1.py"
+    ],
+    "issue": "An unmatched scoped prior observation could be skipped and an empty 0/0 audit could exit successfully; the old union dropped historical_unmatched and hardcoded pending reverification to [].",
+    "actual_occurrence_in_completed_ordinary_audit": false,
+    "prior_cloud_audit_had_not_yet_run_at_review": true
+  },
+  "resolution": {
+    "checker": "check_current_ai_records_v7.py",
+    "checker_sha256": "fc5266786b0b51c9ba4450c84655426c742596cf7cb8baf6b3b7ab4204ee14be",
+    "union": "combine_annotation_audits_v2.py",
+    "union_sha256": "861727cc11fbc76fd90695648fe1ac3817480781a90690af8635a92f5bc04dc1",
+    "changes": [
+      "Reject zero checked rows and incorrect expected counts.",
+      "Require every requested reviewer assignment sample to have been actually checked.",
+      "Reject duplicate selected samples, input scope errors and unresolved protocol reverification.",
+      "Retain historical unmatched records and the actual part platform/scope in the union."
+    ],
+    "regression_result_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021-b\\scope-guard-probes-v1\\result.json",
+    "regression_result_sha256": "db48260cd7ea9e1116922f36a55a431f27709e6b6f1bb5525c966a716dba4b6d",
+    "expected_rejections": 3
+  },
+  "human_reviews_created": 0,
+  "new_business_observations": 0,
+  "formal_release_eligible": false
+}

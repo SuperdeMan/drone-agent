@@ -1,0 +1,524 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "bounded_verifier_19",
+  "created_at": "2026-10-21T12:46:40.529293+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\assignment.json",
+  "assignment_sha256": "227b8af53605c67de3a7e16205615e9630a9bd0c1761c1868cfd4e8dd90bd6d9",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-34d4bfe958810d",
+      "decision": "revised",
+      "findings": [
+        "已实际查看原图、guide、mask、覆盖完整固定目标的五张重叠原生像素裁片及行人细节；assignment、原图与guide摘要均与指定值相符。mask全部为255，固定弯道路段及A/B横截面均在源覆盖内。",
+        "三处other_entity多边形分别对应红色车辆旁、白色皮卡旁和道路右缘的可见行人，均位于目标铺装道路内；实体身份及轮廓成立。静态图不证明人员实际阻路、违规或清障必要，普通车辆不作为障碍。",
+        "首稿A端南侧顶点在可见铺装路缘内约36像素，造成固定横截面局部欠宽；已沿穿过原A点且垂直首段中心线的同一横截面补到南侧路缘，并补足邻接路缘点。未移动或缩短A/B端点，B端保留原宽阔路口完整横截面。",
+        "道路两侧大部残骸处于路外；可见树冠及阴影未作为实际植被侵入的证明。树冠下未显露区域及B端拼接重影仍保留不可判清的不确定性。"
+      ],
+      "changes": {
+        "target_polygon": [
+          [
+            0.20186827105763142,
+            0.20336713219820166
+          ],
+          [
+            0.23907536415452818,
+            0.21618519227090108
+          ],
+          [
+            0.3174477517416086,
+            0.257126458771762
+          ],
+          [
+            0.3776124129195694,
+            0.30227664052037495
+          ],
+          [
+            0.4322355921469284,
+            0.35201836617562654
+          ],
+          [
+            0.47815072830905636,
+            0.4094126650086091
+          ],
+          [
+            0.5232742241925269,
+            0.48593839678591927
+          ],
+          [
+            0.5866054464851171,
+            0.5902047063325043
+          ],
+          [
+            0.6230208993033566,
+            0.6485555768127033
+          ],
+          [
+            0.6641861937935403,
+            0.662904151520949
+          ],
+          [
+            0.6966434452184928,
+            0.6724698679931127
+          ],
+          [
+            0.7378087397086763,
+            0.6839487277597092
+          ],
+          [
+            0.7694743508549715,
+            0.6782092978764109
+          ],
+          [
+            0.7995566814439519,
+            0.6734264396403291
+          ],
+          [
+            0.824255858138062,
+            0.6791658695236273
+          ],
+          [
+            0.7927485750474984,
+            0.8303041897838148
+          ],
+          [
+            0.7694743508549715,
+            0.8016070403673236
+          ],
+          [
+            0.7393920202659912,
+            0.7824756074229959
+          ],
+          [
+            0.6982267257758075,
+            0.7614310311842357
+          ],
+          [
+            0.6507283090563648,
+            0.7422995982399082
+          ],
+          [
+            0.6174794173527549,
+            0.7174287354122824
+          ],
+          [
+            0.5810639645345155,
+            0.6791658695236273
+          ],
+          [
+            0.5406903103229892,
+            0.6160321408073465
+          ],
+          [
+            0.4813172894236859,
+            0.5184618327912761
+          ],
+          [
+            0.43856871437618744,
+            0.4534149607805625
+          ],
+          [
+            0.39661177960734645,
+            0.4036732351253109
+          ],
+          [
+            0.34357188093730207,
+            0.3577577960589248
+          ],
+          [
+            0.2976567447751742,
+            0.31892098718193995
+          ],
+          [
+            0.2248258391386954,
+            0.28314520757604744
+          ],
+          [
+            0.18402359599934634,
+            0.2722402907977807
+          ]
+        ],
+        "notes": "独立AI二审已查看原图、guide、mask、覆盖完整固定目标的原生像素裁片及行人细节。保留沿固定A/B端点的100米弯道路段，A端南侧横截面与邻接边界补至铺装路缘；固定端点未移动，B端保留宽阔路口完整横截面。红色车辆旁、白色皮卡旁和右侧路缘三处行人可确认位于铺装道路内，按当前帧可见实体候选口径保留other_entity；静态图不能证明实际阻路、违规或清障必要。普通汽车不作为障碍。可见房屋残骸主要在道路外，树冠与投影未直接视为实际植被侵入。树冠下路面及B端车辆拼接重影区域仍不能可靠判清。"
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-34d4bfe958810d.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-34d4bfe958810d.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-34d4bfe958810d.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\01_a_upper_native.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\02_upper_junction_native.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\03_center_native.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\04_lower_curve_native.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\05_b_wide_native.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\06_pedestrians_native.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\01_a_upper_overlay.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\02_upper_junction_overlay.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\03_center_overlay.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\04_lower_curve_overlay.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\05_b_wide_overlay.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\06_pedestrians_overlay.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\07_a_cross_section_native.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\07_a_cross_section_overlay.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\08_a_final_overlay.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "12bf6ac4791282b36f9af62f1086def2099bb87a32007190f2f48a02b25e0592",
+      "first_author_id": "bounded_annotator_20",
+      "first_row_sha256": "09ba0648c41e652b47d2b4a0afa430f33fcbf0972b2e92e3d80839f96642483e",
+      "reviewed_at": "2026-10-21T12:46:40.554407+00:00",
+      "reviewer_id": "bounded_verifier_19",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-34d4bfe958810d.jpg": "12bf6ac4791282b36f9af62f1086def2099bb87a32007190f2f48a02b25e0592",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-34d4bfe958810d.jpg": "b7bfc674423f1d156d87b73748f1a10e71399fe2b916f9debe6e6764c9ac58f2",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-34d4bfe958810d.png": "0bcb9f91111953feff81ac04965b15ebcf1f1bf23e798461c6694ae65776425b",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\01_a_upper_native.png": "ce4f0869ce6c08048c3dfe91a002adb5d33e810eeb4ea3dd269c83e84088382c",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\02_upper_junction_native.png": "b767ddaa35692bd829e1aed08a03e7c89e33330b743441acaef099b6fba2affa",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\03_center_native.png": "3f8998fa7468d2dbaf18f8284e95be1bca333406748eccf0348b7de04af0739a",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\04_lower_curve_native.png": "3763950dc5b88e0dbf616d28712eeb1c68a3e9266b1490d8835630a6c2cd9b9a",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\05_b_wide_native.png": "84ad7da120b696100a9a242c00021d8d63f41873d1be454c2c64252175d15959",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\06_pedestrians_native.png": "96a564c379f2f68d5c8f24c7536afcc8f6d48806866796c362eeb2c68d8cfb47",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\01_a_upper_overlay.png": "55c4486e65856de9f21fa5db30f86f8889987bc83b76b7fbd17e9348ca987a80",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\02_upper_junction_overlay.png": "5cb2b9cb55fe0292a0d17b0189461724e2bd3f2a4ab6c6613bb37d60a24e9906",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\03_center_overlay.png": "c3161b779922bd3946dc18aad0eb655ae4488d067cda3de63b3c9bb9f7bea4b8",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\04_lower_curve_overlay.png": "622821686b1b861469ae2c6f08f0f0d787adbefc69f1fc76b794c305ad13d1e1",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\05_b_wide_overlay.png": "7295ec1377e5b6f1f686f75e0d85a57df102bac842ebaf01356d98de8ad87b5f",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\06_pedestrians_overlay.png": "2f188eb377fe59cac84497f87f0d2a2850161c3a6baeee8f633514a56e592444",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\07_a_cross_section_native.png": "0c6ad67fec745e8d87786652f958993d24a00dce210afcf44c1b5bc4adcab769",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\07_a_cross_section_overlay.png": "6ba714a809c9045e3c1e01fd41ddddd44863a4749c6a6025f8df656c88f26f37",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\08_a_final_overlay.png": "35af6676fab22739c07b5cec1ba88d04f8707e6d9fafe4cc8c3ae775a911577f"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-34d4bfe958810d",
+        "image_sha256": "12bf6ac4791282b36f9af62f1086def2099bb87a32007190f2f48a02b25e0592",
+        "target_brief": "起点为左上弯道上、北侧浅色空地与南侧草坪之间的固定横断面；沿灰色住宅道路向右下，经过橙色废料箱、红色车辆和白色皮卡旁的支路口，再沿右侧房屋残骸与树木旁下弯；终点为右下白色皮卡及重影白车附近宽阔路口内的固定横断面。",
+        "target_polygon": [
+          [
+            0.20186827105763142,
+            0.20336713219820166
+          ],
+          [
+            0.23907536415452818,
+            0.21618519227090108
+          ],
+          [
+            0.3174477517416086,
+            0.257126458771762
+          ],
+          [
+            0.3776124129195694,
+            0.30227664052037495
+          ],
+          [
+            0.4322355921469284,
+            0.35201836617562654
+          ],
+          [
+            0.47815072830905636,
+            0.4094126650086091
+          ],
+          [
+            0.5232742241925269,
+            0.48593839678591927
+          ],
+          [
+            0.5866054464851171,
+            0.5902047063325043
+          ],
+          [
+            0.6230208993033566,
+            0.6485555768127033
+          ],
+          [
+            0.6641861937935403,
+            0.662904151520949
+          ],
+          [
+            0.6966434452184928,
+            0.6724698679931127
+          ],
+          [
+            0.7378087397086763,
+            0.6839487277597092
+          ],
+          [
+            0.7694743508549715,
+            0.6782092978764109
+          ],
+          [
+            0.7995566814439519,
+            0.6734264396403291
+          ],
+          [
+            0.824255858138062,
+            0.6791658695236273
+          ],
+          [
+            0.7927485750474984,
+            0.8303041897838148
+          ],
+          [
+            0.7694743508549715,
+            0.8016070403673236
+          ],
+          [
+            0.7393920202659912,
+            0.7824756074229959
+          ],
+          [
+            0.6982267257758075,
+            0.7614310311842357
+          ],
+          [
+            0.6507283090563648,
+            0.7422995982399082
+          ],
+          [
+            0.6174794173527549,
+            0.7174287354122824
+          ],
+          [
+            0.5810639645345155,
+            0.6791658695236273
+          ],
+          [
+            0.5406903103229892,
+            0.6160321408073465
+          ],
+          [
+            0.4813172894236859,
+            0.5184618327912761
+          ],
+          [
+            0.43856871437618744,
+            0.4534149607805625
+          ],
+          [
+            0.39661177960734645,
+            0.4036732351253109
+          ],
+          [
+            0.34357188093730207,
+            0.3577577960589248
+          ],
+          [
+            0.2976567447751742,
+            0.31892098718193995
+          ],
+          [
+            0.2248258391386954,
+            0.28314520757604744
+          ],
+          [
+            0.18402359599934634,
+            0.2722402907977807
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "other_entity",
+            "polygon": [
+              [
+                0.41276124129195696,
+                0.37000191314329445
+              ],
+              [
+                0.41529449018366055,
+                0.37076717046106755
+              ],
+              [
+                0.415769474350855,
+                0.3732542567438301
+              ],
+              [
+                0.4170360987967068,
+                0.3753587143677061
+              ],
+              [
+                0.4164027865737809,
+                0.37784580065046874
+              ],
+              [
+                0.41466117796073465,
+                0.38052420126267456
+              ],
+              [
+                0.412444585180494,
+                0.3793763152860149
+              ],
+              [
+                0.412127929069031,
+                0.37688922900325234
+              ],
+              [
+                0.41276124129195696,
+                0.374593457049933
+              ],
+              [
+                0.4118112729575681,
+                0.37287162808494356
+              ]
+            ]
+          },
+          {
+            "defect_type": "other_entity",
+            "polygon": [
+              [
+                0.42906903103229893,
+                0.39410751865314714
+              ],
+              [
+                0.43144395186827106,
+                0.39410751865314714
+              ],
+              [
+                0.43176060797973403,
+                0.3960206619475799
+              ],
+              [
+                0.43302723242558583,
+                0.39774249091256936
+              ],
+              [
+                0.4325522482583914,
+                0.40176009183087813
+              ],
+              [
+                0.4306523115896137,
+                0.40405586378419744
+              ],
+              [
+                0.42875237492083595,
+                0.4027166634780945
+              ],
+              [
+                0.42811906269791006,
+                0.4002295771953319
+              ],
+              [
+                0.4285940468651045,
+                0.39697723359479625
+              ]
+            ]
+          },
+          {
+            "defect_type": "other_entity",
+            "polygon": [
+              [
+                0.4721342621912603,
+                0.4122823799502583
+              ],
+              [
+                0.47387587080430654,
+                0.41189975129137174
+              ],
+              [
+                0.47482583913869536,
+                0.4138128945858045
+              ],
+              [
+                0.47688410386320457,
+                0.41476946623302086
+              ],
+              [
+                0.47751741608613046,
+                0.4193610101396595
+              ],
+              [
+                0.4767257758074731,
+                0.42337861105796826
+              ],
+              [
+                0.4749841671944269,
+                0.42337861105796826
+              ],
+              [
+                0.47324255858138065,
+                0.4220394107518653
+              ],
+              [
+                0.4713426219126029,
+                0.4185957528218864
+              ],
+              [
+                0.4715009499683344,
+                0.4151520948919074
+              ]
+            ]
+          }
+        ],
+        "notes": "独立AI二审已查看原图、guide、mask、覆盖完整固定目标的原生像素裁片及行人细节。保留沿固定A/B端点的100米弯道路段，A端南侧横截面与邻接边界补至铺装路缘；固定端点未移动，B端保留宽阔路口完整横截面。红色车辆旁、白色皮卡旁和右侧路缘三处行人可确认位于铺装道路内，按当前帧可见实体候选口径保留other_entity；静态图不能证明实际阻路、违规或清障必要。普通汽车不作为障碍。可见房屋残骸主要在道路外，树冠与投影未直接视为实际植被侵入。树冠下路面及B端车辆拼接重影区域仍不能可靠判清。",
+        "uncertainties": [
+          "多处树冠遮蔽道路边缘和部分路面，其下是否有其他实体不能可靠确定。",
+          "右下终点附近车辆出现拼接重影；车辆不自动作为障碍，重影区域的细小路面状态无法可靠判清。",
+          "上段及残骸旁的树冠下道路边界依据连续可见路缘估计，终点宽阔路口的横断面按固定中心线方向截取。",
+          "可见行人候选仅描述该帧内实体存在，人员行为、移动方向及通行影响不能由静态图确定。"
+        ],
+        "inspected_at": "2026-10-21T12:46:40.554407+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-34d4bfe958810d.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-34d4bfe958810d.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-34d4bfe958810d.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\01_a_upper_native.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\02_upper_junction_native.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\03_center_native.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\04_lower_curve_native.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\05_b_wide_native.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\06_pedestrians_native.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\01_a_upper_overlay.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\02_upper_junction_overlay.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\03_center_overlay.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\04_lower_curve_overlay.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\05_b_wide_overlay.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\06_pedestrians_overlay.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\07_a_cross_section_native.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\07_a_cross_section_overlay.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\visual_checks\\08_a_final_overlay.png"
+        ]
+      },
+      "final_row_sha256": "a74f09085df630ee46d7366ec949ff666700003fff07cd3d3a9fcd095f576c7a",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "semantic_observer_task": "/root/bounded_road_verifier_19",
+        "observer_authored_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\review_batch_01.json",
+        "observer_authored_payload_sha256": "481be68be879d4f1f25cae91b0d3548dfe1ef33d146e9083e2078ee52e87694b",
+        "immutable_captured_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\observer-authored-payload-captured-v1.json",
+        "immutable_captured_payload_sha256": "481be68be879d4f1f25cae91b0d3548dfe1ef33d146e9083e2078ee52e87694b",
+        "payload_filesystem_modified_at_utc": "2026-10-21T12:31:05.764461+00:00",
+        "payload_filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-21T12:46:40.644380+00:00",
+        "business_fields_changed_by_storage_operator": false,
+        "new_visual_inspection_claimed": false,
+        "observer_persistence_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at and final.inspected_at mark record storage; actual independent observer authorship is bound to the original payload and inspection files. No additional look or human timing is claimed.",
+        "agent_turn_state": "interrupted after the complete observer-authored payload was saved; source payload and all inspection files preserved"
+      }
+    }
+  ],
+  "persistence_events": [
+    {
+      "operator": "root_orchestrator_deterministic_storage_only",
+      "semantic_observer_task": "/root/bounded_road_verifier_19",
+      "observer_authored_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\review_batch_01.json",
+      "observer_authored_payload_sha256": "481be68be879d4f1f25cae91b0d3548dfe1ef33d146e9083e2078ee52e87694b",
+      "immutable_captured_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_19\\observer-authored-payload-captured-v1.json",
+      "immutable_captured_payload_sha256": "481be68be879d4f1f25cae91b0d3548dfe1ef33d146e9083e2078ee52e87694b",
+      "payload_filesystem_modified_at_utc": "2026-10-21T12:31:05.764461+00:00",
+      "payload_filesystem_time_is_not_claimed_visual_inspection_time": true,
+      "stored_at_utc": "2026-10-21T12:46:40.644380+00:00",
+      "business_fields_changed_by_storage_operator": false,
+      "new_visual_inspection_claimed": false,
+      "observer_persistence_cli_execution_claimed": false,
+      "timing_semantics": "reviewed_at and final.inspected_at mark record storage; actual independent observer authorship is bound to the original payload and inspection files. No additional look or human timing is claimed.",
+      "agent_turn_state": "interrupted after the complete observer-authored payload was saved; source payload and all inspection files preserved"
+    }
+  ]
+}

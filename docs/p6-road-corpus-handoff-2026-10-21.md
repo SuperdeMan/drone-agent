@@ -1,71 +1,73 @@
 # P6 道路材料当前交接 · 2026-10-21
 
-**WP-P6-01 仍开放，P6 未整体准出。** 本页接续 [2026-10-19 历史检查点](p6-road-corpus-handoff-2026-10-19.md)，当前事实以本页和[本次证据快照](../eval/s2/road_business_v1/corpus_checkpoint_20261021/README.md)为准。正式资产、正式跨次配对、冻结测试和正式模型实调均为0；真人候选处理计时已由用户延期至运营验证，现场清障效果另列未验证，其他 D089 门槛不变。
+**WP-P6-01 仍开放，P6 未整体准出。** 当前事实以本页和[增量B检查点](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/README.md)为准；[前一检查点](../eval/s2/road_business_v1/corpus_checkpoint_20261021/README.md)与[2026-10-19历史交接](p6-road-corpus-handoff-2026-10-19.md)保持原样。正式独立资产、正式跨次配对、冻结数据和正式模型实调均为0。真人候选处理计时已延期至运营验证，现场清障效果未验证，其他D089门槛不变。
 
-工作树：`D:/drone-agent-data/p6-road-views-20261014/repo`，分支 `work/p6-road-views-20261014`。材料根：`D:/drone-agent-data/p6-corpus-completion-20261018`。原仓库的并行 X1 工作未混入本批。`de07338` 已进入本工作分支；旧 Claude 工作记录中的“未提交”“头部调查仍运行”仅代表其暂停时刻。
+工作树为 `D:/drone-agent-data/p6-road-views-20261014/repo`，分支 `work/p6-road-views-20261014`；材料根为 `D:/drone-agent-data/p6-corpus-completion-20261018`，本轮工具在 `resume-20261021-b/`。原仓库的并行X1工作未混入本批，`de07338`已在本工作分支。
 
-## 实际完成与准确范围
+## 已完成与证据范围
 
-| 项目 | 本检查点事实 | 不代表什么 |
+| 项目 | 当前事实 | 边界 |
 |---|---|---|
-| 项目软件 | `f132b98fd0f6148ca3ab5f7e168de147433fc7be`：Ruff 通过，2074 测试通过、1 项既有 Windows Unix-socket 跳过、0 失败 | 不转借给后来的提交，也不是业务准出 |
-| 新 UAV 派生来源 | Mussett Bayou Fire46 + Hurricane Laura100，共146个固定目标窗口，实际源字节、纯缓存重提取和当前来源校验146/146通过 | 窗口数不等于独立资产数；不新增真实跨次计数 |
-| 事前任务来源 | 11个任务的预期参考与当前影像共22张，按同候选重新核验22/22通过 | 事前任务尚不是错目标参考标签 |
-| 原图增量 | 新16张完整 FC220 原图，CRC、HTTP范围、文件摘要及32个内嵌帧解码通过；旧500张加增量为516张 | 内嵌帧不算新采集；5张增量属于开发关联暂缓组，另11张只是候选 |
-| 派生候选总量 | 882个窗口、809个几何保守组 | 尚未形成正式准入的独立资产集合 |
-| 已保存标注 | 首稿271条；选中二审174条，绑定检查全部通过 | 包含排除源；不能当成已满足320个独立主资产 |
+| 项目软件 | `f132b98fd0f6148ca3ab5f7e168de147433fc7be`：Ruff通过，2074测试通过、1项既有Windows Unix-socket跳过、0失败 | 完整回归只负责该候选，不转借给后来文档提交或业务准出 |
+| CRASAR来源 | 新增Mussett46+Laura100；现有691加新增146，全837条在当前核心实际重读缓存源字节、核对原生窗口及既有独立回放，837/837通过 | 不等于882条全部来源通过；OAM45未纳入本轮全量复核，来源有效不等于独立资产或业务标签有效 |
+| 观察索引 | 837条元数据绑定通过，旧691条采集行及旧库存摘要原样保留 | 几何分组、物理身份和独立性仍未核验；612条有可核对作者日期组、225条日期未知，不造UTC或飞行ID |
+| 原图 | 旧500张加新增16张完整FC220原图，共516张；新增32个内嵌帧解码已核对 | 内嵌帧不是新采集；新增5张属于开发关联暂缓组，另11张只是候选 |
+| 派生总量 | CRASAR837加OAM45，共882个窗口、809个几何保守组 | 窗口与几何组都不是已准入独立资产 |
+| 标注 | 初稿275条，选中二审182条全部通过绑定；正常8、障碍55、不可判76、错目标2、排除源41 | 旧FloodNet415二审单独保留；不能当成已满足320个独立主资产 |
 
-标注快照时间为 `2026-10-21T12:52:01.135045+00:00`。选中二审为正常4、障碍55、不可判74、排除源41；[逐条记录与准确待办](../eval/s2/road_business_v1/corpus_checkpoint_20261021/progress.json)中还有97条已保存首稿未完成二审。旧 FloodNet415 的二审单独保留，不混入此处计数。只对最终选中的正式样本强制完成参考标签链，不为清空候选队列而优先复核无用的排除源。
+标注快照时间为 `2026-10-21T14:42:59.216006+00:00`；[进度与准确待办](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/progress.json)保留93条已保存但未二审首稿。前一检查点4条正常建议均由另一隔离AI实际核验，其中1条仅去掉静态照片不能支持的车辆运动判断；两张新增Laura主观察均经独立二审保留不可判，没有为配额改判。
 
-[按预登记分区的候选覆盖](../eval/s2/road_business_v1/corpus_checkpoint_20261021/candidate-coverage.json)分别列出当前观察类别和障碍类型；其中拟议分区及几何组仍不是已核验资产。正常样本、独立错目标任务及合格跨次仍须重点补齐，不能用其他类别的富余抵消。
+[普通180条](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/qa/ordinary-annotation-integrity.json)在本机核对；[事前任务2条](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/qa/prior-annotation-integrity.json)在云端真实来源字节根核对。[合并回执](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/annotation-integrity.json)只取不重叠并集，保留各执行分部、历史未匹配记录和准确范围，不称为同一次单主机全量运行。
 
-把旧组外标签与当前选中二审都按最乐观方式计算、暂不扣去重复资产和分区限制，仍至少需要补 68 条正常、42 条障碍和 40 条错目标参考观察。它们可来自已有未标注候选；这是观察缺口的乐观下界，实际独立资产缺口仍须在准入时确定，不能据此估算成“只剩清空二审队列”。
+来源证据见[837条来源回执](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/qa/full-crasar-source-f132b98.json)、[实际执行](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/qa/full-crasar-source-execution.json)、[四个执行源文件摘要](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/qa/cloud-core-files-f132b98.json)及[索引验证](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/source-index/metadata-validation.json)。软件完整回归见[原回执](../eval/s2/road_business_v1/corpus_checkpoint_20261021/qa/full-pytest-result.json)，业务门禁仍为[missing](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/qa/business-gate-missing.json)。
 
-现有待二审首稿中，只有 4 条首稿自报正常；[二审排期清单](../eval/s2/road_business_v1/corpus_checkpoint_20261021/work-queue/pending-second-review-priority.json)给出准确 ID、首稿摘要与来源目录。该排期不接受首稿结论，不向盲初标者提供，独立核验仍可修订或排除。
+## 覆盖缺口与隔离
 
-本次来源检查在 `f132b98` 上准确覆盖新增146张及事前任务两侧22张：当前校验器实际重读缓存源字节并校验既有独立提取回放，原提取回执另行保留。该结论不把旧版本对691张 CRASAR 或45张 OAM 的成绩扩写为当前候选全量通过；本次软件回归也只对 `f132b98` 负责。证据分别见 [软件回归](../eval/s2/road_business_v1/corpus_checkpoint_20261021/qa/full-pytest-result.json)、[Mussett46](../eval/s2/road_business_v1/corpus_checkpoint_20261021/qa/mussett-source-provenance.json)、[Laura100](../eval/s2/road_business_v1/corpus_checkpoint_20261021/qa/laura-source-provenance.json)、[任务两侧22](../eval/s2/road_business_v1/corpus_checkpoint_20261021/qa/prior-source-provenance.json)及[当前来源执行回执](../eval/s2/road_business_v1/corpus_checkpoint_20261021/qa/current-source-execution.json)。
+[分区覆盖](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/candidate-coverage.json)按预登记用途列出参考观察和障碍类型，尚未授予任何正式资产。把旧组外标签与当前二审按最乐观方式计算、暂不扣重复资产、用途冲突、分区或站点限制，仍至少需要64条正常、42条障碍和38条错目标参考观察。它们可来自未标候选；这是观察缺口下界，不能当独立资产缺口或工时估计。
 
-## 数据选择、隔离与尚未通过的门槛
+测试仍须正常100/障碍100/不可判30/错目标30，校准20/20/10/10；测试debris、vegetation、other_entity各至少30；至少3个已核验站点、单站不超过50%；真实同资产同状态配对至少30对、覆盖15个资产。误报≤5/100、各类型漏检≤20%、可判覆盖≥90%、不可判/错目标误判正常为0、跨次可判且一致≥90%全部保留。
 
-- 新事件的世界范围在业务标注前登记，每个既有保守道路组只保留一个目标。Mussett整事件预留测试侧；Laura整事件预留校准侧，其中20个范围只作预期资产参考、不进入主观察，剩80个为主观察候选。没有更改旧目标来避开障碍、缺图或树冠。
-- [分组扩展](../eval/s2/road_business_v1/corpus_checkpoint_20261021/source-extension/grouping-rules-v2.json)沿用既有1km包络连通规则，保留原地点 ID 与拆分；CRASAR共41个父图、16个拟议地点，校准与测试父图道路包络的最小间距约379.7km。这是元数据一致性证据，尚不自动授予每条道路的真实身份，也不覆盖仍未拆分的 FloodNet/OAM。
-- 新原图先用官方源文件头、相机近似覆盖与公开道路几何安排检查顺序；2026年的 OSM 只提示2017年照片中可能有道路，不能作状态真值或独立资产证明。新增原图批按最长完整主铺装道路选择；这只是该补充池的采样范围，不倒改旧候选的目标。
-- `#6337` 属于按同型号、同日、相邻间隔不超过15分钟形成的开发关联暂缓组。旧正常130条不能原样填入正式分母；其中82条同属此暂缓组，组外最多48条正常观察仍待真实资产去重与现行口径核对。该序列不是已验证的飞行 ID，不虚构 UTC。旧合并清单的500完整/108仅头记录保持历史原样，新增完整图另建索引，不能仍把108当当前仅头数量。
-- [旧335条批次映射复核](../eval/s2/road_business_v1/corpus_checkpoint_20261021/legacy/floodnet-development-hold-impact.json)中，140条明确落入开发暂缓组、182条明确在组外、13条暂无有效映射；后13条全部是不可判标签，单独挂起。旧“组外不可判最多124条”的乐观上界包含这13条，不能写成124条已明确在组外；原标签未改。
-- 当前73个几何跨次候选中，7对两侧均完成独立二审，1对满足当前参考标签同为可判且类型相同、固定世界范围相同；它们仍须独立核验物理身份、来源及拆分后才可准入。未通过、源无效区和类型变化都保留，不拿几何对数代替30对真实同状态配对。
-- 其中首对另由第三个隔离上下文逐图核验：确认同一物理路段和不同作者日期的派生采集，但因树冠及阴影遮住局部地面，`same_condition=null`，不能证明完整目标同状态，故仍不准入。该结果不应被两侧都标为 debris 代替；[双图核验与检查回执](../eval/s2/road_business_v1/corpus_checkpoint_20261021/pairs/pair-candidate-check-v1.json)保留不确定性，不由编排者改判来凑数。
-- [源有效区排序](../eval/s2/road_business_v1/corpus_checkpoint_20261021/work-queue/repeat-alpha-margin-priority.json)有22对在不变端点范围周围10m内源有效区充分，仅用于检查优先级；它既不是物体大小门槛，也不是配对准入结论。后续中立 ID 池为 [repeat-next-neutral-pool.json](../eval/s2/road_business_v1/corpus_checkpoint_20261021/work-queue/repeat-next-neutral-pool.json)。
-- 首批11个事前任务均为测试侧：真实参考A与未初标的预留当前图B在首次初标前确定，构造方法披露，不声称自然发生过操作者拍错。3个旧参考多边形未通过当前几何校验，另1个端点仍有疑问，均未用于这11个任务。校准侧参考登记与最终40条错目标仍缺。
+- 新来源在业务标签前冻结世界范围；每个既有保守道路组一个目标。Mussett整事件预留测试侧，Laura整事件预留校准侧；Laura20个范围仅作预期资产参考，80个为主观察候选，不为缺图、树冠或实体改端点。
+- 分组扩展沿用1km包络连通规则，保留既有地点ID与拆分；CRASAR共41个父图、16个拟议地点，校准/测试父图道路包络最小间距约379.7km。这是元数据一致性证据，不是每条道路真实身份，也不覆盖未拆分的FloodNet/OAM。
+- `#6337`同型号、同日、相邻间隔≤15分钟形成开发关联暂缓组，不是实际飞行ID。旧正常130中82条属于此暂缓组，不能进入正式分母；组外最多48条正常仍须去重与现口径核对。
+- [旧335条映射](../eval/s2/road_business_v1/corpus_checkpoint_20261021/legacy/floodnet-development-hold-impact.json)有140条明确组内、182条明确组外、13条未知，未知13条均不可判。旧“可能组外不可判124”含这13条，不能写成124已明确组外；旧500完整/108仅头清单保持历史原样，增量另建索引。
+- 公开2026年OSM只为2017年照片提供道路检查提示，不能作状态真值或独立性证明；新原图按最长完整主铺装道路取目标只是补充池采样范围，不倒改旧候选。
 
-## 本轮发现及处理的材料问题
+## 真实跨次与错目标
 
-采集算法已完成46/100窗口，但旧包装器在 Python 退出阶段因缓冲 stdin 守护线程报错，进程返回非零。失败记录原样保留，独立离线提取和来源校验另行成功；没有把该进程记作通过。外置入口 `resume-20261021/cloud_safe_entry_v1.py` 改用无缓冲输入，并在保持控制器 stdin 打开的情况下实际重提取1张缓存影像，退出0、原生RGB/JPEG/mask摘要一致；QA提取不增加业务样本。
+73个几何跨次候选中7对两侧均二审、仅1对参考标签可判且类型相同。该对另由第三个隔离上下文看两图，确认同一物理路段与不同作者日期，但树冠/阴影遮住地面，`same_condition=null`，仍不准入。不能用两侧同为debris替代同状态，见[双图核验](../eval/s2/road_business_v1/corpus_checkpoint_20261021/pairs/pair-candidate-check-v1.json)。
 
-部分首稿中文经 PowerShell 管道变为问号。原稿与快照未改；进入当前选中二审的受损说明已由独立核验者逐张对原图补写可读中文，并记为 revised；尚未二审的首稿继续保留待办。已经保存的最终记录如需修正，先保留旧记录及其检查图，再写真实修订与摘要。[文字检查](../eval/s2/road_business_v1/corpus_checkpoint_20261021/annotation-text-audit.json)核对本次选中的不可覆盖二审快照，最终疑点字段为0；“可按UTF-8解析”不被当成文字未损坏。使用 `apply_patch` 或明确UTF-8文件生成批次，避免默认编码管道。
+[源有效区排序](../eval/s2/road_business_v1/corpus_checkpoint_20261021/work-queue/repeat-alpha-margin-priority.json)有22对在不变端点周围10m内源像素充分，只用于检查优先级，不是物体大小门槛或准入结论；[剩余中立ID池](../eval/s2/road_business_v1/corpus_checkpoint_20261021/work-queue/repeat-next-neutral-pool.json)保留原选择。
 
-严格绑定另发现部分 `uncertainties` 是单个字符串，及一次文字修订后的时间字段不一致。原始首稿、旧核验、看图证据与时间均保留；确定性管线仅把字符串无损包装成数组，再由原独立核验上下文确认现有结论。新格式确认时间不冒充新看图，不改类别、对象或坐标，不增加样本计数；记录见证据目录 `schema/`。项目最终标签入口还新增损坏文字门禁，55项针对性检查及上述完整回归通过。
+11个事前任务均为测试侧，真实参考A与未初标当前B在首次标注前登记，构造方法披露，不声称自然操作者拍错。首两条由独立初标者保留不可判，再由另一隔离AI比对道路、交叉口、建筑与园区设施，确证预期目标缺席后修订wrong_target；原任务描述及多边形完全未改，云端核心2/2通过。校准侧任务仍为0，正式错目标资产仍为0；3个旧参考多边形失败及另1个端点疑问均未进入这11个任务。
 
-最后两条核验由独立观察者18、19实际生成完整批次，编排器仅按原批次确定性入库，未改判定、对象、坐标或说明。[观察者原批次和入库回执](../eval/s2/road_business_v1/corpus_checkpoint_20261021/observer-payloads)保留实际字节摘要、文件时间、存储时间及首条旧记录；`reviewed_at`/`final.inspected_at`在这两条表示入库时间，不声称观察者执行了存储CLI或发生额外看图，也不作为真人计时证据。
+[任务队列](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/work-queue/prior-task-progress.json)保存准确沿革：`prior_annotator_1`原准备8条从未启动，前2条已移交并完成于`prior_annotator_2`，原8条不得整批重复启动，剩6条预留继续保留；另3条登记任务未初标。`bounded_annotator_16`准备的7张原图仍未启动。
 
-Santolan完整对象仍未取得。新本机完整GET在600秒上限失败，保存10,552,590字节；新云端完整GET读超时，保存13,631,488字节。预期完整大小253,851,020字节，两个新尝试及此前部分文件全部保留，未续拼或伪写完整GET200，不计其321个规划组为可用材料。
+## 已处理问题与保留的失败
 
-## 后续推进顺序
+原稿、检查图和旧快照不覆盖。中文问号损坏由真正看图的独立观察者重写，不由编排者补写业务说明；最终[文字检查](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/annotation-text-audit.json)疑点为0。旧uncertainties字符串无损包装后由原独立核验上下文实际重确认，格式确认不冒充新看图；详情保留在前一检查点的schema目录。
 
-1. 先汇总最终可用参考标签的独立资产覆盖，优先补正常、障碍和各类型缺口；测试仍须100/100/30/30，校准20/20/10/10，测试每类型至少30。保存首稿、排除源、几何组和相邻照片都不能扩大分母。
-2. 按源有效区排序完成另一采集的初标和另一AI二审，独立检查两图确为同一固定目标；保留同状态、不同日期、实际像素与来源证明，满足至少30对/15资产。源日期只有作者日期的，明确为无序派生采集，不冒充原始单帧或精确飞行时间。
-3. 完成Laura预留参考的中性目标登记，补齐校准10与测试30个错目标；既有11个任务在 [prior-tasks/index.json](../eval/s2/road_business_v1/corpus_checkpoint_20261021/prior-tasks/index.json)。`annotation/prior_annotator_1/assignment.json`准备了8条但尚未启动，`annotation/bounded_annotator_16/assignment.json`准备了7张原图但尚未启动，不能登记成已完成。Mussett初标20按实际保存边界停止：分配4张、保存3张、未保存1张已释放；核验者18处理前两张，最后一张按回答前登记的移交交给另一隔离核验者19，原任务保留。合计实际保存 3/3 条二审，未完成部分以进度清单为准。损坏首稿只能由真正看图的独立核验者重建，编排者不补写业务说明。
-4. 最终数据准入和制备在云端实际源字节根运行：`/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data`。本机辅助产物只增上传，同名文件先核对摘要；保留既有PNG编码差异和历史路径，不改摘要消除冲突。现有 `claude-orchestrator/tools/formal_lib.py` 默认只读旧691张；接入新来源时明确扩展索引与分组/采集记录，不能自动把元数据规则标成已验证身份。
-5. 满足覆盖后冻结清单与实际代码候选，做同候选必要检查、真实校准、冻结画像、唯一正式测试、严格回放及最终 `verify_p6_road_business.py` 门禁。D090只允许未录得回答时有限重试，已有回答和测试曝光不得删掉重跑。
+本批独立观察者明确完成payload后，编排器仅确定性保存，未改业务字段；[原批次、分工与入库回执](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/observers)保留实际字节、文件时间与存储时间。`reviewed_at/final.inspected_at`表示入库时间，不声明额外看图、观察者执行了存储CLI或真人计时。
 
-原先仅准备、从未启动的 Claude初标02–11共100条预留已释放，原分工和启动日志均保留；这不是停止了100条正在运行的标注。部分长批次已按实际保存边界停止，未保存部分交给新的小批隔离上下文；[closeout目录](../eval/s2/road_business_v1/corpus_checkpoint_20261021/closeout)与[实际上下文登记](../eval/s2/road_business_v1/corpus_checkpoint_20261021/actual-contexts.jsonl)记录谁真正启动、保存多少，准备分工不等于执行。
+独立元数据审查发现旧外置汇总器可接受0/0并丢弃待核对项，使用前已修复：定向分工必须全部实际核对、准确预期条数、拒绝空集、保留历史未匹配项并拒绝未完成重核。[三类负向探针](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/qa/scope-guard-probes.json)全部按预期拒绝；旧结果保留，不增加业务样本。
 
-## 接续工具与检查口径
+来源采集包装器曾在Python退出时因缓冲stdin守护线程失败，46/100实际窗口、原非零退出、后续纯缓存独立提取与来源验证分别保留；未把失败改判成功。修正版无缓冲入口已实际缓存重提取1张且退出0，RGB/JPEG/mask摘要一致，不增加业务样本。Santolan完整对象仍失败：本机10,552,590字节、云端13,631,488字节，预期253,851,020；部分文件不拼装为完整GET200，其321个规划组不计可用。
 
-工作在上述材料根执行。数据解释器为 `tools-venv/Scripts/python.exe`，含Pillow/Shapely/rasterio；仓库 `.venv` 用于SSH编排，不能假定它具有全部图像工具。避免把辅助脚本命名为 `inspect.py`，也不要从存在该同名文件的子目录启动验证。
+原Claude仅准备未启动的初标02–11共100条预留已释放，不是停止100条运行中标注；旧启动日志、分工和停止边界均保留。Mussett初标20分配4、保存3，未保存1条已释放，3条二审均已完成。独立初标/二审不得读取评测提示、待评模型输出、源类别或其他日期业务答案；编排者已见评测提示，不能代行看图裁定。
 
-- 派生首标：`resume-20261021/prepare_derived_assignment_v2.py --author <新ID> --frames <实际视图目录> --ids-file <中立ID池> --limit 2`；它保留错目标当前图预留，旧准备脚本不理解该类任务。
-- 原图二审：`resume-20261021/prepare_raw_review_v2.py`；派生二审：`resume-20261021/prepare_review_assignment_v2.py`（优先无损 canonical 首稿）并指定真实 `--frames`。只有真正启动`fork_turns=none`的上下文后才用`register_actual.py`登记，再生成新版本context/registration。新批保存先用 `strict_batch_io_v1.py` 核对数组容器、核心结构及文字编码；旧写入器不覆盖。
-- 当前绑定检查入口为 `check_current_ai_records_v5.py`，文字检查用 `audit_annotation_text_v2.py`，进度用 `snapshot_progress_v4.py`，均在`resume-20261021/`下。使用新的输出目录，不覆盖本检查点。独立初标/二审不得得到评测提示、待评模型输出、源类别或其他日期参考答案；编排者已见评测提示，不能代替它们看图裁定。
-- 本检查点实际绑定输入为 `annotation-integrity-v16/`、`annotation-context-v18.json` 与 `review-registration-v18.json`；新上下文登记后用 `resume-20261021/context_v2.py --version <新版本>`生成新文件。格式确认沿用原观察者的真实上下文，另外披露 reuse，不能登记成新的独立看图。
+## 后续执行入口
 
-本页与归档只关闭这一批可复核材料工作；WP-P6-01的业务准出仍由正式数据与实调门禁决定。真人效率和现场清障效果继续明确为未验证。
+1. 先核对独立主资产、用途冲突、站点、采集与近重复隔离，再补类别与类型缺口。93条待二审首稿已无正常建议，不能以清空队列替代覆盖。[Laura78张](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/work-queue/laura-neutral-primary.json)与[Mussett39张](../eval/s2/road_business_v1/corpus_checkpoint_20261021b/work-queue/mussett-neutral-primary.json)是无类别中立初标池，不是新采集或已准入资产。
+2. 按固定范围源有效区排序补跨次初标与独立二审，另由隔离上下文核验同资产同状态及不同采集，达到30对/15资产；保留失败和不确定性。
+3. 继续剩余9个登记事前任务，登记Laura真实参考并补校准10、测试30条错目标。已完成两条仅是参考观察，不能自动授予独立资产。
+4. 达到覆盖后冻结数据清单和真实代码候选，完成同候选检查、真实校准、冻结画像、唯一正式测试、严格回放及`verify_p6_road_business.py`。D090仅允许未录得回答时有限重试，已有回答和测试曝光不得删掉重跑。
+
+数据解释器为材料根`tools-venv/Scripts/python.exe`（含Pillow/Shapely/rasterio）；仓库`.venv`用于SSH编排。辅助脚本勿命名`inspect.py`，中文使用明确UTF-8文件，避免PowerShell默认编码管道。
+
+- 派生初标用旧目录`resume-20261021/prepare_derived_assignment_v2.py --author <新ID> --frames <目录> --ids-file <中立池> --limit 2`；新池在`resume-20261021-b/next-neutral-first-pools-v2/`，键为入口要求的`selected_sample_ids`。原图二审用`prepare_raw_review_v2.py`，派生二审用`prepare_review_assignment_v2.py`并指定真实frames。
+- 真正启动`fork_turns=none`上下文后才`register_actual.py`登记，再生成新的context/registration；本检查点为v22。新普通批次用`strict_batch_io_v1.py`检查；完成payload可用新B目录`ingest_completed_payload_v2.py`确定性保存，事前任务二审专用`ingest_completed_prior_review_v1.py`，均不代行视觉。
+- 当前绑定入口为新B目录`check_current_ai_records_v7.py`：普通观察`--exclude-prior --expected-count <准确条数>`；本批事前任务使用`run_prior_audit_cloud_v3.py`在云端严格检查2条并同步完整选取上下文。合并用`combine_annotation_audits_v2.py --expected-total <准确总数>`，进度用`snapshot_progress_v5.py`，覆盖用`candidate_coverage_v3.py`；文字检查沿用旧目录`audit_annotation_text_v2.py`。本批实际结果在新B目录`annotation-integrity-combined-v1/`。
+- 新来源索引用`resume-20261021-b/formal_observation_index_v2.py`，可`--check-only`，支持明确`--core-script`且保留旧API。旧`claude-orchestrator/tools/formal_lib.py`仍只读691条，新入口为837条，顶层/库存均`grouping_verified=false`、`formal_release_eligible=false`，不覆盖旧库存。
+- 最终准入与制备在云端真实源字节根`/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data`运行；本机产物只增上传，同名先核对摘要，保留PNG编码差异及历史路径，不改摘要消除冲突。外置工具准确字节见检查点`external-helper-bindings.json`。
+
+本页与归档只结束这一批可核查材料工作，WP-P6-01仍需正式数据与实调门禁；真人效率和现场清障效果继续未验证。

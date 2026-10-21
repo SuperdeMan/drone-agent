@@ -1,0 +1,71 @@
+{
+  "format": "drone.p6-independent-observer-prior-review-payload/v1",
+  "reviewer_id": "prior_verifier_3",
+  "assignment_sha256": "7ebfc9eaf72d3c51d116a8aad385ddc60c54a33f969417290f0df33bd5327d93",
+  "status": "complete",
+  "full_assigned_target_checked": true,
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-6bab4e2bfdfb5c",
+      "decision": "revised",
+      "findings": [
+        "真实参考图中的主路近乎水平、无可见黄色中心线，右端 B 是贯通南北的十字路口；上侧有宽窄两处浅色出入口及白色金属屋顶棚，下侧有白色建筑和成组停车位。",
+        "当前原图中的道路向右下倾斜并有双黄中心线，北侧右半部是连续裸地，主路一直延伸至画面右边缘，完整可见范围内没有参考 B 处的南北贯通交叉口。",
+        "当前图左上侧是相邻的窄出入口，下侧以树林、草地和零散屋顶为主；参考图右半部的屋顶棚、南侧建筑停车区与十字路口组成的固定设施布局在当前图中缺席。",
+        "已查看两幅原图及覆盖全部登记多边形的原生裁片。道路标线、交叉口位置及两侧固定设施的联合差异可确认预期 A–B 目标不在当前图中，不能用当前图的另一条道路替代登记目标。"
+      ],
+      "changes": {
+        "verdict": "wrong_target",
+        "notes": "独立查看当前原图、真实参考原图及覆盖完整登记范围的原生裁片。参考目标是无黄色中心线的近水平道路，右端连接南北贯通十字路口，北侧有浅色出入口和白色金属屋顶棚，南侧有白色建筑与铺装停车区。当前图可见道路有双黄中心线并向右下倾斜，右半部北侧为连续裸地，右端延伸出画面而无参考十字路口，南侧也没有参考建筑停车区布局。道路连接形态与固定设施组合共同确认预期目标缺席，修订为 wrong_target；登记 target_brief 和 target_polygon 保持原样。",
+        "uncertainties": []
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-6bab4e2bfdfb5c.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\reserve-extract-d5115042d2b358.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-6bab4e2bfdfb5c-current-native-1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-6bab4e2bfdfb5c-reference-native-1.png"
+      ],
+      "original_image_checked": true,
+      "task_mismatch": {
+        "prior_task_sha256": "75e259d8fddc958ac6ebc81c010271ae2680ea151cb0d346d25827e3dfecdd78",
+        "expected_target_present": false,
+        "expected_reference_checked": true,
+        "evidence": "参考 A–B 是近水平无黄色中心线道路，B 处南北支路形成十字路口，且北侧白色屋顶棚、南侧白色建筑及停车区相对路口位置明确。当前图完整范围为双黄线斜向道路，右半部北侧连续裸地、南侧树林及零散屋顶，右端无南北贯通路口，亦无上述棚屋和建筑停车区组合。经完整原图及登记范围原生裁片对照，道路网络和固定设施同时不成立，确认预期目标缺席。"
+      }
+    },
+    {
+      "sample_id": "bounded-extract-e589e7736b4601",
+      "decision": "revised",
+      "findings": [
+        "真实参考图中的 A–B 是贯穿中央的浅色微弯道路，左侧北向支路与右侧南向停车场入口位置清楚；北侧有弯曲步道和圆形构筑物，南侧白色人行道沿路连续延伸。",
+        "当前原图的有双黄中心线道路沿画面右侧斜向弯行，通过门柱和铺装入口接入中央内部场地，没有参考图中央横向主路及左右两端支路的连接形态。",
+        "当前图左侧为大面积平屋顶建筑，中部是带棕榈种植岛的内部铺装场地，下部为网球场；完整原图中没有参考图北侧圆形构筑物和弯曲步道所组成的园区布局。",
+        "两幅原图及原生裁片已完整核对，三张连续参考路段裁片覆盖 A–B 全幅，另查看圆形构筑物上下文裁片。登记多边形在当前图内跨越内部铺装与种植区域，无法组成参考道路；道路网络和固定设施联合证据确认预期目标缺席。"
+      ],
+      "changes": {
+        "verdict": "wrong_target",
+        "notes": "独立查看当前原图、真实参考原图和覆盖完整登记范围的原生裁片，并查看参考圆形构筑物上下文。参考目标为横向微弯浅色道路，北侧有圆形构筑物及弯曲步道，南侧为连续白色人行道与长条建筑，左右分别连接北向支路和南向停车场入口。当前图则是左侧大面积平屋顶、中央种植岛内部铺装场地、下部网球场及右缘双黄线弯道和门柱入口；没有参考道路连接形态及上述固定设施组合。确认预期目标缺席，修订为 wrong_target；登记 target_brief 和 target_polygon 保持原样，不以当前内部场地的散落物替代登记目标的障碍判断。",
+        "uncertainties": []
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-e589e7736b4601.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-274646b23eb972.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-current-native-1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-current-native-2.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-2.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-3.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-4.png"
+      ],
+      "original_image_checked": true,
+      "task_mismatch": {
+        "prior_task_sha256": "02e4d9cc837b38dc5fa967a442b35ba5b205b70862d4388414cb41fcc410b936",
+        "expected_target_present": false,
+        "expected_reference_checked": true,
+        "evidence": "参考图道路横贯中央，左端北向支路、右端南向停车场入口、北侧带圆形构筑物的弯曲步道绿地、南侧连续白色人行道和长条建筑形成明确固定布局。当前完整原图为平屋顶建筑围绕内部铺装场地，南部有网球场，右缘双黄线弯道通过门柱入口接入内部场地；既没有参考横向道路的两端支路连接，也没有北侧圆形构筑物和步道园地。经原图和完整登记范围原生裁片比较，这些道路及设施布局共同确认预期目标不在当前图中。"
+      }
+    }
+  ]
+}

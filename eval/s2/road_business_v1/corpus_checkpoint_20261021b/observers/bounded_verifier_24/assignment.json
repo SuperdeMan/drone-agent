@@ -1,0 +1,185 @@
+{
+  "format": "drone.p6-ai-review-assignment/v1",
+  "reviewer_id": "bounded_verifier_24",
+  "worker_dir": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_24",
+  "created_at": "2026-10-21T13:47:38.514173+00:00",
+  "parent_history": "none",
+  "evaluation_prompt_access": "forbidden",
+  "evaluation_outputs_access": "forbidden",
+  "source_class_label_access": "forbidden",
+  "samples": [
+    {
+      "sample_id": "bounded-extract-036e21963fd87d",
+      "asset_group_id": "crasar-road-65e15811827633",
+      "bounded_target_id": "target-v2-7f87b3750f0167f1",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\images\\bounded-extract-036e21963fd87d.jpg",
+      "image_sha256": "f83dd6571781af4b78d25a1ab3b70b5783e7cd691bc4888f8b547e8bf7314185",
+      "width": 1249,
+      "height": 3542,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\overviews\\bounded-extract-036e21963fd87d.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\guides\\bounded-extract-036e21963fd87d.jpg",
+      "guide_sha256": "dfc8f2764f5d29d3eda2bb1a49e7c95132952587b21ff3984aae8286575e5b9e",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\masks\\bounded-extract-036e21963fd87d.png",
+      "target_endpoints_normalized": [
+        [
+          0.5036028819134993,
+          0.8249576208532474
+        ],
+        [
+          0.5028022407018546,
+          0.1750423652182454
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.5036028819134818,
+            0.8249576208520303
+          ],
+          [
+            0.49639711769415534,
+            0.2704686617730096
+          ]
+        ],
+        [
+          [
+            0.49639711769415534,
+            0.2704686617730096
+          ],
+          [
+            0.5028022407017906,
+            0.17504236521919034
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "7f87b3750f0167f1b02d5986fa9c6e95a5040b46b861e94cab1bf1932075790a",
+        "frozen_at_utc": "2026-10-21T09:13:45.618980+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-12-0057",
+        "reference_chain_station_interval_m": [
+          0,
+          92.80796562415681
+        ],
+        "length_m": 92.80796562415681,
+        "utm_epsg": 32615,
+        "utm_polyline_m": [
+          [
+            416334.8372830841,
+            3343379.0740250177
+          ],
+          [
+            416333.505899629,
+            3343458.23044338
+          ],
+          [
+            416333.82865479105,
+            3343471.8669757126
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -93.8693659744,
+              30.2190618949
+            ],
+            [
+              -93.869386089,
+              30.2197760526
+            ],
+            [
+              -93.8693838177,
+              30.2198991209
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -93.8693659744,
+            30.2190618949
+          ],
+          [
+            -93.8693838177,
+            30.2198991209
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 0.0,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -93.8693659744,
+              30.2190618949
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 92.80796562415681,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -93.8693838177,
+              30.2198991209
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 2,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          92.80796562415681
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "first_author_id": "bounded_annotator_22",
+      "first_row": {
+        "sample_id": "bounded-extract-036e21963fd87d",
+        "image_sha256": "f83dd6571781af4b78d25a1ab3b70b5783e7cd691bc4888f8b547e8bf7314185",
+        "target_brief": "guide 中 A（图像下方）至 B（图像上方）的固定纵向铺装道路全宽，保留两端完整横截面。",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "已逐段查看固定 A(629,2922) 至 B(628,620) 的原生像素及两端完整横截面，未缩短或移动目标。源 mask 全白，道路身份与固定段源覆盖成立。可见路面有修补斑及线影，未确认独立障碍实体；靠图像下方的左侧树冠多处遮住局部路面和铺装边界，不能满足全段完整可判条件，无法可靠描定完整左界，故 target_polygon=null。",
+        "uncertainties": [
+          "固定段图像下部左侧约 y=2220–2790 的树冠遮挡，使真实铺装边界及冠下路况不能从当前图像确定。",
+          "可见树冠与阴影不足以确认实际植被侵入路面，未据此标注实体入侵。"
+        ],
+        "inspected_at": "2026-10-21T13:45:37.781527+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\images\\bounded-extract-036e21963fd87d.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\guides\\bounded-extract-036e21963fd87d.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\masks\\bounded-extract-036e21963fd87d.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_22\\input-original.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_22\\input-guide.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_22\\input-mask.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_22\\native-target-01.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_22\\native-target-02.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_22\\native-target-03.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_22\\native-target-04.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_22\\native-terminal-b.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_22\\native-terminal-a.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_22\\native-west-boundary.png"
+        ]
+      },
+      "first_row_sha256": "f681207c34ddb79194e87cd230d8673159532209b491139f0ac190dd3ab33a5b",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_22\\suggestions.json",
+      "draft_sha256": "37fb62f49df594447809c9e65d426603ce8ac73810c132de16ecfef6a2c51393",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\receipts\\bounded-extract-036e21963fd87d.json",
+      "current_extraction_sha256": "cac3cc457d0445817bbc59de9d389c0a2440a3797b27109ceb2022ca5849703c"
+    }
+  ]
+}

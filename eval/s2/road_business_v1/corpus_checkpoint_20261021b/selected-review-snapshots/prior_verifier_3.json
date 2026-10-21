@@ -1,0 +1,293 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "prior_verifier_3",
+  "created_at": "2026-10-21T14:38:32.872011+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\assignment.json",
+  "assignment_sha256": "7ebfc9eaf72d3c51d116a8aad385ddc60c54a33f969417290f0df33bd5327d93",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-6bab4e2bfdfb5c",
+      "decision": "revised",
+      "findings": [
+        "真实参考图中的主路近乎水平、无可见黄色中心线，右端 B 是贯通南北的十字路口；上侧有宽窄两处浅色出入口及白色金属屋顶棚，下侧有白色建筑和成组停车位。",
+        "当前原图中的道路向右下倾斜并有双黄中心线，北侧右半部是连续裸地，主路一直延伸至画面右边缘，完整可见范围内没有参考 B 处的南北贯通交叉口。",
+        "当前图左上侧是相邻的窄出入口，下侧以树林、草地和零散屋顶为主；参考图右半部的屋顶棚、南侧建筑停车区与十字路口组成的固定设施布局在当前图中缺席。",
+        "已查看两幅原图及覆盖全部登记多边形的原生裁片。道路标线、交叉口位置及两侧固定设施的联合差异可确认预期 A–B 目标不在当前图中，不能用当前图的另一条道路替代登记目标。"
+      ],
+      "changes": {
+        "verdict": "wrong_target",
+        "notes": "独立查看当前原图、真实参考原图及覆盖完整登记范围的原生裁片。参考目标是无黄色中心线的近水平道路，右端连接南北贯通十字路口，北侧有浅色出入口和白色金属屋顶棚，南侧有白色建筑与铺装停车区。当前图可见道路有双黄中心线并向右下倾斜，右半部北侧为连续裸地，右端延伸出画面而无参考十字路口，南侧也没有参考建筑停车区布局。道路连接形态与固定设施组合共同确认预期目标缺席，修订为 wrong_target；登记 target_brief 和 target_polygon 保持原样。",
+        "uncertainties": []
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-6bab4e2bfdfb5c.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\reserve-extract-d5115042d2b358.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-6bab4e2bfdfb5c-current-native-1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-6bab4e2bfdfb5c-reference-native-1.png"
+      ],
+      "original_image_checked": true,
+      "task_mismatch": {
+        "prior_task_sha256": "75e259d8fddc958ac6ebc81c010271ae2680ea151cb0d346d25827e3dfecdd78",
+        "expected_target_present": false,
+        "expected_reference_checked": true,
+        "evidence": "参考 A–B 是近水平无黄色中心线道路，B 处南北支路形成十字路口，且北侧白色屋顶棚、南侧白色建筑及停车区相对路口位置明确。当前图完整范围为双黄线斜向道路，右半部北侧连续裸地、南侧树林及零散屋顶，右端无南北贯通路口，亦无上述棚屋和建筑停车区组合。经完整原图及登记范围原生裁片对照，道路网络和固定设施同时不成立，确认预期目标缺席。"
+      },
+      "image_sha256": "967c0de1f7485a854ba99b5bad2aa990ee197e4a8a024eaf5f72a95279f8e37d",
+      "first_author_id": "prior_annotator_2",
+      "first_row_sha256": "bd1bd35e03646fbb7e387493ea6d46427506a79d4948f0c522f5adbac243ad39",
+      "reviewed_at": "2026-10-21T14:38:32.879520+00:00",
+      "reviewer_id": "prior_verifier_3",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-6bab4e2bfdfb5c.jpg": "967c0de1f7485a854ba99b5bad2aa990ee197e4a8a024eaf5f72a95279f8e37d",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\reserve-extract-d5115042d2b358.jpg": "789b7fe9285eeda3d47cb6680ccc4051f12d5b78acea75c3ee0a6dd256630212",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-6bab4e2bfdfb5c-current-native-1.png": "b8203467e9327de40eca2c8d6dd607ed90898303cdfcff74b792106250ac62fa",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-6bab4e2bfdfb5c-reference-native-1.png": "85371dc5baee0102c4b9330fb2753d52f367ca45e8ced542cfc8d5c3d15cda96"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-6bab4e2bfdfb5c",
+        "image_sha256": "967c0de1f7485a854ba99b5bad2aa990ee197e4a8a024eaf5f72a95279f8e37d",
+        "target_brief": "画面中部横向浅灰道路，从左侧树林下 A 固定截面延伸到右侧 B 十字路口。上方有两处浅色出入口和小型白色金属屋顶棚，下方是草地、白色建筑与铺装停车区。登记 A–B 间可见道路全幅；B 处保持主路连续宽度截止，不延伸入南北支路。",
+        "target_polygon": [
+          [
+            0.129921,
+            0.430657
+          ],
+          [
+            0.262467,
+            0.423358
+          ],
+          [
+            0.393701,
+            0.425791
+          ],
+          [
+            0.524934,
+            0.43309
+          ],
+          [
+            0.656168,
+            0.43309
+          ],
+          [
+            0.793963,
+            0.435523
+          ],
+          [
+            0.870735,
+            0.437956
+          ],
+          [
+            0.870079,
+            0.554745
+          ],
+          [
+            0.787402,
+            0.549878
+          ],
+          [
+            0.656168,
+            0.549878
+          ],
+          [
+            0.524934,
+            0.545012
+          ],
+          [
+            0.426509,
+            0.53528
+          ],
+          [
+            0.295276,
+            0.532847
+          ],
+          [
+            0.19685,
+            0.525547
+          ],
+          [
+            0.129265,
+            0.530414
+          ]
+        ],
+        "verdict": "wrong_target",
+        "objects": [],
+        "notes": "独立查看当前原图、真实参考原图及覆盖完整登记范围的原生裁片。参考目标是无黄色中心线的近水平道路，右端连接南北贯通十字路口，北侧有浅色出入口和白色金属屋顶棚，南侧有白色建筑与铺装停车区。当前图可见道路有双黄中心线并向右下倾斜，右半部北侧为连续裸地，右端延伸出画面而无参考十字路口，南侧也没有参考建筑停车区布局。道路连接形态与固定设施组合共同确认预期目标缺席，修订为 wrong_target；登记 target_brief 和 target_polygon 保持原样。",
+        "uncertainties": [],
+        "inspected_at": "2026-10-21T14:38:32.879520+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-6bab4e2bfdfb5c.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\reserve-extract-d5115042d2b358.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-6bab4e2bfdfb5c-current-native-1.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-6bab4e2bfdfb5c-reference-native-1.png"
+        ]
+      },
+      "final_row_sha256": "c9faa7b9cd534093cd4fb5374602d69879536c1d7eca2200a545b7e1a2564a27",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\review-payload.json",
+        "observer_payload_sha256": "96e646cb3347b264ffb42112dcc56a05073aeebf7a53dbdf7869b8c24a67de05",
+        "payload_file_modified_at_utc": "2026-10-21T14:35:42.249319+00:00",
+        "stored_at_utc": "2026-10-21T14:38:32.872011+00:00",
+        "business_fields_changed": false,
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not additional visual inspection or human timing."
+      }
+    },
+    {
+      "sample_id": "bounded-extract-e589e7736b4601",
+      "decision": "revised",
+      "findings": [
+        "真实参考图中的 A–B 是贯穿中央的浅色微弯道路，左侧北向支路与右侧南向停车场入口位置清楚；北侧有弯曲步道和圆形构筑物，南侧白色人行道沿路连续延伸。",
+        "当前原图的有双黄中心线道路沿画面右侧斜向弯行，通过门柱和铺装入口接入中央内部场地，没有参考图中央横向主路及左右两端支路的连接形态。",
+        "当前图左侧为大面积平屋顶建筑，中部是带棕榈种植岛的内部铺装场地，下部为网球场；完整原图中没有参考图北侧圆形构筑物和弯曲步道所组成的园区布局。",
+        "两幅原图及原生裁片已完整核对，三张连续参考路段裁片覆盖 A–B 全幅，另查看圆形构筑物上下文裁片。登记多边形在当前图内跨越内部铺装与种植区域，无法组成参考道路；道路网络和固定设施联合证据确认预期目标缺席。"
+      ],
+      "changes": {
+        "verdict": "wrong_target",
+        "notes": "独立查看当前原图、真实参考原图和覆盖完整登记范围的原生裁片，并查看参考圆形构筑物上下文。参考目标为横向微弯浅色道路，北侧有圆形构筑物及弯曲步道，南侧为连续白色人行道与长条建筑，左右分别连接北向支路和南向停车场入口。当前图则是左侧大面积平屋顶、中央种植岛内部铺装场地、下部网球场及右缘双黄线弯道和门柱入口；没有参考道路连接形态及上述固定设施组合。确认预期目标缺席，修订为 wrong_target；登记 target_brief 和 target_polygon 保持原样，不以当前内部场地的散落物替代登记目标的障碍判断。",
+        "uncertainties": []
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-e589e7736b4601.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-274646b23eb972.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-current-native-1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-current-native-2.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-2.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-3.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-4.png"
+      ],
+      "original_image_checked": true,
+      "task_mismatch": {
+        "prior_task_sha256": "02e4d9cc837b38dc5fa967a442b35ba5b205b70862d4388414cb41fcc410b936",
+        "expected_target_present": false,
+        "expected_reference_checked": true,
+        "evidence": "参考图道路横贯中央，左端北向支路、右端南向停车场入口、北侧带圆形构筑物的弯曲步道绿地、南侧连续白色人行道和长条建筑形成明确固定布局。当前完整原图为平屋顶建筑围绕内部铺装场地，南部有网球场，右缘双黄线弯道通过门柱入口接入内部场地；既没有参考横向道路的两端支路连接，也没有北侧圆形构筑物和步道园地。经原图和完整登记范围原生裁片比较，这些道路及设施布局共同确认预期目标不在当前图中。"
+      },
+      "image_sha256": "d7b7ccf3e84a67099c4c95d93c281e6611a71d0dbe1d259994630fc6934dc6c5",
+      "first_author_id": "prior_annotator_2",
+      "first_row_sha256": "cfa2d7674b290ef6c88f31bb88fb843b5dda0ddaeb93b64cb422dfa0714bbdcf",
+      "reviewed_at": "2026-10-21T14:38:32.898121+00:00",
+      "reviewer_id": "prior_verifier_3",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-e589e7736b4601.jpg": "d7b7ccf3e84a67099c4c95d93c281e6611a71d0dbe1d259994630fc6934dc6c5",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-274646b23eb972.jpg": "4c294a9101f3435996ddc9c597b7586030ca412138c88f9e99a39ef4b1169f8f",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-current-native-1.png": "a55e1f778a81b5bbeefb376e30f89333dd985181437545d5c763a6ac1b24ccd3",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-current-native-2.png": "180ecd0c18e3fabec737ca4e378dd58d664bd2dd4dddc332bfbd3307ccd5fa35",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-1.png": "5b159b87b0a91bb98ac05615c54104cd94f8cb5c553c1cd94ed3e9e977ec9e36",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-2.png": "8626798fa9853cc11fe2dac7f301ee595c4eaa8558272821baaebfce66ec7095",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-3.png": "fbe451774840a355e6350ed97ef567f1c4ae011c9fd168c1726f905740dfe30f",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-4.png": "167764c0d9db65f16ef9f6e9357bca4a6e8ad72a8885b8559bae3cbc8e03f314"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-e589e7736b4601",
+        "image_sha256": "d7b7ccf3e84a67099c4c95d93c281e6611a71d0dbe1d259994630fc6934dc6c5",
+        "target_brief": "画面中央由左向右微弯的浅色道路固定段。A 横断面位于左侧支路口南侧、两辆深色车下方；B 横断面位于右侧停车场入口北侧、园内圆形构筑物东南方向。北侧是带弯曲步道和圆形构筑物的绿地，南侧为白色人行道及长条浅色屋顶建筑。沿 A–B 登记道路两侧路缘之间的完整铺装全幅，保留轻微弯曲；两侧人行道、草地、停车位和支路不并入。",
+        "target_polygon": [
+          [
+            0.2161,
+            0.4227
+          ],
+          [
+            0.2667,
+            0.4432
+          ],
+          [
+            0.4222,
+            0.4505
+          ],
+          [
+            0.6,
+            0.4481
+          ],
+          [
+            0.6833,
+            0.4348
+          ],
+          [
+            0.78,
+            0.3937
+          ],
+          [
+            0.7894,
+            0.5435
+          ],
+          [
+            0.695,
+            0.5616
+          ],
+          [
+            0.5833,
+            0.5652
+          ],
+          [
+            0.4222,
+            0.5652
+          ],
+          [
+            0.3,
+            0.5628
+          ],
+          [
+            0.215,
+            0.5652
+          ]
+        ],
+        "verdict": "wrong_target",
+        "objects": [],
+        "notes": "独立查看当前原图、真实参考原图和覆盖完整登记范围的原生裁片，并查看参考圆形构筑物上下文。参考目标为横向微弯浅色道路，北侧有圆形构筑物及弯曲步道，南侧为连续白色人行道与长条建筑，左右分别连接北向支路和南向停车场入口。当前图则是左侧大面积平屋顶、中央种植岛内部铺装场地、下部网球场及右缘双黄线弯道和门柱入口；没有参考道路连接形态及上述固定设施组合。确认预期目标缺席，修订为 wrong_target；登记 target_brief 和 target_polygon 保持原样，不以当前内部场地的散落物替代登记目标的障碍判断。",
+        "uncertainties": [],
+        "inspected_at": "2026-10-21T14:38:32.898121+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-e589e7736b4601.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-274646b23eb972.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-current-native-1.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-current-native-2.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-1.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-2.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-3.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\bounded-extract-e589e7736b4601-reference-native-4.png"
+        ]
+      },
+      "final_row_sha256": "413651d2191f24533a1ca53ed7797f01d7d88395e2228a9cc296074617bfef00",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\review-payload.json",
+        "observer_payload_sha256": "96e646cb3347b264ffb42112dcc56a05073aeebf7a53dbdf7869b8c24a67de05",
+        "payload_file_modified_at_utc": "2026-10-21T14:35:42.249319+00:00",
+        "stored_at_utc": "2026-10-21T14:38:32.872011+00:00",
+        "business_fields_changed": false,
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not additional visual inspection or human timing."
+      }
+    }
+  ],
+  "persistence_events": [
+    {
+      "operator": "root_orchestrator_deterministic_storage_only",
+      "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3\\review-payload.json",
+      "observer_payload_sha256": "96e646cb3347b264ffb42112dcc56a05073aeebf7a53dbdf7869b8c24a67de05",
+      "payload_file_modified_at_utc": "2026-10-21T14:35:42.249319+00:00",
+      "stored_at_utc": "2026-10-21T14:38:32.872011+00:00",
+      "business_fields_changed": false,
+      "new_visual_inspection_claimed": false,
+      "observer_storage_cli_execution_claimed": false,
+      "filesystem_time_is_not_claimed_visual_inspection_time": true,
+      "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not additional visual inspection or human timing."
+    }
+  ]
+}
