@@ -155,6 +155,88 @@ def test_actual_revision_is_accepted_and_preserves_the_first_pass(delegated):
     assert C.read(delegated[3] / "draft.json") == before
 
 
+@pytest.mark.parametrize("field,value", [
+    ("target_brief", "????"),
+    ("target_brief", "Road A???B"),
+    ("notes", "????????????"),
+    ("notes", "Road surface\ufffd"),
+    ("uncertainties", ["????"]),
+    ("uncertainties", ["？？？"]),
+])
+def test_rehashed_final_reference_cannot_hide_transport_damaged_text(delegated, field, value):
+    sample, label, _, _ = delegated
+
+    def change(document):
+        row = document["rows"][0]
+        row.update(decision="revised", changes={field: value})
+        row["final_row"][field] = value
+        row["final_row_sha256"] = C.canonical_digest(row["final_row"])
+
+    rewrite_review(delegated, change)
+    label["ai_assistance"]["decision"] = "revised"
+    if field == "target_brief":
+        sample["target"]["brief"] = value
+    elif field == "notes":
+        label["notes"] = value
+    assert check(delegated) == ["delegated_annotation_text_corrupted"]
+
+
+def test_final_reference_accepts_a_readable_question(delegated):
+    note = "Boundary uncertain? The complete target was inspected."
+
+    def change(document):
+        row = document["rows"][0]
+        row.update(decision="revised", changes={"notes": note})
+        row["final_row"]["notes"] = note
+        row["final_row_sha256"] = C.canonical_digest(row["final_row"])
+
+    rewrite_review(delegated, change)
+    delegated[1]["notes"] = note
+    delegated[1]["ai_assistance"]["decision"] = "revised"
+    assert check(delegated) == []
+
+
+@pytest.mark.parametrize("finding", ["????????", "???? A-B ?????"])
+def test_rehashed_review_cannot_use_damaged_findings(delegated, finding):
+    rewrite_review(delegated, lambda document: document["rows"][0].update(findings=[finding]))
+    assert check(delegated) == ["delegated_annotation_text_corrupted"]
+
+
+def test_readable_finding_may_describe_the_corrupted_original(delegated):
+    finding = "The original contained ???; this record was independently checked."
+    rewrite_review(delegated, lambda document: document["rows"][0].update(findings=[finding]))
+    assert check(delegated) == []
+
+
+def test_readable_independent_revision_can_preserve_a_damaged_first_draft(delegated):
+    _, label, protocol, root = delegated
+    assistance = label["ai_assistance"]
+    draft = C.read(root / "draft.json")
+    draft["rows"][0]["notes"] = "????????"
+    original = draft["rows"][0]
+    assistance["draft_sha256"] = save(root / "draft.json", draft)
+    assistance["suggestion_sha256"] = C.canonical_digest(original)
+    assignment = C.read(root / "assignment.json")
+    assignment["samples"][0]["first_row"] = original
+    assignment_sha = save(root / "assignment.json", assignment)
+    registry = C.read(root / "registry.json")
+    registry["assignments"][0]["sha256"] = assignment_sha
+    registry_sha = save(root / "registry.json", registry)
+    assistance["verification_context_sha256"] = registry_sha
+    protocol["annotation_policy"]["verification_context_sha256"] = registry_sha
+
+    def change(document):
+        document["assignment_sha256"] = assignment_sha
+        row = document["rows"][0]
+        row.update(decision="revised", changes={"notes": row["final_row"]["notes"]},
+                   first_row_sha256=C.canonical_digest(original))
+
+    rewrite_review(delegated, change)
+    assistance["decision"] = "revised"
+    assert check(delegated) == []
+    assert C.read(root / "draft.json")["rows"][0]["notes"] == "????????"
+
+
 def test_ai_reference_does_not_inflate_human_count_or_asset_coverage(delegated):
     sample, label, protocol, root = delegated
     sample.update(image_file="image.png", width=20, height=20, source_id="qa", evaluation_role="primary",

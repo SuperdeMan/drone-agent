@@ -607,6 +607,13 @@ def delegated_label_issues(sample: dict, label: dict, protocol: dict, data_root:
                 return problems
             final_for_shape = {**final, "verdict": "indeterminate"}
         ai_suggestions({**document, "rows": [final_for_shape]})
+        # Reject damaged final text while preserving original drafts. / 拒绝损坏的最终文字，保留原始首稿。
+        texts = [final["target_brief"], final["notes"], *final["uncertainties"]]
+        if any("\ufffd" in value or "???" in value or "？？？" in value for value in texts):
+            return ["delegated_annotation_text_corrupted"]
+        if any("\ufffd" in value or 2 * (value.count("?") + value.count("？")) > len(value)
+               for value in record["findings"]):
+            return ["delegated_annotation_text_corrupted"]
         paths = [rooted(data_root, p) for p in record["inspected_files"]]
         if rooted(data_root, source["image_file"]) not in paths or set(record["inspection_file_sha256"]) != set(record["inspected_files"]):
             return ["delegated_annotation_original_inspection_missing"]
