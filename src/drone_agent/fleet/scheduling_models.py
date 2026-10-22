@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, model_serializer, model_validator
 
 from drone_agent.contracts.common import ContractModel
 from drone_agent.fleet.provenance import digest
@@ -113,6 +113,58 @@ class AirspaceGrid(SchedulingModel):
                     "recovery fans (D084) / 航迹覆盖的求法：全部位置的外包矩形，或带恢复扇区的航段走廊（D084）")
 
 
+class GroundPlacement(SchedulingModel):
+    """X1 (D088): where a ground robot's own map lies in the shared frame (translation only) and the site it serves.
+
+    X1（D088）：地面车自己的地图在共享坐标中的位置（仅平移）及其服务的站点。
+    """
+
+    site: str = Field(pattern=ID)
+    origin: tuple[float, float]
+
+
+class SharedArea(SchedulingModel):
+    """X1 (D088): a convex ground area aircraft and ground robots both use, in the shared frame, held as
+    `shared.<name>`: an aircraft that takes off or lands at `site` holds it for its whole flight, and a ground robot
+    whose path meets it holds it for its whole mission.
+
+    X1（D088）：空中与地面机器人都会使用的凸地面区域（共享坐标），作为 `shared.<name>` 持有：在 `site` 起降的飞行器整次飞行
+    都持有它，路径经过它的地面车整次任务都持有它。
+    """
+
+    site: str = Field(pattern=ID)
+    polygon: tuple[tuple[float, float], ...] = Field(min_length=3, max_length=16)
+
+    @model_validator(mode="after")
+    def _convex(self):
+        signs = set()
+        points = self.polygon
+        for index, a in enumerate(points):
+            b, c = points[(index + 1) % len(points)], points[(index + 2) % len(points)]
+            cross = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0])
+            if abs(cross) > 1e-9:
+                signs.add(cross > 0)
+        if len(signs) != 1:
+            raise ValueError("a shared area is a convex polygon")
+        return self
+
+
+class GroundLayer(SchedulingModel):
+    """X1 (D088): ground maps by version; ground cells use the airspace grid under their own prefix, so they never
+    conflict with airspace cells. Shared areas are held by both kinds of robot. / X1（D088）：按版本列出的地面地图；地面
+    单元沿用空域网格、使用各自的前缀，因此从不与空域单元冲突。共享区域由两类机器人共同持有。"""
+
+    maps: dict[str, GroundPlacement] = Field(min_length=1)
+    shared: dict[str, SharedArea] = Field(default_factory=dict)
+
+    @model_serializer(mode="wrap")
+    def _canonical(self, handler):
+        data = handler(self)
+        if not self.shared:
+            data.pop("shared", None)
+        return data
+
+
 class Ranking(SchedulingModel):
     """Versioned candidate order: estimated arrival, recent use, robot id. / 版本化候选顺序：预计到场、近期使用、robot ID。"""
 
@@ -144,6 +196,9 @@ class SchedulingCatalog(SchedulingModel):
     airspace: AirspaceGrid
     ranking: Ranking
     policy: SchedulingPolicy
+    # X1 (D088): only catalogs with ground robots declare it; the others keep their body and digest.
+    # X1（D088）：只有带地面车的目录声明它；其他目录的内容与摘要保持不变。
+    ground: GroundLayer | None = None
 
     @model_validator(mode="after")
     def _ids(self):
@@ -155,6 +210,17 @@ class SchedulingCatalog(SchedulingModel):
             raise ValueError("a v1 scheduling catalog keeps the box footprint; declare the model in a v2 catalog")
         if self.format == CATALOG_FORMAT_V2 and "footprint" not in self.airspace.model_fields_set:
             raise ValueError("a v2 scheduling catalog must declare airspace.footprint")
+        if self.ground is not None:
+            if any(not re.fullmatch(ID, key) for key in self.ground.maps):
+                raise ValueError("ground map versions must be lower-case slugs")
+            strays = sorted({p.site for p in self.ground.maps.values()} - set(self.airspace.sites))
+            if strays:
+                raise ValueError(f"ground maps serve sites without an origin: {strays}")
+            if any(not re.fullmatch(ID, key) for key in self.ground.shared):
+                raise ValueError("shared area names must be lower-case slugs")
+            strays = sorted({a.site for a in self.ground.shared.values()} - set(self.airspace.sites))
+            if strays:
+                raise ValueError(f"shared areas name sites without an origin: {strays}")
         return self
 
     def body(self) -> dict:
@@ -166,6 +232,8 @@ class SchedulingCatalog(SchedulingModel):
         body = self.model_dump(mode="json")
         if self.format == CATALOG_FORMAT:
             body["airspace"].pop("footprint")
+        if self.ground is None:
+            body.pop("ground")
         return body
 
     @cached_property
@@ -192,6 +260,14 @@ class SchedulingCatalog(SchedulingModel):
         unknown = sorted(set(self.airspace.sites) - set(operations.sites))
         if missing or unknown:
             raise ValueError(f"site origins differ from the operations catalog: missing {missing}, unknown {unknown}")
+        for site_id in operations.sites:
+            # A ground site lies where the ground layer places its map (X1, D088). / 地面站点位于地面层放置其地图之处。
+            registry = registries[site_id]
+            if getattr(registry, "kind", None) != "ground_site":
+                continue
+            placement = self.ground.maps.get(registry.registry_id) if self.ground is not None else None
+            if placement is None or tuple(placement.origin) != tuple(self.origin(site_id)):
+                raise ValueError(f"ground site {site_id} needs a ground placement at its own origin")
         places: dict[tuple[str, str], tuple[str, tuple[float, float]]] = {}
         for site_id, site in operations.sites.items():
             ox, oy = self.origin(site_id)

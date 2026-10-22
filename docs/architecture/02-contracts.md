@@ -4,7 +4,7 @@
 
 > 契约是本项目扩展性的来源。代码实现见 [contracts](../../src/drone_agent/contracts/)（Pydantic v2），契约测试见 [tests/contracts](../../tests/contracts/)。本文定义语义；字段以代码为准，两者冲突时先改本文再改代码。
 
-阅读边界：本页同时定义当前运行时与后续扩展所需的领域对象；存在消息或字段不代表对应执行能力已实现。M2 的接收行为见第 10 节，M3-SITL 局部自主与外部模式见第 11 节；多机器人交接待 P3/X1。第 12 节的运营对象尚未实现。
+阅读边界：本页同时定义当前运行时与后续扩展所需的领域对象；存在消息或字段不代表对应执行能力已实现。M2 的接收行为见第 10 节，M3-SITL 局部自主与外部模式见第 11 节；第 12 节定义按 P0–P6 分期落地的运营对象，第 13 节定义 X1 已在 SITL 验证的地面与交接增量。准确版本、未实现项和硬件边界以对应验收记录及路线图为准。
 
 ## 0. 通用规则
 
@@ -249,3 +249,22 @@ M3 不改 `drone.contracts.v1`、`drone.control.v1` 与 `drone.fleet.v1` 已冻�
 | VendorMissionGateway → 厂商接口 | 后续独立高层任务契约、能力与责任档案；不假设厂商接受 PX4 包或部署本项目 guardian |
 
 新增服务侧对象统一带 schema_version，项目权限由服务端校验。P0/P1 的运营元数据留在云端；跨到机载的任何新增执行绑定必须另行定义兼容字段、进入哈希 / 签名边界并跑 wire 检查，不能藏入自由 JSON 绕过冻结。
+
+## 13. X1 增量（D088，2026-10-15 在 SITL 准出）
+
+语义与安全边界见[安全体系 §12](03-safety.md) 与 [X1 实施方案](../x1-implementation.md)，验证见 [X1 验收记录](../x1-readiness.md)。下面的 wire 变化全部只增，不改既有字段号与含义；字段号已在实施中定稿（如 `RobotStatus.ground_phase = 13`、`RECOVERY_BEHAVIOR_STOP = 7`、`DELIVERY_KIND_HANDOFF_OFFER = 3`），契约字段清单与 wire 锁随之更新，候选的云端检查中 wire 核对全部通过。
+
+| 对象 | 增量 |
+|---|---|
+| `CapabilityDescriptor` | 地面车声明 `embodiment: ground_wheeled`、`control_modes: [mission_upload]`、`can_hover: false`、`recovery_behaviors: [stop, handover_to_fc_failsafe]`（实测 PX4 地面车 RTL 走直线，首版不用，见安全 §12）。平台文件按机器人配置加载，不再写死多旋翼平台 |
+| `RecoveryBehavior` | 新增 `STOP`（原地停止并保持）。`hold` 的含义不变，仍不对 `can_hover: false` 的平台开放 |
+| `RobotStatus` | 新增 `ground_phase`：`parked` / `moving` / `stopped` / `unknown`，只对地面车填写。`flight_phase` 的含义不变，只对空中本体填写 |
+| `SkillManifest` | 新增 `skill.ground.nav_to`、`skill.ground.recheck`、`skill.ground.return_home`，以及只由编译器插入的骨架技能 `skill.ground.arm`、`skill.ground.stop`、`skill.ground.disarm`；都声明 `embodiments: [ground_wheeled]`，清单放在 `configs/skills/ground/`，与多旋翼平台的清单集合分开核对。前置条件与持续约束按清单扩展（例如静止、路径在自身地图内、在获准地面区域内、不在禁入区），不按机器人写分支 |
+| `MissionPackage` 骨架 | 由编译器按本体生成。空中不变；地面为 arm → … → return_home → stop → disarm，没有起飞与降落 |
+| 地面复核的效果 | `skill.ground.recheck` 的 `verified` 只表示在观察位拿到了有效的观察证据；是否重新定位到异常物由服务对地面证据的确定性检测得出，写入 `bz_rechecks`，不改三元状态 |
+| `WorldFact`（交接目标） | 不改 wire。目标点：`position` 带协方差；搜索区域：`position` 为中心，`value` 写半径与语义描述；都带 `frame` 与地图版本 |
+| `DeliveryKind` | 新增 `DELIVERY_KIND_HANDOFF_OFFER`，承载既有的 `HandoffOffer`，经 `FetchDeliveries` 下发 |
+| `FleetTransport` | 新增 `ReplyHandoff(HandoffReply) → DeliveryReceipt`，由机器人上报交接回复 |
+| `HandoffReply` | 新增机器人身份、受控原因码（`unreachable` / `outside_map` / `alignment_insufficient` / `busy` / `energy` / `expired`）、路径长度、预计时间与所用地图版本 |
+
+交接的 ack 不是 wire 消息：服务在 ack 时签发新的分配代次，再按既有路径投递签名任务包；accepted 不等于所有权。服务侧的交接与复核关联存于新表（D088 批准），不进入机载哈希与签名边界。

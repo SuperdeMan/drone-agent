@@ -30,7 +30,7 @@ from pathlib import Path
 
 from drone_agent.contracts import MissionPackage, RecoveryPolicy
 from drone_agent.guardian.external import EXTERNAL_SKILLS
-from drone_agent.mission.registry import Registry
+from drone_agent.mission.registry import load_registry
 from drone_agent.runtime.ipc import GuardianClient, serve
 from drone_agent.runtime.ledger import Journal, canonical
 from drone_agent.runtime.recording import Recorder
@@ -97,8 +97,47 @@ async def wait_for_external(guardian, seconds: float) -> dict:
         await asyncio.sleep(0.2)
 
 
+async def observe_only(args, registry, stop: asyncio.Event) -> None:
+    """The guardian role's read-only mode between missions (X1, D088): connect to the flight controller, read the
+    telemetry and write the observation where the uplink reads the idle status; no package, no lease, no intent socket,
+    and nothing is ever commanded, so the guardian stays the only process connected to the flight controller.
+
+    两次任务之间 guardian 角色的只读模式（X1，D088）：连接飞控、读取遥测，并把观测写到 uplink 读取空闲状态的位置；没有任务包、
+    没有租约、没有意图套接字，也从不发出任何命令，因此 guardian 仍是唯一连接飞控的进程。
+    """
+    from drone_agent.adapters.px4_mavsdk import Px4Adapter
+
+    args.artifacts.mkdir(parents=True, exist_ok=True)
+    adapter = Px4Adapter(registry, args.artifacts, args.sensor)
+    await adapter.connect()
+    try:
+        while not stop.is_set():
+            status = {"observation": adapter.snapshot().model_dump(mode="json"), "safety": "nominal", "reason": "",
+                      "phase": "observing", "active_step": None, "command_pending": False,
+                      "monotonic": time.monotonic()}
+            temporary = args.artifacts / "status.pending.json"
+            temporary.write_bytes(canonical(status))
+            temporary.replace(args.artifacts / "status.json")
+            try:
+                await asyncio.wait_for(stop.wait(), 0.2)
+            except TimeoutError:
+                pass
+    finally:
+        await adapter.close()
+
+
 async def main_async(args):
-    registry = Registry(args.root, scene=args.scene)
+    # The scene's kind picks the registry: an aerial site map or a ground site (X1, D088). / 场景类型决定登记表。
+    registry = load_registry(args.root, args.scene, getattr(args, "platform", None))
+    if getattr(args, "observe_only", False):
+        if args.role != "guardian":
+            raise SystemExit("--observe-only is a guardian mode")
+        stop = asyncio.Event()
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            loop.add_signal_handler(sig, stop.set)
+        await observe_only(args, registry, stop)
+        return
     package = MissionPackage.model_validate_json(args.package.read_bytes())
     trust = TrustStore.load(args.trust) if args.trust else None
     args.artifacts.mkdir(parents=True, exist_ok=True)
@@ -286,12 +325,16 @@ def main():
     parser.add_argument("--root", type=Path, default=Path("/workspace"))
     parser.add_argument("--package", type=Path, default=Path("/input/package.json"))
     parser.add_argument("--artifacts", type=Path, default=Path("/artifacts"))
+    parser.add_argument("--observe-only", action="store_true",
+                        help="guardian read-only observation between missions (X1) / 两次任务之间的只读观测（X1）")
     parser.add_argument("--sensor", type=Path, default=Path("/sensor/latest.json"))
     parser.add_argument("--endpoint", default="unix:/run/drone/guardian.sock")
     parser.add_argument("--epoch", type=int, default=1)
     parser.add_argument("--fault", type=Path)
     parser.add_argument("--simulation", action="store_true")
     parser.add_argument("--scene", type=Path, help="registry file; defaults to the M1 campus scene")
+    parser.add_argument("--platform", type=Path,
+                        help="platform file; default by the scene's kind (X1) / 平台文件；默认按场景类型取（X1）")
     parser.add_argument("--trust", type=Path, help="read-only trust file; requires signed approvals (M2)")
     parser.add_argument("--robot-state", type=Path, help="robot-level authority state file (guardian, M2)")
     parser.add_argument("--operator-mailbox", type=Path, help="operator mailbox written by the uplink (executive, M2)")

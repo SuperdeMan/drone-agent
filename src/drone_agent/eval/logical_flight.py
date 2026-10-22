@@ -88,6 +88,9 @@ class FlightFake:
         # Harness-only capture drift in metres (P6): the capture pose is off by it, the flight path is not.
         # 只在编排中使用的拍摄偏差（米，P6）：拍摄位姿偏离该值，飞行路径不变。
         self.capture_offset: tuple[float, float] | None = None
+        # Harness-only position covariance (X1): the default is the P1 value; a smaller one stands for RTK.
+        # 只在编排中使用的位置协方差（X1）：默认为 P1 的取值；更小的值代表 RTK。
+        self.covariance = (1, 0, 0, 0, 1, 0, 0, 0, 1)
 
     def snapshot(self):
         if self.path:
@@ -100,7 +103,7 @@ class FlightFake:
             timestamp=now, valid_until=now + timedelta(seconds=0.5), sample_id=self.sample, robot_id=self.robot_id,
             pose=Pose(frame=Frame(**self.registry.data["frame"]),
                       position=Position(x=self.position[0], y=self.position[1], z=self.position[2],
-                                        covariance=(1, 0, 0, 0, 1, 0, 0, 0, 1))),
+                                        covariance=self.covariance)),
             velocity_enu_mps=[0, 0, 0], armed=self.airborne, in_air=self.airborne, flight_mode=self.mode,
             localization_healthy=True, home_healthy=True,
             battery_fraction=round(self.battery.fraction, 4) if self.battery is not None else 1.0,

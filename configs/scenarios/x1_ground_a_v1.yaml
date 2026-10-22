@@ -1,0 +1,86 @@
+# X1 S0 ground site x1_ground_a_v1 (D088): the ground robot's own map of P3 site a. Its frame is not the site map's:
+# its origin is the parking spot, which the scheduling catalog places 2 m east and 4 m south of site a's origin in the
+# shared frame, so a point (x, y) of site a is (x - 2, y + 4) here, and every handoff target must go through that move.
+# The robot spawns and arms at the parking spot, so this frame is also its PX4 local frame and no offset hides in the
+# adapter. The drivable area is the site's area; the aircraft pad (site a's origin) is a no-go zone, a fenced compound
+# in the north is a no-go zone whose middle no viewing distance reaches, and a building stands between the parking
+# spot and the north assets. Logical robots only (S0); the S1 world gets its own map.
+#
+# X1 S0 地面站点 x1_ground_a_v1（D088）：地面车自己的 P3 站点 a 地图。它的坐标系不是站点地图的：原点就是停车位，调度目录把
+# 停车位放在共享坐标中站点 a 原点以东 2 m、以南 4 m 处，因此站点 a 的点 (x, y) 在这里是 (x - 2, y + 4)，每个交接目标都
+# 必须经过这一转换。地面车在停车位生成并解锁，所以本坐标系也是它的 PX4 本地坐标系，适配器里不藏任何偏移。可行驶区域即站点
+# 区域；飞行器机位（站点 a 原点）是禁入区；北侧围起来的院子是禁入区，任何观察距离都够不到其中部；停车位与北侧资产之间有
+# 一栋楼。只用于逻辑机器人（S0）；S1 世界另有地图。
+schema_version: 0.1.0
+kind: ground_site
+registry_id: x1_ground_a_v1
+frame: {frame_id: map_enu, map_version: x1_ground_a_v1}
+approved_volume_id: x1_ground_a_v1
+volumes:
+  x1_ground_a_v1:
+    airspace_mode: simulation
+    description: The drivable campus area of site a, minus its no-go zones / 站点 a 的可行驶园区区域，扣除禁入区
+home:
+  id: park_a
+  position: [0, 0, 0]
+assets: {}
+ground:
+  cell_m: 0.25
+  # The clearance every planned path keeps from obstacles and no-go zones; see the look-ahead below.
+  # 每条规划路径与障碍、禁入区保持的净空；见下方前瞻。
+  robot_radius_m: 0.6
+  drivable:
+    - [[-12, -2], [10, -2], [10, 20], [-12, 20]]
+  obstacles:
+    # The building (site a x 1..3, y 6..9). / 楼（站点 a 的 x 1..3、y 6..9）。
+    - [[-1, 10], [1, 10], [1, 13], [-1, 13]]
+  no_go:
+    # The aircraft pad, 2 m around site a's origin. / 飞行器机位，站点 a 原点周围 2 m。
+    - [[-4, 2], [0, 2], [0, 6], [-4, 6]]
+    # The fenced compound (site a x 5..10, y 10..16). / 围起来的院子（站点 a 的 x 5..10、y 10..16）。
+    - [[3, 14], [8, 14], [8, 20], [3, 20]]
+  parking:
+    park_a: {position: [0, 0], heading_deg: 90}
+  standoff_m: [1.0, 2.0]
+  max_path_m: 60
+  cruise_mps: 1.0
+# The forward camera: image right is the robot's right; the optical axis is level at this height.
+# 前视相机：画面右方是车体右侧；光轴水平，位于此高度。
+camera: {camera_id: cam_0, width_px: 160, height_px: 120, hfov_deg: 80, height_m: 0.5}
+thresholds:
+  stationary_mps: 0.05
+  parking_radius_m: 0.8
+  # Measured with acceptance radius 0.5 m: a mission ends within 0.55 m of its last point, so the arrival check allows
+  # 0.8 m. Intermediate points are flown through; a right-angle bend cuts at most about 0.35 m, inside the clearance.
+  # 按接受半径 0.5 m 实测：任务终点误差 0.55 m，到点核验容差取 0.8 m。中间航点不停留；90° 拐弯切弯量不超过约 0.35 m，
+  # 小于净空。
+  nav_to: {tolerance_m: 0.8, hold_duration_s: 1, acceptance_m: 0.5}
+  return_home: {tolerance_m: 0.8, hold_duration_s: 2}
+  arm: {hold_duration_s: 1}
+  stop: {hold_duration_s: 1}
+  disarm: {hold_duration_s: 1}
+  face_m: 1.0
+  image: {min_width: 160, min_height: 120, max_age_s: 0.5, max_position_variance: 9, min_edge_contrast: 0.05}
+# The look-ahead meets two bounds (safety section 12). It never fires on a planned path: 0.5 s at 1.0 m/s is 0.5 m, less
+# than the 0.6 m clearance. It stops the robot outside a polygon: measured Hold stops 1.18 m/s in 0.5 s and 0.313 m, so
+# 1.0 m/s stops in about 0.42 s and 0.21 m; 0.5 s less one 0.1 s period leaves 0.4 m, more than 0.1 m of command latency
+# plus 0.21 m. / 前瞻同时满足两条约束（安全 §12）。正常路径不误报：1.0 m/s 下 0.5 s 为 0.5 m，小于 0.6 m 净空。触发后停在
+# 多边形外：实测 Hold 让 1.18 m/s 在 0.5 s、0.313 m 内停住，1.0 m/s 约 0.42 s、0.21 m 停住；0.5 s 减一个 0.1 s 周期剩
+# 0.4 m，大于 0.1 m 命令延迟加 0.21 m。
+supervision: {observation_timeout_s: 0.5, heartbeat_timeout_s: 2, lease_duration_s: 10, command_timeout_s: 5, period_s: 0.1,
+  prediction_s: 0.5, return_margin_fraction: 0.1, max_pause_s: 120}
+simulation: {speed_factor: 1, model: rover_differential, camera_topic: /drone/ugv_cam_0/image, policy_ref: rover_campus@v1}
+mission_defaults:
+  planner_skills: [skill.ground.recheck]
+  parking_id: park_a
+  cruise_speed_mps: 1.0
+  approach_speed_mps: 0.3
+  max_captures: 3
+  energy_budget: {max_consumption_fraction: 0.4, reserve_fraction: 0.2}
+  min_reserve_fraction: 0.2
+  window_minutes: 30
+  max_window_minutes: 120
+  max_start_delay_minutes: 10
+site_records:
+  weather: {source: simulated_site_record, wind_mps: 2.0, gust_mps: 3.0, precipitation: none, visibility_km: 10}
+  history: []

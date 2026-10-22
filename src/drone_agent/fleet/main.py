@@ -15,6 +15,9 @@ scheduling tables are added the same way (D060) and the scheduler assigns tasks 
 run in the background pass; `--vision live` builds the vision role's provider (every exchange recorded), `none`
 leaves model analyses refusing `model.unavailable`. `--vendor-link DOCK=SOCKET` (P5, D072) connects the in-process
 gateway of each vendor-managed dock of the catalog to its vendor endpoint; the gateway then runs in the background pass.
+`--air-ground` (X1, D088) needs `--scheduling` and `--business`: the handoff tables are added the same way, the hub
+hands offers out and takes replies through the handoff engine, and the scheduler acks accepted offers by assigning
+the ground mission.
 
 任务服务进程：mTLS 车队端点、私有 API 套接字与后台刷新。
 
@@ -29,6 +32,8 @@ v2（D056），每个新任务都绑定到项目与机器人。`--workflows`（P
 处理中分配任务单。`--business`（P4，D063）再加载业务目录：以同样方式加上业务表（D064），分析作业在后台处理中运行；
 `--vision live` 构建视觉角色的 provider（每次交互都录制），`none` 时模型分析以 `model.unavailable` 拒判。
 `--vendor-link DOCK=SOCKET`（P5，D072）把目录中每个厂商托管机场的进程内网关连接到其厂商端点；网关随后在后台处理中运行。
+`--air-ground`（X1，D088）需要 `--scheduling` 与 `--business`：以同样方式加上交接表，hub 经交接引擎交付提议并接收回复，
+调度器以分配地面任务来确认已接受的提议。
 """
 
 from __future__ import annotations
@@ -192,6 +197,12 @@ async def main_async(args) -> None:
         from drone_agent.fleet.assets import open_archive
 
         assets = open_archive(service, backups=args.state / "backups")
+    if args.air_ground:
+        # X1 (D088): the handoff tables, engine and hub channel, once the scheduler and the business tables exist.
+        # X1（D088）：调度器与业务表就绪后，加上交接表、引擎与 hub 通道。
+        from drone_agent.fleet.air_ground import build_air_ground
+
+        build_air_ground(service, backups=args.state / "backups")
     # WP-P6-07 (D085): one capacity snapshot a minute; old `status.accepted` rows archived when a retention is set.
     # WP-P6-07（D085）：每分钟一份容量快照；设置保留期时归档旧的 `status.accepted` 行。
     service.capacity_dir = args.state / "capacity"
@@ -313,6 +324,8 @@ def main() -> None:
                         help="archive status.accepted rows older than this out of the ledger (D085); off by default")
     parser.add_argument("--vision", choices=["live", "none"], default="none",
                         help="vision provider of model analyses (P4); none refuses them explicitly")
+    parser.add_argument("--air-ground", action="store_true",
+                        help="X1 handoffs (D088); needs --scheduling and --business; migrates / X1 交接；迁移交接表")
     parser.add_argument("--vendor-link", type=vendor_link, action="append", default=[],
                         help="DOCK=SOCKET for each vendor-managed dock of the catalog (P5, D072)")
     args = parser.parse_args()
@@ -322,6 +335,8 @@ def main() -> None:
         parser.error("--scheduling needs --catalog")
     if args.business is not None and args.workflows is None:
         parser.error("--business needs --workflows")
+    if args.air_ground and (args.scheduling is None or args.business is None):
+        parser.error("--air-ground needs --scheduling and --business")
     if len(args.execution_backend) > 1 and args.catalog is None:
         parser.error("several execution backends need --catalog to bind robots to them")
     if args.planner == "scripted" and not args.fixtures:

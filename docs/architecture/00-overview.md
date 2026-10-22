@@ -8,13 +8,13 @@
 
 首场景是园区三处登记设备的周期巡检与外观异常复检。业务流程可跨天，每次飞行仍是有界 MissionSpec；模型只生成类型化草案和业务判断，控制与恢复由确定性运行时承担。先做多站多无人机任务协同，再复用其目录、所有权与预约扩展空地本体。
 
-### 当前实现与阅读边界（软件 / SITL 范围）
+### 当前实现与阅读边界（2026-10-15）
 
-原架构审阅基线为 `9223d74`；P0 验收版本为 `de597d0`，验收见 [P0 记录](../p0-readiness.md)；P1 验收版本为 `b49701b`，见 [P1 记录](../p1-readiness.md)；P2 验收版本为 `3bdbd50`，见 [P2 记录](../p2-readiness.md)；P3 验收版本为 `73fcf23`，见 [P3 记录](../p3-readiness.md)；P4 验收版本为 `8f41112`，S2 在 `f4b1b99` 上复验（D076），见 [P4 记录](../p4-readiness.md)；P5 验收版本为 `1716843`（首个候选 `4c3de14` 未通过，保留为负记录），见 [P5 记录](../p5-readiness.md)。**M2 已完成单机仿真；M3-SITL 已通过，M3-JIL 待硬件；P0–P3 已完成（软件 / SITL 范围）；P4 已完成（2026-10-10，S2 以 MiniMax-M3.1-Flash-Preview 复验通过）；P5 已完成（D069–D073，软件 / SITL / 协议模拟范围）。** 2026-10-10 按外部评审加固航迹覆盖、能源降落平面前提与补全缓存键（D075），并为 P4 的 S2 接入 MiniMax-M3.1-Flash-Preview 视觉档、在校准拆分上冻结画像，在已披露第 2 次使用的测试拆分上复验通过（D076）；加入持续检查（D077）；P6 的 WP-P6-02 主动补拍与目标区域质量经用户批准后在 `ecee452` 准出（D078，见 [P6 补拍验收](../p6-recapture-readiness.md)），WP-P6-03 真实模型对抗录制在 `8d69ae1` 准出（D079，见 [P6 对抗录制验收](../p6-adversarial-readiness.md)），见[评审记录](../research/external-review-2026-10-10.md)。
+**只有软件，全部在仿真中验证。** M0–M2 已完成单机仿真；M3-SITL 已通过，M3-JIL 待硬件（原 M3 总门禁仍为 `not_passed`，由 H1 承接）；P0–P5 已完成（软件 / SITL / 协议模拟范围），常驻任务台即平台 v0.1；P6 的 WP-P6-02–07 已准出，WP-P6-01 目标业务评测集尚未冻结；X1 的 WP-X1-01 空地联合仿真已准出（软件 / SITL 范围），常驻任务台不接入。2026-10-10 的[外部评审](../research/external-review-2026-10-10.md)带来契约加固（D075）、P4 的 S2 复验（D076）、持续检查（D077）与 P6 的七个工作包。各阶段的准确版本、证据与边界以[路线图 §1](../roadmap.md) 及其链接的验收记录为准；原架构审阅基线为 `9223d74`。
 
 | 链路 | 当前落地 | 进一步阅读 |
 |---|---|---|
-| 请求与规划 | Web / A2A 入口；MiniMax-M3 草案，确定性构建 MissionSpec | [分层](01-layers.md) |
+| 请求与规划 | Web / A2A 入口；MiniMax-M3 草案，确定性构建 MissionSpec；规划器按机器人所在站点取地图与只读工具，规划提示 planner-v3 写明项目、站点与机器人，点名别处的请求在调用模型前被确定性拒绝（D079–D082） | [分层](01-layers.md) · [指代检查](../reference-check.md) |
 | 编译与授权 | 能力、空间、时间、能源等准入；审批绑定版本与哈希；Ed25519 签名 | [契约](02-contracts.md) |
 | 单机执行 | 独立 uplink；executive 无网络；guardian 唯一决定飞控写入 | [安全](03-safety.md) |
 | 局部自主（SITL） | ROS 2 Jazzy、深度局部地图与短时域规划、CBF、外部模式出口、能源可达性 / 恢复 v2、CLIP 候选事件、Zenoh | [M3 记录](../m3-readiness.md) |
@@ -23,8 +23,12 @@
 | 资源与派遣（P1） | 项目角色、站点 / 逻辑机场 / 机器人目录、可派遣判定、最小预约、领取闸门与对账释放 | [运营层 §11](09-operations.md) |
 | 持久工作流（P2） | 版本化白名单模板、人工 / 排班 / 事件触发、租约与 outbox、取消代次、脚本 / 确定性分析、复核、模拟工单与复检 | [运营层 §12](09-operations.md) |
 | 多站多机调度（P3） | 任务单、确定性分配与可重放判定、空域网格预约与失联包络、领取前撤回、任务级接力、两机同世界 SITL | [运营层 §13](09-operations.md) |
+| 业务闭环（P4） | 分析作业与通用质量层、带来源标注的候选发现、reviewer 复核、工单轮次与复检关单、S2 冻结评测；任务台的视觉分析器固定为 change-v3 | [运营层 §6](09-operations.md) · [P4 记录](../p4-readiness.md) |
+| 平台 v0.1（P5） | 常驻任务台的三种执行后端（`px4_sitl` / `logical_sim` / `vendor_protocol_sim`）、第二业务模板、厂商任务网关与 S3 协议合同、项目审计、72 h 长稳 | [运维手册](../operations-guide.md) · [P5 记录](../p5-readiness.md) |
+| 证据驱动运营（P6） | 目标区域质量与有界补拍、真实模型对抗录制、运营解释助手、按真实轨迹核对的空域预约、容量观测与数据保留、资产时空证据档案 | [实施任务 §10](../operations-implementation.md) |
+| 空地协同（X1，SITL） | 同一 Gazebo 世界中的 x500 与 PX4 差速地面车；协调器交接、空间对齐、地面车按自己的地图作答、飞控限速与按本体的安全终态；只在带 `--air-ground` 的服务上启用 | [空地协同](04-air-ground.md) · [X1 记录](../x1-readiness.md) |
 
-**尚未覆盖**：独立道路业务评测集与现场清障效果、真实机场、完整语义场景图、Jetson / 真机及地面与厂商真实平台。多机调度、分析作业、工单关单与复检已在各自软件 / SITL 范围验证，准确状态见[路线图](../roadmap.md)及 [P6 当前交接](../p6-road-corpus-handoff-2026-10-22.md)。M3 事件检测是 CLIP 场景分类，不是通用缺陷识别或机载生成式 VLM。空域已有录制 UOM 后端，没有 live 报备能力；能耗估计限仿真。
+**待实现**：真实机场与厂商设备（X2）；目标业务评测集（WP-P6-01）；完整语义场景图；Jetson 与真机（H1–H3）；地面 Nav2 与真实地面平台（X1-02、H3）。M3 事件检测是 CLIP 场景分类，不是通用缺陷识别或机载生成式 VLM。空域已有录制 UOM 后端，没有 live 报备能力；能耗估计限仿真。
 
 历史验收分别绑定 [M1 `eefe76e`](../m1-readiness.md)、[M2 `f362b9e`](../m2-readiness.md)、[M3-SITL `75382dc`](../m3-readiness.md)。M3 总门禁仍为 `not_passed`，H1 承接 JIL；归档结果不能转借为当前 HEAD 或 P 系列成绩。常驻入口的版本与实调范围见[任务台记录](../tailnet-desk-readiness.md)。
 
@@ -40,7 +44,7 @@
 
 ## 3. 总体分层
 
-**目标架构。** 当前链路在 SITL 中覆盖空中一侧的 L0–L6：M1 / M2 的 PX4/MAVSDK 航线路径，加上 M3 的 L4 局部自主（px4_ros2 外部模式，经 guardian 的 CBF 过滤与短时授权，M3-SITL 已验证，Jetson-in-the-loop 待硬件）；运营层在 P1–P5 引入；地面机器人在 P3 后的 X1 / H3 引入，其他飞控与学习策略按后续里程碑接入。M2 的协调器只为单机分配任务，协同规则只记录不执行。
+**目标架构。** 当前链路在 SITL 中覆盖空中一侧的 L0–L6：M1 / M2 的 PX4/MAVSDK 航线路径，加上 M3 的 L4 局部自主（px4_ros2 外部模式，经 guardian 的 CBF 过滤与短时授权，M3-SITL 已验证，Jetson-in-the-loop 待硬件）；运营层在 P1–P5 引入；地面一侧由 X1 在 SITL 中验证（D088）：PX4 差速地面车经协调器交接接受地面复核，用同一套机载 uplink / executive / guardian 以 PX4 任务模式行驶（地面 L4 的 Nav2 留给 X1-02），真实地面平台在 H3 引入，其他飞控与学习策略按后续里程碑接入。M2 的协调器只为单机分配任务，协同规则只记录不执行。
 
 ```mermaid
 flowchart TB
@@ -71,32 +75,35 @@ flowchart TB
     guardian -->|"CBF 过滤后的短时授权"| egress
     egress -->|"uXRCE-DDS · 外部模式"| flightController
 
-    groundExecutive["L3 地面任务执行 · X1 / H3 计划"]
-    groundAutonomy["L4 导航与操作"]
-    groundGuardian["L5 本体安全监督"]
-    groundAdapter["L6 地面平台适配"]
-    groundController["本体控制器"]
+    groundExecutive["L3 地面任务执行 · X1 SITL"]
+    groundAutonomy["L4 导航与操作 · X1-02 / H3 计划"]
+    groundGuardian["L5 本体安全监督 · X1 SITL"]
+    groundAdapter["L6 PX4 地面车适配（guardian 内）"]
+    groundController["PX4 差速地面车控制与失效保护"]
 
-    admission -.->|"授权任务包 · 规划中"| groundExecutive
+    admission -->|"交接后的签名任务包 · 地面车 uplink"| groundExecutive
+    groundExecutive -->|"地面技能意图"| groundGuardian
     groundExecutive -.-> groundAutonomy
     groundAutonomy -.-> groundGuardian
-    groundGuardian -.-> groundAdapter
-    groundAdapter -.-> groundController
+    groundGuardian --> groundAdapter
+    groundAdapter -->|"PX4 任务模式 · 飞控限速"| groundController
 
     classDef implemented stroke:#277563,stroke-width:2px
     classDef planned stroke:#8793a3,stroke-dasharray:5 4
     classDef safety stroke:#b88219,stroke-width:3px
     class entry,planner,admission,uplink,executive,autonomy,egress,adapter,flightController implemented
-    class groundExecutive,groundAutonomy,groundGuardian,groundAdapter,groundController planned
-    class guardian safety
+    class groundExecutive,groundAdapter,groundController implemented
+    class groundAutonomy planned
+    class guardian,groundGuardian safety
 ```
 
-实线表示当前执行路径（M1 / M2 的航线路径与 M3 的外部模式路径，后者在 SITL 中验证），虚线及标注“计划”的节点表示后续扩展；金色边框的 guardian 是唯一决定写与不写的进程，出口节点只是它在 ROS 2 一侧的延伸（D039）。图中表示任务与控制意图的下行关系，观测、证据和状态按同一边界回传。
+实线表示当前执行路径（M1 / M2 的航线路径与 M3 的外部模式路径，后者在 SITL 中验证；X1 的地面车航线路径也只在 SITL 中验证），虚线及标注“计划”的节点表示后续扩展；金色边框的 guardian 是各本体上唯一决定写与不写的进程，出口节点只是它在 ROS 2 一侧的延伸（D039）。图中表示任务与控制意图的下行关系，观测、证据和状态按同一边界回传。
 
 - **L0–L2**：Web / A2A / API 入口；Planner、只读工具、Catalog、业务账本与证据复核；确定性编译、准入及审批签名。M2 的 Coordinator 为单机直通；P3 起调度器跨站点、跨飞行器分配任务并独占航迹经过的空域单元，近距离协同与编队不在范围内。
 - **机载边界**：独立 uplink 拉取任务包；executive 与 guardian 各自验签；飞控连接只在 guardian 内，飞控失效保护与 RC / GCS 接管始终保留。
 - **L4（M3，SITL）**：定位健康、深度局部地图与短时域规划、颜色特征感知与事件检测；规划片段只是候选，guardian 过滤后以短时授权经出口节点下发，学习策略只影子运行（D039–D048）。
-- **后续扩展**：Jetson-in-the-loop（H1）与受限真机（H2）、其他飞控和地面平台适配按里程碑接入。
+- **地面一侧（X1，SITL）**：地面车按自己的地图、停放状态与电量回答交接提议；人工逐次审批后解锁、限速行驶、正对目标采集、返回，安全终态是停车并在静止后上锁（D088，[验收](../x1-readiness.md)）。
+- **后续扩展**：Jetson-in-the-loop（H1）与受限真机（H2）、地面 Nav2（X1-02）与真实地面平台（H3）、其他飞控按里程碑接入。
 - **贯穿链路**：安全监督、观测证据、任务事件、MCAP / ULog 记录、回放与评测。
 
 **关键性质：L1/L2 与 L3–L6 之间传递的是任务及其边界，不是依赖公网连续下发的每帧动作。** 断链时 L3–L5 依据已授权任务包与本地恢复策略自主收尾。
@@ -108,11 +115,13 @@ flowchart TB
 | P0–P5 软件运营 | 资源、机场、持久工作流、调度、多模态业务与运营台 | 复用 M2；具体局部自主场景按需依赖 M3-SITL；完整设计见 [09-operations](09-operations.md) |
 | M3-SITL 执行能力 | 维护已验证的局部自主与恢复能力 | 改动按准确候选回归；不借机开放真实设备 |
 | H1–H3 硬件验证 | JIL、受限真机、现场持续运营 | 目标设备与实际运行证据；不作为软件工作的采购前置 |
-| X1–X3 扩展 / 研究 | 空地协同、厂商平台、VLA / 世界模型、公共内核 | X1 复用 P3；学习策略先影子；内核按 D001 触发 |
+| X1–X3 扩展 / 研究 | 空地协同、厂商平台、VLA / 世界模型、公共内核 | X1 复用 P3（X1-01 已在 SITL 准出）；学习策略先影子；内核按 D001 触发 |
 
 白皮书启发、共享评审的采纳与修正见[来源核对](../research/operations-roadmap-review-2026-09-25.md)。运营层不新增飞控路径；厂商托管任务的不同责任边界见[扩展性](06-extensibility.md)。
 
 ## 5. 文档地图
+
+**架构（本目录）**
 
 | 文档 | 回答的问题 |
 |---|---|
@@ -124,11 +133,57 @@ flowchart TB
 | [06-extensibility.md](06-extensibility.md) | 插件点清单、厂商能力协商、模型接入、MCP/A2A 边界 |
 | [07-deployment.md](07-deployment.md) | 仿真两条线、容器与镜像、机载硬件、网络与中间件 |
 | [08-evaluation.md](08-evaluation.md) | 三分类结果、指标、裁判、故障注入、准出标准 |
-| [../decisions.md](../decisions.md) | 技术决策记录（只增不删） |
 | [09-operations.md](09-operations.md) | 资源、工作流、调度、发现与工单、运行来源和权限 |
-| [../roadmap.md](../roadmap.md) | P/H/X 里程碑、历史映射与退出标准 |
-| [../p0-readiness.md](../p0-readiness.md) | P0 当前验收、来源语义、能力清单与准确候选证据 |
+
+**路线、决策与调研**
+
+| 文档 | 回答的问题 |
+|---|---|
+| [../roadmap.md](../roadmap.md) | P/H/X 里程碑、历史映射与退出标准；§1 列出各阶段的准确版本与验收记录 |
 | [../operations-implementation.md](../operations-implementation.md) | P0–P5 / H / X 工作包、责任、依赖与验收；§10 为评审提议的 P6 |
+| [../decisions.md](../decisions.md) | 技术决策记录（只增不删） |
+| [../research/](../research/) | 前沿调研、GPT-6 Pro 评估摘要与季度技术雷达（最近一次：[2026-10](../research/tech-radar-2026-10.md)） |
+| [../reuse-from-embodied-agent.md](../reuse-from-embodied-agent.md) | 从 `embodied-agent` / `car-agent` 复用什么、怎么迁 |
+
+**单机运行时（M0–M3）**
+
+| 文档 | 回答的问题 |
+|---|---|
+| [../m0-readiness.md](../m0-readiness.md) | M0 交付核对与实际验证证据 |
+| [../m1-skill-catalog.md](../m1-skill-catalog.md) | 五个 M1 技能的参数、资源、取消与完成判据 |
+| [../m1-implementation.md](../m1-implementation.md) | M1 实施顺序、运行时边界与证据要求 |
+| [../m1-readiness.md](../m1-readiness.md) | M1 验收版本、完整证据与复现边界 |
+| [../m2-implementation.md](../m2-implementation.md) | M2 受约束 Agent 的批次、工作包、验收判据与决策待办 |
+| [../m2-readiness.md](../m2-readiness.md) | M2 实现范围、候选版本、云端端到端与回归证据、实调准入率基线与发布门禁（已关闭） |
+| [../m2-review-2026-09-24.md](../m2-review-2026-09-24.md) | M2 评审：证据过早报成功、取消后自动重飞与裁判漏检的修复，以及 M1 / M2 统一云端飞行台 |
+| [../m3-implementation.md](../m3-implementation.md) | M3 局部自主与降级：测量先行、第二控制路径、四类场景 |
+| [../m3-readiness.md](../m3-readiness.md) | M3-SITL 验收版本、场景集、D040 测量与恢复边绑定；M3-JIL 待硬件 |
+| [../m4-implementation.md](../m4-implementation.md) | 原 M4 工作包：H2 真机与 X1 空地联合仿真，含 P1/P3 复用映射 |
+
+**运营平台（P0–P5）**
+
+| 文档 | 回答的问题 |
+|---|---|
+| [../p0-readiness.md](../p0-readiness.md) | P0 当前验收、来源语义、能力清单与准确候选证据 |
+| [../p1-implementation.md](../p1-implementation.md) | P1 的 12 项工作包、单机场纵向链、故障矩阵与实现落位 |
+| [../p1-storage-design.md](../p1-storage-design.md) | P1 账本 schema v2 与授权设计、迁移演练 |
+| [../p1-readiness.md](../p1-readiness.md) | P1 验收版本、S0 / S1 与常驻任务台迁移证据 |
+| [../p2-implementation.md](../p2-implementation.md) | P2 持久工作流的语义、API、故障矩阵与实施记录 |
+| [../p2-storage-design.md](../p2-storage-design.md) | P2 工作流扩展表与迁移演练 |
+| [../p2-readiness.md](../p2-readiness.md) | P2 验收版本、S0 / S1、常驻任务台工作流会话与门禁 |
+| [../p3-implementation.md](../p3-implementation.md) | P3 多站多机调度的语义、两机拓扑、故障矩阵与门禁方案 |
+| [../p3-storage-design.md](../p3-storage-design.md) | P3 调度扩展表与迁移演练 |
+| [../p3-readiness.md](../p3-readiness.md) | P3 验收版本、S0 矩阵与规模阶梯、两机 S1、容量与常驻任务台调度会话 |
+| [../p4-implementation.md](../p4-implementation.md) | P4 多模态业务闭环：分析作业、质量层、发现聚合、复核、工单轮次、复检结算与 S2 协议 |
+| [../p4-storage-design.md](../p4-storage-design.md) | P4 业务扩展表与迁移演练 |
+| [../p4-readiness.md](../p4-readiness.md) | P4 验收版本、S0 / S1 / 常驻任务台与 S2（含 D076 复验） |
+| [../p5-implementation.md](../p5-implementation.md) | P5 平台 v0.1：工作区集成、第二业务模板、厂商网关、72 h 长稳与版本交付 |
+| [../p5-readiness.md](../p5-readiness.md) | P5 验收版本、二十二项门禁与 72 h 长稳；首个候选 `4c3de14` 的负记录 |
+
+**证据驱动运营（P6）**
+
+| 文档 | 回答的问题 |
+|---|---|
 | [../p6-road-corpus-handoff-2026-10-22.md](../p6-road-corpus-handoff-2026-10-22.md) | WP-P6-01 公开素材开发交接、剩余工作与提交范围；P6 仍未整体准出 |
 | [../p6-materials-review.md](../p6-materials-review.md) · [第二批](../p6-materials-round2.md) | 公开来源、许可差异、图像 / 标注审计与正式数据缺口 |
 | [../p6-materials-development.md](../p6-materials-development.md) | 26 条开发输入、10 条实调与严格回放、复核工具及浏览器检查 |
@@ -161,24 +216,20 @@ flowchart TB
 | [../capacity-readiness.md](../capacity-readiness.md) | WP-P6-07 验收记录（2026-10-12，`a63f3ac`，软件 / SITL 范围） |
 | [../asset-archive-design.md](../asset-archive-design.md) | WP-P6-04 资产时空证据档案：资产修订、观测、权威事件与确定性比较（D087） |
 | [../asset-archive-readiness.md](../asset-archive-readiness.md) | D087 验收记录（2026-10-13，`6249129`） |
-| [../p1-implementation.md](../p1-implementation.md) | P1 的 12 项工作包、单机场纵向链、故障矩阵与实现落位 |
-| [../p1-readiness.md](../p1-readiness.md) | P1 验收版本、S0 / S1 与常驻任务台迁移证据 |
-| [../p2-implementation.md](../p2-implementation.md) | P2 持久工作流的语义、API、故障矩阵与实施记录 |
-| [../p2-readiness.md](../p2-readiness.md) | P2 验收版本、S0 / S1、常驻任务台工作流会话与门禁 |
-| [../p3-implementation.md](../p3-implementation.md) | P3 多站多机调度的语义、两机拓扑、故障矩阵与门禁方案 |
-| [../p3-readiness.md](../p3-readiness.md) | P3 验收版本、S0 矩阵与规模阶梯、两机 S1、容量与常驻任务台调度会话 |
-| [../reuse-from-embodied-agent.md](../reuse-from-embodied-agent.md) | 从 `embodied-agent` / `car-agent` 复用什么、怎么迁 |
-| [../research/](../research/) | 前沿调研、GPT-6 Pro 评估摘要与季度技术雷达（最近一次：[2026-10](../research/tech-radar-2026-10.md)） |
-| [../m0-readiness.md](../m0-readiness.md) | M0 交付核对与实际验证证据 |
-| [../m1-skill-catalog.md](../m1-skill-catalog.md) | 五个 M1 技能的参数、资源、取消与完成判据 |
-| [../m1-implementation.md](../m1-implementation.md) | M1 实施顺序、运行时边界与证据要求 |
-| [../m1-readiness.md](../m1-readiness.md) | M1 验收版本、完整证据与复现边界 |
-| [../m2-implementation.md](../m2-implementation.md) | M2 受约束 Agent 的批次、工作包、验收判据与决策待办 |
-| [../m2-readiness.md](../m2-readiness.md) | M2 实现范围、候选版本、云端端到端与回归证据、实调准入率基线与发布门禁（已关闭） |
-| [../m3-implementation.md](../m3-implementation.md) | M3 局部自主与降级：测量先行、第二控制路径、四类场景 |
-| [../m4-implementation.md](../m4-implementation.md) | 原 M4 工作包：H2 真机与 X1 空地联合仿真，含 P1/P3 复用映射 |
+
+**空地协同（X1）**
+
+| 文档 | 回答的问题 |
+|---|---|
 | [../x1-implementation.md](../x1-implementation.md) | WP-X1-01 空地联合仿真实施方案：差速地面车、按本体的安全终态、交接协议、空间对齐与分层预约（D088，2026-10-14 批准） |
+| [../x1-readiness.md](../x1-readiness.md) | WP-X1-01 验收记录（2026-10-15，`75cfde6`）：S0 / S1、被替换的候选与 S1 实测发现 |
+
+**运行、入口与运维**
+
+| 文档 | 回答的问题 |
+|---|---|
 | [../cloud-development.md](../cloud-development.md) | 默认云端构建、仿真与验证的操作入口及隔离边界 |
+| [../operations-guide.md](../operations-guide.md) | 常驻任务台（平台 v0.1）的部署与升级、回退、备份与恢复、监控、故障处理与 72 h 长稳 |
 | [../live-simulation.md](../live-simulation.md) | M1 固定任务的实时操作、连接语义与完整证据入口 |
 | [../live-console-readiness.md](../live-console-readiness.md) | 实时仿真入口的准确版本、HTTP 操作验证与回归范围 |
 | [../tailnet-console.md](../tailnet-console.md) | 云端常驻控制台、Tailscale 私网入口与机内权限边界 |
@@ -186,5 +237,5 @@ flowchart TB
 | [../tailnet-desk.md](../tailnet-desk.md) | M2 任务台常驻 Tailnet 入口：使用、部署、仿真监管者与进程边界（D035） |
 | [../tailnet-desk-readiness.md](../tailnet-desk-readiness.md) | 任务台常驻入口的准确版本、隔离核对、Tailnet HTTPS 任务验收与开发负记录 |
 | [../desk-workspaces-readiness.md](../desk-workspaces-readiness.md) | D068 运营台工作区：部署版本、浏览器级渲染与在页面中走完的任务与业务链路 |
-| [../desk-visual-v2-implementation.md](../desk-visual-v2-implementation.md) | 运营台视觉 v2 唯一实施交接：Figma 节点、设计变量、组件映射、数据前提与验收；已完成 MCP 对照、浏览器图标与手动浅 / 深主题入口，当前部署 `0094238` |
+| [../desk-visual-v2-implementation.md](../desk-visual-v2-implementation.md) | 运营台视觉 v2 唯一实施交接：Figma 节点、设计变量、组件映射、数据前提与验收；MCP 对照、浏览器图标与手动浅 / 深主题入口随 `0094238` 部署（2026-10-09） |
 | [../desk-visual-v2-readiness.md](../desk-visual-v2-readiness.md) | D074 的准确版本、MCP 读取与资产、本机核验、服务数据缺项与常驻部署边界 |

@@ -1,0 +1,51 @@
+# Platform lock for the X1 ground robot (D088): PX4 v1.17.0's differential rover in SITL (gz_rover_differential,
+# airframe 50000), on the toolchain pinned for the multirotor. Its behaviour was measured before any onboard code
+# (docs/verification/x1-rover-probe-2026-10-14): PX4's RTL drives straight home, so the recovery set has no RTL, and
+# the speed limit keeps the guardian's look-ahead shorter than the robot's clearance. `capability` is what the PX4
+# adapter publishes for this platform; the arm, stop and disarm skills are skeleton steps only the compiler inserts.
+#
+# X1 地面车的平台版本锁（D088）：SITL 中 PX4 v1.17.0 的差速车（gz_rover_differential，airframe 50000），沿用多旋翼的
+# 固定工具链。其行为已在写任何机载代码之前实测（docs/verification/x1-rover-probe-2026-10-14）：PX4 的 RTL 直线回家，因此
+# 恢复集合不含 RTL；限速使 guardian 的前瞻位移小于车体净空。`capability` 是 PX4 适配器为该平台发布的能力描述；arm、stop、
+# disarm 是只由编译器插入的骨架步骤。
+schema_version: "0.1.0"
+platform_id: px4_sitl_rover
+versions:
+  px4: "1.17.0"
+  px4_commit: d6f12ad1c4f70ad3230afd7d86e971421e02fef4
+  build_image: px4io/px4-dev-ros2@sha256:558f27556d5ddb09a5082ec5a4407e4497b3d5bed646278242488010f267ae23
+  mavsdk_python: "3.17.4" # Pin the validated gRPC API; migrate explicitly (D025). / 固定已验证的 gRPC API；按 D025 显式迁移。
+  gazebo: harmonic
+  ubuntu: "24.04"
+  python: "3.12"
+simulation:
+  airframe: 50000
+  model: gz_rover_differential
+  # PX4's default drains the simulated battery in 60 s; X1 sets this. / PX4 默认 60 s 放完仿真电量；X1 另设此值。
+  battery_drain_s: 1800
+capability:
+  robot_id: ugv_01
+  embodiment: ground_wheeled
+  interface_version: "0.1.0"
+  control_modes: [mission_upload]
+  skills:
+    - { skill_id: skill.ground.arm, version: "0.1.0" }
+    - { skill_id: skill.ground.nav_to, version: "0.1.0" }
+    - { skill_id: skill.ground.recheck, version: "0.1.0" }
+    - { skill_id: skill.ground.return_home, version: "0.1.0" }
+    - { skill_id: skill.ground.stop, version: "0.1.0" }
+    - { skill_id: skill.ground.disarm, version: "0.1.0" }
+  sensors:
+    - { sensor_id: gnss_0, kind: gnss, frame_id: ugv_01/base_link, nominal_accuracy: { position_m: 1.5 } }
+    - { sensor_id: cam_0, kind: rgb_camera, frame_id: ugv_01/cam_0 }
+  payloads: []
+  limits:
+    max_speed_mps: 1.0
+    endurance_s: 1800
+    max_wind_mps: 15.0
+    can_hover: false
+  recovery_behaviors: [stop, handover_to_fc_failsafe]
+  vendor: px4
+  model: rover_differential_sitl
+  vendor_constraints: []
+recovery_policy_ref: rover_campus@v1

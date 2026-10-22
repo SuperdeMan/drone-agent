@@ -43,7 +43,7 @@ from drone_agent.fleet.scheduling_models import (
     load_scheduling,
     task_key_ok,
 )
-from drone_agent.fleet.scheduling_store import SchedulingStore, StaleTask, migrate
+from drone_agent.fleet.scheduling_store import HANDOFF_SOURCE, SchedulingStore, StaleTask, migrate
 from drone_agent.fleet.service import ServiceError
 from drone_agent.runtime.issues import issue
 from drone_agent.runtime.permission import MISSION_OPERATE, MISSION_READ, MISSION_SUBMIT, Caller
@@ -110,6 +110,10 @@ class Scheduler:
             # A run's cancel reaches its tasks in the same transaction (D059 §8). / 运行取消在同一事务到达其任务单。
             service.workflows.store.cancel_hooks.append(self.cancel_run)
         self.touched: set[str] = set()
+        # X1 (D088): the handoff engine, and what to do once a handoff task settled; None without X1.
+        # X1（D088）：交接引擎，以及交接任务了结后要做的事；未启用 X1 时为 None。
+        self.handoffs = None
+        self.on_handoff_settled = None
 
     @property
     def ops(self):
@@ -187,10 +191,119 @@ class Scheduler:
             raise ServiceError("service.idempotency_conflict", "the key was used for another task")
         return task, created
 
+    def submit_handoff(self, *, requested_by: str, key, project_id: str, asset_id, volume_id, robot_id: str,
+                       detail: dict) -> tuple[dict, bool]:
+        """A ground recheck task offered to one named robot (D088); the P3 queue never serves it.
+
+        提议给一台指定地面车的地面复核任务（D088）；P3 队列从不处理它。
+        """
+        if not isinstance(asset_id, str) or not ASSET.fullmatch(asset_id):
+            raise ServiceError("task.invalid_request", "asset_id must be a registered asset id")
+        if not isinstance(volume_id, str) or not ASSET.fullmatch(volume_id):
+            raise ServiceError("task.invalid_request", "volume_id must be a registered ground region id")
+        if not task_key_ok(key):
+            raise ServiceError("task.invalid_request", "idempotency_key must be 1-160 safe characters")
+        if robot_id not in self.project_robots(project_id):
+            raise ServiceError("task.candidate_outside_project", str(robot_id)[:60])
+        not_after = (self.clock() + timedelta(seconds=self.catalog.policy.task_window_s)).isoformat()
+        task, created = self.store.create_task(requested_by=requested_by, key=key, project_id=project_id,
+                                               asset_id=asset_id, volume_id=volume_id, candidates=[robot_id],
+                                               priority=5, not_after=not_after, source=HANDOFF_SOURCE,
+                                               detail={"mode": "handoff", **detail})
+        if not created and (task["source"], task["candidates"], task["asset_id"]) != (HANDOFF_SOURCE, [robot_id],
+                                                                                     asset_id):
+            raise ServiceError("service.idempotency_conflict", "the key was used for another task")
+        return task, created
+
+    def tick_handoffs(self) -> None:
+        if self.handoffs is not None:
+            self.handoffs.tick()
+
+    def assign_handoff(self, handoff: dict) -> int | None:
+        """The engine's ack of an accepted offer (D088), in one transaction: the next epoch's assignment, the ground
+        mission version (still awaiting a human approval) and its strict holds. A hold conflict or a changed task rolls
+        everything back and returns None, so the offer stays accepted for the next pass; a reply that disagrees with
+        the robot's map or an admission refusal raises `HandoffRefused`, so the engine withdraws the offer and ends
+        the task. A repeat after a lost ack returns the epoch already written.
+
+        引擎对已接受提议的确认（D088），在一个事务内写入：下一代次的分配、地面任务版本（仍待人工审批）及其严格持有。持有
+        冲突或任务已变化时整体回滚并返回 None，提议保持 accepted 留待下一轮；回复与地面车地图不一致或准入拒绝时抛出
+        `HandoffRefused`，引擎随即撤回提议并终结任务。确认丢失后的重复调用返回已写入的代次。
+        """
+        from drone_agent.admission.ground import reply_issue
+        from drone_agent.contracts import WorldFact
+        from drone_agent.fleet.handoff import HandoffRefused
+
+        task = self.store.task(handoff["task_id"])
+        if task is None:
+            raise HandoffRefused("handoff.task_closed", handoff["task_id"])
+        decision_id = f"handoff:{handoff['handoff_id']}"
+        live = self.store.live(task["task_id"])
+        if live is not None and live["decision_id"] == decision_id:
+            return live["epoch"]
+        if task["state"] != TaskState.QUEUED.value or task["cancel"] is not None:
+            raise HandoffRefused("handoff.task_closed", task["state"])
+        robot, epoch = handoff["to_robot_id"], task["epoch"] + 1
+        fact = WorldFact.model_validate(handoff["target"])
+        radius = fact.value.get("radius_m") if fact.value.get("kind") == "search_region" else None
+        problem = reply_issue(self.ops.registry(robot), (fact.position.x, fact.position.y), radius, handoff["reply"])
+        if problem is not None:
+            raise HandoffRefused(problem.code, problem.message)
+
+        def guard(_db) -> bool:
+            current = self.store.task(task["task_id"])
+            return current is not None and current["state"] == TaskState.QUEUED.value and current["cancel"] is None \
+                and current["state_version"] == task["state_version"]
+
+        rejected = None
+        try:
+            with self.store.transaction():
+                view = self.service.submit_ground_recheck(
+                    principal=task["requested_by"], key=f"{task['idempotency_key']}#a{epoch}",
+                    project_id=task["project_id"], robot_id=robot, handoff=handoff, detail=task["detail"],
+                    guard=guard)
+                if view is None:
+                    return None
+                mission_id, status = view["mission"]["mission_id"], view["mission"]["status"]
+                if status == "rejected":
+                    # Kept for the record; the task ends once the offer is withdrawn. / 保留记录；提议撤回后任务结束。
+                    self.store.insert_assignment(task_id=task["task_id"], epoch=epoch, robot_id=robot,
+                                                 mission_id=mission_id, decision_id=decision_id,
+                                                 state=AssignmentState.ENDED.value, reason="admission_rejected")
+                    rejected = mission_id
+                else:
+                    self.store.insert_assignment(task_id=task["task_id"], epoch=epoch, robot_id=robot,
+                                                 mission_id=mission_id, decision_id=decision_id)
+                    self.store.update_task(task["task_id"], task["state_version"], actor=SCHEDULER,
+                                           state=TaskState.ASSIGNED.value, epoch=epoch, robot_id=robot,
+                                           mission_id=mission_id, reason=None)
+                self.touched.add(mission_id)
+        except (ServiceError, sqlite3.IntegrityError, StaleTask) as error:
+            self.store.event(f"task:{task['task_id']}", "assignment.refused", self.worker,
+                             {"robot_id": robot, "epoch": epoch, "handoff_id": handoff["handoff_id"],
+                              "reason": getattr(getattr(error, "issue", None), "code", type(error).__name__)})
+            return None
+        if rejected is not None:
+            raise HandoffRefused("handoff.admission_rejected", rejected)
+        return epoch
+
+    def reject_handoff_task(self, task_id: str, reason: str) -> None:
+        """End a handoff task the robot refused or never answered; never re-offered automatically (D088).
+
+        结束地面车拒绝或从未回复的交接任务；不会自动重新提议（D088）。
+        """
+        task = self.store.task(task_id)
+        if task is None or task["source"] != HANDOFF_SOURCE or task["state"] != TaskState.QUEUED.value:
+            return
+        self.store.update_task(task_id, task["state_version"], actor=SCHEDULER, state=TaskState.REJECTED.value,
+                               reason=reason[:300], outcome={"result": "rejected", "reason": reason})
+
     # ── snapshots and decisions / 快照与判定 ──
 
     def _candidates(self, task: dict) -> list[str]:
-        robots = self.project_robots(task["project_id"])
+        # Ground robots never take P3 queue tasks; a ground recheck names its robot through a handoff (D088).
+        # 地面车从不承接 P3 队列任务；地面复核经交接点名其地面车（D088）。
+        robots = [r for r in self.project_robots(task["project_id"]) if self.ops.catalog.robots[r].dock_id is not None]
         return [r for r in (task["candidates"] or robots) if r in robots]
 
     def _candidate(self, task: dict, robot_id: str, now: datetime, ignore: set[str], envelopes: dict) -> dict:
@@ -270,8 +383,11 @@ class Scheduler:
     # ── the background pass / 后台处理 ──
 
     def tick(self) -> set[str]:
-        """Finish cancels, settle, withdraw, assign; returns missions to refresh. / 收尾取消、结算、撤回、分配。"""
-        for step in (self.finish_cancels, self.settle, self.withdraw, self.assign):
+        """Finish cancels, settle, withdraw, assign, then the handoffs (X1); returns missions to refresh.
+
+        收尾取消、结算、撤回、分配，然后是交接（X1）；返回需要刷新的任务。
+        """
+        for step in (self.finish_cancels, self.settle, self.withdraw, self.assign, self.tick_handoffs):
             try:
                 step()
             except StaleTask:
@@ -452,7 +568,17 @@ class Scheduler:
                 raise StaleTask(task["task_id"])
             self.store.end_assignment(task["task_id"], epoch, state=AssignmentState.ENDED.value, reason=kind)
             summary = {"result": kind, "epoch": epoch, "robot_id": robot, **detail}
-            if kind == "completed":
+            if task["source"] == HANDOFF_SOURCE:
+                # A handoff task ends with its one mission: no requeue, no other robot (D088). / 交接任务随其唯一的
+                # 任务版本结束：不重新排队，也不换车（D088）。
+                state = {"completed": TaskState.COMPLETED, "unknown": TaskState.OUTCOME_UNKNOWN}.get(
+                    kind, TaskState.FAILED)
+                self.store.update_task(task["task_id"], task["state_version"], actor=SCHEDULER, state=state.value,
+                                       reason=None if state is TaskState.COMPLETED else f"mission.{kind}",
+                                       outcome=summary)
+                if self.on_handoff_settled is not None:
+                    self.on_handoff_settled(task, live, kind, summary)
+            elif kind == "completed":
                 self.store.update_task(task["task_id"], task["state_version"], actor=SCHEDULER,
                                        state=TaskState.COMPLETED.value, reason=None, outcome=summary)
             elif kind == "unknown":
@@ -604,6 +730,9 @@ class Scheduler:
                                                  reason=f"task {task_id} cancelled")
                 missions.append(live["mission_id"])
             state = TaskState.CANCEL_REQUESTED if live is not None else TaskState.CANCELLED
+            if task["source"] == HANDOFF_SOURCE and self.handoffs is not None:
+                # An open offer is withdrawn with the cancel. / 未结提议随取消一并撤回。
+                self.handoffs.withdraw(task_id, actor=actor, reason="task cancelled")
             self.store.update_task(task_id, task["state_version"], actor=actor, state=state.value, cancel=cancel,
                                    outcome={"result": "cancelled"} if state is TaskState.CANCELLED else None)
         return missions

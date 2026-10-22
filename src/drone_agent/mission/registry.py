@@ -64,8 +64,27 @@ def descendants(package: MissionPackage, task_id: str) -> list[str]:
     return [n.task_id for n in package.nodes if n.task_id in found and n.task_id != task_id]
 
 
+def load_registry(root: Path, scene: Path | None = None, platform: Path | None = None):
+    """The registry a scene declares: a ground site (X1, D088) or an aerial site map (everything before).
+
+    场景所声明的登记表：地面站点（X1，D088）或空中站点地图（此前的全部场景）。
+    """
+    path = scene or root / M1_SCENE
+    if yaml.safe_load(path.read_text(encoding="utf-8")).get("kind") == "ground_site":
+        from drone_agent.mission.ground import GroundRegistry
+
+        return GroundRegistry(root, path, platform)
+    return Registry(root, path, platform)
+
+
 class Registry:
-    def __init__(self, root: Path, scene: Path | None = None):
+    kind = "aerial_site"
+    # X1 (D088): the safe terminal by embodiment; the aircraft rests landed and disarmed by the flight controller.
+    # X1（D088）：按本体取安全终态；飞行器由飞控在落地后上锁。
+    safe_terminal = "landed_disarmed"
+    terminal_disarm = False
+
+    def __init__(self, root: Path, scene: Path | None = None, platform: Path | None = None):
         self.data = yaml.safe_load((scene or root / M1_SCENE).read_text(encoding="utf-8"))
         self.sha256 = content_hash(self.data)
         self.registry_id = self.data.get("registry_id", "")
@@ -73,11 +92,16 @@ class Registry:
         for path in (root / "configs/skills").glob("*.yaml"):
             manifest = SkillManifest.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
             self.manifests[manifest.skill_id] = manifest
-        platform = yaml.safe_load((root / "configs/platforms/px4_sitl_multirotor.yaml").read_text(encoding="utf-8"))
+        platform = yaml.safe_load((platform or root / "configs/platforms/px4_sitl_multirotor.yaml").read_text(
+            encoding="utf-8"))
         self.capability = CapabilityDescriptor.model_validate(platform["capability"])
         # Modes a healthy companion process can add at run time (D039); never part of the static capability.
         # 伴飞进程健康时可在运行时加入的模式（D039）；从不属于静态能力。
         self.optional_control_modes = {ControlMode(mode) for mode in platform.get("optional_control_modes", [])}
+
+    def at_safe_terminal(self, observation) -> bool:
+        """Landed and disarmed, as the flight controller reports it. / 按飞控报告落地且已上锁。"""
+        return observation.in_air is False and observation.armed is False
 
     def inside(self, point):
         return len(point) == 3 and all(

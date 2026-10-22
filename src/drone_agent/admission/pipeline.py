@@ -16,6 +16,7 @@ from pydantic import Field, ValidationError
 
 from drone_agent.admission.admission import AdmissionContext, admit
 from drone_agent.admission.compiler import CompileContext, compile_spec
+from drone_agent.admission.ground import admit_ground, compile_ground
 from drone_agent.admission.models import AdmissionResult, CompileResult
 from drone_agent.contracts import MissionPackage, MissionSpec
 from drone_agent.contracts.common import ContractModel
@@ -80,10 +81,14 @@ def evaluate(spec: MissionSpec, compile_ctx: CompileContext, admission_ctx: Admi
 
     先编译后准入；第一个出现错误级问题的阶段就是拦截阶段。
     """
-    compiled = compile_spec(spec, compile_ctx)
+    # A ground site compiles and admits its own way (X1, D088). / 地面站点按自己的方式编译与准入（X1，D088）。
+    ground = getattr(compile_ctx.registry, "kind", None) == "ground_site"
+    compiled = (compile_ground(spec, compile_ctx.registry, robot_id=compile_ctx.robot_id) if ground
+                else compile_spec(spec, compile_ctx))
     if not compiled.ok:
         return PipelineOutcome(blocked_at="compiler", issues=compiled.issues, spec=spec, compile=compiled)
-    admitted = admit(compiled.package, admission_ctx, spec=spec)
+    admitted = (admit_ground(compiled.package, admission_ctx) if ground
+                else admit(compiled.package, admission_ctx, spec=spec))
     if not admitted.accepted:
         return PipelineOutcome(blocked_at="admission", issues=admitted.issues, spec=spec, compile=compiled,
                                admission=admitted)

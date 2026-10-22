@@ -38,7 +38,7 @@ from drone_agent.contracts import (
 )
 from drone_agent.contracts.common import ContractModel
 from drone_agent.mission.registry import Registry, distance
-from drone_agent.mission.verify import image_quality
+from drone_agent.mission.verify import GROUND_RECHECK, image_quality
 
 VLM_CANDIDATE_THRESHOLD = 0.7
 # Image quality is a pure function of the bytes and size. Within one process, the recheck on every later refresh
@@ -92,6 +92,8 @@ def recheck(evidence: Evidence, media: bytes | None, width: int | None, height: 
     if node is None or "asset_id" not in node.params:
         checks["skill_instance"] = "evidence names no inspection step of this package"
         return EffectVerdict.REFUTED, checks
+    if node.skill_id == GROUND_RECHECK:
+        return _recheck_ground(evidence, media, width, height, package, registry, node, checks)
     asset = registry.data["assets"].get(node.params["asset_id"])
     if media is None or width is None or height is None:
         checks["media"] = "media not uploaded"
@@ -137,6 +139,59 @@ def recheck(evidence: Evidence, media: bytes | None, width: int | None, height: 
     point = pose.position
     if distance([point.x, point.y], asset["position"][:2]) > limit:
         checks["distance"] = "captured too far from the asset"
+        return EffectVerdict.REFUTED, checks
+    checks["distance"] = "ok"
+    return EffectVerdict.VERIFIED, checks
+
+
+def _recheck_ground(evidence: Evidence, media: bytes | None, width: int | None, height: int | None,
+                    package: MissionPackage, registry, node, checks: dict[str, str]) -> tuple[EffectVerdict, dict]:
+    """X1 (D088): a ground view proves the place, never the anomaly: the same rule as the onboard ground check
+    (fresh, sharp, captured within the arrival tolerance of the face point). Whether the anomaly is there is the
+    recheck's finding, not this verdict.
+
+    X1（D088）：地面画面证明到过该处，从不证明异常物：与机载地面核验同一规则（新鲜、清晰、在正对点的到点容差内拍摄）。
+    异常物在不在是复核的结论，不是本判定。
+    """
+    if media is None or width is None or height is None:
+        checks["media"] = "media not uploaded"
+        return EffectVerdict.UNKNOWN, checks
+    if hashlib.sha256(media).hexdigest() != evidence.sha256:
+        checks["media"] = "digest mismatch"
+        return EffectVerdict.REFUTED, checks
+    checks["media"] = "ok"
+    if evidence.subject_ids != [node.params["asset_id"]]:
+        checks["target"] = "subject does not match the step's asset"
+        return EffectVerdict.REFUTED, checks
+    checks["target"] = "ok"
+    pose = evidence.captured_pose
+    covariance = pose.position.covariance if pose else None
+    if pose is None or covariance is None or any(not math.isfinite(v) for v in covariance):
+        checks["pose"] = "missing pose or covariance"
+        return EffectVerdict.UNKNOWN, checks
+    if package.spatial_scope is None or pose.frame != package.spatial_scope.frame:
+        checks["frame"] = "capture frame or map version differs from the approved package"
+        return EffectVerdict.REFUTED, checks
+    checks["frame"] = "ok"
+    threshold = registry.data["thresholds"]["image"]
+    window = evidence.time_window
+    if window.valid_until is None or not 0 <= (window.valid_until - window.timestamp).total_seconds() <= threshold["max_age_s"]:
+        checks["time_window"] = "missing or too long"
+        return EffectVerdict.UNKNOWN, checks
+    checks["time_window"] = "ok"
+    if max(covariance[0], covariance[4], covariance[8]) > threshold["max_position_variance"]:
+        checks["pose"] = "variance above threshold"
+        return EffectVerdict.UNVERIFIED, checks
+    checks["pose"] = "ok"
+    quality = _quality(evidence.sha256, media, width, height)
+    if (quality.get("width", 0) < threshold["min_width"] or quality.get("height", 0) < threshold["min_height"]
+            or quality.get("edge_contrast", 0) < threshold["min_edge_contrast"]):
+        checks["quality"] = f"edge {quality.get('edge_contrast', 0):.3f}"
+        return EffectVerdict.UNVERIFIED, checks
+    checks["quality"] = "ok"
+    point = pose.position
+    if distance([point.x, point.y], node.params["face_point"]) > registry.data["thresholds"]["nav_to"]["tolerance_m"]:
+        checks["distance"] = "captured too far from the face point"
         return EffectVerdict.REFUTED, checks
     checks["distance"] = "ok"
     return EffectVerdict.VERIFIED, checks

@@ -1,0 +1,24 @@
+# X1 S1 catalog (D088): one PX4 SITL x500 at site a of the X1 Gazebo world (the P3 S1 site map) with its logical dock,
+# and one PX4 SITL differential rover on the ground site g, its own map of that world, resting at its parking spot
+# without a dock. Where each map lies in the shared frame is in configs/scheduling/x1_s1_v1.yaml; memberships are in
+# x1_members_s1.yaml.
+#
+# X1 S1 目录（D088）：X1 Gazebo 世界站点 a（P3 S1 站点地图）上的一架 PX4 SITL x500 及其逻辑机场，以及地面站点 g（该世界的
+# 地面车自身地图）上的一台 PX4 SITL 差速地面车，停在其停车位，没有机场。各地图在共享坐标中的位置写在
+# configs/scheduling/x1_s1_v1.yaml；成员资格在 x1_members_s1.yaml。
+format: drone.operations-catalog/v1
+schema_version: "0.1.0"
+catalog_id: x1_s1_v1
+legacy_project: {project_id: legacy_m2, first_party_roles: [viewer]}
+default_binding: null
+projects:
+  campus_x1: {name: "Campus inspection with a ground robot, PX4 SITL / 园区巡检（含地面车，PX4 SITL）", sites: [site_s1a, site_s1g]}
+sites:
+  site_s1a: {project_id: campus_x1, scene: configs/scenarios/p3_s1_a_v1.yaml, max_wind_mps: 8.0}
+  site_s1g: {project_id: campus_x1, scene: configs/scenarios/x1_ground_s1_v1.yaml, max_wind_mps: 8.0}
+docks:
+  dock_s1a: {site_id: site_s1a, vendor: drone-agent, model: logical-dock-v1, serves: [uav_01], actions: [open_lid, close_lid, start_charge], backend: {kind: logical_sim, principal: "dock:x1-s1-a"}}
+robots:
+  uav_01: {site_id: site_s1a, dock_id: dock_s1a, platform: configs/platforms/px4_sitl_multirotor.yaml, execution_backend: px4_sitl}
+  ugv_01: {site_id: site_s1g, platform: configs/platforms/px4_sitl_rover.yaml, execution_backend: px4_sitl}
+policy: {version: p1-dispatch-v1, freshness_s: 3.0, future_skew_s: 1.0, reconcile_reports: 2, soft_reservation_s: 900, claim_ack_timeout_s: 30, result_grace_s: 5}

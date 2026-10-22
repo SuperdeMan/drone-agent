@@ -1,0 +1,70 @@
+# Recovery policy graph: differential ground robot, campus recheck (X1, D088; docs/architecture/03-safety.md §12).
+# The baseline set is stop and the flight controller's own failsafe: PX4's rover RTL drives a straight line home
+# through no-go zones, so no edge returns home; the way home is the checked return_home path of a new task. A stop
+# that ends the task is followed by the guardian's stationary disarm; a user pause keeps the robot armed. Every edge
+# is DRAFT until a validation record binds X1 injection evidence to its exact hash.
+#
+# 恢复策略图：差速地面车、园区复核（X1，D088；docs/architecture/03-safety.md §12）。基线集合是 stop 与飞控自身的失效
+# 保护：PX4 地面车的 RTL 直线回家、会穿过禁入区，因此没有任何边返航；回家只经新任务中已核对的 return_home 路径。结束任务的
+# stop 之后由 guardian 在静止时上锁；用户暂停保持解锁。每条边都是草稿，直到 validation 记录把 X1 注入证据绑定到其确切哈希。
+schema_version: "0.1.0"
+policy_id: rover_campus
+version: v1
+embodiment: ground_wheeled
+nodes: [stop, handover_to_fc_failsafe]
+resume_conditions:
+  - observation_fresh
+  - lease_valid
+  - executive_heartbeat_ok
+  - skill_instance_in_cancel_safe_state_or_resume
+edges:
+  # Executive heartbeat lost: stop where it is. / executive 心跳丢失：原地停止。
+  - trigger: executive_heartbeat_lost
+    guard: {}
+    target: stop
+    fault_injection_scenario: fi.ground.heartbeat_lost
+  # Stale observation: stop; the robot cannot tell where it drives. / 观测过期：停止；无法判断车在往哪开。
+  - trigger: observation_stale
+    guard: {}
+    target: stop
+    fault_injection_scenario: fi.ground.observation_stale
+  - trigger: lease_expired
+    guard: {}
+    target: stop
+    fault_injection_scenario: fi.ground.lease_expired
+  # Energy low: stop and report; no automatic return in the first version. / 低电：停止并报告；首版不自动返航。
+  - trigger: energy_low
+    guard: {}
+    target: stop
+    fault_injection_scenario: fi.ground.energy_low
+  # A predicted crossing of the 2D fence or a no-go zone: reject the intent and stop. / 预测越过二维围栏或禁入区：拒绝
+  # 当前意图并停止。
+  - trigger: geofence_predicted_breach
+    guard: {}
+    target: stop
+    fault_injection_scenario: fi.ground.geofence
+  - trigger: localization_degraded
+    guard: {}
+    target: stop
+    fault_injection_scenario: fi.ground.localization_degraded
+  # Uplink lost: an authorised package continues while the robot is healthy, otherwise stop.
+  # 上行丢失：已授权任务包在本机健康时继续，否则停止。
+  - trigger: uplink_lost
+    guard: { authorized_to_continue: false }
+    target: stop
+    fault_injection_scenario: fi.ground.uplink_lost
+  # FC failsafe active: never fight the flight controller. / 飞控失效保护已触发：绝不与飞控对抗。
+  - trigger: fc_failsafe_active
+    guard: {}
+    target: handover_to_fc_failsafe
+    fault_injection_scenario: fi.ground.fc_failsafe
+  # User pause: stop and stay armed, waiting to resume. / 用户暂停：停止并保持解锁，等待恢复。
+  - trigger: user_pause
+    guard: {}
+    target: stop
+    fault_injection_scenario: fi.ground.user_pause
+  # User cancel: stop, then the guardian disarms once stationary. / 用户取消：停止，静止后由 guardian 上锁。
+  - trigger: user_cancel
+    guard: {}
+    target: stop
+    fault_injection_scenario: fi.ground.user_cancel

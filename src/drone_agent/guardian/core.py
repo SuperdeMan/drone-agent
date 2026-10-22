@@ -98,6 +98,10 @@ class Guardian:
         self.initial_energy = None
         self.lease_deadline = 0.0
         self.uplink_ok = True
+        # X1 (D088): when a ground robot that a recovery stopped has been stationary in Hold, and the disarm task.
+        # X1（D088）：被恢复停住的地面车自何时起在 Hold 中静止，以及上锁任务。
+        self.stopped_since = None
+        self.disarm_task = None
         self.authorized_to_continue = True
         # M3 (D042): policy v2 features; None/empty under v1. / M3（D042）：策略 v2 功能；v1 下为空。
         self.v2 = policy.version == "v2"
@@ -189,9 +193,10 @@ class Guardian:
         new_epoch = lease.lease_epoch > self.ledger.highest_epoch
         if new_epoch:
             obs = self.adapter.snapshot()
+            # The registry names the safe terminal: landed and disarmed, or stopped and disarmed (X1, D088).
+            # 安全终态由登记表给出：落地且上锁，或停稳且上锁（X1，D088）。
             if (
-                obs.in_air is not False
-                or obs.armed is not False
+                not self.registry.at_safe_terminal(obs)
                 or (self.dispatch_task and not self.dispatch_task.done())
             ):
                 return EgressDecision(accepted=False, reason="new_authority_requires_grounded_reconciliation")
@@ -524,7 +529,9 @@ class Guardian:
         context = self.context(obs)
         self.generation += 1
         self.recovery, self.recovery_started, self.recovery_followed = edge, time.monotonic(), False
-        self.safety = SafetyVerdict.HOLD if edge.target == RecoveryBehavior.HOLD else SafetyVerdict.RECOVER
+        # A ground stop holds still like an aircraft's hold (X1, D088). / 地面的停止与飞行器的悬停一样算保持（X1，D088）。
+        self.safety = SafetyVerdict.HOLD if edge.target in (RecoveryBehavior.HOLD, RecoveryBehavior.STOP) \
+            else SafetyVerdict.RECOVER
         self.reason = reason or trigger.value
         if self.external is not None:
             # The authorization stream ends before any MAVLink recovery command (D039). / 任何 MAVLink 恢复命令之前先结束授权流（D039）。
@@ -559,8 +566,8 @@ class Guardian:
         if self.taken_over:
             return
         obs = self.adapter.snapshot()
-        if obs.in_air is False and obs.armed is False:
-            self.record("recovered_to", state="landed_disarmed")
+        if self.registry.at_safe_terminal(obs):
+            self.record("recovered_to", state=self.registry.safe_terminal)
             return
         self.adapter.control_context = {"lease_epoch": self.ledger.highest_epoch, "command_seq": len(self.journal.rows)}
         self.record(
@@ -585,6 +592,36 @@ class Guardian:
         except Exception as error:
             self.record("recovery_receipt", behavior=behavior.value, status="unknown", reason=type(error).__name__)
             await self.relinquish("recovery_outcome_unknown")
+
+    def _disarm_when_stopped(self, obs, now: float) -> None:
+        """X1 (D088): PX4 never disarms a rover resting in Hold, so a recovery that ends the task disarms it once a
+        fresh observation has shown it stationary in Hold for the stop hold time. A pause keeps it armed.
+
+        X1（D088）：PX4 从不为停在 Hold 中的地面车上锁，因此结束任务的恢复在新鲜观测显示车已在 Hold 中静止满停车保持时长后
+        为其上锁一次。暂停保持解锁。
+        """
+        recovery = self.recovery
+        if (recovery is None or not self.registry.terminal_disarm or self.disarm_task is not None or self.taken_over
+                or recovery.trigger is RecoveryTrigger.USER_PAUSE or recovery.target is not RecoveryBehavior.STOP):
+            return
+        if obs.armed is True and obs.flight_mode == "HOLD" and self.registry.stationary(obs):
+            self.stopped_since = now if self.stopped_since is None else self.stopped_since
+            if now - self.stopped_since >= self.registry.thresholds["stop"]["hold_duration_s"]:
+                self.disarm_task = asyncio.create_task(self._terminal_disarm())
+        else:
+            self.stopped_since = None
+
+    async def _terminal_disarm(self) -> None:
+        self.adapter.control_context = {"lease_epoch": self.ledger.highest_epoch, "command_seq": len(self.journal.rows)}
+        self.record("terminal_disarm_intent", **self.adapter.control_context)
+        try:
+            await asyncio.wait_for(self.adapter.disarm_stationary(lambda: not self.taken_over), 5)
+            self.record("terminal_disarm_receipt", status="accepted")
+        except Exception as error:
+            # Never retried into anything stronger; the controller keeps its own failsafes. / 从不升级重试；飞控保留自身
+            # 失效保护。
+            self.record("terminal_disarm_receipt", status="unknown", reason=type(error).__name__)
+            await self.relinquish("terminal_disarm_unknown")
 
     async def operate(self, operation):
         lease = self.gate.lease
@@ -676,11 +713,12 @@ class Guardian:
                 self.recovery_followed = True
                 self.safety = SafetyVerdict.RECOVER
                 self.recovery_task = asyncio.create_task(self._recover(self.recovery.then))
-        if obs.in_air is False and obs.armed is False and self.recovery:
-            if self.reason != "landed_disarmed":
-                self.record("recovered_to", state="landed_disarmed")
-                self.reason = "landed_disarmed"
+        if self.registry.at_safe_terminal(obs) and self.recovery:
+            if self.reason != self.registry.safe_terminal:
+                self.record("recovered_to", state=self.registry.safe_terminal)
+                self.reason = self.registry.safe_terminal
             return
+        self._disarm_when_stopped(obs, now)
         self.update_energy(obs)
         if (
             self.recovery is not None

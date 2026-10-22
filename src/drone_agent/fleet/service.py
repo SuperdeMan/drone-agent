@@ -216,6 +216,10 @@ class MissionService:
         # P5 (D072): the vendor gateway, attached when the catalog has vendor-managed docks.
         # P5（D072）：厂商任务网关；目录中有厂商托管机场时挂上。
         self.vendor = None
+        # X1 (D088): the handoff engine, attached by `build_air_ground` with `--air-ground`.
+        # X1（D088）：交接引擎；带 `--air-ground` 时由 `build_air_ground` 挂上。
+        self.handoffs = None
+        self.rechecks = None
         hub.listeners.append(self._ingested)
 
     # ── P1 bindings and project checks / P1 绑定与项目检查 ──
@@ -550,6 +554,68 @@ class MissionService:
                                           volume_id=volume_id, asset_id=asset_id, template=template,
                                           provider="scheduler", channel=RequestChannel.SCHEDULER, guard=guard,
                                           strict_hold=True)
+
+    def submit_ground_recheck(self, *, principal: str, key: str, project_id: str, robot_id: str, handoff: dict,
+                              detail: dict, guard) -> dict | None:
+        """The ground mission of one acked handoff, inside the scheduler's transaction (D088).
+
+        The spec is deterministic: one recheck of the handoff's target on the robot's own region, with the asset and
+        signature from the task; window, budget and policy from the ground site. Compilation, admission and the strict
+        hold (ground cells included) are those of a P3 assignment, and the version still needs a human approval.
+
+        一次已确认交接的地面任务，在调度器的事务内写入（D088）。规格是确定性的：在地面车自身区域内复核交接目标一次，资产与
+        特征取自任务；时间窗、预算与策略取自地面站点。编译、准入与严格持有（含地面单元）与 P3 分配相同，该版本仍需人工审批。
+        """
+        from drone_agent.admission.ground import recheck_spec
+        from drone_agent.contracts import WorldFact
+
+        if self.ops is None:
+            raise ServiceError("service.invalid_request", "no operations catalog is configured")
+        known = self.ledger.request_by_key(principal, key)
+        if known is not None:
+            return self._view(known)
+        catalog = self.ops.catalog
+        if catalog.project_of(robot_id) != project_id:
+            raise ServiceError("service.not_found", robot_id)
+        if catalog.robots[robot_id].execution_backend not in self.backends:
+            raise ServiceError("dispatch.backend_mismatch",
+                               f"{robot_id} runs {catalog.robots[robot_id].execution_backend}")
+        registry = self._registry(robot_id)
+        if registry.kind != "ground_site":
+            raise ServiceError("service.invalid_request", f"{robot_id} is not a ground robot")
+        fact = WorldFact.model_validate(handoff["target"])
+        kind = fact.value["kind"]
+        radius = fact.value.get("radius_m") if kind == "search_region" else None
+        target = (fact.position.x, fact.position.y)
+        asset_id, signature = str(detail["asset_id"]), str(detail["signature"])
+        now = self.clock()
+        request = MissionRequest(request_id="req-" + uuid.uuid4().hex[:16],
+                                 text=f"Handoff {handoff['handoff_id']}: recheck {asset_id} at "
+                                      f"({target[0]:.2f}, {target[1]:.2f}) on {registry.registry_id}",
+                                 requested_by=principal, trust_level=TrustLevel.FIRST_PARTY,
+                                 channel=RequestChannel.SCHEDULER,
+                                 approved_volume_id=registry.data["approved_volume_id"], asset_ids=[asset_id],
+                                 idempotency_key=key, received_at=now)
+        inputs = {"handoff_id": handoff["handoff_id"], "target": handoff["target"], "detail": detail}
+        planning = ModelUse(source="deterministic", provider_id="handoff", model_id="ground-recheck-v1",
+                            input_sha256=digest(inputs), outcome="planned")
+        mission_id = "m-" + uuid.uuid4().hex[:12]
+        with self.ledger.transaction() as db:
+            if not guard(db):
+                return None
+            mission_id, created = self.ledger.record_request(
+                request, mission_id, also=self.ops.store.binding_writer(mission_id, project_id=project_id,
+                                                                        robot_id=robot_id))
+            if created:
+                spec = recheck_spec(registry, mission_id=mission_id, asset_id=asset_id, target=target, kind=kind,
+                                    radius_m=radius, signature=signature,
+                                    description=str(fact.value.get("description", "")),
+                                    provenance=Provenance(model_id=f"handoff/{handoff['handoff_id']}",
+                                                          prompt_version="ground-recheck-v1",
+                                                          input_hash=planning.input_sha256, generated_at=now),
+                                    now=now)
+                self._admit(mission_id, request, spec, planning=planning, strict_hold=True)
+        return self._view(mission_id)
 
     def _submit_deterministic(self, *, principal: str, key: str, project_id: str, robot_id: str, volume_id: str,
                               asset_id: str, template: str, provider: str, channel: RequestChannel, guard,
@@ -1183,6 +1249,10 @@ class MissionService:
             # 即使结果或回执未知也保留取消意图，绝不自动重飞推翻操作者决定。
             return incomplete([issue("replan.cancelled_by_operator", ", ".join(sorted(cancelled)),
                                       affected=sorted(cancelled))])
+        if self._registry(self._robot_of(mission_id)).kind == "ground_site":
+            # A handoff's ground mission is its one version: never retried, never another robot (X1, D088).
+            # 交接的地面任务只有这一个版本：从不重试，也不换车（X1，D088）。
+            return incomplete([issue("replan.not_for_ground", f"{mission_id} v{version} ended unfinished")])
         if mission["replans"] >= self.policy.max_replans_per_mission:
             return incomplete([issue("replan.limit_exceeded", f"{mission['replans']} replans used")])
         package = MissionPackage.model_validate(record["package"])

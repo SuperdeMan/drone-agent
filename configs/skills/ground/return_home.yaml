@@ -1,0 +1,59 @@
+# skill.ground.return_home (X1, D088): drive the checked path back to the parking spot; never PX4's straight-line RTL.
+#
+# skill.ground.return_home（X1，D088）：沿核对过的路径开回停车位；从不使用 PX4 直线回家的 RTL。
+schema_version: "0.1.0"
+skill_id: skill.ground.return_home
+version: "0.1.0"
+description: "Drive the checked path back to the parking spot. / 沿核对过的路径开回停车位。"
+embodiments: [ground_wheeled]
+required_control_modes: [mission_upload]
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: [map_version, parking_id, waypoints, speed_mps]
+  properties:
+    map_version: {type: string, minLength: 1}
+    parking_id: {type: string, minLength: 1}
+    waypoints:
+      type: array
+      minItems: 2
+      maxItems: 64
+      items: {type: array, minItems: 2, maxItems: 2, items: {type: number}}
+    speed_mps: {type: number, exclusiveMinimum: 0, maximum: 1.0, unit: m/s}
+preconditions: [package_authorized, armed, home_verified, ground_path_valid, path_ends_at_parking, localization_healthy, motion_lease_valid]
+invariants: [inside_ground_area, observation_fresh, lease_valid, executive_heartbeat_ok, energy_above_reserve, fc_failsafe_inactive]
+resources:
+  - {resource_id: ugv_01.motion, mode: exclusive}
+progress_schema:
+  type: object
+  additionalProperties: false
+  required: [reached_waypoints, total_waypoints]
+  properties:
+    reached_waypoints: {type: integer, minimum: 0}
+    total_waypoints: {type: integer, minimum: 1}
+cancel:
+  cancel_safe_states: [before_upload, stopped]
+  cancel_procedure: "Stop progression through the guardian, which stops the robot and disarms it once stationary. / 经 guardian 停止推进，由其停车并在静止后上锁。"
+pause:
+  pausable: true
+  safe_wait_condition: stopped_and_localization_healthy
+  max_wait_s: 120
+completion_evidence:
+  - evidence_type: telemetry
+    criteria: {predicate: ground_parked_verified, threshold_ref: x1_ground_a_v1.return_home, map_version_match: true, fresh_pose_required: true}
+failure_modes:
+  - {code: route_upload_timeout, description: "Upload receipt unknown / 航点上传结果未知", recovery_hint: reconcile_before_any_resend}
+  - {code: path_deviation, description: "Left the 2D fence or entered a no-go zone / 越出二维围栏或进入禁入区", recovery_hint: guardian_policy}
+timeout_s: 180
+estimated_duration_s: 60
+implementation: {kind: deterministic}
+estimated_energy_fraction: 0.05
+energy_estimate:
+  basis: sim_only
+  mean_fraction: 0.0053
+  upper_fraction: 0.05
+  samples: 12
+  method: "PX4 SITL linear drain refit on X1 S1 (37 uncensored ground steps, rate mean 0.00052/s against the configured 1/1800 s): mean = rate mean x measured mean duration 10.274 s; the kept upper (duration bound / SIM_BAT_DRAIN 1800 s) covers the measured rate_p95 x duration_p95 = 0.0189; docs/verification/x1-energy-2026-10-14.json"
+  source_revision: f0849ca0a404b1110f8074493146eebd53a44e11
+  source_runs: [20261014T070202Z-9b75cfe0/x1-20261014T072315Z-707a44e6, 20261014T070202Z-9b75cfe0/x1-20261014T072915Z-369bd0c7, 20261014T080750Z-0f909122/x1-20261014T082905Z-2de55fcf, 20261014T080750Z-0f909122/x1-20261014T085203Z-5a936c0e, 20261014T080750Z-0f909122/x1-20261014T093034Z-4bc54ef6]

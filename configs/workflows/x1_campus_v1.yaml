@@ -1,0 +1,57 @@
+# X1 S0 workflow catalog (D088) for the operations catalog x1_campus_v1. The aircraft of site a inspects its assets;
+# `mid_watch` judges the marker with the P4 signature bands, and `anomaly_recheck` flags a capture showing a block of
+# a declared anomaly colour, hands the finding to the ground robot and has a person review both ends. Robots, volumes
+# and assets are the catalog's; every mission, the ground one included, still needs a human approval.
+#
+# X1 S0 工作流目录（D088），对应运营目录 x1_campus_v1。站点 a 的飞行器巡检其资产；`mid_watch` 按 P4 特征区间判定标记，
+# `anomaly_recheck` 在采集中出现声明异常颜色的方块时判为疑似，把发现交给地面车，并由人复核两端证据。机器人、体积与资产都取自
+# 目录；每个任务（含地面任务）仍需人工审批。
+format: drone.workflow-catalog/v1
+schema_version: "0.1.0"
+catalog_id: x1_campus_v1
+operations_catalog: x1_campus_v1
+analyzers:
+  signature_s0_v1:
+    kind: deterministic
+    method: color_signature
+    bands: {asset_mid: [0.075, 0.095], asset_west: [0.075, 0.095]}
+  anomaly_s0_v1:
+    kind: deterministic
+    method: anomaly_block
+    colours: [orange, magenta]
+workflows:
+  - workflow_id: mid_watch
+    version: 1
+    project_id: campus_ops
+    title: "Site A appearance watch: inspect, analyse, review the finding / A 站外观巡检：巡检、分析、复核发现"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_mid, asset_west]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_a, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: signature_s0_v1, findings: true}}
+      - {node_id: review, activity: human_review, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - {node_id: report, activity: build_report, requires: done, after: [review]}
+    budget: {max_missions: 1}
+  - workflow_id: anomaly_recheck
+    version: 1
+    project_id: campus_ops
+    title: "Site A anomaly recheck: inspect, analyse, hand the finding to the ground robot, review both ends / A 站异常复核：巡检、分析、把发现交给地面车、复核两端证据"
+    inputs:
+      asset: {kind: asset_id, choices: [asset_mid, asset_west, asset_north]}
+    triggers:
+      - {trigger_id: manual, kind: manual}
+    nodes:
+      - {node_id: inspect, activity: submit_mission, params: {robot_id: uav_a, volume_id: campus_training, asset: {input: asset}}}
+      - {node_id: await_inspection, activity: await_mission, params: {mission_from: inspect}}
+      - {node_id: analyze, activity: analyze_evidence, params: {inspection_from: await_inspection, analyzer: anomaly_s0_v1, findings: true}}
+      - node_id: recheck
+        activity: ground_recheck
+        when: [{node: analyze, output: suspected, equals: true}]
+        params: {analysis_from: analyze, robot_id: ugv_01, signature: orange, size_m: 0.8, camera: {width: 160, height: 120, hfov_rad: 1.5707963267948966}, ttl_s: 20}
+      - {node_id: await_recheck, activity: await_recheck, params: {recheck_from: recheck}}
+      - {node_id: review, activity: human_review, after: [await_recheck], requires: done, when: [{node: analyze, output: suspected, equals: true}], params: {analysis_from: analyze}}
+      - {node_id: report, activity: build_report, requires: done, after: [review]}
+    budget: {max_missions: 1}

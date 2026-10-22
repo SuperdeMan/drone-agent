@@ -760,11 +760,11 @@ def context_from_files(root: Path, catalog_path: Path, scheduling_path: Path | N
     """The drill's context, read from the catalog files the service loads. / 演练的上下文，读取服务加载的同一批目录文件。"""
     from drone_agent.fleet.resources import load_catalog
     from drone_agent.fleet.scheduling_models import load_scheduling
-    from drone_agent.mission.registry import Registry
+    from drone_agent.mission.registry import load_registry
 
     catalog = load_catalog(catalog_path)
     scheduling = load_scheduling(scheduling_path) if scheduling_path is not None else None
-    registries = {site_id: Registry(root, scene=root / site.scene) for site_id, site in catalog.sites.items()}
+    registries = {site_id: load_registry(root, root / site.scene) for site_id, site in catalog.sites.items()}
     return ArchiveContext(catalog, scheduling, registries, repository_maps(root))
 
 

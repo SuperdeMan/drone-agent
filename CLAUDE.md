@@ -5,16 +5,17 @@
 ## 当前阶段
 
 - M0–M2 已完成，M3-SITL 已通过；原 M3 未关闭，Jetson-in-the-loop 由 H1 承接。P0–P5 已完成软件 / SITL 范围验证，厂商机场只验证到协议模拟器。准确提交、负记录、门禁与历史成绩见 [路线图](docs/roadmap.md)及各 readiness；不得把历史成绩转借给新提交。
-- P6 的 WP-P6-02–07 已按各自范围准出；航段走廊与解释核对 v2 按预登记规则不采用。WP-P6-01 继续补齐独立 AI 参考标签与正式评测材料；真人候选计时移至运营验证。独立资产覆盖、真实跨次和正式评测未完成，P6 未整体准出；接手见 [P6 当前交接](docs/p6-road-corpus-handoff-2026-10-22.md)。X1 按已批准方案（D088）推进，具体状态见路线图。
+- P6 的 WP-P6-02–07 已按各自范围准出；航段走廊与解释核对 v2 按预登记规则不采用。WP-P6-01 继续补齐独立 AI 参考标签与正式评测材料；真人候选计时移至运营验证。独立资产覆盖、真实跨次和正式评测未完成，P6 未整体准出；接手见 [P6 当前交接](docs/p6-road-corpus-handoff-2026-10-22.md)。
+- WP-X1-01 已在 `75cfde6` 按软件 / SITL 范围准出（D088），见 [X1 验收](docs/x1-readiness.md)。地面车按自己的地图作答，飞控限速 1.0 m/s，安全终态为停车并在静止后上锁；常驻任务台不接入，地面恢复边仍为草稿，MAVSDK 保持 3.17.4。后续 v4 迁移须重跑 X1 S1 与完整 M1 回归。
 - 常驻任务台配置以 `desk-cloud --status` 和实际回执为准；最近已验证的工作流 / 业务目录为 `p6_desk_v1`，运营 / 调度目录为 `p5_desk_v1`，视觉画像 change-v3、规划提示 planner-v3、解释核对 v1。统一入口为 8448（`/` 任务台，`/fixed/` M1）；激活按 console-cloud 再 desk-cloud 并核对两条版本。M3 外部模式尚未接入常驻任务台。
-- 账本的运营 schema v2 与 workflow / scheduling / business / capacity / asset 子版本各自独立；详细表与迁移见 [运营架构](docs/architecture/09-operations.md)、[运维指南](docs/operations-guide.md)和相应设计。任何新增持久化表仍属于 schema 变更，须先设计并获批准。
+- 账本的运营 schema v2 与 workflow / scheduling / business / capacity / asset / handoff 子版本各自独立；仅带 `--air-ground`（同时带 `--scheduling` 与 `--business`）才迁移 X1 交接表，常驻任务台不带。详细表与迁移见 [运营架构](docs/architecture/09-operations.md)、[运维指南](docs/operations-guide.md)和相应设计。任何新增持久化表仍属于 schema 变更，须先设计并获批准。
 - 执行 / 安全语义变更先改契约与安全文档，再改代码。工作流不直接控制飞行，模板审批不替代逐次飞行批准；取消阻断后续派遣，失联占用先对账，模型业务发现不升级飞行判定（D050–D053）。
 
 ## 目录结构
 
 完整模块与部署定义见 [架构文档地图](docs/architecture/00-overview.md)及 [部署架构](docs/architecture/07-deployment.md)。模块随里程碑创建，不预建空模块；新增顶层目录或架构变更先改文档并追加决策。
 
-- `docs/`：`architecture/`（00–09）、`decisions.md`、`roadmap.md`、复用清单、验收记录与 `research/`；决策只增不删。
+- `docs/`：`architecture/`（00–09）、`decisions.md`、`roadmap.md`、复用清单、验收记录与 `research/`；决策只增不删。`images/` 是 `desk_preview.py --seed` 的 S0 界面示意，非验证证据；单图小于 200 KB，页面改版后更新。
 - `src/drone_agent/`：单包多模块，领域模型在 `contracts`，机载执行在 `mission` / `guardian` / `adapters` / `runtime`，规划在 `providers` / `planner` / `admission`，运营在 `fleet`，页面在 `console`，局部自主协议在 `autonomy`，评测在 `eval`。机载模块及 `uplink` 不得传递导入规划或模型模块，契约测试钉住边界。
 - `ros2_ws/`：ROS 2 Jazzy 的定位、导航、感知、事件检测与 C++ 外部模式出口；节点不导入 `drone_agent`，只经 `proto/drone/autonomy/v1` 本地套接字帧交互，不触真值，出口只转发。
 - `proto/`：进程契约与共享消息；包名 `drone.<service>.v1`，禁止旧字段重编号。字段清单与共享 proto 由 `scripts/generate_contract_fields.py` 导出。
@@ -57,6 +58,7 @@
 | S2 数据与画像 | `dev_stack.py p4-data` 导入，`p4-s2 --split … --mode live|replay|scripted|retrieval` 评测。先校准、冻结画像、测试只跑一次；VisA 测试拆分已披露使用两次，此后不得再作测试（D065、D066、D076）。公开道路开发样本不算独立留出或正式真值。 |
 | P5 | 本机 `p5_world` 与 `p5_authz`，云端 `dev_stack.py p5`；门禁 `verify_p5_release.py`。升级先 `desk-members --next --apply` 暂存再 `desk-cloud --apply`；长稳用 `desk-soak`，备份与恢复演练见 [运维指南](docs/operations-guide.md)。长稳期间不手工操作三个项目、不激活新版本。 |
 | P6 补拍 | 本机 `p6_world`，云端 `dev_stack.py p6`；任务台 `desk-world --section s1 --asset asset_red --state glare --apply` 后用 `desk_probe.py workflow --start --workflow recapture_watch --clear-before-recapture asset_red`（须指定 origin）。门禁 `verify_p6_recapture.py`；相机航向只核对过仿真真值。 |
+| X1 空地协同 | S0 用 `python -m drone_agent.eval.x1_world --output <目录>`，S1 用云端 `dev_stack.py x1 --scenario <id|all> --seeds 7,19,41`；裁判 `eval/judge_x1.py` 在线/回放一致，S1 另核真值超速。飞控 `RO_SPEED_LIM` 限速、上传前核对，地面任务不重试（D032 仅用于飞行器）；S1 地面车停滞则该批不计入，同版本重跑并记录。门禁 `verify_x1_release.py` 须核当场 X1/P1–P6 S0、同候选云端检查、S1 和 M1/M2/M3/P3 S1 回归。 |
 | 模型对抗与规划 | 本机 `python -m drone_agent.eval.p6_adversarial run --corpus … --mode scripted|replay`；实调只用云端 `dev_stack.py p6-adv`。每语料 / 画像只录一次；429 无回答，按限速续跑；规划请求不得含时刻。改提示即新版本，冻结后由未见提示的独立作者写留出，预登记提示 / 语料 / 计分代码摘要和顺序；冻结提交不泄露机制。门禁 `verify_p6_adversarial.py`、`verify_planner_choice.py --decision D080|D081`。 |
 | 指代 / 解释 | 改站点别名即受信配置变更，重新跑 `reference_check`（误拒为 0）；门禁 `verify_reference_check.py`。解释语料、核对规则或提示变更须新版本和新留出 / 实调；采用只由预登记规则判定。见 [解释记录](docs/explain-readiness.md)、[v2 负结果](docs/explain-check-v2-readiness.md)；门禁 `verify_explain.py`、`verify_explain_check.py`。 |
 | 资产档案 | `python -m drone_agent.eval.p6_assets --output <目录>`，独立裁判 `eval/judge_assets.py`；任务台 `desk_probe.py assets`；门禁 `verify_asset_archive.py`。档案只追加，fact / decision / belief 分栏；比较只用前两者、不下归因结论，容差在 `configs/analysis/compare_v1.yaml`。 |

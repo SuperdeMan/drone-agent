@@ -1,0 +1,39 @@
+# X1 S0 scheduling catalog (D088) for the operations catalog x1_campus_v1. The shared frame `campus` places site a at
+# its origin, b 12 m east and the harbor fixture 300 m south, as in P3. The ground sites g and g2, the two ground robots'
+# own maps of site a, have their origins at the robots' parking spots, (2, -4) and (-6, -4) in the shared frame, and the
+# `ground` section names the same placements for the ground maps and the aerial site they serve, plus site a's apron
+# that aircraft and ground robots both hold. Airspace and ground cells share the 4 m grid under their own prefixes, so
+# they never conflict; the lost-contact rule is P3's.
+#
+# X1 S0 调度目录（D088），对应运营目录 x1_campus_v1。共享坐标 `campus` 与 P3 相同：站点 a 在原点，b 在其东 12 m，港区夹具在
+# 南 300 m。地面站点 g 与 g2（两台地面车各自的站点 a 地图）的原点是各自的停车位，在共享坐标中为 (2, -4) 与 (-6, -4)；`ground`
+# 段为这些地面地图写明同样的位置及其服务的空中站点，并登记空中与地面机器人都要持有的站点 a 起降区。空域单元与地面单元共用 4 m
+# 网格、使用各自的前缀，因此从不冲突；失联规则沿用 P3。
+format: drone.scheduling-catalog/v1
+schema_version: "0.1.0"
+catalog_id: x1_campus_v1
+operations_catalog: x1_campus_v1
+airspace:
+  frame: campus
+  cell_m: 4.0
+  buffer_m: 2.0
+  contact_timeout_s: 5.0
+  envelope_margin_m: 2.0
+  sites:
+    site_a: {origin: [0, 0]}
+    site_b: {origin: [12, 0]}
+    site_g: {origin: [2, -4]}
+    site_g2: {origin: [-6, -4]}
+    site_h: {origin: [0, -300]}
+ranking: {version: p3-rank-v1, cruise_mps: 2.0, setup_s: 20.0, usage_window_s: 3600.0}
+policy: {version: p3-sched-v1, reassign_after_s: 5.0, max_assignments: 4, task_window_s: 1800.0, max_tasks_per_pass: 50}
+ground:
+  maps:
+    x1_ground_a_v1: {site: site_a, origin: [2, -4]}
+    x1_ground_b_v1: {site: site_a, origin: [-6, -4]}
+  # The take-off and landing apron around site a's pad: 3 m around its origin, 1 m beyond the ground robot's no-go
+  # zone. An aircraft of site a holds it for its whole flight, a ground robot whose path meets it for its mission.
+  # 站点 a 机位周围的起降区：原点周围 3 m，比地面车的禁入区再外扩 1 m。站点 a 的飞行器整次飞行持有它，路径经过它的地面车
+  # 整次任务持有它。
+  shared:
+    pad_a: {site: site_a, polygon: [[-3, -3], [3, -3], [3, 3], [-3, 3]]}

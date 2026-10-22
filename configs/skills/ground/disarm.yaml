@@ -1,0 +1,42 @@
+# skill.ground.disarm (X1, D088): a skeleton step only the compiler inserts; disarm only a stationary robot in Hold, never a kill.
+#
+# skill.ground.disarm（X1，D088）：只由编译器插入的骨架步骤；只为处于 Hold 且静止的车上锁，绝不是 kill。
+schema_version: "0.1.0"
+skill_id: skill.ground.disarm
+version: "0.1.0"
+description: "Disarm a stationary robot in Hold; PX4 accepts a disarm while driving, so this guard is the only barrier. / 为处于 Hold 且静止的车上锁；PX4 在行驶中也接受上锁，因此本守卫是唯一屏障。"
+embodiments: [ground_wheeled]
+required_control_modes: [mission_upload]
+params_schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: []
+  properties: {}
+preconditions: [package_authorized, armed, stationary]
+invariants: [inside_ground_area, observation_fresh, lease_valid, executive_heartbeat_ok, fc_failsafe_inactive]
+resources:
+  - {resource_id: ugv_01.motion, mode: exclusive}
+progress_schema: {type: object, additionalProperties: false, properties: {}}
+cancel:
+  cancel_safe_states: [stopped]
+  cancel_procedure: "Leave the robot stopped; the guardian disarms it once stationary. / 让车保持停止；静止后由 guardian 上锁。"
+pause: {pausable: false}
+completion_evidence:
+  - evidence_type: telemetry
+    criteria: {predicate: ground_disarmed_verified, threshold_ref: x1_ground_a_v1.disarm, fresh_pose_required: true}
+failure_modes:
+  - {code: disarm_refused, description: "Not stationary in Hold, refused before any command / 未在 Hold 中静止，命令发出前即拒绝", recovery_hint: stop_then_retry}
+  - {code: disarm_unknown, description: "Disarm receipt unknown / 上锁回执未知", recovery_hint: relinquish_and_report_unknown}
+timeout_s: 15
+estimated_duration_s: 3
+implementation: {kind: deterministic}
+estimated_energy_fraction: 0.0083
+energy_estimate:
+  basis: sim_only
+  mean_fraction: 0.0008
+  upper_fraction: 0.0083
+  samples: 12
+  method: "PX4 SITL linear drain refit on X1 S1 (37 uncensored ground steps, rate mean 0.00052/s against the configured 1/1800 s): mean = rate mean x measured mean duration 1.553 s; the kept upper (duration bound / SIM_BAT_DRAIN 1800 s) covers the measured rate_p95 x duration_p95 = 0.0032; docs/verification/x1-energy-2026-10-14.json"
+  source_revision: f0849ca0a404b1110f8074493146eebd53a44e11
+  source_runs: [20261014T070202Z-9b75cfe0/x1-20261014T072315Z-707a44e6, 20261014T070202Z-9b75cfe0/x1-20261014T072915Z-369bd0c7, 20261014T080750Z-0f909122/x1-20261014T082905Z-2de55fcf, 20261014T080750Z-0f909122/x1-20261014T085203Z-5a936c0e, 20261014T080750Z-0f909122/x1-20261014T093034Z-4bc54ef6]

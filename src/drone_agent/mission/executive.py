@@ -46,7 +46,13 @@ from drone_agent.contracts import (
     may_run_successor,
     utcnow,
 )
-from drone_agent.mission.verify import EffectVerifier, verify_asset_image, verify_image
+from drone_agent.mission.verify import (
+    GROUND_RECHECK,
+    EffectVerifier,
+    verify_asset_image,
+    verify_ground_view,
+    verify_image,
+)
 from drone_agent.runtime.ledger import canonical
 from drone_agent.runtime.signing import verify_package
 
@@ -389,7 +395,9 @@ class Executive:
             recovery_deadline = time.monotonic() + 180
             while time.monotonic() < recovery_deadline:
                 obs = await self.pump()
-                if obs.timestamp <= utcnow() < obs.valid_until and obs.armed is False and obs.in_air is False:
+                # The registry names the safe terminal: landed and disarmed in the air, stopped and disarmed on
+                # the ground (X1, D088). / 安全终态由登记表给出：空中为落地且上锁，地面为停稳且上锁（X1，D088）。
+                if obs.timestamp <= utcnow() < obs.valid_until and self.registry.at_safe_terminal(obs):
                     safe_since = time.monotonic() if safe_since is None else safe_since
                     if time.monotonic() - safe_since >= 2:
                         execution, verdict = ExecutionStatus.CANCELLED, EffectVerdict.UNKNOWN
@@ -512,6 +520,7 @@ class Executive:
             await asyncio.sleep(0.1)
         captures, last_capture, seen = 0, 0.0, None
         limit = int(node.params["max_captures"])
+        check = verify_ground_view if node.skill_id == GROUND_RECHECK else verify_asset_image
         evidence = self.artifacts / f"evidence-{node.task_id}.json"
         while approached and time.monotonic() < deadline:
             retake = verdict == EffectVerdict.UNVERIFIED and time.monotonic() - last_capture >= 1
@@ -532,7 +541,7 @@ class Executive:
                 # Re-verify only when a new frame was persisted. / 只有持久化了新帧才重新验证。
                 if (record.get("sha256"), record.get("capture_timestamp")) != seen:
                     seen = (record.get("sha256"), record.get("capture_timestamp"))
-                    verdict = verify_asset_image(record, self.artifacts, node, self.registry)
+                    verdict = check(record, self.artifacts, node, self.registry)
             if verdict == EffectVerdict.VERIFIED:
                 execution = ExecutionStatus.SUCCEEDED
                 break

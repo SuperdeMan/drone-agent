@@ -70,6 +70,9 @@ class Activity(StrEnum):
     SETTLE_REINSPECTION = "settle_reinspection"
     # P6 (D078): the first completed of an analysis and its recapture; no effect. / P6（D078）：取分析及其补拍中首个完成者；无副作用。
     SELECT_ANALYSIS = "select_analysis"
+    # X1 (D088): hand a finding to a ground robot, and wait for its recheck. / X1（D088）：把发现交给地面车，并等待复核。
+    GROUND_RECHECK = "ground_recheck"
+    AWAIT_RECHECK = "await_recheck"
 
 
 class RunState(StrEnum):
@@ -132,6 +135,7 @@ class WaitReason(StrEnum):
     DELIVERY = "delivery"
     ASSIGNMENT = "assignment"  # a P3 task waits for the scheduler (D059) / P3 任务等待调度器（D059）
     ANALYSIS = "analysis"  # a P4 analysis job is queued or running (D063) / P4 分析作业排队或运行中（D063）
+    HANDOFF = "handoff"  # an X1 offer awaits the ground robot's answer or its ack (D088) / X1 提议等待地面车回答或确认
 
 
 def activity_key(run_id: str, node_id: str, occurrence: int = 1) -> str:
@@ -311,6 +315,33 @@ class SelectParams(WorkflowModel):
     analyses: tuple[str, ...] = Field(min_length=2, max_length=3)
 
 
+class AerialCamera(WorkflowModel):
+    """X1 (D088): the nadir camera of the analysed captures, pinned with the node. / 被分析采集所用的下视相机，随节点固定。"""
+
+    width: int = Field(ge=16, le=8192)
+    height: int = Field(ge=16, le=8192)
+    hfov_rad: float = Field(gt=0.05, lt=3.0, description="horizontal field of view / 水平视场角")
+
+
+class GroundRecheckParams(WorkflowModel):
+    """X1 (D088): hand the finding of a P4 analysis to a named ground robot. The anomaly of the declared colour is
+    located in the analysed capture, projected with `camera` and the inspection route's declared heading, and offered
+    for `ttl_s`; the ground mission still needs a human approval. / X1（D088）：把一次 P4 分析的发现交给点名的地面车。
+    在被分析的采集中定位声明颜色的异常物，用 `camera` 与巡检航线的声明航向投影，提议有效期 `ttl_s`；地面任务仍需人工审批。
+    """
+
+    analysis_from: str = Field(pattern=NODE_ID, description="a P4 analyze_evidence node / P4 分析节点")
+    robot_id: str = Field(pattern=ID, description="the ground robot the handoff names / 交接点名的地面车")
+    signature: Literal["orange", "magenta"] = Field(description="the declared anomaly colour / 声明的异常物颜色")
+    size_m: float = Field(gt=0, le=5, description="the declared anomaly size / 声明的异常物尺寸")
+    camera: AerialCamera
+    ttl_s: float = Field(default=60.0, ge=10, le=3600)
+
+
+class AwaitRecheckParams(WorkflowModel):
+    recheck_from: str = Field(pattern=NODE_ID, description="a ground_recheck node / ground_recheck 节点")
+
+
 class Predicate(WorkflowModel):
     """`node.output == equals` over a typed output; the only condition form. `recapture` (P6, D078) is the one output
     a failed node has: whether the business catalog let its refusal be recaptured.
@@ -423,8 +454,27 @@ class SelectNode(_Node):
     params: SelectParams
 
 
+class GroundRecheckNode(_Node):
+    """X1 (D088): an effect, exactly once by its key, like a submission. / X1（D088）：与提交一样按键只执行一次的效果。"""
+
+    activity: Literal["ground_recheck"]
+    params: GroundRecheckParams
+
+    def references(self):
+        return [(self.params.analysis_from, Activity.ANALYZE_EVIDENCE)]
+
+
+class AwaitRecheckNode(_Node):
+    activity: Literal["await_recheck"]
+    params: AwaitRecheckParams
+
+    def references(self):
+        return [(self.params.recheck_from, Activity.GROUND_RECHECK)]
+
+
 Node = Annotated[SubmitMissionNode | AwaitMissionNode | AnalyzeNode | ReviewNode | WorkOrderNode | AwaitRepairNode
-                 | ReinspectionNode | ReportNode | SettleNode | SelectNode, Field(discriminator="activity")]
+                 | ReinspectionNode | ReportNode | SettleNode | SelectNode | GroundRecheckNode | AwaitRecheckNode,
+                 Field(discriminator="activity")]
 
 
 # ── triggers and schedules / 触发器与排班 ──
@@ -651,6 +701,15 @@ class WorkflowSpec(WorkflowModel):
         submits = [n.node_id for n in self.nodes if isinstance(n, SubmitMissionNode)]
         if sorted(submits) != sorted(awaited):
             raise ValueError("every submit_mission node needs exactly one await_mission node")
+        for node in self.nodes:
+            if isinstance(node, GroundRecheckNode):
+                analysis = nodes[node.params.analysis_from]
+                if not (isinstance(analysis, AnalyzeNode) and analysis.params.findings):
+                    raise ValueError(f"{node.node_id} hands over a finding, so it reads a P4 analysis (findings: true)")
+        rechecks = [n.node_id for n in self.nodes if isinstance(n, GroundRecheckNode)]
+        waits = sorted(n.params.recheck_from for n in self.nodes if isinstance(n, AwaitRecheckNode))
+        if waits != sorted(rechecks):
+            raise ValueError("every ground_recheck node needs exactly one await_recheck node")
         if len(submits) > self.budget.max_missions:
             raise ValueError(f"{len(submits)} missions exceed the budget of {self.budget.max_missions}")
         self.order()
@@ -856,14 +915,18 @@ class ScriptedAnalyzer(WorkflowModel):
 
 
 class SignatureAnalyzer(WorkflowModel):
-    """Measures the registered colour signature and compares it with a per-asset nominal band.
+    """Measures the registered colour signature and compares it with a per-asset nominal band. X1 (D088) adds
+    `anomaly_block`: a capture showing a block of one of the declared anomaly colours is suspected, located by the
+    deterministic anomaly locator; it has colours instead of bands.
 
-    测量登记颜色特征并与逐资产的正常区间比较。
+    测量登记颜色特征并与逐资产的正常区间比较。X1（D088）增加 `anomaly_block`：采集中出现声明异常颜色之一的方块即为疑似，
+    由确定性异常定位器定位；它用颜色列表代替区间。
     """
 
     kind: Literal["deterministic"]
-    method: Literal["color_signature"]
-    bands: dict[str, tuple[float, float]] = Field(min_length=1)
+    method: Literal["color_signature", "anomaly_block"]
+    bands: dict[str, tuple[float, float]] = Field(default_factory=dict)
+    colours: tuple[Literal["orange", "magenta"], ...] = ()
     # P6 (D078): a quality profile of its own, pinned like a model analyzer's, for deployments whose sites have
     # different cameras; left out of the canonical form while unset (the business catalog's default applies).
     # P6（D078）：自带的质量画像，与模型分析器一样固定，用于各站点相机不同的部署；未设置时不进入规范形式（使用业务目录的默认画像）。
@@ -871,6 +934,11 @@ class SignatureAnalyzer(WorkflowModel):
 
     @model_validator(mode="after")
     def _bands(self):
+        if self.method == "color_signature" and (not self.bands or self.colours):
+            raise ValueError("color_signature measures per-asset bands and lists no colours")
+        if self.method == "anomaly_block" and (not self.colours or self.bands
+                                               or len(set(self.colours)) != len(self.colours)):
+            raise ValueError("anomaly_block lists distinct anomaly colours and no bands")
         if any(not 0 <= low < high <= 1 for low, high in self.bands.values()):
             raise ValueError("bands are 0 <= low < high <= 1")
         return self
@@ -880,6 +948,12 @@ class SignatureAnalyzer(WorkflowModel):
         data = handler(self)
         if self.quality is None:
             data.pop("quality", None)
+        # Unused fields stay out, so every color_signature analyzer keeps its digest. / 未使用的字段不进入规范形式，
+        # 使每个 color_signature 分析器的摘要保持不变。
+        if not self.colours:
+            data.pop("colours", None)
+        if not self.bands:
+            data.pop("bands", None)
         return data
 
 
@@ -1023,6 +1097,12 @@ class WorkflowCatalog(WorkflowModel):
             if workflow.project_id not in operations.projects:
                 raise ValueError(f"{workflow.workflow_id} names an unknown project {workflow.project_id}")
             for node in workflow.nodes:
+                if isinstance(node, GroundRecheckNode):
+                    # X1 (D088): the robot is a ground robot of the workflow's project. / 机器人是本项目的地面车。
+                    robot = operations.robots.get(node.params.robot_id)
+                    if robot is None or operations.project_of(node.params.robot_id) != workflow.project_id \
+                            or registries[robot.site_id].data.get("kind") != "ground_site":
+                        raise ValueError(f"{workflow.workflow_id}.{node.node_id} names no ground robot of its project")
                 if not isinstance(node, SubmitMissionNode):
                     continue
                 params = node.params
@@ -1047,7 +1127,7 @@ class WorkflowCatalog(WorkflowModel):
             for node in workflow.nodes:
                 if isinstance(node, AnalyzeNode):
                     analyzer = self.analyzers[node.params.analyzer]
-                    if isinstance(analyzer, SignatureAnalyzer):
+                    if isinstance(analyzer, SignatureAnalyzer) and analyzer.method == "color_signature":
                         await_node = workflow.node(node.params.inspection_from)
                         submit = workflow.node(await_node.params.mission_from).params
                         assets = [submit.asset] if isinstance(submit.asset, str) else \
@@ -1187,12 +1267,41 @@ class SettleOutput(WorkflowModel):
     reasons: tuple[str, ...] = ()
 
 
+class RecheckStarted(WorkflowModel):
+    """ground_recheck: the recheck, and its task and offer when a target could be offered (X1, D088).
+
+    ground_recheck：复核，以及能提供目标时的任务与提议（X1，D088）。
+    """
+
+    recheck_id: str
+    task_id: str | None = None
+    handoff_id: str | None = None
+
+
+class RecheckOutput(WorkflowModel):
+    """await_recheck: the conclusion from the ground robot's verified view; `relocated` is an observation, never a
+    confirmed defect, and `not_found` is uncertain, never normal (X1, D088).
+
+    await_recheck：依据地面车已核验画面得出的结论；`relocated` 只是观测，不是确认的缺陷；`not_found` 表示不确定，从不表示
+    正常（X1，D088）。
+    """
+
+    recheck_id: str
+    outcome: Literal["relocated", "not_found", "not_attempted", "unknown"]
+    reason: str = ""
+    aerial_evidence: tuple[str, ...] = ()
+    ground_evidence: tuple[str, ...] = ()
+    ground_mission_id: str | None = None
+    relocated: tuple[float, float] | None = None
+
+
 OUTPUTS: dict[Activity, type[WorkflowModel]] = {
     Activity.SUBMIT_MISSION: MissionOutput, Activity.AWAIT_MISSION: InspectionOutput,
     Activity.ANALYZE_EVIDENCE: AnalysisOutput, Activity.HUMAN_REVIEW: ReviewOutput,
     Activity.CREATE_WORK_ORDER: OrderOutput, Activity.AWAIT_REPAIR: RepairOutput,
     Activity.REQUEST_REINSPECTION: ReinspectionOutput, Activity.SETTLE_REINSPECTION: SettleOutput,
-    Activity.SELECT_ANALYSIS: SelectOutput,
+    Activity.SELECT_ANALYSIS: SelectOutput, Activity.GROUND_RECHECK: RecheckStarted,
+    Activity.AWAIT_RECHECK: RecheckOutput,
 }
 
 

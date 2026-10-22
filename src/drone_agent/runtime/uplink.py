@@ -11,6 +11,12 @@ evidence contracts are completed with mission, version and robot and sent with t
 guardian's latest observation becomes a ~1 Hz RobotStatus. Everything is at-least-once; the service
 deduplicates. A transport failure never stops the uplink and never affects the flight.
 
+X1 (D088): a ground robot answers handoff offers here, deterministically and from what it knows itself: its own map
+from its parking spot, whether a mission it accepted may still run, and its last known rest state and energy. The
+answer is stored before it is sent, so a lost reply is resent unchanged; the hub closes the offer's delivery when the
+reply settles it, so an offer is never acknowledged. An answer only accepts a task: the package, its approval and the
+mission's own preconditions still decide whether anything moves.
+
 机载 uplink（D031，WP-M2-17）：机载唯一联网的进程；只转发，从不下令。
 
 下行：已签名任务包在这里验证（签名、陈述、机器人、有效期、不回退）并原子写入私有 inbox，executive 与
@@ -21,6 +27,10 @@ guardian 起飞前会再次各自验证；操作请求经检查（机器人、�
 上行：完整的账本行作为保留整行（哈希链完整）的 ExecutionEvent 转发；证据契约补全任务、版本与机器人后
 随媒体一起发送；guardian 的最新观测变为约 1 Hz 的 RobotStatus。一切至少一次，由服务去重。传输失败
 从不让 uplink 停下，也从不影响飞行。
+
+X1（D088）：地面车在这里回答交接提议，确定性地、只依据它自己知道的事：从停车位出发的自身地图、它接受的任务是否仍可能
+执行，以及最后已知的停放状态与电量。回答先保存再发送，丢失的回复原样重发；回复了结提议时由 hub 关闭其投递，因此提议从不
+单独确认。回答只表示接受任务：任务包、审批与任务自身的前置条件仍决定车是否移动。
 """
 
 from __future__ import annotations
@@ -46,6 +56,7 @@ from drone_agent.contracts import (
     MissionPackage,
     OperatorRequest,
     RobotStatus,
+    WorldFact,
     utcnow,
 )
 from drone_agent.fleet.events import journal_row_to_event
@@ -56,6 +67,9 @@ VERSION_DIR = re.compile(r"^v([1-9][0-9]{0,5})$")
 JOURNALS = ("executive", "guardian")
 RAW_RGB = "image/x-raw-rgb"
 STATE_FORMAT = "drone.uplink-state/v1"
+# X1 (D088): where the guardian's read-only mode writes the observation between missions. / 两次任务之间 guardian
+# 只读模式写入观测的位置。
+IDLE_DIR = "idle"
 
 
 def atomic_write(path: Path, data: bytes) -> None:
@@ -87,15 +101,19 @@ def complete_rows(path: Path, offset: int) -> list[tuple[dict, int]]:
 
 class Uplink:
     def __init__(self, client, *, robot_id: str, trust: TrustStore, capability: CapabilityDescriptor, inbox: Path,
-                 mailbox: Path, aircraft: Path, state_path: Path, clock=utcnow):
+                 mailbox: Path, aircraft: Path, state_path: Path, clock=utcnow, ground=None):
         self.client, self.robot_id, self.trust, self.capability = client, robot_id, trust, capability
         self.inbox, self.mailbox, self.aircraft, self.state_path, self.clock = inbox, mailbox, aircraft, state_path, clock
-        self.state = {"format": STATE_FORMAT, "accepted": {}, "journals": {}, "evidence": {}}
+        # X1 (D088): a ground robot's own site map, which answers handoff offers; None on an aircraft.
+        # X1（D088）：地面车自己的站点图，用来回答交接提议；飞行器上为 None。
+        self.ground = ground
+        self.state = {"format": STATE_FORMAT, "accepted": {}, "journals": {}, "evidence": {}, "handoffs": {}}
         if state_path.exists():
             loaded = json.loads(state_path.read_text(encoding="utf-8"))
             if loaded.get("format") != STATE_FORMAT:
                 raise ValueError("unsupported uplink state")
             self.state = loaded
+            self.state.setdefault("handoffs", {})
         self.notes: list[dict] = []
         self.comms_ok = False
         self.capability_sent = False
@@ -180,9 +198,92 @@ class Uplink:
                 accepted, reason = self.relay_operation(item["operation"])
                 if accepted is None:
                     continue
+            elif item["kind"] == "handoff_offer":
+                # Settled by the reply, never acknowledged (D088). / 由回复了结，从不单独确认（D088）。
+                await self.answer_offer(item["offer"])
+                continue
             else:
                 accepted, reason = False, "service.invalid_request"
             await self.client.acknowledge(item["delivery_id"], accepted, reason)
+
+    # ── handoff answers (X1, D088) / 交接作答（X1，D088） ──
+
+    def _busy(self) -> bool:
+        """A mission version this robot accepted may still run: no result yet and its window still open.
+
+        本机接受的某个任务版本仍可能执行：尚无结果，且时间窗仍开着。
+        """
+        now = self.clock()
+        for mission_id, known in self.state["accepted"].items():
+            version = known["version"]
+            if (self.aircraft / mission_id / f"v{version}" / "result.json").exists():
+                continue
+            try:
+                package = MissionPackage.model_validate_json(
+                    (self.inbox / "history" / f"{mission_id}-v{version}.json").read_bytes())
+            except (OSError, ValueError):
+                return True
+            window = package.temporal_window
+            if window is None or window.not_after > now:
+                return True
+        return False
+
+    def offer_reply(self, offer: dict) -> dict:
+        """The answer to one offer, from the robot's own map and state; deterministic, never a model.
+
+        Checked in order: expiry, the target's map, an unfinished mission, the last known rest state (when there is
+        one), energy for the site's default budget, then reachability from the parking spot with a face leg.
+
+        依据地面车自己的地图与状态回答一个提议；确定性，从不用模型。依次检查：过期、目标所在地图、未完成的任务、最后
+        已知的停放状态（有观测时）、站点默认预算所需的电量，最后是从停车位出发、带正对段的可达性。
+        """
+        reply = {"handoff_id": str(offer.get("handoff_id", "")), "accepted": False}
+        ground = self.ground
+        if ground is None:
+            return {**reply, "reason_code": "outside_map", "reason": "this robot has no ground map"}
+        reply["map_version"] = ground.registry_id
+        try:
+            expires = datetime.fromisoformat(offer["expires_at"])
+            fact = WorldFact.model_validate(offer["target"])
+            kind = fact.value["kind"]
+            radius = float(fact.value["radius_m"]) if kind == "search_region" else None
+        except (KeyError, TypeError, ValueError):
+            return {**reply, "reason_code": "alignment_insufficient", "reason": "the target is malformed"}
+        if expires <= self.clock():
+            return {**reply, "reason_code": "expired"}
+        if (fact.position is None or fact.frame is None or fact.frame.map_version != ground.registry_id
+                or fact.frame.frame_id != ground.data["frame"]["frame_id"]):
+            return {**reply, "reason_code": "outside_map", "reason": "the target is on another map"}
+        if kind not in ("point", "search_region"):
+            return {**reply, "reason_code": "alignment_insufficient", "reason": f"unknown target kind {kind}"}
+        if self._busy():
+            return {**reply, "reason_code": "busy", "reason": "an accepted mission may still run"}
+        latest = self._latest_status()
+        if latest is not None and not ground.resting(latest[1]):
+            return {**reply, "reason_code": "busy", "reason": "not resting at a parking spot"}
+        budget = ground.data["mission_defaults"]["energy_budget"]
+        if latest is not None and (latest[1].battery_fraction is None or latest[1].battery_fraction
+                                   < budget["max_consumption_fraction"] + budget["reserve_fraction"]):
+            return {**reply, "reason_code": "energy"}
+        answer = ground.answer((fact.position.x, fact.position.y), radius)
+        if not answer.accepted:
+            return {**reply, "reason_code": answer.reason, "reason": answer.detail[:300]}
+        return {**reply, "accepted": True, "path_length_m": answer.path_m, "eta_s": answer.eta_s}
+
+    async def answer_offer(self, offer: dict) -> None:
+        """Answer once and keep the answer, so a lost reply is resent unchanged. / 只作答一次并保存回答，丢失的回复
+        原样重发。"""
+        handoff_id = str(offer.get("handoff_id", ""))
+        reply = self.state["handoffs"].get(handoff_id)
+        if reply is None:
+            reply = self.offer_reply(offer)
+            self.state["handoffs"][handoff_id] = reply
+            self._save()
+            self.note("handoff_answered", handoff_id=handoff_id, accepted=reply["accepted"],
+                      reason_code=reply.get("reason_code"))
+        receipt = await self.client.reply_handoff(reply)
+        if not receipt.accepted:
+            self.note("handoff_reply_refused", handoff_id=handoff_id, reason=receipt.reason)
 
     # ── up / 上行 ──
 
@@ -270,30 +371,47 @@ class Uplink:
         and neither mission ids nor versions order them in time.
         最近写入的状态文件才是最新观测：机器人保留多个任务的飞行，任务 ID 与版本号都不按时间排序。
         """
-        written = []
-        for _, _, directory in self._version_dirs():
-            try:
-                written.append(((directory / "status.json").stat().st_mtime_ns, directory / "status.json"))
-            except OSError:
-                continue
-        if not written:
+        latest = self._latest_status()
+        if latest is None:
             return None
-        latest = max(written)[1]
-        try:
-            status = json.loads(latest.read_text(encoding="utf-8"))
-            obs = FlightObservation.model_validate(status["observation"])
-        except (OSError, ValueError, KeyError):
+        status, obs = latest
+        if obs.battery_fraction is None:
             return None
-        if obs.battery_fraction is None or obs.robot_id != self.robot_id:
-            return None
-        phase = "grounded" if obs.in_air is False and obs.armed is False else "airborne" if obs.in_air else "unknown"
+        if self.ground is not None:
+            # A rover reports in_air whenever armed, so flight_phase does not apply; fleet reads ground_phase (D088).
+            # 地面车只要解锁就报告 in_air，flight_phase 不适用；fleet 读取 ground_phase（D088）。
+            phase, ground_phase = "unknown", self.ground.ground_phase(obs)
+        else:
+            ground_phase = None
+            phase = "grounded" if obs.in_air is False and obs.armed is False else "airborne" if obs.in_air else "unknown"
         return RobotStatus(
-            robot_id=self.robot_id, timestamp=obs.timestamp, flight_phase=phase,
+            robot_id=self.robot_id, timestamp=obs.timestamp, flight_phase=phase, ground_phase=ground_phase,
             energy=EnergyState(remaining_fraction=obs.battery_fraction),
             localization=LocalizationHealth(fix_type="estimated" if obs.localization_healthy else "none",
                                             healthy=obs.localization_healthy),
             comms=CommsState(uplink_ok=self.comms_ok, last_seen=self.clock()),
             active_skill_instance=status.get("active_step"), fc_failsafe_active=obs.fc_failsafe)
+
+    def _latest_status(self) -> tuple[dict, FlightObservation] | None:
+        """The most recently written status: a flight's, or the idle observation between missions (X1, D088).
+
+        最近写入的状态：某次飞行的，或两次任务之间的空闲观测（X1，D088）。
+        """
+        written = []
+        paths = [directory / "status.json" for _, _, directory in self._version_dirs()]
+        for path in (*paths, self.aircraft / IDLE_DIR / "status.json"):
+            try:
+                written.append((path.stat().st_mtime_ns, path))
+            except OSError:
+                continue
+        if not written:
+            return None
+        try:
+            status = json.loads(max(written)[1].read_text(encoding="utf-8"))
+            obs = FlightObservation.model_validate(status["observation"])
+        except (OSError, ValueError, KeyError):
+            return None
+        return (status, obs) if obs.robot_id == self.robot_id else None
 
     async def cycle(self) -> None:
         if not self.capability_sent:
@@ -325,9 +443,9 @@ class Uplink:
 
 async def main_async(args) -> None:
     from drone_agent.fleet.transport import GrpcFleetClient
-    from drone_agent.mission.registry import Registry
+    from drone_agent.mission.registry import load_registry
 
-    registry = Registry(args.root, scene=args.scene)
+    registry = load_registry(args.root, args.scene, getattr(args, "platform", None))
     credentials = {"cert_pem": (args.tls / "robot.crt").read_bytes(), "key_pem": (args.tls / "robot.key").read_bytes(),
                    "ca_pem": (args.tls / "ca.crt").read_bytes()}
     if args.transport == "zenoh":
@@ -339,7 +457,8 @@ async def main_async(args) -> None:
         client = GrpcFleetClient(args.service, args.robot_id, server_name=args.server_name, **credentials)
     uplink = Uplink(client, robot_id=args.robot_id, trust=TrustStore.load(args.trust),
                     capability=registry.capability, inbox=args.inbox, mailbox=args.mailbox, aircraft=args.aircraft,
-                    state_path=args.state / "uplink-state.json")
+                    state_path=args.state / "uplink-state.json",
+                    ground=registry if registry.kind == "ground_site" else None)
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
@@ -354,6 +473,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path("/workspace"))
     parser.add_argument("--scene", type=Path, required=True)
+    parser.add_argument("--platform", type=Path, default=None,
+                        help="platform file; default by the scene's kind / 平台文件；默认按场景类型取")
     parser.add_argument("--robot-id", default="uav_01")
     parser.add_argument("--service", default="mission-service:8450")
     parser.add_argument("--server-name", default="mission-service")

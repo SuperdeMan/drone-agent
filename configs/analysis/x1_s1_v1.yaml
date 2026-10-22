@@ -1,0 +1,15 @@
+# X1 S1 business catalog (D088) for the operations catalog x1_s1_v1 and its workflow catalog. / X1 S1 业务目录（D088），
+# 对应运营目录 x1_s1_v1 及其工作流目录。
+format: drone.business-catalog/v1
+schema_version: "0.1.0"
+catalog_id: x1_s1_v1
+operations_catalog: x1_s1_v1
+workflow_catalog: x1_s1_v1
+default_quality: configs/analysis/quality_sim_v1.yaml
+families:
+  appearance: [damage, missing_part, contamination, deformation, discoloration, foreign_object, other_change]
+generic_defect: other_change
+closure: {version: reinspection-v1, allowed_sources: [deterministic, scripted, live_model, recorded_model]}
+reuse: {version: reuse-v1, max_age_s: 604800, analyzers: [anomaly_s1_v1]}
+runner: {concurrency: 2, lease_s: 8, max_attempts: 2, daily_tokens: 2000000}
+max_references: 3
