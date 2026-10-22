@@ -1,5 +1,7 @@
 # P6 道路材料当前交接 · 2026-10-22
 
+**合并后入口**：原工作分支已合入main并删除，ASCII材料工具工作树保留为detached main；恢复材料、清理范围与云端只读盘点见[2026-10-23记录](p6-postmerge-cleanup-2026-10-23.md)。以下保留材料批次的准确版本和历史路径。
+
 **P6已按D091工程范围关闭；道路业务效果尚未验收。** 工程当前状态见[工程验收](p6-engineering-readiness.md)，业务工作转入[后续任务](road-business-validation-backlog.md)。11:54 UTC材料快照：首稿424、选中独立AI二审331（正常23、障碍66、不可判170、错目标4、排除源68），待二审93。331条绑定全通过，仍是参考观察，正式资产、正式配对、数据冻结与正式待评模型调用均0。真人p95及现场清障未验证，D089全部业务要求保留。证据见[D检查点](../eval/s2/road_business_v1/corpus_checkpoint_20261022d/README.md)、[C前批检查点](../eval/s2/road_business_v1/corpus_checkpoint_20261022c/README.md)、[OAM来源/软件检查点](../eval/s2/road_business_v1/oam_source_checkpoint_20261022/README.md)。外置原件在材料根`resume-20261022-next/`。
 
 ## 已完成的新增工作
