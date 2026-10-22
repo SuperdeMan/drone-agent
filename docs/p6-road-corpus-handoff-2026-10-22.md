@@ -2,7 +2,9 @@
 
 **WP-P6-01仍开放，P6未整体准出。** 当前事实以本页和[B检查点](../eval/s2/road_business_v1/corpus_checkpoint_20261022b/README.md)为准；[前一检查点](../eval/s2/road_business_v1/corpus_checkpoint_20261022b/../corpus_checkpoint_20261022/README.md)及更早历史保持原样。正式资产、正式配对、冻结数据、正式模型调用仍为0；真人候选计时延期至运营，现场清障未验证，其余D089门槛不变。
 
-工作树`D:/drone-agent-data/p6-road-views-20261014/repo`，分支`work/p6-road-views-20261014`；材料根`D:/drone-agent-data/p6-corpus-completion-20261018`，本批工具`resume-20261022/`。原仓库并行工作未混入。下述“通过”均限定到对应记录的范围，不代表业务模型成绩。
+**2026-10-22 存储补充**：[用户批准的云端清理](../eval/s2/road_business_v1/cloud_cleanup_20261022/README.md)已完成，实测释放12.4865 GiB；原六观察审核字节完全一致，业务准出仍`missing`。`resume-20261022-fast/`另推进两组共48观察的初标及Santolan完整对象获取，尚未据此增加本页B检查点的已核验计数。
+
+工作树`D:/drone-agent-data/p6-road-views-20261014/repo`，分支`work/p6-road-views-20261014`；材料根`D:/drone-agent-data/p6-corpus-completion-20261018`，B检查点工具`resume-20261022/`。原仓库并行工作未混入。下述“通过”均限定到对应记录的范围，不代表业务模型成绩。
 
 ## 当前完成点
 

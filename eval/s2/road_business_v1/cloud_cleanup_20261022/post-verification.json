@@ -1,0 +1,275 @@
+{
+  "format": "drone.p6-cloud-cleanup-post-verification/v1",
+  "recorded_at_utc": "2026-10-22T03:52:24.339451+00:00",
+  "verdict": "authorized_file_operations_verified_final_container_failure_is_order_only",
+  "verification_passed": true,
+  "scope": "Independent read-only verification of the exact user authorization, immutable execution payload, original5936-event journal, remote result witness, exact frozen post-core artifact and recorded container/disk snapshots. No cleanup or source audit was rerun.",
+  "original_execution_status": "failed_after_partial_execution",
+  "original_execution_status_preserved": true,
+  "original_failure_type": "AssertionError",
+  "original_failure_message_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "original_execution_relabelled": false,
+  "qualification": "All2968 authorized file operations have exact paired durable intent/result witnesses and the recorded final alias/absence/held checks passed. The actual frozen six-observation core artifact is byte-for-byte identical to its prior missing baseline and its process returned0. The original executor still failed its last raw-container-list equality assertion: exactly five mount-source arrays were permuted, with identical multisets and every other recorded container field unchanged. This supplement verifies those facts without rewriting the original failed result into success.",
+  "authorization": {
+    "approval_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-cleanup-user-approval-v1.json",
+    "approval_sha256": "7bdf54a3c8405f51827c221a1d2c16bf751a0fc87c12cc2677385d2b32e7af13",
+    "origin": "explicit user reply as recorded by root and the bound async-reference approval artifact",
+    "approval_reference": "request_user_input_async/call_a254b214805b4d889b173f700d74d371/0 reply received 2026-10-22",
+    "mode": "archives-and-hardlinks",
+    "plan_sha256": "7d5b5d21011d67287de91f663f436b50b0fbace0eb27ea51cfe15dc4c1fd992c",
+    "notes_sha256": "326e9b44a815ed76994fa89b7ab299d90cd76af52b2802212b4a2bec7355e23f",
+    "preflight_audit_sha256": "11ad9862fcc7193af1b725ebdb523b4b9d48245d30134a2d2b720c27f611039e",
+    "applier_sha256": "77bbddbcce8823d61c6c52cbccc4dfdd86868979965eb2c4bf962089aa8f081a"
+  },
+  "operation_verification": {
+    "approved_archive_deletions": 204,
+    "approved_hardlink_replacements": 2764,
+    "completion_events": 2968,
+    "journal_events": 5936,
+    "journal_intents": 2968,
+    "journal_results": 2968,
+    "unpaired_or_out_of_order_events": 0,
+    "journal_result_events_equal_original_stdout_operations": true,
+    "remote_result_equals_original_stdout_result": true,
+    "all_operation_paths_exactly_authorized": true,
+    "all_operation_hashes_and_old_stats_match_plan": true,
+    "all_hardlink_new_stats_match_retained_canonical": true,
+    "all_staged_names_unique_and_reported_absent": true,
+    "recorded_final_archive_absence_checks": 204,
+    "recorded_final_alias_byte_and_inode_checks": 2764,
+    "recorded_held_archive_unchanged_checks": 1,
+    "operation_sequence_canonical_sha256": "a7089c97d60d07980c912d7a80bc681b3373e1e903b476131496a48b0782f58d",
+    "per_operation_failures": []
+  },
+  "core_postcheck": {
+    "downloaded_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cleanup-apply-archives-and-hardlinks-20261022T033648Z\\remote-witness-v1\\post-cleanup-core-audit.json",
+    "sha256": "a569d55d266ebdcb2da25d51cf99de5c1e18b6ab1f1f57d638c550b47eebd3c8",
+    "exact_baseline_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022\\integrated-core-audit-v1\\core-audit.json",
+    "exact_baseline_sha256": "a569d55d266ebdcb2da25d51cf99de5c1e18b6ab1f1f57d638c550b47eebd3c8",
+    "byte_identical_to_baseline": true,
+    "full_json_identical_to_baseline": true,
+    "process_returncode": 0,
+    "status": "missing",
+    "samples": 6,
+    "sample_pair_issues": 0,
+    "issue_counts_unchanged": true,
+    "formal_release_qualified": false
+  },
+  "container_comparison": {
+    "containers_before": 39,
+    "containers_after": 39,
+    "ids_images_started_running_restart_fields_unchanged": true,
+    "raw_snapshot_lists_equal": false,
+    "normalized_only_mount_source_order_lists_equal": true,
+    "permutation_only_container_count": 5,
+    "non_order_value_differences": [],
+    "permutation_details": [
+      {
+        "container_id": "2e660bbee7bcbf54ee9ae2346ae6bfb657ab81d78d73102bb62d2ed34beefd8e",
+        "changed_keys": [
+          "mounts"
+        ],
+        "mount_source_multiset_equal_including_multiplicity": true,
+        "all_other_fields_identical": true,
+        "mount_source_count_before": 2,
+        "mount_source_count_after": 2,
+        "before_mount_order_sha256": "8a7d064dffa15dc62baf26eaf95b9b4d4b61aec6956c02a3a4d36e6746040737",
+        "after_mount_order_sha256": "1cd307922b71fd38f5382238ebe93966336bf61d6154ecf468cc2dd42424187d",
+        "normalized_mounts_sha256": "8a7d064dffa15dc62baf26eaf95b9b4d4b61aec6956c02a3a4d36e6746040737"
+      },
+      {
+        "container_id": "70dd5ac4147a5cb1d161ff00af925912f48245c83e0131f3d7319a248ebbd3e1",
+        "changed_keys": [
+          "mounts"
+        ],
+        "mount_source_multiset_equal_including_multiplicity": true,
+        "all_other_fields_identical": true,
+        "mount_source_count_before": 6,
+        "mount_source_count_after": 6,
+        "before_mount_order_sha256": "35d9338d424c557fe6339d6e166240acc954f4b92c248c0d81263134dceca186",
+        "after_mount_order_sha256": "5a105b8db98dc49764471b1001da35b340b0709e5f89f05c6ba23fb3219dbbcd",
+        "normalized_mounts_sha256": "35d9338d424c557fe6339d6e166240acc954f4b92c248c0d81263134dceca186"
+      },
+      {
+        "container_id": "75e7b28c355d94b0bed419888a40f12ebf06ade389a2aacf3562067bc1f84c4a",
+        "changed_keys": [
+          "mounts"
+        ],
+        "mount_source_multiset_equal_including_multiplicity": true,
+        "all_other_fields_identical": true,
+        "mount_source_count_before": 6,
+        "mount_source_count_after": 6,
+        "before_mount_order_sha256": "86b80bdb89eb3fcf6c5717cb7f6b6eeb0804f175b7d62b301904009b5ed19931",
+        "after_mount_order_sha256": "162ebde12c9b77a379e569fa294594243e06f8d11dccee0056042ec9576ec7e4",
+        "normalized_mounts_sha256": "e9a94b546cfcab9d58f4d78e30c1e4c8c86d8b2e06fb9dda014fa25f299aea22"
+      },
+      {
+        "container_id": "b4141ebb5b42f7bfdd0b83429d513ca25adb4d7a860225deed15abefde2d452a",
+        "changed_keys": [
+          "mounts"
+        ],
+        "mount_source_multiset_equal_including_multiplicity": true,
+        "all_other_fields_identical": true,
+        "mount_source_count_before": 3,
+        "mount_source_count_after": 3,
+        "before_mount_order_sha256": "9c2a88d0bf5fd01c4a680ffc081aaff1d632bd49085154240ec2f4a25f790570",
+        "after_mount_order_sha256": "d263dccdacbde79070096aa53d265ce6bf7a496c54bedaf29212921cda7b1dd6",
+        "normalized_mounts_sha256": "8e017a25954a03d0d932ea2c611888310eb073e1c622a36ffe1e6a9dd3455e0d"
+      },
+      {
+        "container_id": "fe19a383099845d5965791f394a43da106f05b4489aa57bb8ed5c05f68b175f7",
+        "changed_keys": [
+          "mounts"
+        ],
+        "mount_source_multiset_equal_including_multiplicity": true,
+        "all_other_fields_identical": true,
+        "mount_source_count_before": 6,
+        "mount_source_count_after": 6,
+        "before_mount_order_sha256": "0c2ee90ffc368888d595ffc44c55d453624cca58639d20cc2f90597535b78169",
+        "after_mount_order_sha256": "7102f61d6bf61413c054186ce60b7d532dfc9edbdb45a71d8d4e13f46ba33f98",
+        "normalized_mounts_sha256": "2bc3313a3ad3e90bc206292a4eda34853602504a45d5407a6cdb356e72a5b8ab"
+      }
+    ],
+    "normalization": "Sort only each captured mounts source-string array, preserving duplicate multiplicities and every other key/value; compare full container records by exact ID.",
+    "failure_localization": "The reviewed exact executor assigns the post_core_audit result, obtains containers_after, then asserts raw list equality before completed status. Those fields exist, raw equality is false, normalized equality is true, and the stored empty AssertionError message hash matches that bare final assertion. This is the supported localization, not a replacement execution result."
+  },
+  "disk_measurement": {
+    "before_free_bytes": 26194415616,
+    "after_free_bytes": 39601696768,
+    "observed_free_delta_bytes": 13407281152,
+    "observed_free_delta_gib": 12.486503601074219,
+    "approved_estimated_reclaim_allocated_bytes": 13415313408,
+    "estimate_minus_observed_delta_bytes": 8032256,
+    "interpretation": "Observed filesystem free-space increase across the recorded operation interval; estimate and measured delta are reported separately. The difference is not silently assigned to an unmeasured cause."
+  },
+  "file_sha256_bindings": [
+    {
+      "role": "plan",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-cleanup-plan-v1.json",
+      "sha256": "7d5b5d21011d67287de91f663f436b50b0fbace0eb27ea51cfe15dc4c1fd992c",
+      "expected_sha256": "7d5b5d21011d67287de91f663f436b50b0fbace0eb27ea51cfe15dc4c1fd992c",
+      "matches": true,
+      "bytes": 3696612
+    },
+    {
+      "role": "approval",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-cleanup-user-approval-v1.json",
+      "sha256": "7bdf54a3c8405f51827c221a1d2c16bf751a0fc87c12cc2677385d2b32e7af13",
+      "expected_sha256": "7bdf54a3c8405f51827c221a1d2c16bf751a0fc87c12cc2677385d2b32e7af13",
+      "matches": true,
+      "bytes": 907
+    },
+    {
+      "role": "notes",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-cleanup-plan-notes-v2.json",
+      "sha256": "326e9b44a815ed76994fa89b7ab299d90cd76af52b2802212b4a2bec7355e23f",
+      "expected_sha256": "326e9b44a815ed76994fa89b7ab299d90cd76af52b2802212b4a2bec7355e23f",
+      "matches": true,
+      "bytes": 1966
+    },
+    {
+      "role": "audit1",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-cleanup-contract-audit-v1.json",
+      "sha256": "162c3c0a6b87ab8d2fa3ac994bd2ae2b3f2e8bacea5e43e38ccb09cf02c736ee",
+      "expected_sha256": "162c3c0a6b87ab8d2fa3ac994bd2ae2b3f2e8bacea5e43e38ccb09cf02c736ee",
+      "matches": true,
+      "bytes": 127829
+    },
+    {
+      "role": "audit2",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-cleanup-contract-audit-v2.json",
+      "sha256": "11ad9862fcc7193af1b725ebdb523b4b9d48245d30134a2d2b720c27f611039e",
+      "expected_sha256": "11ad9862fcc7193af1b725ebdb523b4b9d48245d30134a2d2b720c27f611039e",
+      "matches": true,
+      "bytes": 13372
+    },
+    {
+      "role": "applier",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud_cleanup_apply_v3.py",
+      "sha256": "77bbddbcce8823d61c6c52cbccc4dfdd86868979965eb2c4bf962089aa8f081a",
+      "expected_sha256": "77bbddbcce8823d61c6c52cbccc4dfdd86868979965eb2c4bf962089aa8f081a",
+      "matches": true,
+      "bytes": 15770
+    },
+    {
+      "role": "stdout_payload",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cleanup-apply-archives-and-hardlinks-20261022T033648Z\\cloud-result.json",
+      "sha256": "04e399651b729ba8053a49935b0bfc6bbbee9331048cf5442d6ded5344fb9b50",
+      "expected_sha256": "04e399651b729ba8053a49935b0bfc6bbbee9331048cf5442d6ded5344fb9b50",
+      "matches": true,
+      "bytes": 4171300
+    },
+    {
+      "role": "journal",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cleanup-apply-archives-and-hardlinks-20261022T033648Z\\remote-witness-v1\\operations.jsonl",
+      "sha256": "de23d19ea460bf3377ac30e196b0ecb2fdf9d5b9a9af26f461292ce31f305afc",
+      "expected_sha256": "de23d19ea460bf3377ac30e196b0ecb2fdf9d5b9a9af26f461292ce31f305afc",
+      "matches": true,
+      "bytes": 6573152
+    },
+    {
+      "role": "remote_result",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cleanup-apply-archives-and-hardlinks-20261022T033648Z\\remote-witness-v1\\result.json",
+      "sha256": "89a828313625e307ad7cea566eafd1c5a64e0794c8f426b4f86b659e784d7fcf",
+      "expected_sha256": "89a828313625e307ad7cea566eafd1c5a64e0794c8f426b4f86b659e784d7fcf",
+      "matches": true,
+      "bytes": 34648
+    },
+    {
+      "role": "post_core",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cleanup-apply-archives-and-hardlinks-20261022T033648Z\\remote-witness-v1\\post-cleanup-core-audit.json",
+      "sha256": "a569d55d266ebdcb2da25d51cf99de5c1e18b6ab1f1f57d638c550b47eebd3c8",
+      "expected_sha256": "a569d55d266ebdcb2da25d51cf99de5c1e18b6ab1f1f57d638c550b47eebd3c8",
+      "matches": true,
+      "bytes": 3433
+    },
+    {
+      "role": "request",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cleanup-apply-archives-and-hardlinks-20261022T033648Z\\request.json",
+      "sha256": "eebb20c4679abb70134722e89628e494c48cfedcc90d16f49634961e2c203d12",
+      "bytes": 3866907
+    },
+    {
+      "role": "ssh_execution",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cleanup-apply-archives-and-hardlinks-20261022T033648Z\\ssh-execution.json",
+      "sha256": "48c0cf76fd70d410c6905f5709c519de77ca9d720fd43322d1339328a9a6f86c",
+      "bytes": 552
+    },
+    {
+      "role": "witness_fetch_receipt",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cleanup-apply-archives-and-hardlinks-20261022T033648Z\\remote-witness-v1\\witness-fetch-receipt.json",
+      "sha256": "084803315c97198bbe48f1754e0a08f54ef211721f7dafd60174616e93888597",
+      "bytes": 885
+    },
+    {
+      "role": "original_core_baseline",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022\\integrated-core-audit-v1\\core-audit.json",
+      "sha256": "a569d55d266ebdcb2da25d51cf99de5c1e18b6ab1f1f57d638c550b47eebd3c8",
+      "bytes": 3433
+    },
+    {
+      "role": "pre_cleanup_inventory",
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-file-inventory-v1.json",
+      "sha256": "ec19ab415aff70158945ccdf8007e975ebffddbdace8587987c5c9e19c3a2263",
+      "bytes": 33464065
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "This verifies the original captured and read-only-fetched witnesses. It is not a fresh live media-byte rehash, independent process replay, current service-health probe or proof of every uncaptured runtime property.",
+    "The container records capture ID, image, StartedAt, running, restart count and mount source strings. Equality of those fields does not newly verify mount destinations/options, data contents or application endpoints, which were not captured.",
+    "The original failed_after_partial_execution status and its journal/result remain immutable. No automatic rerun is justified: the exact approved file operations have already been applied and source/core checks passed; a rerun would encounter altered expected stat/link state.",
+    "Current hardlinked aliases remain one shared physical inode per pair, as previously approved and disclosed; they are not independent physical backups.",
+    "The frozen business core remains missing with the exact same global coverage/freeze issues. This cleanup verification does not close WP-P6-01, establish full P6 quality or admit the separately recovered OAM source."
+  ],
+  "no_apply_rerun": true,
+  "read_only_verification": true,
+  "fresh_cloud_contact_by_this_verifier": false,
+  "cloud_mutations_by_this_verifier": 0,
+  "models_called": 0,
+  "pixels_read_or_viewed": false,
+  "original_evidence_modified": false,
+  "old_cleanup_audits_unchanged": true,
+  "formal_release_eligible": false,
+  "wp_p6_01_closed": false
+}

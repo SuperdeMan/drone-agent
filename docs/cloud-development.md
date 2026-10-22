@@ -226,6 +226,8 @@ uv run python scripts/dev_stack.py deploy --sha HEAD --apply
   - 按记录 ID 删除本项目 41 条构建缓存（4.42 GB，名单外 0 条，做法见下文）。
   - 结果：可用空间 46.99 → 70.88 GiB；控制台与任务台仍为 ready。同一时段 car-agent 正好发布，它的容器因此重建，与本次清理无关。
 
+**P6 材料存储清理（2026-10-22，用户批准精确清单）**：删除204个本机已有同摘要备份的传输归档，将2764个已核对字节的回放媒体改为主副本的硬链接，保留全部回放路径、证据JSON及源影像分块。持项目锁逐项写入并同步操作意图/结果，末尾完整核对别名、归档缺席与保留件。清理区间可用空间24.40 → 36.88 GiB，实测增加12.4865 GiB。原六观察冻结核心审核字节完全一致，整体仍`missing`；39个容器的捕获状态一致，仅5个挂载来源数组顺序不同触发原执行器末尾断言，原失败回执保留，独立只读补充核验通过。完整清单、授权与原日志见[清理证据](../eval/s2/road_business_v1/cloud_cleanup_20261022/README.md)。本批磁盘清理完成不代表WP-P6-01或P6准出。
+
 **sshd 握手限流（2026-10-12，用户批准的系统配置例外）**：
 - **现象**：公网扫描长期占满 sshd 的 10 个未认证名额。`LoginGraceTime 420` 是为微信扫码登录（`pam_qrlogin.so`）保留的，所以扫描连接最长挂 7 分钟。部署、回执与查询的 SSH 握手因此被随机丢弃，表现为 `exit 255` / `no valid JSON`；24 小时内限流 33 次。
 - **改动**：新增 `/etc/ssh/sshd_config.d/60-drone-agent-startups.conf`：`PerSourceMaxStartups 5`、`MaxStartups 40:30:120`；`LoginGraceTime` 不变。

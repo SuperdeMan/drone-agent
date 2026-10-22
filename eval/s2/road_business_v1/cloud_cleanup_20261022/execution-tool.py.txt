@@ -1,0 +1,209 @@
+"""Apply an explicitly approved exact cloud cleanup plan. / 执行获准的精确云端清单。"""
+import argparse
+import hashlib
+import json
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+REPO = Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+read = lambda p: json.loads(p.read_text(encoding='utf-8'))
+def digest(path):
+    with path.open('rb') as handle:
+        return hashlib.file_digest(handle, 'sha256').hexdigest()
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--mode', choices=['archives', 'archives-and-hardlinks'], default='archives-and-hardlinks')
+parser.add_argument('--approval-file', type=Path)
+parser.add_argument('--apply', action='store_true')
+args = parser.parse_args()
+plan_file = HERE / 'cloud-cleanup-plan-v1.json'
+notes_file = HERE / 'cloud-cleanup-plan-notes-v2.json'
+audit_file = HERE / 'cloud-cleanup-contract-audit-v2.json'
+plan = read(plan_file)
+copy_verification_file=HERE/'cleanup-copy-verification-v2.json'
+assert digest(copy_verification_file)==plan['copy_verification_sha256'], 'Bound copy-verification bytes changed.'
+assert digest(plan_file) == '7d5b5d21011d67287de91f663f436b50b0fbace0eb27ea51cfe15dc4c1fd992c'
+assert read(notes_file)['plan_sha256'] == digest(plan_file)
+if not args.apply:
+    print(json.dumps({'mode':args.mode,'status':'dry_run_no_cloud_contact_or_mutation','plan_sha256':digest(plan_file),
+        'delete_archives':len(plan['delete_files']),'hardlinks':len(plan['deduplicate_files']) if args.mode=='archives-and-hardlinks' else 0,
+        'estimated_reclaim_bytes':plan['estimated_reclaim_bytes'] if args.mode=='archives-and-hardlinks' else plan['estimated_transfer_reclaim_bytes'],
+        'requires_explicit_user_approval_file':True}))
+    raise SystemExit(0)
+assert args.approval_file and args.approval_file.is_file(), 'Explicit user approval has not been supplied.'
+approval = read(args.approval_file)
+audit = read(audit_file)
+assert approval['authorized_by'] == 'user' and approval['approval_reference'] and approval['mode'] == args.mode
+assert approval['plan_sha256'] == digest(plan_file) and approval['notes_sha256'] == digest(notes_file) and approval['audit_sha256'] == digest(audit_file)
+assert audit['ready_to_apply'] is True
+assert audit['applier_sha256']==digest(Path(__file__)) and audit['plan_sha256']==digest(plan_file) and audit['clarification_sha256']==digest(notes_file)
+assert audit['verdict'] in ({'supports_plan'} if args.mode=='archives-and-hardlinks' else {'supports_plan','supports_archive_only'})
+for row in plan['delete_files']:
+    retained = Path(row['retained_local_file']).resolve()
+    assert retained.is_relative_to(ROOT.resolve()) and retained.is_file() and retained.stat().st_size == row['bytes']
+    assert digest(retained) == row['sha256'], 'Retained local transfer backup changed.'
+stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+out = HERE / ('cleanup-apply-' + args.mode + '-' + stamp)
+out.mkdir(exist_ok=False)
+frozen = read(ROOT/'software-v6/software-final.json')['source_sha256']
+core_names = ('p6_business_eval.py','p6_boundary_drafts.py','p6_raster_replay.py','p6_oam_capture.py')
+corpus = ROOT/'resume-20261022/integrated-candidate-corpus-v1'
+request = {'plan_sha256':digest(plan_file),'notes_sha256':digest(notes_file),'audit_sha256':digest(audit_file),
+    'approval_sha256':digest(args.approval_file),'mode':args.mode,'plan':plan,'output_name':out.name,
+    'core_sha256':{name:frozen['scripts/'+name] for name in core_names},
+    'input_sha256':{p.name:digest(p) for p in corpus.iterdir() if p.is_file()},
+    'baseline_audit_sha256':digest(ROOT/'resume-20261022/integrated-core-audit-v1/core-audit.json'),
+    'held_bindings':[row for row in read(HERE/'cleanup-copy-verification-v2.json')['cloud']['rows'] if row['path'] in {item['file'] for item in plan['held_files']}]}
+assert len(request['held_bindings'])==len(plan['held_files'])==1
+assert {row['path'] for row in request['held_bindings']}=={row['file'] for row in plan['held_files']}
+with (out/'request.json').open('x',encoding='utf-8') as handle:
+    json.dump(request,handle,indent=2)
+
+CODE = r'''
+import fcntl,hashlib,json,os,pathlib,shutil,stat,subprocess,time,uuid
+from datetime import datetime,timezone
+P=REQUEST['plan'];assert len(REQUEST['held_bindings'])==len(P['held_files'])==1 and {r['path'] for r in REQUEST['held_bindings']}=={r['file'] for r in P['held_files']}
+outer=pathlib.Path(P['cloud_root']).resolve();task=outer/'data/p6-corpus-completion-20261018'
+assert str(outer)=='/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud'
+def sha(path):
+ with path.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
+def disk():
+ d=shutil.disk_usage(outer);return {'total':d.total,'used':d.used,'free':d.free}
+def containers():
+ ids=subprocess.run(['docker','ps','-q'],capture_output=True,text=True,check=True).stdout.split()
+ if not ids:return []
+ raw=subprocess.run(['docker','inspect',*ids],capture_output=True,text=True,check=True).stdout
+ return sorted([{'id':d['Id'],'image':d['Image'],'started_at':d['State']['StartedAt'],'running':d['State']['Running'],'restart_count':d['RestartCount'],'mounts':[m.get('Source','') for m in d.get('Mounts',[])]} for d in json.loads(raw)],key=lambda d:d['id'])
+def safe(path):
+ assert path.is_absolute() and path.resolve()==path and path.is_relative_to(outer) and not path.is_symlink()
+ assert stat.S_ISREG(path.lstat().st_mode)
+def same_stat(path,row):
+ safe(path);s=path.stat()
+ assert (s.st_size,s.st_mtime_ns,s.st_ino,s.st_dev,s.st_nlink)==(row['bytes'],row['mtime_ns'],row['inode'],row['device'],row['nlink'])
+ return s
+def file_stat(path):
+ s=path.lstat();return {'device':s.st_dev,'inode':s.st_ino,'mode':s.st_mode,'uid':s.st_uid,'gid':s.st_gid,'nlink':s.st_nlink,'bytes':s.st_size,'mtime_ns':s.st_mtime_ns,'ctime_ns':s.st_ctime_ns}
+def durable(log,event):
+ log.write(json.dumps(event)+'\n');log.flush();os.fsync(log.fileno())
+def sync_directory(path):
+ fd=os.open(path,os.O_RDONLY|os.O_DIRECTORY)
+ try:os.fsync(fd)
+ finally:os.close(fd)
+def active_refs():
+ found=[]
+ for proc in pathlib.Path('/proc').iterdir():
+  if not proc.name.isdigit() or int(proc.name)==os.getpid():continue
+  try:
+   candidates=[proc/'cwd']+list((proc/'fd').iterdir())
+   for p in candidates:
+    try:target=os.readlink(p)
+    except OSError:continue
+    if str(outer) in target:found.append({'pid':int(proc.name),'path':target})
+  except (OSError,PermissionError):pass
+ return found
+lock=pathlib.Path('/home/ubuntu/drone-agent/stack.lock').open('rb')
+fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+before=disk();assert before['free']>=8*1024**3
+baseline_containers=containers()
+assert not any(str(outer) in mount for d in baseline_containers for mount in d['mounts']), 'P6 cleanup root is mounted by a running container.'
+assert not active_refs(), 'Active P6 file users exist; no cleanup started.'
+frozen=task/'software-audit-f132b98-20261021'
+for name,expected in REQUEST['core_sha256'].items():assert sha(frozen/name)==expected
+corpus=task/'resume-20261022/integrated-candidate-corpus-v1'
+for name,expected in REQUEST['input_sha256'].items():assert sha(corpus/name)==expected
+baseline_file=task/'resume-20261022/integrated-core-audit-v1/core-audit.json'
+assert sha(baseline_file)==REQUEST['baseline_audit_sha256']
+baseline_audit=json.loads(baseline_file.read_text())
+deletes=P['delete_files'];links=P['deduplicate_files'] if REQUEST['mode']=='archives-and-hardlinks' else []
+all_paths=[row['path'] for row in deletes+links]
+assert len(all_paths)==len(set(all_paths))
+for row in deletes:
+ p=pathlib.Path(row['path']);same_stat(p,row)
+ assert (p.parent==outer/'setup' and p.name.endswith('.tar.gz')) or (p.parent==task/'transfers' and p.name.endswith('.tar'))
+ assert sha(p)==row['sha256']
+for row in links:
+ p=pathlib.Path(row['path']);canonical=pathlib.Path(row['retained_file'])
+ s=same_stat(p,row);safe(canonical);c=canonical.stat()
+ assert p.is_relative_to(task/'offline-replay-cloud-v5') and canonical==task/'frames-cloud-v5'/p.parent.name/p.name
+ assert p.suffix in {'.jpg','.png'} and c.st_dev==s.st_dev and c.st_ino!=s.st_ino and c.st_size==s.st_size
+ assert sha(p)==sha(canonical)==row['sha256']
+for held in REQUEST['held_bindings']:
+ p=pathlib.Path(held['path']);same_stat(p,held);assert sha(p)==held['sha256']
+assert not active_refs(), 'A P6 reader started during hashing; cleanup stopped before mutation.'
+output=task/'resume-20261022-fast'/REQUEST['output_name'];output.mkdir(parents=True,exist_ok=False);sync_directory(output.parent.parent);sync_directory(output.parent)
+result={'started_at':datetime.now(timezone.utc).isoformat(),'status':'running','mode':REQUEST['mode'],'plan_sha256':REQUEST['plan_sha256'],'approval_sha256':REQUEST['approval_sha256'],'before_disk':before,'containers_before':baseline_containers,'archive_deletions':0,'hardlink_replacements':0,'original_evidence_json_modified':0,'model_calls':0,'estimated_reclaim_bytes':sum(r['allocated_bytes'] for r in deletes+links)}
+operations=[]
+try:
+ with (output/'operations.jsonl').open('x',encoding='utf-8') as log:
+  sync_directory(output)
+  for row in links:
+   p=pathlib.Path(row['path']);canonical=pathlib.Path(row['retained_file']);old=same_stat(p,row);safe(canonical)
+   assert canonical.stat().st_dev==old.st_dev and canonical.stat().st_ino!=old.st_ino
+   assert sha(canonical)==row['sha256'] and sha(p)==row['sha256']
+   staged=p.with_name('.p6-hardlink-stage-'+uuid.uuid4().hex)
+   assert not staged.exists() and not staged.is_symlink()
+   intent={'phase':'intent','operation':'hardlink_replace','path':str(p),'retained_file':str(canonical),'staged_path':str(staged),'sha256':row['sha256'],'old_stat':file_stat(p),'canonical_stat_before':file_stat(canonical)}
+   durable(log,intent)
+   os.link(canonical,staged,follow_symlinks=False);sync_directory(p.parent)
+   safe(staged);safe(canonical)
+   assert staged.stat().st_ino==canonical.stat().st_ino and sha(staged)==row['sha256']
+   same_stat(p,row);os.replace(staged,p);sync_directory(p.parent)
+   safe(p);safe(canonical)
+   assert p.stat().st_ino==canonical.stat().st_ino and p.stat().st_dev==canonical.stat().st_dev and p.stat().st_nlink==2 and sha(p)==row['sha256']
+   event={'phase':'result','operation':'hardlink_replace','path':str(p),'retained_file':str(canonical),'staged_path':str(staged),'staged_path_absent':not staged.exists(),'sha256':row['sha256'],'old_stat':intent['old_stat'],'new_stat':file_stat(p),'allocated_bytes_expected_reclaimed':row['allocated_bytes']}
+   durable(log,event);operations.append(event);result['hardlink_replacements']+=1
+  for row in deletes:
+   p=pathlib.Path(row['path']);same_stat(p,row);assert sha(p)==row['sha256']
+   intent={'phase':'intent','operation':'delete_archived_transfer_copy','path':str(p),'retained_local_file':row['retained_local_file'],'sha256':row['sha256'],'old_stat':file_stat(p)}
+   durable(log,intent);p.unlink();sync_directory(p.parent)
+   assert not p.exists() and not p.is_symlink()
+   event={'phase':'result','operation':'delete_archived_transfer_copy','path':str(p),'retained_local_file':row['retained_local_file'],'sha256':row['sha256'],'old_stat':intent['old_stat'],'allocated_bytes_expected_reclaimed':row['allocated_bytes']}
+   durable(log,event);operations.append(event);result['archive_deletions']+=1
+ for row in links:
+  p=pathlib.Path(row['path']);canonical=pathlib.Path(row['retained_file']);safe(p);safe(canonical)
+  s=p.stat();c=canonical.stat()
+  assert s.st_size==c.st_size==row['bytes'] and s.st_dev==c.st_dev==row['device'] and s.st_ino==c.st_ino and s.st_nlink==c.st_nlink==2
+  assert sha(p)==row['sha256']
+ for row in deletes:
+  p=pathlib.Path(row['path']);assert not p.exists() and not p.is_symlink()
+ for row in REQUEST['held_bindings']:
+  p=pathlib.Path(row['path']);same_stat(p,row);assert sha(p)==row['sha256']
+ result['final_exact_archive_absence_checks']=len(deletes);result['final_alias_byte_and_inode_checks']=len(links);result['held_archive_unchanged_checks']=len(REQUEST['held_bindings'])
+ audit_path=output/'post-cleanup-core-audit.json'
+ command=[str(outer/'tools-venv/bin/python'),str(frozen/'p6_business_eval.py'),'audit','--manifest',str(corpus/'manifest.json'),'--labels',str(corpus/'labels.json'),'--protocol',str(corpus/'protocol-not-frozen.json'),'--exposure',str(corpus/'exposure.json'),'--data-root',str(task.parent),'--output',str(audit_path)]
+ with (output/'core-stdout.log').open('xb') as out,(output/'core-stderr.log').open('xb') as err:
+  process=subprocess.run(command,cwd=task.parent,env=dict(os.environ,OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1'),stdout=out,stderr=err)
+ assert process.returncode==0, 'Post-cleanup frozen core process failed.'
+ actual=json.loads(audit_path.read_text());assert actual==baseline_audit, 'Complete deterministic frozen audit differs from exact baseline.'
+ ids={s['sample_id'] for s in json.loads((corpus/'manifest.json').read_text())['samples']}
+ assert actual['samples']==baseline_audit['samples']==6
+ assert not [i for i in actual['issues'] if i.get('sample_id') in ids or i.get('pair_id')], 'Post-cleanup sample/pair issues appeared.'
+ assert actual['status']==baseline_audit['status']=='missing'
+ for name,expected in REQUEST['input_sha256'].items():assert sha(corpus/name)==expected
+ for name,expected in REQUEST['core_sha256'].items():assert sha(frozen/name)==expected
+ result['post_core_audit']={'file':str(audit_path),'sha256':sha(audit_path),'status':actual['status'],'samples':actual['samples'],'sample_pair_issues':0,'returncode':process.returncode,'formal_release_qualified':False}
+ result['containers_after']=containers();assert result['containers_after']==baseline_containers
+ result['status']='completed'
+except Exception as exc:
+ result['status']='failed_after_partial_execution';result['error_type']=type(exc).__name__;result['error_message_sha256']=hashlib.sha256(str(exc).encode()).hexdigest()
+result['after_disk']=disk();result['disk_free_delta_bytes']=result['after_disk']['free']-before['free'];result['ended_at']=datetime.now(timezone.utc).isoformat()
+with (output/'result.json').open('x',encoding='utf-8') as handle:json.dump(result,handle,indent=2)
+print(json.dumps({'result':result,'operations':operations}))
+'''
+sys.path.insert(0,str(REPO/'scripts'))
+from dev_stack import Connection
+c=Connection.from_environment()
+started=datetime.now(timezone.utc).isoformat()
+child=subprocess.run(['ssh',*c.arguments(),c.target,'python3 -B -u -'],input=('REQUEST='+repr(request)+'\n'+CODE).encode(),capture_output=True,timeout=1800)
+receipt={'started_at':started,'ended_at':datetime.now(timezone.utc).isoformat(),'returncode':child.returncode,'stderr_bytes':len(child.stderr),'stderr_sha256':hashlib.sha256(child.stderr).hexdigest(),'stdout_sha256':hashlib.sha256(child.stdout).hexdigest(),'approval_file':str(args.approval_file),'approval_sha256':digest(args.approval_file)}
+with (out/'ssh-execution.json').open('x',encoding='utf-8') as handle:json.dump(receipt,handle,indent=2)
+if child.returncode!=0:
+    print(json.dumps({'status':'cloud_preflight_or_connection_failed','receipt':receipt,'cloud_partial_state_requires_read_only_inspection':True}));raise SystemExit(1)
+payload=json.loads(child.stdout)
+with (out/'cloud-result.json').open('x',encoding='utf-8') as handle:json.dump(payload,handle,indent=2)
+print(json.dumps({'output':str(out),'status':payload['result']['status'],'deleted_archives':payload['result']['archive_deletions'],'hardlinked_media':payload['result']['hardlink_replacements'],'free_delta_bytes':payload['result']['disk_free_delta_bytes'],'post_core_audit':payload['result'].get('post_core_audit')}))
+raise SystemExit(0 if payload['result']['status']=='completed' else 1)
