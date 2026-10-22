@@ -1,0 +1,41 @@
+"""Adapt deterministic payload storage to the existing ten-row writer limit. / 适配十条写入上限。"""
+import hashlib
+from pathlib import Path
+HERE=Path(__file__).resolve().parent;ROOT=HERE.parent
+old=ROOT/'resume-20261021-b/ingest_completed_payload_v2.py'
+source=old.read_text(encoding='utf-8')
+insertion='''
+def write_chunks(command, values, destination):
+    """Persist actual rows in small batches without changing business fields. / 原样分批保存。"""
+    for start in range(0,len(values),10):
+        subset=values[start:start+10]
+        path=destination/('completed-observer-chunk-%04d-%04d.json'%(start+1,start+len(subset)))
+        with path.open('x',encoding='utf-8',newline='\\n') as handle:json.dump(subset,handle,ensure_ascii=False,indent=2)
+        actual=list(command)
+        actual[actual.index('--batch')+1]=str(path)
+        actual[actual.index('--expected-count')+1]=str(start)
+        subprocess.run(actual,cwd=ROOT,check=True)
+
+'''
+marker="read=lambda path:json.loads(path.read_text(encoding='utf-8'))"
+assert marker in source
+source=source.replace(marker,insertion+marker)
+preflight='''
+# Reject malformed fields before creating persisted observer captures. / 保存前拒绝结构错误。
+for item in rows:
+    final=item if args.role=='first' else {**assigned[item['sample_id']]['first_row'],**item['changes']}
+    for field in ('uncertainties','inspection_files'):
+        assert isinstance(final[field],list) and all(isinstance(value,str) and value.strip() for value in final[field])
+    for field in ('target_brief','notes','uncertainties'):
+        texts=final[field] if field=='uncertainties' else [final[field]]
+        assert all('\\ufffd' not in value and '???' not in value and '\\uff1f\\uff1f\\uff1f' not in value for value in texts)
+    C['ai_suggestions']({'format':'drone.p6-road-ai-suggestions/v1','author_kind':'isolated_ai_annotator','author_id':args.worker,'created_at':datetime.now(UTC).isoformat(),'human_reviews_created':0,'formal_release_eligible':False,'isolation':{'parent_history':'none','evaluation_prompt_seen':False,'evaluation_outputs_seen':False,'source_labels_seen':False},'rows':[final]})
+'''
+marker="captured=folder/'completed-observer-payload-captured-v1.json'"
+assert marker in source
+source=source.replace(marker,preflight+'\n'+marker)
+assert source.count('subprocess.run(command,cwd=ROOT,check=True)')==2
+source=source.replace('subprocess.run(command,cwd=ROOT,check=True)','write_chunks(command,rows,folder)')
+source=source.replace("'business_fields_changed':False,", "'business_fields_changed':False,'bounded_writer_chunks_maximum':10,'base_ingestion_source_sha256':"+repr(hashlib.sha256(old.read_bytes()).hexdigest())+",")
+with (HERE/'ingest_completed_payload_v3.py').open('x',encoding='utf-8',newline='\n') as f:f.write(source)
+print('Prepared chunked ingestion with schema preflight; no observer payload ingested.')

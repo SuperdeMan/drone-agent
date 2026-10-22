@@ -1,0 +1,480 @@
+"""Build a copyable C checkpoint without writing the repository or source evidence.
+
+仅在FAST新目录制备C检查点，保留来源原字节，不写仓库或原证据。
+"""
+import copy
+import hashlib
+import json
+import re
+import runpy
+import subprocess
+import sys
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+FAST = Path(__file__).resolve().parent
+ROOT = FAST.parent
+DATA = ROOT.parent
+REPO = DATA / 'p6-road-views-20261014/repo'
+STAGE = FAST / 'corpus-checkpoint-c-staging-v1'
+B = REPO / 'eval/s2/road_business_v1/corpus_checkpoint_20261022b'
+A = B.parent / 'corpus_checkpoint_20261022'
+CLEAN = B.parent / 'cloud_cleanup_20261022'
+CORPUS = FAST / 'bulk-integrated-candidate-corpus-v1'
+AUDIT = FAST / 'bulk-integrated-core-audit-v1'
+CONTROL = FAST / 'bulk-integrated-audit-cloud-control-v3'
+INTEGRITY = FAST / 'annotation-integrity-final-v1'
+COMMIT = 'f132b98fd0f6148ca3ab5f7e168de147433fc7be'
+CORE_SHA = 'd0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2'
+NOW = datetime.now(timezone.utc).isoformat()
+
+
+def sha(path):
+    with path.open('rb') as handle:
+        return hashlib.file_digest(handle, 'sha256').hexdigest()
+
+
+def read(path):
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
+def canonical(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False,
+        separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+
+
+def source_path(value):
+    text = str(value).replace('\\', '/')
+    for prefix in ('D:/drone-agent-data/',
+        '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/'):
+        if text.startswith(prefix):
+            text = text[len(prefix):]
+            break
+    path = Path(text)
+    return (path if path.is_absolute() else DATA / path).resolve()
+
+
+def reference(path, purpose, link=None):
+    assert path.is_file()
+    return {'source_file': str(path), 'sha256': sha(path), 'bytes': path.stat().st_size,
+        'purpose': purpose, 'archive_relative_link': link}
+
+
+assert not STAGE.exists(), 'Use a fresh staging version; existing evidence is immutable.'
+check = read(INTEGRITY / 'result.json')
+items = read(INTEGRITY / 'reviewed-candidates.json')['rows']
+progress = read(FAST / 'progress-final-v1.json')
+coverage = read(FAST / 'candidate-coverage-final-v1.json')
+repeat = read(FAST / 'repeat-coverage-final-v1.json')
+prior = read(FAST / 'prior-task-progress-final-v1.json')
+manifest, labels = read(CORPUS / 'manifest.json'), read(CORPUS / 'labels.json')
+report, execution = read(AUDIT / 'core-audit.json'), read(AUDIT / 'execution-receipt.json')
+control = read(CONTROL / 'result.json')
+proposal = read(FAST / 'bulk-physical-composition-proposal-v1.json')
+composition_audit = read(FAST / 'bulk-physical-composition-audit-v1.json')
+assert check['checked'] == check['passed'] == len(items) == progress['selected_second_reviews'] == 245
+assert check['status'] == 'passed' and not check['scope_errors'] and not check['pending_protocol_reverification']
+assert not check['historical_unmatched'] and check['source_sha256'] == CORE_SHA
+counts = Counter(row['label']['verdict'] for row in items)
+assert dict(counts) == check['counts'] == progress['second_review_counts']
+assert counts == Counter(normal=22, obstacle=62, indeterminate=114, wrong_target=4, excluded_source=43)
+assert progress['first_drafts'] == 338 and progress['pending_second_review_count'] == 93
+assert progress['actual_derived_views'] == 882 and progress['geometric_derived_groups'] == 809
+assert progress['total_complete_originals'] == 516
+assert report['samples'] == report['derived_captures_verified'] == 16 and report['status'] == 'missing'
+assert execution == control['actual_execution'] and execution['process_exit_code'] == 0
+assert not any(execution['sample_issues'].values()) and not execution['unassigned_issues']
+assert len(report['issues']) == len(execution['global_issues']) == 15
+assert report['issues'] == execution['global_issues'] and all(row['sample_id'] is None for row in report['issues'])
+assert len(execution['pair_status']) == 1 and not execution['pair_status'][0]['issues_on_either_pair_member']
+assert execution['frozen_core_files_verified']['p6_business_eval.py'] == CORE_SHA
+assert execution['candidate_commit'] == COMMIT
+assert composition_audit['verdict'] == 'supports' and composition_audit['exactproposalSHA'] == sha(FAST / 'bulk-physical-composition-proposal-v1.json')
+assert len(proposal['selected_sample_ids']) == 10 and len(composition_audit['hold_decisions']) == 38
+for key, name in (('manifest','manifest.json'), ('labels','labels.json'),
+    ('protocol','protocol-not-frozen.json'), ('exposure','exposure.json')):
+    assert report['input_sha256'][key] == execution['input_sha256'][key] == sha(CORPUS / name)
+
+qualified = {row['sample_id']: row for row in manifest['samples']}
+assert len(qualified) == 16 and sum(row['evaluation_role'] == 'primary' for row in qualified.values()) == 15
+assert len({row['asset_id'] for row in qualified.values()}) == 15
+assert len(manifest['stability_pairs']) == 1
+assert all(row['grouping_verified'] is True for row in qualified.values())
+master = {row['sample']['sample_id']: row for row in items}
+assert len(master) == 245 and set(qualified) <= set(master)
+assert all(row['sample'].get('grouping_verified') is False for row in items)
+old_items = {row['sample']['sample_id']: row for row in read(B / 'reviewed-candidates.json')['rows']}
+assert len(old_items) == 197 and all(canonical(row) == canonical(master[ident]) for ident, row in old_items.items())
+assert set(master) - set(old_items) == {row['sample_id'] for row in proposal['cases']}
+
+copies = {}
+generated = {}
+external_refs = []
+
+
+def add(name, path):
+    assert name not in copies and name not in generated
+    assert path.is_file(), str(path)
+    assert path.suffix.lower() not in {'.png','.jpg','.jpeg','.tif','.tiff','.gz','.zip'}
+    copies[name] = path
+
+
+def generate(name, value):
+    assert name not in copies and name not in generated
+    generated[name] = (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode('utf-8')
+
+
+for target, source in (
+    ('progress.json',FAST/'progress-final-v1.json'),
+    ('annotation-integrity.json',INTEGRITY/'result.json'),
+    ('reviewed-candidates.json',INTEGRITY/'reviewed-candidates.json'),
+    ('candidate-coverage.json',FAST/'candidate-coverage-final-v1.json'),
+    ('repeat-coverage.json',FAST/'repeat-coverage-final-v1.json'),
+    ('work-queue/prior-task-progress.json',FAST/'prior-task-progress-final-v1.json'),
+    ('observers/first-batches-storage-checkpoint.json',FAST/'first-batches-storage-checkpoint-v1.json'),
+    ('grouping/composition-proposal.json',FAST/'bulk-physical-composition-proposal-v1.json'),
+    ('grouping/composition-audit.json',FAST/'bulk-physical-composition-audit-v1.json'),
+    ('grouping/composition-evidence.json',FAST/'bulk-grouping-composition-evidence-v1.json'),
+    ('grouping/physical-evidence-plan.json',FAST/'physical-evidence-composition-plan-v1.json'),
+    ('grouping/protocol-snapshot-not-frozen.json',FAST/'bulk-protocol-snapshot-not-frozen-v1.json'),
+    ('history/handoff-before-c.md',REPO/'docs/p6-road-corpus-handoff-2026-10-22.md'),
+):
+    add(target,source)
+for version in (30,31):
+    add(f'contexts/annotation-context-v{version}.json', ROOT/f'annotation-context-v{version}.json')
+    add(f'contexts/review-registration-v{version}.json', ROOT/f'review-registration-v{version}.json')
+add('contexts/actual-contexts.jsonl',ROOT/'resume-20261021/actual-contexts.jsonl')
+for version in (1,2,3):
+    add(f'review-plan-v{version}.json',FAST/f'bulk-review-plan-v{version}.json')
+for part in ('a','b','c'):
+    folder = FAST/f'bulk-annotation-integrity-part-{part}-v1'
+    for path in folder.iterdir():
+        if path.is_file() and path.suffix == '.json':
+            add(f'qa/annotation-part-{part}/{path.name}',path)
+for role, numbers, prefix in (('annotation',(27,28),'bounded_annotator_'),
+    ('verification',(34,35,36,37),'bounded_verifier_')):
+    for number in numbers:
+        folder = ROOT/role/f'{prefix}{number}'
+        for path in folder.glob('*.json'):
+            add(f'observers/{prefix}{number}/{path.name}',path)
+for path in (FAST/'reviewer33-partial-at-stop-v1').iterdir():
+    if path.is_file() and path.suffix == '.json':
+        add(f'history/reviewer33-partial-at-stop/{path.name}',path)
+for leaf in ('assignment.json','orchestrator-stopped.json'):
+    add(f'history/original-reviewer33/{leaf}',ROOT/'verification/bounded_verifier_33'/leaf)
+for name in ('first-27-progress-preflight-errors-v1.json','first-27-progress-preflight-rows-v1.json',
+    'first-28-preflight-rejection-v1.json','first-28-schema-rejected-payload-v1.json'):
+    add('history/'+name,FAST/name)
+for path in CORPUS.iterdir():
+    if path.is_file() and path.suffix == '.json' and path.name != 'capture-inventory.json':
+        add('corpora/bulk-integrated/'+path.name,path)
+for path in AUDIT.iterdir():
+    if path.is_file():
+        add('qa/bulk-integrated/'+path.name,path)
+for path in CONTROL.iterdir():
+    if path.is_file() and path.suffix in {'.json','.py'}:
+        add('qa/bulk-cloud-control/'+path.name+('.txt' if path.suffix=='.py' else ''),path)
+for version in (1,2):
+    add(f'history/cloud-local-preflight-v{version}.json',
+        FAST/f'bulk-integrated-audit-cloud-control-v{version}/preflight-failure-v1.json')
+for slug in ('laura','mussett'):
+    add(f'qa/prior-source/{slug}-f132-result.json',ROOT/f'resume-20261021/{slug}-provenance-f132b98-v1/result.json')
+for leaf, path in (
+    ('f132-execution.json',ROOT/'resume-20261021/current-source-execution-f132b98-v1/result.json'),
+    ('f132-controller.json',ROOT/'resume-20261021/current-source-control-f132b98-v1/result.json')):
+    add('qa/prior-source/'+leaf,path)
+for name in ('prepare_bulk_assignments_v1.py','prepare_annotation_assignment_v2.py',
+    'prepare_bulk_ingestion_v1.py','ingest_completed_payload_v3.py','replace_stalled_review33_v1.py',
+    'prepare_bulk_physical_composition_v5.py','build_bulk_integrated_candidates_v1.py',
+    'run_bulk_integrated_audit_cloud_v1.py','run_bulk_integrated_audit_cloud_v2.py','run_bulk_integrated_audit_cloud_v3.py',
+    'correct_bulk_source_execution_bindings_v1.py','prepare_checkpoint_c_staging_v1.py'):
+    add('helpers/'+name+'.txt',FAST/name)
+add('helpers/independent-metadata-audit.py.txt',FAST/'bulk-physical-meta-auditor/audit_bulk_physical_v1.py')
+add('helpers/returned-cloud-verification.py.txt',FAST/'bulk-physical-meta-auditor/verify_bulk_cloud_return_v1.py')
+
+snapshot_refs = []
+old_snapshot_refs = {row['reviewer_id']:row for row in read(B/'selected-snapshot-references.json')['rows']}
+wanted = {}
+for item in items:
+    label = item['label']
+    worker, digest = label['reviewer_id'],label['ai_assistance']['review_sha256']
+    assert worker not in wanted or wanted[worker] == digest
+    wanted[worker] = digest
+for worker,digest in sorted(wanted.items()):
+    current = INTEGRITY/(worker+'.json')
+    assert sha(current) == digest
+    if worker in old_snapshot_refs and old_snapshot_refs[worker]['sha256'] == digest:
+        old = old_snapshot_refs[worker]
+        path = Path(old['file'])
+        path = path if path.is_absolute() else B/path
+        assert sha(path) == digest
+        relative = '../'+path.relative_to(B.parent).as_posix()
+        ref = reference(path,'Unchanged selected review snapshot inherited from B or its parent',relative)
+        snapshot_refs.append({'reviewer_id':worker,'sha256':digest,'file':relative,'reused_unchanged_parent_snapshot':True})
+        external_refs.append(ref)
+    else:
+        add('selected-review-snapshots/'+current.name,current)
+        snapshot_refs.append({'reviewer_id':worker,'sha256':digest,'file':'selected-review-snapshots/'+current.name,
+            'reused_unchanged_parent_snapshot':False})
+assert sum(not row['reused_unchanged_parent_snapshot'] for row in snapshot_refs) == 4
+generate('selected-snapshot-references.json',{'rows':snapshot_refs,'old_snapshot_bytes_not_rewritten':True})
+parent_inventory = B/'corpora/integrated/capture-inventory.json'
+assert sha(parent_inventory) == sha(CORPUS/'capture-inventory.json')
+inventory_ref = reference(parent_inventory,'Original 837-row inventory; exact byte copy used by the partial corpus',
+    '../corpus_checkpoint_20261022b/corpora/integrated/capture-inventory.json')
+external_refs.append(inventory_ref)
+generate('corpora/bulk-integrated/capture-inventory-reference.json',{'reference':inventory_ref,
+    'original_current_copy_file':str(CORPUS/'capture-inventory.json'),'rows':837,'not_duplicated_in_c_checkpoint':True})
+for path,purpose,link in (
+    (B/'file-bindings.json','Parent B archive leaf bindings','../corpus_checkpoint_20261022b/file-bindings.json'),
+    (CLEAN/'file-bindings.json','Completed separately archived authorized cloud cleanup','../cloud_cleanup_20261022/file-bindings.json'),
+    (CLEAN/'README.md','Cloud cleanup entry; large journals are not duplicated','../cloud_cleanup_20261022/README.md'),
+):
+    external_refs.append(reference(path,purpose,link))
+source_history = ROOT/'resume-20261021-b/full-crasar-source-f132b98-v1/result.json'
+base_census_file = B/'admission-census.json'
+base_census = read(base_census_file)
+assert base_census['checked'] == 197 and base_census['core_sha256'] == CORE_SHA
+assert sha(source_history) == base_census['source_audit_sha256']
+source_report = read(source_history)
+assert source_report['checked'] == source_report['passed'] == 837
+source_ids = {row['sample_id'] for row in source_report['rows'] if row['source_chain_verified'] is True}
+assert len(source_ids) == 837
+external_refs.append(reference(source_history,'Historical 837-only f132 source result reused by census; no new full-source rerun'))
+external_refs.append(reference(base_census_file,'Original v5 census shape for the 197 inherited rows',
+    '../corpus_checkpoint_20261022b/admission-census.json'))
+core_files = []
+for name,digest in execution['frozen_core_files_verified'].items():
+    path = FAST/'frozen-original-f132-core-v1'/name
+    assert sha(path) == digest
+    core_files.append(reference(path,'Exact git-show original f132 source, not copied again into C'))
+generate('frozen-core-references.json',{'candidate_commit':COMMIT,'files':core_files,
+    'four_source_files_not_duplicated':True,'new_4800ea0_qa_results_not_in_this_capsule':True})
+
+qualification = {'format':'drone.p6-partial-candidate-qualification/v2','recorded_at':NOW,
+    'scope':'Actual once-run original-f132 source/native/annotation/corpus audit for exactly the new partial copy; not global admission.',
+    'candidate_commit':COMMIT,'frozen_core_sha256':execution['frozen_core_files_verified'],
+    'individually_checked_candidates':16,'primary_assets_in_subset':15,'repeat_observations_in_subset':1,
+    'pair_candidates_in_subset':1,'sample_level_issues':0,'pair_specific_issues':[],
+    'global_audit_status':'missing','global_issue_counts':report['issue_counts'],
+    'global_issues':report['issues'],'core_process_exit_code':execution['process_exit_code'],
+    'actual_primary_label_counts':execution['primary_label_counts'],'actual_primary_site_counts':execution['primary_site_counts'],
+    'bindings':[reference(path,'Actual partial-copy audit input or original output') for path in
+        (CORPUS/'manifest.json',CORPUS/'labels.json',CORPUS/'protocol-not-frozen.json',CORPUS/'exposure.json',
+         AUDIT/'core-audit.json',AUDIT/'execution-receipt.json',CONTROL/'result.json',CONTROL/'final-verification-v1.json',
+         FAST/'bulk-physical-composition-proposal-v1.json',FAST/'bulk-physical-composition-audit-v1.json',
+         FAST/'bulk-grouping-composition-evidence-v1.json')],
+    'rows':[{'sample_id':ident,'asset_id':sample['asset_id'],'split':sample['split'],
+        'evaluation_role':sample['evaluation_role'],'sample_level_core_issues':execution['sample_issues'][ident],
+        'formal_asset_admitted':False} for ident,sample in qualified.items()],
+    'pair_status':execution['pair_status'],'grouping_flags_changed_only_in_new_partial_copy':True,
+    'master_grouping_flags_changed':False,'formal_independent_assets_admitted':0,'formal_stability_pairs_admitted':0,
+    'formal_data_frozen':False,'formal_live_model_calls':0,'wp_p6_01_closed':False,'human_truth_claimed':False}
+generate('candidate-qualification.json',qualification)
+
+capture_rows = {row['source_observation_id']:row for row in read(CORPUS/'capture-inventory.json')['rows']}
+base_rows = {row['sample_id']:row for row in base_census['rows']}
+new_cases = {row['sample_id']:row for row in proposal['cases']}
+native_core = runpy.run_path(str(FAST/'frozen-original-f132-core-v1/p6_business_eval.py'))
+census_rows=[];by_class=defaultdict(Counter);blockers=Counter();groups=defaultdict(list)
+for ident,item in master.items():
+    sample,label = item['sample'],item['label']
+    verdict = label['verdict']
+    if ident in base_rows:
+        row = copy.deepcopy(base_rows[ident])
+        assert row['verdict'] == verdict
+        row['blockers'] = [reason for reason in row['blockers'] if reason not in
+            {'physical_asset_and_grouping_review_missing','supported_candidate_requires_full_corpus_role_partition_and_admission'}]
+    else:
+        case = new_cases[ident]
+        valid_polygon = native_core['polygon_valid'](sample.get('target',{}).get('polygon'))
+        flags=[]
+        if not valid_polygon:flags.append('whole_target_model_task_polygon_missing_or_invalid')
+        if verdict=='excluded_source':flags.append('excluded_source_not_a_formal_business_label')
+        date_known = capture_rows[ident]['author_date_verified']
+        if not date_known:flags.append('author_date_group_unknown_for_repeat_use')
+        if ident not in source_ids:flags.append('not_covered_by_current_crasar837_source_audit')
+        row={'sample_id':ident,'verdict':verdict,'proposed_partition':case['registered_site']['planned_partition'],
+            'proposed_observed_asset_id':case['proposed_group_id'],'proposed_intended_asset_id':case['proposed_group_id'],
+            'prior_task_reference':False,'whole_target_model_task_polygon_valid':valid_polygon,
+            'current_crasar_source_covered':ident in source_ids,'author_date_group_known':date_known,
+            'grouping_verified':False,'blockers':flags}
+    partial = ident in qualified
+    row['partial_candidate_evidence_present']=partial
+    if partial:
+        assert sample['image_sha256'] == qualified[ident]['image_sha256'] and sample['target'] == qualified[ident]['target']
+        row['blockers'].append('supported_candidate_requires_full_corpus_role_partition_and_admission')
+    elif not row['grouping_verified']:
+        row['blockers'].append('physical_asset_and_grouping_review_missing')
+    row['partial_qualification_scope']='exact16_original_f132_audit' if partial else None
+    assert row['grouping_verified'] is False
+    by_class[verdict]['observations']+=1
+    by_class[verdict]['valid_task_polygon']+=int(row['whole_target_model_task_polygon_valid'])
+    by_class[verdict]['current_crasar_source_covered']+=int(row['current_crasar_source_covered'])
+    blockers.update(row['blockers'])
+    if verdict!='excluded_source':groups[row['proposed_intended_asset_id'] or 'unresolved-'+ident].append(ident)
+    census_rows.append(row)
+generate('admission-census.json',{'format':'drone.p6-admission-readiness-census/v2','recorded_at':NOW,
+    'scope':'245 exact reference rows; inherit unchanged v5 census metadata for197 and add48, with a new exact16 qualification overlay. No source decoder or full837 audit rerun here.',
+    'base_census_file':str(base_census_file),'base_census_sha256':sha(base_census_file),
+    'integrity_file':str(INTEGRITY/'result.json'),'integrity_sha256':sha(INTEGRITY/'result.json'),
+    'core_sha256':CORE_SHA,'source_audit_file':str(source_history),'source_audit_sha256':sha(source_history),
+    'partial_qualification_archive_file':'candidate-qualification.json','partial_candidate_evidence_rows':16,
+    'partial_qualification_core_report_sha256':sha(AUDIT/'core-audit.json'),
+    'checked':245,'inherited_exact_old_rows':197,'new_exact_rows':48,
+    'by_class':{key:dict(value) for key,value in by_class.items()},'blocker_counts':dict(blockers),
+    'proposed_intended_groups_not_admitted_assets':len(groups),
+    'same_intended_group_multiple_observations':{k:v for k,v in groups.items() if len(v)>1},
+    'rows':census_rows,'master_grouping_flags_changed':False,'master_grouping_verified_true_count':0,
+    'formal_assets_admitted':0,'formal_pairs_admitted':0,'formal_data_frozen':False,'model_calls':0,
+    'images_visually_inspected_by_this_auditor':0,'formal_release_eligible':False})
+
+review_documents={};text_findings=[];field_count=0
+for ident,item in master.items():
+    label=item['label'];assistance=label['ai_assistance'];path=source_path(assistance['review_file'])
+    assert sha(path)==assistance['review_sha256']
+    if str(path) not in review_documents:review_documents[str(path)]=read(path)
+    review=review_documents[str(path)]
+    row=next(row for row in review['rows'] if row['sample_id']==ident)
+    final=row['final_row']
+    values=[('target_brief',final['target_brief']),('notes',final['notes'])]
+    values += [('uncertainty',text) for text in final['uncertainties']]
+    for field,text in values:
+        field_count+=1
+        if '\ufffd' in text or '???' in text:text_findings.append({'sample_id':ident,'field':field,'issue':'damaged_final_reference_text'})
+    for text in row['findings']:
+        field_count+=1
+        if '\ufffd' in text or text.count('?')>len(text)/2:
+            text_findings.append({'sample_id':ident,'field':'review_findings','issue':'damaged_review_findings_text'})
+assert not text_findings
+generate('annotation-text-audit.json',{'format':'drone.p6-final-reference-text-audit/v2','recorded_at':NOW,
+    'scope':'Actual final target/notes/uncertainties and actual review findings for245 selected rows; preserve damaged historical drafts without relabeling them as clean.',
+    'integrity_sha256':sha(INTEGRITY/'result.json'),'checked_current_final_rows':245,'checked_fields':field_count,
+    'suspect_current_final_fields':len(text_findings),'findings':text_findings,
+    'new_visual_judgments_created':False,'human_labels_created':0,'model_calls':0})
+
+generate('review-lifecycle.json',{'recorded_at':NOW,'new_first_rows':48,'new_first_authors':['bounded_annotator_27','bounded_annotator_28'],
+    'full_second_assignments':{'bounded_verifier_37':12,'bounded_verifier_34':12,'bounded_verifier_35':12,'bounded_verifier_36':12},
+    'old33':{'whole_assignment':12,'partial_observations_preserved':9,'formal_reviews_persisted':0,
+        'stopped':True,'replaced_entire_assignment_by':'bounded_verifier_37','replacement_history_fork':'none',
+        'old_partial_answers_provided_to37':False,'replacement_registered_before_launch':True},
+    'reviewer36':{'complete_observer_payload_rows':12,'core_annotation_binding_passed':12,
+        'root_stopped_remaining_idle_wait_after_complete':True,'observer_final_message_claimed':False,
+        'stop_fact_source':'Root task instructions; complete payload and part-B binding receipts are separately preserved.'},
+    'first_answers_visible_to_assigned_second_reviewer':True,'physical_findings_are_not_separate_blind_identity_review':True,
+    'all48_reviewed_without_favorable_business_filter':True,'formal_assets_admitted':0})
+generate('version-and-scope.json',{'recorded_at':NOW,'source_specific_candidate':COMMIT,
+    'source_specific_business_core_sha256':CORE_SHA,'actual_cloud_partial_decode_observations':16,
+    'software_qa_for_4800ea0726acbd3054e07f31abf3e8b44b94f0f4':'Not included in this C capsule; root will add an independent QA/source capsule after completion.',
+    'oam32_extraction_or_native_evidence_included':False,'f132_full_suite_results_transferred_to_4800ea0':False,
+    'repository_files_written_by_this_builder':False,'original_source_files_changed':False,
+    'formal_assets':0,'formal_pairs':0,'formal_freeze':False,'formal_evaluated_model_calls':0,
+    'human_candidate_p95':'deferred_unverified','field_clearance_effects':'unverified','wp_p6_01_closed':False})
+generate('external-references.json',{'recorded_at':NOW,'files':external_refs,
+    'large_parent_inventory_and_cleanup_journal_not_duplicated':True,'all_reference_bytes_verified_at_staging':True})
+generate('documentation-scope.json',{'recorded_at':NOW,'skill':'neat-freak','mode':'staging_only_as_explicitly_requested',
+    'canonical_rules':'Repository and global rules read only; no rule change proposed.',
+    'repo_handoff_before_c':reference(REPO/'docs/p6-road-corpus-handoff-2026-10-22.md','Exact current B handoff preserved in history'),
+    'entry_document_policy':'Keep one concise dated handoff; historical narrative is preserved in history/handoff-before-c.md.',
+    'all_repo_files_left_untouched_while_4800ea0_qa_runs':True,'memory_updated':False,
+    'staging_target_after_root_review':'eval/s2/road_business_v1/corpus_checkpoint_20261022c'})
+
+README = '''# 道路材料检查点 · 2026-10-22 C（归档staging）
+
+**WP-P6-01仍开放，P6未整体准出。** 本payload可由root核对后拷贝到`eval/s2/road_business_v1/corpus_checkpoint_20261022c/`；制备过程未写仓库、提交或改原证据。
+
+- 新增48条独立AI初标及另一隔离AI整批二审，当前首稿338、二审并集245/245绑定通过：正常22、障碍62、不可判114、错目标4、排除源43；待二审93。观察不等于独立资产。
+- 48条补充物理记录全部纳入，首稿对二审可见，**不是另一次盲身份审查**。独立元数据/契约审查支持精确10条组合，38条继续hold，未将几何组自动升级为资产。
+- 只在新局部副本采用10条组合，与既有6观察合为16观察、15个主候选、1个既有跨次配对候选；16份标签只重绑四个实际context元数据字段。主245及主分组规则未改。
+- 原f132四核心在原云缓存真实审核一次：16/16来源及原生解码通过，个案和既有配对问题0，实际rc0；**整体missing，15条全局缺口全部保留**，含测试单站集中度9/11。正式资产、正式配对、冻结和评测调用仍0。
+
+[资格覆盖](candidate-qualification.json)、[245条结构普查](admission-census.json)、[真实核心报告](qa/bulk-integrated/core-audit.json)分别限定范围；本普查继承未变197条v5结构并加48条，只对精确16条使用新的审核覆盖，不更改主快照false分组字段。最终文字审查245条疑点0；历史损坏和未完成记录保留。
+
+原33整12停滞，仅有9条部分观察、无正式reviews；预登记后由全新fork-none的37整12替换，旧部分答案不传递。36已完成12并通过12条核心绑定，root停止余下等待，不伪造其额外final消息。各自首稿、实际payload、严格入库、四份新review快照及context v30/v31另存。
+
+观察覆盖仍紧缺：校准正常4、测试正常17（含同资产重复）；测试类型观察debris26/vegetation12/other_entity11。即便最乐观加入旧组外正常48/障碍23，仍至少缺正常50、障碍35、错目标36条参考**观察**，这不是资产缺口或工时。真实配对只1候选、正式0；未来native32整站校准来源不能算重复采集。不得承诺很快正式关闭。
+
+图片、源缓存、原生裁片和输入tar不入Git；Python辅助代码以`.py.txt`保留。原837行inventory、旧review快照及四份冻结源码按SHA引用，未重复大payload；[B父检查点](../corpus_checkpoint_20261022b/README.md)保留历史。[已完成云端清理](../cloud_cleanup_20261022/README.md)仅以准确摘要引用，不重复大journal，也不增加业务准出。
+
+本C只绑定`f132b98fd0f6148ca3ab5f7e168de147433fc7be`的实际数据审核，业务SHA`d0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2`。4800ea0的OAM条件分段来源能力、其QA以及未完成OAM32均不在本capsule；root后补独立capsule，不转借原f132全套成绩。
+
+D089数值、数量、独立性、地点和真实跨次要求不变；真人候选p95继续deferred，现场清障未验证。入口建议见[简短交接草案](handoff-proposal.md)，旧B交接原字节见[history](history/handoff-before-c.md)。本目录含参考答案，不向后续盲标者整包提供。
+
+`file-bindings.json`列出除自身外每个叶文件的精确SHA/bytes及源路径；`external-references.json`绑定未复制的父证据。staging可归档不表示数据可准入。
+'''
+generated['README.md']=README.encode('utf-8')
+HANDOFF = '''# P6 道路材料当前交接 · 2026-10-22 C（建议稿）
+
+**WP-P6-01仍开放，P6未整体准出。** 当前C事实限定为原f132数据审核；正式资产、配对、冻结和模型调用均0。真人候选效率延期至运营且未验证，现场清障未验证。详细历史保存在C检查点history，入口保持简洁。
+
+## 可复用的已完成证据
+
+| 范围 | 准确事实 |
+|---|---|
+| 当前AI参考 | 首稿338、二审245/245通过；正常22/障碍62/不可判114/错目标4/排除源43；待二审93 |
+| 本次48条 | 27的Laura24整事件校准、28的Mussett24整事件测试；由37/34/35/36各12整批二审，无有利标签筛选 |
+| 物理组合 | 首稿可见的实际补充物理证据，加源配准与独立只读契约审查，支持精确10条；38条继续hold；不是另一次盲身份审查 |
+| 真实局部审核 | 新副本16观察/15主候选/1既有配对，原f132云缓存审核16/16来源+native、个案/配对问题0，rc0；全局missing15 |
+| 局部primary | 校准正常4；测试正常9/障碍1/不可判1；测试最大单站9/11，仍超50% |
+
+主245和原分组规则保持不变；仅新副本采用组合并重绑16标签的四个实际context元数据字段，业务字段、recorded_at、首稿及review字节不变。33的9条部分观察保留未入库，整12预登记由全新fork-none37替换；36完成12并通过核心绑定后由root停止等待，没有额外final消息。
+
+## 仍需补齐
+
+观察层：校准正常4、测试正常17含重复；类型26/12/11。最乐观加旧组外48正常/23障碍，仍至少缺正常50、障碍35、错目标36条参考观察；这不是资产数或时间估计。事前任务测试11、完成5（4错目标/1不可判）、剩6，校准0。73几何配对中9对双方已二审、3对仅同确定性类型/范围候选，实际同状态配对目前只1候选，正式0。
+
+D089保留测试260独立主资产100/100/30/30、校准60个20/20/10/10；各障碍类型至少30、至少3核验地点且单站≤50%；真实配对30对/15资产。误报≤5/100、各类型漏检≤20%、可判覆盖≥90%、不可判/错目标误判正常0、跨次可判且一致≥90%均不变。不能把未看几何组、重复窗口、完整对象数或未来native32整站校准来源算成新独立资产/真实跨次。
+
+先补独立校准正常及完整目标/身份、可信预期参考和真实配对，再冻结数据/代码/画像并完成真实校准、唯一正式测试、严格回放及发布门禁。来源总量仍882窗口/809几何组、完整原图516；它们不自动成为独立分母。不要承诺短期正式关闭。
+
+## 版本与入口
+
+C的真实数据审核只负责f132b98及业务SHA d0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2。四个冻结核心SHA、16输入摘要、真实执行及全部15全局问题见C的qa/bulk-integrated。来源837历史全量结果仍是原f132历史范围，不是本次重跑837；OAM45不在该全量。
+
+4800ea0只新增OAM条件分段来源代码，其QA与OAM32后续来源结果由root另给capsule；此建议稿不声明它们完成，不转借f132全套。已归档cloud_cleanup_20261022只引用摘要，不重复大journal。固定A/B及主路连续宽度口径保持；树冠/水/阴影遮住完整边界时继续未知，不由编排器改类。
+'''
+generated['handoff-proposal.md']=HANDOFF.encode('utf-8')
+
+repo_head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=REPO,text=True).strip()
+source_before={str(path):{'sha256':sha(path),'bytes':path.stat().st_size} for path in set(copies.values())}
+STAGE.mkdir()
+bindings=[]
+for name,path in sorted(copies.items()):
+    target=STAGE/name;target.parent.mkdir(parents=True,exist_ok=True)
+    blob=path.read_bytes()
+    with target.open('xb') as handle:handle.write(blob)
+    assert sha(target)==source_before[str(path)]['sha256']
+    bindings.append({'file':name,'source_file':str(path),'sha256':sha(target),'bytes':target.stat().st_size,'copy_mode':'exact_original_bytes'})
+for name,blob in sorted(generated.items()):
+    target=STAGE/name;target.parent.mkdir(parents=True,exist_ok=True)
+    with target.open('xb') as handle:handle.write(blob)
+    bindings.append({'file':name,'source_file':'generated from explicitly bound actual C evidence',
+        'sha256':sha(target),'bytes':target.stat().st_size,'copy_mode':'new_staging_summary_only'})
+assert all(sha(Path(name))==value['sha256'] and Path(name).stat().st_size==value['bytes'] for name,value in source_before.items())
+assert sha(FAST/'bulk-physical-composition-audit-v1.json')=='5a3c733e1575951162289eaa83972f3db6340cec860655f043a26da8d601102e'
+assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=REPO,text=True).strip()==repo_head
+leaf_names={path.relative_to(STAGE).as_posix() for path in STAGE.rglob('*') if path.is_file()}
+assert leaf_names=={row['file'] for row in bindings}
+for row in bindings:
+    assert sha(STAGE/row['file'])==row['sha256'] and (STAGE/row['file']).stat().st_size==row['bytes']
+archive_manifest={'format':'drone.p6-checkpoint-staging/v1','created_at':NOW,
+    'intended_repository_destination':'eval/s2/road_business_v1/corpus_checkpoint_20261022c',
+    'files':bindings,'leaf_count_excluding_this_manifest':len(bindings),
+    'payload_bytes_excluding_this_manifest':sum(row['bytes'] for row in bindings),
+    'repo_head_observed_read_only':repo_head,'candidate_for_actual16_source_audit':COMMIT,
+    'parent_checkpoint_manifest_file':str(B/'file-bindings.json'),'parent_checkpoint_manifest_sha256':sha(B/'file-bindings.json'),
+    'repository_written':False,'all_source_bytes_unchanged':True,'all_payload_and_external_bindings_checked':True,
+    'excluded_media_source_cache_and_large_parent_payloads':True,'source32_or_4800_qa_results_included':False,
+    'formal_assets':0,'formal_pairs':0,'formal_data_frozen':False,'formal_model_calls':0,'wp_p6_01_closed':False}
+with (STAGE/'file-bindings.json').open('x',encoding='utf-8',newline='\n') as handle:
+    json.dump(archive_manifest,handle,ensure_ascii=False,indent=2)
+all_leaves=[path for path in STAGE.rglob('*') if path.is_file()]
+assert len(all_leaves)==len(bindings)+1
+assert all(path.suffix.lower() not in {'.png','.jpg','.jpeg','.tif','.tiff','.py','.gz','.zip'} for path in all_leaves)
+print(json.dumps({'staging':str(STAGE),'payload_leaves':len(bindings),'all_leaves_including_manifest':len(all_leaves),
+    'payload_bytes':sum(row['bytes'] for row in bindings),'all_bytes_including_manifest':sum(path.stat().st_size for path in all_leaves),
+    'manifest_sha256':sha(STAGE/'file-bindings.json'),'text_suspects':len(text_findings),
+    'qualification_observations':16,'primary_candidates':15,'pair_candidates':1,'global_status':'missing',
+    'global_issues':15,'repo_written':False,'ready_for_root_review_and_copy':True},ensure_ascii=True))

@@ -1,0 +1,23 @@
+"""Distinguish initial extraction receipts from the real f132 reread execution. / 区分初次提取与f132实跑。"""
+import ast,hashlib,json
+from pathlib import Path
+HERE=Path(__file__).resolve().parent
+source=(HERE/'prepare_bulk_physical_composition_v3.py').read_text(encoding='utf-8')
+old="    execution_path=bind(ROOT/('resume-20261021/'+slug+'-source-execution-v1/result.json'))\n    source_references.append({'source':slug,'report_file':str(report_path),'report_sha256':sha(report_path),'execution_file':str(execution_path),'execution_sha256':sha(execution_path),'actual_prior_source_only_observations_checked':total,'current_audit_decoder_rerun_claimed':False})"
+new="""    initial_path=bind(ROOT/('resume-20261021/'+slug+'-source-execution-v1/result.json'))
+    execution_path=bind(ROOT/'resume-20261021/current-source-execution-f132b98-v1/result.json')
+    controller_path=bind(ROOT/'resume-20261021/current-source-control-f132b98-v1/result.json')
+    execution,controller=read(execution_path),read(controller_path)
+    assert execution['candidate_commit']==controller['candidate_commit']=='f132b98fd0f6148ca3ab5f7e168de147433fc7be' and execution['all_steps_passed'] and controller['ssh_exit_code']==0
+    step=next(row for row in execution['steps'] if row['slug']==slug)
+    assert step['exit_code']==0 and step['expected']==step['checked']==step['passed']==total
+    assert datetime.fromisoformat(step['started_at'])<=datetime.fromisoformat(report['recorded_at'])<=datetime.fromisoformat(step['finished_at'])
+    for leaf in ('result.json','unverified-grouping-capture-inventory.json'):
+        mirrored=bind(ROOT/('resume-20261021/'+slug+'-provenance-f132b98-v1/'+leaf))
+        witness=next(row for row in controller['mirrored_files'] if row['file']=='resume-20261021/'+slug+'-provenance-f132b98-v1/'+leaf)
+        assert sha(mirrored)==witness['sha256'] and mirrored.stat().st_size==witness['bytes']
+    source_references.append({'source':slug,'report_file':str(report_path),'report_sha256':sha(report_path),'f132_reread_execution_file':str(execution_path),'f132_reread_execution_sha256':sha(execution_path),'f132_controller_file':str(controller_path),'f132_controller_sha256':sha(controller_path),'initial_extraction_replay_execution_file':str(initial_path),'initial_extraction_replay_execution_sha256':sha(initial_path),'initial_execution_is_not_the_f132_reread':True,'actual_prior_f132_source_only_observations_checked':total,'current_audit_decoder_rerun_claimed':False})"""
+assert source.count(old)==1;source=source.replace(old,new);ast.parse(source)
+path=HERE/'prepare_bulk_physical_composition_v4.py'
+with path.open('x',encoding='utf-8',newline='\n') as f:f.write(source)
+print(json.dumps({'tool_file':str(path),'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'real_f132_execution_bound':True,'prior_initial_extraction_not_relabelled':True}))

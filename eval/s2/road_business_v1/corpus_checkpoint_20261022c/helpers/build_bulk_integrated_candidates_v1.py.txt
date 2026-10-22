@@ -1,0 +1,78 @@
+"""Apply supported physical composition only in a new partial candidate copy. / 仅在新局部副本采用已审查组合。"""
+import copy,hashlib,json,runpy,subprocess,sys
+from datetime import datetime,timezone
+from pathlib import Path
+HERE=Path(__file__).resolve().parent;ROOT=HERE.parent;DATA=ROOT.parent.resolve();REPO=DATA/'p6-road-views-20261014/repo'
+def read(p):return json.loads(p.read_text(encoding='utf-8'))
+def sha(p):
+    with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
+def rel(p):return p.resolve().relative_to(DATA).as_posix()
+def save(p,v):
+    with p.open('x',encoding='utf-8',newline='\n') as f:json.dump(v,f,indent=2)
+expected={'p6_business_eval.py':'d0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2','p6_boundary_drafts.py':'f2476184e8172312853fcb07e692012b20f0bfb3bdeabf0c754443d90b19fc0b','p6_raster_replay.py':'f90cdcc1a40596546cb1c3decf72908e2ce093e9c2234faa90f2e6c030071607','p6_oam_capture.py':'c36e99df13290fc997b75fc0a9d040a942bfcd305aabdfafcc5a28cfacbac047'}
+frozen=HERE/'frozen-original-f132-core-v1';frozen.mkdir(exist_ok=False)
+for name,wanted in expected.items():
+    child=subprocess.run(['git','show','f132b98fd0f6148ca3ab5f7e168de147433fc7be:scripts/'+name],cwd=REPO,capture_output=True,check=True)
+    assert hashlib.sha256(child.stdout).hexdigest()==wanted
+    with (frozen/name).open('xb') as f:f.write(child.stdout)
+C=runpy.run_path(str(frozen/'p6_business_eval.py'))
+sys.path.insert(0,str(ROOT/'resume-20261021-b'))
+from formal_observation_index_v2 import configure
+index=configure(core_script=frozen/'p6_business_eval.py');index.require_integrity()
+proposal_file=HERE/'bulk-physical-composition-proposal-v1.json';audit_file=HERE/'bulk-physical-composition-audit-v1.json'
+proposal,audit=read(proposal_file),read(audit_file)
+assert audit['verdict']=='supports' and audit['proposal_sha256']==sha(proposal_file)
+assert set(audit['supports_sample_ids'])==set(proposal['selected_sample_ids']) and len(proposal['selected_sample_ids'])==10
+for binding in proposal['bindings']:assert sha(Path(binding['file']))==binding['sha256']
+old=ROOT/'resume-20261022/integrated-candidate-corpus-v1'
+manifest=copy.deepcopy(read(old/'manifest.json'));labels=copy.deepcopy(read(old/'labels.json'))
+protocol=copy.deepcopy(read(old/'protocol-not-frozen.json'));assert protocol['status']!='frozen' and not manifest['formal_data_frozen']
+reviewed={r['sample']['sample_id']:r for r in read(HERE/'annotation-integrity-final-v1/reviewed-candidates.json')['rows']}
+assert len(reviewed)==245
+out=HERE/'bulk-integrated-candidate-corpus-v1';out.mkdir(exist_ok=False)
+inventory=out/'capture-inventory.json'
+with inventory.open('xb') as f:f.write((old/'capture-inventory.json').read_bytes())
+assert len(read(inventory)['rows'])==837
+evidence={'format':'drone.p6-composed-physical-grouping-evidence/v1','recorded_at_utc':datetime.now(timezone.utc).isoformat(),
+    'scope':'Exact10 actual second-observer physical findings plus bound source georeferencing and independently audited complete-image nonoverlap; existing6 observations unchanged in meaning.',
+    'proposal_file':rel(proposal_file),'proposal_sha256':sha(proposal_file),'metadata_contract_audit_file':rel(audit_file),'metadata_contract_audit_sha256':sha(audit_file),
+    'physical_findings_origin':'Actual isolated second reviewers with assigned first answers visible; not a separate blind identity review.',
+    'new_visual_judgments_by_root':False,'metadata_auditor_visual_inspection_claimed':False,'independent_visual_cross_asset_comparisons_claimed':False,
+    'human_grouping_claimed':False,'not_a_rule_for_promoting_unviewed_geometric_groups':True,'formal_release_eligible':False}
+evidence_file=HERE/'bulk-grouping-composition-evidence-v1.json';save(evidence_file,evidence)
+reference_only=set(read(ROOT/'resume-20261021/laura-geometry-v1/purpose-reserve-v1.json')['expected_reference_sample_ids'])
+new_ids=proposal['selected_sample_ids'];assert not set(new_ids)&reference_only
+for ident in new_ids:
+    actual=reviewed[ident];sample=index.sample(ident,inventory)
+    assert sample['image_sha256']==actual['sample']['image_sha256'] and actual['sample']['target']['polygon'] is not None
+    partition=index.partition(ident);assert partition in {'test_candidate','calibration_candidate'}
+    sample.update(split=partition.removesuffix('_candidate'),evaluation_role='primary',target=copy.deepcopy(actual['sample']['target']),ai_suggestion=copy.deepcopy(actual['sample']['ai_suggestion']),grouping_verified=True,physical_asset_identity_verified=True,
+        grouping_evidence={**evidence,'evidence_file':rel(evidence_file),'evidence_sha256':sha(evidence_file)})
+    manifest['samples'].append(sample);labels['rows'].append(copy.deepcopy(actual['label']))
+context=ROOT/'annotation-context-v31.json';registration=ROOT/'review-registration-v31.json'
+protocol['annotation_policy'].update(independent_context_sha256=sha(context),verification_context_sha256=sha(registration))
+rebindings=[]
+for sample in manifest['samples']:
+    sample['capture_record'].update(inventory_file=rel(inventory),inventory_sha256=sha(inventory))
+for label in labels['rows']:
+    before=copy.deepcopy(label);a=label['ai_assistance']
+    a.update(context_file=rel(context),context_sha256=sha(context),verification_context_file=rel(registration),verification_context_sha256=sha(registration))
+    assert {k:v for k,v in label.items() if k!='ai_assistance'}=={k:v for k,v in before.items() if k!='ai_assistance'}
+    assert {k:v for k,v in a.items() if k not in {'context_file','context_sha256','verification_context_file','verification_context_sha256'}}=={k:v for k,v in before['ai_assistance'].items() if k not in {'context_file','context_sha256','verification_context_file','verification_context_sha256'}}
+    rebindings.append({'sample_id':label['sample_id'],'before_sha256':C['canonical_digest'](before),'after_sha256':C['canonical_digest'](label),'business_fields_and_original_recorded_at_unchanged':True,'only_expanded_actual_context_registry_rebound':True})
+cache={};checks=[]
+label_by_id={r['sample_id']:r for r in labels['rows']}
+for sample in manifest['samples']:
+    issues=C['delegated_label_issues'](sample,label_by_id[sample['sample_id']],protocol,DATA,cache)
+    checks.append({'sample_id':sample['sample_id'],'issues':issues})
+assert len(manifest['samples'])==16 and len({r['asset_id'] for r in manifest['samples']})==15
+assert sum(s['evaluation_role']=='primary' for s in manifest['samples'])==15 and len(manifest['stability_pairs'])==1
+assert all(not r['issues'] for r in checks)
+for name,document in [('manifest.json',manifest),('labels.json',labels),('protocol-not-frozen.json',protocol)]:save(out/name,document)
+with (out/'exposure.json').open('xb') as f:f.write((old/'exposure.json').read_bytes())
+preparation={'samples':16,'primary_assets_in_subset':15,'repeat_observations':1,'pair_candidates':1,'new_supported_primary_candidates':10,
+    'metadata_context_rebinding':rebindings,'annotation_only_checks':checks,'candidate_core_snapshot':str(frozen),'core_sha256':expected,
+    'source_and_native_decoder_check_not_yet_run_for_this_copy':True,'master_manifests_or_grouping_rules_changed':False,
+    'formal_assets_admitted':0,'formal_data_frozen':False,'formal_model_calls':0,'wp_p6_01_closed':False}
+save(out/'preparation.json',preparation)
+print(json.dumps({k:v for k,v in preparation.items() if k not in {'metadata_context_rebinding','annotation_only_checks'}}))

@@ -1,0 +1,93 @@
+import hashlib,json,os,pathlib,runpy,shutil,sys,time,traceback,urllib.request
+from datetime import datetime,timezone
+from urllib.parse import urlsplit,urlunsplit
+HERE=pathlib.Path(__file__).resolve().parent
+CONFIG=json.loads((HERE/'worker-config.json').read_text())
+TASK=pathlib.Path(CONFIG['task_root']);DATA=TASK.parent;FROZEN=pathlib.Path(CONFIG['frozen_dir']);IDENT=CONFIG['catalog_object_id'];SIZE=CONFIG['expected_bytes'];ETAG=CONFIG['expected_etag'];BEGIN=time.monotonic();DEADLINE=BEGIN+3600
+now=lambda:datetime.now(timezone.utc).isoformat()
+def sha(p):
+ with pathlib.Path(p).open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
+def syncdir():
+ fd=os.open(HERE,os.O_RDONLY|os.O_DIRECTORY)
+ try:os.fsync(fd)
+ finally:os.close(fd)
+def save(n,j):
+ p=HERE/n
+ with p.open('x',encoding='ascii') as f:json.dump(j,f,indent=2,ensure_ascii=True,allow_nan=False);f.write('\n');f.flush();os.fsync(f.fileno())
+ syncdir();return p
+def resource():
+ available=next(int(x.split()[1])*1024 for x in pathlib.Path('/proc/meminfo').read_text().splitlines() if x.startswith('MemAvailable:'));d=shutil.disk_usage(HERE)
+ return {'memory_available_bytes':available,'disk_total_bytes':d.total,'disk_free_bytes':d.free,'ram_required_bytes':3*1024**3,'disk_required_bytes':8*1024**3,'sufficient':available>=3*1024**3 and d.free>=8*1024**3,'observed_at_utc':now()}
+def rel(p):return str(pathlib.Path(p).relative_to(DATA))
+log=(HERE/'progress.jsonl').open('x',encoding='ascii');syncdir()
+def event(phase,**data):
+ row={'phase':phase,'recorded_at_utc':now(),'elapsed_seconds':round(time.monotonic()-BEGIN,3),**data};log.write(json.dumps(row,ensure_ascii=True)+'\n');log.flush();os.fsync(log.fileno());print(json.dumps(row),flush=True)
+result={'format':'drone.p6-oam-cloud-full200-recovery-result/v1','started_at_utc':now(),'status':'running','catalog_object_id':IDENT,'worker_pid':os.getpid(),'worker_sha256':sha(__file__),'source_only_verification_passed':False,'native_header_only_verified':False,'formal_source_admitted':False,'geometric_groups_admitted':0,'images_viewed':False,'pixels_read':False,'business_labels_read_or_written':False,'model_calls':0,'existing_files_overwritten_or_deleted':False,'formal_release_eligible':False,'wp_p6_01_closed':False}
+body=HERE/(IDENT+'-full-http200.tif');count=0;chosen=None;raw=None;receipt=None
+try:
+ event('worker_started',pid=os.getpid(),worker_sha256=result['worker_sha256'])
+ pre=resource();save('resource-preflight.json',pre);assert pre['sufficient'],'Need at least3GiB available RAM and8GiB free disk before heavy source work'
+ assert sha(HERE/'catalog-pinned.json')==CONFIG['catalog_sha256'];catalog=json.loads((HERE/'catalog-pinned.json').read_text())['results'];props=catalog['properties']
+ assert catalog['_id']==IDENT and catalog['file_size']==SIZE==253851020 and catalog['platform']=='uav' and props['license']=='CC-BY 4.0' and props['bands']==3 and props['dtype']=='uint8' and props['colorinterp']==['red','green','blue']
+ for name,expected in CONFIG['frozen_sha256'].items():assert sha(FROZEN/name)==expected,'Frozen helper changed: '+name
+ namespace=runpy.run_path(str(FROZEN/'p6_oam_capture.py'));key=namespace['object_key'](catalog['uuid']);headers={'If-Match':ETAG,'Accept-Encoding':'identity','User-Agent':'drone-agent-public-oam-source-only/1.0'}
+ candidates=[catalog['uuid'],urlunsplit(('https','oin-hotosm-temp.s3.us-east-1.amazonaws.com',key,'',''))];head_rows=[]
+ for index,url in enumerate(dict.fromkeys(candidates)):
+  head={'request':{'method':'HEAD','url':url,'headers':headers},'started_at_utc':now()}
+  try:
+   with urllib.request.urlopen(urllib.request.Request(url,headers=headers,method='HEAD'),timeout=25) as r:
+    hh={k.lower():v for k,v in r.headers.items()};head['response']={'status':r.status,'final_url':r.url,'headers':dict(r.headers),'headers_list':list(r.headers.items())};assert r.status==200 and hh['etag']==ETAG and hh['content-length']==str(SIZE) and namespace['object_key'](r.url)==key
+   head['identity_verified']=True;chosen=url
+  except Exception as exc:head['identity_verified']=False;head['error_type']=type(exc).__name__;head['error_message']=str(exc)
+  head['finished_at_utc']=now();save('head-http-'+str(index)+'.json',head);head_rows.append(head)
+  if chosen:break
+ assert chosen,'No official equivalent endpoint matched exact HEAD identity'
+ event('head_identity_verified',endpoint=urlsplit(chosen).hostname,expected_bytes=SIZE,expected_etag=ETAG)
+ raw={'format':'drone.p6-actual-full200-http-evidence/v1','request':{'method':'GET','url':chosen,'headers':headers},'started_at_utc':now(),'expected_bytes':SIZE,'expected_etag':ETAG,'attempt':1,'range_request':False}
+ save('full-get-request.json',raw)
+ with urllib.request.urlopen(urllib.request.Request(chosen,headers=headers),timeout=90) as response:
+  hh={k.lower():v for k,v in response.headers.items()};raw['response']={'status':response.status,'final_url':response.url,'headers':dict(response.headers),'headers_list':list(response.headers.items()),'http_version':response.version};raw['response_observed_at_utc']=now()
+  save('full-get-response.json',{'request':raw['request'],'response':raw['response'],'started_at_utc':raw['started_at_utc'],'response_observed_at_utc':raw['response_observed_at_utc']})
+  assert response.status==200 and hh.get('etag')==ETAG and hh.get('content-length')==str(SIZE) and 'content-range' not in hh and namespace['object_key'](response.url)==key,'Full response is not exact conditional200 object'
+  event('full200_response_verified',status=200,expected_bytes=SIZE,expected_etag=ETAG)
+  digest=hashlib.sha256();last=time.monotonic()
+  with body.open('xb') as out:
+   while count<SIZE:
+    remaining=DEADLINE-time.monotonic();assert remaining>0,'Maximum3600-second total deadline reached'
+    sock=getattr(getattr(response.fp,'raw',None),'_sock',None)
+    if sock is not None:sock.settimeout(max(0.1,min(90,remaining)))
+    data=response.read1(min(262144,SIZE-count))
+    if not data:raise OSError('HTTP200 body ended before exact expected bytes')
+    out.write(data);digest.update(data);count+=len(data)
+    if time.monotonic()-last>=30:
+     out.flush();os.fsync(out.fileno());event('full200_progress',received_bytes=count,expected_bytes=SIZE,average_bytes_per_second=round(count/(time.monotonic()-BEGIN),2));last=time.monotonic()
+   out.flush();os.fsync(out.fileno())
+  assert count==SIZE
+ full_sha=digest.hexdigest();assert sha(body)==full_sha==CONFIG['expected_full_sha256'],'Full200 object differs from independent local assembled SHA'
+ raw.update(finished_at_utc=now(),body_bytes=count,local_file=str(body),saved_bytes=body.stat().st_size,local_full_object_sha256=full_sha,complete_body=True);raw_path=save('full-get-raw-result.json',raw)
+ receipt={'format':'drone.p6-oam-full-object-http/v1','source_family':'oam','catalog_object_id':IDENT,'source_metadata_url':'https://api.openaerialmap.org/meta/'+IDENT,'source_metadata_sha256':CONFIG['catalog_sha256'],'request':raw['request'],'response':{'status':raw['response']['status'],'final_url':raw['response']['final_url'],'headers':raw['response']['headers']},'expected_etag':ETAG,'expected_bytes':SIZE,'body_bytes':count,'response_etag':hh['etag'],'response_content_length':int(hh['content-length']),'local_file':str(body),'local_full_object_sha256':full_sha,'publisher_sha256':None,'checksum_origin':'locally_computed_full_object','status':'downloaded_and_verified','started_at_utc':raw['started_at_utc'],'finished_at_utc':raw['finished_at_utc'],'raw_http_evidence_file':rel(raw_path),'raw_http_evidence_sha256':sha(raw_path),'pixels_decoded':False,'images_visually_viewed':0,'formal_source_admitted':False}
+ receipt_path=save(IDENT+'-get-receipt.json',receipt)
+ save('normalization-mapping.json',{'raw_evidence_file':rel(raw_path),'raw_evidence_sha256':sha(raw_path),'normalized_receipt_file':rel(receipt_path),'normalized_receipt_sha256':sha(receipt_path),'mapping':'request and response identity/headers copied from actual observed HTTP transaction; body count/full SHA are measured from that body and reread native file; source_metadata_sha256 binds uploaded original pinned catalog bytes. No HTTP request/status or byte range is invented.','genuine_complete200_body':True,'no_range_request_or_response':True,'independent_local_assembled_sha256_matches':True})
+ import rasterio
+ with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',GDAL_PAM_ENABLED='NO'):
+  with rasterio.open(body) as ds:
+   native={'driver':ds.driver,'width':ds.width,'height':ds.height,'bands':ds.count,'crs':str(ds.crs),'dtypes':list(ds.dtypes),'colorinterp':[c.name for c in ds.colorinterp],'transform':list(ds.transform),'mask_flags':[[f.name for f in flags] for flags in ds.mask_flag_enums],'block_shapes':[list(s) for s in ds.block_shapes],'rasterio_version':rasterio.__version__,'gdal_version':rasterio.__gdal_version__,'pixels_read':False,'pixels_viewed':False,'observed_at_utc':now()}
+   assert ds.driver=='GTiff' and [ds.width,ds.height]==props['dimensions'] and ds.count==3 and list(ds.dtypes)==['uint8']*3 and [c.name for c in ds.colorinterp]==props['colorinterp'] and str(ds.crs)==props['crs']
+ save('native-tiff-metadata.json',native);result['native_header_only_verified']=True
+ source={'catalog_object_id':IDENT,'catalog_url':'https://api.openaerialmap.org/meta/'+IDENT,'catalog_file':rel(HERE/'catalog-pinned.json'),'catalog_sha256':CONFIG['catalog_sha256'],'object_file':rel(body),'local_full_object_sha256':full_sha,'publisher_sha256':None,'checksum_origin':'locally_computed_full_object','download_receipt_file':rel(receipt_path),'download_receipt_sha256':sha(receipt_path),'repeated_capture_eligible':False}
+ save('source-only-candidate-record.json',source)
+ core=runpy.run_path(str(FROZEN/'p6_business_eval.py'));helpers={'read_bound':core['bound_evidence'],'file_bound':core['derived_file'],'timestamp':core['timestamp']}
+ checked_catalog,checked_parent,checked_receipt=namespace['verify_source'](source,DATA,{},helpers)
+ assert checked_parent==body.resolve() and checked_receipt==receipt and checked_catalog==catalog
+ verification={'format':'drone.p6-frozen-oam-source-only-verification/v1','passed':True,'function':'p6_oam_capture.verify_source','verifier_sha256':CONFIG['frozen_sha256']['p6_oam_capture.py'],'frozen_sha256':CONFIG['frozen_sha256'],'source_candidate_file':rel(HERE/'source-only-candidate-record.json'),'source_candidate_sha256':sha(HERE/'source-only-candidate-record.json'),'actual_full_object_sha256':full_sha,'bytes':count,'pixels_read':False,'derived_capture_or_business_audit_called':False,'formal_source_admitted':False,'geometric_groups_admitted':0,'verified_at_utc':now()};save('source-only-verification.json',verification)
+ result.update(status='completed_full200_source_only_verified',source_only_verification_passed=True,full_object_file=str(body),full_object_bytes=count,local_full_object_sha256=full_sha,download_receipt_file=str(receipt_path),download_receipt_sha256=sha(receipt_path),raw_http_evidence_file=str(raw_path),raw_http_evidence_sha256=sha(raw_path),source_only_verifier_sha256=CONFIG['frozen_sha256']['p6_oam_capture.py'])
+ event('source_only_verification_completed',received_bytes=count,full_sha256=full_sha,verifier_sha256=CONFIG['frozen_sha256']['p6_oam_capture.py'],formal_source_admitted=False)
+except Exception as exc:
+ result.update(status='failed_preserved_partial',error_type=type(exc).__name__,error_message=str(exc),received_body_bytes=count)
+ if raw is not None and not (HERE/'full-get-raw-result.json').exists():
+  raw.update(finished_at_utc=now(),body_bytes=count,complete_body=False,error_type=type(exc).__name__,error_message=str(exc));save('full-get-raw-result.json',raw)
+ event('failed_preserving_bytes',error_type=type(exc).__name__,received_bytes=count)
+finally:
+ if body.exists():result['actual_saved_bytes']=body.stat().st_size;result['actual_saved_sha256']=sha(body)
+ result['finished_at_utc']=now();result['elapsed_seconds']=round(time.monotonic()-BEGIN,3);result['resource_after']=resource();save('result.json',result);event('worker_finished',status=result['status'],actual_saved_bytes=result.get('actual_saved_bytes',0));log.close()
+sys.exit(0 if result['source_only_verification_passed'] else 1)

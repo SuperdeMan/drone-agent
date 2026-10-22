@@ -1,0 +1,59 @@
+{
+  "candidate_commit": "cdf5382d4b4ce54600921532ecbe2a5591775b58",
+  "started_at_utc": "2026-10-22T06:15:27.654734+00:00",
+  "finished_at_utc": "2026-10-22T06:31:51.775536+00:00",
+  "wall_seconds": 984.125,
+  "steps": [
+    {
+      "name": "ruff",
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "started_at_utc": "2026-10-22T06:15:27.669615+00:00",
+      "finished_at_utc": "2026-10-22T06:15:27.848039+00:00",
+      "wall_seconds": 0.188,
+      "exit_code": 0,
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "name": "pytest",
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "-q",
+        "--junitxml=D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\software-cdf5382-qa-v1\\full-pytest.xml"
+      ],
+      "started_at_utc": "2026-10-22T06:15:27.859322+00:00",
+      "finished_at_utc": "2026-10-22T06:31:49.979191+00:00",
+      "wall_seconds": 982.125,
+      "exit_code": 0,
+      "log_sha256": "a2891c354a6c486c2011159ed6b7a6810c8dfe878f696f1a2cde018b7f40aa40"
+    }
+  ],
+  "tracked_source_bytes_unchanged": true,
+  "head_unchanged": true,
+  "worktree_clean_after": true,
+  "formal_model_calls": 0,
+  "wp_p6_01_closed": false,
+  "pytest": {
+    "collected": 2175,
+    "passed": 2174,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "skip_reasons": [
+      {
+        "classname": "tests.fleet.test_api_and_main",
+        "name": "test_api_socket_roundtrip",
+        "reason": "Unix sockets; exercised in the Linux checks image"
+      }
+    ],
+    "junit_sha256": "b3bbccbfe22fbee6ed342b39f7cf37d22a365ce58aa52eba86615eea19a37295"
+  },
+  "status": "passed"
+}

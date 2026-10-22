@@ -1,0 +1,109 @@
+"""Propose a conservative exact subset from recorded second-review findings. / 提出保守物理候选子集。"""
+import hashlib,json,sys
+from datetime import datetime,timezone
+from pathlib import Path
+from rasterio.warp import transform_bounds
+from shapely.geometry import box
+ROOT=Path(__file__).resolve().parent.parent
+DATA=ROOT.parent.resolve();OUT=Path(__file__).resolve().parent
+sys.path.insert(0,str(ROOT/'resume-20261022'))
+from current_observations_v3 import load_observations
+def read(p):return json.loads(p.read_text(encoding='utf-8'))
+def sha(p):
+    with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
+def resolve(value):
+    text=str(value).replace('\\','/')
+    for prefix in ('D:/drone-agent-data/','/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/'):
+        if text.startswith(prefix):text=text[len(prefix):];break
+    path=(DATA/text).resolve();assert path.is_relative_to(ROOT.resolve()) and path.is_file();return path
+bindings={}
+def bind(p):
+    path=resolve(p);bindings[str(path)]={'file':str(path),'sha256':sha(path),'bytes':path.stat().st_size};return path
+def footprint(receipt):
+    a,b,c,d,e,f,_,_,_=receipt['window_transform']
+    corners=[(a*x+b*y+c,d*x+e*y+f) for x,y in ((0,0),(receipt['width'],0),(receipt['width'],receipt['height']),(0,receipt['height']))]
+    native=[min(p[0] for p in corners),min(p[1] for p in corners),max(p[0] for p in corners),max(p[1] for p in corners)]
+    geographic=list(transform_bounds(receipt['raster']['crs'],'EPSG:4326',*native,densify_pts=21))
+    return {'sample_id':receipt['sample_id'],'source_crs':receipt['raster']['crs'],'native_image_bounds':native,'conservative_full_image_envelope_lon_lat':geographic}
+rules_path=bind(ROOT/'resume-20261021/grouping-rules-v2.json');rules=read(rules_path)
+bind(OUT/'physical-evidence-composition-plan-v1.json');bind(OUT/'bulk-review-plan-v3.json')
+bind(Path(__file__));bind(OUT/'bulk-protocol-snapshot-not-frozen-v1.json');bind(ROOT/'resume-20261021-c/boundary-policy-approved-v1.json')
+source_references=[];source_verified_ids=set()
+for slug,total in (('laura',100),('mussett',46)):
+    report_path=bind(ROOT/('resume-20261021/'+slug+'-provenance-f132b98-v1/result.json'))
+    report=read(report_path)
+    assert report['checked']==report['passed']==len(report['rows'])==total
+    assert report['candidate_commit']=='f132b98fd0f6148ca3ab5f7e168de147433fc7be' and report['software_source_sha256']=='d0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2'
+    assert all(row['source_chain_verified'] is True for row in report['rows'])
+    source_verified_ids.update(row['sample_id'] for row in report['rows'])
+    initial_path=bind(ROOT/('resume-20261021/'+slug+'-source-execution-v1/result.json'))
+    execution_path=bind(ROOT/'resume-20261021/current-source-execution-f132b98-v1/result.json')
+    controller_path=bind(ROOT/'resume-20261021/current-source-control-f132b98-v1/result.json')
+    execution,controller=read(execution_path),read(controller_path)
+    assert execution['candidate_commit']==controller['candidate_commit']=='f132b98fd0f6148ca3ab5f7e168de147433fc7be' and execution['all_steps_passed'] and controller['ssh_exit_code']==0
+    step=next(row for row in execution['steps'] if row['slug']==slug)
+    assert step['exit_code']==0 and step['expected']==step['checked']==step['passed']==total
+    assert datetime.fromisoformat(step['started_at'])<=datetime.fromisoformat(report['recorded_at'])<=datetime.fromisoformat(step['finished_at'])
+    for leaf in ('result.json','unverified-grouping-capture-inventory.json'):
+        mirrored=bind(ROOT/('resume-20261021/'+slug+'-provenance-f132b98-v1/'+leaf))
+        witness=next(row for row in controller['mirrored_files'] if row['file']=='resume-20261021/'+slug+'-provenance-f132b98-v1/'+leaf)
+        assert sha(mirrored)==witness['sha256'] and mirrored.stat().st_size==witness['bytes']
+    source_references.append({'source':slug,'report_file':str(report_path),'report_sha256':sha(report_path),'f132_reread_execution_file':str(execution_path),'f132_reread_execution_sha256':sha(execution_path),'f132_controller_file':str(controller_path),'f132_controller_sha256':sha(controller_path),'initial_extraction_replay_execution_file':str(initial_path),'initial_extraction_replay_execution_sha256':sha(initial_path),'initial_execution_is_not_the_f132_reread':True,'actual_prior_f132_source_only_observations_checked':total,'current_audit_decoder_rerun_claimed':False})
+old_manifest_path=bind(ROOT/'resume-20261022/integrated-candidate-corpus-v1/manifest.json')
+old=[]
+for sample in read(old_manifest_path)['samples']:
+    p=bind(sample['derivation']['extraction_file']);assert sha(p)==sample['derivation']['extraction_sha256']
+    r=read(p);assert r['image_sha256']==sample['image_sha256']
+    old.append({**footprint(r),'asset_id':sample['asset_id'],'role':sample['evaluation_role']})
+observations=load_observations();cases=[];seen=set()
+fields=('physical_target_identifiable','registered_scope_matches_physical_target','whole_target_boundary_supported_under_approved_convention')
+for number in (37,34,35,36):
+    folder=ROOT/'verification'/('bounded_verifier_'+str(number))
+    payload_path=bind(folder/'review-payload.json');payload=read(payload_path)
+    assert payload['status']=='complete' and payload['full_assigned_target_checked'] is True
+    captured=bind(folder/'completed-observer-payload-captured-v1.json');assert sha(captured)==sha(payload_path)
+    assignment_path=bind(folder/'assignment.json');assignment=read(assignment_path)
+    assert sha(assignment_path)==payload['assignment_sha256']
+    review_path=bind(folder/'reviews.json');reviews=read(review_path)
+    review_rows={r['sample_id']:r for r in reviews['rows']};physical={r['sample_id']:r for r in payload['physical_evidence']}
+    assert len(physical)==12 and set(physical)==set(review_rows)=={r['sample_id'] for r in assignment['samples']}
+    for assigned in assignment['samples']:
+        ident=assigned['sample_id'];assert ident not in seen;seen.add(ident)
+        actual=review_rows[ident];finding=physical[ident];assert all(finding[k] is None or type(finding[k]) is bool for k in fields)
+        text=finding['evidence'];assert isinstance(text,str) and text.strip() or isinstance(text,list) and text and all(isinstance(v,str) and v.strip() for v in text)
+        assert {str(resolve(p)) for p in finding['inspection_files']}=={str(resolve(p)) for p in actual['inspected_files']}
+        for p in actual['inspected_files']:bind(p)
+        receipt_path=bind(assigned['current_extraction_file']);assert sha(receipt_path)==assigned['current_extraction_sha256']
+        r=read(receipt_path);current=observations[ident]
+        assert r==current and r['image_sha256']==assigned['image_sha256'] and r['world_scope']==assigned['fixed_world_scope']
+        assert sha(bind(assigned['image_file']))==assigned['image_sha256']
+        site=rules['crasar_site_map'][r['source_orthomosaic']]
+        reasons=[k+' is not explicitly true' for k in fields if finding[k] is not True]
+        if actual['final_row']['target_polygon'] is None:reasons.append('complete task polygon remains absent')
+        if actual['final_row']['verdict']=='excluded_source':reasons.append('no usable road target')
+        cases.append({'sample_id':ident,'reviewer_id':payload['reviewer_id'],'assignment_sha256':sha(assignment_path),
+            'payload_file':str(payload_path),'payload_sha256':sha(payload_path),'review_file':str(review_path),'review_sha256':sha(review_path),
+            'extraction_file':str(receipt_path),'extraction_sha256':sha(receipt_path),'footprint':footprint(r),
+            'proposed_group_id':r['asset_group_id'],'registered_site':site,'physical_evidence':finding,
+            'not_admitted_reasons':reasons,'grouping_flags_changed':False})
+assert len(cases)==48 and {row['sample_id'] for row in cases}<=source_verified_ids
+selected=[];decisions=[]
+for case in sorted(cases,key=lambda row:row['sample_id']):
+    reason=list(case['not_admitted_reasons']);envelope=box(*case['footprint']['conservative_full_image_envelope_lon_lat'])
+    conflicts=[]
+    if not reason:
+        for previous in old+[{'sample_id':r['sample_id'],'conservative_full_image_envelope_lon_lat':r['footprint']['conservative_full_image_envelope_lon_lat']} for r in selected]:
+            if envelope.intersects(box(*previous['conservative_full_image_envelope_lon_lat'])):conflicts.append(previous['sample_id'])
+        if conflicts:reason.append('full native image envelope intersects an existing or earlier selected target; dedicated identity comparison required')
+    if not reason:selected.append(case)
+    decisions.append({'sample_id':case['sample_id'],'proposed_for_independent_metadata_review':not reason,'hold_reasons':reason,'intersecting_sample_ids':conflicts})
+result={'format':'drone.p6-bulk-physical-composition-proposal/v1','recorded_at_utc':datetime.now(timezone.utc).isoformat(),
+    'status':'proposed_not_applied','scope':'All48 actual second reviews; proposed subset is not independent asset admission.',
+    'physical_evidence_blinding':'Second observers saw assigned first answers. These are supplemental findings, not a separate blind identity review.',
+    'selection_rule':'Explicit actual physical/scope/whole-boundary support and present target polygon, then conservative full-image disjointness in stable sample-ID order. No verdict quota or evaluated output is used.',
+    'existing_physical_observations':old,'cases':cases,'decisions':decisions,'selected_sample_ids':[r['sample_id'] for r in selected],
+    'bindings':list(bindings.values()),'prior_source_verification_references':source_references,'new48_all_present_in_actual_prior_f132_source_checks':True,'prior_checks_reused_not_rerun_now':True,'master_grouping_flags_changed':False,'new_visual_judgments_created':False,
+    'independent_metadata_review_required':True,'formal_assets_admitted':0,'formal_model_calls':0,'wp_p6_01_closed':False}
+path=OUT/'bulk-physical-composition-proposal-v1.json'
+with path.open('x',encoding='utf-8') as f:json.dump(result,f,indent=2)
+print(json.dumps({'file':str(path),'sha256':sha(path),'cases':len(cases),'selected_candidates':len(selected),'flags_changed':False}))

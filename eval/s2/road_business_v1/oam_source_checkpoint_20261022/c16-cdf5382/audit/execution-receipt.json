@@ -1,0 +1,156 @@
+{
+  "candidate_commit": "cdf5382d4b4ce54600921532ecbe2a5591775b58",
+  "started_at_utc": "2026-10-22T06:29:01.694362+00:00",
+  "finished_at_utc": "2026-10-22T06:29:47.731077+00:00",
+  "command": [
+    "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/tools-venv/bin/python",
+    "-B",
+    "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/software-audit-cdf5382-20261022/p6_business_eval.py",
+    "audit",
+    "--manifest",
+    "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-fast/bulk-integrated-candidate-corpus-v1/manifest.json",
+    "--labels",
+    "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-fast/bulk-integrated-candidate-corpus-v1/labels.json",
+    "--protocol",
+    "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-fast/bulk-integrated-candidate-corpus-v1/protocol-not-frozen.json",
+    "--exposure",
+    "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-fast/bulk-integrated-candidate-corpus-v1/exposure.json",
+    "--data-root",
+    "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data",
+    "--output",
+    "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-fast/bulk-integrated-cdf5382-audit-v1/core-audit.json"
+  ],
+  "process_exit_code": 0,
+  "frozen_core_sha256_before": {
+    "p6_business_eval.py": "d0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2",
+    "p6_boundary_drafts.py": "f2476184e8172312853fcb07e692012b20f0bfb3bdeabf0c754443d90b19fc0b",
+    "p6_raster_replay.py": "0bd7ab81ee788bc012b3ca11f2e580fabb103a85ee184cdbffd8e179d6eada81",
+    "p6_oam_capture.py": "bd49f89a5916b6401705524990170e6224cdf485c5dc8e7016b71d42898c0c88"
+  },
+  "frozen_core_sha256_after": {
+    "p6_business_eval.py": "d0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2",
+    "p6_boundary_drafts.py": "f2476184e8172312853fcb07e692012b20f0bfb3bdeabf0c754443d90b19fc0b",
+    "p6_raster_replay.py": "0bd7ab81ee788bc012b3ca11f2e580fabb103a85ee184cdbffd8e179d6eada81",
+    "p6_oam_capture.py": "bd49f89a5916b6401705524990170e6224cdf485c5dc8e7016b71d42898c0c88"
+  },
+  "all_329_bound_inputs_unchanged": true,
+  "input_sha256": {
+    "manifest.json": "7dab364716fe7c16403fa2953a12c75ce6f35aaaf0bf6157e9e205be4625c5d2",
+    "labels.json": "b00aa56fd88c1ac546b1728080f072d31a3d49d518cfc8169e9fb7d03e4c3caa",
+    "protocol-not-frozen.json": "782e17a4701398ebfcacc75a5ef6fa36578b9e6b497ca2b394402b951cf5cb80",
+    "exposure.json": "c2083306bc7d91164ceab0019dda6f1822fa80a84f26f67c5a6891216c55a27b"
+  },
+  "controller_sha256": "63d8ba753ae3bf80fa4c65d6700c8f0a1f1b0d9c91ec65916b25b75ca22490c6",
+  "inherited_binding_script_sha256": "7e8522e29b1dba0cbef642a7fae4058d69f1c77e798d22570340b1e1f78977c0",
+  "original_f132_report_unchanged": true,
+  "new_report_sha256": "738ec0a906c8edceda876fae3e1aecabc130f9b939a205003e0eb30348eef3ae",
+  "new_report_byte_identical_to_original": true,
+  "report_status": "missing",
+  "samples": 16,
+  "derived_captures_verified": 16,
+  "sample_issues": [],
+  "global_issues": [
+    {
+      "code": "protocol_not_frozen_or_approved",
+      "sample_id": null
+    },
+    {
+      "code": "minimum_samples_not_met",
+      "sample_id": null,
+      "field": "normal",
+      "observed": 9,
+      "required": 100
+    },
+    {
+      "code": "minimum_samples_not_met",
+      "sample_id": null,
+      "field": "obstacle",
+      "observed": 1,
+      "required": 100
+    },
+    {
+      "code": "minimum_samples_not_met",
+      "sample_id": null,
+      "field": "indeterminate",
+      "observed": 1,
+      "required": 30
+    },
+    {
+      "code": "minimum_samples_not_met",
+      "sample_id": null,
+      "field": "wrong_target",
+      "observed": 0,
+      "required": 30
+    },
+    {
+      "code": "minimum_samples_not_met",
+      "sample_id": null,
+      "field": "stability_pairs",
+      "observed": 1,
+      "required": 30
+    },
+    {
+      "code": "coverage_samples_not_met",
+      "sample_id": null,
+      "field": "minimum_calibration_by_label.normal",
+      "observed": 4,
+      "required": 20
+    },
+    {
+      "code": "coverage_samples_not_met",
+      "sample_id": null,
+      "field": "minimum_calibration_by_label.obstacle",
+      "observed": 0,
+      "required": 20
+    },
+    {
+      "code": "coverage_samples_not_met",
+      "sample_id": null,
+      "field": "minimum_calibration_by_label.indeterminate",
+      "observed": 0,
+      "required": 10
+    },
+    {
+      "code": "coverage_samples_not_met",
+      "sample_id": null,
+      "field": "minimum_calibration_by_label.wrong_target",
+      "observed": 0,
+      "required": 10
+    },
+    {
+      "code": "coverage_samples_not_met",
+      "sample_id": null,
+      "field": "minimum_test_by_defect_type.debris",
+      "observed": 1,
+      "required": 30
+    },
+    {
+      "code": "coverage_samples_not_met",
+      "sample_id": null,
+      "field": "minimum_test_by_defect_type.vegetation",
+      "observed": 0,
+      "required": 30
+    },
+    {
+      "code": "coverage_samples_not_met",
+      "sample_id": null,
+      "field": "minimum_test_by_defect_type.other_entity",
+      "observed": 0,
+      "required": 30
+    },
+    {
+      "code": "test_site_concentration_exceeded",
+      "sample_id": null
+    },
+    {
+      "code": "minimum_stability_assets_not_met",
+      "sample_id": null
+    }
+  ],
+  "scope": "Existing sixteen observations only; no new labels, assets, pairs, freeze or model run. Full software QA is separately recorded.",
+  "human_labels_created": 0,
+  "formal_model_calls": 0,
+  "formal_assets_admitted": 0,
+  "formal_pairs_admitted": 0,
+  "wp_p6_01_closed": false
+}

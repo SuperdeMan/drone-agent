@@ -1,0 +1,26 @@
+"""Replace an uncompleted whole assignment without looking at its outcomes. / 整批替换停滞分工。"""
+import hashlib,json
+from datetime import datetime,timezone
+from pathlib import Path
+HERE=Path(__file__).resolve().parent;ROOT=HERE.parent
+folder=ROOT/'verification/bounded_verifier_33'
+assert not (folder/'reviews.json').exists()
+assignment=json.loads((folder/'assignment.json').read_text(encoding='utf-8'));assert len(assignment['samples'])==12
+def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+receipt={'recorded_at_utc':datetime.now(timezone.utc).isoformat(),'worker_id':'bounded_verifier_33','task_name':'/root/bounded_road_verifier_33',
+    'reason':'Whole assignment stalled with9 saved observations, no complete payload, no persisted reviews and no status response after a scoped continuation request. Stop this context and independently redo all12, without selecting from its outcomes.',
+    'agent_status_confirmed_after_interrupt':'interrupted','assignment_sha256':sha(folder/'assignment.json'),
+    'completed_reviews_saved':0,'all_existing_partial_files_preserved':True,'replacement_reviewer':'bounded_verifier_37',
+    'replacement_scope_sample_ids':[r['sample_id'] for r in assignment['samples']],
+    'replacement_receives_old_partial_answers':False,'quality_or_quantity_thresholds_changed':False,
+    'partial_file_bindings':[{'file':str(p),'sha256':sha(p)} for p in folder.glob('*.json')]}
+with (folder/'orchestrator-stopped.json').open('x',encoding='utf-8') as f:json.dump(receipt,f,indent=2)
+plan=json.loads((HERE/'bulk-review-plan-v2.json').read_text(encoding='utf-8'))
+plan['format']='drone.p6-bulk-second-review-plan/v3';plan['supersedes_planning_file_only']='bulk-review-plan-v2.json'
+plan['status']='registered_before_replacement_second_reviewer_launch'
+plan['replacement_reason']=receipt['reason'];plan['original_uncompleted_assignment_preserved']=str(folder/'assignment.json')
+for row in plan['assignments']:
+    if row['reviewer']=='bounded_verifier_33':row['reviewer']='bounded_verifier_37'
+plan['actual_second_reviewer_set']=['bounded_verifier_37','bounded_verifier_34','bounded_verifier_35','bounded_verifier_36']
+with (HERE/'bulk-review-plan-v3.json').open('x',encoding='utf-8') as f:json.dump(plan,f,indent=2)
+print(json.dumps({'replacement_registered_before_launch':True,'old_complete_rows_used':0,'replacement_whole_assignment_rows':12,'old_partial_outputs_preserved':True}))

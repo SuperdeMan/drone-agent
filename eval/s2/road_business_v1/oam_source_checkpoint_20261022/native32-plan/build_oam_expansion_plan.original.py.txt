@@ -1,0 +1,135 @@
+"""Bind verified expansion objects and previously frozen geometry to native windows.
+
+将已核验扩充对象和事先冻结的几何绑定到原生窗口。
+"""
+import argparse
+import hashlib
+import json
+import math
+from datetime import UTC, datetime
+from pathlib import Path
+
+from rasterio import Affine
+from rasterio.warp import transform as warp_transform
+from shapely.geometry import shape
+from shapely.ops import transform
+
+ROOT = Path(__file__).resolve().parent / "oam-expansion-v1"
+PROPOSAL = ROOT / "geometry-proposal.json"
+parser = argparse.ArgumentParser()
+parser.add_argument('--parent', action='append')
+parser.add_argument('--name', default='pilot')
+args = parser.parse_args()
+assert args.name.replace('-', '').isalnum()
+MANIFEST = ROOT / ('source-manifest-' + args.name + '.json')
+
+
+def read(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def sha(path):
+    with path.open("rb") as handle:
+        return hashlib.file_digest(handle, "sha256").hexdigest()
+
+
+def save(path, value):
+    with path.open("x", encoding="utf-8") as handle:
+        json.dump(value, handle, ensure_ascii=False, indent=2)
+
+
+def project(geometry, source, target):
+    def apply(x, y, z=None):
+        scalar = isinstance(x, (float, int))
+        xx, yy = warp_transform(source, target, [x] if scalar else x, [y] if scalar else y)
+        return (xx[0], yy[0]) if scalar else (xx, yy)
+    return transform(apply, geometry)
+
+
+proposal = read(PROPOSAL)
+sources = []
+for binding in proposal["source_bindings"]:
+    ident = binding["id"]
+    if args.parent and ident not in args.parent:
+        continue
+    catalog_file = Path(binding["catalog_file"])
+    catalog = read(catalog_file)["results"]
+    properties = catalog["properties"]
+    receipt_paths = [ROOT / "full-objects" / (ident + ending) for ending in ("-cloud-get-receipt.json", "-curl-get-receipt.json", "-get-receipt.json")]
+    receipt_file = next((path for path in receipt_paths if path.exists() and read(path)["status"] == "downloaded_and_verified"), None)
+    if receipt_file is None:
+        raise RuntimeError("complete object not yet verified: " + ident)
+    receipt = read(receipt_file)
+    object_file = Path(receipt["local_file"])
+    if not object_file.is_absolute():
+        object_file = ROOT.parent.parent / object_file
+    assert sha(object_file) == receipt["local_full_object_sha256"]
+    raster_file = receipt_file.with_name(receipt_file.name.replace("-get-receipt.json", "-raster-metadata.json"))
+    source = {"source_kind": "oam_uav", "catalog_object_id": ident, "catalog_url": "https://api.openaerialmap.org/meta/" + ident,
+        "catalog_file": str(catalog_file), "catalog_sha256": sha(catalog_file), "catalog_record_pointer": "/results",
+        "imagery_url": catalog["uuid"], "expected_object_bytes": catalog["file_size"], "expected_etag": receipt["expected_etag"],
+        "publisher_sha256": None, "object_file": str(object_file), "local_full_object_sha256": receipt["local_full_object_sha256"],
+        "download_receipt_file": str(receipt_file), "download_receipt_sha256": sha(receipt_file), "source_status": "downloaded_and_verified",
+        "platform": catalog["platform"], "sensor": properties["sensor"], "data_license": properties["license"],
+        "author_date_verified": False, "acquisition_start": catalog.get("acquisition_start"), "acquisition_end": catalog.get("acquisition_end"),
+        "native_bands": 3, "native_dtype": "uint8", "native_colorinterp": ["red", "green", "blue"], "native_crs": properties["crs"],
+        "native_dimensions": properties["dimensions"], "mask_method": "dataset_mask", "alignment_method": "georeferencing_only",
+        "osm_snapshot_file": binding["osm_snapshot_file"], "osm_snapshot_sha256": binding["osm_snapshot_sha256"], "business_label": None,
+        "checksum_origin": "locally_computed_full_object", "raster_metadata_file": str(raster_file), "raster_metadata_sha256": sha(raster_file),
+        "author_date_group": None, "repeated_capture_eligible": False}
+    sources.append(source)
+save(MANIFEST, sources)
+parents = {row["catalog_object_id"]: row for row in sources}
+groups = sorted(proposal["groups"], key=lambda row: (row["parent_object_id"], row["selection_rank_hash"]))
+count_by_parent = {}
+items = []
+for group in groups:
+    ident = group["parent_object_id"]
+    if ident not in parents:
+        continue
+    limit = 32 if ident == "6024868fe316a7000568a583" else 1000
+    if count_by_parent.get(ident, 0) >= limit:
+        continue
+    count_by_parent[ident] = count_by_parent.get(ident, 0) + 1
+    source = parents[ident]
+    raster = read(Path(source["raster_metadata_file"]))
+    original = group["world_scope"]
+    assert hashlib.sha256(json.dumps(original, sort_keys=True).encode()).hexdigest() == group["scope_sha256"]
+    coords = original["coordinates"]
+    xx, yy = warp_transform("EPSG:4326", raster["crs"], [p[0] for p in coords], [p[1] for p in coords])
+    inverse = ~Affine(*raster["transform"][:6])
+    pixels = [list(inverse * (x, y)) for x, y in zip(xx, yy)]
+    metric = project(shape(original), "EPSG:4326", "EPSG:" + str(group["utm_epsg"]))
+    context = metric.buffer(25, cap_style="square", join_style="mitre")
+    raster_context = project(context, "EPSG:" + str(group["utm_epsg"]), raster["crs"])
+    boundary = [list(inverse * p) for p in raster_context.exterior.coords]
+    request = [math.floor(min(p[0] for p in boundary)), math.floor(min(p[1] for p in boundary)), math.ceil(max(p[0] for p in boundary)), math.ceil(max(p[1] for p in boundary))]
+    box = [max(0, request[0]), max(0, request[1]), min(raster["width"], request[2]), min(raster["height"], request[3])]
+    width, height = box[2] - box[0], box[3] - box[1]
+    assert width > 0 and height > 0 and width * height <= 60000000
+    assert all(0 <= p[0] <= raster["width"] and 0 <= p[1] <= raster["height"] for p in pixels)
+    scope_hash = hashlib.sha256(json.dumps({"group": group["candidate_group_id"], "polyline": coords}, sort_keys=True).encode()).hexdigest()
+    target = {"freeze_scope_sha256": scope_hash, "frozen_at_utc": group["scope_predeclared_at"],
+        "frozen_before_business_annotation_and_model_output": True, "source_condition_polygons_or_model_outputs_used_for_scope": False,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": original, "world_endpoints_lon_lat": [coords[0], coords[-1]], "utm_epsg": group["utm_epsg"],
+        "utm_polyline_m": [list(p) for p in metric.coords], "length_m": group["scope_length_m"], "input_world_scope_sha256": group["scope_sha256"],
+        "physical_asset_identity_verified": False}
+    items.append({"extraction_item_id": "oam-extract-" + hashlib.sha256((group["candidate_group_id"] + "|" + scope_hash).encode()).hexdigest()[:14],
+        "catalog_object_id": ident, "source_kind": "oam_uav", "asset_group_id": group["candidate_group_id"], "bounded_target_id": "oam-target-" + scope_hash[:16],
+        "role": "single_observation_candidate", "proposed_partition": "unassigned_site_group_" + ident, "target": target,
+        "source_geometry_file": source["osm_snapshot_file"], "source_geometry_sha256": source["osm_snapshot_sha256"],
+        "source_geometry_proposal_file": str(PROPOSAL), "source_geometry_proposal_sha256": sha(PROPOSAL),
+        "osm_way_versions": group["osm_way_versions"], "selection_rank_hash": group["selection_rank_hash"],
+        "parent_sha256": source["local_full_object_sha256"], "object_file": source["object_file"],
+        "raster_metadata_file": source["raster_metadata_file"], "raster_metadata_sha256": source["raster_metadata_sha256"],
+        "native_view": {"mapping": "EPSG:4326 to native CRS then exact inverse raster affine", "alignment_method": "georeferencing_only",
+                        "centerline_pixels": pixels, "target_endpoint_pixels": [pixels[0], pixels[-1]], "requested_unclamped_xyxy": request,
+                        "native_window_xywh": [box[0], box[1], width, height], "context_m": 25.0, "native_pixel_count": width * height,
+                        "read_bands": [1, 2, 3], "mask_method": "dataset_mask", "native_resampling": False, "mask_visibility_verified": False},
+        "author_date_verified": False, "author_date_group": None, "repeated_capture_eligible": False, "business_label": None})
+save(ROOT / ('extraction-plan-' + args.name + '.json'), {"format": "drone.p6-oam-native-extraction-plan/v1", "created_at": datetime.now(UTC).isoformat(),
+    "source_manifest_file": str(MANIFEST), "source_manifest_sha256": sha(MANIFEST), "world_geometry_proposal_file": str(PROPOSAL),
+    "world_geometry_proposal_sha256": sha(PROPOSAL), "world_scopes_preserved_exactly": True, "image_visual_inspections": 0,
+    "source_condition_or_model_output_used": False, "selected_parents": sorted(parents), "pilot_selection": "Within selected parent(s): all Nepal geometric groups, first32 Santolan groups by predeclared stable hash, before image inspection", "items": items})
+print(json.dumps({"parents": len(sources), "pilot_scopes": len(items), "per_parent": count_by_parent, "native_pixels_including_overlap": sum(i["native_view"]["native_pixel_count"] for i in items)}))

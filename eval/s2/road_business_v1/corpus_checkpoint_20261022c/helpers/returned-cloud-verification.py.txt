@@ -1,0 +1,70 @@
+"""Verify returned cloud evidence against local immutable bytes. / 核对云端取回原证据与本地不可变字节。"""
+import hashlib
+import json
+from collections import Counter
+from datetime import datetime, timezone
+from pathlib import Path
+
+FAST = Path(__file__).resolve().parent.parent
+CONTROL = FAST / 'bulk-integrated-audit-cloud-control-v3'
+OUT = FAST / 'bulk-integrated-core-audit-v1'
+CORPUS = FAST / 'bulk-integrated-candidate-corpus-v1'
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def read(path):
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
+control = read(CONTROL / 'result.json')
+report = read(OUT / 'core-audit.json')
+execution = read(OUT / 'execution-receipt.json')
+assert execution == control['actual_execution']
+for item in control['returned_files']:
+    path = Path(item['file'])
+    assert path.is_relative_to(OUT) and sha(path) == item['sha256'] and path.stat().st_size == item['bytes']
+for key, leaf in (('manifest','manifest.json'),('labels','labels.json'),
+    ('protocol','protocol-not-frozen.json'),('exposure','exposure.json')):
+    assert report['input_sha256'][key] == execution['input_sha256'][key] == sha(CORPUS / leaf)
+assert report['tool_sha256'] == execution['frozen_core_files_verified']['p6_business_eval.py']
+assert report['geometry_tool_sha256'] == execution['frozen_core_files_verified']['p6_boundary_drafts.py']
+assert execution['process_exit_code'] == 0 and report['status'] == execution['core_audit_status'] == 'missing'
+assert report['samples'] == report['derived_captures_verified'] == len(execution['sample_issues']) == 16
+assert not any(execution['sample_issues'].values()) and not execution['unassigned_issues']
+assert len(report['issues']) == len(execution['global_issues']) == 15
+assert report['issues'] == execution['global_issues'] and all(v['sample_id'] is None for v in report['issues'])
+assert report['issue_counts'] == dict(Counter(v['code'] for v in report['issues']))
+assert report['stability_pairs'] == len(execution['pair_status']) == 1
+assert all(v['full_core_pair_checks_executed'] and not v['issues_on_either_pair_member'] for v in execution['pair_status'])
+assert execution['primary_observations'] == execution['distinct_primary_assets'] == 15
+assert execution['repeat_observations'] == 1 and report['human_labels_present'] == 0
+assert report['delegated_ai_labels_present'] == 16 and execution['evaluated_model_calls'] == 0
+assert execution['frozen_core_unchanged_after'] and execution['all_bound_input_files_unchanged_after']
+assert sha(FAST / 'bulk-physical-composition-audit-v1.json') == '5a3c733e1575951162289eaa83972f3db6340cec860655f043a26da8d601102e'
+result = {'recorded_at': datetime.now(timezone.utc).isoformat(), 'verification': 'passed',
+    'scope': 'Exact sixteen-observation partial corpus audited once on the original cloud cache with original f132 code; no full D089 or P6 closure.',
+    'candidate_commit': execution['candidate_commit'], 'frozen_core_sha256': execution['frozen_core_files_verified'],
+    'manifest_sha256': sha(CORPUS / 'manifest.json'),
+    'core_report': {'file':str(OUT/'core-audit.json'),'sha256':sha(OUT/'core-audit.json')},
+    'execution_receipt': {'file':str(OUT/'execution-receipt.json'),'sha256':sha(OUT/'execution-receipt.json')},
+    'controller_result': {'file':str(CONTROL/'result.json'),'sha256':sha(CONTROL/'result.json')},
+    'core_process_exit_code': execution['process_exit_code'], 'global_status': report['status'],
+    'individual_source_native_annotation_issues': execution['sample_issues'],
+    'derived_captures_verified': 16, 'pair_count': 1, 'pair_member_issue_count': 0,
+    'actual_primary_label_counts': execution['primary_label_counts'], 'primary_asset_count': 15,
+    'repeat_observation_count': 1, 'actual_primary_site_counts': execution['primary_site_counts'],
+    'all_global_issues_retained': execution['global_issues'], 'formal_data_frozen': False,
+    'raw_cloud_report_and_logs_returned_with_hash_validation': True,
+    'historical_independent_composition_audit_bytes_unchanged': True,
+    'human_labels_created': 0, 'formal_model_calls': 0, 'pixels_viewed_by_agent': False,
+    'formal_assets_admitted': 0, 'wp_p6_01_closed': False}
+path = CONTROL / 'final-verification-v1.json'
+with path.open('x', encoding='utf-8') as handle:
+    json.dump(result, handle, ensure_ascii=False, indent=2)
+print(json.dumps({'verification_file':str(path),'verification_sha256':sha(path),
+    'core_report_sha256':sha(OUT/'core-audit.json'),'execution_receipt_sha256':sha(OUT/'execution-receipt.json'),
+    'controller_result_sha256':sha(CONTROL/'result.json'),'input_manifest_sha256':result['manifest_sha256'],
+    'verified':True,'native_source_samples':16,'case_issues':0,'pair_issues':0,'global_status':'missing','global_issues':15},ensure_ascii=True))

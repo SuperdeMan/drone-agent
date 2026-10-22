@@ -1,0 +1,162 @@
+"""Execute source-only native extraction under the exact new candidate. / 在准确新候选下执行原生来源核验。"""
+import hashlib,json,os,pathlib,runpy,stat,subprocess,tarfile
+from datetime import datetime,timezone
+R=REQUEST
+COMMIT='4800ea0726acbd3054e07f31abf3e8b44b94f0f4'
+task=pathlib.Path(R['task_root']);data=task.parent;job=pathlib.Path(R['job_directory']);control=pathlib.Path(R['control_directory']);prepared_directory=pathlib.Path(R['prepared_directory'])
+frozen=pathlib.Path(R['frozen_directory'])
+assert str(task)=='/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018'
+assert R['candidate_commit']==COMMIT and job==task/'resume-20261022-fast/conditional-parts-native32-v1' and job.resolve()==job and not job.exists()
+assert control==task/'resume-20261022-fast/conditional-parts-native32-control-v1' and prepared_directory==task/'resume-20261022-fast/conditional-parts-native32-preparation-v1'
+assert frozen==task/'software-audit-4800ea0-20261022'
+job.mkdir(exist_ok=False)
+now=lambda:datetime.now(timezone.utc).isoformat()
+def sha(p):
+ with pathlib.Path(p).open('rb') as h:return hashlib.file_digest(h,'sha256').hexdigest()
+def save(p,x):
+ with pathlib.Path(p).open('x',encoding='ascii') as h:json.dump(x,h,indent=2,ensure_ascii=True,allow_nan=False);h.write('\n');h.flush();os.fsync(h.fileno())
+def read(p):return json.loads(pathlib.Path(p).read_text())
+def contained(p):
+ p=pathlib.Path(p);assert p.is_absolute() and p.resolve()==p and p.is_relative_to(task) and not p.is_symlink();return p
+def rel(p):return contained(p).relative_to(data).as_posix()
+def snapshot(p):
+ s=p.stat();return {'bytes':s.st_size,'sha256':sha(p),'device':s.st_dev,'inode':s.st_ino,'mode':s.st_mode,'uid':s.st_uid,'gid':s.st_gid,'mtime_ns':s.st_mtime_ns,'ctime_ns':s.st_ctime_ns}
+def resources():
+ import shutil
+ ram=next(int(x.split()[1])*1024 for x in pathlib.Path('/proc/meminfo').read_text().splitlines() if x.startswith('MemAvailable:'));d=shutil.disk_usage(task)
+ return {'memory_available_bytes':ram,'free_disk_bytes':d.free,'ram_minimum_bytes':3*1024**3,'disk_minimum_bytes':8*1024**3,'sufficient':ram>=3*1024**3 and d.free>=8*1024**3,'observed_at_utc':now()}
+progress=(job/'progress.jsonl').open('x',encoding='ascii')
+def event(phase,**fields):
+ progress.write(json.dumps({'phase':phase,'recorded_at_utc':now(),**fields})+'\n');progress.flush();os.fsync(progress.fileno())
+result={'format':'drone.p6-conditional-parts-native32-result/v1','status':'running','candidate_commit':COMMIT,'started_at_utc':now(),'checked':0,'passed':0,'expected':32,'rows':[],'commands':[],'frozen_sha256':R['frozen_core_sha256'],'source_only_verified':False,'formal_source_admitted':False,'images_visually_viewed':0,'business_labels_created':0,'formal_assets_admitted':0,'site_independence_admitted':False,'repeated_capture_eligible':False,'formal_model_calls':0,'main_grouping_registry_modified':False,'runtime_services_or_env_files_modified':False,'wp_p6_01_closed':False,'software_full_qa_status':'parent_owned_not_asserted_here','temporary_capture_inventory_development_exposed':True}
+save(job/'runtime-request.json',R)
+with (job/'controller-runtime.py').open('xb') as h:h.write(RUNTIME_SOURCE)
+assert sha(job/'controller-runtime.py')==R['runtime_sha256']
+provenance=job/'provenance';provenance.mkdir()
+try:
+ event('verify_frozen_core')
+ assert all(sha(frozen/k)==v for k,v in R['frozen_core_sha256'].items())
+ core_binding=read(frozen/'candidate-binding.json');assert core_binding['candidate_commit']==COMMIT and core_binding['core_sha256']==R['frozen_core_sha256']
+ save(job/'actual-frozen-core-verification.json',{'candidate_commit':COMMIT,'core_sha256':{k:sha(frozen/k) for k in R['frozen_core_sha256']},'old_f132_modified':False,'recorded_at_utc':now()})
+ before=resources();save(job/'resource-preflight.json',before);assert before['sufficient']
+ preflight=read(control/'upload-preflight.json')
+ archive=contained(R['metadata_archive_path']);assert archive.parent==control and archive.stat().st_size==R['metadata_archive_bytes'] and sha(archive)==R['metadata_archive_sha256']
+ event('install_bound_metadata')
+ with tarfile.open(archive,'r:') as bundle:
+  members=bundle.getmembers();assert len(members)==len(R['metadata_bindings']) and len({m.name for m in members})==len(members)
+  for member in members:
+   assert member.isfile() and member.name in R['metadata_bindings'] and '..' not in pathlib.PurePosixPath(member.name).parts
+   assert not member.name.lower().endswith(('.tif','.tiff','.bin','.jpg','.jpeg','.png'))
+   target=contained(data/member.name);raw=bundle.extractfile(member).read();expected=R['metadata_bindings'][member.name]
+   assert len(raw)==expected['bytes'] and hashlib.sha256(raw).hexdigest()==expected['sha256']
+   target.parent.mkdir(parents=True,exist_ok=True);contained(target.parent)
+   if target.exists():assert target.is_file() and stat.S_ISREG(target.lstat().st_mode) and sha(target)==expected['sha256'],'Existing metadata differs; do not overwrite'
+   else:
+    with target.open('xb') as h:h.write(raw)
+ for name,expected in R['body_bindings'].items():
+  p=contained(data/name);assert p.is_file() and stat.S_ISREG(p.lstat().st_mode) and p.stat().st_size==expected['bytes'] and sha(p)==expected['sha256']
+ event('verify_uploaded_body_parts',body_files=len(R['body_bindings']))
+ C=runpy.run_path(str(frozen/'p6_business_eval.py'));G=runpy.run_path(str(frozen/'p6_oam_capture.py'));resolve=lambda p:contained(C['rooted'](data,p))
+ candidate=read(resolve(R['source_candidate_file']));assert sha(resolve(R['source_candidate_file']))==R['source_candidate_sha256']
+ recipe=read(resolve(candidate['download_receipt_file']));assert sha(resolve(candidate['download_receipt_file']))==candidate['download_receipt_sha256']==R['source_recipe_sha256']
+ assert recipe['format']=='drone.p6-oam-conditional-parts-http/v1' and recipe['status']=='assembled_and_verified' and len(recipe['parts'])==50
+ body=resolve(candidate['object_file']);assert str(body)==R['parent_remote_path'] and not body.exists()
+ assert recipe['local_file']==candidate['object_file'] and recipe['local_full_object_sha256']==R['parent_sha256']=='1127710341b5b785dd151e7e3fa8de9c0ab1cc3dc9f7f8b4df0acdee767be4c5'
+ body.parent.mkdir(parents=True,exist_ok=True);contained(body.parent)
+ event('assemble_new_full_parent')
+ written=0
+ with body.open('x+b') as assembled:
+  for part in sorted(recipe['parts'],key=lambda p:(p['offset'],p['body_bytes'])):
+   offset,length=part['offset'],part['body_bytes'];assert type(offset)is int and type(length)is int and 0<=offset<=written and length>0 and offset+length<=253851020
+   piece=resolve(part['body_file']);assert piece.stat().st_size==length and sha(piece)==part['body_sha256']
+   overlap=min(length,written-offset)
+   with piece.open('rb') as source_part:
+    assembled.seek(offset);left=overlap
+    while left:
+     block=source_part.read(min(1048576,left));assert block and block==assembled.read(len(block));left-=len(block)
+    assembled.seek(written);remaining=length-overlap
+    while remaining:
+     block=source_part.read(min(1048576,remaining));assert block;assembled.write(block);written+=len(block);remaining-=len(block)
+  assembled.flush();os.fsync(assembled.fileno())
+ assert written==body.stat().st_size==253851020 and sha(body)==R['parent_sha256']
+ G['verify_source'](candidate,data,{}, {'read_bound':C['bound_evidence'],'file_bound':C['derived_file'],'timestamp':C['timestamp']})
+ save(job/'parent-assembly-and-source-verification.json',{'candidate_commit':COMMIT,'status':'passed','parent_file':str(body),'parent_target_was_absent':True,'parent_open_mode':'x+b exclusive create','body_bytes':body.stat().st_size,'sha256':sha(body),'incomplete200_prefixes':sum(p['kind']=='incomplete_200_prefix' for p in recipe['parts']),'complete206_parts':sum(p['kind']=='complete_206' for p in recipe['parts']),'recipe_file':str(resolve(candidate['download_receipt_file'])),'recipe_sha256':R['source_recipe_sha256'],'source_only_verification_passed':True,'raw_http_evidence_rewritten':False,'new_http_requests':0,'recorded_at_utc':now()})
+ event('source_only_verified')
+ original_plan=read(resolve(R['local_plan_file']));assert sha(resolve(R['local_plan_file']))==R['local_plan_sha256'] and len(original_plan['items'])==32
+ purpose_path=resolve(original_plan['purpose_reservation_file']);purpose=read(purpose_path);assert sha(purpose_path)==R['purpose_sha256']==original_plan['purpose_reservation_sha256']
+ assert purpose['planned_whole_site_partition']=='calibration_candidate' and original_plan['planned_whole_site_partition']=='calibration_candidate'
+ assert [i['asset_group_id'] for i in original_plan['items']]==purpose['registered_pilot32_primary_candidate_groups']
+ assert all(i['proposed_partition']=='calibration_candidate' and i['target']['physical_asset_identity_verified'] is False for i in original_plan['items'])
+ original_sources=read(resolve(original_plan['source_manifest_file']));assert len(original_sources)==1 and sha(resolve(original_plan['source_manifest_file']))==original_plan['source_manifest_sha256']
+ G['verify_source'](original_sources[0],data,{}, {'read_bound':C['bound_evidence'],'file_bound':C['derived_file'],'timestamp':C['timestamp']});result['source_only_verified']=True
+ sources=[]
+ for source in original_sources:
+  s=dict(source)
+  for key in ('catalog_file','object_file','download_receipt_file','raster_metadata_file','osm_snapshot_file'):s[key]=str(resolve(s[key]))
+  sources.append(s)
+ manifest=job/'source-manifest.json';save(manifest,sources)
+ plan=json.loads(json.dumps(original_plan));plan['source_manifest_file']=str(manifest);plan['source_manifest_sha256']=sha(manifest);plan['world_geometry_proposal_file']=str(resolve(plan['world_geometry_proposal_file']));plan['purpose_reservation_file']=str(purpose_path)
+ for item in plan['items']:
+  for key in ('object_file','raster_metadata_file','source_geometry_file','source_geometry_proposal_file'):item[key]=str(resolve(item[key]))
+ assert [i['target'] for i in plan['items']]==[i['target'] for i in original_plan['items']] and [i['native_view'] for i in plan['items']]==[i['native_view'] for i in original_plan['items']]
+ source_plan=job/'source-plan.json';save(source_plan,plan)
+ save(job/'portable-path-normalization.json',{'input_plan_file':str(resolve(R['local_plan_file'])),'input_plan_sha256':R['local_plan_sha256'],'output_plan_file':str(source_plan),'output_plan_sha256':sha(source_plan),'raw_http_request_response_receipt_bytes_changed':False,'world_targets_changed':False,'native_windows_changed':False,'group_ids_or_selection_changed':False,'partition':'calibration_candidate','source_manifest_paths_normalized_and_rebound':True,'purpose_sha256':R['purpose_sha256']})
+ tool=resolve(R['extractor_file']);assert sha(tool)==R['extractor_sha256']=='0f85aa5ff710c90a7679e2509631c7e2934096bf7c0ddf4dd70343b5081373ec'
+ wrapper=job/'invoke-extractor.py'
+ wrapper_text="import runpy,sys\nimport rasterio\ntool=sys.argv[1];sys.argv=sys.argv[1:]\nwith rasterio.Env(GDAL_CACHEMAX=134217728,GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',GDAL_PAM_ENABLED='NO'):\n runpy.run_path(tool,run_name='__main__')\n"
+ with wrapper.open('x',encoding='ascii') as h:h.write(wrapper_text)
+ python=R['data_python']
+ for name,replay in [('frames',False),('replay',True)]:
+  event('native_'+name+'_started')
+  command=[python,'-B','-u',str(wrapper),str(tool),'--source-plan',str(source_plan),'--output',str(job/name)]
+  if replay:command+=['--replay-of',str(job/'frames')]
+  started=now()
+  with (job/(name+'-stdout.log')).open('xb') as out,(job/(name+'-stderr.log')).open('xb') as err:child=subprocess.run(command,cwd=data,stdout=out,stderr=err)
+  command_receipt={'name':name,'command':command,'returncode':child.returncode,'started_at_utc':started,'finished_at_utc':now(),'extractor_sha256':sha(tool),'os_environment_or_env_files_modified':False,'gdal_configuration_scope':'rasterio.Env inside this extraction subprocess only'};result['commands'].append(command_receipt);save(job/(name+'-execution.json'),command_receipt);assert child.returncode==0,'Native extraction/replay failed; original logs retained'
+  summary=read(job/name/'result.json');assert summary['expected']==summary['extracted']==32 and summary['failed']==0
+  if replay:assert summary['replay_count']==summary['replay_matched']==32
+ policy={'mode':'traceable_oam_uav_orthomosaic','source_inventory_sha256':sha(manifest),'extractor_sha256':sha(tool),'claim_raw_camera_frames':False,'synthetic_scene_content_allowed':False,'repeated_capture_eligible':False}
+ receipts=sorted((job/'frames/receipts').glob('*.json'));assert len(receipts)==32
+ original_targets={i['extraction_item_id']:i['target'] for i in original_plan['items']};proposal=read(resolve(original_plan['world_geometry_proposal_file']));groups={g['candidate_group_id']:g for g in proposal['groups']}
+ captures=[];samples=[]
+ for p in receipts:
+  r=read(p);assert r['status']=='extracted' and r['world_scope']==original_targets[r['sample_id']]
+  bound={'format':'drone.p6-oam-derived-capture-binding/v1'}
+  for key,path in [('source_inventory',manifest),('extraction',p),('extraction_plan',job/'frames/plan.json'),('replay',job/'replay/replay-proofs'/p.name)]:bound[key+'_file']=rel(path);bound[key+'_sha256']=sha(path)
+  save(provenance/(r['sample_id']+'-binding.json'),bound)
+  observed={'asset_id':r['asset_group_id'],'site_id':groups[r['asset_group_id']]['site_group_id'],'capture_batch_id':'publisher-object-'+r['catalog_object_id'],'near_duplicate_group':r['asset_group_id'],'development_exposed':True}
+  capture={'source_observation_id':r['sample_id'],'source_id':'oam_uav','image_sha256':r['image_sha256'],'catalog_object_id':r['catalog_object_id'],'parent_sha256':r['parent_sha256'],'author_date_group':None,'author_date_verified':False,'repeated_capture_eligible':False,'observed':observed,'derivation_sha256':C['canonical_digest'](bound)};captures.append(capture)
+  samples.append({'sample_id':r['sample_id'],'source_id':'oam_uav','image_file':rel(pathlib.Path(r['image_file'])),'image_sha256':r['image_sha256'],'width':r['width'],'height':r['height'],'asset_id':r['asset_group_id'],'media_origin':'real_capture_derivative','captured_at':None,'observed':observed,'derivation':bound,'capture_record':{k:capture[k] for k in ['source_observation_id','parent_sha256','author_date_group','author_date_verified']},'planned_partition':'calibration_candidate','grouping_verified':False,'physical_asset_identity_verified':False,'formal_release_eligible':False})
+ inventory=provenance/'unverified-grouping-capture-inventory.json';save(inventory,{'format':'drone.p6-derived-capture-inventory/v1','rows':captures})
+ for sample in samples:sample['capture_record'].update(inventory_file=rel(inventory),inventory_sha256=sha(inventory))
+ save(provenance/'samples-provenance-only.json',{'samples':samples,'planned_whole_site_partition':'calibration_candidate','purpose_sha256':R['purpose_sha256'],'grouping_verified':False,'formal_release_eligible':False});save(provenance/'protocol-provenance-only.json',{'oam_capture_policy':policy})
+ cache={};checks=[];scope_before=C['timestamp'](purpose['recorded_at_utc'])
+ event('extract_and_replay_completed_begin_actual_native_source_checks')
+ for sample in samples:
+  try:C['derived_capture'](sample,{'oam_capture_policy':policy},data,cache,scope_before=scope_before);checks.append({'sample_id':sample['sample_id'],'source_chain_verified':True})
+  except Exception as exc:checks.append({'sample_id':sample['sample_id'],'source_chain_verified':False,'error_type':type(exc).__name__,'error_message':str(exc)})
+ result.update(status='passed' if len(checks)==32 and all(x['source_chain_verified'] for x in checks) else 'failed',checked=len(checks),passed=sum(x['source_chain_verified'] for x in checks),rows=checks,expected_geometric_groups=purpose['registered_pilot32_primary_candidate_groups'],world_scopes_preserved_exactly=True,planned_whole_site_partition='calibration_candidate',extractor_sha256=sha(tool),source_manifest_sha256=sha(manifest),source_plan_sha256=sha(source_plan),purpose_sha256=R['purpose_sha256'],source_gate_function='frozen_f132.p6_business_eval.derived_capture',actual_native_pixels_and_independent_replay_verified=len(checks)==32 and all(x['source_chain_verified'] for x in checks))
+ event('final_exact_input_and_core_checks')
+ for name,expected in {**R['metadata_bindings'],**R['body_bindings'],**R['core_bindings']}.items():
+  p=contained(data/name);assert p.stat().st_size==expected['bytes'] and sha(p)==expected['sha256']
+ for name,state in preflight['existing_input_snapshots'].items():assert snapshot(contained(data/name))==state,'Previously existing input changed'
+ for name,state in preflight['old_f132_snapshot'].items():assert snapshot(contained(data/name))==state,'Old f132 changed'
+ assert sha(body)==R['parent_sha256']
+ save(job/'final-input-and-frozen-checks.json',{'passed':True,'candidate_commit':COMMIT,'metadata_files':len(R['metadata_bindings']),'body_files':len(R['body_bindings']),'source_composition_parts':50,'frozen_core_sha256':{n:sha(frozen/n) for n in R['frozen_core_sha256']},'previously_existing_inputs_unchanged':True,'old_f132_unchanged':True,'new_parent_sha256':sha(body),'recorded_at_utc':now()})
+except Exception as exc:
+ result.update(status='failed',error_type=type(exc).__name__,error_message=str(exc));event('failed',error_type=type(exc).__name__,error_message=str(exc))
+result['finished_at_utc']=now();result['resource_after']=resources();result['scope']='Exact typed conditional source bytes, newly determined original-algorithm native windows and independent offline replay only; no visual/business truth, physical identity, site independence or repeat admission.'
+result['failed']=result['expected']-result['passed']
+save(provenance/'result.json',result)
+event('finished',status=result['status'],checked=result['checked'],passed=result['passed'])
+progress.close()
+exports=[p for p in job.rglob('*') if p.is_file()];assert all(not p.is_symlink() and p.resolve().is_relative_to(job) for p in exports)
+bindings={rel(p):{'bytes':p.stat().st_size,'sha256':sha(p)} for p in exports};save(job/'result-file-bindings.json',bindings)
+bindings[rel(job/'result-file-bindings.json')]={'bytes':(job/'result-file-bindings.json').stat().st_size,'sha256':sha(job/'result-file-bindings.json')}
+control_files=[p for p in control.iterdir() if p.is_file() and p.suffix=='.json']
+control_bindings={p.name:{'bytes':p.stat().st_size,'sha256':sha(p)} for p in control_files}
+created={contained(data/n) for n in preflight['initially_absent_inputs'] if (data/n).is_file()}
+created.update(p for p in job.rglob('*') if p.is_file());created.update(p for p in control.rglob('*') if p.is_file())
+if pathlib.Path(R['parent_remote_path']).exists():created.add(contained(R['parent_remote_path']))
+space={'new_regular_files':len(created),'new_logical_bytes':sum(p.stat().st_size for p in created),'new_allocated_bytes':sum(p.stat().st_blocks*512 for p in created),'scope':'Regular files created by this job only; directory metadata not included. Disk free delta may include concurrent unrelated activity.','parent_and_part_files_both_preserved':True}
+print(json.dumps({'result':result,'job_directory':str(job),'bindings':bindings,'control_bindings':control_bindings,'new_directory_space':space,'full_tif_in_input_tar':False,'output_tar_created':False}))

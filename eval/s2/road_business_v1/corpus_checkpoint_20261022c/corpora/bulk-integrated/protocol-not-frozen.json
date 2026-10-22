@@ -1,0 +1,123 @@
+{
+  "format": "drone.p6-road-protocol/v1",
+  "corpus_id": "p6-road-business-v1",
+  "status": "targets_approved_data_pending",
+  "approval_reference": "User reply on 2026-10-15: \u91c7\u7528\u8fd9\u7248\u76ee\u6807\uff0c\u7ee7\u7eed\u8865\u9f50\u6570\u636e",
+  "proposal_date": "2026-10-15",
+  "proposal_document": "docs/p6-business-evaluation.md",
+  "decision_scope": "approved delegated-AI-reviewed road-candidate S2 acceptance; corpus and formal run pending; human review efficiency and field clearance effects remain unverified outside this gate",
+  "reviewer_assignment": {
+    "role": "delegated_independent_ai_reviewer",
+    "source": "User 2026-10-18: \u4e0d\u7528\u771f\u4eba\u9010\u5f20\u590d\u6838\uff0c\u4f60\u7684\u590d\u6838\u53ef\u4ee5\u4ee3\u8868\u4eba\u7c7b",
+    "reviewer_id": null
+  },
+  "minimum_object_size": null,
+  "minimum_occupancy_ratio": null,
+  "defect_types": [
+    "debris",
+    "vegetation",
+    "other_entity"
+  ],
+  "minimum_samples": {
+    "normal": 100,
+    "obstacle": 100,
+    "indeterminate": 30,
+    "wrong_target": 30,
+    "stability_pairs": 30,
+    "sites": 3
+  },
+  "thresholds": {
+    "false_alerts_per_100_normal_max": 5,
+    "typed_miss_rate_max": 0.2,
+    "determinable_coverage_min": 0.9,
+    "false_normal_on_refusable_max": 0,
+    "stable_and_covered_min": 0.9,
+    "review_p95_ms_max": 120000
+  },
+  "additional_requirements": {
+    "minimum_calibration_by_label": {
+      "normal": 20,
+      "obstacle": 20,
+      "indeterminate": 10,
+      "wrong_target": 10
+    },
+    "minimum_test_by_defect_type": {
+      "debris": 30,
+      "vegetation": 30,
+      "other_entity": 30
+    },
+    "maximum_test_site_fraction": 0.5,
+    "minimum_stability_assets": 15,
+    "minimum_timed_reviews": 30,
+    "required_review_coverage": 1
+  },
+  "statistical_rule": "thresholds apply to observed proportions; report Wilson two-sided 95 percent intervals without treating them as certified population bounds",
+  "formal_test_runs": 1,
+  "clearance_effect_evidence": "not_verified_outside_this_gate; D089 scope clarification 2026-10-15 and AI delegation 2026-10-18; model-quality, independence and repeat-capture requirements retained",
+  "primary_unit": "one primary observation per known asset in each split; repeat captures only enter stability",
+  "metric_scope": "observation-level scene and typed misses, not object-instance recall",
+  "human_timing_phase": "candidate_review",
+  "annotation_time_is_candidate_review_time": false,
+  "unknown_is_normal": false,
+  "all_refused_is_stability_success": false,
+  "formal_release_eligible": false,
+  "scope": {
+    "mode": "delegated_ai_reviewed_road_candidate_s2",
+    "approval_reference": "User 2026-10-18: \u4e0d\u7528\u771f\u4eba\u9010\u5f20\u590d\u6838\uff0c\u4f60\u7684\u590d\u6838\u53ef\u4ee5\u4ee3\u8868\u4eba\u7c7b; separate timing reply: \u79fb\u81f3\u540e\u7eed\u8fd0\u8425\u9a8c\u8bc1\uff0c\u7ee7\u7eed\u5b8c\u6210\u672c\u6b21\u9a8c\u6536",
+    "real_clearance_effect_required": false,
+    "real_clearance_effect_status": "not_verified_outside_this_gate",
+    "hardware_or_field_operation_claimed": false,
+    "independent_human_truth_claimed": false,
+    "human_review_efficiency_status": "not_verified_deferred_to_operations"
+  },
+  "annotation_policy": {
+    "mode": "independent_ai_verified_reference",
+    "approval_reference": "User 2026-10-18: \u4e0d\u7528\u771f\u4eba\u9010\u5f20\u590d\u6838\uff0c\u4f60\u7684\u590d\u6838\u53ef\u4ee5\u4ee3\u8868\u4eba\u7c7b",
+    "independent_context_sha256": "414d58d8f0e6bb7d28a77503080cf2d657ca1683ceae4b7d5799a37156487255",
+    "evaluated_provider_id": "minimax-vl",
+    "evaluated_model": "MiniMax-M3.1-Flash-Preview",
+    "human_adjudication_required": false,
+    "evaluated_model_outputs_must_be_unseen": true,
+    "report_assisted_truth_separately": true,
+    "all_other_requirements_unchanged": false,
+    "context_extension_reference": "p6-ai-annotation-20261016/{reassignment,fresh-context-reassignment,suffix-reassignment}.json; original registrations retained; formal assembly binds cumulative context-v4 and retains prior receipts",
+    "delegated_ai_adjudication_approved": true,
+    "verification_context_sha256": "ada00789f9c92c92a5fab1816100901653d1660b7a04d5beb184935a9836d058",
+    "reference_claim": "AI-reviewed reference labels; no independent human ground truth",
+    "unchanged_requirements": "all model-quality, asset count, site isolation, real repeat capture and exposure requirements; only label adjudication method and human timing scope amended",
+    "pair_context_sha256": "11e68f0ccc755428aed7ef6778bceed5d30b463c6eebfdf3065f5732107af81f"
+  },
+  "review_timing_policy": {
+    "mode": "deferred_to_operations",
+    "approval_reference": "User 2026-10-18: \u79fb\u81f3\u540e\u7eed\u8fd0\u8425\u9a8c\u8bc1\uff0c\u7ee7\u7eed\u5b8c\u6210\u672c\u6b21\u9a8c\u6536",
+    "human_efficiency_verified": false,
+    "retained_targets": [
+      "review_p95_ms_max",
+      "minimum_timed_reviews",
+      "required_review_coverage"
+    ]
+  },
+  "target_boundary_policy": {
+    "mode": "main_road_continuous_width_at_openings",
+    "status": "approved_before_formal_test",
+    "approval_reference": "user-reply-2026-10-21-main-road-continuous-width",
+    "recorded_at": "2026-10-21T15:58:06.606843+00:00",
+    "user_selected_answer": "\u91c7\u7528\u4e3b\u8def\u8fde\u7eed\u5bbd\u5ea6\u53e3\u5f84\uff08\u5efa\u8bae\uff09",
+    "rule": "Use the visible main-road edges on both sides of an entrance, side road or forecourt to continue the main-road width; do not include the whole connected forecourt.",
+    "rule_zh": "\u6309\u63a5\u5165\u53e3\u4e24\u4fa7\u53ef\u8fa8\u8ba4\u7684\u4e3b\u8def\u8fb9\u7f18\u53ca\u4e3b\u8def\u8fde\u7eed\u5bbd\u5ea6\u754c\u5b9a\u4e3b\u8def\uff0c\u4e0d\u81ea\u52a8\u628a\u6574\u7247\u8fde\u901a\u524d\u573a\u7eb3\u5165\u3002",
+    "visible_edges_on_both_sides_required": true,
+    "unknown_boundaries_under_canopy_or_shadow_remain_indeterminate": true,
+    "frozen_world_endpoints_must_remain_unchanged": true,
+    "no_entity_size_or_occupancy_threshold": true,
+    "independent_visual_reverification_required": true,
+    "existing_labels_automatically_changed": false
+  },
+  "derived_capture_policy": {
+    "mode": "traceable_uas_orthomosaic",
+    "source_inventory_sha256": "0748c9f6431ba07f573bb9c75f8b904cb902ef47d059dd65d31bbea6ff6671ba",
+    "extractor_sha256": "0f2b8f017e61220051752a24b5cc54d4b41903ff247f95c756f74078df9bfed2",
+    "range_tool_sha256": "58e32a50f87b73cb610460db083f44bc97bfee4b0b0a237ac50d66a6b543965c",
+    "claim_raw_camera_frames": false,
+    "synthetic_scene_content_allowed": false
+  }
+}
