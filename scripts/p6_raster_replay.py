@@ -13,6 +13,7 @@ from pathlib import Path
 MAX_WINDOW_PIXELS = 60_000_000
 MAX_READ_BYTES = 256 * 1024 * 1024
 MAX_BLOCK_CACHE_BYTES = 64 * 1024 * 1024
+_FULL_RASTER_CHUNK_BYTES = 4 * 1024 * 1024
 # Absolute data roots under which evidence paths were recorded (local workstation, cloud audit host).
 # 证据路径被记录时使用的绝对数据根（本机、云端核验主机）。
 RECORDED_DATA_ROOTS = ("D:/drone-agent-data/", "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/")
@@ -93,23 +94,7 @@ class RangeFile(io.RawIOBase):
         chunks, remaining = [], size
         while remaining:
             start = self.position // self.source.block_bytes * self.source.block_bytes
-            if start not in self.source.rows:
-                self.source.missing.add(start)
-                raise OSError(f"required local TIFF block is missing: {start}")
-            row = self.source.rows[start]
-            path = rooted(self.source.root, row["file"])
-            if not path.is_relative_to(self.source.root) or ".." in Path(portable(row["file"])).parts:
-                raise OSError("TIFF block is outside data root")
-            cache_key = (str(path), row["sha256"])
-            block = self.source.blocks.pop(cache_key, None)
-            if block is None:
-                block = path.read_bytes()
-                if len(block) != row["range"][1] - start + 1 or hashlib.sha256(block).hexdigest() != row["sha256"]:
-                    raise OSError("TIFF block changed after provenance verification")
-            if len(block) <= MAX_BLOCK_CACHE_BYTES:
-                self.source.blocks[cache_key] = block
-                while sum(map(len, self.source.blocks.values())) > MAX_BLOCK_CACHE_BYTES:
-                    self.source.blocks.popitem(last=False)
+            block = self._block(start)
             offset = self.position - start
             count = min(remaining, len(block) - offset)
             if count <= 0:
@@ -118,6 +103,31 @@ class RangeFile(io.RawIOBase):
             self.position += count
             remaining -= count
         return b"".join(chunks)
+
+    def _block(self, start):
+        """Verify one complete recorded range file. / 验证一份完整的已记录范围文件。"""
+        if start not in self.source.rows:
+            self.source.missing.add(start)
+            raise OSError(f"required local TIFF block is missing: {start}")
+        row = self.source.rows[start]
+        path = rooted(self.source.root, row["file"])
+        if not path.is_relative_to(self.source.root) or ".." in Path(portable(row["file"])).parts:
+            raise OSError("TIFF block is outside data root")
+        cache_key = (str(path), row["sha256"])
+        block = self.source.blocks.pop(cache_key, None)
+        if block is None:
+            block = path.read_bytes()
+            if len(block) != row["range"][1] - start + 1 or hashlib.sha256(block).hexdigest() != row["sha256"]:
+                raise OSError("TIFF block changed after provenance verification")
+        return self._cache_block(cache_key, block)
+
+    def _cache_block(self, cache_key, block):
+        """Keep the shared least-recently-used byte budget. / 保持共享的最近最少使用字节预算。"""
+        if len(block) <= MAX_BLOCK_CACHE_BYTES:
+            self.source.blocks[cache_key] = block
+            while sum(map(len, self.source.blocks.values())) > MAX_BLOCK_CACHE_BYTES:
+                self.source.blocks.popitem(last=False)
+        return block
 
     def readinto(self, buffer):
         """Fill a caller buffer from local bytes. / 用本地字节填充调用者缓冲。"""
@@ -131,6 +141,8 @@ class LocalRaster:
 
 只向 GDAL 提供一个 TIFF 名称，不回退到附属文件或 URL。
 """
+
+    _reader = RangeFile
 
     def __init__(self, manifest, root, cache):
         self.size = manifest["source"]["imagery_published_bytes"]
@@ -146,10 +158,73 @@ class LocalRaster:
         """Refuse everything except this read-only virtual TIFF. / 拒绝只读虚拟 TIFF 以外的一切请求。"""
         if str(path) != self.name or mode not in {"r", "rb"}:
             raise FileNotFoundError("only the bound local TIFF is available")
-        return RangeFile(self, gdal_callback=True)
+        return self._reader(self, gdal_callback=True)
 
 
-def verify_window(receipt: dict, manifest: dict, data_root: Path, cache: dict, manifest_sha256: str, *, expected_bands: int = 4) -> None:
+class _FullRangeFile(RangeFile):
+    """Read private chunks bound to a verified complete parent digest.
+
+读取已绑定到完整父文件验证摘要的私有块。
+"""
+
+    def _block(self, start):
+        """Seek only to a verified private chunk, never a manifest-provided offset.
+
+只定位到已验证的私有块，不采用清单提供的文件偏移。
+"""
+        if start not in self.source._chunk_sha256:
+            self.source.missing.add(start)
+            raise OSError(f"required local TIFF block is missing: {start}")
+        path = self.source.parent.resolve()
+        if not path.is_relative_to(self.source.root):
+            raise OSError("full raster is outside the data root")
+        count = min(self.source.block_bytes, self.source.size - start)
+        digest = self.source._chunk_sha256[start]
+        cache_key = ("p6_full_tiff_chunk", str(path), self.source.parent_sha256, start, count, digest)
+        block = self.source.blocks.pop(cache_key, None)
+        if block is None:
+            with path.open("rb") as stream:
+                stream.seek(start)
+                block = stream.read(count)
+            if len(block) != count or hashlib.sha256(block).hexdigest() != digest:
+                raise OSError("TIFF block changed after provenance verification")
+        return self._cache_block(cache_key, block)
+
+
+class _FullRaster(LocalRaster):
+    """Build a private chunk index only while verifying the complete local parent.
+
+只在验证完整本地父文件时建立私有分块索引。
+"""
+
+    _reader = _FullRangeFile
+
+    def __init__(self, parent, parent_sha256, data_root, cache):
+        self.parent, self.parent_sha256 = parent.resolve(), parent_sha256
+        root = data_root.resolve()
+        if not self.parent.is_relative_to(root):
+            raise ValueError("full raster is outside the data root")
+        size = self.parent.stat().st_size
+        if not 0 < size <= MAX_READ_BYTES:
+            raise ValueError("full-object raster exceeds the bounded source allowance")
+        super().__init__({"source": {"imagery_published_bytes": size}, "block_bytes": _FULL_RASTER_CHUNK_BYTES, "ranges": []}, root, cache)
+        self._chunk_sha256 = {}
+        digest = hashlib.sha256()
+        with self.parent.open("rb") as stream:
+            for start in range(0, size, self.block_bytes):
+                count = min(self.block_bytes, size - start)
+                block = stream.read(count)
+                if len(block) != count:
+                    raise ValueError("full raster changed after provenance verification")
+                digest.update(block)
+                self._chunk_sha256[start] = hashlib.sha256(block).hexdigest()
+            if stream.read(1):
+                raise ValueError("full raster changed after provenance verification")
+        if digest.hexdigest() != parent_sha256:
+            raise ValueError("full raster changed after provenance verification")
+
+
+def verify_window(receipt: dict, manifest: dict | _FullRaster, data_root: Path, cache: dict, manifest_sha256: str, *, expected_bands: int = 4) -> None:
     """Decode real source bytes and recompute native RGB, JPEG and alpha digests.
 
 解码实际源字节并重算原生 RGB、JPEG 与 alpha 摘要。
@@ -170,7 +245,7 @@ def verify_window(receipt: dict, manifest: dict, data_root: Path, cache: dict, m
             from rasterio.windows import Window
         except ImportError as exc:
             raise ValueError("the pinned local raster decoder is unavailable") from exc
-        source = LocalRaster(manifest, data_root, cache)
+        source = manifest if isinstance(manifest, _FullRaster) else LocalRaster(manifest, data_root, cache)
         # A custom opener prevents eager full-file reads and all network access. / 自定义 opener 避免全文件预读及任何联网。
         try:
             with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_PAM_ENABLED="NO"):
@@ -214,12 +289,5 @@ def verify_full_window(receipt: dict, parent: Path, parent_sha256: str, data_roo
 
 解码已验证的完整 RGB TIFF；内部文件视图不冒充 HTTP 范围回执。
 """
-    parent = parent.resolve()
-    if not parent.is_relative_to(data_root.resolve()):
-        raise ValueError("full raster is outside the data root")
-    size = parent.stat().st_size
-    if not 0 < size <= MAX_READ_BYTES:
-        raise ValueError("full-object raster exceeds the bounded source allowance")
-    local_view = {"source": {"imagery_published_bytes": size}, "block_bytes": size,
-                  "ranges": [{"range": [0, size - 1], "file": str(parent), "sha256": parent_sha256}]}
+    local_view = _FullRaster(parent, parent_sha256, data_root, cache)
     verify_window(receipt, local_view, data_root, cache, "full_object:" + parent_sha256, expected_bands=3)
