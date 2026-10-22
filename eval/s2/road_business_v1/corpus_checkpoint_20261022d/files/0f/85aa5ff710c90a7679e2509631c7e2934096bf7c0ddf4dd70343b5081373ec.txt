@@ -1,0 +1,90 @@
+﻿"""Extract frozen OAM world targets from complete local RGB objects and replay independently.
+
+从完整本地 RGB 父图提取已冻结 OAM 范围，并独立离线再提取；不显示影像或生成业务标签。
+"""
+from __future__ import annotations
+import argparse
+from datetime import datetime,timezone
+import hashlib
+import json
+from pathlib import Path
+
+import numpy as np
+import rasterio
+from rasterio.windows import Window
+from PIL import Image,ImageDraw,__version__ as PILLOW_VERSION
+
+ROOT=Path(__file__).resolve().parent
+
+def stamp():return datetime.now(timezone.utc).isoformat()
+def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+def save(path,value):Path(path).write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+def load_bound(path,expected):
+ if digest(path)!=expected:raise ValueError('bound file bytes changed: '+str(path))
+ return json.loads(Path(path).read_text())
+
+def main():
+ parser=argparse.ArgumentParser()
+ parser.add_argument('--source-plan',type=Path,default=ROOT/'oam-extraction-plan-28.json')
+ parser.add_argument('--output',type=Path,required=True)
+ parser.add_argument('--replay-of',type=Path)
+ args=parser.parse_args()
+ source_plan=json.loads(args.source_plan.read_text())
+ sources=load_bound(source_plan['source_manifest_file'],source_plan['source_manifest_sha256'])
+ by_source={s['catalog_object_id']:s for s in sources}
+ args.output.mkdir(exist_ok=False)
+ for name in ['images','masks','overviews','guides','receipts','replay-proofs']:(args.output/name).mkdir()
+ tool_sha=digest(Path(__file__))
+ replay_started=stamp()
+ plan={'format':'drone.p6-oam-extraction-run/v1','created_at':stamp(),'tool_sha256':tool_sha,'source_plan_file':str(args.source_plan.resolve()),'source_plan_sha256':digest(args.source_plan),'source_inventory_file':source_plan['source_manifest_file'],'source_inventory_sha256':source_plan['source_manifest_sha256'],'mode':'offline_complete_object','network_requests':0,'expected_observations':len(source_plan['items']),'image_encoding':{'format':'JPEG','quality':98,'subsampling':0,'native_resampling':False},'mask_encoding':'PNG from rasterio.dataset_mask','preview_max_long_side':1800,'pillow_version':PILLOW_VERSION,'formal_release_eligible':False}
+ save(args.output/'plan.json',plan)
+ results=[];proofs=[]
+ for ident,source in by_source.items():
+  parent=Path(source['object_file']);parent_hash=source['local_full_object_sha256']
+  if digest(parent)!=parent_hash:raise ValueError('complete parent hash mismatch')
+  catalog=load_bound(source['catalog_file'],source['catalog_sha256'])['results'];props=catalog['properties']
+  if catalog['platform']!='uav' or props['license']!='CC-BY 4.0' or not props['sensor']:raise ValueError('OAM source policy mismatch')
+  with rasterio.open(parent) as ds:
+   if ds.count!=3 or list(ds.dtypes)!=['uint8']*3 or [v.name for v in ds.colorinterp]!=['red','green','blue']:raise ValueError('OAM requires verified native RGB3')
+   if [ds.width,ds.height]!=props['dimensions'] or str(ds.crs)!=props['crs']:raise ValueError('publisher/native raster mismatch')
+   raster={'width':ds.width,'height':ds.height,'bands':ds.count,'transform':list(ds.transform),'crs':str(ds.crs),'dtypes':list(ds.dtypes),'block_shapes':[list(v) for v in ds.block_shapes],'colorinterp':[str(v) for v in ds.colorinterp],'tags':ds.tags(),'rasterio_version':rasterio.__version__,'gdal_version':rasterio.__gdal_version__}
+   for item in [i for i in source_plan['items'] if i['catalog_object_id']==ident]:
+    sample=item['extraction_item_id'];view=item['native_view'];target=item['target'];before=json.dumps(target,sort_keys=True)
+    row={'sample_id':sample,'source_kind':'oam_uav','catalog_object_id':ident,'asset_group_id':item['asset_group_id'],'bounded_target_id':item['bounded_target_id'],'role':item['role'],'proposed_partition':item['proposed_partition'],'source_orthomosaic':'oam:'+ident,'parent_sha256':parent_hash,'parent_file':str(parent),'media_origin':'real_capture_derivative','raster':raster,'started_at':stamp(),'status':'failed','offline':True,'network_requests_in_source_session':0,'alignment_method':'georeferencing_only','source_geometry_file':item['source_geometry_file'],'source_geometry_sha256':item['source_geometry_sha256'],'world_scope':target,'source_date':source['acquisition_start'],'source_date_end':source['acquisition_end'],'source_date_status':'publisher_declared_metadata_only','author_date_verified':False,'author_date_group':None,'repeated_capture_eligible':False,'business_label':None,'asset_identity_verified':False,'formal_release_eligible':False}
+    try:
+     if item['parent_sha256']!=parent_hash or digest(item['source_geometry_file'])!=item['source_geometry_sha256']:raise ValueError('planned source identity mismatch')
+     declared_raster=load_bound(item['raster_metadata_file'],item['raster_metadata_sha256'])
+     if declared_raster['transform']!=list(ds.transform):raise ValueError('planned affine changed')
+     left,top,width,height=view['native_window_xywh']
+     if any(type(n)is not int for n in [left,top,width,height]) or left<0 or top<0 or width<=0 or height<=0 or left+width>ds.width or top+height>ds.height or width*height>60_000_000:raise ValueError('invalid native window')
+     window=Window(left,top,width,height)
+     rgb=np.ascontiguousarray(ds.read([1,2,3],window=window).transpose(1,2,0))
+     mask=ds.dataset_mask(window=window)
+     if rgb.shape!=(height,width,3) or mask.shape!=(height,width):raise ValueError('native pixel shape mismatch')
+     image=Image.fromarray(rgb)
+     image_path=args.output/'images'/f'{sample}.jpg';image.save(image_path,quality=98,subsampling=0)
+     mask_path=args.output/'masks'/f'{sample}.png';Image.fromarray(mask).save(mask_path)
+     overview=image.copy();overview.thumbnail((1800,1800),Image.Resampling.LANCZOS)
+     overview_path=args.output/'overviews'/f'{sample}.jpg';overview.save(overview_path,quality=94,subsampling=0)
+     guide=overview.copy();draw=ImageDraw.Draw(guide);sx,sy=overview.width/width,overview.height/height
+     points=view['centerline_pixels'];endpoints=view['target_endpoint_pixels'];segments=[[a,b] for a,b in zip(points,points[1:])]
+     draw.line([((p[0]-left)*sx,(p[1]-top)*sy) for p in points],fill=(0,240,255),width=3)
+     for k,p in enumerate(endpoints):
+      x,y=(p[0]-left)*sx,(p[1]-top)*sy;draw.ellipse((x-6,y-6,x+6,y+6),fill=(255,220,30));draw.text((x+8,y+8),'A' if k==0 else 'B',fill=(255,255,255),stroke_width=2,stroke_fill=(0,0,0))
+     guide_path=args.output/'guides'/f'{sample}.jpg';guide.save(guide_path,quality=94,subsampling=0)
+     row.update(status='extracted',image_file=str(image_path.resolve()),image_sha256=digest(image_path),mask_file=str(mask_path.resolve()),mask_sha256=digest(mask_path),overview_file=str(overview_path.resolve()),overview_sha256=digest(overview_path),guide_file=str(guide_path.resolve()),guide_sha256=digest(guide_path),native_rgb_sha256=hashlib.sha256(rgb.tobytes()).hexdigest(),width=width,height=height,valid_pixel_fraction=float(np.count_nonzero(mask)/mask.size),native_window_xywh=[left,top,width,height],window_transform=list(ds.window_transform(window)),mask_method='dataset_mask',centerline_segments_normalized=[[[float((p[0]-left)/width),float((p[1]-top)/height)] for p in segment] for segment in segments],target_endpoints_normalized=[[float((p[0]-left)/width),float((p[1]-top)/height)] for p in endpoints])
+     if json.dumps(target,sort_keys=True)!=before:raise ValueError('frozen world scope mutated')
+    except Exception as exc:row['error']=type(exc).__name__+': '+str(exc)
+    row['finished_at']=stamp();receipt_path=args.output/'receipts'/f'{sample}.json';save(receipt_path,row);results.append(row)
+    if args.replay_of:
+     original_path=args.replay_of/'receipts'/f'{sample}.json';original=json.loads(original_path.read_text())
+     same=['sample_id','asset_group_id','bounded_target_id','catalog_object_id','source_kind','parent_sha256','media_origin','status','alignment_method','world_scope','raster','native_window_xywh','window_transform','width','height','image_sha256','mask_sha256','native_rgb_sha256','valid_pixel_fraction','source_geometry_sha256','overview_sha256','guide_sha256','centerline_segments_normalized','target_endpoints_normalized']
+     mismatches=[k for k in same if original.get(k)!=row.get(k)]
+     proof={'format':'drone.p6-oam-derived-capture-replay/v1','mode':'offline_complete_object','network_requests':0,'source_observation_id':sample,'parent_sha256':parent_hash,'extraction_sha256':digest(original_path),'extractor_sha256':tool_sha,'started_at':replay_started,'replay_extraction_file':str(receipt_path.resolve()),'replay_extraction_sha256':digest(receipt_path),'finished_at':stamp(),'status':'matched' if not mismatches and row['status']=='extracted' else 'failed','mismatched_fields':mismatches}
+     save(args.output/'replay-proofs'/f'{sample}.json',proof);proofs.append(proof)
+    print(json.dumps({'sample_id':sample,'status':row['status'],'completed':len(results)}),flush=True)
+ summary={'format':'drone.p6-oam-extraction-result/v1','created_at':stamp(),'expected':len(source_plan['items']),'extracted':sum(r['status']=='extracted' for r in results),'failed':sum(r['status']!='extracted' for r in results),'network_requests':0,'business_labels_created':0,'image_visual_inspections':0,'rows':results,'replay_count':len(proofs),'replay_matched':sum(p['status']=='matched' for p in proofs),'formal_release_eligible':False}
+ save(args.output/'result.json',summary)
+ print(json.dumps({k:v for k,v in summary.items() if k!='rows'}),flush=True)
+ if summary['failed'] or any(p['status']!='matched' for p in proofs):raise SystemExit(1)
+if __name__=='__main__':main()

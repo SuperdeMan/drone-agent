@@ -1,0 +1,108 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "bounded_verifier_25",
+  "created_at": "2026-10-21T14:16:19.965257+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_25\\assignment.json",
+  "assignment_sha256": "4f418363904723da7584b46e3c809a1ddc88b9ed5f928798ff64c27d599ae6c3",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-0354669e3faf0d",
+      "decision": "accepted",
+      "findings": [
+        "已查看原图、guide、mask 及五张重叠全宽原生裁片，覆盖固定 A/B 两端、完整路段和两侧路缘；原图与 guide 哈希匹配，mask 全白。",
+        "A 点上方的灰色主路上可见断枝、木片等实体，首稿关于该处存在散落实体的描述与图像一致。",
+        "A/B 两端东侧均与支路铺装连续，端点横截面缺少可唯一分开主路与支路的可见边界，保留 target_polygon=null 和 indeterminate。",
+        "中段东侧树冠和树影遮住部分路缘，不能仅由树冠或阴影确认实际植被侵入，原有不确定性仍成立。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/laura-frames-v1/images/bounded-extract-0354669e3faf0d.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/laura-frames-v1/guides/bounded-extract-0354669e3faf0d.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/laura-frames-v1/masks/bounded-extract-0354669e3faf0d.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-01-y450-1150.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-02-y1050-1750.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-03-y1650-2350.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-04-y2250-2950.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-05-y2850-3500.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "a7c9ca79105926f7764073d0bd1094bf46ad2b9f7395580347eb6fab22bf6ad9",
+      "first_author_id": "bounded_annotator_21",
+      "first_row_sha256": "d412193967376754bc6ebd8fce4ce8829ce8b7a41c0018123f685649d4c88cdd",
+      "reviewed_at": "2026-10-21T14:16:19.974071+00:00",
+      "reviewer_id": "bounded_verifier_25",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/laura-frames-v1/images/bounded-extract-0354669e3faf0d.jpg": "a7c9ca79105926f7764073d0bd1094bf46ad2b9f7395580347eb6fab22bf6ad9",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/laura-frames-v1/guides/bounded-extract-0354669e3faf0d.jpg": "a1f2679120aab1ce81209e8d255c7b028ab4653ad82b07ce83b1f2e9cb05f59e",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/laura-frames-v1/masks/bounded-extract-0354669e3faf0d.png": "e68ec27cf64ae91c7352b642da3aa5bf70936337db9e1bdd76ffa8707acb99cc",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-01-y450-1150.png": "9bf6355f9718afe9ce4e96aa0ebd5f84f2f947578d037d45348e9215f69a293a",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-02-y1050-1750.png": "c2e17d7ee7c93b6974cf7fd878ebe97affd17b28adc4649db33fdfa5ca1a0eae",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-03-y1650-2350.png": "43df7fe58a33f1d0a99751431679ac9e5905d3b4eb242a1606b1e174e1187fa3",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-04-y2250-2950.png": "81b53500f3f36f912cf883015d6734d8c683c37b48a023a37f86b01c9b898a7e",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-05-y2850-3500.png": "dae3a1c3e0ffa19ad3263f643d8b70c085cfac75c5f9ae9da7cda6703dd97b76"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-0354669e3faf0d",
+        "image_sha256": "a7c9ca79105926f7764073d0bd1094bf46ad2b9f7395580347eb6fab22bf6ad9",
+        "target_brief": "固定 A 至 B 的南北向道路，长约 107.78 米，保持原定两端位置并检查两端完整横截面及两侧完整铺装边界。",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "已实际查看原图、guide、全白源覆盖 mask、覆盖完整 A/B 范围的五张重叠全宽原生裁片及端点和细节裁片。固定范围内影像覆盖完整，A 点上方主路可见散落木枝、断枝等实体。中段可见树影与东侧树冠，未将其单独视为实体侵入证据。A/B 两端均位于东向侧路汇入口，端点处主路东侧铺装与侧路连续，无法从该图唯一分离固定目标的完整横截面边界；未通过缩窄、缩短或移动目标强行生成目标多边形，保留不可判。",
+        "uncertainties": [
+          "A/B 端点横截面的东侧铺装与侧路连续，固定主路目标的完整东侧边界无法唯一确定。",
+          "中段东侧树冠及树影覆盖部分路缘，不能据此确定冠下是否存在额外实体侵入。"
+        ],
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/laura-frames-v1/images/bounded-extract-0354669e3faf0d.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/laura-frames-v1/guides/bounded-extract-0354669e3faf0d.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/laura-frames-v1/masks/bounded-extract-0354669e3faf0d.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-01-y450-1150.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-02-y1050-1750.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-03-y1650-2350.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-04-y2250-2950.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_25/review-native-05-y2850-3500.png"
+        ],
+        "inspected_at": "2026-10-21T14:16:19.974071+00:00"
+      },
+      "final_row_sha256": "e0d14a735d2252b03cd8113a757ebec7debb06576bfe442b5b858fd3941093ca",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_25\\review-payload.json",
+        "observer_payload_sha256": "1a40597006b1d907d61a75fa71026d867f05e8c279d7e1dddabec2462a6d2d28",
+        "payload_file_modified_at_utc": "2026-10-21T14:15:17.979851+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-21T14:16:19.348714+00:00",
+        "business_fields_changed": false,
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    }
+  ],
+  "persistence_events": [
+    {
+      "operator": "root_orchestrator_deterministic_storage_only",
+      "observer_declared_status": "complete",
+      "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_25\\review-payload.json",
+      "observer_payload_sha256": "1a40597006b1d907d61a75fa71026d867f05e8c279d7e1dddabec2462a6d2d28",
+      "payload_file_modified_at_utc": "2026-10-21T14:15:17.979851+00:00",
+      "filesystem_time_is_not_claimed_visual_inspection_time": true,
+      "stored_at_utc": "2026-10-21T14:16:19.348714+00:00",
+      "business_fields_changed": false,
+      "new_visual_inspection_claimed": false,
+      "observer_storage_cli_execution_claimed": false
+    }
+  ]
+}

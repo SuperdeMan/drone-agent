@@ -1,0 +1,445 @@
+"""Audit saved Santolan exposure metadata without decoding images.
+
+只核对保存的 Santolan 曝光元数据，不解码图片。
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+ROOT = Path("D:/drone-agent-data/p6-corpus-completion-20261018")
+REPO = Path("D:/drone-agent-data/p6-road-views-20261014/repo")
+OUT = ROOT / "resume-20261022-next/santolan-exposure-facts-audit-v1"
+PARENT = "6024868fe316a7000568a583"
+IDS = (
+    "oam-extract-004a50bff322d5",
+    "oam-extract-007e2160190a1e",
+    "oam-extract-1c19cb36a18f50",
+)
+TEXT_SUFFIXES = {".json", ".jsonl", ".md", ".py", ".txt"}
+LEAF_PATTERN = re.compile(
+    r"view|expos|model_call|pixels_decoded|business_labels_created|global_exposure",
+    re.IGNORECASE,
+)
+STATEMENT_PATTERN = re.compile(
+    r"view|expos|placeholder|visual|未.*看图|未.*目视|没有.*RGB|曝光|视觉",
+    re.IGNORECASE,
+)
+
+
+def sha(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def label(path: Path) -> str:
+    for prefix, base in (("ROOT/", ROOT), ("REPO/", REPO)):
+        if path.is_relative_to(base):
+            return prefix + path.relative_to(base).as_posix()
+    raise ValueError(f"Outside authorized project roots: {path}")
+
+
+def walk_leaves(value, path="$", rows=None):
+    if rows is None:
+        rows = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            child_path = f"{path}.{key}"
+            if LEAF_PATTERN.search(key) and "overview" not in key.lower() and not isinstance(child, dict):
+                if not isinstance(child, list) or len(child) <= 20:
+                    rows.append({"json_path": child_path, "value": child})
+            if isinstance(child, (dict, list)):
+                walk_leaves(child, child_path, rows)
+    elif isinstance(value, list):
+        for number, child in enumerate(value):
+            if isinstance(child, (dict, list)):
+                walk_leaves(child, f"{path}[{number}]", rows)
+    return rows
+
+
+def build_report(result, integrity, before):
+    """Separate scoped saved facts from an unproved complete exposure history.
+
+    区分局部保存事实与尚未证实完整覆盖的曝光历史。
+    """
+    evidence_specs = [
+        ("E01", REPO / "eval/s2/road_business_v1/exposure-registry.json", "$.image_sha256; $.scope; $.supplemental_exposure_scope", "3个精确SHA均未列入；注册自限为已知开发照片，明确不保证未列近邻独立。"),
+        ("E02", ROOT / "resume-20261022-next/santolan-mask-next-v1/selected-observation-inputs.json", "$.rows[?sample_id in selected].media.image", "3张原图索引的SHA与本次仅字节哈希一致。"),
+        ("E03", ROOT / "resume-20261022-next/santolan-mask-next-v1/cloud-job/provenance/unverified-grouping-capture-inventory.json", "$.rows[*].observed.development_exposed; three top-level scope flags", "true明确为source-only保守placeholder；空列表限本source工作流，且全局曝光准入明确未裁定。"),
+        ("E04", ROOT / "resume-20261022-fast/conditional-parts-native32-v1/controller-runtime.py", "lines 31,127", "旧运行时代码无条件写入development_exposed=True；它不是由已看图事件计算得到。"),
+        ("E05", ROOT / "resume-20261022-fast/conditional-parts-native32-v1-stop-v1/stop-receipt.json", "$.development_exposed_disclosure; $.status; $.source_pixel_exact_completed", "旧4800来源审核停止记录披露占位值及本工作流未真实看图；停止完成数保留unknown。"),
+        ("E06", ROOT / "resume-20261022-fast/conditional-parts-native32-v2/historical-v1-label-disclosure.json", "$.development_exposed_true_flags; $.external_global_exposure_not_adjudicated", "v2补充披露再次限定为本source工作流，明确没有裁定外部全局曝光。"),
+        ("E07", ROOT / "oam-expansion-v1/acquisition-registration.json", "$.ids; $.images_viewed; $.selection_basis", "包含该父源的元数据采集登记声明images_viewed=0；只覆盖该采集工作。"),
+        ("E08", ROOT / "oam-expansion-v1/metadata-screening.json", "$.imagery_viewed; $.business_labels_created", "元数据筛选声明未查看影像、未制作业务标签；不覆盖后续或其他上下文。"),
+        ("E09", ROOT / "resume-20261022-fast/santolan-recovery-v1/registration.json", "$.images_viewed; $.pixels_decoded", "恢复工作登记声明不看图、不解码；各恢复receipt/status亦保留本工作流边界。"),
+        ("E10", ROOT / "resume-20261022-fast/conditional-parts-source-v1/source-verification-result.json", "$.pixels_read_or_viewed; $.formal_model_calls; limitations", "source-only字节验证声明未读/查看像素、正式模型调用0；不等于父源全部历史声明。"),
+        ("E11", ROOT / "resume-20261022-fast/conditional-parts-native32-preparation-v1/purpose-reservation.json", "$.planned_whole_site_partition; $.images_viewed_or_business_labels_used; $.formal_model_calls", "旧准备阶段将整站预留calibration_candidate；选择时未用影像/业务标签，正式模型调用0。"),
+        ("E12", ROOT / "resume-20261022-fast/conditional-parts-native32-v2/result.json", "$.scope; $.images_viewed; $.formal_model_calls", "准确cdf5382旧32源像素/重放审核声明本工作流看图0、正式模型调用0；不是新32或全站历史核验。"),
+        ("E13", ROOT / "resume-20261022-next/santolan-mask-next-v1/cloud-job/cloud-runtime.py", "lines 227,241-242", "新运行时代码同样明确生成placeholder和全局未裁定字段。"),
+        ("E14", ROOT / "resume-20261022-next/santolan-mask-next-v1/cloud-job/result.json", "$.images_visually_viewed; $.formal_model_calls; $.planned_whole_site_partition", "新32自动来源处理声明看图0、正式模型调用0，整站仍为calibration_candidate。"),
+        ("E15", ROOT / "resume-20261022-next/santolan-mask-next-v1/local-data-verification.json", "$.rgb_visually_viewed; $.rgb_decoded_locally_for_verification; $.formal_inventory_requires_actual_exposure_reconciliation", "本机取回核验只处理字节/掩码，声明RGB目视0、未本机解码，正式inventory仍要求真实曝光对账。"),
+        ("E16", ROOT / "annotation-context-v49.json", "$.authorization_reference; $.annotators", "用户授权独立AI参考制作；相关初标登记fork=none，待评提示/输出/源业务类均未提供，精确有效模型ID未披露。"),
+        ("E17", ROOT / "review-registration-v49.json", "$.approval_reference; $.method; $.assignments", "独立初稿后另AI核验的参考工作登记，精确模型ID为null，不是正式待评模型录制。"),
+        ("E18", ROOT / "resume-20261022-next/medium-context-launches-v1.jsonl", "worker_id in annotator_43, annotator_36, verifier_40, verifier_45", "4条实际启动见证的fork=none及actual-context SHA均匹配；model参数省略，不能推造精确有效modelID。"),
+        ("E19", REPO / "docs/p6-business-evaluation.md", "lines 3-16,55-61,78", "授权参考制作与待评结果开发分别记录；完整关联组仍须隔离。授权AI参考制作本身不自动认定为开发污染。"),
+        ("E20", ROOT / "resume-20261022-fast/oam-source-checkpoint-published-v1/README.md", "line 15", "原已保存OAM来源检查点公开说明true是占位值，不能洗白其他上下文。"),
+        ("E21", ROOT / "resume-20261022-next/current-handoff-working-v1.md", "line 34", "当前工作交接继续保留同一placeholder及正式清单另建要求。"),
+    ]
+    evidence = []
+    for evidence_id, path, pointer, fact in evidence_specs:
+        entry = before[path]
+        evidence.append({
+            "id": evidence_id, "file": label(path),
+            "sha256": entry["sha256_before"], "locator": pointer, "fact": fact,
+        })
+    contexts = result["matching_annotator_contexts"] + result["matching_reviewer_contexts"]
+    for row in contexts:
+        directory = "annotation" if row in result["matching_annotator_contexts"] else "verification"
+        for filename in ("assignment.json", "actual-context.json"):
+            path = ROOT / directory / row["worker_id"] / filename
+            evidence.append({
+                "id": f"CTX-{row['worker_id']}-{filename}", "file": label(path),
+                "sha256": before[path]["sha256_before"],
+                "locator": "registration/assignment byte bindings; actual isolation fields",
+                "fact": "精确样本分派及实际上下文；对应原登记SHA验证均通过。",
+            })
+    positive = [
+        {"sample_id": row["sample_id"], "basis": "exact image SHA present in development registry"}
+        for row in result["selected"] if row["in_development_registry_exact_sha"]
+    ]
+    verdict = "exposed" if positive else "insufficient_evidence"
+    missing = [
+        {
+            "id": "M01",
+            "missing_fact": "该父源/整站自纳入项目至当前的实现方及待评模型曝光历史覆盖闭合事实。",
+            "why_current_records_do_not_supply_it": "现有未看图声明分别只覆盖元数据采集、恢复、准备、旧32或新32自动来源处理；v2与新32还明确写出global exposure未裁定。没有一份记录声称且绑定全部已保存相关工作流、所有副本/overview/guide/裁片及整站近邻，排除了除此授权参考制作外的实现方目视或待评模型调用。",
+            "minimum_evidence_that_would_resolve_it": "由能确认相关保存历史覆盖范围的实现方提供父源/整站级闭合记录，列出覆盖区间与工作流/上下文清单，并说明实现方RGB目视及待评模型请求是否发生；若发生，绑定对象/关联组和用途；将已登记隔离参考制作单列。可引用已有项目证据，不需重标、不需再看图，也不要求未披露的精确有效模型ID。",
+        }
+    ]
+    report = {
+        "format": "drone.p6-santolan-exposure-facts-adjudication/v1",
+        "created_at_utc": result["created_at_utc"],
+        "verdict": verdict,
+        "allowed_verdicts": ["supports_new_scoped_adjudication", "insufficient_evidence", "exposed"],
+        "scoped_target": "3个精确image SHA及共同父源6024868fe316a7000568a583/整站calibration_candidate的开发曝光对账；不裁定业务标签、物理资产、数量、阈值或正式准入。",
+        "new_inventory_development_exposed_false_supported": False,
+        "recommended_state": "unknown / hold",
+        "known_contaminating_exposure_findings_in_audited_inputs": positive,
+        "all_saved_parent_history_exhaustively_proven": False,
+        "source_workflow_no_visual_declarations_supported_in_their_own_scope": True,
+        "independent_reference_context_isolation_bindings_supported": True,
+        "independent_reference_work_is_not_automatically_development_exposure": True,
+        "isolated_reference_work_is_not_global_noview_proof": True,
+        "root_current_round_noview_claim": "任务说明提供，本审核未把它外推为旧历史证明；项目新32本机核验记录另有对应限定声明。",
+        "selected": [
+            {"sample_id": row["sample_id"], "image_sha256": row["image_sha256"],
+             "byte_hash_matches_index": row["byte_hash_matches_index"],
+             "in_development_registry_exact_sha": row["in_development_registry_exact_sha"],
+             "verdict": verdict, "state": "unknown / hold"}
+            for row in result["selected"]
+        ],
+        "independent_reference_contexts": [
+            {k:v for k,v in row.items() if k in {
+                "worker_id", "matches", "actual_context_sha256", "assignment_access_flags",
+                "actual_context_assignment_sha_matches", "original_registrations_sha_match",
+                "launch_context_hash_matches",
+            }} for row in contexts
+        ],
+        "context_limits": [
+            "35有实际启动登记但medium启动见证表无该条；本审核不以它推断已目视或已完成参考标签。43/36/40/45均有匹配启动见证。",
+            "所有相关actual-context精确有效模型ID均为null；可报告codex-session及fork-none，不能报告推测的模型名称。",
+            "actual-context/assignment和启动见证证明隔离登记与启动事实，本审核未查看图片或重新判断标签，也不把启动本身当作实际目视证据。",
+            "registry源manifest的无Santolan/父ID字面匹配仅是有限反查事实，不证明语义关联近邻不存在；补充来源的外部文件依范围未读取。",
+        ],
+        "missing_facts": missing if not positive else [],
+        "evidence": evidence,
+        "input_integrity": {
+            "file": "input-integrity.json", "count": integrity["inputs_count"],
+            "all_input_bytes_unchanged": integrity["all_input_bytes_unchanged"],
+            "scope": "同一次脚本审计中先读取/计算SHA，生成事实后再逐项原字节SHA复核；仅输出目录写入。",
+        },
+        "not_performed": [
+            "图片解码或显示", "模型调用", "联网", "全局sessions/私密文件/环境密钥/浏览器读取",
+            "数据flag、阈值、协议或共享登记修改", "安装依赖", "提交/推送/删除",
+        ],
+    }
+    lines = [
+        "# Santolan 曝光事实审计 v1", "",
+        f"结论：`{verdict}`；3条均保留 `unknown / hold`。现有事实足以确认占位值含义和隔离参考制作的限定范围，尚不足以为新局部副本写入明确 `development_exposed=false`。没有从本次审计输入核出可据以判定 `exposed` 的实现方/待评模型确证。", "",
+        "本结论仅对本报告列出的项目内保存证据负责；不代替用户或实现方未证实的历史。原source-only文件保持不变，不修改原true，也不将其解释为真实目视事件。", "",
+        "| 观察 | image SHA256 | 精确SHA在开发注册中 | 裁定 |", "|---|---|---|---|",
+    ]
+    for row in report["selected"]:
+        lines.append(f"| `{row['sample_id']}` | `{row['image_sha256']}` | 否 | unknown / hold |")
+    lines += [
+        "", "3张JPEG均仅读取原始字节计算SHA，与新32输入索引一致；没有解码或显示。", "",
+        "原v1运行时代码直接写入True；停止记录、v2披露和原OAM检查点均明确它是保守placeholder。新32代码与inventory显式保留同样占位含义，并写明`actual_source_workflow_visual_exposure_ids=[]`和`global_exposure_admission_not_adjudicated=true`。这同时排除了把True当作实际曝光、以及把空列表当作全局无曝光的两种推断。", "",
+        "采集/恢复/准备/旧32/新32的未目视或零正式模型调用声明均限定自己的工作流；自动提取/解码/重放不是实现方目视或模型曝光事件。旧32来源审核的成功也不扩展到新32或整个父源历史。整站calibration_candidate事前预留事实保留。", "",
+        "相关初标43、36及二审40、45的分派SHA、actual-context、原版本登记和4条medium启动见证均相互匹配；fork-none、待评提示/输出/源业务类未提供。另有旧初标35的实际登记，启动见证表中未列它；本审核不推断其实际看图/完成。上述上下文属于用户授权参考制作，不自动算作开发污染，也不证明其他上下文未曝光。精确有效模型ID均未披露。", "",
+        "缺失的关键事实只有一项：父源/整站级保存历史的曝光覆盖闭合记录。它需要说明从纳入项目至当前有哪些相关工作流/上下文、实现方是否目视RGB或向待评模型提供过该父源/副本/overview/guide/裁片及关联近邻，并把已登记隔离参考制作单列。现有各局部声明没有声称或证明此覆盖完整性，且两处显式保留全局未裁定。可用已有项目事实补该记录；不需要人类重标、重新看图或填造精确modelID。", "",
+        "完整机器事实见 `report.json`，扫描摘录见 `inspection.json`。以下列关键输入；`input-integrity.json`逐项列出全部读取输入的前后SHA及字节数。", "",
+        "| 证据 | 输入文件 | SHA256 | 事实定位与范围 |", "|---|---|---|---|",
+    ]
+    for row in evidence:
+        lines.append(f"| {row['id']} | `{row['file']}` | `{row['sha256']}` | {row['locator']}；{row['fact']} |")
+    lines += [
+        "", f"输入完整性：{integrity['inputs_count']}项逐一原字节前后复核，全部不变：`{str(integrity['all_input_bytes_unchanged']).lower()}`。脚本仅使用Python标准库；未安装依赖、联网、调用模型或改共享登记。", "",
+    ]
+    return report, "\n".join(lines)
+
+
+def main():
+    OUT.mkdir(parents=True, exist_ok=True)
+    files = set()
+    directories = [
+        ROOT / "normal-source-discovery",
+        ROOT / "oam-expansion-v1",
+        ROOT / "resume-20261022-fast/conditional-parts-source-v1",
+        ROOT / "resume-20261022-fast/santolan-recovery-v1",
+        ROOT / "resume-20261022-fast/oam-source-checkpoint-published-v1",
+        ROOT / "resume-20261022-next/santolan-mask-next-v1",
+    ]
+    directories += sorted((ROOT / "resume-20261022-fast").glob("conditional-parts-native32*"))
+    for directory in directories:
+        if directory.is_dir():
+            files.update(
+                p for p in directory.rglob("*")
+                if p.is_file() and p.suffix in TEXT_SUFFIXES
+                and p.stat().st_size < 12_000_000
+            )
+        elif directory.is_file():
+            files.add(directory)
+    files.update(
+        p for p in (ROOT / "resume-20261022-fast").glob("conditional-parts-native32*.json")
+    )
+    files.update(
+        ROOT / rel for rel in (
+            "annotation-context-v49.json",
+            "review-registration-v49.json",
+            "annotation-context-v37.json",
+            "review-registration-v37.json",
+            "annotation-context-v38.json",
+            "review-registration-v38.json",
+            "annotation-context-v39.json",
+            "review-registration-v39.json",
+            "annotation-context-v47.json",
+            "review-registration-v47.json",
+            "annotation-context-v48.json",
+            "review-registration-v48.json",
+            "resume-20261022-next/medium-context-launches-v1.jsonl",
+            "resume-20261022-next/current-handoff-working-v1.md",
+            "resume-20261022-fast/handoff-c-current-draft.md",
+        )
+    )
+    files.update(
+        REPO / rel for rel in (
+            "CLAUDE.md",
+            "docs/architecture/08-evaluation.md",
+            "docs/p6-business-evaluation.md",
+            "docs/p6-road-corpus-handoff-2026-10-22.md",
+            "eval/s2/road_business_v1/README.md",
+            "eval/s2/road_business_v1/exposure-registry.json",
+            "eval/s2/p6_candidates_v1/image-manifest.json",
+            "eval/s2/p6_candidates_v2/pair-manifest.json",
+        )
+    )
+    # Read only assignments and context records, never annotation/review labels. / 只读分派及上下文，不读取标注或二审标签。
+    for directory_name in ("annotation", "verification", "identity-review"):
+        for name in ("assignment.json", "actual-context.json", "actual-context-disclosure-v1.json"):
+            files.update((ROOT / directory_name).glob(f"*/{name}"))
+
+    before = {}
+    contents = {}
+    parsed = {}
+    for path in sorted(files):
+        if not path.exists():
+            continue
+        raw = path.read_bytes()
+        before[path] = {"file": label(path), "bytes": len(raw), "sha256_before": sha(raw)}
+        value = raw.decode("utf-8-sig")
+        contents[path] = value
+        if path.suffix == ".json":
+            try:
+                parsed[path] = json.loads(value)
+            except json.JSONDecodeError:
+                pass
+
+    source_records = []
+    statements = []
+    for path, value in contents.items():
+        if "/annotation/" in path.as_posix() or "/verification/" in path.as_posix():
+            continue
+        if path in parsed:
+            leaves = walk_leaves(parsed[path])
+            if leaves:
+                source_records.append({
+                    "file": label(path),
+                    "sha256": before[path]["sha256_before"],
+                    "mentions_parent": PARENT in value,
+                    "mentions_selected_ids": [i for i in IDS if i in value],
+                    "declarations": leaves,
+                })
+        if path.suffix in {".md", ".py", ".txt"}:
+            for number, line in enumerate(value.splitlines(), 1):
+                if STATEMENT_PATTERN.search(line):
+                    statements.append({
+                        "file": label(path), "line": number,
+                        "sha256": before[path]["sha256_before"],
+                        "text": line[:1800], "line_truncated": len(line) > 1800,
+                    })
+
+    inputs_path = ROOT / "resume-20261022-next/santolan-mask-next-v1/selected-observation-inputs.json"
+    inputs = parsed[inputs_path]
+    inventory_path = ROOT / "resume-20261022-next/santolan-mask-next-v1/cloud-job/provenance/unverified-grouping-capture-inventory.json"
+    inventory = parsed[inventory_path]
+    registry_path = REPO / "eval/s2/road_business_v1/exposure-registry.json"
+    registry = parsed[registry_path]
+    registry_sources = []
+    for rel, expected_sha in registry["source_files"].items():
+        source_path = REPO / rel
+        source_text = contents[source_path]
+        registry_sources.append({
+            "file": label(source_path),
+            "sha256": before[source_path]["sha256_before"],
+            "sha_matches_registry": before[source_path]["sha256_before"] == expected_sha,
+            "mentions_parent": PARENT in source_text,
+            "mentions_santolan_case_insensitive": "santolan" in source_text.lower(),
+            "mentions_selected_ids": [i for i in IDS if i in source_text],
+        })
+    selected = []
+    for sample_id in IDS:
+        row = next(row for row in inputs["rows"] if row["sample_id"] == sample_id)
+        inventory_row = next(row for row in inventory["rows"] if row["source_observation_id"] == sample_id)
+        image = Path(row["media"]["image"]["file"])
+        raw = image.read_bytes()
+        before[image] = {"file": label(image), "bytes": len(raw), "sha256_before": sha(raw)}
+        selected.append({
+            "sample_id": sample_id,
+            "image_sha256": row["media"]["image"]["sha256"],
+            "byte_hash_matches_index": sha(raw) == row["media"]["image"]["sha256"],
+            "image_file": label(image),
+            "in_development_registry_exact_sha": sha(raw) in registry["image_sha256"],
+            "inventory": inventory_row,
+        })
+
+    annotators = parsed[ROOT / "annotation-context-v49.json"]["annotators"]
+    matching_contexts = []
+    for worker_id, record in annotators.items():
+        matches = [i for i in IDS if i in record.get("assigned_images", {})]
+        if matches:
+            matching_contexts.append({
+                "worker_id": worker_id,
+                "matches": matches,
+                "registration": record,
+                "actual_context": parsed.get(ROOT / f"annotation/{worker_id}/actual-context.json"),
+            })
+    reviewers = []
+    review_registration = parsed[ROOT / "review-registration-v49.json"]
+    for assignment in review_registration["assignments"]:
+        path = Path(assignment["file"])
+        text = contents.get(path, "")
+        matches = [i for i in IDS if i in text]
+        if matches:
+            reviewers.append({
+                "worker_id": assignment["reviewer_id"], "matches": matches,
+                "registration": assignment,
+                "assignment_sha_matches": before[path]["sha256_before"] == assignment["sha256"],
+                "assignment_keys": list(parsed[path]),
+                "actual_context": parsed.get(path.parent / "actual-context.json"),
+                "disclosure": parsed.get(path.parent / "actual-context-disclosure-v1.json"),
+            })
+    launch_path = ROOT / "resume-20261022-next/medium-context-launches-v1.jsonl"
+    launch_rows = [json.loads(line) for line in contents[launch_path].splitlines() if line.strip()]
+    worker_ids = {r["worker_id"] for r in matching_contexts + reviewers}
+    launches = [row for row in launch_rows if row.get("worker_id") in worker_ids]
+    for group in (matching_contexts, reviewers):
+        for row in group:
+            actual = row["actual_context"]
+            if actual:
+                worker_role = "annotation" if group is matching_contexts else "verification"
+                actual_path = ROOT / worker_role / row["worker_id"] / "actual-context.json"
+                row["actual_context_sha256"] = before[actual_path]["sha256_before"]
+                row["assignment_access_flags"] = {
+                    k:v for k,v in parsed[Path(actual["assignment_file"])].items()
+                    if k in {"parent_history", "evaluation_prompt_access", "evaluation_outputs_access", "source_class_label_access", "source_business_classes_provided", "evaluation_prompt_provided", "evaluation_outputs_provided", "neutral_geometry_hints_provided"}
+                }
+                row["actual_context_assignment_sha_matches"] = before[Path(actual["assignment_file"])]["sha256_before"] == actual["assignment_sha256"]
+                row["original_registrations_sha_match"] = {
+                    k: before[Path(actual[f"registered_{k}_file"])]["sha256_before"] == actual[f"registered_{k}_sha256"]
+                    for k in ("context", "review")
+                }
+                row["launch_context_hash_matches"] = [
+                    launch.get("actual_context_sha256") == row["actual_context_sha256"]
+                    for launch in launches if launch["worker_id"] == row["worker_id"]
+                ]
+
+    result = {
+        "format": "drone.p6-santolan-exposure-facts-audit-inspection/v1",
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "scope": "Only specified saved project metadata, source workflow code and context records; no global sessions, browser, network, image decode, model calls or shared registration writes.",
+        "image_handling": "Three selected JPEG files read only as raw bytes for SHA256; never decoded or displayed.",
+        "parent_object_id": PARENT,
+        "registry_scope": registry.get("scope"),
+        "registry_supplemental_scope": registry.get("supplemental_exposure_scope"),
+        "registry_source_manifest_checks": registry_sources,
+        "selected": selected,
+        "source_inventory_declarations": {k:v for k,v in inventory.items() if k != "rows"},
+        "matching_annotator_contexts": matching_contexts,
+        "matching_reviewer_contexts": reviewers,
+        "matching_medium_context_launches": launches,
+        "source_workflow_declarations": source_records,
+        "text_statements": statements,
+    }
+
+    for path, entry in before.items():
+        current = path.read_bytes()
+        entry["sha256_after"] = sha(current)
+        entry["unchanged"] = entry["sha256_before"] == entry["sha256_after"]
+    integrity = {
+        "format": "drone.p6-read-only-input-integrity/v1",
+        "inputs_count": len(before),
+        "all_input_bytes_unchanged": all(e["unchanged"] for e in before.values()),
+        "inputs": [before[p] for p in sorted(before)],
+    }
+    (OUT / "inspection.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (OUT / "input-integrity.json").write_text(json.dumps(integrity, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    report, markdown = build_report(result, integrity, before)
+    (OUT / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (OUT / "report.md").write_text(markdown, encoding="utf-8")
+    readme = (
+        "# Santolan 曝光事实审计\n\n"
+        "结论为`insufficient_evidence`：3条保持unknown/hold。关键缺项是父源/整站保存历史的曝光覆盖闭合事实，不需要重标。\n\n"
+        "- `report.md`：人可读结论、限定范围、关键输入SHA和来源。\n"
+        "- `report.json`：三态裁定、逐样本事实及缺失事实。\n"
+        "- `inspection.json`：项目内来源工作流声明及隔离上下文摘录。\n"
+        "- `input-integrity.json`：全部读取输入的字节数、前后SHA和不变核验。\n"
+        "- `audit_exposure_facts_v1.py`：可复跑标准库脚本；只写本目录。\n\n"
+        "运行：`D:/drone-agent-data/p6-corpus-completion-20261018/tools-venv/Scripts/python.exe "
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261022-next/santolan-exposure-facts-audit-v1/audit_exposure_facts_v1.py`\n\n"
+        "只对3张JPEG原字节算SHA，无图片解码/显示、模型调用或联网；原flag、共享注册、阈值和协议未改。所有局部未看图声明不外推为全局历史，实际隔离参考制作也不自动判作开发污染。\n"
+    )
+    (OUT / "README.md").write_text(readme, encoding="utf-8")
+    artifacts = []
+    for path in sorted(OUT.iterdir()):
+        if path.is_file() and path.name != "artifact-manifest.json":
+            raw = path.read_bytes()
+            artifacts.append({"file": path.name, "bytes": len(raw), "sha256": sha(raw)})
+    (OUT / "artifact-manifest.json").write_text(json.dumps({"format":"drone.p6-audit-artifacts/v1","files":artifacts}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps({
+        "selected": [{k:v for k,v in row.items() if k != "inventory"} for row in selected],
+        "matching_annotators": [r["worker_id"] for r in matching_contexts],
+        "matching_reviewers": [r["worker_id"] for r in reviewers],
+        "matching_launches_count": len(launches),
+        "source_declaration_files": len(source_records),
+        "statement_count": len(statements),
+        "inputs_count": integrity["inputs_count"],
+        "all_input_bytes_unchanged": integrity["all_input_bytes_unchanged"],
+    }, ensure_ascii=True))
+
+
+if __name__ == "__main__":
+    main()

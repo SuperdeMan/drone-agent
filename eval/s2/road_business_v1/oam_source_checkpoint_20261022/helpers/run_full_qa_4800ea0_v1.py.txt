@@ -1,0 +1,36 @@
+"""Bind full required checks to one immutable local candidate. / 绑定准确候选的全量检查。"""
+import hashlib,json,os,subprocess,time,xml.etree.ElementTree as ET
+from datetime import datetime,timezone
+from pathlib import Path
+HERE=Path(__file__).resolve().parent;REPO=Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+COMMIT='4800ea0726acbd3054e07f31abf3e8b44b94f0f4'
+OUT=HERE/'software-4800ea0-qa-v1';OUT.mkdir(exist_ok=False)
+def now():return datetime.now(timezone.utc).isoformat()
+def sha(p):
+    with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
+def git(*args):return subprocess.run(['git',*args],cwd=REPO,capture_output=True,check=True).stdout
+def save(name,x):
+    with (OUT/name).open('x',encoding='utf-8',newline='\n') as f:json.dump(x,f,indent=2)
+assert git('rev-parse','HEAD').decode().strip()==COMMIT and not git('status','--porcelain')
+names=[p.decode('utf-8') for p in git('ls-files','-z').split(b'\0') if p]
+before={name:sha(REPO/name) for name in names};save('source-before.json',before)
+assert before['scripts/p6_oam_capture.py']=='bd49f89a5916b6401705524990170e6224cdf485c5dc8e7016b71d42898c0c88'
+assert before['tests/test_p6_oam_conditional_parts.py']=='5bdcbcf71e8ce4b4785e27e83d9151eef105d21711a71cd16a5bc37f9c7d64bd'
+environment=dict(os.environ,UV_DEFAULT_INDEX='https://pypi.tuna.tsinghua.edu.cn/simple',OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1')
+environment['PYTHONPATH']=str(REPO/'scripts/high_qos')+(os.pathsep+environment['PYTHONPATH'] if environment.get('PYTHONPATH') else '')
+start=now();begin=time.monotonic();steps=[]
+save('start.json',{'candidate_commit':COMMIT,'started_at_utc':start,'tracked_files':len(before),'high_qos_sitecustomize_in_process_pythonpath':True,'source_before_sha256':sha(OUT/'source-before.json'),'commands':[['uv','run','ruff','check','.'],['uv','run','pytest','-q','--junitxml='+str(OUT/'full-pytest.xml')]],'model_calls':0,'cloud_services_changed':False})
+for name,command in [('ruff',['uv','run','ruff','check','.']),('pytest',['uv','run','pytest','-q','--junitxml='+str(OUT/'full-pytest.xml')])]:
+    log=OUT/(name+'.log');step_start=now();step_begin=time.monotonic()
+    with log.open('xb') as output:child=subprocess.run(command,cwd=REPO,env=environment,stdout=output,stderr=subprocess.STDOUT)
+    step={'name':name,'command':command,'started_at_utc':step_start,'finished_at_utc':now(),'wall_seconds':round(time.monotonic()-step_begin,3),'exit_code':child.returncode,'log_sha256':sha(log)}
+    steps.append(step);save(name+'-execution.json',step);print(json.dumps(step),flush=True)
+    if child.returncode:break
+after={name:sha(REPO/name) for name in names};save('source-after.json',after)
+result={'candidate_commit':COMMIT,'started_at_utc':start,'finished_at_utc':now(),'wall_seconds':round(time.monotonic()-begin,3),'steps':steps,'tracked_source_bytes_unchanged':before==after,'head_unchanged':git('rev-parse','HEAD').decode().strip()==COMMIT,'worktree_clean_after':not bool(git('status','--porcelain')),'status':'passed' if len(steps)==2 and all(s['exit_code']==0 for s in steps) and before==after else 'failed','formal_model_calls':0,'wp_p6_01_closed':False}
+junit=OUT/'full-pytest.xml'
+if junit.exists():
+    root=ET.parse(junit).getroot();cases=root.findall('.//testcase');failed=[c for c in cases if c.find('failure') is not None];errors=[c for c in cases if c.find('error') is not None];skipped=[c for c in cases if c.find('skipped') is not None]
+    result['pytest']={'collected':len(cases),'passed':len(cases)-len(failed)-len(errors)-len(skipped),'failed':len(failed),'errors':len(errors),'skipped':len(skipped),'skip_reasons':[{'classname':c.get('classname'),'name':c.get('name'),'reason':c.find('skipped').get('message')} for c in skipped],'junit_sha256':sha(junit)}
+save('result.json',result);print(json.dumps(result),flush=True)
+raise SystemExit(0 if result['status']=='passed' and result['head_unchanged'] and result['worktree_clean_after'] else 1)

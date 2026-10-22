@@ -1,0 +1,554 @@
+"""Audit recorded physical metadata and exact selection without viewing pixels.
+
+只审查已记录的物理元数据与精确选择，不查看像素、不创建视觉判断。
+"""
+
+import argparse
+import hashlib
+import json
+import math
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
+from itertools import combinations
+from pathlib import Path
+
+from rasterio.warp import transform, transform_bounds
+from shapely.geometry import Point, Polygon, box
+
+ROOT = Path('D:/drone-agent-data/p6-corpus-completion-20261018').resolve()
+DATA = ROOT.parent
+FAST = ROOT / 'resume-20261022-fast'
+OWN = FAST / 'bulk-physical-meta-auditor'
+REPO = Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+PROPOSAL = FAST / 'bulk-physical-composition-proposal-v1.json'
+CORE = 'd0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2'
+COMMIT = 'f132b98fd0f6148ca3ab5f7e168de147433fc7be'
+FIELDS = (
+    'physical_target_identifiable',
+    'registered_scope_matches_physical_target',
+    'whole_target_boundary_supported_under_approved_convention',
+)
+FILES = {}
+FAILURES = []
+WARNINGS = []
+
+
+def sha(path):
+    with path.open('rb') as handle:
+        return hashlib.file_digest(handle, 'sha256').hexdigest()
+
+
+def canonical(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False,
+        separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+
+
+def locate(value):
+    text = str(value).replace('\\', '/')
+    for prefix in ('D:/drone-agent-data/',
+        '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/'):
+        if text.startswith(prefix):
+            text = text[len(prefix):]
+            break
+    path = Path(text)
+    if not path.is_absolute():
+        path = DATA / path
+    path = path.resolve()
+    assert path.is_relative_to(ROOT) or path.is_relative_to(REPO.resolve()), str(path)
+    assert path.is_file(), str(path)
+    return path
+
+
+def check(condition, name, sample=None, details=None):
+    if not condition:
+        FAILURES.append({'check': name, 'sample_id': sample, 'details': details})
+    return condition
+
+
+def bind(value, expected=None, kind='metadata'):
+    path = locate(value)
+    key = str(path)
+    actual = sha(path)
+    if key not in FILES:
+        FILES[key] = {'file': key, 'sha256': actual, 'bytes': path.stat().st_size,
+            'read_scope': 'bytes_only_no_pixel_decode' if path.suffix.lower() in
+            {'.jpg', '.jpeg', '.png', '.tif', '.tiff'} else kind}
+    if expected is not None:
+        check(actual == expected, 'actual_file_hash_matches_declared_binding', details={
+            'file': key, 'expected_sha256': expected, 'actual_sha256': actual})
+    return path
+
+
+def read(value, expected=None, kind='parsed_metadata'):
+    return json.loads(bind(value, expected, kind).read_text(encoding='utf-8'))
+
+
+def ids(rows, key='sample_id'):
+    values = [row[key] for row in rows]
+    check(len(values) == len(set(values)), 'rows_have_unique_ids', details=values)
+    return values
+
+
+def time(value):
+    return datetime.fromisoformat(value.replace('Z', '+00:00'))
+
+
+def close(values, expected, tolerance=1e-12):
+    return len(values) == len(expected) and all(math.isclose(a, b, abs_tol=tolerance,
+        rel_tol=0) for a, b in zip(values, expected))
+
+
+def footprint(receipt):
+    ident = receipt['sample_id']
+    parent = receipt['raster']['transform']
+    supplied = receipt['window_transform']
+    x, y, w, h = receipt['native_window_xywh']
+    check([receipt['width'], receipt['height']] == [w, h], 'native_window_dimensions', ident)
+    check(x >= 0 and y >= 0 and x + w <= receipt['raster']['width']
+        and y + h <= receipt['raster']['height'], 'native_window_inside_parent', ident)
+    # Derive from parent affine rather than trusting supplied window affine. / 从父仿射独立复算窗口。
+    derived = list(parent)
+    derived[2] += x * parent[0] + y * parent[1]
+    derived[5] += x * parent[3] + y * parent[4]
+    check(close(derived, supplied, 1e-8), 'parent_affine_reproduces_window_affine', ident)
+    a, b, c, d, e, f, _, _, _ = derived
+    corners = [(a * px + b * py + c, d * px + e * py + f)
+        for px, py in ((0, 0), (w, 0), (w, h), (0, h))]
+    native = [min(v[0] for v in corners), min(v[1] for v in corners),
+        max(v[0] for v in corners), max(v[1] for v in corners)]
+    geographic = list(transform_bounds(receipt['raster']['crs'], 'EPSG:4326', *native,
+        densify_pts=21))
+    # Independently sample 1001 positions along each bbox edge. / 独立密集抽样四边包络。
+    left, bottom, right, top = native
+    edge_x, edge_y = [], []
+    for index in range(1001):
+        fraction = index / 1000
+        px = left + fraction * (right - left)
+        py = bottom + fraction * (top - bottom)
+        edge_x.extend((px, px, left, right))
+        edge_y.extend((bottom, top, py, py))
+    lon, lat = transform(receipt['raster']['crs'], 'EPSG:4326', edge_x, edge_y)
+    dense = [min(lon), min(lat), max(lon), max(lat)]
+    check(geographic[0] <= dense[0] + 1e-12 and geographic[1] <= dense[1] + 1e-12
+        and geographic[2] >= dense[2] - 1e-12 and geographic[3] >= dense[3] - 1e-12,
+        '21_point_envelope_covers_1001_point_edges', ident)
+    return {'sample_id': ident, 'source_crs': receipt['raster']['crs'],
+        'native_image_bounds': native, 'conservative_full_image_envelope_lon_lat': geographic,
+        'independent_1001_per_edge_bounds_lon_lat': dense,
+        'full_native_derived_image_used_not_parent_tiff': True}
+
+
+def declared_footprint_matches(declared, actual):
+    return (declared['sample_id'] == actual['sample_id']
+        and declared['source_crs'] == actual['source_crs']
+        and close(declared['native_image_bounds'], actual['native_image_bounds'], 1e-8)
+        and close(declared['conservative_full_image_envelope_lon_lat'],
+            actual['conservative_full_image_envelope_lon_lat']))
+
+
+def source_binding(receipt, slug, source_context):
+    ident = receipt['sample_id']
+    binding = read(ROOT / f'resume-20261021/{slug}-bindings-v1/{ident}-binding.json')
+    for name in ('extraction', 'extraction_plan', 'source_inventory', 'range_manifest', 'replay'):
+        bind(binding[name + '_file'], binding[name + '_sha256'])
+    check(binding['extraction_sha256'] == sha(locate(source_context['extraction_file'])),
+        'prior_source_binding_is_current_extraction', ident)
+    context = source_context['source']
+    prior = context['capture_rows'][ident]
+    check(canonical(binding) == prior['derivation_sha256'], 'f132_inventory_binds_exact_derivation', ident)
+    for key, actual in (
+        ('image_sha256', receipt['image_sha256']), ('source_orthomosaic', receipt['source_orthomosaic']),
+        ('source_commit', receipt['source_commit']), ('parent_sha256', receipt['source_published_lfs_sha256'])):
+        check(prior[key] == actual, 'f132_capture_inventory_matches_current_' + key, ident)
+    check(ident in context['passed_ids'], 'current_id_in_actual_prior_f132_source_pass', ident)
+    check(prior['observed']['asset_id'] == receipt['asset_group_id'], 'f132_inventory_preserves_group', ident)
+    plan = read(binding['extraction_plan_file'])
+    source_plan = read(plan['source_plan_file'], plan['source_plan_sha256'])
+    planned = [item for source in source_plan['images'] for item in source['items']
+        if item['bounded_target_id'] == receipt['bounded_target_id']
+        and item['asset_group_id'] == receipt['asset_group_id']]
+    check(len(planned) == 1 and planned[0]['target'] == receipt['world_scope'],
+        'current_scope_matches_preregistered_extraction_plan', ident)
+    replay = read(binding['replay_file'])
+    replayed = read(replay['replay_extraction_file'], replay['replay_extraction_sha256'])
+    repeated_keys = ('sample_id', 'asset_group_id', 'bounded_target_id', 'source_orthomosaic',
+        'source_commit', 'source_published_lfs_sha256', 'media_origin', 'status', 'world_scope',
+        'raster', 'native_window_xywh', 'window_transform', 'width', 'height', 'image_sha256',
+        'mask_sha256', 'native_rgb_sha256', 'valid_pixel_fraction', 'source_geometry_sha256',
+        'source_alignment_sha256', 'source_date', 'source_date_double_check_flag')
+    check(all(receipt[k] == replayed[k] for k in repeated_keys),
+        'prior_offline_replay_receipt_matches_current_extraction', ident)
+    check(replay['network_requests'] == 0 and replay['mode'] == 'offline_cached_ranges',
+        'saved_replay_declares_zero_network', ident)
+    for name in ('image', 'mask', 'guide', 'overview', 'source_alignment', 'source_geometry'):
+        bind(receipt[name + '_file'], receipt[name + '_sha256'], kind='bytes_only')
+    ranges = read(binding['range_manifest_file'])
+    return {'sample_id': ident, 'source_slug': slug,
+        'source_report_file': str(context['report_file']), 'source_report_sha256': sha(context['report_file']),
+        'current_derivation_canonical_sha256': canonical(binding),
+        'capture_inventory_file': str(context['capture_file']),
+        'capture_inventory_sha256': sha(context['capture_file']),
+        'source_chain_was_verified_by_prior_f132_run': True,
+        'prior_capture_author_date_group': prior['author_date_group'],
+        'prior_capture_author_date_verified': prior['author_date_verified'],
+        'current_audit_decoded_pixels': False,
+        'whole_parent_sha256_verified': ranges.get('whole_parent_sha256_verified'),
+        'new_repeat_evidence_created': False}
+
+
+def run(final):
+    for name in ('CLAUDE.md', 'docs/architecture/00-overview.md', 'docs/architecture/02-contracts.md',
+        'docs/architecture/03-safety.md', 'docs/roadmap.md', 'docs/decisions.md',
+        'docs/p6-derived-road-evidence.md', 'docs/p6-business-evaluation.md'):
+        bind(REPO / name, kind='contract_file_bytes_hashed')
+    check(sha(bind(REPO / 'scripts/p6_business_eval.py')) == CORE, 'core_business_sha_is_frozen_f132')
+    for name in ('prepare_bulk_physical_composition_v2.py', 'prepare_bulk_physical_composition_v3.py',
+        'prepare_bulk_physical_composition_v4.py', 'prepare_bulk_physical_composition_v5.py',
+        'physical-evidence-composition-plan-v1.json',
+        'bulk-review-plan-v1.json', 'bulk-review-plan-v3.json'):
+        bind(FAST / name, kind='producer_or_registered_plan_read_not_executed')
+    rules = read(ROOT / 'resume-20261021/grouping-rules-v2.json')
+    protocol = read(FAST / 'bulk-protocol-snapshot-not-frozen-v1.json')
+    approved_policy = read(ROOT / 'resume-20261021-c/boundary-policy-approved-v1.json')
+    canonical_protocol = read(REPO / 'eval/s2/road_business_v1/protocol-draft.json')
+    check(protocol == canonical_protocol, 'proposal_protocol_snapshot_matches_current_unfrozen_draft')
+    check(protocol['target_boundary_policy']['mode'] == approved_policy['mode'], 'approved_boundary_mode_bound')
+    check(protocol['minimum_object_size'] is None and protocol['minimum_occupancy_ratio'] is None,
+        'no_new_entity_size_or_occupancy_threshold')
+    check(protocol['status'] == 'targets_approved_data_pending', 'formal_data_not_frozen')
+    for reference in rules['extension_pool_registrations']:
+        bind(reference['file'], reference['sha256'])
+    source_contexts = {}
+    f132_execution_file = bind(ROOT / 'resume-20261021/current-source-execution-f132b98-v1/result.json')
+    f132_execution = read(f132_execution_file)
+    f132_controller_file = bind(ROOT / 'resume-20261021/current-source-control-f132b98-v1/result.json')
+    f132_controller = read(f132_controller_file)
+    check(f132_execution['candidate_commit'] == f132_controller['candidate_commit'] == COMMIT
+        and f132_execution['all_steps_passed'] is True and f132_controller['ssh_exit_code'] == 0,
+        'real_f132_execution_and_controller_bind_exact_candidate')
+    execution_witness = next(v for v in f132_controller['mirrored_files'] if
+        v['file'] == f132_execution_file.relative_to(ROOT).as_posix())
+    check(execution_witness['sha256'] == sha(f132_execution_file)
+        and execution_witness['bytes'] == f132_execution_file.stat().st_size,
+        'f132_controller_binds_exact_execution_receipt_bytes')
+    for slug, count in (('laura', 100), ('mussett', 46)):
+        report_file = bind(ROOT / f'resume-20261021/{slug}-provenance-f132b98-v1/result.json')
+        report = read(report_file)
+        passed_ids = set(ids(report['rows']))
+        check(report['candidate_commit'] == COMMIT and report['software_source_sha256'] == CORE,
+            'prior_source_report_binds_f132_core', details=slug)
+        check(report['checked'] == report['passed'] == len(passed_ids) == count
+            and all(row['source_chain_verified'] is True for row in report['rows']),
+            'prior_source_actual_coverage', details=slug)
+        capture_file = bind(ROOT / f'resume-20261021/{slug}-provenance-f132b98-v1/unverified-grouping-capture-inventory.json')
+        capture = read(capture_file)
+        step = next(v for v in f132_execution['steps'] if v['slug'] == slug)
+        check(step['exit_code'] == 0 and step['expected'] == step['checked'] == step['passed'] == count
+            and time(step['started_at']) <= time(report['recorded_at']) <= time(step['finished_at']),
+            'f132_report_recorded_during_actual_passing_source_step', details=slug)
+        for exact_file in (report_file, capture_file):
+            rel = exact_file.relative_to(ROOT).as_posix()
+            witnesses = [v for v in f132_controller['mirrored_files'] if v['file'] == rel]
+            check(len(witnesses) == 1 and witnesses[0]['sha256'] == sha(exact_file)
+                and witnesses[0]['bytes'] == exact_file.stat().st_size,
+                'f132_controller_binds_actual_report_and_inventory_bytes', details=rel)
+        check(set(ids(capture['rows'], 'source_observation_id')) == passed_ids,
+            'prior_source_inventory_covers_exact_report_ids', details=slug)
+        execution_file = bind(ROOT / f'resume-20261021/{slug}-source-execution-v1/result.json')
+        execution = read(execution_file)
+        check(execution['all_steps_passed'] is True and all(v['exit_code'] == 0 for v in execution['steps']),
+            'original_source_execution_passed', details=slug)
+        registration = read(ROOT / f'resume-20261021/{slug}-geometry-v1/registration.json')
+        bind(registration['source_grouping_file'], registration['source_grouping_sha256'])
+        source_contexts[slug] = {'report_file': report_file, 'report': report,
+            'capture_file': capture_file, 'capture_rows': {v['source_observation_id']: v for v in capture['rows']},
+            'passed_ids': passed_ids, 'registration': registration, 'execution_file': execution_file}
+    grouping_rows = read(ROOT / 'asset-planning/grouping-audit.json')
+    original_groups = {v['candidate_id']: v for v in grouping_rows}
+    laura_purpose = read(ROOT / 'resume-20261021/laura-geometry-v1/purpose-reserve-v1.json')
+    first_order, first_drafts = {}, {}
+    for author in (27, 28):
+        draft = read(ROOT / f'annotation/bounded_annotator_{author}/suggestions.json')
+        first_drafts[f'bounded_annotator_{author}'] = {v['sample_id']: v for v in draft['rows']}
+        read(ROOT / f'annotation/bounded_annotator_{author}/assignment.json')
+        first_order[f'bounded_annotator_{author}'] = ids(draft['rows'])
+        check(len(draft['rows']) == 24, 'first_batch24_complete', details=author)
+    plan = read(FAST / 'bulk-review-plan-v3.json')
+    planned_assignments = {v['reviewer']: v for v in plan['assignments']}
+    replacement = read(ROOT / 'verification/bounded_verifier_33/orchestrator-stopped.json')
+    replacement_assignment = read(ROOT / 'verification/bounded_verifier_33/assignment.json', replacement['assignment_sha256'])
+    check(not (ROOT / 'verification/bounded_verifier_33/reviews.json').exists(), 'old33_no_formal_reviews')
+    check(replacement['completed_reviews_saved'] == 0 and replacement['replacement_receives_old_partial_answers'] is False,
+        'replacement_preserves_partial_without_reusing_answers')
+    # Partial observations are hashed for preservation, never parsed as answers. / 部分观察只校验保存，不读作答案。
+    for reference in replacement['partial_file_bindings']:
+        bind(reference['file'], reference['sha256'], kind='preservation_hash_only_not_answers_read')
+    old_manifest = read(ROOT / 'resume-20261022/integrated-candidate-corpus-v1/manifest.json')
+    old, old_receipts = [], {}
+    for sample in old_manifest['samples']:
+        receipt = read(sample['derivation']['extraction_file'], sample['derivation']['extraction_sha256'])
+        bind(sample['image_file'], sample['image_sha256'])
+        check(receipt['image_sha256'] == sample['image_sha256'], 'existing_image_receipt_binding', sample['sample_id'])
+        old_receipts[sample['sample_id']] = receipt
+        old.append({**footprint(receipt), 'asset_id': sample['asset_id'], 'role': sample['evaluation_role']})
+    check(len(old) == 6 and len({v['asset_id'] for v in old}) == 5,
+        'existing_composition_exactly6_observations5_assets')
+    for name in ('pair-grouping-composition-proposal-v1.json', 'pair-grouping-composition-audit-v1.json',
+        'integrated-core-audit-v1/core-audit.json'):
+        read(ROOT / 'resume-20261022' / name)
+    old_audit = read(ROOT / 'resume-20261022/integrated-core-audit-v1/core-audit.json')
+    check(old_audit['tool_sha256'] == CORE and old_audit['samples'] == 6 and old_audit['derived_captures_verified'] == 6,
+        'existing6_core_scope')
+    for key, name in (('manifest', 'manifest.json'), ('labels', 'labels.json'),
+        ('protocol', 'protocol-not-frozen.json'), ('exposure', 'exposure.json')):
+        bind(ROOT / 'resume-20261022/integrated-candidate-corpus-v1' / name, old_audit['input_sha256'][key])
+    cases, pending, source_checks, all_assignments = [], [], [], []
+    completed = []
+    for number in (37, 34, 35, 36):
+        reviewer = f'bounded_verifier_{number}'
+        folder = ROOT / 'verification' / reviewer
+        assignment_file = bind(folder / 'assignment.json')
+        assignment = read(assignment_file)
+        assigned_ids = ids(assignment['samples'])
+        entry = planned_assignments[reviewer]
+        start = entry['assigned_order_start']
+        check(assigned_ids == first_order[entry['first_author']][start:start+entry['count']],
+            'all48_assignment_follows_registered_order_without_label_filter', details=reviewer)
+        check(assignment['parent_history'] == 'none', 'reviewer_isolated_parent_history', details=reviewer)
+        if number == 37:
+            check(assigned_ids == ids(replacement_assignment['samples']), 'replacement37_repeats_all12_of33')
+            check(time(assignment['created_at']) > time(replacement['recorded_at_utc']),
+                'replacement_registration_precedes37_assignment')
+        full = (folder / 'review-payload.json').is_file() and (folder / 'reviews.json').is_file()
+        payload, reviews, physical, review_rows = None, None, {}, {}
+        if full:
+            payload = read(folder / 'review-payload.json')
+            bind(folder / 'completed-observer-payload-captured-v1.json', sha(folder / 'review-payload.json'))
+            reviews = read(folder / 'reviews.json')
+            physical = {v['sample_id']: v for v in payload['physical_evidence']}
+            review_rows = {v['sample_id']: v for v in reviews['rows']}
+            check(payload['status'] == 'complete' and payload['full_assigned_target_checked'] is True,
+                'actual_observer_completed_full_assignment', details=reviewer)
+            check(len(ids(payload['physical_evidence'])) == len(ids(reviews['rows'])) == 12
+                and set(physical) == set(review_rows) == set(assigned_ids), 'actual_full12_physical_and_formal_reviews', details=reviewer)
+            check(payload['assignment_sha256'] == sha(assignment_file)
+                and reviews['assignment_sha256'] == sha(assignment_file), 'actual_review_assignment_binding', details=reviewer)
+            check(reviews['isolation']['assigned_first_pass_seen'] is True
+                and reviews['isolation']['parent_history'] == 'none'
+                and reviews['isolation']['evaluation_prompt_seen'] is False
+                and reviews['isolation']['evaluation_outputs_seen'] is False
+                and reviews['isolation']['source_labels_seen'] is False,
+                'actual_isolation_discloses_first_answers_visible', details=reviewer)
+            completed.append(reviewer)
+        else:
+            pending.append(reviewer)
+        for assigned in assignment['samples']:
+            ident = assigned['sample_id']
+            all_assignments.append(ident)
+            receipt_file = bind(assigned['current_extraction_file'], assigned['current_extraction_sha256'])
+            receipt = read(receipt_file)
+            slug = 'laura' if assigned['first_author_id'] == 'bounded_annotator_27' else 'mussett'
+            source = source_contexts[slug]
+            site = rules['crasar_site_map'][receipt['source_orthomosaic']]
+            check(assigned['fixed_world_scope'] == receipt['world_scope'], 'assignment_keeps_frozen_world_scope', ident)
+            check(assigned['target_endpoints_normalized'] == receipt['target_endpoints_normalized'],
+                'assignment_keeps_fixed_AB_image_endpoints', ident)
+            check(assigned['asset_group_id'] == receipt['asset_group_id']
+                and assigned['bounded_target_id'] == receipt['bounded_target_id'], 'assignment_keeps_group_and_target', ident)
+            check(receipt['asset_group_id'] in source['registration']['selected_asset_group_ids'],
+                'registered_group_membership_preserved', ident)
+            original_group = original_groups[receipt['asset_group_id']]
+            check(original_group['event'] == source['registration']['event']
+                and receipt['world_scope']['reference_chain_id'] in original_group['chain_ids'],
+                'fixed_scope_retains_original_group_event_and_chain_membership', ident)
+            if slug == 'laura':
+                check(ident in laura_purpose['primary_candidate_sample_ids']
+                    and ident not in laura_purpose['expected_reference_sample_ids'],
+                    'reserved_expected_reference_not_counted_as_primary', ident)
+            check(site['planned_partition'] == receipt['proposed_partition'] == source['registration']['proposed_partition']
+                and site['event'] == source['registration']['event'], 'whole_event_site_split_preserved', ident)
+            check(time(receipt['world_scope']['frozen_at_utc']) < time(assigned['first_row']['inspected_at']),
+                'fixed_scope_precedes_first_observation', ident)
+            check(canonical(assigned['first_row']) == assigned['first_row_sha256'], 'assigned_first_row_canonical_binding', ident)
+            check(assigned['first_row'] == first_drafts[assigned['first_author_id']][ident],
+                'assigned_first_row_is_exact_saved_original_draft_row', ident)
+            bind(assigned['draft_file'], assigned['draft_sha256'])
+            bind(assigned['image_file'], assigned['image_sha256'])
+            fp = footprint(receipt)
+            source_checks.append(source_binding(receipt, slug, {
+                'extraction_file': receipt_file, 'source': source}))
+            if not full:
+                continue
+            row, finding = review_rows[ident], physical[ident]
+            check(all(finding[k] is None or type(finding[k]) is bool for k in FIELDS),
+                'physical_fields_true_false_or_null', ident)
+            evidence = finding['evidence']
+            evidence_valid = (isinstance(evidence, str) and bool(evidence.strip())) or (
+                isinstance(evidence, list) and len(evidence) > 0
+                and all(isinstance(v, str) and bool(v.strip()) for v in evidence))
+            check(evidence_valid, 'actual_physical_observer_supplied_evidence', ident)
+            check({str(locate(v)) for v in finding['inspection_files']} ==
+                {str(locate(v)) for v in row['inspected_files']}, 'physical_and_actual_review_files_match', ident)
+            check(row['original_image_checked'] is True and row['image_sha256'] == assigned['image_sha256']
+                and row['first_author_id'] == assigned['first_author_id']
+                and row['first_row_sha256'] == assigned['first_row_sha256'], 'actual_review_image_and_first_binding', ident)
+            for file, digest in row['inspection_file_sha256'].items():
+                bind(file, digest)
+            check({str(locate(v)) for v in row['inspected_files']} ==
+                {str(locate(v)) for v in row['inspection_file_sha256']}, 'all_inspected_files_hash_bound', ident)
+            expected_final = {**assigned['first_row'], **row['changes'],
+                'inspected_at': row['reviewed_at'], 'inspection_files': row['inspected_files']}
+            check(row['final_row'] == expected_final and canonical(row['final_row']) == row['final_row_sha256'],
+                'formal_final_row_matches_actual_review_changes', ident)
+            observer_rows = {v['sample_id']: v for v in payload['rows']}
+            check(all(observer_rows[ident].get(k) == row.get(k) for k in ('decision', 'findings', 'changes', 'inspected_files')),
+                'stored_review_business_fields_equal_actual_completed_payload', ident)
+            reasons = [key + ' is not explicitly true' for key in FIELDS if finding[key] is not True]
+            polygon = row['final_row']['target_polygon']
+            if polygon is None:
+                reasons.append('complete task polygon remains absent')
+            else:
+                check(len(polygon) >= 3 and all(len(p) == 2 and all(type(v) in (int, float)
+                    and math.isfinite(v) and 0 <= v <= 1 for v in p) for p in polygon)
+                    and Polygon(polygon).is_valid and Polygon(polygon).area > 0,
+                    'task_polygon_valid_normalized_geometry', ident)
+            cap_distances = None
+            if polygon is not None:
+                native_polygon = Polygon([(px * receipt['width'], py * receipt['height'])
+                    for px, py in polygon])
+                cap_distances = [Point(px * receipt['width'], py * receipt['height']).distance(native_polygon)
+                    for px, py in receipt['target_endpoints_normalized']]
+            if row['final_row']['verdict'] == 'excluded_source':
+                reasons.append('no usable road target')
+            cases.append({'sample_id': ident, 'reviewer_id': reviewer, 'assignment_sha256': sha(assignment_file),
+                'payload_file': str(folder / 'review-payload.json'), 'payload_sha256': sha(folder / 'review-payload.json'),
+                'review_file': str(folder / 'reviews.json'), 'review_sha256': sha(folder / 'reviews.json'),
+                'extraction_file': str(receipt_file), 'extraction_sha256': sha(receipt_file),
+                'footprint': fp, 'proposed_group_id': receipt['asset_group_id'], 'registered_site': site,
+                'physical_evidence': finding, 'not_admitted_reasons': reasons,
+                'grouping_flags_changed': False, 'has_valid_polygon': polygon is not None,
+                'source_orthomosaic': receipt['source_orthomosaic'],
+                'parent_sha256': receipt['source_published_lfs_sha256'],
+                'fixed_world_scope_sha256': canonical(receipt['world_scope']),
+                'final_row_sha256': row['final_row_sha256'],
+                'fixed_AB_centerpoint_distance_outside_final_polygon_px': cap_distances})
+    check(len(all_assignments) == len(set(all_assignments)) == 48, 'all48_review_assignments_exactly_once')
+    selected, decisions, comparisons = [], [], []
+    for case in sorted(cases, key=lambda value: value['sample_id']):
+        reasons = list(case['not_admitted_reasons'])
+        conflicts = []
+        if not reasons:
+            current = box(*case['footprint']['conservative_full_image_envelope_lon_lat'])
+            previous = old + [{**v['footprint'], 'asset_id': v['proposed_group_id']} for v in selected]
+            for other in previous:
+                intersects = current.intersects(box(*other['conservative_full_image_envelope_lon_lat']))
+                comparisons.append({'sample_id': case['sample_id'], 'other_sample_id': other['sample_id'],
+                    'complete_native_image_envelopes_intersect': intersects})
+                if intersects:
+                    conflicts.append(other['sample_id'])
+            if conflicts:
+                reasons.append('full native image envelope intersects an existing or earlier selected target; dedicated identity comparison required')
+        if not reasons:
+            selected.append(case)
+        decisions.append({'sample_id': case['sample_id'], 'proposed_for_independent_metadata_review': not reasons,
+            'hold_reasons': reasons, 'intersecting_sample_ids': conflicts})
+    selected_ids = [v['sample_id'] for v in selected]
+    selected_groups = [v['proposed_group_id'] for v in selected]
+    check(len(selected_groups) == len(set(selected_groups)), 'no_same_group_multiple_primary_assets_in_subset')
+    check(not set(selected_groups) & {v['asset_id'] for v in old}, 'no_existing_asset_group_counted_as_new')
+    split_values = defaultdict(set)
+    for sample in old_manifest['samples']:
+        for key, value in (('asset', sample['asset_id']), ('site', sample['site_id']),
+            ('capture', sample['capture_batch_id']), ('near_duplicate', sample['near_duplicate_group'])):
+            split_values[(key, value)].add(sample['split'])
+    for case in selected:
+        split = case['registered_site']['planned_partition'].removesuffix('_candidate')
+        for key, value in (('asset', case['proposed_group_id']), ('site', case['registered_site']['site_id']),
+            ('capture', 'author-parent-' + case['parent_sha256']), ('near_duplicate', case['proposed_group_id'])):
+            split_values[(key, value)].add(split)
+    split_conflicts = [{'kind': k[0], 'id': k[1], 'splits': sorted(v)} for k, v in split_values.items() if len(v) > 1]
+    check(not split_conflicts, 'selected_plus_existing_asset_site_capture_nearduplicate_split_consistent', details=split_conflicts)
+    proposal_digest = None
+    if final:
+        check(not pending, 'all_actual_reviews_complete_before_final_proposal', details=pending)
+        proposal = read(PROPOSAL)
+        proposal_digest = sha(PROPOSAL)
+        check(proposal['selected_sample_ids'] == selected_ids, 'exact_proposal_subset_matches_independent_recomputation')
+        check(proposal['decisions'] == decisions, 'all48_proposal_decisions_match_independent_recomputation')
+        check(len(proposal['cases']) == len(cases) == 48, 'proposal_contains_all48_exactly_once')
+        calculated = {v['sample_id']: v for v in cases}
+        for row in proposal['cases']:
+            actual = calculated[row['sample_id']]
+            for key in ('reviewer_id', 'assignment_sha256', 'payload_file', 'payload_sha256', 'review_file',
+                'review_sha256', 'extraction_file', 'extraction_sha256', 'proposed_group_id', 'registered_site',
+                'physical_evidence', 'not_admitted_reasons', 'grouping_flags_changed'):
+                check(row[key] == actual[key], 'proposal_case_exact_actual_' + key, row['sample_id'])
+            check(declared_footprint_matches(row['footprint'], actual['footprint']),
+                'proposal_case_envelope_independently_recomputed', row['sample_id'])
+        check(len(proposal['existing_physical_observations']) == len(old), 'proposal_keeps_all6_existing_observations')
+        for declared, actual in zip(proposal['existing_physical_observations'], old):
+            check(declared_footprint_matches(declared, actual)
+                and declared['asset_id'] == actual['asset_id'] and declared['role'] == actual['role'],
+                'proposal_existing_envelope_and_asset_binding', actual['sample_id'])
+        for reference in proposal['bindings']:
+            path = bind(reference['file'], reference['sha256'])
+            check(path.stat().st_size == reference['bytes'], 'proposal_file_bytes_match', details=str(path))
+        check(proposal['prior_checks_reused_not_rerun_now'] is True
+            and proposal['new48_all_present_in_actual_prior_f132_source_checks'] is True,
+            'proposal_source_scope_and_no_rerun_disclosed')
+        check('first answers' in proposal['physical_evidence_blinding']
+            and 'not a separate blind' in proposal['physical_evidence_blinding'],
+            'proposal_does_not_mislabel_supplemental_physical_findings_as_blind_review')
+        for key in ('master_grouping_flags_changed', 'new_visual_judgments_created', 'wp_p6_01_closed'):
+            check(proposal[key] is False, 'proposal_no_' + key)
+        check(proposal['status'] == 'proposed_not_applied' and proposal['formal_assets_admitted'] == 0
+            and proposal['formal_model_calls'] == 0, 'proposal_no_formal_admission_or_model_claim')
+    # No new visual conclusions are inferred from the observer's text. / 不从观察文字生成新的视觉结论。
+    result = {'format': 'drone.p6-bulk-physical-composition-audit/v1',
+        'recorded_at_utc': datetime.now(timezone.utc).isoformat(),
+        'verdict': ('rejects' if FAILURES else 'supports') if final else 'preflight_pending_actual_proposal',
+        'scope': 'Independent read-only metadata/contract composition for the exact populated candidate subset only; no new image or business judgment.',
+        'proposal_file': str(PROPOSAL), 'exactproposalSHA': proposal_digest, 'proposal_sha256': proposal_digest,
+        'supports_sample_ids': selected_ids if not FAILURES and final else [],
+        'preflight_recomputed_selected_ids': selected_ids,
+        'supported_proposed_group_ids': selected_groups if not FAILURES and final else [],
+        'hold_decisions': [v for v in decisions if not v['proposed_for_independent_metadata_review']],
+        'hold_issues_remain_unresolved': True,
+        'failures': FAILURES, 'warnings': WARNINGS, 'pending_reviewers': pending,
+        'completed_reviewers_checked': completed, 'all48_assignments_exact_once': len(set(all_assignments)) == 48,
+        'existing_observation_count': len(old), 'existing_distinct_asset_count': len({v['asset_id'] for v in old}),
+        'new_subset_count': len(selected), 'new_subset_unique_group_count': len(set(selected_groups)),
+        'split_conflicts': split_conflicts,
+        'all_case_recomputations': cases, 'all_decision_recomputations': decisions,
+        'existing_footprint_recomputations': old, 'actual_envelope_comparisons': comparisons,
+        'source_binding_rechecks': source_checks,
+        'prior_source_scope': [{'source': slug, 'actual_prior_checked': context['report']['checked'],
+            'actual_prior_passed': context['report']['passed'], 'candidate_commit': COMMIT,
+            'software_source_sha256': CORE, 'report_file': str(context['report_file']),
+            'report_sha256': sha(context['report_file']), 'capture_inventory_file': str(context['capture_file']),
+            'capture_inventory_sha256': sha(context['capture_file'])} for slug, context in source_contexts.items()],
+        'source_scope_limitations': [
+            'This audit reread and hashed the exact current extraction/plan/inventory/range-manifest/replay metadata and image bytes; it did not decode pixels, access source blocks, replay extraction, issue network requests or run the source core again.',
+            'Historical f132 source-only reports cover Laura100 and Mussett46. Their per-ID pass records and capture inventories are reused as prior evidence, not a new full source audit or new whole-suite result.',
+            'The bound source-execution-v1 result files describe the earlier original extraction/bind/audit execution under 94af072. The separate current-source-execution-f132b98-v1 and current-source-control-f132b98-v1 results bind the real later f132 source-only steps and exact mirrored report/inventory bytes; only Laura100 and Mussett46 are reused here.',
+            'Full-parent LFS verification and author-date verification retain their actual recorded values; these new singleton candidates do not create a repeated-capture pair.',
+            'Supplemental physical findings were recorded by actual isolated second observers with assigned first answers visible. This is not a separate blind physical-identity review.',
+            'Distinct conservative full-image envelopes only exclude overlap of these fixed observed targets. Geometric groups alone do not establish physical assets; intersections and uncertain/absent boundaries stay on hold.',
+            'The exact candidate composition remains proposed and unfrozen; it is not full D089 or WP-P6-01 acceptance and does not grant source/model/field-quality closure.'
+        ],
+        'checked_files': list(FILES.values()), 'human0': True, 'models0': True, 'pixelsviewedfalse': True,
+        'formalassets0': True, 'human_labels_created': 0, 'formal_model_calls': 0, 'pixels_viewed': False,
+        'formal_assets_admitted': 0, 'new_visual_judgments_created': False,
+        'master_grouping_flags_changed': False, 'data_or_thresholds_changed': False, 'wp_p6_01_closed': False}
+    output = FAST / 'bulk-physical-composition-audit-v1.json' if final else OWN / 'metadata-preflight-v1.json'
+    with output.open('x' if final else 'w', encoding='utf-8') as handle:
+        json.dump(result, handle, ensure_ascii=False, indent=2, allow_nan=False)
+    print(json.dumps({'file': str(output), 'sha256': sha(output), 'verdict': result['verdict'],
+        'pending': pending, 'candidate_subset': selected_ids, 'failures': FAILURES,
+        'checked_files': len(FILES)}, ensure_ascii=True))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--final', action='store_true')
+    run(parser.parse_args().final)

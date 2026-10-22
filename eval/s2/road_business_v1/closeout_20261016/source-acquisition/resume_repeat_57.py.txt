@@ -1,0 +1,101 @@
+"""Resume only the verified partial ranges, preserving all earlier attempts.
+
+仅续取已核对部分范围的缺失字节，保留全部早期尝试。
+"""
+import hashlib
+import json
+import struct
+import subprocess
+import zlib
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+SOURCE = ROOT / "repeat-coverage-57"
+OUTPUT = ROOT / "repeat-coverage-57-resume1"
+
+
+def sha(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def save(path, value):
+    with path.open("x", encoding="utf-8") as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2, allow_nan=False)
+
+
+def main():
+    previous = json.loads((SOURCE / "result.json").read_text(encoding="utf-8"))
+    index = json.loads((Path("D:/drone-agent-data/p6-business-eval-20261015/source-discovery/torchgeo-central-index.json")).read_text(encoding="utf-8"))
+    entries = {e["member"]: e for e in index["entries"]}
+    OUTPUT.mkdir(exist_ok=False)
+    (OUTPUT / "ranges").mkdir()
+    (OUTPUT / "images").mkdir()
+    (OUTPUT / "receipts").mkdir()
+
+    def resume(old):
+        ident = old["image_id"]
+        first, end = old["range"]
+        prefix_file = SOURCE / "ranges" / (ident + ".bin")
+        prefix = prefix_file.read_bytes() if prefix_file.exists() else b""
+        header_file = SOURCE / "ranges" / (ident + ".headers.txt")
+        old_headers = header_file.read_text(encoding="utf-8", errors="replace") if header_file.exists() else ""
+        expected = f"bytes {first}-{end}/{index['zip_bytes']}"
+        ranges = [s.split(":", 1)[1].strip() for s in old_headers.splitlines() if s.lower().startswith("content-range:")]
+        if not ranges or ranges[-1] != expected or not 0 < len(prefix) < end - first + 1:
+            prefix = b""
+        start = first + len(prefix)
+        output, headers = OUTPUT / "ranges" / (ident + ".tail.bin"), OUTPUT / "ranges" / (ident + ".headers.txt")
+        row = {"member": old["member"], "image_id": ident, "started_at": datetime.now(timezone.utc).isoformat(),
+               "prefix_sha256": sha(prefix), "previous_receipt_sha256": sha((SOURCE / "receipts" / (ident + ".json")).read_bytes()),
+               "range": [start, end], "status": "failed", "image_verified": False}
+        try:
+            result = subprocess.run(["curl.exe", "--fail", "--silent", "--show-error", "--location", "--max-time", "300",
+                "--max-filesize", str(end - start + 1), "--range", f"{start}-{end}", "--dump-header", str(headers),
+                "--output", str(output), old["source_url"]], capture_output=True, timeout=315)
+            row["curl_exit"] = result.returncode
+            if result.returncode:
+                raise ValueError("continuation transfer failed")
+            lines = headers.read_text(encoding="utf-8", errors="replace").splitlines()
+            received = [s.split(":", 1)[1].strip() for s in lines if s.lower().startswith("content-range:")]
+            tail = output.read_bytes()
+            if not received or received[-1] != f"bytes {start}-{end}/{index['zip_bytes']}" or len(tail) != end - start + 1:
+                raise ValueError("continuation range mismatch")
+            raw = prefix + tail
+            fields = struct.unpack_from("<4s5H3I2H", raw)
+            _, _, flags, method, _, _, _, _, _, nlen, xlen = fields
+            member = raw[30:30 + nlen].decode("utf-8" if flags & 2048 else "cp437")
+            entry = entries[member]
+            if raw[:4] != b"PK\x03\x04" or member != old["member"] or flags & 1 or method != 8:
+                raise ValueError("member header mismatch")
+            payload = raw[30 + nlen + xlen:30 + nlen + xlen + entry["compressed_bytes"]]
+            decoder = zlib.decompressobj(-15)
+            image = decoder.decompress(payload, entry["original_bytes"] + 1)
+            if not decoder.eof or decoder.unused_data or decoder.unconsumed_tail or len(image) != entry["original_bytes"]:
+                raise ValueError("incomplete original")
+            if f"{zlib.crc32(image) & 0xffffffff:08x}" != entry["crc32"]:
+                raise ValueError("original CRC mismatch")
+            target = OUTPUT / "images" / (ident + ".jpg")
+            with target.open("xb") as stream:
+                stream.write(image)
+            row.update(status="verified", image_verified=True, image_file=target.relative_to(OUTPUT).as_posix(),
+                       image_sha256=sha(image), image_bytes=len(image), crc32=entry["crc32"], tail_sha256=sha(tail))
+        except Exception as error:
+            row["error"] = f"{type(error).__name__}: {error}"
+        row["finished_at"] = datetime.now(timezone.utc).isoformat()
+        save(OUTPUT / "receipts" / (ident + ".json"), row)
+        return row
+
+    failed = [r for r in previous["rows"] if not r["image_verified"]]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        rows = list(pool.map(resume, failed))
+    result = {"format": "drone.floodnet-range-resume/v1", "previous_result_sha256": sha((SOURCE / "result.json").read_bytes()),
+              "tool_sha256": sha(Path(__file__).read_bytes()), "planned": len(rows), "verified": sum(r["image_verified"] for r in rows),
+              "rows": rows, "old_attempts_preserved": True, "whole_archive_verified": False, "formal_release_eligible": False}
+    save(OUTPUT / "result.json", result)
+    print(json.dumps({"planned": len(rows), "verified": result["verified"]}))
+
+
+if __name__ == "__main__":
+    main()

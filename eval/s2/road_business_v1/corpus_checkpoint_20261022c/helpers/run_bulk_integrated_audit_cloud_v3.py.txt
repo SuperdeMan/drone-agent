@@ -1,0 +1,462 @@
+"""Audit the exact partial copy against original f132 cached source bytes.
+
+用原f132冻结核心与云端原缓存审核精确局部副本，不查看图片或改变业务判断。
+"""
+
+import base64
+import copy
+import hashlib
+import json
+import runpy
+import subprocess
+import sys
+import tarfile
+from collections import Counter
+from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
+
+sys.dont_write_bytecode = True
+FAST = Path(__file__).resolve().parent
+ROOT = FAST.parent
+DATA = ROOT.parent.resolve()
+REPO = DATA / 'p6-road-views-20261014/repo'
+CORPUS = FAST / 'bulk-integrated-candidate-corpus-v1'
+LOCAL_CORE = FAST / 'frozen-original-f132-core-v1'
+CONTROL = FAST / 'bulk-integrated-audit-cloud-control-v3'
+LOCAL_OUTPUT = FAST / 'bulk-integrated-core-audit-v1'
+OUTER = '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud'
+REMOTE_DATA = OUTER + '/data'
+TASK = REMOTE_DATA + '/' + ROOT.name
+REMOTE_CONTROL = TASK + '/resume-20261022-fast/bulk-integrated-audit-cloud-control-v3'
+REMOTE_OUTPUT = TASK + '/resume-20261022-fast/bulk-integrated-core-audit-v1'
+COMMIT = 'f132b98fd0f6148ca3ab5f7e168de147433fc7be'
+EXPECTED_CORE = {
+    'p6_business_eval.py': 'd0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2',
+    'p6_boundary_drafts.py': 'f2476184e8172312853fcb07e692012b20f0bfb3bdeabf0c754443d90b19fc0b',
+    'p6_raster_replay.py': 'f90cdcc1a40596546cb1c3decf72908e2ce093e9c2234faa90f2e6c030071607',
+    'p6_oam_capture.py': 'c36e99df13290fc997b75fc0a9d040a942bfcd305aabdfafcc5a28cfacbac047',
+}
+CONTEXT_FIELDS = {'context_file', 'context_sha256', 'verification_context_file', 'verification_context_sha256'}
+
+
+def read(path):
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
+def sha(path):
+    with path.open('rb') as handle:
+        return hashlib.file_digest(handle, 'sha256').hexdigest()
+
+
+def save(path, value):
+    with path.open('x', encoding='utf-8', newline='\n') as handle:
+        json.dump(value, handle, ensure_ascii=False, indent=2, allow_nan=False)
+
+
+def now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def brief(value):
+    print(json.dumps(value, ensure_ascii=True), flush=True)
+
+
+def only_context_diff(before, after):
+    first, second = copy.deepcopy(before), copy.deepcopy(after)
+    for row in (first, second):
+        for key in CONTEXT_FIELDS:
+            row['ai_assistance'].pop(key, None)
+    return first == second
+
+
+assert not CONTROL.exists() and not LOCAL_OUTPUT.exists(), 'Use a fresh output version; existing runs are immutable.'
+CONTROL.mkdir()
+for name, expected in EXPECTED_CORE.items():
+    assert sha(LOCAL_CORE / name) == expected, 'Local original-f132 core differs: ' + name
+C = runpy.run_path(str(LOCAL_CORE / 'p6_business_eval.py'))
+
+
+def actual(value):
+    path = Path(C['rooted'](DATA, value)).resolve()
+    assert path.is_relative_to(ROOT.resolve()) and path.is_file(), 'Required input missing or outside task root.'
+    return path
+
+
+def optional_actual(value):
+    path = Path(C['rooted'](DATA, value)).resolve()
+    assert path.is_relative_to(ROOT.resolve()), 'Input outside the task root.'
+    return path
+
+
+remote_only_bindings = {}
+manifest = read(CORPUS / 'manifest.json')
+labels = read(CORPUS / 'labels.json')
+protocol = read(CORPUS / 'protocol-not-frozen.json')
+preparation = read(CORPUS / 'preparation.json')
+proposal_file = FAST / 'bulk-physical-composition-proposal-v1.json'
+composition_audit_file = FAST / 'bulk-physical-composition-audit-v1.json'
+proposal, composition_audit = read(proposal_file), read(composition_audit_file)
+assert composition_audit['verdict'] == 'supports'
+assert composition_audit['exactproposalSHA'] == sha(proposal_file)
+assert sha(composition_audit_file) == '5a3c733e1575951162289eaa83972f3db6340cec860655f043a26da8d601102e'
+assert preparation['core_sha256'] == EXPECTED_CORE
+assert protocol['status'] == 'targets_approved_data_pending' and manifest['formal_data_frozen'] is False
+samples = {row['sample_id']: row for row in manifest['samples']}
+label_rows = {row['sample_id']: row for row in labels['rows']}
+assert len(samples) == len(manifest['samples']) == len(label_rows) == len(labels['rows']) == 16
+assert len({row['asset_id'] for row in samples.values()}) == 15
+assert sum(row['evaluation_role'] == 'primary' for row in samples.values()) == 15
+assert sum(row['evaluation_role'] == 'repeat' for row in samples.values()) == 1
+assert len(manifest['stability_pairs']) == 1
+assert len(preparation['annotation_only_checks']) == 16 and all(not row['issues'] for row in preparation['annotation_only_checks'])
+
+old_folder = ROOT / 'resume-20261022/integrated-candidate-corpus-v1'
+old_manifest, old_labels = read(old_folder / 'manifest.json'), read(old_folder / 'labels.json')
+old_samples = {row['sample_id']: row for row in old_manifest['samples']}
+old_label_rows = {row['sample_id']: row for row in old_labels['rows']}
+reviewed = {row['sample']['sample_id']: row for row in read(FAST / 'annotation-integrity-final-v1/reviewed-candidates.json')['rows']}
+new_ids = set(samples) - set(old_samples)
+assert new_ids == set(proposal['selected_sample_ids']) == set(composition_audit['supports_sample_ids'])
+assert len(new_ids) == 10 and manifest['stability_pairs'] == old_manifest['stability_pairs']
+assert sha(CORPUS / 'capture-inventory.json') == sha(old_folder / 'capture-inventory.json')
+assert len(read(CORPUS / 'capture-inventory.json')['rows']) == 837
+assert sha(CORPUS / 'exposure.json') == sha(old_folder / 'exposure.json')
+old_protocol, compare_protocol = read(old_folder / 'protocol-not-frozen.json'), copy.deepcopy(protocol)
+for key in ('independent_context_sha256', 'verification_context_sha256'):
+    compare_protocol['annotation_policy'][key] = old_protocol['annotation_policy'][key]
+assert compare_protocol == old_protocol, 'Only the expanded actual context hashes may change in this partial protocol.'
+rebindings = {row['sample_id']: row for row in preparation['metadata_context_rebinding']}
+cases = {row['sample_id']: row for row in proposal['cases']}
+copy_checks = []
+for ident, sample in samples.items():
+    original_label = old_label_rows[ident] if ident in old_samples else reviewed[ident]['label']
+    assert only_context_diff(original_label, label_rows[ident]), 'Business label changed: ' + ident
+    assert C['canonical_digest'](original_label) == rebindings[ident]['before_sha256']
+    assert C['canonical_digest'](label_rows[ident]) == rebindings[ident]['after_sha256']
+    if ident in old_samples:
+        restored = copy.deepcopy(sample)
+        restored['capture_record']['inventory_file'] = old_samples[ident]['capture_record']['inventory_file']
+        restored['capture_record']['inventory_sha256'] = old_samples[ident]['capture_record']['inventory_sha256']
+        assert restored == old_samples[ident], 'Existing observation changed beyond inventory-copy path: ' + ident
+    else:
+        case = cases[ident]
+        assert sample['asset_id'] == sample['near_duplicate_group'] == case['proposed_group_id']
+        assert sample['site_id'] == case['registered_site']['site_id']
+        assert sample['split'] == case['registered_site']['planned_partition'].removesuffix('_candidate')
+        assert sample['target'] == reviewed[ident]['sample']['target']
+        assert sample['ai_suggestion'] == reviewed[ident]['sample']['ai_suggestion']
+    receipt = read(actual(sample['derivation']['extraction_file']))
+    assert sha(actual(sample['derivation']['extraction_file'])) == sample['derivation']['extraction_sha256']
+    assert receipt['image_sha256'] == sample['image_sha256']
+    assert sample['asset_id'] == receipt['asset_group_id']
+    copy_checks.append({'sample_id': ident, 'only_actual_context_metadata_rebound': True,
+        'business_fields_and_recorded_at_unchanged': True, 'fixed_world_scope_sha256': C['canonical_digest'](receipt['world_scope']),
+        'fixed_endpoints_unchanged': True})
+
+files = {path.resolve() for path in CORPUS.iterdir() if path.is_file()}
+files.update((Path(__file__).resolve(), FAST / 'build_bulk_integrated_candidates_v1.py', proposal_file,
+    composition_audit_file, FAST / 'bulk-grouping-composition-evidence-v1.json',
+    ROOT / 'resume-20261021/grouping-rules-v2.json', ROOT / 'resume-20261021-c/boundary-policy-approved-v1.json'))
+for leaf in ('pair-grouping-composition-proposal-v1.json', 'pair-grouping-composition-audit-v1.json',
+    'pair-grouping-composition-evidence-v1.json', 'boundary-payload-check-v2.json'):
+    files.add(ROOT / 'resume-20261022' / leaf)
+for source in manifest['sources'].values():
+    files.add(actual(source['license_evidence_file']))
+for sample in samples.values():
+    files.add(actual(sample['image_file']))
+    for key in ('extraction', 'extraction_plan', 'source_inventory', 'range_manifest', 'replay'):
+        binding = sample['derivation']
+        path = optional_actual(binding[key + '_file'])
+        if path.is_file():
+            assert sha(path) == binding[key + '_sha256']
+            files.add(path)
+        else:
+            assert key == 'replay', 'Non-replay metadata is absent locally.'
+            remote_only_bindings[path.relative_to(DATA).as_posix()] = {
+                'sha256': binding[key + '_sha256'], 'bytes': None,
+                'residency': 'prior_source_proof_on_original_cloud_host'}
+    receipt = read(actual(sample['derivation']['extraction_file']))
+    for key in ('image', 'mask', 'guide', 'overview', 'source_geometry', 'source_alignment'):
+        path = actual(receipt[key + '_file'])
+        assert sha(path) == receipt[key + '_sha256']
+        files.add(path)
+    replay_path = optional_actual(sample['derivation']['replay_file'])
+    if replay_path.is_file():
+        replay = read(replay_path)
+        files.add(actual(replay['replay_extraction_file']))
+    plan = read(actual(sample['derivation']['extraction_plan_file']))
+    original_plan = optional_actual(plan['source_plan_file'])
+    if original_plan.is_file():
+        assert sha(original_plan) == plan['source_plan_sha256']
+        files.add(original_plan)
+    else:
+        remote_only_bindings[original_plan.relative_to(DATA).as_posix()] = {
+            'sha256': plan['source_plan_sha256'], 'bytes': None,
+            'residency': 'original_acquisition_plan_on_original_cloud_host'}
+for label in labels['rows']:
+    assistance = label['ai_assistance']
+    for key in ('draft', 'context', 'verification_context', 'review'):
+        path = actual(assistance[key + '_file'])
+        assert sha(path) == assistance[key + '_sha256']
+        files.add(path)
+    context = read(actual(assistance['context_file']))
+    files.add(actual(context['annotators'][assistance['author_id']]['assignment_file']))
+    registration = read(actual(assistance['verification_context_file']))
+    assigned = next(row for row in registration['assignments'] if row['reviewer_id'] == label['reviewer_id'])
+    files.add(actual(assigned['file']))
+    review = read(actual(assistance['review_file']))
+    files.add(actual(review['assignment_file']))
+    record = next(row for row in review['rows'] if row['sample_id'] == label['sample_id'])
+    files.update(actual(name) for name in record['inspected_files'])
+    provenance = record.get('storage_provenance', {})
+    if provenance.get('observer_payload_file'):
+        files.add(actual(provenance['observer_payload_file']))
+    original_folder = actual(review['assignment_file']).parent
+    for leaf in ('review-payload.json', 'completed-observer-payload-captured-v1.json'):
+        if (original_folder / leaf).is_file():
+            files.add(original_folder / leaf)
+for pair in manifest['stability_pairs']:
+    verification = pair['ai_verification']
+    files.update((actual(verification['file']), actual(verification['context_file'])))
+    review = read(actual(verification['file']))
+    files.add(actual(review['assignment_file']))
+    record = next(row for row in review['rows'] if row['pair_id'] == pair['pair_id'])
+    files.update(actual(name) for name in record['inspection_files'])
+identity_file = ROOT / 'identity-review/physical_reviewer_2/identity-evidence-v1.json'
+identity = read(identity_file)
+files.update((identity_file, actual(identity['assignment_file']), actual(identity['actual_context_file']),
+    actual(identity['observer_payload_file']), ROOT / 'verification/bounded_verifier_32/review-payload.json'))
+for row in identity['rows']:
+    files.update(actual(name) for name in row['inspection_files'])
+files = sorted(path.resolve() for path in files)
+assert all(path.is_file() and path.is_relative_to(ROOT.resolve()) and not path.is_symlink() for path in files)
+bindings = {path.relative_to(DATA).as_posix(): {'sha256': sha(path), 'bytes': path.stat().st_size} for path in files}
+bindings.update(remote_only_bindings)
+save(CONTROL / 'local-preflight.json', {'recorded_at': now(), 'candidate_commit': COMMIT,
+    'source_files_verified': EXPECTED_CORE, 'manifest_sha256': sha(CORPUS / 'manifest.json'),
+    'composition_audit_sha256': sha(composition_audit_file), 'copy_invariance_checks': copy_checks,
+    'samples': 16, 'primary_observations': 15, 'distinct_primary_assets': 15, 'repeat_observations': 1,
+    'pairs': 1, 'capture_inventory_rows': 837, 'label_context_only_rebindings': 16,
+    'input_file_bindings': bindings, 'model_calls': 0, 'pixels_viewed_by_agent': False})
+brief({'phase': 'local_preflight_passed', 'input_files': len(files),
+    'total_local_input_bytes': sum(row['bytes'] or 0 for row in bindings.values()), 'cloud_only_metadata_files': len(remote_only_bindings), 'samples': 16, 'primary_assets': 15, 'pairs': 1})
+
+sys.path.insert(0, str(REPO / 'scripts'))
+from dev_stack import Connection
+connection = Connection.from_environment()
+
+
+def ssh_call(code, phase, timeout):
+    started = now()
+    try:
+        child = subprocess.run(['ssh', *connection.arguments(), connection.target, 'python3 -u -'],
+            input=code.encode('utf-8'), capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        save(CONTROL / (phase + '-ssh-timeout.json'), {'started_at': started, 'finished_at': now(),
+            'timeout_seconds': timeout, 'stdout_sha256': hashlib.sha256(error.stdout or b'').hexdigest(),
+            'stdout_bytes': len(error.stdout or b''), 'stderr_sha256': hashlib.sha256(error.stderr or b'').hexdigest(),
+            'stderr_bytes': len(error.stderr or b''), 'raw_ssh_stderr_printed': False, 'automatic_rerun': False})
+        raise RuntimeError('SSH timed out; state is unknown and no automatic audit rerun was attempted.') from None
+    receipt = {'started_at': started, 'finished_at': now(), 'ssh_exit_code': child.returncode,
+        'stdout_sha256': hashlib.sha256(child.stdout).hexdigest(), 'stdout_bytes': len(child.stdout),
+        'stderr_sha256': hashlib.sha256(child.stderr).hexdigest(), 'stderr_bytes': len(child.stderr),
+        'raw_ssh_stderr_printed': False}
+    save(CONTROL / (phase + '-ssh-receipt.json'), receipt)
+    if child.returncode != 0:
+        raise RuntimeError('SSH phase failed; only diagnostic hashes and lengths were recorded: ' + phase)
+    try:
+        return json.loads(child.stdout)
+    except (ValueError, UnicodeError):
+        raise RuntimeError('SSH phase returned no valid JSON; diagnostics remain withheld: ' + phase) from None
+
+
+remote_preflight = 'TASK=' + repr(TASK) + '\nCONTROL=' + repr(REMOTE_CONTROL)
+remote_preflight += '\nOUTPUT=' + repr(REMOTE_OUTPUT) + '\nBINDINGS=' + repr(bindings) + '\nEXPECTED_CORE=' + repr(EXPECTED_CORE)
+remote_preflight += '\n' + r'''
+import hashlib,json,pathlib
+from datetime import datetime,timezone
+task=pathlib.Path(TASK).resolve();data=task.parent;control=pathlib.Path(CONTROL).resolve()
+assert control.is_relative_to(task) and not control.exists() and not pathlib.Path(OUTPUT).exists()
+control.mkdir(parents=True,exist_ok=False)
+def sha(path):
+ with path.open('rb') as handle:return hashlib.file_digest(handle,'sha256').hexdigest()
+core={name:sha(task/'software-audit-f132b98-20261021'/name) for name in EXPECTED_CORE}
+rows=[]
+for name,wanted in BINDINGS.items():
+ path=(data/name).resolve();assert path.is_relative_to(task)
+ if not path.exists():rows.append({'file':name,'status':'missing'});continue
+ assert path.is_file() and not path.is_symlink()
+ digest=sha(path);size=path.stat().st_size
+ rows.append({'file':name,'status':'identical' if digest==wanted['sha256'] and (wanted['bytes'] is None or size==wanted['bytes']) else 'different','sha256':digest,'bytes':size})
+result={'recorded_at':datetime.now(timezone.utc).isoformat(),'frozen_core_sha256':core,
+ 'frozen_core_matches':core==EXPECTED_CORE,'files':rows,'different_files':[v['file'] for v in rows if v['status']=='different'],
+ 'missing_files':[v['file'] for v in rows if v['status']=='missing'],'existing_exact_files':[v['file'] for v in rows if v['status']=='identical'],
+ 'input_old_paths_overwritten':False,'source_cache_changed':False,'model_calls':0}
+with (control/'remote-preflight.json').open('x') as handle:json.dump(result,handle,indent=2)
+print(json.dumps(result))
+'''
+(CONTROL / 'remote_preflight_code.py').write_text(remote_preflight, encoding='utf-8')
+preflight = ssh_call(remote_preflight, 'preflight', 180)
+save(CONTROL / 'remote-preflight.json', preflight)
+if preflight['different_files'] or not preflight['frozen_core_matches']:
+    brief({'phase': 'blocked_before_upload', 'different_file_count': len(preflight['different_files']),
+        'frozen_core_matches': preflight['frozen_core_matches']})
+    raise RuntimeError('Remote existing evidence differs; no existing file was overwritten and no audit ran.')
+missing = set(preflight['missing_files'])
+if missing & set(remote_only_bindings):
+    save(CONTROL / 'missing-cloud-only-evidence.json', {'files': sorted(missing & set(remote_only_bindings)),
+        'audits_started': 0, 'old_files_overwritten': False})
+    raise RuntimeError('Historical cloud-only replay proofs are also missing remotely; no reconstruction or audit attempted.')
+for row in preflight['files']:
+    if row['file'] in remote_only_bindings:
+        assert row['status'] == 'identical'
+        bindings[row['file']]['bytes'] = row['bytes']
+archive = CONTROL / 'missing-inputs.tar.gz'
+with archive.open('xb') as handle, tarfile.open(fileobj=handle, mode='w:gz') as bundle:
+    for path in files:
+        name = path.relative_to(DATA).as_posix()
+        if name in missing:
+            bundle.add(path, arcname=name, recursive=False)
+archive_sha = sha(archive)
+remote_archive = REMOTE_CONTROL + '/missing-inputs-' + archive_sha[:20] + '.tar.gz'
+brief({'phase': 'remote_inventory_passed', 'existing_exact_files': len(preflight['existing_exact_files']),
+    'missing_files_to_upload': len(missing), 'missing_input_bytes': sum(bindings[name]['bytes'] for name in missing),
+    'archive_bytes': archive.stat().st_size, 'frozen_original_core_matches': True})
+upload = subprocess.run(['scp', *connection.arguments(), str(archive), connection.target + ':' + remote_archive],
+    capture_output=True, timeout=240)
+save(CONTROL / 'upload-receipt.json', {'recorded_at': now(), 'scp_exit_code': upload.returncode,
+    'archive_sha256': archive_sha, 'archive_bytes': archive.stat().st_size,
+    'stderr_sha256': hashlib.sha256(upload.stderr).hexdigest(), 'stderr_bytes': len(upload.stderr),
+    'raw_ssh_stderr_printed': False, 'files_uploaded': len(missing)})
+assert upload.returncode == 0, 'Staging upload failed; SSH diagnostics withheld.'
+
+remote_audit = 'TASK=' + repr(TASK) + '\nOUTER=' + repr(OUTER) + '\nCONTROL=' + repr(REMOTE_CONTROL)
+remote_audit += '\nOUTPUT=' + repr(REMOTE_OUTPUT) + '\nARCHIVE=' + repr(remote_archive) + '\nARCHIVE_SHA=' + repr(archive_sha)
+remote_audit += '\nBINDINGS=' + repr(bindings) + '\nMISSING=' + repr(missing) + '\nEXPECTED_CORE=' + repr(EXPECTED_CORE)
+remote_audit += '\nCONTROLLER_SHA=' + repr(sha(Path(__file__))) + '\n' + r'''
+import base64,hashlib,json,os,pathlib,subprocess,tarfile
+from collections import Counter
+from datetime import datetime,timezone
+task=pathlib.Path(TASK).resolve();data=task.parent;control=pathlib.Path(CONTROL).resolve()
+output=pathlib.Path(OUTPUT).resolve();archive=pathlib.Path(ARCHIVE)
+assert control.is_relative_to(task) and output.is_relative_to(task) and not output.exists()
+def sha(path):
+ with path.open('rb') as handle:return hashlib.file_digest(handle,'sha256').hexdigest()
+assert sha(archive)==ARCHIVE_SHA
+added=[]
+with tarfile.open(archive,'r:gz') as bundle:
+ members=bundle.getmembers();assert {v.name for v in members}==MISSING
+ for member in members:
+  assert member.isfile() and member.name in BINDINGS
+  path=(data/member.name).resolve();assert path.is_relative_to(task)
+  blob=bundle.extractfile(member).read();wanted=BINDINGS[member.name]
+  assert len(blob)==wanted['bytes'] and hashlib.sha256(blob).hexdigest()==wanted['sha256']
+  path.parent.mkdir(parents=True,exist_ok=True)
+  if path.exists():assert path.is_file() and sha(path)==wanted['sha256'],'Concurrent different evidence; no overwrite'
+  else:
+   with path.open('xb') as handle:handle.write(blob)
+   added.append(member.name)
+for name,wanted in BINDINGS.items():
+ path=(data/name).resolve();assert path.is_relative_to(task) and path.is_file()
+ assert sha(path)==wanted['sha256'] and path.stat().st_size==wanted['bytes']
+frozen=task/'software-audit-f132b98-20261021'
+before_core={name:sha(frozen/name) for name in EXPECTED_CORE};assert before_core==EXPECTED_CORE
+output.mkdir(exist_ok=False)
+folder=task/'resume-20261022-fast/bulk-integrated-candidate-corpus-v1'
+inputs={key:sha(folder/name) for key,name in [('manifest','manifest.json'),('labels','labels.json'),('protocol','protocol-not-frozen.json'),('exposure','exposure.json')]}
+command=[OUTER+'/tools-venv/bin/python',str(frozen/'p6_business_eval.py'),'audit',
+ '--manifest',str(folder/'manifest.json'),'--labels',str(folder/'labels.json'),
+ '--protocol',str(folder/'protocol-not-frozen.json'),'--exposure',str(folder/'exposure.json'),
+ '--data-root',str(data),'--output',str(output/'core-audit.json')]
+started=datetime.now(timezone.utc).isoformat()
+with (output/'stdout.log').open('xb') as out,(output/'stderr.log').open('xb') as err:
+ child=subprocess.run(command,cwd=data,env=dict(os.environ,OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1',PYTHONDONTWRITEBYTECODE='1'),stdout=out,stderr=err)
+finished=datetime.now(timezone.utc).isoformat()
+report=json.loads((output/'core-audit.json').read_text()) if (output/'core-audit.json').is_file() else None
+manifest=json.loads((folder/'manifest.json').read_text());samples=manifest['samples']
+labels=json.loads((folder/'labels.json').read_text());label_by_id={row['sample_id']:row for row in labels['rows']}
+sample_ids={row['sample_id'] for row in samples}
+allissues=report['issues'] if report else []
+sample_issues={ident:[row for row in allissues if row.get('sample_id')==ident] for ident in sorted(sample_ids)}
+global_issues=[row for row in allissues if row.get('sample_id') is None]
+unassigned_issues=[row for row in allissues if row.get('sample_id') is not None and row.get('sample_id') not in sample_ids]
+pairs=[]
+for pair in manifest['stability_pairs']:
+ pairs.append({'pair_id':pair['pair_id'],'sample_ids':pair['sample_ids'],
+  'comparison_scope':pair['comparison_scope'],'issues_on_either_pair_member':[row for row in allissues if row.get('sample_id') in pair['sample_ids']],
+  'full_core_pair_checks_executed':report is not None,
+  'same_condition_and_distinct_capture_fields_preserved':pair['same_condition_ai_verified'] is True and pair['distinct_captures_ai_verified'] is True})
+primary=[row for row in samples if row['evaluation_role']=='primary']
+primary_counts={split:dict(Counter(label_by_id[row['sample_id']]['verdict'] for row in primary if row['split']==split)) for split in ('calibration','test')}
+primary_sites={split:dict(Counter(row['site_id'] for row in primary if row['split']==split)) for split in ('calibration','test')}
+after_core={name:sha(frozen/name) for name in EXPECTED_CORE};assert after_core==before_core
+after_inputs={key:sha(folder/name) for key,name in [('manifest','manifest.json'),('labels','labels.json'),('protocol','protocol-not-frozen.json'),('exposure','exposure.json')]}
+assert inputs==after_inputs
+for name,wanted in BINDINGS.items():
+ path=(data/name).resolve()
+ assert sha(path)==wanted['sha256'] and path.stat().st_size==wanted['bytes'],'An input changed during audit'
+receipt={'started_at':started,'finished_at':finished,'process_exit_code':child.returncode,
+ 'candidate_commit':'f132b98fd0f6148ca3ab5f7e168de147433fc7be','command':command,
+ 'execution_python':OUTER+'/tools-venv/bin/python','frozen_core_files_verified':before_core,'frozen_core_unchanged_after':True,
+ 'controller_sha256':CONTROLLER_SHA,'input_sha256':inputs,'inputs_unchanged_after':True,'all_bound_input_files_unchanged_after':True,
+ 'samples':len(samples),'primary_observations':len(primary),'distinct_primary_assets':len({row['asset_id'] for row in primary}),
+ 'repeat_observations':len(samples)-len(primary),'primary_label_counts':primary_counts,'primary_site_counts':primary_sites,
+ 'core_audit_json_created':report is not None,'core_audit_status':report['status'] if report else None,
+ 'derived_captures_verified':report.get('derived_captures_verified') if report else None,
+ 'sample_issues':sample_issues,'pair_status':pairs,'global_issues':global_issues,'unassigned_issues':unassigned_issues,
+ 'data_ready':report.get('data_ready') if report else False,'source_native_core_rerun_performed':True,
+ 'input_files_reused_without_upload':len(BINDINGS)-len(MISSING),'input_files_staged':len(added),
+ 'existing_input_files_overwritten':False,'source_cache_modified_by_controller':False,
+ 'human_labels_created':0,'evaluated_model_calls':0,'pixels_viewed_by_agent':False,
+ 'formal_assets_admitted':0,'formal_release_eligible':False,'wp_p6_01_closed':False}
+with (output/'execution-receipt.json').open('x') as handle:json.dump(receipt,handle,indent=2)
+packet={}
+for path in output.iterdir():
+ if not path.is_file():continue
+ blob=path.read_bytes();packet[path.relative_to(task).as_posix()]={'data':base64.b64encode(blob).decode(),
+  'sha256':hashlib.sha256(blob).hexdigest(),'bytes':len(blob)}
+print(json.dumps({'execution':receipt,'files':packet}))
+'''
+(CONTROL / 'remote_audit_code.py').write_text(remote_audit, encoding='utf-8')
+brief({'phase': 'cloud_original_f132_source_native_annotation_audit_started', 'samples': 16, 'pairs': 1,
+    'frozen_core_sha256': EXPECTED_CORE['p6_business_eval.py'], 'new_decoder_run': True})
+packet = ssh_call(remote_audit, 'audit', 600)
+returned_files = []
+for name, item in packet['files'].items():
+    relative = PurePosixPath(name)
+    assert not relative.is_absolute() and '..' not in relative.parts
+    assert relative.parts[:2] == ('resume-20261022-fast', 'bulk-integrated-core-audit-v1')
+    blob = base64.b64decode(item['data'], validate=True)
+    assert len(blob) == item['bytes'] and hashlib.sha256(blob).hexdigest() == item['sha256']
+    path = (ROOT / Path(*relative.parts)).resolve()
+    assert path.is_relative_to(LOCAL_OUTPUT.resolve())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('xb') as handle:
+        handle.write(blob)
+    returned_files.append({'file':str(path),'sha256':item['sha256'],'bytes':item['bytes']})
+for name, wanted in bindings.items():
+    if name in remote_only_bindings:
+        continue
+    path = DATA / name
+    assert sha(path) == wanted['sha256'] and path.stat().st_size == wanted['bytes'], 'Local input changed during audit.'
+assert sha(composition_audit_file) == '5a3c733e1575951162289eaa83972f3db6340cec860655f043a26da8d601102e'
+result = {'recorded_at':now(),'candidate_commit':COMMIT,'source_core_sha256':EXPECTED_CORE,
+    'controller_sha256':sha(Path(__file__)),'local_copy_checks_passed':True,
+    'all_local_inputs_unchanged_after':True,'cloud_only_proof_files_reused':sorted(remote_only_bindings),'input_file_bindings':bindings,
+    'remote_existing_exact_files_reused':len(preflight['existing_exact_files']),
+    'remote_new_input_files_uploaded':len(missing),'missing_input_archive_sha256':archive_sha,
+    'missing_input_archive_bytes':archive.stat().st_size,'actual_execution':packet['execution'],
+    'returned_files':returned_files,'raw_ssh_stderr_printed':False,
+    'human_labels_created':0,'evaluated_model_calls':0,'pixels_viewed_by_agent':False,
+    'master_grouping_changed':False,'formal_assets_admitted':0,'formal_release_eligible':False,'wp_p6_01_closed':False}
+save(CONTROL / 'result.json', result)
+execution = packet['execution']
+brief({'phase':'completed','result_file':str(CONTROL/'result.json'),'result_sha256':sha(CONTROL/'result.json'),
+    'core_report_file':str(LOCAL_OUTPUT/'core-audit.json'),
+    'core_report_sha256':sha(LOCAL_OUTPUT/'core-audit.json') if (LOCAL_OUTPUT/'core-audit.json').exists() else None,
+    'process_exit_code':execution['process_exit_code'],'core_audit_status':execution['core_audit_status'],
+    'derived_captures_verified':execution['derived_captures_verified'],
+    'sample_issue_count':sum(len(v) for v in execution['sample_issues'].values()),
+    'pair_member_issue_count':sum(len(v['issues_on_either_pair_member']) for v in execution['pair_status']),
+    'global_issue_count':len(execution['global_issues']),'primary_counts':execution['primary_label_counts']})
+raise SystemExit(0 if execution['core_audit_json_created'] else 1)

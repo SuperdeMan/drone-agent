@@ -1,0 +1,54 @@
+"""Append a small completed annotation batch without long Windows commands.
+
+追加少量已完成标注，避免 Windows 命令长度和默认编码问题。
+"""
+from __future__ import annotations
+
+import argparse
+import json
+from datetime import UTC, datetime
+from pathlib import Path
+
+
+def read(path):
+    return json.loads(path.read_text(encoding='utf-8-sig'))
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--assignment', type=Path, required=True)
+    parser.add_argument('--batch', type=Path, required=True)
+    parser.add_argument('--expected-count', type=int, required=True)
+    args = parser.parse_args()
+    assignment = read(args.assignment)
+    folder = Path(assignment['worker_dir']).resolve()
+    folder.mkdir(parents=True, exist_ok=True)
+    if not args.batch.resolve().is_relative_to(folder):
+        raise ValueError('batch must be in the assigned worker directory')
+    path = folder / 'drafts.json'
+    document = read(path) if path.exists() else {
+        'format': 'drone.p6-road-ai-suggestions/v1', 'author_kind': 'isolated_ai_annotator', 'author_id': assignment['author_id'],
+        'created_at': datetime.now(UTC).isoformat(), 'isolation': {'parent_history': 'none', 'evaluation_prompt_seen': False,
+        'evaluation_outputs_seen': False, 'source_labels_seen': False}, 'human_reviews_created': 0, 'formal_release_eligible': False, 'rows': []}
+    if document['author_id'] != assignment['author_id'] or len(document['rows']) != args.expected_count:
+        raise ValueError('unexpected author or previous count')
+    batch = read(args.batch)
+    if not isinstance(batch, list) or not 1 <= len(batch) <= 10:
+        raise ValueError('provide 1-10 actually inspected rows per batch')
+    allowed = {s['sample_id']: s['image_sha256'] for s in assignment['samples']}
+    seen = {r['sample_id'] for r in document['rows']}
+    fields = {'sample_id', 'image_sha256', 'target_brief', 'target_polygon', 'verdict', 'objects', 'notes',
+              'uncertainties', 'inspected_at', 'inspection_files'}
+    for row in batch:
+        if set(row) != fields or row['sample_id'] in seen or allowed.get(row['sample_id']) != row['image_sha256']:
+            raise ValueError('foreign, duplicated or incomplete row')
+        if not row['inspection_files'] or any(not Path(p).is_file() for p in row['inspection_files']):
+            raise ValueError('inspection files missing')
+        seen.add(row['sample_id'])
+    document['rows'].extend(batch)
+    path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
+    print(json.dumps({'saved': len(document['rows']), 'assigned': len(assignment['samples']), 'file': str(path)}))
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,43 @@
+{
+  "format": "drone.p6-conditional-parts-evidence-mapping/v1",
+  "http_record_layout": "flat_request_response_v1",
+  "raw_records_rewritten": false,
+  "new_http_requests_made": 0,
+  "prefix_mapping": {
+    "http_record_file": "p6-corpus-completion-20261018/resume-20261022-fast/santolan-recovery-v1/controlled-full-get-receipt.json",
+    "kind": "incomplete_200_prefix",
+    "offset": "literal0 because the actual GET had no Range",
+    "body_bytes": "raw saved_bytes and received_bytes, both checked against actual saved file",
+    "body_file": "raw local_file",
+    "body_sha256": "raw saved_sha256",
+    "original_error": {
+      "type": "TimeoutError",
+      "message": "Controlled full GET stopped for sustained throughput below 1 MiB/s; completion is not feasible within the 180-second attempt budget"
+    },
+    "original_outcome": "incomplete_or_failed"
+  },
+  "range_mapping": {
+    "http_records_glob": "p6-corpus-completion-20261018/resume-20261022-fast/santolan-recovery-v1/segmented-remainder-attempt-v1/http-*.json",
+    "count": 49,
+    "kind": "complete_206",
+    "offset": "raw range_start",
+    "body_bytes": "raw body_bytes",
+    "body_file": "raw file",
+    "body_sha256": "raw sha256",
+    "method_url_headers_status_and_times": "read unchanged from each bound original HTTP JSON"
+  },
+  "recipe_acquisition_times": "min raw started_at_utc and max raw finished_at_utc of the50 selected real exchanges",
+  "recipe_verification_times": "new local full-byte/source verification interval, explicitly later than acquisition",
+  "composition_body_bytes": 253851020,
+  "unique_representation_bytes": 253851020,
+  "composition_overlap_bytes": 0,
+  "network_body_excess_explanation": {
+    "bytes": 2483,
+    "official_api_metadata_received_bytes": 2467,
+    "range_probe_received_bytes": 16,
+    "not_a_composition_body_overlap": true
+  },
+  "source_formal_admission": false,
+  "publisher_sha256_invented": false,
+  "capture_utc_or_flight_id_invented": false
+}

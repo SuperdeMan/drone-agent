@@ -1,0 +1,262 @@
+"""Screen predeclared Santolan scopes using dataset masks only.
+
+仅用dataset mask筛选事前固定的Santolan范围。
+"""
+import argparse
+from datetime import datetime, timezone
+import hashlib
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+import rasterio
+from rasterio import Affine
+from rasterio.windows import Window
+from rasterio.warp import transform as warp_transform
+from shapely.geometry import shape
+from shapely.ops import transform
+
+OUT = Path(__file__).resolve().parent
+ROOT = OUT.parent.parent
+FAST = ROOT / "resume-20261022-fast"
+PREP = FAST / "conditional-parts-native32-preparation-v1"
+DATA = ROOT.parent
+PARENT = DATA / "p6-corpus-completion-20261018/resume-20261022-fast/santolan-recovery-v1/segmented-remainder-attempt-v1/6024868fe316a7000568a583-assembled-full-native.tif"
+PARENT_SHA = "1127710341b5b785dd151e7e3fa8de9c0ab1cc3dc9f7f8b4df0acdee767be4c5"
+PROPOSAL = PREP / "geometry-proposal.json"
+MANIFEST = PREP / "source-manifest.json"
+PURPOSE = FAST / "santolan-purpose-reserve-v1.json"
+REGISTRATION = OUT / "prospective-mask-screen-registration.json"
+now = lambda: datetime.now(timezone.utc).isoformat()
+
+
+def sha(path):
+    """Hash encoded source bytes without reading RGB. / 哈希编码源字节，不读RGB。"""
+    with Path(path).open("rb") as f:
+        return hashlib.file_digest(f, "sha256").hexdigest()
+
+
+def bind(path):
+    """Bind an immutable input. / 绑定不可变输入。"""
+    p = Path(path)
+    return {"file": str(p), "bytes": p.stat().st_size, "sha256": sha(p)}
+
+
+def read(path):
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def save(path, value):
+    with Path(path).open("x", encoding="utf-8") as f:
+        json.dump(value, f, ensure_ascii=False, indent=2, allow_nan=False)
+        f.write("\n")
+
+
+def project(geometry, source, target):
+    """Retain the original projection algorithm exactly. / 原样保留原投影算法。"""
+    def apply(x, y, z=None):
+        scalar = isinstance(x, (float, int))
+        xx, yy = warp_transform(source, target, [x] if scalar else x, [y] if scalar else y)
+        return (xx[0], yy[0]) if scalar else (xx, yy)
+    return transform(apply, geometry)
+
+
+def native_item(group, source, raster):
+    """Retain 25m context, exact inverse affine and native target construction.
+
+    保留原25米上下文、精确逆仿射和原生目标构造。
+    """
+    original = group["world_scope"]
+    assert hashlib.sha256(json.dumps(original, sort_keys=True).encode()).hexdigest() == group["scope_sha256"]
+    coords = original["coordinates"]
+    xx, yy = warp_transform("EPSG:4326", raster["crs"], [p[0] for p in coords], [p[1] for p in coords])
+    inverse = ~Affine(*raster["transform"][:6])
+    pixels = [list(inverse * (x, y)) for x, y in zip(xx, yy)]
+    metric = project(shape(original), "EPSG:4326", "EPSG:" + str(group["utm_epsg"]))
+    context = metric.buffer(25, cap_style="square", join_style="mitre")
+    raster_context = project(context, "EPSG:" + str(group["utm_epsg"]), raster["crs"])
+    boundary = [list(inverse * p) for p in raster_context.exterior.coords]
+    request = [math.floor(min(p[0] for p in boundary)), math.floor(min(p[1] for p in boundary)),
+               math.ceil(max(p[0] for p in boundary)), math.ceil(max(p[1] for p in boundary))]
+    box = [max(0, request[0]), max(0, request[1]), min(raster["width"], request[2]), min(raster["height"], request[3])]
+    width, height = box[2] - box[0], box[3] - box[1]
+    if width <= 0 or height <= 0:
+        raise ValueError("fixed_scope_native_window_empty")
+    if width * height > 60_000_000:
+        raise ValueError("fixed_scope_native_window_exceeds_60MP")
+    if not all(0 <= p[0] <= raster["width"] and 0 <= p[1] <= raster["height"] for p in pixels):
+        raise ValueError("fixed_target_endpoint_or_centerline_outside_native_raster")
+    scope_hash = hashlib.sha256(json.dumps({"group": group["candidate_group_id"], "polyline": coords}, sort_keys=True).encode()).hexdigest()
+    target = {"freeze_scope_sha256": scope_hash, "frozen_at_utc": group["scope_predeclared_at"],
+        "frozen_before_business_annotation_and_model_output": True,
+        "source_condition_polygons_or_model_outputs_used_for_scope": False,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": original, "world_endpoints_lon_lat": [coords[0], coords[-1]], "utm_epsg": group["utm_epsg"],
+        "utm_polyline_m": [list(p) for p in metric.coords], "length_m": group["scope_length_m"],
+        "input_world_scope_sha256": group["scope_sha256"], "physical_asset_identity_verified": False}
+    return {"extraction_item_id": "oam-extract-" + hashlib.sha256((group["candidate_group_id"] + "|" + scope_hash).encode()).hexdigest()[:14],
+        "catalog_object_id": group["parent_object_id"], "source_kind": "oam_uav", "asset_group_id": group["candidate_group_id"],
+        "bounded_target_id": "oam-target-" + scope_hash[:16], "role": "single_observation_candidate",
+        "proposed_partition": "calibration_candidate", "target": target,
+        "source_geometry_file": source["osm_snapshot_file"], "source_geometry_sha256": source["osm_snapshot_sha256"],
+        "source_geometry_proposal_file": str(PROPOSAL), "source_geometry_proposal_sha256": sha(PROPOSAL),
+        "osm_way_versions": group["osm_way_versions"], "selection_rank_hash": group["selection_rank_hash"],
+        "parent_sha256": source["local_full_object_sha256"], "object_file": source["object_file"],
+        "raster_metadata_file": source["raster_metadata_file"], "raster_metadata_sha256": source["raster_metadata_sha256"],
+        "native_view": {"mapping": "EPSG:4326 to native CRS then exact inverse raster affine", "alignment_method": "georeferencing_only",
+            "centerline_pixels": pixels, "target_endpoint_pixels": [pixels[0], pixels[-1]], "requested_unclamped_xyxy": request,
+            "native_window_xywh": [box[0], box[1], width, height], "context_m": 25.0, "native_pixel_count": width * height,
+            "read_bands": [1, 2, 3], "mask_method": "dataset_mask", "native_resampling": False, "mask_visibility_verified": False},
+        "author_date_verified": False, "author_date_group": None, "repeated_capture_eligible": False, "business_label": None}
+
+
+args = argparse.ArgumentParser()
+args.add_argument("mode", choices=["register", "execute"])
+mode = args.parse_args().mode
+purpose = read(PURPOSE)
+proposal = read(PROPOSAL)
+source = read(MANIFEST)[0]
+raster = read(PREP / "native-raster-metadata.json")
+groups = {g["candidate_group_id"]: g for g in proposal["groups"] if g["parent_object_id"] == "6024868fe316a7000568a583"}
+pilot = purpose["registered_pilot32_primary_candidate_groups"]
+refs = purpose["expected_reference_only_groups"]
+future = purpose["current_observation_reserved_for_future_prior_task_groups"]
+remaining = purpose["remaining_primary_candidate_groups"]
+assert len(groups) == 321 and len(pilot) == 32 and len(refs) == len(future) == 10 and len(remaining) == 269
+assert len(set(pilot + refs + future + remaining)) == 321 and set(pilot + refs + future + remaining) == set(groups)
+assert purpose["planned_whole_site_partition"] == "calibration_candidate"
+assert source["local_full_object_sha256"] == PARENT_SHA and PARENT.stat().st_size == 253851020
+if mode == "register":
+    assert sha(PARENT) == PARENT_SHA
+    inputs = [PARENT, PROPOSAL, MANIFEST, PURPOSE, PREP / "native-raster-metadata.json", PREP / "source-plan.json",
+              PREP / "extraction-plan-conditional-parts-native32-v1.json", PREP / "build_conditional_parts_plan.py",
+              PREP / "extract_oam_frames.py", FAST / "prepare_annotation_assignment_v2.py", Path(__file__)]
+    registration = {"format": "drone.p6-prospective-mask-screen-registration/v1", "recorded_at_utc": now(),
+        "source_object_id": "6024868fe316a7000568a583", "parent_sha256": PARENT_SHA,
+        "source_geometric_groups": 321, "registered_remaining_primary_groups": 269,
+        "excluded_old_pilot_groups": pilot, "excluded_expected_reference_only_groups": refs,
+        "excluded_future_prior_task_current_observation_groups": future,
+        "candidate_group_ids": remaining, "maximum_selected": 32,
+        "planned_whole_site_partition": "calibration_candidate", "input_bindings": [bind(p) for p in inputs],
+        "selection_rule": "For every remaining269 fixed scope: exact original 25m native window and fixed A/B centerline; same normalized alpha sampling algorithm as prepare_annotation_assignment_v2.py; positive availability only, descending sampled available fraction then stable extraction_item_id; select at most32. Retain all rows and hold reasons.",
+        "mask_sampling_algorithm": {"start_points": "both fixed target endpoints", "segments": "consecutive fixed centerline pixel points normalized to the unchanged native window",
+            "count": "max(1,int(max(abs(dx)*width,abs(dy)*height)/16))", "segment_points": "i=0..count inclusive",
+            "available": "0<=x<1 and 0<=y<1 and dataset_mask[int(y*height),int(x*width)]>0",
+            "score": "available/len(points)", "stable_tie_break": "extraction_item_id"},
+        "zero_available_policy": "hold_source_mask_zero_along_fixed_AB", "no_window_or_world_target_adjustments": True,
+        "dataset_mask_only": True, "rgb_read_during_screen": False, "images_viewed": False,
+        "business_labels_or_quotas_used": False, "new_first_or_second_annotations_read": False,
+        "max_native_window_pixels": 60000000, "max_parent_and_single_read_bytes": 268435456,
+        "gdal_cache_bytes": 67108864, "source_guard_lru_bytes_unchanged": 67108864,
+        "new_http_requests": 0, "new_visual_authors_registered": 0, "formal_assets_admitted": 0,
+        "repeated_capture_eligible": False, "scope_or_threshold_changes": False}
+    save(REGISTRATION, registration)
+    print(json.dumps({"status": "prospectively_registered_before_dataset_mask_read", "registration": bind(REGISTRATION)}))
+    raise SystemExit(0)
+
+registration = read(REGISTRATION)
+for item in registration["input_bindings"]:
+    assert Path(item["file"]).stat().st_size == item["bytes"] and sha(item["file"]) == item["sha256"]
+assert datetime.fromisoformat(registration["recorded_at_utc"]) < datetime.now(timezone.utc)
+started = now()
+old_items = {i["asset_group_id"]: i for i in read(PREP / "source-plan.json")["items"]}
+equivalence = []
+for group_id in pilot:
+    new = native_item(groups[group_id], source, raster)
+    old = old_items[group_id]
+    mismatches = [k for k in new if new[k] != old[k]]
+    assert not mismatches, (group_id, mismatches)
+    equivalence.append({"asset_group_id": group_id, "extraction_item_id": new["extraction_item_id"],
+        "same_all_item_fields": True, "same_fixed_world_scope": True, "same_exact_native_view": True,
+        "native_window_xywh": new["native_view"]["native_window_xywh"], "input_world_scope_sha256": groups[group_id]["scope_sha256"]})
+save(OUT / "old32-native-algorithm-equivalence.json", {"format": "drone.p6-native-algorithm-equivalence/v1", "recorded_at_utc": now(),
+    "reference_plan": bind(PREP / "source-plan.json"), "original_builder": bind(PREP / "build_conditional_parts_plan.py"),
+    "screen_tool": bind(Path(__file__)), "checked": 32, "passed": 32, "compared_all_item_fields": True,
+    "rgb_or_masks_read_for_equivalence": False, "rows": equivalence})
+rows = []
+items = {}
+with rasterio.Env(GDAL_CACHEMAX=67108864, GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR"):
+    with rasterio.open(PARENT, "r", sharing=False) as ds:
+        assert ds.width == raster["width"] and ds.height == raster["height"]
+        assert list(ds.transform) == raster["transform"] and str(ds.crs) == raster["crs"]
+        assert all([flag.name for flag in band] == ["per_dataset"] for band in ds.mask_flag_enums)
+        for index, group_id in enumerate(remaining, 1):
+            row = {"asset_group_id": group_id, "index": index, "input_world_scope_sha256": groups[group_id]["scope_sha256"],
+                   "selection_rank_hash": groups[group_id]["selection_rank_hash"], "mask_score": None, "hold_reason": None}
+            try:
+                item = native_item(groups[group_id], source, raster)
+                items[group_id] = item
+                left, top, width, height = item["native_view"]["native_window_xywh"]
+                mask = ds.dataset_mask(window=Window(left, top, width, height))
+                assert mask.shape == (height, width) and mask.dtype == np.uint8
+                endpoints = [[float((p[0] - left) / width), float((p[1] - top) / height)] for p in item["native_view"]["target_endpoint_pixels"]]
+                segments = [[[float((p[0] - left) / width), float((p[1] - top) / height)] for p in segment]
+                            for segment in zip(item["native_view"]["centerline_pixels"], item["native_view"]["centerline_pixels"][1:])]
+                points = list(endpoints)
+                for line in segments:
+                    a, b = line
+                    count = max(1, int(max(abs(b[0]-a[0])*width, abs(b[1]-a[1])*height)/16))
+                    points.extend([[a[0]+i/count*(b[0]-a[0]), a[1]+i/count*(b[1]-a[1])] for i in range(count+1)])
+                available = sum(0 <= x < 1 and 0 <= y < 1 and mask[int(y*height), int(x*width)] > 0 for x, y in points)
+                row.update(extraction_item_id=item["extraction_item_id"], native_window_xywh=item["native_view"]["native_window_xywh"],
+                    native_pixel_count=width*height, fixed_scope_sha256=item["target"]["freeze_scope_sha256"],
+                    mask_sample_count=len(points), mask_available_samples=int(available), mask_score=float(available/len(points)),
+                    mask_window_nonzero=int(np.count_nonzero(mask)), mask_window_byte_count=int(mask.nbytes),
+                    native_mask_sha256=hashlib.sha256(mask.tobytes()).hexdigest(), dataset_mask_read=True, rgb_read=False)
+                if available == 0:
+                    row["hold_reason"] = "source_mask_zero_along_fixed_AB"
+                del mask
+            except Exception as exc:
+                row.update(hold_reason="native_metadata_or_mask_read_failure", error_type=type(exc).__name__, error_message=str(exc))
+            rows.append(row)
+            if index % 25 == 0 or index == len(remaining):
+                print(json.dumps({"phase": "dataset_mask_screen", "checked": index, "expected": len(remaining),
+                    "positive": sum(r["mask_score"] is not None and r["mask_score"] > 0 for r in rows)}), flush=True)
+eligible = sorted([r for r in rows if r["hold_reason"] is None and r["mask_score"] > 0], key=lambda r: (-r["mask_score"], r["extraction_item_id"]))
+selected = eligible[:32]
+selected_groups = {r["asset_group_id"] for r in selected}
+for row in rows:
+    row["selected"] = row["asset_group_id"] in selected_groups
+    if row["hold_reason"] is None and not row["selected"]:
+        row["hold_reason"] = "outside_first32_neutral_mask_rank"
+assert not selected_groups & set(pilot + refs + future)
+result = {"format": "drone.p6-mask-screen-result/v1", "started_at_utc": started, "finished_at_utc": now(),
+    "status": "selected_positive_mask_scopes" if selected else "no_positive_mask_candidate_stop",
+    "registration": bind(REGISTRATION), "screen_tool": bind(Path(__file__)), "parent": bind(PARENT),
+    "source_manifest": bind(MANIFEST), "geometry_proposal": bind(PROPOSAL), "purpose": bind(PURPOSE),
+    "source_groups": 321, "screened_remaining_primary_groups": len(rows), "positive_mask_candidates": len(eligible),
+    "zero_mask_candidates": sum(r.get("mask_score") == 0 for r in rows),
+    "metadata_or_mask_read_failures": sum(r["hold_reason"] == "native_metadata_or_mask_read_failure" for r in rows),
+    "selected_count": len(selected), "selected_group_ids_in_neutral_order": [r["asset_group_id"] for r in selected],
+    "selected_extraction_item_ids": [r["extraction_item_id"] for r in selected],
+    "all_holds_retained": True, "mask_only": True, "rgb_read": False, "images_viewed": False,
+    "mask_coverage_is_not_a_business_label": True, "labels_created": 0, "new_http_requests": 0,
+    "world_scopes_or_native_windows_adjusted_after_mask": False, "old32_all_item_metadata_equivalent": True,
+    "planned_whole_site_partition": "calibration_candidate", "formal_assets_admitted": 0, "repeated_capture_eligible": False,
+    "rows": rows}
+save(OUT / "mask-screen-result.json", result)
+if selected:
+    selected_purpose = {"format": "drone.p6-source-purpose-selection/v1", "recorded_at_utc": now(),
+        "base_purpose": bind(PURPOSE), "mask_registration": bind(REGISTRATION), "mask_screen_result": bind(OUT / "mask-screen-result.json"),
+        "planned_whole_site_partition": "calibration_candidate", "primary_candidate_group_ids": [r["asset_group_id"] for r in selected],
+        "old_pilot_or_reference_or_future_task_groups_included": False, "world_scopes_unchanged": True,
+        "images_viewed": False, "labels_created": 0, "formal_assets_admitted": 0, "repeated_capture_eligible": False}
+    save(OUT / "selected-purpose-reservation.json", selected_purpose)
+    native_plan = {"format": "drone.p6-oam-native-extraction-plan/v1", "created_at": now(),
+        "source_manifest_file": str(MANIFEST), "source_manifest_sha256": sha(MANIFEST),
+        "world_geometry_proposal_file": str(PROPOSAL), "world_geometry_proposal_sha256": sha(PROPOSAL),
+        "world_scopes_preserved_exactly": True, "image_visual_inspections": 0, "source_condition_or_model_output_used": False,
+        "selected_parents": ["6024868fe316a7000568a583"],
+        "pilot_selection": "Pre-registered remaining269: positive mask samples along fixed A/B centerline, descending ratio then stable extraction_item_id, first32.",
+        "purpose_reservation_file": str(PURPOSE), "purpose_reservation_sha256": sha(PURPOSE),
+        "selected_purpose_file": str(OUT / "selected-purpose-reservation.json"),
+        "selected_purpose_sha256": sha(OUT / "selected-purpose-reservation.json"),
+        "planned_whole_site_partition": "calibration_candidate",
+        "mask_screen_registration_file": str(REGISTRATION), "mask_screen_registration_sha256": sha(REGISTRATION),
+        "mask_screen_result_file": str(OUT / "mask-screen-result.json"), "mask_screen_result_sha256": sha(OUT / "mask-screen-result.json"),
+        "items": [items[r["asset_group_id"]] for r in selected]}
+    save(OUT / "native-plan-selected32.json", native_plan)
+print(json.dumps({k:v for k,v in result.items() if k not in {"rows", "selected_group_ids_in_neutral_order", "selected_extraction_item_ids"}}, ensure_ascii=False))
+if selected:
+    print(json.dumps({"selected_plan": bind(OUT / "native-plan-selected32.json"), "mask_result": bind(OUT / "mask-screen-result.json")}))

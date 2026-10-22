@@ -1,0 +1,181 @@
+"""Run the scoped cloud job and verify every returned original and replay file.
+
+执行限定云端任务，并核对取回的每份原提取和独立重放文件。
+"""
+import base64
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+OUT = Path(__file__).resolve().parent
+ROOT = OUT.parent.parent
+DATA = ROOT.parent
+FAST = ROOT/"resume-20261022-fast"
+PREP = FAST/"conditional-parts-native32-preparation-v1"
+REPO = DATA/"p6-road-views-20261014/repo"
+TASK = "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/"+ROOT.name
+OUTER = "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud"
+WORK = TASK+"/resume-20261022-next/santolan-mask-next-v1"
+JOB = WORK+"/cloud-job"
+CONTROL = OUT/"cloud-control"
+LOCAL_JOB = OUT/"cloud-job"
+CORE = ROOT/"software-audit-cdf5382-20261022"
+COMMIT = "cdf5382d4b4ce54600921532ecbe2a5591775b58"
+now = lambda: datetime.now(timezone.utc).isoformat()
+
+
+def sha(path):
+    with Path(path).open("rb") as f:
+        return hashlib.file_digest(f, "sha256").hexdigest()
+
+
+def read(path):
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def save(path, value):
+    with Path(path).open("x", encoding="ascii") as f:
+        json.dump(value, f, indent=2, ensure_ascii=True, allow_nan=False)
+        f.write("\n")
+        f.flush()
+        os.fsync(f.fileno())
+
+
+def remote(path):
+    return TASK+"/"+Path(path).resolve().relative_to(ROOT.resolve()).as_posix()
+
+
+def transport(arguments, label, **kwargs):
+    """Withhold raw SSH stderr and auth diagnostics. / 不输出原SSH stderr或认证诊断。"""
+    started = now()
+    child = subprocess.run(arguments, capture_output=True, **kwargs)
+    receipt = {"started_at_utc": started, "finished_at_utc": now(), "returncode": child.returncode,
+        "stdout_bytes": len(child.stdout), "stdout_sha256": hashlib.sha256(child.stdout).hexdigest(),
+        "stderr_bytes_withheld": len(child.stderr), "stderr_sha256": hashlib.sha256(child.stderr).hexdigest(),
+        "raw_ssh_stderr_or_login_url_printed": False}
+    save(CONTROL/(label+"-receipt.json"), receipt)
+    if child.returncode:
+        raise RuntimeError("transport_nonzero_"+label)
+    return child
+
+
+assert not CONTROL.exists() and not LOCAL_JOB.exists()
+CONTROL.mkdir(exist_ok=False)
+phase = "prepare_exact_inputs"
+try:
+    plan = read(OUT/"native-plan-selected32.json")
+    screen = read(OUT/"mask-screen-result.json")
+    assert len(plan["items"]) == screen["selected_count"] == 32
+    assert screen["rgb_read"] is False and screen["positive_mask_candidates"] == 119
+    core_record = read(CORE/"candidate-binding.json")
+    assert core_record["candidate_commit"] == COMMIT
+    core_sha = core_record["core_sha256"]
+    assert all(sha(CORE/name) == expected for name, expected in core_sha.items())
+    source = read(PREP/"source-manifest.json")[0]
+    inputs = [PREP/"source-manifest.json", PREP/"geometry-proposal.json", PREP/"native-raster-metadata.json",
+        PREP/"registered-osm.xml", PREP/"extract_oam_frames.py", PREP/"build_conditional_parts_plan.py",
+        PREP/"source-plan.json", FAST/"santolan-purpose-reserve-v1.json", CORE/"candidate-binding.json",
+        FAST/"conditional-parts-source-v1/source-recipe.json", FAST/"conditional-parts-source-v1/source-candidate.json",
+        DATA/source["catalog_file"]]
+    inputs += [CORE/name for name in core_sha]
+    old_placeholder = FAST/"conditional-parts-native32-v1/provenance/unverified-grouping-capture-inventory.json"
+    if old_placeholder.is_file():
+        inputs.append(old_placeholder)
+    existing = {remote(p): {"bytes": p.stat().st_size, "sha256": sha(p)} for p in inputs}
+    metadata = {}
+    for name in ["prospective-mask-screen-registration.json", "mask-screen-result.json", "native-plan-selected32.json",
+                 "selected-purpose-reservation.json", "old32-native-algorithm-equivalence.json", "screen_and_plan_v1.py"]:
+        raw = (OUT/name).read_bytes()
+        metadata[name] = {"bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(), "base64": base64.b64encode(raw).decode("ascii")}
+    runtime = OUT/"cloud_runtime_v1.py"
+    runtime_bytes = runtime.read_bytes()
+    compile(runtime_bytes, str(runtime), "exec")
+    request = {"format": "drone.p6-santolan-mask-next-cloud-request/v1", "recorded_at_utc": now(),
+        "candidate_commit": COMMIT, "task_root": TASK, "work_directory": WORK, "job_directory": JOB,
+        "frozen_directory": remote(CORE), "frozen_core_sha256": core_sha,
+        "data_python": OUTER+"/tools-venv/bin/python", "runtime_sha256": sha(runtime),
+        "selected_plan_sha256": sha(OUT/"native-plan-selected32.json"),
+        "parent_file": TASK+"/resume-20261022-fast/santolan-recovery-v1/segmented-remainder-attempt-v1/6024868fe316a7000568a583-assembled-full-native.tif",
+        "parent_sha256": "1127710341b5b785dd151e7e3fa8de9c0ab1cc3dc9f7f8b4df0acdee767be4c5",
+        "extractor_file": remote(PREP/"extract_oam_frames.py"), "extractor_sha256": sha(PREP/"extract_oam_frames.py"),
+        "existing_input_bindings": existing, "new_metadata": metadata,
+        "parent_and50_body_parts_already_cloud_resident": True, "upload_parent_or_body_parts": False,
+        "new_http_requests": 0, "formal_assets_admitted": 0, "repeated_capture_eligible": False}
+    save(CONTROL/"runtime-request.json", {**request, "new_metadata": {k:{a:b for a,b in v.items() if a != "base64"} for k,v in metadata.items()}})
+    sys.path.insert(0, str(REPO/"scripts"))
+    from dev_stack import Connection
+    connection = Connection.from_environment()
+    phase = "readonly_existing_cloud_preflight"
+    preflight = """
+import hashlib,json,pathlib,shutil
+from datetime import datetime,timezone
+R=REQUEST
+def sha(p):
+ with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
+task=pathlib.Path(R['task_root']);work=pathlib.Path(R['work_directory']);parent=pathlib.Path(R['parent_file'])
+assert task.resolve()==task and work.is_relative_to(task) and not work.exists()
+assert parent.is_file() and not parent.is_symlink() and parent.stat().st_size==253851020 and sha(parent)==R['parent_sha256']
+checks=[]
+for name,bound in R['existing_input_bindings'].items():
+ p=pathlib.Path(name);assert p.resolve()==p and p.is_relative_to(task) and p.is_file()
+ assert p.stat().st_size==bound['bytes'] and sha(p)==bound['sha256'];checks.append(name)
+ram=next(int(x.split()[1])*1024 for x in pathlib.Path('/proc/meminfo').read_text().splitlines()if x.startswith('MemAvailable:'))
+disk=shutil.disk_usage(task).free
+assert ram>=3*1024**3 and disk>=8*1024**3
+print(json.dumps({'status':'passed_existing_cloud_preflight','recorded_at_utc':datetime.now(timezone.utc).isoformat(),'source_input_files_checked':len(checks),'parent_current_sha_verified':True,'parent_bytes':parent.stat().st_size,'memory_available_bytes':ram,'free_disk_bytes':disk,'new_work_directory_absent':True,'mutations':0}))
+"""
+    pre_request = {k:v for k,v in request.items() if k != "new_metadata"}
+    sent = ("import json\nREQUEST=json.loads("+repr(json.dumps(pre_request))+ ")\n"+preflight).encode("utf-8")
+    child = transport(["ssh", *connection.arguments(), connection.target, OUTER+"/tools-venv/bin/python -B -u -"], "preflight", input=sent, timeout=300)
+    pre = json.loads(child.stdout)
+    save(CONTROL/"preflight-result.json", pre)
+    print(json.dumps({"phase": "current_cloud_preflight_passed", **pre}), flush=True)
+    phase = "cloud_native_extraction_replay_and_audit"
+    sent = ("import json\nREQUEST=json.loads("+repr(json.dumps(request))+ ")\nRUNTIME_SOURCE="+repr(runtime_bytes)+"\nexec(compile(RUNTIME_SOURCE,'bound-santolan-mask-next-runtime','exec'))\n").encode("utf-8")
+    child = transport(["ssh", *connection.arguments(), connection.target, OUTER+"/tools-venv/bin/python -B -u -"], "execute", input=sent, timeout=3600)
+    with (CONTROL/"execute-stdout.json").open("xb") as f:
+        f.write(child.stdout)
+    payload = json.loads(child.stdout)
+    save(CONTROL/"cloud-result.json", payload)
+    print(json.dumps({"phase": "cloud_job_returned", "result": {k:v for k,v in payload["result"].items() if k != "rows"}}), flush=True)
+    phase = "fetch_and_verify_every_new_output"
+    assert payload["job_directory"] == JOB and not LOCAL_JOB.exists()
+    child = transport(["scp", "-r", *connection.arguments(), connection.target+":"+JOB, str(OUT)], "fetch-all-new-media-and-metadata", timeout=3600)
+    expected = set()
+    for name, bound in payload["bindings"].items():
+        path = (DATA/name).resolve()
+        assert path.is_relative_to(LOCAL_JOB.resolve()) and path.is_file() and not path.is_symlink()
+        assert path.stat().st_size == bound["bytes"] and sha(path) == bound["sha256"]
+        expected.add(path)
+    assert expected == {p.resolve() for p in LOCAL_JOB.rglob("*") if p.is_file()}
+    result = read(LOCAL_JOB/"result.json")
+    assert result == payload["result"]
+    passed = result["status"] == "passed" and result["native_extracted"] == result["independent_replay_matched"] == result["checked"] == result["passed"] == 32
+    summary = {"format": "drone.p6-santolan-mask-next-controller-result/v1", "recorded_at_utc": now(),
+        "status": "passed" if passed else "failed_source_or_native_gate", "candidate_commit": COMMIT,
+        "native_extracted": result["native_extracted"], "independent_replay_matched": result["independent_replay_matched"],
+        "source_native_checked": result["checked"], "source_native_passed": result["passed"],
+        "result_file": str(LOCAL_JOB/"result.json"), "result_sha256": sha(LOCAL_JOB/"result.json"),
+        "selected_plan_sha256": request["selected_plan_sha256"], "runtime_sha256": sha(runtime),
+        "controller_sha256": sha(Path(__file__)), "extractor_sha256": request["extractor_sha256"],
+        "frozen_core_sha256": core_sha, "all_result_files_size_and_sha_verified": True,
+        "returned_new_files": len(expected), "new_job_space": payload["new_job_space"],
+        "parent_or_source_body_files_uploaded": 0, "new_http_requests": 0, "full_tiff_tar_created": False,
+        "images_visually_viewed": 0, "business_labels_created": 0, "formal_model_calls": 0,
+        "formal_assets_admitted": 0, "grouping_verified": False, "repeated_capture_eligible": False,
+        "planned_whole_site_partition": "calibration_candidate", "old_evidence_overwritten": False}
+    save(CONTROL/"controller-result.json", summary)
+    print(json.dumps(summary), flush=True)
+    if not passed:
+        raise RuntimeError("actual_source_or_native_gate_failed_preserved")
+except Exception as exc:
+    failure = {"status": "failed_preserved_evidence", "phase": phase, "recorded_at_utc": now(),
+        "error_type": type(exc).__name__, "sanitized_error": str(exc) if isinstance(exc, (AssertionError, RuntimeError)) else "details_withheld_check_receipt_hash_and_length",
+        "new_http_requests": 0, "formal_assets_admitted": 0, "no_cleanup_or_overwrite_retry": True}
+    save(CONTROL/"controller-failure.json", failure)
+    print(json.dumps(failure), flush=True)
+    raise SystemExit(1)

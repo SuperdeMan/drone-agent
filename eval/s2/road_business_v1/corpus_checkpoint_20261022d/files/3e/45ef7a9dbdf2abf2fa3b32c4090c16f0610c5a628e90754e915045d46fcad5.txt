@@ -1,0 +1,220 @@
+"""Hold unresolved source exposure before any formal freeze, then audit exact19.
+
+正式冻结前按未裁定来源曝光hold，再审核精确19条。
+"""
+import base64
+import copy
+import hashlib
+import json
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
+
+sys.dont_write_bytecode = True
+OUT = Path(__file__).resolve().parent
+PARENT = OUT.parent
+ROOT = PARENT.parent.parent
+DATA = ROOT.parent
+REPO = DATA / 'p6-road-views-20261014/repo'
+REMOTE_DATA = '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data'
+REMOTE_ROOT = REMOTE_DATA + '/' + ROOT.name
+REMOTE_OUT = REMOTE_ROOT + '/resume-20261022-next/composed22-v1/filtered19-v1'
+PYTHON = '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/tools-venv/bin/python'
+HOLD = ['oam-extract-004a50bff322d5', 'oam-extract-007e2160190a1e', 'oam-extract-1c19cb36a18f50']
+
+
+def read(path):
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+def sha(path):
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def save(path, value):
+    with Path(path).open('x', encoding='utf-8', newline='\n') as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2, allow_nan=False)
+        stream.write('\n')
+
+
+def now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+assert not (OUT / 'manifest.json').exists() and not (OUT / 'control-v1').exists()
+control = OUT / 'control-v1'
+control.mkdir()
+original = read(PARENT / 'manifest.json')
+original_labels = read(PARENT / 'labels.json')
+negative = read(PARENT / 'actual-audit-v1/core-audit.json')
+assert sha(PARENT / 'manifest.json') == 'df64c574c45baac9f267504bfc8893b445be977c54ae4a447084b72991f28f60'
+assert sha(PARENT / 'actual-audit-v1/core-audit.json') == '667a1603811f2716b710cd9c981da9df4e146905a709c6a3b2fecbdd6d57f2c4'
+assert negative['status'] == 'missing' and negative['derived_captures_verified'] == 22
+sample_issues = [row for row in negative['issues'] if row.get('sample_id') is not None]
+assert len(sample_issues) == 6 and {row['sample_id'] for row in sample_issues} == set(HOLD)
+assert all(row['code'] == 'exposed_image_outside_development' for row in sample_issues)
+manifest, labels = copy.deepcopy(original), copy.deepcopy(original_labels)
+manifest['samples'] = [row for row in manifest['samples'] if row['sample_id'] not in HOLD]
+labels['rows'] = [row for row in labels['rows'] if row['sample_id'] not in HOLD]
+assert len(manifest['samples']) == len(labels['rows']) == 19
+assert sum(row['evaluation_role'] == 'primary' for row in manifest['samples']) == 18
+assert len({row['asset_id'] for row in manifest['samples'] if row['evaluation_role'] == 'primary'}) == 18
+assert manifest['stability_pairs'] == original['stability_pairs'] and len(manifest['stability_pairs']) == 1
+for row in manifest['samples']:
+    assert row == next(value for value in original['samples'] if value['sample_id'] == row['sample_id'])
+for row in labels['rows']:
+    assert row == next(value for value in original_labels['rows'] if value['sample_id'] == row['sample_id'])
+save(OUT / 'manifest.json', manifest)
+save(OUT / 'labels.json', labels)
+for leaf in ('protocol-not-frozen.json', 'exposure.json'):
+    with (OUT / leaf).open('xb') as stream:
+        stream.write((PARENT / leaf).read_bytes())
+save(OUT / 'source-exposure-hold-selection.json', {
+    'format': 'drone.p6-local-source-exposure-hold/v1', 'recorded_at_utc': now(),
+    'original22_manifest_file': '../manifest.json', 'original22_manifest_sha256': sha(PARENT / 'manifest.json'),
+    'original22_negative_audit_file': '../actual-audit-v1/core-audit.json',
+    'original22_negative_audit_sha256': sha(PARENT / 'actual-audit-v1/core-audit.json'),
+    'exact_hold_sample_ids': HOLD, 'selection_basis': 'Source exposure admission only: unresolved conservative source-only development_exposed=true. No business label, class quota, model output or quality metric used.',
+    'original22_negative_result_preserved_as_primary_record': True, 'removed_from_new_subset_only': True,
+    'source_exposure_globally_adjudicated': False, 'occurs_before_formal_data_or_model_test_freeze': True,
+    'remaining19_sample_dicts_identical': True, 'remaining19_label_dicts_identical': True,
+    'unique_old_pair_identical': True, 'protocol_and_exposure_file_bytes_identical': True,
+    'formal_assets_admitted': 0, 'formal_model_calls': 0, 'formal_release_eligible': False, 'wp_p6_01_closed': False,
+})
+parent_result = read(PARENT / 'control-v2/result.json')
+BINDINGS = copy.deepcopy(parent_result['input_bindings'])
+CORE = parent_result['frozen_core_sha256']
+new_files = sorted(path for path in OUT.iterdir() if path.is_file() and path.suffix in {'.json', '.py'})
+PAYLOAD = {}
+for path in new_files:
+    blob = path.read_bytes()
+    name = path.relative_to(DATA).as_posix()
+    wanted = {'sha256': hashlib.sha256(blob).hexdigest(), 'bytes': len(blob)}
+    BINDINGS[name] = wanted
+    PAYLOAD[path.relative_to(OUT).as_posix()] = {**wanted, 'data': base64.b64encode(blob).decode()}
+request = {'candidate_commit': parent_result['candidate_commit'], 'frozen_core_sha256': CORE,
+    'original22_control_result_sha256': sha(PARENT / 'control-v2/result.json'), 'bound_input_files': len(BINDINGS),
+    'samples': 19, 'primary_assets': 18, 'pairs': 1, 'hold_ids': HOLD,
+    'new_source_cache_files_uploaded': 0, 'source_caches_reused_at_original_paths': True,
+    'controller_sha256': sha(Path(__file__)), 'new_input_bindings': {name: BINDINGS[name] for name in BINDINGS if '/filtered19-v1/' in name}}
+save(control / 'request.json', request)
+runtime = 'ROOT=' + repr(REMOTE_ROOT) + '\nOUT=' + repr(REMOTE_OUT) + '\nDATA=' + repr(REMOTE_DATA)
+runtime += '\nPYTHON=' + repr(PYTHON) + '\nCORE=' + repr(CORE) + '\nBINDINGS=' + repr(BINDINGS)
+runtime += '\nPAYLOAD=' + repr(PAYLOAD) + '\nREQUEST=' + repr(request) + '\n' + r'''
+import base64,hashlib,json,os,pathlib,subprocess
+from collections import Counter
+from datetime import datetime,timezone
+root=pathlib.Path(ROOT).resolve();out=pathlib.Path(OUT).resolve();data=pathlib.Path(DATA).resolve()
+assert out.is_relative_to(root) and not out.exists()
+def sha(p):
+ with p.open('rb') as s:return hashlib.file_digest(s,'sha256').hexdigest()
+def read(p):return json.loads(p.read_text())
+assert sha(out.parent/'actual-audit-v1/core-audit.json')=='667a1603811f2716b710cd9c981da9df4e146905a709c6a3b2fecbdd6d57f2c4'
+for name,wanted in BINDINGS.items():
+ if '/filtered19-v1/' in name:continue
+ p=(data/name).resolve();assert p.is_relative_to(root) and p.is_file()
+ assert sha(p)==wanted['sha256'] and p.stat().st_size==wanted['bytes'],'Original input changed before19 audit'
+out.mkdir(parents=True,exist_ok=False);control=out/'control-v1';control.mkdir();audit=out/'actual-audit-v1';audit.mkdir()
+for name,item in PAYLOAD.items():
+ p=(out/name).resolve();assert p.is_relative_to(out)
+ blob=base64.b64decode(item['data'],validate=True);assert len(blob)==item['bytes'] and hashlib.sha256(blob).hexdigest()==item['sha256']
+ with p.open('xb') as s:s.write(blob)
+with (control/'request.json').open('x') as s:json.dump(REQUEST,s,indent=2)
+before={name:{'sha256':sha(data/name),'bytes':(data/name).stat().st_size} for name in BINDINGS};assert before==BINDINGS
+frozen=root/'software-audit-cdf5382-20261022';before_core={n:sha(frozen/n) for n in CORE};assert before_core==CORE
+with (control/'exact-inputs-before.json').open('x') as s:json.dump(before,s,indent=2)
+command=[PYTHON,'-B',str(frozen/'p6_business_eval.py'),'audit','--manifest',str(out/'manifest.json'),
+ '--labels',str(out/'labels.json'),'--protocol',str(out/'protocol-not-frozen.json'),'--exposure',str(out/'exposure.json'),
+ '--data-root',str(data),'--output',str(audit/'core-audit.json')]
+started=datetime.now(timezone.utc).isoformat()
+with (audit/'stdout.log').open('xb') as stdout,(audit/'stderr.log').open('xb') as stderr:
+ child=subprocess.run(command,cwd=data,env=dict(os.environ,OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1',PYTHONDONTWRITEBYTECODE='1'),stdout=stdout,stderr=stderr)
+finished=datetime.now(timezone.utc).isoformat()
+report=read(audit/'core-audit.json') if (audit/'core-audit.json').is_file() else None
+manifest=read(out/'manifest.json');labels=read(out/'labels.json');sample_ids={r['sample_id'] for r in manifest['samples']}
+issues=report['issues'] if report else [];per_sample={ident:[i for i in issues if i.get('sample_id')==ident] for ident in sorted(sample_ids)}
+pairs=[{'pair_id':p['pair_id'],'sample_ids':p['sample_ids'],'comparison_scope':p['comparison_scope'],
+ 'issues_on_either_member':[i for i in issues if i.get('sample_id') in p['sample_ids']],
+ 'original22_pair_preserved':p==read(out.parent/'manifest.json')['stability_pairs'][0]} for p in manifest['stability_pairs']]
+after={name:{'sha256':sha(data/name),'bytes':(data/name).stat().st_size} for name in BINDINGS}
+after_core={n:sha(frozen/n) for n in CORE};assert before==after and before_core==after_core
+assert sha(out.parent/'actual-audit-v1/core-audit.json')=='667a1603811f2716b710cd9c981da9df4e146905a709c6a3b2fecbdd6d57f2c4'
+with (control/'exact-inputs-after.json').open('x') as s:json.dump(after,s,indent=2)
+label_by_id={r['sample_id']:r for r in labels['rows']};primary=[r for r in manifest['samples'] if r['evaluation_role']=='primary']
+receipt={'candidate_commit':REQUEST['candidate_commit'],'started_at_utc':started,'finished_at_utc':finished,
+ 'process_exit_code':child.returncode,'command':command,'controller_sha256':REQUEST['controller_sha256'],
+ 'frozen_core_before':before_core,'frozen_core_after':after_core,'all_bound_input_files_rehashed_unchanged':True,
+ 'bound_input_files':len(before),'input_ledger_before_sha256':sha(control/'exact-inputs-before.json'),
+ 'input_ledger_after_sha256':sha(control/'exact-inputs-after.json'),
+ 'samples':len(manifest['samples']),'primary_observations':len(primary),'distinct_primary_assets':len({r['asset_id'] for r in primary}),
+ 'repeat_observations':len(manifest['samples'])-len(primary),'pair_count':len(pairs),'pairs':pairs,
+ 'core_audit_created':report is not None,'core_audit_status':report['status'] if report else None,
+ 'derived_captures_verified':report.get('derived_captures_verified') if report else None,
+ 'sample_issues':per_sample,'sample_issue_count':sum(len(i) for i in per_sample.values()),
+ 'global_issues':[i for i in issues if i.get('sample_id') is None],
+ 'unassigned_issues':[i for i in issues if i.get('sample_id') is not None and i.get('sample_id') not in sample_ids],
+ 'primary_label_counts':{split:dict(Counter(label_by_id[r['sample_id']]['verdict'] for r in primary if r['split']==split)) for split in ('calibration','test')},
+ 'core_issue_counts':report.get('issue_counts') if report else {},'data_ready':False,
+ 'original22_negative_result_preserved':True,'source_exposure_hold_only_not_business_or_model_quality_selection':True,
+ 'source_cache_uploads_or_downloads':0,'existing_input_files_overwritten':False,'pixels_visually_viewed':False,
+ 'formal_assets_admitted':0,'formal_pairs_admitted':0,'formal_model_calls':0,'formal_data_frozen':False,
+ 'formal_release_eligible':False,'wp_p6_01_closed':False}
+with (audit/'execution-receipt.json').open('x') as s:json.dump(receipt,s,indent=2)
+packet={}
+for p in [*audit.iterdir(),control/'exact-inputs-before.json',control/'exact-inputs-after.json']:
+ if not p.is_file():continue
+ blob=p.read_bytes();packet[p.relative_to(out).as_posix()]={'sha256':hashlib.sha256(blob).hexdigest(),'bytes':len(blob),'data':base64.b64encode(blob).decode()}
+print(json.dumps({'execution':receipt,'files':packet}))
+'''
+compile(runtime, 'filtered19_remote_runtime.py', 'exec')
+(control / 'remote_runtime.py').write_text(runtime, encoding='utf-8', newline='\n')
+sys.path.insert(0, str(REPO / 'scripts'))
+from dev_stack import Connection
+connection = Connection.from_environment()
+print(json.dumps({'phase': 'actual-filtered19-cloud-audit-started', 'samples': 19, 'primary_assets': 18,
+    'pairs': 1, 'bound_inputs': len(BINDINGS), 'source_bytes_uploaded': 0}), flush=True)
+started = now()
+try:
+    child = subprocess.run(['ssh', *connection.arguments(), connection.target, PYTHON + ' -B -u -'],
+        input=runtime.encode(), capture_output=True, timeout=1500)
+except subprocess.TimeoutExpired as exc:
+    save(control / 'ssh-timeout.json', {'started_at': started, 'finished_at': now(), 'timeout_seconds': 1500,
+        'stdout_bytes': len(exc.stdout or b''), 'stdout_sha256': hashlib.sha256(exc.stdout or b'').hexdigest(),
+        'stderr_bytes': len(exc.stderr or b''), 'stderr_sha256': hashlib.sha256(exc.stderr or b'').hexdigest(),
+        'raw_ssh_stderr_printed': False, 'automatic_rerun': False})
+    raise RuntimeError('Filtered19 transport timed out; retain exact remote state before retry.') from None
+save(control / 'ssh-receipt.json', {'started_at': started, 'finished_at': now(), 'returncode': child.returncode,
+    'stdout_bytes': len(child.stdout), 'stdout_sha256': hashlib.sha256(child.stdout).hexdigest(),
+    'stderr_bytes': len(child.stderr), 'stderr_sha256': hashlib.sha256(child.stderr).hexdigest(),
+    'raw_ssh_stderr_printed': False})
+assert child.returncode == 0, 'Filtered19 remote phase failed; SSH stderr withheld.'
+packet = json.loads(child.stdout)
+returned = []
+for name, item in packet['files'].items():
+    name = PurePosixPath(name)
+    assert not name.is_absolute() and '..' not in name.parts and name.parts[0] in {'control-v1', 'actual-audit-v1'}
+    blob = base64.b64decode(item['data'], validate=True)
+    assert len(blob) == item['bytes'] and hashlib.sha256(blob).hexdigest() == item['sha256']
+    path = OUT / Path(*name.parts)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('xb') as stream:
+        stream.write(blob)
+    returned.append({'file': str(path), 'sha256': item['sha256'], 'bytes': item['bytes']})
+for path in new_files:
+    assert sha(path) == BINDINGS[path.relative_to(DATA).as_posix()]['sha256']
+assert sha(PARENT / 'actual-audit-v1/core-audit.json') == '667a1603811f2716b710cd9c981da9df4e146905a709c6a3b2fecbdd6d57f2c4'
+save(control / 'result.json', {'recorded_at': now(), 'status': 'actual_filtered19_audit_completed',
+    'candidate_commit': request['candidate_commit'], 'frozen_core_sha256': CORE, 'controller_sha256': sha(Path(__file__)),
+    'actual_execution': packet['execution'], 'returned_files': returned,
+    'all_original22_negative_evidence_preserved': True, 'all_new_local_inputs_unchanged': True,
+    'formal_assets_admitted': 0, 'formal_model_calls': 0, 'formal_release_eligible': False, 'wp_p6_01_closed': False})
+execution = packet['execution']
+print(json.dumps({'phase': 'completed', 'samples': execution['samples'], 'primary_assets': execution['distinct_primary_assets'],
+    'derived_captures_verified': execution['derived_captures_verified'], 'sample_issue_count': execution['sample_issue_count'],
+    'pair_issue_count': sum(len(p['issues_on_either_member']) for p in execution['pairs']),
+    'global_issue_count': len(execution['global_issues']), 'core_status': execution['core_audit_status'],
+    'core_report_sha256': sha(OUT / 'actual-audit-v1/core-audit.json'),
+    'result_sha256': sha(control / 'result.json')}), flush=True)
+raise SystemExit(0 if execution['core_audit_created'] else 1)

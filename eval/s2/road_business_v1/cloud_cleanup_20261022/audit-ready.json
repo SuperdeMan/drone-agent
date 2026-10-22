@@ -1,0 +1,184 @@
+{
+  "format": "drone.p6-cloud-cleanup-contract-audit/v2",
+  "recorded_at_utc": "2026-10-22T03:09:12.056732+00:00",
+  "verdict": "supports_plan",
+  "ready_to_apply": true,
+  "ready_to_apply_scope": "No unresolved static metadata/contract or reviewed-executor readiness findings for submission to user approval. This is not user authorization or a claim that runtime preconditions or postconditions have already passed.",
+  "plan_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-cleanup-plan-v1.json",
+  "plan_sha256": "7d5b5d21011d67287de91f663f436b50b0fbace0eb27ea51cfe15dc4c1fd992c",
+  "clarification_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-cleanup-plan-notes-v2.json",
+  "clarification_sha256": "326e9b44a815ed76994fa89b7ab299d90cd76af52b2802212b4a2bec7355e23f",
+  "applier_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud_cleanup_apply_v3.py",
+  "applier_sha256": "77bbddbcce8823d61c6c52cbccc4dfdd86868979965eb2c4bf962089aa8f081a",
+  "prior_audit_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-cleanup-contract-audit-v1.json",
+  "prior_audit_sha256": "162c3c0a6b87ab8d2fa3ac994bd2ae2b3f2e8bacea5e43e38ccb09cf02c736ee",
+  "review_scope": "Delta-only independent read-only review of applier v2/v3 and notes v2 against findings from the unchanged v1 audit. No backup rehashing, full tests, cloud contact, image inspection, labels or VLM calls.",
+  "decision_reasons": [
+    "The exact original plan and prior v1 audit remain byte-identical. The v1 plan-level conclusion is inherited: 204 exact-backed transfer archives, 2,764 one-to-one replay/canonical media pairs and one held unmatched archive have coherent nonoverlapping paths, counts and allocated-byte estimates.",
+    "Notes v2 bind the same exact plan and disclose physical storage coalescing, all relevant filesystem metadata adoption, unchanged evidence JSON/historical timing, immutable aliases and recovery from durable intent records.",
+    "The reviewed v3 executor resolves A1-A4 plus the two delta findings, explicitly gates the exact plan/notes/audit/executor hashes and approved mode, preserves the existing read-only-opened stack.lock protocol, refuses changed runtime inputs and requires final byte/inode checks plus full deterministic source-core equality before completed status.",
+    "The hardlink representation continues to preserve the frozen pathname/hash/geometry contract after the historical independent replay execution. It does not create a new replay, independent current physical backup, capture, dataset admission or model-quality result."
+  ],
+  "findings": [
+    {
+      "id": "A1",
+      "status": "closed",
+      "evidence": "v3 fsyncs each intent before link/replace/unlink and each completion afterwards. Newly created task/fast/run journal directories are synced before the first mutation; replay and archive parent directories are synced after namespace changes. Intents include old/canonical stat and the staged pathname. NDJSON separator independently checked by AST to be a real newline.",
+      "limits": "This provides explicit durable operation journaling and recovery state; it does not promise atomicity for the whole multi-file batch or absolute durability under every filesystem/hardware failure."
+    },
+    {
+      "id": "A2",
+      "status": "closed",
+      "evidence": "The post-cleanup frozen core process must exit zero and its full deterministic JSON result must equal the exact SHA-bound baseline. Exact frozen code/input digests, six samples, no per-sample/pair issues and expected missing status are additionally checked. This includes global issues and counters, not only per-sample issues.",
+      "limits": "The actual core has not been rerun for cleanup because cleanup has not been approved or executed."
+    },
+    {
+      "id": "A3",
+      "status": "closed",
+      "evidence": "Before completed status, v3 loops over all approved aliases, requiring regular contained distinct pathnames, matching size/device, shared inode, nlink=2 and exact SHA. It verifies all approved archive paths absent and the single held archive unchanged by full expected stat and digest. Both local and remote request guards require the held set to equal exactly the plan held set.",
+      "limits": "This is static review of the final checks, not evidence that they have executed against post-cleanup cloud state."
+    },
+    {
+      "id": "A4",
+      "status": "closed",
+      "evidence": "Canonical and staged paths are checked by lstat/resolve around each link/replace, exact target stat/hash is rechecked, staged type and digest are verified, and original/new stat is recorded. Notes v2 disclose adoption of inode/mode/uid/gid/mtime plus ctime/nlink and parent-directory changes. Old replay metadata is not copied onto the canonical shared inode.",
+      "limits": "Filesystem metadata adoption is expressly disclosed, rather than falsely claiming unchanged filesystem attributes. Future in-place writes through either alias remain prohibited."
+    },
+    {
+      "id": "F1",
+      "status": "closed",
+      "evidence": "v3 synchronizes the task directory, fast directory and newly created journal directory entry before any data mutation, covering both newly created ancestor directories."
+    },
+    {
+      "id": "F2",
+      "status": "closed",
+      "evidence": "The copy-verification file is rehashed against the exact plan binding before use. Held bindings must have count one and exact plan path-set equality locally and remotely, so an empty list cannot silently skip held-archive protection."
+    }
+  ],
+  "unresolved_findings": [],
+  "checks_inherited_from_v1": {
+    "source_audit_sha256": "162c3c0a6b87ab8d2fa3ac994bd2ae2b3f2e8bacea5e43e38ccb09cf02c736ee",
+    "actual_local_archive_backups_rehashed_in_v1": 204,
+    "all_local_backups_matched_in_v1": true,
+    "local_backup_hashing_repeated_in_this_delta_review": false,
+    "archive_count": 204,
+    "hardlink_media_count": 2764,
+    "canonical_count": 2764,
+    "held_count": 1,
+    "estimated_archive_reclaim_allocated_bytes": 7485079552,
+    "estimated_hardlink_reclaim_allocated_bytes": 5930233856,
+    "estimated_total_reclaim_allocated_bytes": 13415313408,
+    "path_sets_nonoverlapping": true,
+    "shared_current_inode_is_not_an_independent_physical_backup": true
+  },
+  "delta_verification": {
+    "file_sha256_checks": [
+      {
+        "role": "plan",
+        "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-cleanup-plan-v1.json",
+        "sha256": "7d5b5d21011d67287de91f663f436b50b0fbace0eb27ea51cfe15dc4c1fd992c",
+        "expected_sha256": "7d5b5d21011d67287de91f663f436b50b0fbace0eb27ea51cfe15dc4c1fd992c",
+        "matches": true,
+        "bytes": 3696612
+      },
+      {
+        "role": "prior_audit",
+        "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-cleanup-contract-audit-v1.json",
+        "sha256": "162c3c0a6b87ab8d2fa3ac994bd2ae2b3f2e8bacea5e43e38ccb09cf02c736ee",
+        "expected_sha256": "162c3c0a6b87ab8d2fa3ac994bd2ae2b3f2e8bacea5e43e38ccb09cf02c736ee",
+        "matches": true,
+        "bytes": 127829
+      },
+      {
+        "role": "notes",
+        "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-cleanup-plan-notes-v2.json",
+        "sha256": "326e9b44a815ed76994fa89b7ab299d90cd76af52b2802212b4a2bec7355e23f",
+        "expected_sha256": "326e9b44a815ed76994fa89b7ab299d90cd76af52b2802212b4a2bec7355e23f",
+        "matches": true,
+        "bytes": 1966
+      },
+      {
+        "role": "applier",
+        "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud_cleanup_apply_v3.py",
+        "sha256": "77bbddbcce8823d61c6c52cbccc4dfdd86868979965eb2c4bf962089aa8f081a",
+        "expected_sha256": "77bbddbcce8823d61c6c52cbccc4dfdd86868979965eb2c4bf962089aa8f081a",
+        "matches": true,
+        "bytes": 15770
+      },
+      {
+        "role": "copy_verification",
+        "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cleanup-copy-verification-v2.json",
+        "sha256": "b54d623a1953e2db3a72b5fc63c1384a133917f0a21dc4b652673a4c601d70c3",
+        "expected_sha256": "b54d623a1953e2db3a72b5fc63c1384a133917f0a21dc4b652673a4c601d70c3",
+        "matches": true,
+        "bytes": 3065570
+      },
+      {
+        "role": "delta_history",
+        "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud_cleanup_apply_v2.py",
+        "sha256": "9b10185498523aff038d4c82b4ab412a50e25a59d8be0bd9ab545d03135c3e1c",
+        "bytes": 15030
+      },
+      {
+        "role": "delta_history",
+        "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\cloud-cleanup-applier-changes-v2.json",
+        "sha256": "37033b690ba2e1d57b92b26d28269c32b8a6fc282466cc81af99ab2f53cd41d4",
+        "bytes": 1325
+      },
+      {
+        "role": "unchanged_frozen_contract",
+        "file": "D:\\drone-agent-data\\p6-road-views-20261014\\repo\\scripts\\p6_business_eval.py",
+        "sha256": "d0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2",
+        "matches_prior_audit": true
+      },
+      {
+        "role": "unchanged_frozen_contract",
+        "file": "D:\\drone-agent-data\\p6-road-views-20261014\\repo\\scripts\\p6_raster_replay.py",
+        "sha256": "f90cdcc1a40596546cb1c3decf72908e2ce093e9c2234faa90f2e6c030071607",
+        "matches_prior_audit": true
+      },
+      {
+        "role": "unchanged_frozen_contract",
+        "file": "D:\\drone-agent-data\\p6-road-views-20261014\\repo\\docs\\p6-derived-road-evidence.md",
+        "sha256": "b8fce3ce9ee7b0da1a32985dfe584b90f9121e081c50cd0b34bac0c1614873dd",
+        "matches_prior_audit": true
+      }
+    ],
+    "outer_and_embedded_ast_parse_ok": true,
+    "ndjson_separator_actual_newline": true,
+    "plan_and_v1_audit_unchanged": true,
+    "frozen_contract_code_unchanged": true,
+    "applier_executed_by_this_auditor": false,
+    "parent_reported_v3_dry_run": "dry_run_no_cloud_contact_or_mutation",
+    "live_cloud_preconditions_executed_by_this_auditor": false,
+    "new_backup_hashes_or_full_tests": false
+  },
+  "execution_still_requires": [
+    "Actual explicit user authorization for either archives-only or archives-and-hardlinks, persisted by the orchestrator as a truthful approval record bound to this exact plan, notes-v2 and audit-v2 digests and selected mode. ready_to_apply does not provide that authorization.",
+    "Immediate retained local backup validation, exact current target/canonical/held stat and SHA validation, project lock acquisition, no active P6 writers/users and no running containers mounting the cleanup root, as enforced by the reviewed executor.",
+    "Use only the reviewed v3 SHA. Any code, plan, notes or audit change invalidates this digest binding and requires the appropriate fresh review before execution.",
+    "Keep shared aliases immutable, retain every unlisted JSON/log/source byte and canonical path, and regenerate future artifacts through a new file plus atomic replacement rather than an in-place edit of a shared inode.",
+    "On interruption or failed postcheck, keep the operation journal and inspect unmatched intents/staged paths before resuming. Do not infer completion from missing reports, retry a whole partially executed plan blindly or claim all-or-nothing atomicity.",
+    "After execution, retain the actual full-whitelist and frozen six-observation core results, container comparison, operation records and measured disk delta. Current allocated-byte reclaim remains an estimate until measured; business status must remain the exact prior missing result."
+  ],
+  "limitations": [
+    "This delta is a static readiness review. It does not claim an actual cleanup run, successful runtime guard checks, live remote-byte freshness, tested recovery from a real crash or an absolute safety guarantee.",
+    "The 204 archive-backup byte checks and cloud-inventory checks are inherited only from their exact bound v1 audit and original snapshots; they were not repeated here and the executor must refresh applicable checks immediately before mutation.",
+    "Current replay/canonical hardlinks will share physical failure and in-place-write fate. Historical independent replay execution and unchanged path/hash evidence remain distinct from physical backup independence.",
+    "The preparation receipt records a local generator variable-shadowing failure after complete v2 artifacts were written. Actual v2 and final v3 bytes were reviewed directly; no cloud action or successful preparation step is inferred solely from that receipt.",
+    "The existing full frozen source gate remains unchanged. Cleanup does not satisfy D089 data counts, freezing, actual model evaluation, human truth or WP-P6-01 closure."
+  ],
+  "approval_received": false,
+  "authorized_to_execute": false,
+  "runtime_preconditions_already_satisfied": false,
+  "cleanup_completed": false,
+  "cloud_mutations_executed": 0,
+  "deletions_executed": 0,
+  "hardlinks_created": 0,
+  "images_viewed": false,
+  "labels_changed": false,
+  "vlm_calls": 0,
+  "delegation_used": false,
+  "formal_release_eligible": false,
+  "wp_p6_01_closed": false
+}

@@ -1,0 +1,12 @@
+{
+  "format": "drone.p6-cloud-cleanup-clarification/v2",
+  "plan_sha256": "7d5b5d21011d67287de91f663f436b50b0fbace0eb27ea51cfe15dc4c1fd992c",
+  "hardlink_metadata_disclosure": "Replay pathname and file bytes remain, but its inode, ctime and mtime will become those of the canonical hardlinked file. Preserve metadata means evidence JSON, historical execution timestamps, hashes and bindings remain byte-for-byte unchanged; it does not mean every filesystem timestamp/inode is unchanged.",
+  "historical_replay_disclosure": "Independent replay execution and separately persisted output already occurred and were audited. Coalescing storage afterwards does not create a new replay result and does not retain an independent physical backup.",
+  "immutability": "Treat both canonical and linked replay media as immutable. A future regeneration must write a new file and atomically replace its own pathname, rather than editing a shared inode in place.",
+  "archive_only_option": "User may authorize deletion of the same exact 204 listed archived transfer copies only, leaving all replay media untouched; estimated reclaim 6.9710 GiB.",
+  "approval_received": false,
+  "cloud_mutations_executed": 0,
+  "filesystem_metadata_disclosure": "Hardlinked replay media adopts canonical inode, mode, uid, gid and mtime; link creation/replacement also updates ctime/nlink and parent-directory metadata. Original receipt JSON and its historical execution times remain byte-identical. Preserve old filesystem stat values in each durable operation intent/result; no claim that all filesystem metadata stays unchanged.",
+  "operation_recovery": "Before every link/replace/unlink, append and fsync a durable intent including any staged hardlink path, old stat and retained copy. Append and fsync completion afterwards, and fsync affected directories. On interruption, inspect unmatched intents against actual state before resuming; never infer completion from a missing final report."
+}

@@ -1,0 +1,121 @@
+{
+  "format": "drone.p6-ai-pair-verification/v1",
+  "origin": "delegated_ai",
+  "reviewer_id": "pair_verifier_3",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_3\\assignment.json",
+  "assignment_sha256": "48fa180a20c18a64ef865a6dd9cad4fe8a210780592ca97949dd00b83d27bc3c",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "pair_id": "bounded-repeat-0f0a75c8b7664b",
+      "same_asset": true,
+      "same_condition": true,
+      "distinct_captures": true,
+      "evidence": "I viewed both original images, both guides and masks, and both native full-target crops. The same diagonal five-lane road is identifiable from the opposing curved turn arrows in the central lane, matching dashed lane markings and pavement cracks, the interrupted straight sidewalk and sign on the northwest side, and the curved sidewalk corner, driveway opening and fenced parking frontage on the southeast side. These features correspond in both images independently of the file names and asset ID. The registered 30.43168374472548 m A/B world interval and full road width were retained. Native crops [426,391,1641,1553] and [440,405,1651,1577] include every registered polygon vertex, both terminal cross-sections and both road edges; both masks are uniformly 255. Across the complete comparable road surface, both images show continuous exposed pavement, visible markings and edges, with no visible object obstructing the lanes or terminal cross-sections. Thin cast shadows and illumination differences do not hide the road state. Debris and altered shadows in the adjoining landscaped areas and forecourts do not establish a change inside this fixed main-road target; the whole connected forecourt was excluded under the bound continuous-width policy. This supports same_condition=true without requiring pixel identity. The assignment binds these to UAV-derived orthomosaics 1001-Kennedy-Green-Mobile-Homes.geo.tif and 1002-Palm-Acers.4.geo.tif, distinct parent SHA256 values ffab4194aaeddbbc214649647a53954201b12c0cd42b3127f0b10c8fc2d3da82 and 8c7eb124e355b41c74c0dd49cb18c3eae130da559a2d54731d9ddd34691e84e4, and verified different author date groups 2022-10-01 and 2022-10-02. Different shadow geometry and surrounding debris arrangements are also visually apparent. Thus distinct_captures=true is limited to those distinct author-dated derived captures. Image and guide hashes and the bound policy hash matched the assignment.",
+      "uncertainties": [
+        "The supplied dates are verified author date groups, not exact UTC capture times. Flight IDs and raw camera frames are not supplied; no precise capture ordering, clearance cause, repair or site intervention is claimed."
+      ],
+      "inspection_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-7c3216511dd051.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-36bb636c767103.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-7c3216511dd051.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-36bb636c767103.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-7c3216511dd051.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-36bb636c767103.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/pair-verification/pair_verifier_3/bounded-extract-7c3216511dd051-native-full-target.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/pair-verification/pair_verifier_3/bounded-extract-36bb636c767103-native-full-target.png"
+      ],
+      "sample_ids": [
+        "bounded-extract-7c3216511dd051",
+        "bounded-extract-36bb636c767103"
+      ],
+      "asset_id": "crasar-road-f7ebc7c0360f7a",
+      "reviewed_at": "2026-10-22T01:31:43.769090+00:00",
+      "images": {
+        "bounded-extract-7c3216511dd051": {
+          "file": "p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-7c3216511dd051.jpg",
+          "image_sha256": "3e88c1876880a692617dd18109b213cac0e57947e196abcf737b136fc277125d",
+          "original_checked": true,
+          "target_polygon": [
+            [
+              0.24646541,
+              0.52269906
+            ],
+            [
+              0.5648147,
+              0.24219009
+            ],
+            [
+              0.72871163,
+              0.44620563
+            ],
+            [
+              0.40762058,
+              0.72330171
+            ]
+          ]
+        },
+        "bounded-extract-36bb636c767103": {
+          "file": "p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-36bb636c767103.jpg",
+          "image_sha256": "f123db1e0a922c9728063076863ecffaf43b88b884079ad2ae0f8716533e4b9c",
+          "original_checked": true,
+          "target_polygon": [
+            [
+              0.25243336,
+              0.53006156
+            ],
+            [
+              0.5694742,
+              0.24823658
+            ],
+            [
+              0.73137263,
+              0.4499793
+            ],
+            [
+              0.41511094,
+              0.73277518
+            ]
+          ]
+        }
+      },
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-7c3216511dd051.jpg": "3e88c1876880a692617dd18109b213cac0e57947e196abcf737b136fc277125d",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-36bb636c767103.jpg": "f123db1e0a922c9728063076863ecffaf43b88b884079ad2ae0f8716533e4b9c",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-7c3216511dd051.jpg": "34dac99bd4df21a88eba8f391cdb0210f5aae8a001dafba153a56e727adf7298",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-36bb636c767103.jpg": "5410a0b652970f2ff81789022db95f7d8a4d53e9c049e2a5e5158ed735fde1ab",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-7c3216511dd051.png": "d1a8a99d12bb63e4b6aa16beab7393532ac867210872e6619cb0d5453b1afe57",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-36bb636c767103.png": "f36ec2c1e270b75e848a26de54697811b49a316df9d9739c2e39aa595d07850b",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/pair-verification/pair_verifier_3/bounded-extract-7c3216511dd051-native-full-target.png": "0cb9161cf91c02dff7cd68a8c1c31e07d629e9a1bdd4f5c05172bc2cf3f9100b",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/pair-verification/pair_verifier_3/bounded-extract-36bb636c767103-native-full-target.png": "8c0cf843ae18695490958194535678569fca11188c9ce034ba4791837026572c"
+      },
+      "temporal_scope": "distinct_author_dated_derived_captures_unordered",
+      "human_reviews_created": 0,
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_3\\pair-payload.json",
+        "observer_payload_sha256": "66fd06b1f0fcd73b7462ac0fc8d4949180f4732f4b41a8fabf31e1e6796ed352",
+        "stored_at_utc": "2026-10-22T01:31:43.769090+00:00",
+        "new_visual_inspection_claimed": false,
+        "semantic_fields_changed": false,
+        "timing_semantics": "reviewed_at is storage time, not an extra visual inspection or human timing."
+      }
+    }
+  ],
+  "persistence_provenance": {
+    "operator": "root_orchestrator_deterministic_storage_only",
+    "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_3\\pair-payload.json",
+    "observer_payload_sha256": "66fd06b1f0fcd73b7462ac0fc8d4949180f4732f4b41a8fabf31e1e6796ed352",
+    "stored_at_utc": "2026-10-22T01:31:43.769090+00:00",
+    "new_visual_inspection_claimed": false,
+    "semantic_fields_changed": false,
+    "timing_semantics": "reviewed_at is storage time, not an extra visual inspection or human timing."
+  }
+}

@@ -1,0 +1,69 @@
+"""Verify existing pair source bytes in place without cloud writes or downloads.
+
+原地核对既有跨次源字节，不向云端写文件或下载缓存。
+"""
+import hashlib
+import json
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+REPO = Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+OUT = HERE / 'repeat-cloud-byte-check-v1'
+OUT.mkdir(exist_ok=False)
+checklist_file = HERE / 'repeat-queue-census-v1/cloud-existing-byte-checklist.json'
+queue_file = HERE / 'repeat-queue-census-v1/next-assignment-proposals.json'
+checklist = json.loads(checklist_file.read_text())
+queue = json.loads(queue_file.read_text())
+ids = {r['sample_id'] for p in queue['pairs'] for r in p['observations']}
+rows = [r for r in checklist['requirements'] if set(r['roles']) & {'source_range', 'source_http_receipt'} or set(r['sample_ids']) & ids]
+assert len(ids) == 82 and len(rows) == 8354
+request = {'scope': 'Existing bytes for the neutral41-pair queue; no native decode, identity, same-state, labels or admission claims.',
+           'checklist_sha256': hashlib.sha256(checklist_file.read_bytes()).hexdigest(),
+           'queue_sha256': hashlib.sha256(queue_file.read_bytes()).hexdigest(), 'requirements': rows}
+with (OUT / 'request.json').open('x', encoding='utf-8', newline='\n') as f:
+    json.dump(request, f, indent=2)
+runtime = r'''
+import hashlib,json,pathlib,stat
+from datetime import datetime,timezone
+R=REQUEST
+root=pathlib.Path('/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018')
+start=datetime.now(timezone.utc).isoformat();checks=[]
+for row in R['requirements']:
+ p=pathlib.Path(row['file']);value={'file':str(p),'roles':row['roles'],'sample_ids':row['sample_ids']}
+ try:
+  assert p.is_absolute() and p.resolve().is_relative_to(root) and not p.is_symlink()
+  a=p.stat();assert stat.S_ISREG(a.st_mode) and a.st_size==row['expected_bytes']
+  with p.open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
+  b=p.stat();assert (a.st_dev,a.st_ino,a.st_size,a.st_mtime_ns)==(b.st_dev,b.st_ino,b.st_size,b.st_mtime_ns)
+  assert digest==row['expected_sha256']
+  value.update(passed=True,bytes=b.st_size,sha256=digest)
+ except Exception as exc:value.update(passed=False,error_type=type(exc).__name__,error=str(exc))
+ checks.append(value)
+result={'started_at_utc':start,'finished_at_utc':datetime.now(timezone.utc).isoformat(),'checked':len(checks),'passed':sum(r['passed'] for r in checks),'failed':sum(not r['passed'] for r in checks),'rows':checks,'scope':R['scope'],'checklist_sha256':R['checklist_sha256'],'queue_sha256':R['queue_sha256'],'cloud_files_created':0,'cloud_files_changed':0,'cache_downloaded':False,'source_native_decode_claimed':False,'formal_pairs_admitted':0}
+result['status']='passed' if result['checked']==result['passed']==8354 else 'failed'
+print(json.dumps(result))
+'''
+runtime = 'REQUEST=' + repr(request) + '\n' + runtime
+(OUT / 'remote-readonly.py').write_text(runtime, encoding='utf-8', newline='\n')
+compile(runtime, 'remote-readonly.py', 'exec')
+sys.path.insert(0, str(REPO / 'scripts'))
+from dev_stack import Connection
+
+connection = Connection.from_environment()
+start = datetime.now(timezone.utc).isoformat()
+child = subprocess.run(['ssh', *connection.arguments(), connection.target, 'python3 -B -u -'], input=runtime.encode(), capture_output=True, timeout=360)
+transport = {'started_at_utc': start, 'finished_at_utc': datetime.now(timezone.utc).isoformat(), 'returncode': child.returncode,
+             'stderr_bytes': len(child.stderr), 'stderr_sha256': hashlib.sha256(child.stderr).hexdigest(),
+             'stdout_bytes': len(child.stdout), 'stdout_sha256': hashlib.sha256(child.stdout).hexdigest()}
+with (OUT / 'ssh-receipt.json').open('x', encoding='utf-8', newline='\n') as f:
+    json.dump(transport, f, indent=2)
+assert child.returncode == 0, 'SSH failure; stderr is hash-only'
+result = json.loads(child.stdout)
+with (OUT / 'result.json').open('xb') as f:
+    f.write(child.stdout)
+print(json.dumps({k: v for k, v in result.items() if k != 'rows'}))
+raise SystemExit(0 if result['status'] == 'passed' else 1)

@@ -1,0 +1,102 @@
+"""Screen unused public UAV parents without viewing imagery.
+
+不查看影像，仅筛选尚未采用的公开无人机来源元数据。
+"""
+import concurrent.futures
+import hashlib
+import json
+import urllib.request
+from datetime import UTC, datetime
+from pathlib import Path
+
+from rasterio.warp import transform as warp_transform
+from shapely.geometry import shape
+from shapely.ops import transform
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT = Path(__file__).resolve().parent / 'new-oam-metadata-v1'
+OUT.mkdir(exist_ok=False)
+(OUT / 'selected').mkdir()
+now = lambda: datetime.now(UTC).isoformat()
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def save(path, doc):
+    with path.open('x', encoding='utf-8', newline='\n') as handle:
+        json.dump(doc, handle, ensure_ascii=False, indent=2)
+
+
+existing = set()
+for path in (ROOT / 'oam-expansion-v1/selected').glob('*-catalog.json'):
+    existing.add(path.name.removesuffix('-catalog.json'))
+ranked, bindings = [], []
+for region in ('philippines', 'nepal', 'zanzibar'):
+    path = ROOT / 'oam-expansion-v1' / (region + '-catalog.json')
+    bindings.append({'file': str(path), 'sha256': sha(path)})
+    for row in json.loads(path.read_text(encoding='utf-8'))['results']:
+        p = row['properties']
+        if row['_id'] in existing or row.get('platform') != 'uav' or p.get('bands') != 3 or p.get('dtype') != 'uint8':
+            continue
+        if p.get('colorinterp') != ['red', 'green', 'blue'] or p.get('license') != 'CC-BY 4.0':
+            continue
+        if not 0 < row['file_size'] <= 256 * 1024 * 1024 or p.get('sensor', '').strip().lower() in ('', 'unknown', 'dummy', 'sensor'):
+            continue
+        bbox = row['bbox']
+        lon, lat = (bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2
+        epsg = (32600 if lat >= 0 else 32700) + int((lon + 180) // 6) + 1
+
+        def project(xx, yy, z=None):
+            return warp_transform('EPSG:4326', 'EPSG:' + str(epsg), xx, yy)
+
+        area = transform(project, shape(row['geojson'])).area
+        ranked.append({'region': region, 'id': row['_id'], 'footprint_area_m2': area,
+                       'catalog_row': row, 'prior_catalog_file': str(path), 'prior_catalog_sha256': sha(path)})
+selected = []
+for region in ('philippines', 'nepal', 'zanzibar'):
+    candidates = sorted((x for x in ranked if x['region'] == region), key=lambda x: (-x['footprint_area_m2'], x['id']))
+    assert candidates
+    selected.append(candidates[0])
+save(OUT / 'prospective-registration.json', {
+    'registered_at': now(), 'selection_rule': 'One largest valid author footprint per previously cataloged region among unused catalog objects; UAV RGB3 uint8, named sensor, explicit CC-BY4, encoded full parent <=256MiB. Area descending, stable ID tiebreak. No imagery, business labels, condition tags or model outputs read.',
+    'prior_catalog_bindings': bindings, 'all_ranked_candidates': ranked, 'selected_ids': [x['id'] for x in selected],
+    'metadata_only': True, 'images_visually_viewed': 0, 'full_image_objects_to_download_in_this_step': 0,
+    'future_whole_parent_partition': {x['id']: ('calibration_candidate' if x['region'] == 'nepal' else 'test_candidate') for x in selected},
+    'nearby_or_shared_campaign_sources_must_remain_in_same_future_partition': True,
+    'physical_assets_verified': 0, 'repeated_capture_eligible': False, 'formal_release_eligible': False,
+})
+
+
+def request_one(item):
+    row, kind = item
+    ident, source = row['id'], row['catalog_row']
+    method = 'HEAD' if kind == 'head' else 'GET'
+    url = {'catalog': 'https://api.openaerialmap.org/meta/' + ident,
+           'head': source['uuid'],
+           'osm': 'https://api.openstreetmap.org/api/0.6/map?bbox=' + ','.join(map(str, source['bbox']))}[kind]
+    dest = OUT / 'selected' / (ident + '-' + kind + ('.xml' if kind == 'osm' else '.json'))
+    result = {'id': ident, 'kind': kind, 'url': url, 'method': method, 'started_at': now()}
+    try:
+        req = urllib.request.Request(url, method=method, headers={'User-Agent': 'drone-agent-public-source-metadata-audit/1.0'})
+        with urllib.request.urlopen(req, timeout=40) as response:
+            result.update(status=response.status, final_url=response.url, headers=dict(response.headers))
+            raw = response.read(16 * 1024 * 1024 + 1) if method == 'GET' else json.dumps(result, indent=2).encode('utf-8')
+            assert response.status == 200 and len(raw) <= 16 * 1024 * 1024
+        with dest.open('xb') as handle:
+            handle.write(raw)
+        result.update(file=str(dest), bytes=len(raw), sha256=sha(dest))
+    except Exception as exc:
+        result['error'] = str(exc)
+    result['finished_at'] = now()
+    return result
+
+
+requests = [(row, kind) for row in selected for kind in ('catalog', 'head', 'osm')]
+with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+    results = list(pool.map(request_one, requests))
+save(OUT / 'metadata-http-receipts.json', results)
+for row in results:
+    print(json.dumps({key: row.get(key) for key in ('id', 'kind', 'status', 'bytes', 'error')}))
+print(json.dumps({'selected_ids': [x['id'] for x in selected], 'responses_ok': sum(x.get('status') == 200 for x in results), 'expected': 9, 'image_objects_downloaded': 0}))

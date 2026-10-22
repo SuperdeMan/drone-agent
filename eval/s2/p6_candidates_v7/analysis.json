@@ -1,0 +1,607 @@
+{
+  "format": "drone.road-contact-development-analysis/v1",
+  "run_id": "p6-road-contact-dev-20261015T021842Z",
+  "freeze_commit": "424caa3cc347855ad3d4a4119a97657ddf19ec76",
+  "freeze_before_calls": true,
+  "batch_status": "not_qualified_environment_changed",
+  "launcher_exit_code": 1,
+  "container_exit_code": 0,
+  "container_continuity": {
+    "before_count": 13,
+    "after_count": 15,
+    "replaced": [
+      {
+        "name": "drone-agent-cloud-collector-1",
+        "before_id": "3b9b3f5e937f",
+        "after_id": "a04c734f5fbd"
+      },
+      {
+        "name": "drone-agent-cloud-mission-service-1",
+        "before_id": "9278df95b3ec",
+        "after_id": "73afd96fa807"
+      },
+      {
+        "name": "drone-agent-cloud-sitl-1",
+        "before_id": "c3457ae73223",
+        "after_id": "829231529dce"
+      },
+      {
+        "name": "drone-agent-cloud-uplink-1",
+        "before_id": "ef91e1bc4be5",
+        "after_id": "e3c7f35713cf"
+      }
+    ],
+    "added": [
+      {
+        "name": "drone-agent-cloud-executive-1",
+        "id": "498dd76049f6"
+      },
+      {
+        "name": "drone-agent-cloud-guardian-1",
+        "id": "723b79af7844"
+      }
+    ],
+    "removed": [],
+    "unchanged_names": [
+      "drone-agent-cloud-console-1",
+      "drone-agent-cloud-desk-1",
+      "drone-agent-cloud-desk-dock-1",
+      "drone-agent-cloud-desk-fleet-1",
+      "drone-agent-cloud-desk-model-proxy-1",
+      "drone-agent-cloud-desk-service-1",
+      "drone-agent-cloud-desk-uplink-1",
+      "drone-agent-cloud-desk-vendor-1",
+      "drone-agent-cloud-model-proxy-1"
+    ],
+    "guard_passed": false,
+    "cause_attributed": false,
+    "historical_event_query_count": 0,
+    "scope_not_relaxed_after_run": true
+  },
+  "source_summary_sha256": "19505216ae777f86c7da087faf450b4b8159f3196bd175621e18cdf23c9fe7cf",
+  "execution_sha256": "9b59b48b72abe7c40c707dfd25e77eeabe641c7f91662ba65c55af437f2b4e49",
+  "analysis_script_sha256": "749ee4e9fcbd658d2f3db1e73c8ecb16b5ec77cebbede1c460c4630748791e3b",
+  "responses": {
+    "attempted": 6,
+    "answered": 6,
+    "cloud_schema_valid": 6,
+    "local_valid": 6,
+    "cloud_strict_replays": 6,
+    "local_strict_replays": 6,
+    "verdicts": {
+      "suspected": 6
+    },
+    "candidate_boxes": 33,
+    "types": {
+      "debris": 28,
+      "vehicle_uncertain": 1,
+      "large_object": 1,
+      "fallen_tree": 3
+    },
+    "views_at_eight_box_cap": [
+      "view-e0f2ecc668d5",
+      "view-4dac40bc3538"
+    ]
+  },
+  "token_usage": {
+    "v7_input": 25972,
+    "v7_output": 10567,
+    "v4_full_input": 24624,
+    "v4_full_output": 2935,
+    "billing_or_price_estimated": false
+  },
+  "support_overlap_checks": [
+    {
+      "case_id": "case-8305aeb37905",
+      "image_id": "12494",
+      "ordinal": 0,
+      "type": "debris",
+      "bbox": [
+        0.255,
+        0.22,
+        0.335,
+        0.453
+      ],
+      "source_support_overlap_pixels": 218152,
+      "bbox_pixels": 223680,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-8305aeb37905",
+      "image_id": "12494",
+      "ordinal": 1,
+      "type": "debris",
+      "bbox": [
+        0.326,
+        0.163,
+        0.359,
+        0.242
+      ],
+      "source_support_overlap_pixels": 24191,
+      "bbox_pixels": 31284,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-8305aeb37905",
+      "image_id": "12494",
+      "ordinal": 2,
+      "type": "debris",
+      "bbox": [
+        0.26,
+        0.465,
+        0.299,
+        0.509
+      ],
+      "source_support_overlap_pixels": 20592,
+      "bbox_pixels": 20592,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-d1b8866d1484",
+      "image_id": "12326",
+      "ordinal": 0,
+      "type": "vehicle_uncertain",
+      "bbox": [
+        0.035,
+        0.132,
+        0.072,
+        0.216
+      ],
+      "source_support_overlap_pixels": 8160,
+      "bbox_pixels": 37296,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-d1b8866d1484",
+      "image_id": "12326",
+      "ordinal": 1,
+      "type": "debris",
+      "bbox": [
+        0.051,
+        0.483,
+        0.318,
+        0.718
+      ],
+      "source_support_overlap_pixels": 752940,
+      "bbox_pixels": 752940,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-d1b8866d1484",
+      "image_id": "12326",
+      "ordinal": 2,
+      "type": "debris",
+      "bbox": [
+        0.308,
+        0.479,
+        0.395,
+        0.578
+      ],
+      "source_support_overlap_pixels": 103356,
+      "bbox_pixels": 103356,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-d1b8866d1484",
+      "image_id": "12326",
+      "ordinal": 3,
+      "type": "large_object",
+      "bbox": [
+        0.0,
+        0.728,
+        0.102,
+        0.841
+      ],
+      "source_support_overlap_pixels": 138312,
+      "bbox_pixels": 138312,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-d1b8866d1484",
+      "image_id": "12326",
+      "ordinal": 4,
+      "type": "debris",
+      "bbox": [
+        0.402,
+        0.563,
+        0.449,
+        0.596
+      ],
+      "source_support_overlap_pixels": 18800,
+      "bbox_pixels": 18800,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-d1b8866d1484",
+      "image_id": "12326",
+      "ordinal": 5,
+      "type": "debris",
+      "bbox": [
+        0.354,
+        0.614,
+        0.384,
+        0.634
+      ],
+      "source_support_overlap_pixels": 7200,
+      "bbox_pixels": 7200,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-d1b8866d1484",
+      "image_id": "12326",
+      "ordinal": 6,
+      "type": "debris",
+      "bbox": [
+        0.352,
+        0.652,
+        0.39,
+        0.682
+      ],
+      "source_support_overlap_pixels": 13832,
+      "bbox_pixels": 13832,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-d1b8866d1484",
+      "image_id": "12326",
+      "ordinal": 7,
+      "type": "debris",
+      "bbox": [
+        0.313,
+        0.681,
+        0.341,
+        0.704
+      ],
+      "source_support_overlap_pixels": 7728,
+      "bbox_pixels": 7728,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-3796b34d624b",
+      "image_id": "12494",
+      "ordinal": 0,
+      "type": "debris",
+      "bbox": [
+        0.0,
+        0.775,
+        0.108,
+        0.86
+      ],
+      "source_support_overlap_pixels": 108918,
+      "bbox_pixels": 110160,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-3796b34d624b",
+      "image_id": "12494",
+      "ordinal": 1,
+      "type": "debris",
+      "bbox": [
+        0.108,
+        0.79,
+        0.227,
+        0.88
+      ],
+      "source_support_overlap_pixels": 94259,
+      "bbox_pixels": 128520,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-3796b34d624b",
+      "image_id": "12494",
+      "ordinal": 2,
+      "type": "debris",
+      "bbox": [
+        0.223,
+        0.81,
+        0.342,
+        0.91
+      ],
+      "source_support_overlap_pixels": 142791,
+      "bbox_pixels": 142800,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-3796b34d624b",
+      "image_id": "12494",
+      "ordinal": 3,
+      "type": "debris",
+      "bbox": [
+        0.342,
+        0.85,
+        0.454,
+        0.93
+      ],
+      "source_support_overlap_pixels": 107520,
+      "bbox_pixels": 107520,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-3796b34d624b",
+      "image_id": "12494",
+      "ordinal": 4,
+      "type": "debris",
+      "bbox": [
+        0.446,
+        0.86,
+        0.566,
+        0.94
+      ],
+      "source_support_overlap_pixels": 115200,
+      "bbox_pixels": 115200,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-3796b34d624b",
+      "image_id": "12494",
+      "ordinal": 5,
+      "type": "debris",
+      "bbox": [
+        0.566,
+        0.88,
+        0.67,
+        0.96
+      ],
+      "source_support_overlap_pixels": 99840,
+      "bbox_pixels": 99840,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-3796b34d624b",
+      "image_id": "12494",
+      "ordinal": 6,
+      "type": "debris",
+      "bbox": [
+        0.804,
+        0.9,
+        0.915,
+        0.97
+      ],
+      "source_support_overlap_pixels": 93240,
+      "bbox_pixels": 93240,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-3796b34d624b",
+      "image_id": "12494",
+      "ordinal": 7,
+      "type": "debris",
+      "bbox": [
+        0.923,
+        0.92,
+        1.0,
+        0.992
+      ],
+      "source_support_overlap_pixels": 66528,
+      "bbox_pixels": 66528,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-98c37eea9470",
+      "image_id": "14431",
+      "ordinal": 0,
+      "type": "fallen_tree",
+      "bbox": [
+        0.508,
+        0.18,
+        0.548,
+        0.272
+      ],
+      "source_support_overlap_pixels": 31394,
+      "bbox_pixels": 44320,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-98c37eea9470",
+      "image_id": "14431",
+      "ordinal": 1,
+      "type": "fallen_tree",
+      "bbox": [
+        0.534,
+        0.244,
+        0.579,
+        0.306
+      ],
+      "source_support_overlap_pixels": 23955,
+      "bbox_pixels": 33480,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-98c37eea9470",
+      "image_id": "14431",
+      "ordinal": 2,
+      "type": "debris",
+      "bbox": [
+        0.739,
+        0.461,
+        0.749,
+        0.474
+      ],
+      "source_support_overlap_pixels": 1560,
+      "bbox_pixels": 1560,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-98c37eea9470",
+      "image_id": "14431",
+      "ordinal": 3,
+      "type": "fallen_tree",
+      "bbox": [
+        0.855,
+        0.439,
+        0.946,
+        0.486
+      ],
+      "source_support_overlap_pixels": 51324,
+      "bbox_pixels": 51324,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-b2816a2e7bb3",
+      "image_id": "12892",
+      "ordinal": 0,
+      "type": "debris",
+      "bbox": [
+        0.699,
+        0.075,
+        0.732,
+        0.097
+      ],
+      "source_support_overlap_pixels": 0,
+      "bbox_pixels": 8712,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-b2816a2e7bb3",
+      "image_id": "12892",
+      "ordinal": 1,
+      "type": "debris",
+      "bbox": [
+        0.778,
+        0.051,
+        0.789,
+        0.066
+      ],
+      "source_support_overlap_pixels": 579,
+      "bbox_pixels": 1980,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-b2816a2e7bb3",
+      "image_id": "12892",
+      "ordinal": 2,
+      "type": "debris",
+      "bbox": [
+        0.182,
+        0.395,
+        0.214,
+        0.438
+      ],
+      "source_support_overlap_pixels": 14483,
+      "bbox_pixels": 16512,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-b2816a2e7bb3",
+      "image_id": "12892",
+      "ordinal": 3,
+      "type": "debris",
+      "bbox": [
+        0.153,
+        0.501,
+        0.162,
+        0.514
+      ],
+      "source_support_overlap_pixels": 1404,
+      "bbox_pixels": 1404,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-b2816a2e7bb3",
+      "image_id": "12892",
+      "ordinal": 4,
+      "type": "debris",
+      "bbox": [
+        0.155,
+        0.708,
+        0.164,
+        0.719
+      ],
+      "source_support_overlap_pixels": 1188,
+      "bbox_pixels": 1188,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-b2816a2e7bb3",
+      "image_id": "12892",
+      "ordinal": 5,
+      "type": "debris",
+      "bbox": [
+        0.162,
+        0.773,
+        0.174,
+        0.789
+      ],
+      "source_support_overlap_pixels": 2304,
+      "bbox_pixels": 2304,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-d382a1ce7ef4",
+      "image_id": "12876",
+      "ordinal": 0,
+      "type": "debris",
+      "bbox": [
+        0.148,
+        0.108,
+        0.173,
+        0.143
+      ],
+      "source_support_overlap_pixels": 10500,
+      "bbox_pixels": 10500,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-d382a1ce7ef4",
+      "image_id": "12876",
+      "ordinal": 1,
+      "type": "debris",
+      "bbox": [
+        0.153,
+        0.242,
+        0.172,
+        0.439
+      ],
+      "source_support_overlap_pixels": 44916,
+      "bbox_pixels": 44916,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-d382a1ce7ef4",
+      "image_id": "12876",
+      "ordinal": 2,
+      "type": "debris",
+      "bbox": [
+        0.105,
+        0.42,
+        0.173,
+        0.51
+      ],
+      "source_support_overlap_pixels": 73192,
+      "bbox_pixels": 73440,
+      "overlap_is_not_a_correctness_judgment": true
+    },
+    {
+      "case_id": "case-d382a1ce7ef4",
+      "image_id": "12876",
+      "ordinal": 3,
+      "type": "debris",
+      "bbox": [
+        0.081,
+        0.5,
+        0.173,
+        0.682
+      ],
+      "source_support_overlap_pixels": 156565,
+      "bbox_pixels": 201296,
+      "overlap_is_not_a_correctness_judgment": true
+    }
+  ],
+  "prior_ai_E12_context": {
+    "drafts_sha256": "f8af01bdbf2dedd77f94efe6522f8f40d5a58e31167f50248b50bfd4aa056bc9",
+    "core_bbox": [
+      0.18125,
+      0.476667,
+      0.1855,
+      0.493333
+    ],
+    "new_candidate_boxes_overlapping_core_bbox": [],
+    "business_ground_truth": false,
+    "recall_computed": false,
+    "interpretation": "An image-level suspected response does not establish detection of the earlier AI-drafted wood segment."
+  },
+  "human_reviews_completed": 0,
+  "accuracy_computed": false,
+  "default_profile_change": false,
+  "formal_release_eligible": false
+}

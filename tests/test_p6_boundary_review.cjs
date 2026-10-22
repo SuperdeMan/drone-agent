@@ -1,0 +1,20 @@
+/* Adversarial records and timer transitions, not business labels. / 对抗记录与计时转换，不产生业务标注。 */
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const C=require('../scripts/p6_boundary_review/core.js');
+const geometry={core:[[[.2,.2],[.8,.2],[.8,.8],[.2,.8]]],outer:[[[.1,.1],[.9,.1],[.9,.9],[.1,.9]]]};
+const target={case_id:'road',image_sha256:'image',support_sha256:'support',draft_geometry:geometry,entities:[{entity_id:'E1',draft_geometry:geometry}]};
+const bundle={bundle_id:'bundle',policy_id:'road-contact-dev-v1',targets:[target]};
+const common={case_id:'road',image_sha256:'image',support_sha256:'support',reviewer:'QA_FIXTURE_NOT_HUMAN',notes:'Synthetic fixture',origin:'qa_fixture',started_at:'2026-10-15T00:00:00Z',completed_at:'2026-10-15T00:01:00Z',active_review_ms:1000,ai_hints_viewed:true,source_support_viewed:false};
+const road={...common,revision:'revision-0001',decision:'accepted_draft',geometry};
+const entity={...common,entity_id:'E1',road_revision:road.revision,entity_kind:'physical',target_relation:'inside',group_confirmed:true,geometry_source:'ai_draft',geometry};
+test('partial exports retain development authority',()=>{const v=C.makeExport(bundle,[road],[entity]);assert.equal(v.formal_release_eligible,false);assert.deepEqual(C.parseImport(JSON.stringify(v),bundle),v);assert.equal(C.makeExport(bundle,[],[]).roads.length,0);});
+test('stale road and duplicate entities block export',()=>{assert.throws(()=>C.makeExport(bundle,[road],[{...entity,road_revision:'old'}]));assert.throws(()=>C.makeExport(bundle,[road],[entity,entity]));});
+test('source and policy binding cannot be transplanted',()=>{assert.throws(()=>C.makeExport(bundle,[{...road,image_sha256:'other'}],[]));const v=C.makeExport(bundle,[road],[entity]);v.policy_id='other';assert.throws(()=>C.parseImport(JSON.stringify(v),bundle));});
+test('import cannot grant authority or add hidden fields',()=>{for(const k of ['formal_release_eligible','reviewer_identity_authenticated','extra']){const v=C.makeExport(bundle,[road],[entity]);v[k]=true;assert.throws(()=>C.parseImport(JSON.stringify(v),bundle));}});
+test('AI adoption and QA origin remain explicit',()=>{assert.ok(C.checkRoad({...road,ai_hints_viewed:false},target).length);assert.ok(C.checkEntity({...entity,origin:'operator_entered'},target,road).length);});
+test('unknown and nonentity decisions cannot claim a footprint',()=>{assert.ok(C.checkEntity({...entity,entity_kind:'shadow'},target,road).length);assert.ok(C.checkEntity(entity,target,{...road,decision:'unknown'}).length);});
+test('no arbitrary size threshold and self intersections rejected',()=>{assert.equal(C.polygonValid([[.4,.4],[.4001,.4],[.4001,.4001],[.4,.4001]]),true);assert.equal(C.polygonValid([[0,0],[1,1],[0,1],[1,0]]),false);assert.equal(C.polygonValid([[0,0],[true,0],[0,1]]),false);});
+test('timestamps and active time must agree',()=>{assert.ok(C.checkRoad({...road,active_review_ms:90000},target).length);assert.ok(C.checkRoad({...road,started_at:'2026-10-15T00:00:00'},target).length);assert.ok(C.checkRoad({...road,active_review_ms:NaN},target).length);});
+test('idle time is capped at last activity plus sixty seconds',()=>{const c=new C.ActiveClock();c.start(1000,true);c.tick(62000);assert.equal(c.elapsed,60000);c.tick(90000);assert.equal(c.elapsed,60000);c.touch(90000);c.tick(91000);assert.equal(c.elapsed,61000);});
+test('hidden unfocused and paused intervals do not accumulate',()=>{const c=new C.ActiveClock();c.start(0,true);c.setEligible(1000,false);c.tick(8000);assert.equal(c.elapsed,1000);c.setEligible(8000,true);c.tick(9000);assert.equal(c.elapsed,2000);c.pause(10000);c.tick(30000);assert.equal(c.elapsed,3000);const reload=new C.ActiveClock(c.elapsed);reload.tick(50000);assert.equal(reload.elapsed,3000);assert.equal(reload.running,false);});

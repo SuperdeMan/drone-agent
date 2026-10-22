@@ -1,0 +1,94 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "bounded_verifier_16",
+  "created_at": "2026-10-21T10:19:23.529705+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_16\\assignment.json",
+  "assignment_sha256": "c51afeebea83b88a6d20d2d62a996e435abfeebe3ab9aaef01ce2469871bd1ef",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "floodnet-7722",
+      "decision": "accepted",
+      "findings": [
+        "I inspected the entire original main frame 0. The central diagonal feature is open canal water bordered by mown grass banks; it is not a paved road.",
+        "The only visible hard surfaces belong to the fenced residential properties along the left edge, including a pool deck and garden paving. No continuous main paved carriageway enters the frame, so excluded_source with a null target and no objects is supported."
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\floodnet-remaining-85\\attempt-01\\images\\7722.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "629677b2dccd68609521ce1272923490494bc265fc09d5d24ed2b2e481064e99",
+      "first_author_id": "bounded_annotator_14",
+      "first_row_sha256": "76fb15a27db5d0c71ccc4390478c3fca282bff260190db30f5d5a1d3b7c9338a",
+      "reviewed_at": "2026-10-21T10:19:23.557530+00:00",
+      "reviewer_id": "bounded_verifier_16",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\floodnet-remaining-85\\attempt-01\\images\\7722.jpg": "629677b2dccd68609521ce1272923490494bc265fc09d5d24ed2b2e481064e99"
+      },
+      "final_row": {
+        "sample_id": "floodnet-7722",
+        "image_sha256": "629677b2dccd68609521ce1272923490494bc265fc09d5d24ed2b2e481064e99",
+        "target_brief": "No usable public paved road in this frame; a diagonal canal occupies the centre and right, while grass banks and fenced residential rear gardens occupy the left.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The whole main frame was inspected. Canal water, mown banks, roofs and fenced rear gardens are visible. No public paved carriageway enters the view. Main frame 0 only.",
+        "uncertainties": [],
+        "inspected_at": "2026-10-21T10:19:23.557530+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\floodnet-remaining-85\\attempt-01\\images\\7722.jpg"
+        ]
+      },
+      "final_row_sha256": "69242d82777e3078edf01c6e3b977f36666b636f96d2e568f865710359c68a5a"
+    },
+    {
+      "sample_id": "floodnet-7955",
+      "decision": "accepted",
+      "findings": [
+        "I inspected the entire original main frame 0; dense scrub and irregular exposed-ground patches occupy the view. No continuous main paved carriageway is visible.",
+        "I separately inspected a native-resolution crop of the pale lower-left track, covering original pixel box [0, 1500, 1150, 3000]. Its surface is uneven bare natural ground with grass growing through and along it, rather than a reliably identifiable paved road. The candidate does not establish the required road target; excluded_source with a null target and no objects is supported."
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\floodnet-remaining-85\\attempt-01\\images\\7955.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_16\\inspection\\7955-track-native.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "657740b96a2a886de63c2384014737fb4fa832524c1ac9124cce2ed20a8c4ccd",
+      "first_author_id": "bounded_annotator_14",
+      "first_row_sha256": "d6a0851d1f74395b0d61806a2d1ff27e6de928e62d05e6e4a05e7536736b0f86",
+      "reviewed_at": "2026-10-21T10:20:38.543160+00:00",
+      "reviewer_id": "bounded_verifier_16",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\floodnet-remaining-85\\attempt-01\\images\\7955.jpg": "657740b96a2a886de63c2384014737fb4fa832524c1ac9124cce2ed20a8c4ccd",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_16\\inspection\\7955-track-native.png": "1c37763f8698dac15a092dafb44c2472811e66cedc2d5b8e0f8224827139afb6"
+      },
+      "final_row": {
+        "sample_id": "floodnet-7955",
+        "image_sha256": "657740b96a2a886de63c2384014737fb4fa832524c1ac9124cce2ed20a8c4ccd",
+        "target_brief": "No usable public paved road in this frame; extensive scrub fills the view and a narrow pale unpaved track clips the lower-left edge.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The whole main frame and a native-resolution crop of the lower-left track were inspected. The track is exposed natural ground with grass, not a paved public carriageway; the remainder is scrub. No usable road target is present. Main frame 0 only.",
+        "uncertainties": [],
+        "inspected_at": "2026-10-21T10:20:38.543160+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\floodnet-remaining-85\\attempt-01\\images\\7955.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_16\\inspection\\7955-track-native.png"
+        ]
+      },
+      "final_row_sha256": "6dc3bdbf94c9347506be0f5d16513e520c3699336741b50516f0c9d04afb36e4"
+    }
+  ]
+}

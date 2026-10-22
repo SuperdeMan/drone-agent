@@ -1,0 +1,102 @@
+"""Measure source alpha jointly, without looking at scene imagery or retargeting.
+
+仅测共同有效区，不查看场景影像或重新定义目标。
+"""
+import hashlib
+import json
+import math
+from datetime import UTC, datetime
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+from rasterio import Affine
+from rasterio.warp import transform as warp_transform
+from shapely.geometry import LineString
+
+ROOT = Path(__file__).resolve().parent.parent
+HERE = Path(__file__).resolve().parent
+INPUT = HERE / 'neutral-pair-mask-feasibility-input-v1.json'
+OUT = HERE / 'pair-mask-availability-study-v1'
+OUT.mkdir(exist_ok=False)
+sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+assert sha(INPUT) == '7a6a9f6f6f278bd27ce0cfedf97463dfc4b539297ac503518287185aefdea830'
+data = json.loads(INPUT.read_text(encoding='utf-8'))
+profiles = {'centerline_only': [0.0], 'nominal_7_2m': [-3.6, 0.0, 3.6],
+            'nominal_20m': [-10.0, -5.0, 0.0, 5.0, 10.0],
+            'nominal_50m': [-25.0, -12.5, 0.0, 12.5, 25.0]}
+registration = {'registered_at': datetime.now(UTC).isoformat(), 'input_file': str(INPUT), 'input_sha256': sha(INPUT),
+                'all_pairs_before_any_mask_decode': 73, 'station_step_m_max': 0.5, 'profiles_offsets_m': profiles,
+                'selection_inputs': 'Existing fixed geometry, georeferencing and source validity alpha only; no scene RGB or business answers.',
+                'fixed_targets_moved_or_shrunk': False, 'new_targets_created': False,
+                'nominal_corridors_are_not_physical_road_boundaries': True,
+                'longest_common_runs_are_availability_statistics_not_new_tasks': True,
+                'geometric_40m_comparison_is_not_an_obstacle_size_threshold': True,
+                'formal_eligibility_or_pair_quality_claimed': False}
+with (OUT / 'prospective-registration.json').open('x', encoding='utf-8', newline='\n') as f:
+    json.dump(registration, f, indent=2)
+rows = []
+for pair in data['pairs']:
+    observations = pair['observations']
+    assert len(observations) == 2
+    scope = observations[0]['world_scope']
+    assert all(x['world_scope'] == scope and x['world_scope']['freeze_scope_sha256'] == pair['old_fixed_scope_sha256'] for x in observations)
+    line = LineString(scope['utm_polyline_m'])
+    stations = np.linspace(0, line.length, max(2, math.ceil(line.length / 0.5) + 1))
+    centers = np.array([[line.interpolate(float(s)).x, line.interpolate(float(s)).y] for s in stations])
+    tangent = np.array([[line.interpolate(min(float(s) + 0.1, line.length)).x - line.interpolate(max(0.0, float(s) - 0.1)).x,
+                         line.interpolate(min(float(s) + 0.1, line.length)).y - line.interpolate(max(0.0, float(s) - 0.1)).y] for s in stations])
+    norms = np.linalg.norm(tangent, axis=1)
+    assert np.all(norms > 0)
+    normals = np.column_stack([-tangent[:, 1], tangent[:, 0]]) / norms[:, None]
+    masks = []
+    for item in observations:
+        path = Path(item['mask_file'])
+        assert sha(path) == item['mask_sha256']
+        with Image.open(path) as im:
+            assert im.size == (item['width'], item['height']) and im.mode == 'L'
+            masks.append(np.asarray(im).copy())
+        assert sha(path) == item['mask_sha256']
+    result = {'pair_id': pair['pair_id'], 'geometric_group_id': pair['geometric_group_id'],
+              'fixed_scope_sha256': pair['old_fixed_scope_sha256'], 'fixed_scope_length_m': line.length,
+              'sample_ids': [x['sample_id'] for x in observations], 'profiles': {}}
+    for name, offsets in profiles.items():
+        points = centers[:, None, :] + normals[:, None, :] * np.asarray(offsets)[None, :, None]
+        points = points.reshape(-1, 2)
+        availability = []
+        for item, mask in zip(observations, masks):
+            xx, yy = warp_transform('EPSG:' + str(scope['utm_epsg']), item['raster_crs'], points[:, 0].tolist(), points[:, 1].tolist())
+            inv = ~Affine(*item['window_transform'][:6])
+            px = inv.a * np.asarray(xx) + inv.b * np.asarray(yy) + inv.c
+            py = inv.d * np.asarray(xx) + inv.e * np.asarray(yy) + inv.f
+            ix, iy = np.floor(px).astype(int), np.floor(py).astype(int)
+            inside = (ix >= 0) & (iy >= 0) & (ix < item['width']) & (iy < item['height'])
+            values = np.zeros(len(ix), dtype=bool)
+            values[inside] = mask[iy[inside], ix[inside]] > 0
+            availability.append(values.reshape(len(stations), len(offsets)).all(axis=1))
+        common = availability[0] & availability[1]
+        longest = 0.0
+        start = None
+        for i, valid in enumerate(common):
+            if valid and start is None:
+                start = i
+            if start is not None and (not valid or i == len(common) - 1):
+                end = i if valid else i - 1
+                longest = max(longest, float(stations[end] - stations[start]))
+                start = None
+        result['profiles'][name] = {'both_captures_all_sampled_points_available': bool(common.all()),
+                                    'common_station_fraction': float(common.mean()),
+                                    'longest_common_sampled_run_m': longest,
+                                    'station_count': len(stations), 'sampled_offsets_count': len(offsets)}
+    rows.append(result)
+assert len(rows) == 73
+result = {'recorded_at': datetime.now(UTC).isoformat(), 'registration_sha256': sha(OUT / 'prospective-registration.json'),
+          'pairs_checked': len(rows), 'observations_checked': 146, 'rows': rows,
+          'summary': {name: {'full_fixed_scope_source_available': sum(x['profiles'][name]['both_captures_all_sampled_points_available'] for x in rows),
+                             'longest_common_sampled_run_at_least_40m': sum(x['profiles'][name]['longest_common_sampled_run_m'] >= 40.0 for x in rows)} for name in profiles},
+          'images_visually_viewed': 0, 'scene_rgb_read': False, 'business_labels_read': False,
+          'existing_fixed_scopes_or_images_changed': False, 'new_scopes_or_assets_created': 0,
+          'formal_pairs_admitted': 0, 'source_availability_does_not_prove_physical_boundary_or_same_state': True}
+with (OUT / 'result.json').open('x', encoding='utf-8', newline='\n') as f:
+    json.dump(result, f, indent=2)
+print(json.dumps({k: v for k, v in result.items() if k != 'rows'}), flush=True)

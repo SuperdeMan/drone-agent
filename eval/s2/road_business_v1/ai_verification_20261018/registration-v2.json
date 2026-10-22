@@ -1,0 +1,86 @@
+{
+  "format": "drone.p6-ai-review-registration/v1",
+  "created_at": "2026-10-18T08:31:16.471228+00:00",
+  "approval_reference": "User 2026-10-18: 不用真人逐张复核，你的复核可以代表人类",
+  "method": "independent_ai_draft_then_separate_ai_verification",
+  "provider": "codex-session",
+  "exact_model_identifier": null,
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "original_bundles": [
+    {
+      "file": "D:\\drone-agent-data\\p6-ai-annotation-20261016\\review-batch1\\bundle.json",
+      "sha256": "b88e996105b53404388b017da3f49121dcbd57ed4a33345461170072acfa039f",
+      "count": 15
+    },
+    {
+      "file": "D:\\drone-agent-data\\p6-ai-annotation-20261016\\review-batch2\\bundle.json",
+      "sha256": "f2192dfaee2d6836dbc3b96361e11ea86c654fcf873cf4e59b3b3fc004acae0e",
+      "count": 188
+    },
+    {
+      "file": "D:\\drone-agent-data\\p6-ai-annotation-20261016\\review-batch3\\bundle.json",
+      "sha256": "2dcaed3163572195b939729afca743da40e4824df718927f679abcd8b4e79fe4",
+      "count": 212
+    }
+  ],
+  "assignments": [
+    {
+      "file": "D:\\drone-agent-data\\p6-ai-verification-20261018\\assignment-1.json",
+      "sha256": "02dea25656236f2bc5218fbe57970cc45bf8f74e503d56fdebc32884f8d04780",
+      "reviewer_id": "independent_road_verifier_1",
+      "count": 139
+    },
+    {
+      "file": "D:\\drone-agent-data\\p6-ai-verification-20261018\\assignment-2.json",
+      "sha256": "c17b551df1eef37da592df534b2220a436574abd5689caad09e2c5108d0e2655",
+      "reviewer_id": "independent_road_verifier_2",
+      "count": 138
+    },
+    {
+      "file": "D:\\drone-agent-data\\p6-ai-verification-20261018\\assignment-3.json",
+      "sha256": "61e300f0539afc5e6d4b61af1a96ce7f7165b31325dea2e942112d711f00cf67",
+      "reviewer_id": "independent_road_verifier_3",
+      "count": 138
+    },
+    {
+      "file": "D:\\drone-agent-data\\p6-ai-verification-20261018\\assignment-4.json",
+      "sha256": "62d9e3d6e46a8a072df578ffd521113ba31d5b9030935b60adfc5e09fbfc870e",
+      "reviewer_id": "independent_road_verifier_4",
+      "count": 53
+    }
+  ],
+  "implementation_exposure": {
+    "sample_id": "floodnet-6337",
+    "record": "D:/drone-agent-data/p6-annotation-guidance-20261018/6337-guidance.json"
+  },
+  "candidate_review_timing": {
+    "status": "deferred_to_operational_validation",
+    "approval_reference": "User 2026-10-18: 移至后续运营验证，继续完成本次验收",
+    "human_efficiency_claimed": false
+  },
+  "parent_registration_sha256": "dbd00fb58e171f644ee924e19c355a71f2beefa06ef23521f1eab5691c2a92da",
+  "selection": [
+    {
+      "reviewer_id": "independent_road_verifier_1",
+      "file": "D:\\drone-agent-data\\p6-ai-verification-20261018\\reviewer-1\\reviews.json",
+      "count": 139
+    },
+    {
+      "reviewer_id": "independent_road_verifier_2",
+      "file": "D:\\drone-agent-data\\p6-ai-verification-20261018\\reassignment-snapshot\\reviewer-2-first85.json",
+      "count": 85
+    },
+    {
+      "reviewer_id": "independent_road_verifier_3",
+      "file": "D:\\drone-agent-data\\p6-ai-verification-20261018\\reviewer-3\\reviews.json",
+      "count": 138
+    },
+    {
+      "reviewer_id": "independent_road_verifier_4",
+      "file": "D:\\drone-agent-data\\p6-ai-verification-20261018\\reviewer-4\\reviews.json",
+      "count": 53
+    }
+  ],
+  "reassignment_reason": "reviewer 2 progress remained at 85 and did not respond to status inquiry; interrupted and saved exact completed prefix; remaining fixed-order suffix reassigned without using label content"
+}

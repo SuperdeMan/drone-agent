@@ -1,0 +1,161 @@
+"""Extract and source-audit one fully acquired, prospectively scoped parent.
+
+提取一个完整取得、事前固定范围的来源并核验原生像素。
+"""
+import argparse
+import base64
+import hashlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+REPO = Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+parser = argparse.ArgumentParser()
+parser.add_argument('--parent', required=True)
+parser.add_argument('--slug', required=True)
+args = parser.parse_args()
+assert args.slug.replace('-', '').isalnum()
+registration = json.loads((HERE / 'new-oam-metadata-v1/prospective-registration.json').read_text(encoding='utf-8'))
+assert args.parent in registration['selected_ids']
+CONTROL = HERE / ('new-oam-native-' + args.slug + '-control-v3')
+CONTROL.mkdir(exist_ok=False)
+build_original = ROOT / 'build_oam_expansion_plan.py'
+build = build_original.read_text(encoding='utf-8').replace(
+    'ROOT = Path(__file__).resolve().parent / "oam-expansion-v1"',
+    'ROOT = Path(__file__).resolve().parent / "new-oam-metadata-v1"')
+build = build.replace('Within selected parent(s): all Nepal geometric groups, first32 Santolan groups by predeclared stable hash, before image inspection',
+                      'All preregistered geometric groups of the explicitly selected new parent, before image inspection; no business outcome selection')
+extractor = ROOT / 'normal-source-discovery/extract_oam_frames.py'
+core = {'p6_business_eval.py': 'd0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2',
+        'p6_boundary_drafts.py': 'f2476184e8172312853fcb07e692012b20f0bfb3bdeabf0c754443d90b19fc0b',
+        'p6_raster_replay.py': '0bd7ab81ee788bc012b3ca11f2e580fabb103a85ee184cdbffd8e179d6eada81',
+        'p6_oam_capture.py': 'bd49f89a5916b6401705524990170e6224cdf485c5dc8e7016b71d42898c0c88'}
+request = {'parent': args.parent, 'slug': args.slug,
+           'whole_parent_partition': registration['future_whole_parent_partition'][args.parent],
+           'registration_sha256': hashlib.sha256((HERE / 'new-oam-metadata-v1/prospective-registration.json').read_bytes()).hexdigest(),
+           'build_base_sha256': hashlib.sha256(build_original.read_bytes()).hexdigest(),
+           'build_source': build, 'extractor_source': extractor.read_text(encoding='utf-8'),
+           'extractor_sha256': hashlib.sha256(extractor.read_bytes()).hexdigest(), 'core_sha256': core}
+runtime = r'''
+import hashlib,json,os,pathlib,runpy,shutil,subprocess,sys
+from datetime import datetime,timezone
+task=pathlib.Path('/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018');data=task.parent
+base=task/'resume-20261022-next/new-oam-full-acquisition-v1';meta=base/'new-oam-metadata-v1'
+out=base/('native-'+R['slug']+'-v3');frozen=task/'software-audit-cdf5382-20261022'
+assert out.is_relative_to(task) and not out.exists()
+def sha(p):
+ with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
+def read(p):return json.loads(p.read_text())
+def save(p,d):
+ with p.open('x') as f:json.dump(d,f,indent=2)
+def rel(p):return p.relative_to(data).as_posix()
+before={k:sha(frozen/k) for k in R['core_sha256']};assert before==R['core_sha256']
+assert sha(meta/'prospective-registration.json')==R['registration_sha256']
+receipt=read(meta/'full-objects'/(R['parent']+'-get-receipt.json'))
+assert receipt['status']=='downloaded_and_verified'
+parent=pathlib.Path(receipt['local_file']);assert parent.is_relative_to(task) and parent.stat().st_size==receipt['expected_bytes']<=268435456 and sha(parent)==receipt['local_full_object_sha256']
+assert shutil.disk_usage(task).free>=8*1024**3
+ram=next(int(s.split()[1])*1024 for s in pathlib.Path('/proc/meminfo').read_text().splitlines() if s.startswith('MemAvailable:'));assert ram>=3*1024**3
+out.mkdir(exist_ok=False)
+started=datetime.now(timezone.utc).isoformat()
+original_proposal=read(meta/'geometry-proposal.json')
+proposal=json.loads(json.dumps(original_proposal))
+for binding in proposal['source_bindings']:
+ for field in ('catalog_file','osm_snapshot_file'):
+  target=meta/'selected'/pathlib.Path(binding[field].replace('\\','/')).name
+  assert target.is_file();binding[field]=str(target)
+for group in proposal['groups']:
+ if 'osm_snapshot_file' in group:group['osm_snapshot_file']=str(meta/'selected'/pathlib.Path(group['osm_snapshot_file'].replace('\\','/')).name)
+assert [g['world_scope'] for g in proposal['groups']]==[g['world_scope'] for g in original_proposal['groups']]
+normalized=meta/'geometry-proposal-cloud-paths-v3.json';save(normalized,proposal)
+save(out/'path-normalization.json',{'original_proposal_sha256':sha(meta/'geometry-proposal.json'),'normalized_proposal_sha256':sha(normalized),'world_scopes_changed':False,'osm_or_catalog_bytes_changed':False})
+build_path=base/('build-plan-'+R['slug']+'-v3.py')
+R['build_source']=R['build_source'].replace('PROPOSAL = ROOT / "geometry-proposal.json"','PROPOSAL = ROOT / "geometry-proposal-cloud-paths-v3.json"')
+with build_path.open('x') as f:f.write(R['build_source'])
+with (out/'build-stdout.log').open('xb') as so,(out/'build-stderr.log').open('xb') as se:
+ child=subprocess.run([sys.executable,'-B',str(build_path),'--parent',R['parent'],'--name',R['slug']+'-v3'],stdout=so,stderr=se,env=dict(os.environ,PYTHONPATH=str(task/'resume-20261022-next/new-oam-geometry-wheel-v1/packages')))
+save(out/'build-execution.json',{'returncode':child.returncode,'world_scopes_changed':False})
+assert child.returncode==0,'Native plan builder failed; read preserved build logs.'
+plan_path=meta/('extraction-plan-'+R['slug']+'-v3.json');plan=read(plan_path);original_targets=[i['target'] for i in plan['items']]
+assert plan['items'] and all(i['catalog_object_id']==R['parent'] for i in plan['items'])
+for i in plan['items']:i['proposed_partition']=R['whole_parent_partition']
+plan['partition_registration_sha256']=R['registration_sha256'];plan['unpartitioned_plan_sha256']=sha(plan_path)
+assert original_targets==[i['target'] for i in plan['items']]
+plan_path=out/'source-plan.json';save(plan_path,plan)
+tool=out/'extract-oam-frames.py'
+with tool.open('x') as f:f.write(R['extractor_source'])
+assert sha(tool)==R['extractor_sha256']
+wrapper=out/'invoke-extractor.py'
+with wrapper.open('x') as f:f.write("import runpy,sys\nimport rasterio\ntool=sys.argv[1];sys.argv=sys.argv[1:]\nwith rasterio.Env(GDAL_CACHEMAX=67108864,GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',GDAL_PAM_ENABLED='NO'):\n runpy.run_path(tool,run_name='__main__')\n")
+for phase in ('frames','replay'):
+ command=[sys.executable,'-B',str(wrapper),str(tool),'--source-plan',str(plan_path),'--output',str(out/phase)]
+ if phase=='replay':command+=['--replay-of',str(out/'frames')]
+ with (out/(phase+'-stdout.log')).open('xb') as so,(out/(phase+'-stderr.log')).open('xb') as se:
+  child=subprocess.run(command,stdout=so,stderr=se,check=True)
+ save(out/(phase+'-execution.json'),{'command':command,'returncode':child.returncode,'finished_at_utc':datetime.now(timezone.utc).isoformat()})
+sources=pathlib.Path(plan['source_manifest_file']);extractplan=out/'frames/plan.json'
+C=runpy.run_path(str(frozen/'p6_business_eval.py'))
+policy={'mode':'traceable_oam_uav_orthomosaic','source_inventory_sha256':sha(sources),'extractor_sha256':R['extractor_sha256'],'claim_raw_camera_frames':False,'synthetic_scene_content_allowed':False,'repeated_capture_eligible':False}
+audit=out/'source-audit';audit.mkdir();captures=[];samples=[]
+for p in sorted((out/'frames/receipts').glob('*.json')):
+ r=read(p);assert r['status']=='extracted'
+ binding={'format':'drone.p6-oam-derived-capture-binding/v1'}
+ for name,q in [('source_inventory',sources),('extraction',p),('extraction_plan',extractplan),('replay',out/'replay/replay-proofs'/p.name)]:binding[name+'_file']=rel(q);binding[name+'_sha256']=sha(q)
+ save(audit/(r['sample_id']+'-binding.json'),binding)
+ observed={'asset_id':r['asset_group_id'],'site_id':'unverified-oam-site-'+R['parent'],'capture_batch_id':'publisher-object-'+R['parent'],'near_duplicate_group':r['asset_group_id'],'development_exposed':False}
+ capture={'source_observation_id':r['sample_id'],'source_id':'oam_uav','image_sha256':r['image_sha256'],'catalog_object_id':R['parent'],'parent_sha256':r['parent_sha256'],'author_date_group':None,'author_date_verified':False,'repeated_capture_eligible':False,'observed':observed,'derivation_sha256':C['canonical_digest'](binding)}
+ captures.append(capture)
+ samples.append({'sample_id':r['sample_id'],'source_id':'oam_uav','image_file':rel(pathlib.Path(r['image_file'])),'image_sha256':r['image_sha256'],'width':r['width'],'height':r['height'],'asset_id':r['asset_group_id'],'media_origin':'real_capture_derivative','captured_at':None,'observed':observed,'derivation':binding,'capture_record':{k:capture[k] for k in ('source_observation_id','parent_sha256','author_date_group','author_date_verified')},'grouping_verified':False,'formal_release_eligible':False})
+inventory=audit/'unverified-grouping-capture-inventory.json';save(inventory,{'format':'drone.p6-derived-capture-inventory/v1','rows':captures})
+for s in samples:s['capture_record'].update(inventory_file=rel(inventory),inventory_sha256=sha(inventory))
+save(audit/'samples-provenance-only.json',{'samples':samples,'grouping_verified':False,'formal_release_eligible':False})
+save(audit/'protocol-provenance-only.json',{'oam_capture_policy':policy})
+rows=[];cache={}
+for sample in samples:
+ row={'sample_id':sample['sample_id']}
+ try:C['derived_capture'](sample,{'oam_capture_policy':policy},data,cache,scope_before=None);row['source_native_and_replay_verified']=True
+ except Exception as e:row.update(source_native_and_replay_verified=False,error_type=type(e).__name__,error=str(e))
+ rows.append(row)
+after={k:sha(frozen/k) for k in R['core_sha256']};assert before==after and sha(parent)==receipt['local_full_object_sha256']
+result={'candidate_commit':'cdf5382d4b4ce54600921532ecbe2a5591775b58','started_at_utc':started,'finished_at_utc':datetime.now(timezone.utc).isoformat(),'parent':R['parent'],'expected':len(samples),'checked':len(rows),'passed':sum(x['source_native_and_replay_verified'] for x in rows),'rows':rows,'whole_parent_partition':R['whole_parent_partition'],'core_sha256_before':before,'core_sha256_after':after,'independent_replay_matched':read(out/'replay/result.json')['replay_matched'],'images_visually_viewed':0,'physical_asset_identity_verified':False,'formal_assets_admitted':0,'formal_model_calls':0,'repeated_capture_eligible':False,'scope':'New source/native pixel/replay evidence only; no business, physical identity or data admission.'}
+result['status']='passed' if result['passed']==len(samples) else 'failed';save(out/'result.json',result)
+response={'result':result,'cloud_directory':str(out),'files':{}}
+import base64
+for p in sorted(out.rglob('*')):
+ if p.is_file() and p.suffix not in ('.jpg','.png'):
+  raw=p.read_bytes();response['files'][str(p.relative_to(out))]={'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),'base64':base64.b64encode(raw).decode()}
+print(json.dumps(response))
+'''
+runtime = 'R=' + repr(request) + '\n' + runtime
+compile(runtime, 'cloud-runtime.py', 'exec')
+with (CONTROL / 'cloud-runtime.py').open('x', encoding='utf-8', newline='\n') as f:
+    f.write(runtime)
+sys.path.insert(0, str(REPO / 'scripts'))
+from dev_stack import Connection
+
+connection = Connection.from_environment()
+child = subprocess.run(['ssh', *connection.arguments(), connection.target,
+                        '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/tools-venv/bin/python -B -u -'],
+                       input=runtime.encode(), capture_output=True, timeout=900)
+with (CONTROL / 'ssh-receipt.json').open('x', encoding='utf-8') as f:
+    json.dump({'returncode': child.returncode, 'stderr_bytes': len(child.stderr), 'stderr_sha256': hashlib.sha256(child.stderr).hexdigest(), 'stdout_bytes': len(child.stdout), 'stdout_sha256': hashlib.sha256(child.stdout).hexdigest()}, f, indent=2)
+assert child.returncode == 0, 'Native cloud execution failed; SSH stderr is hash-only'
+response = json.loads(child.stdout)
+mirror = CONTROL / 'evidence'
+mirror.mkdir(exist_ok=False)
+for name, row in response['files'].items():
+    p = (mirror / name).resolve()
+    assert p.is_relative_to(mirror.resolve())
+    raw = base64.b64decode(row['base64'])
+    assert len(raw) == row['bytes'] and hashlib.sha256(raw).hexdigest() == row['sha256']
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open('xb') as f:
+        f.write(raw)
+with (CONTROL / 'result.json').open('x', encoding='utf-8', newline='\n') as f:
+    json.dump(response['result'], f, indent=2)
+with (CONTROL / 'mirrored-file-manifest.json').open('x', encoding='utf-8') as f:
+    json.dump({name: {k: row[k] for k in ('bytes', 'sha256')} for name, row in response['files'].items()}, f, indent=2)
+print(json.dumps({k: v for k, v in response['result'].items() if k != 'rows'}), flush=True)

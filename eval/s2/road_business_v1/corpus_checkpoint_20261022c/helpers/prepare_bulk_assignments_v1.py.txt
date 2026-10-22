@@ -1,0 +1,20 @@
+"""Prepare neutral batches with one observation per geometric group. / 制备中立分批。"""
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+HERE=Path(__file__).resolve().parent
+ROOT=HERE.parent
+source=(ROOT/'prepare_annotation_assignment.py').read_text(encoding='utf-8')
+source=source.replace('ROOT=Path(__file__).resolve().parent', 'ROOT=Path(__file__).resolve().parent.parent\nsys_path_root=str(ROOT)\nimport sys\nsys.path.insert(0,sys_path_root)')
+source=source.replace("for row in eligible:\n    fields=", "seen_batch_groups=set()\nfor row in eligible:\n    if row['asset_group_id'] in seen_batch_groups:continue\n    seen_batch_groups.add(row['asset_group_id'])\n    fields=")
+source=source.replace('all cases still require visual inspection', 'at most one view per proposed geometric group in this batch; all cases still require visual inspection')
+tool=HERE/'prepare_annotation_assignment_v2.py'
+with tool.open('x',encoding='utf-8',newline='\n') as f:f.write(source)
+for worker,slug,frames,partition in [
+ ('bounded_annotator_27','laura','resume-20261021/laura-frames-v1','calibration_candidate'),
+ ('bounded_annotator_28','mussett','resume-20261021/mussett-frames-v2','test_candidate')]:
+ pool=ROOT/('resume-20261021-c/next-neutral-first-pools-v1/'+slug+'-primary.json')
+ assert json.loads(pool.read_text(encoding='utf-8'))['business_classes_or_evaluated_outputs_provided'] is False
+ subprocess.run([sys.executable,str(tool),'--author',worker,'--frames',frames,'--partition',partition,'--ids-file',str(pool),'--limit','24'],cwd=ROOT,check=True)

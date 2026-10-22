@@ -1,0 +1,18 @@
+{
+  "format": "drone.p6-ai-verification-code-review/v1",
+  "reviewer": "review_ai_verification_gate",
+  "reviewer_kind": "independent_ai_code_reviewer",
+  "scope": ["scripts/p6_business_eval.py", "scripts/p6_road_s2.py", "scripts/verify_p6_road_business.py", "associated tests"],
+  "real_images_or_labels_read": false,
+  "files_modified_by_reviewer": false,
+  "full_tests_run_by_reviewer": false,
+  "first_candidate": "b5c78763dc33ba9f35748a9ebf5fa80befbf23bd",
+  "first_findings": [
+    {"severity":"P2","problem":"AI final wrong_target is rejected by the first-draft vocabulary even with valid prior-task evidence","resolution":"dedicated prior-task and inspected expected-reference validation; first-draft vocabulary remains restricted"},
+    {"severity":"P2","problem":"AI-only stability pairs with human labels can skip evaluated provider/model binding","resolution":"mandatory policy/context identity plus AI-pair counts at preparation and final gate"}
+  ],
+  "fix_candidate": "8b936a4b40ebb09029496ea7c15afeeef900415c",
+  "followup_result": "no blocking findings; both original reproductions are resolved",
+  "validation": "static review and in-memory semantic reproductions reported by the reviewer; main-agent test results archived separately",
+  "formal_release_eligible": false
+}

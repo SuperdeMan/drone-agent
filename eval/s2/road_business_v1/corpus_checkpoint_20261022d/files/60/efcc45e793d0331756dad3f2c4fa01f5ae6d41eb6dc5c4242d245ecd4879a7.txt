@@ -1,0 +1,284 @@
+"""Extract and audit the new mask-selected scopes using existing cloud source bytes.
+
+仅用云端既有源字节提取并审核本次掩膜选中范围。
+"""
+import base64
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+from pathlib import Path
+import runpy
+import shutil
+import stat
+import subprocess
+
+R = REQUEST
+task = Path(R["task_root"])
+data = task.parent
+work = Path(R["work_directory"])
+job = Path(R["job_directory"])
+frozen = Path(R["frozen_directory"])
+now = lambda: datetime.now(timezone.utc).isoformat()
+assert str(task) == "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018"
+assert work == task / "resume-20261022-next/santolan-mask-next-v1"
+assert job == work / "cloud-job" and not job.exists()
+assert frozen == task / "software-audit-cdf5382-20261022"
+assert R["candidate_commit"] == "cdf5382d4b4ce54600921532ecbe2a5591775b58"
+
+
+def sha(path):
+    """Stream immutable file hashes. / 流式核对不可变文件摘要。"""
+    with Path(path).open("rb") as f:
+        return hashlib.file_digest(f, "sha256").hexdigest()
+
+
+def save(path, value):
+    """Create new evidence exclusively. / 仅独占新建证据。"""
+    with Path(path).open("x", encoding="ascii") as f:
+        json.dump(value, f, indent=2, ensure_ascii=True, allow_nan=False)
+        f.write("\n")
+        f.flush()
+        os.fsync(f.fileno())
+
+
+def read(path):
+    return json.loads(Path(path).read_text())
+
+
+def safe(path):
+    """Constrain new and reused paths to the existing task root. / 将新旧路径限制在既有数据根。"""
+    p = Path(path)
+    assert p.is_absolute() and p.resolve() == p and p.is_relative_to(task) and not p.is_symlink()
+    return p
+
+
+def relative(path):
+    return safe(path).relative_to(data).as_posix()
+
+
+def snapshot(path):
+    p = safe(path)
+    s = p.stat()
+    assert stat.S_ISREG(p.lstat().st_mode)
+    return {"bytes": s.st_size, "sha256": sha(p), "device": s.st_dev, "inode": s.st_ino,
+            "mode": s.st_mode, "mtime_ns": s.st_mtime_ns, "ctime_ns": s.st_ctime_ns}
+
+
+def resources():
+    ram = next(int(s.split()[1])*1024 for s in Path("/proc/meminfo").read_text().splitlines() if s.startswith("MemAvailable:"))
+    disk = shutil.disk_usage(task)
+    return {"recorded_at_utc": now(), "memory_available_bytes": ram, "disk_free_bytes": disk.free,
+            "minimum_ram_bytes": 3*1024**3, "minimum_disk_bytes": 8*1024**3,
+            "sufficient": ram >= 3*1024**3 and disk.free >= 8*1024**3}
+
+
+work.mkdir(exist_ok=False, parents=True)
+job.mkdir(exist_ok=False)
+for name, binding in R["new_metadata"].items():
+    assert Path(name).name == name and Path(name).suffix in {".json", ".py"}
+    content = base64.b64decode(binding["base64"])
+    assert len(content) == binding["bytes"] and hashlib.sha256(content).hexdigest() == binding["sha256"]
+    with (work/name).open("xb") as f:
+        f.write(content)
+with (job/"cloud-runtime.py").open("xb") as f:
+    f.write(RUNTIME_SOURCE)
+assert sha(job/"cloud-runtime.py") == R["runtime_sha256"]
+save(job/"runtime-request.json", {k:v for k,v in R.items() if k != "new_metadata"})
+progress = (job/"progress.jsonl").open("x", encoding="ascii")
+
+
+def event(phase, **fields):
+    progress.write(json.dumps({"phase": phase, "recorded_at_utc": now(), **fields}) + "\n")
+    progress.flush()
+    os.fsync(progress.fileno())
+
+
+result = {"format": "drone.p6-santolan-mask-next-source-result/v1", "status": "running", "started_at_utc": now(),
+    "candidate_commit": R["candidate_commit"], "frozen_core_sha256": R["frozen_core_sha256"], "expected": 32,
+    "native_extracted": 0, "independent_replay_matched": 0, "checked": 0, "passed": 0, "rows": [],
+    "new_http_requests": 0, "parent_or_body_bytes_uploaded": 0, "full_tiff_tar_created": False,
+    "images_visually_viewed": 0, "business_labels_created": 0, "formal_model_calls": 0,
+    "formal_assets_admitted": 0, "grouping_verified": False, "physical_asset_identity_verified": False,
+    "repeated_capture_eligible": False, "planned_whole_site_partition": "calibration_candidate",
+    "main_registry_or_old_source_evidence_changed": False}
+source_inputs = {}
+try:
+    event("verify_exact_frozen_core_and_resources")
+    before = resources()
+    save(job/"resource-preflight.json", before)
+    assert before["sufficient"]
+    assert all(sha(safe(frozen/name)) == expected for name, expected in R["frozen_core_sha256"].items())
+    core = read(frozen/"candidate-binding.json")
+    assert core["candidate_commit"] == R["candidate_commit"] and core["core_sha256"] == R["frozen_core_sha256"]
+    C = runpy.run_path(str(frozen/"p6_business_eval.py"))
+    G = runpy.run_path(str(frozen/"p6_oam_capture.py"))
+    resolve = lambda p: safe(C["rooted"](data, p))
+    for path, bound in R["existing_input_bindings"].items():
+        p = safe(path)
+        assert p.stat().st_size == bound["bytes"] and sha(p) == bound["sha256"]
+        source_inputs[relative(p)] = snapshot(p)
+    original_plan_path = work/"native-plan-selected32.json"
+    assert sha(original_plan_path) == R["selected_plan_sha256"]
+    original_plan = read(original_plan_path)
+    purpose = read(resolve(original_plan["purpose_reservation_file"]))
+    selected_purpose = read(work/"selected-purpose-reservation.json")
+    assert sha(resolve(original_plan["purpose_reservation_file"])) == original_plan["purpose_reservation_sha256"]
+    assert sha(work/"selected-purpose-reservation.json") == original_plan["selected_purpose_sha256"]
+    assert sha(work/"prospective-mask-screen-registration.json") == original_plan["mask_screen_registration_sha256"]
+    assert sha(work/"mask-screen-result.json") == original_plan["mask_screen_result_sha256"]
+    screen = read(work/"mask-screen-result.json")
+    assert screen["selected_count"] == 32 and screen["rgb_read"] is False
+    selected_groups = selected_purpose["primary_candidate_group_ids"]
+    assert selected_groups == screen["selected_group_ids_in_neutral_order"] == [i["asset_group_id"] for i in original_plan["items"]]
+    assert len(selected_groups) == len(set(selected_groups)) == 32 and set(selected_groups) <= set(purpose["remaining_primary_candidate_groups"])
+    assert not set(selected_groups) & set(purpose["registered_pilot32_primary_candidate_groups"] + purpose["expected_reference_only_groups"] + purpose["current_observation_reserved_for_future_prior_task_groups"])
+    assert original_plan["planned_whole_site_partition"] == purpose["planned_whole_site_partition"] == "calibration_candidate"
+    original_sources_path = resolve(original_plan["source_manifest_file"])
+    assert sha(original_sources_path) == original_plan["source_manifest_sha256"]
+    source = read(original_sources_path)[0]
+    parent = resolve(source["object_file"])
+    assert parent == safe(R["parent_file"]) and parent.stat().st_size == 253851020 and sha(parent) == R["parent_sha256"]
+    assert parent.stat().st_size <= 268435456
+    recipe_path = resolve(source["download_receipt_file"])
+    recipe = read(recipe_path)
+    assert sha(recipe_path) == source["download_receipt_sha256"] and len(recipe["parts"]) == 50
+    for part in recipe["parts"]:
+        for file_key, digest_key in [("body_file", "body_sha256"), ("http_record_file", "http_record_sha256")]:
+            p = resolve(part[file_key])
+            assert sha(p) == part[digest_key]
+            source_inputs[relative(p)] = snapshot(p)
+    source_inputs[relative(parent)] = snapshot(parent)
+    source_inputs[relative(recipe_path)] = snapshot(recipe_path)
+    save(job/"immutable-existing-source-inputs.json", source_inputs)
+    event("verify_existing_conditional_source", source_parts=50)
+    G["verify_source"](source, data, {}, {"read_bound": C["bound_evidence"], "file_bound": C["derived_file"], "timestamp": C["timestamp"]})
+    result["source_only_verified"] = True
+    new_source = dict(source)
+    for key in ("catalog_file", "object_file", "download_receipt_file", "raster_metadata_file", "osm_snapshot_file"):
+        new_source[key] = str(resolve(new_source[key]))
+    manifest_path = job/"source-manifest.json"
+    save(manifest_path, [new_source])
+    plan = json.loads(json.dumps(original_plan))
+    plan["source_manifest_file"] = str(manifest_path)
+    plan["source_manifest_sha256"] = sha(manifest_path)
+    for key in ("world_geometry_proposal_file", "purpose_reservation_file"):
+        plan[key] = str(resolve(plan[key]))
+    for key in ("selected_purpose_file", "mask_screen_registration_file", "mask_screen_result_file"):
+        plan[key] = str(work/Path(plan[key].replace("\\", "/")).name)
+    for item in plan["items"]:
+        for key in ("object_file", "raster_metadata_file", "source_geometry_file", "source_geometry_proposal_file"):
+            item[key] = str(resolve(item[key]))
+    assert [i["target"] for i in plan["items"]] == [i["target"] for i in original_plan["items"]]
+    assert [i["native_view"] for i in plan["items"]] == [i["native_view"] for i in original_plan["items"]]
+    plan_path = job/"source-plan.json"
+    save(plan_path, plan)
+    save(job/"portable-path-normalization.json", {"input_plan_sha256": sha(original_plan_path), "output_plan_sha256": sha(plan_path),
+        "world_targets_changed": False, "native_windows_changed": False, "selected_groups_changed": False,
+        "original_source_or_recipe_bytes_changed": False, "source_manifest_paths_rebound_only": True})
+    extractor = safe(R["extractor_file"])
+    assert sha(extractor) == R["extractor_sha256"] == "0f85aa5ff710c90a7679e2509631c7e2934096bf7c0ddf4dd70343b5081373ec"
+    wrapper = job/"invoke-extractor.py"
+    wrapper.write_text("import runpy,sys\nimport rasterio\ntool=sys.argv[1];sys.argv=sys.argv[1:]\nwith rasterio.Env(GDAL_CACHEMAX=67108864,GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',GDAL_PAM_ENABLED='NO'):\n runpy.run_path(tool,run_name='__main__')\n", encoding="ascii")
+    for phase in ("frames", "replay"):
+        event("native_" + phase + "_started", expected=32)
+        command = [R["data_python"], "-B", "-u", str(wrapper), str(extractor), "--source-plan", str(plan_path), "--output", str(job/phase)]
+        if phase == "replay":
+            command += ["--replay-of", str(job/"frames")]
+        started = now()
+        with (job/(phase+"-stdout.log")).open("xb") as stdout, (job/(phase+"-stderr.log")).open("xb") as stderr:
+            process = subprocess.run(command, cwd=data, stdout=stdout, stderr=stderr)
+        save(job/(phase+"-execution.json"), {"command": command, "returncode": process.returncode,
+            "started_at_utc": started, "finished_at_utc": now(), "extractor_sha256": sha(extractor),
+            "runtime_wrapper_sha256": sha(wrapper), "process_scoped_gdal_cache_bytes": 67108864,
+            "environment_files_or_system_config_modified": False})
+        assert process.returncode == 0, "native_extraction_or_replay_failed_logs_retained"
+        summary = read(job/phase/"result.json")
+        assert summary["expected"] == summary["extracted"] == 32 and summary["failed"] == 0 and summary["network_requests"] == 0
+        if phase == "frames":
+            result["native_extracted"] = summary["extracted"]
+        else:
+            assert summary["replay_count"] == summary["replay_matched"] == 32
+            result["independent_replay_matched"] = summary["replay_matched"]
+        event("native_" + phase + "_finished", extracted=summary["extracted"], failed=summary["failed"])
+    provenance = job/"provenance"
+    provenance.mkdir()
+    policy = {"mode": "traceable_oam_uav_orthomosaic", "source_inventory_sha256": sha(manifest_path),
+              "extractor_sha256": sha(extractor), "claim_raw_camera_frames": False,
+              "synthetic_scene_content_allowed": False, "repeated_capture_eligible": False}
+    proposal = read(resolve(plan["world_geometry_proposal_file"]))
+    groups = {g["candidate_group_id"]: g for g in proposal["groups"]}
+    expected_targets = {i["extraction_item_id"]: i["target"] for i in original_plan["items"]}
+    captures, samples = [], []
+    for receipt_path in sorted((job/"frames/receipts").glob("*.json")):
+        r = read(receipt_path)
+        assert r["status"] == "extracted" and r["world_scope"] == expected_targets[r["sample_id"]]
+        bound = {"format": "drone.p6-oam-derived-capture-binding/v1"}
+        for name, path in [("source_inventory", manifest_path), ("extraction", receipt_path),
+                           ("extraction_plan", job/"frames/plan.json"), ("replay", job/"replay/replay-proofs"/receipt_path.name)]:
+            bound[name+"_file"] = relative(path)
+            bound[name+"_sha256"] = sha(path)
+        save(provenance/(r["sample_id"]+"-binding.json"), bound)
+        observed = {"asset_id": r["asset_group_id"], "site_id": groups[r["asset_group_id"]]["site_group_id"],
+            "capture_batch_id": "publisher-object-"+r["catalog_object_id"], "near_duplicate_group": r["asset_group_id"],
+            "development_exposed": True}
+        capture = {"source_observation_id": r["sample_id"], "source_id": "oam_uav", "image_sha256": r["image_sha256"],
+            "catalog_object_id": r["catalog_object_id"], "parent_sha256": r["parent_sha256"], "author_date_group": None,
+            "author_date_verified": False, "repeated_capture_eligible": False, "observed": observed,
+            "derivation_sha256": C["canonical_digest"](bound)}
+        captures.append(capture)
+        samples.append({"sample_id": r["sample_id"], "source_id": "oam_uav", "image_file": relative(Path(r["image_file"])),
+            "image_sha256": r["image_sha256"], "width": r["width"], "height": r["height"], "asset_id": r["asset_group_id"],
+            "media_origin": "real_capture_derivative", "captured_at": None, "observed": observed, "derivation": bound,
+            "capture_record": {k: capture[k] for k in ("source_observation_id", "parent_sha256", "author_date_group", "author_date_verified")},
+            "planned_partition": "calibration_candidate", "grouping_verified": False, "physical_asset_identity_verified": False,
+            "formal_release_eligible": False})
+    inventory_path = provenance/"unverified-grouping-capture-inventory.json"
+    save(inventory_path, {"format": "drone.p6-derived-capture-inventory/v1", "rows": captures,
+        "development_exposed_true_is_conservative_source_only_placeholder": True,
+        "actual_source_workflow_visual_exposure_ids": [], "global_exposure_admission_not_adjudicated": True})
+    for sample in samples:
+        sample["capture_record"].update(inventory_file=relative(inventory_path), inventory_sha256=sha(inventory_path))
+    save(provenance/"samples-provenance-only.json", {"samples": samples, "grouping_verified": False, "formal_release_eligible": False})
+    save(provenance/"protocol-provenance-only.json", {"oam_capture_policy": policy})
+    cache = {}
+    for index, sample in enumerate(samples, 1):
+        event("native_source_check_started", index=index, expected=32, sample_id=sample["sample_id"])
+        row = {"sample_id": sample["sample_id"], "index": index, "started_at_utc": now()}
+        try:
+            C["derived_capture"](sample, {"oam_capture_policy": policy}, data, cache, scope_before=C["timestamp"](purpose["recorded_at_utc"]))
+            row["source_chain_verified"] = True
+        except Exception as exc:
+            row.update(source_chain_verified=False, error_type=type(exc).__name__, error_message=str(exc))
+        row["finished_at_utc"] = now()
+        result["rows"].append(row)
+        result["checked"] += 1
+        result["passed"] += int(row["source_chain_verified"])
+        save(provenance/(sample["sample_id"]+"-audit.json"), row)
+        event("native_source_check_finished", checked=result["checked"], passed=result["passed"], sample_id=sample["sample_id"])
+    event("verify_existing_source_and_frozen_inputs_unchanged")
+    for name, old in source_inputs.items():
+        assert snapshot(data/name) == old
+    assert all(sha(frozen/name) == expected for name, expected in R["frozen_core_sha256"].items())
+    save(job/"final-immutable-source-and-core-check.json", {"passed": True, "source_input_files": len(source_inputs),
+        "all_source_bytes_and_identity_unchanged": True, "frozen_core_sha256": R["frozen_core_sha256"], "recorded_at_utc": now()})
+    result["status"] = "passed" if result["native_extracted"] == result["independent_replay_matched"] == result["checked"] == result["passed"] == 32 else "failed_source_or_native_gate"
+    result.update(source_manifest_sha256=sha(manifest_path), source_plan_sha256=sha(plan_path), extractor_sha256=sha(extractor),
+        source_gate_module_sha256=sha(frozen/"p6_business_eval.py"), source_gate_function="p6_business_eval.derived_capture",
+        current_original_source_bytes_preserved=True, actual_native_pixels_and_independent_replay_verified=result["status"] == "passed")
+except Exception as exc:
+    result.update(status="failed", error_type=type(exc).__name__, error_message=str(exc))
+    event("failed", error_type=type(exc).__name__, error_message=str(exc))
+result["failed"] = result["expected"] - result["passed"]
+result["finished_at_utc"] = now()
+result["resource_after"] = resources()
+save(job/"result.json", result)
+event("finished", status=result["status"], checked=result["checked"], passed=result["passed"])
+progress.close()
+bindings = {relative(p): {"bytes": p.stat().st_size, "sha256": sha(p)} for p in job.rglob("*") if p.is_file()}
+save(job/"result-file-bindings.json", bindings)
+bindings[relative(job/"result-file-bindings.json")] = {"bytes": (job/"result-file-bindings.json").stat().st_size, "sha256": sha(job/"result-file-bindings.json")}
+print(json.dumps({"result": result, "job_directory": str(job), "bindings": bindings,
+    "new_job_space": {"files": len(bindings), "logical_bytes": sum(p.stat().st_size for p in job.rglob("*") if p.is_file()),
+        "allocated_bytes": sum(p.stat().st_blocks*512 for p in job.rglob("*") if p.is_file())},
+    "existing_parent_and50_parts_reused_in_place": True, "output_tar_created": False}))

@@ -1,0 +1,81 @@
+"""Recover complete ZIP entries by verifying stored data descriptors and CRCs.
+
+通过存储条目的数据描述符、长度和 CRC 校验恢复完整 ZIP 条目。
+"""
+import hashlib
+import json
+import mmap
+import struct
+import zlib
+from collections import Counter
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent / "floodnet"
+SOURCE = ROOT / "FloodNet.zip.partial"
+OUTPUT = ROOT / "recovered-prefix-b"
+OUTPUT.mkdir(exist_ok=False)
+rows, position, reason = [], 0, "end_of_prefix"
+with SOURCE.open("rb") as stream, mmap.mmap(stream.fileno(), 0, access=mmap.ACCESS_READ) as data:
+    limit = len(data)
+    while position + 30 <= limit:
+        offset = position
+        values = struct.unpack_from("<4s5H3I2H", data, offset)
+        signature, version, flags, method, mtime, mdate, crc, compressed, uncompressed, name_len, extra_len = values
+        if signature != b"PK\x03\x04":
+            reason = "not_a_local_file_header"
+            break
+        name = data[offset + 30:offset + 30 + name_len].decode("utf-8" if flags & 2048 else "cp437")
+        start = offset + 30 + name_len + extra_len
+        if flags & 1 or method != 0:
+            reason = "unsupported_encryption_or_compression"
+            break
+        descriptor = False
+        if flags & 8:
+            candidate = data.find(b"PK\x07\x08", start)
+            found = False
+            while candidate >= 0 and candidate + 16 <= limit:
+                check_crc, comp_size, raw_size = struct.unpack_from("<III", data, candidate + 4)
+                if comp_size == raw_size == candidate - start and (zlib.crc32(data[start:candidate]) & 0xffffffff) == check_crc:
+                    crc, compressed, uncompressed, end = check_crc, comp_size, raw_size, candidate
+                    position = candidate + 16
+                    descriptor, found = True, True
+                    break
+                candidate = data.find(b"PK\x07\x08", candidate + 4)
+            if not found:
+                reason = "incomplete_or_unverified_descriptor_not_counted"
+                break
+        else:
+            end = start + compressed
+            if end > limit:
+                reason = "incomplete_entry_not_counted"
+                break
+            position = end
+        payload = data[start:end]
+        if len(payload) != uncompressed or (zlib.crc32(payload) & 0xffffffff) != crc:
+            reason = "crc_or_size_mismatch"
+            break
+        normalized = name.lstrip("/")
+        relative = Path(normalized)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("unsafe archive path")
+        if not normalized or name.endswith("/"):
+            continue
+        target = (OUTPUT / relative).resolve()
+        if not target.is_relative_to(OUTPUT.resolve()):
+            raise ValueError("archive member leaves output")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("xb") as destination:
+            destination.write(payload)
+        rows.append({"archive_member": name, "file": target.relative_to(ROOT).as_posix(), "local_header_offset": offset,
+            "bytes": len(payload), "crc32": f"{crc:08x}", "sha256": hashlib.sha256(payload).hexdigest(),
+            "crc_verified": True, "stored_descriptor_verified": descriptor})
+receipt = {"format": "drone.floodnet-prefix-recovery/v2", "checked_at": datetime.now(timezone.utc).isoformat(),
+    "source_file": str(SOURCE), "downloaded_prefix_bytes": SOURCE.stat().st_size, "complete_archive_verified": False,
+    "stop_reason": reason, "last_verified_offset": position, "entries": rows,
+    "recovery_script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    "photos_viewed_by_agent": 0, "business_labels_created": 0, "formal_release_eligible": False}
+(ROOT / "prefix-recovery-v2.json").write_bytes((json.dumps(receipt, ensure_ascii=False, indent=2) + "\n").encode())
+print(json.dumps({"verified_entries": len(rows), "extensions": dict(Counter(Path(r['file']).suffix for r in rows)),
+    "stop_reason": reason, "first_entries": [r['archive_member'] for r in rows[:8]],
+    "last_entries": [r['archive_member'] for r in rows[-5:]]}, ensure_ascii=False))

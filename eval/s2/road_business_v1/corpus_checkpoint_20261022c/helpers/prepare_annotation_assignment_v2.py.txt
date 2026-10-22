@@ -1,0 +1,79 @@
+"""Bind already acquired views to isolated annotation tasks. / 将已取得视图绑定到隔离标注任务。"""
+import argparse
+import hashlib
+import json
+from collections import defaultdict
+from datetime import UTC, datetime
+from pathlib import Path
+
+from PIL import Image
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
+from inspection_compatibility import match
+
+ROOT=Path(__file__).resolve().parent.parent
+sys_path_root=str(ROOT)
+import sys
+sys.path.insert(0,sys_path_root)
+parser=argparse.ArgumentParser()
+parser.add_argument('--author',required=True)
+parser.add_argument('--limit',type=int,default=40)
+parser.add_argument('--frames',default='frames-relay-v2')
+parser.add_argument('--partition')
+parser.add_argument('--role',default='main_bounded_candidate')
+parser.add_argument('--ids-file',type=Path)
+args=parser.parse_args()
+folder=ROOT/'annotation'/args.author
+folder.mkdir(parents=True,exist_ok=False)
+assigned=defaultdict(list)
+allowed_ids=set(json.loads(args.ids_file.read_text(encoding='utf-8'))['selected_sample_ids']) if args.ids_file else None
+def scope_key(row):
+    geometry={'endpoints':row['target_endpoints_normalized'],'centerlines':row['centerline_segments_normalized'],
+              'scope':row.get('fixed_world_scope',row.get('world_scope'))['freeze_scope_sha256']}
+    return (row['sample_id'],row['image_sha256'],hashlib.sha256(json.dumps(geometry,sort_keys=True,separators=(',',':')).encode()).hexdigest())
+for path in (ROOT/'annotation').glob('*/assignment.json'):
+    planned = json.loads(path.read_text(encoding='utf-8'))['samples']
+    if (path.parent/'orchestrator-stopped.json').exists():
+        completed_file=path.parent/'suggestions.json'
+        completed = json.loads(completed_file.read_text(encoding='utf-8'))['rows'] if completed_file.exists() else []
+        ids = {r['sample_id'] for r in completed}
+        planned = [r for r in planned if r['sample_id'] in ids]
+    for row in planned:assigned[row['sample_id']].append(row)
+def mask_priority(row):
+    with Image.open(row['mask_file']) as alpha:
+        alpha.load()
+        width,height=alpha.size
+        points=list(row['target_endpoints_normalized'])
+        for line in row['centerline_segments_normalized']:
+            a,b=line
+            count=max(1,int(max(abs(b[0]-a[0])*width,abs(b[1]-a[1])*height)/16))
+            points.extend([[a[0]+i/count*(b[0]-a[0]),a[1]+i/count*(b[1]-a[1])] for i in range(count+1)])
+        available=sum(0<=x<1 and 0<=y<1 and alpha.getpixel((int(x*width),int(y*height)))>0 for x,y in points)
+        return available/len(points)
+
+rows=[];eligible=[]
+for path in sorted((ROOT/args.frames/'receipts').glob('*.json')):
+    row=json.loads(path.read_text(encoding='utf-8'))
+    if row['status']!='extracted' or row['role']!=args.role:continue
+    if any(match(old,row) for old in assigned[row['sample_id']]):continue
+    if allowed_ids is not None and row['sample_id'] not in allowed_ids:continue
+    if args.partition and row['proposed_partition']!=args.partition:continue
+    for field,subdir,extension in [('image','images','jpg'),('overview','overviews','jpg'),('guide','guides','jpg'),('mask','masks','png')]:
+        row[field+'_file']=str(ROOT/args.frames/subdir/(row['sample_id']+'.'+extension))
+    if not all(Path(row[name+'_file']).is_file() for name in ('image','overview','guide','mask')):continue
+    eligible.append(row)
+eligible.sort(key=lambda r:(-mask_priority(r),r['sample_id']))
+seen_batch_groups=set()
+for row in eligible:
+    if row['asset_group_id'] in seen_batch_groups:continue
+    seen_batch_groups.add(row['asset_group_id'])
+    fields=('sample_id','asset_group_id','bounded_target_id','image_file','image_sha256','width','height','overview_file','guide_file','guide_sha256','mask_file','target_endpoints_normalized','centerline_segments_normalized')
+    rows.append({**{k:row[k] for k in fields},'fixed_world_scope':row['world_scope']})
+    if len(rows)==args.limit:break
+doc={'format':'drone.p6-isolated-bounded-road-assignment/v1','author_id':args.author,'worker_dir':str(folder),'created_at':datetime.now(UTC).isoformat(),
+     'neutral_geometry_hints_provided':True,'source_business_classes_provided':False,'evaluation_prompt_provided':False,'evaluation_outputs_provided':False,
+     'assignment_order':'within the registered input pool: source alpha availability along fixed geometry, then stable ID; at most one view per proposed geometric group in this batch; all cases still require visual inspection',
+     'input_pool_registration_sha256':hashlib.sha256(args.ids_file.read_bytes()).hexdigest() if args.ids_file else None,
+     'samples':rows}
+with (folder/'assignment.json').open('x',encoding='utf-8') as stream:json.dump(doc,stream,ensure_ascii=False,indent=2)
+print(json.dumps({'path':str(folder/'assignment.json'),'count':len(rows),'sha256':hashlib.sha256((folder/'assignment.json').read_bytes()).hexdigest()}))

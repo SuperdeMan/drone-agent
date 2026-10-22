@@ -1,0 +1,16 @@
+/* Boundary tests for saved review evidence. / 已保存复核证据的边界测试。 */
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const core=require('./review-core.js');
+const data=JSON.parse(fs.readFileSync(path.join(__dirname,'audit/review-bundle.json'),'utf8'));
+const item=data.cases.find(c=>c.target_region),empty=data.cases.find(c=>!c.target_region);
+const record=()=>({case_id:item.case_id,image_sha256:item.image_sha256,reviewer:'QA fixture only',verdict:'normal',notes:'Synthetic test record, not a real review',target_region:{kind:'source_support',mask_sha256:item.target_region.sha256},obstruction_region:null,target_confirmed:true,capture_group:'fixture',group_confirmed:false,source_hints_viewed:false,ai_hints_viewed:false,active_review_ms:1000,started_at:'2026-10-13T00:00:00Z',completed_at:'2026-10-13T00:00:01Z',review_origin:'operator_entered'});
+test('valid record round-trips without creating release eligibility',()=>{const value=core.makeExport(data,[record()]);assert.equal(value.formal_release_eligible,false);assert.equal(value.reviewer_identity_authenticated,false);assert.deepEqual(core.parseImport(JSON.stringify(value),data),[record()]);});
+test('a substituted image digest is rejected',()=>{const r=record();r.image_sha256='0'.repeat(64);assert.ok(core.validate(r,item).length);assert.throws(()=>core.makeExport(data,[r]));});
+test('a substituted mask is rejected',()=>{const r=record();r.target_region.mask_sha256='f'.repeat(64);assert.ok(core.validate(r,item).some(s=>s.includes('区域')));});
+test('foreign bundles and duplicate cases are rejected',()=>{const v=core.makeExport(data,[record()]);v.bundle_id='foreign';assert.throws(()=>core.parseImport(JSON.stringify(v),data));assert.throws(()=>core.makeExport(data,[record(),record()]));});
+test('suspected requires separately drawn obstacle geometry',()=>{const r=record();r.verdict='suspected';assert.ok(core.validate(r,item).length);r.obstruction_region={kind:'polygon',points:[[.2,.2],[.4,.2],[.4,.4]]};assert.deepEqual(core.validate(r,item),[]);});
+test('normal cannot be saved without a confirmed target',()=>{const r=record();r.case_id=empty.case_id;r.image_sha256=empty.image_sha256;r.target_region=null;assert.ok(core.validate(r,empty).length);r.verdict='wrong_target';assert.deepEqual(core.validate(r,empty),[]);});
+test('out of range, nonfinite, degenerate and crossing polygons fail',()=>{for(const points of [[[0,0],[1,1],[0,1],[1,0]],[[0,0],[.2,.2],[.4,.4]],[[0,0],[2,0],[0,1]],[[0,0],[NaN,0],[0,1]],[[0,0],[1,0],[1,1],[.5,0],[0,1]]])assert.equal(core.polygonValid(points),false);assert.equal(core.polygonValid([[.1,.1],[.9,.1],[.9,.9],[.1,.9]]),true);});
+test('missing reviewer, reason, timing and exposure metadata fail',()=>{for(const [key,value] of [['reviewer',''],['notes',''],['started_at',null],['active_review_ms',NaN],['source_hints_viewed','false']]){const r=record();r[key]=value;assert.ok(core.validate(r,item).length,key);}});
+test('empty export does not manufacture reviews',()=>{const v=core.makeExport(data,[]);assert.deepEqual(v.records,[]);assert.equal(v.formal_release_eligible,false);});
+test('normal plus an obstacle outline is rejected',()=>{const r=record();r.obstruction_region={kind:'polygon',points:[[.2,.2],[.4,.2],[.4,.4]]};assert.ok(core.validate(r,item).length);});

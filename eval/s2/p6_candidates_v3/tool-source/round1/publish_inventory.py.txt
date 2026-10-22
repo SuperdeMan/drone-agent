@@ -1,0 +1,106 @@
+"""Publish the candidate inventory and AI suitability notes, not test truth.
+
+发布候选清单与 AI 适用性初审记录，不发布为测试真值。
+"""
+import collections
+import hashlib
+import json
+import shutil
+from pathlib import Path
+
+ROOT=Path(__file__).resolve().parent
+REPO=Path('D:/Personal/AI/Claude Code/产品/drone-agent')
+DEST=REPO/'eval/s2/p6_candidates_v1'
+
+
+def write(path,data):
+    """Write UTF-8 evidence. / 写入 UTF-8 证据。"""
+    path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+
+def main():
+    """Keep origin labels separate from business suitability. / 原标签与业务适用性分开保存。"""
+    DEST.mkdir(exist_ok=True)
+    manifest=json.loads((ROOT/'audit/image-manifest.json').read_text(encoding='utf-8'))
+    prior_review=DEST/'visual-review.json'
+    if len(manifest)!=37:
+        raise ValueError('this review is only for the 37 inspected images')
+    if prior_review.exists():
+        prior=json.loads(prior_review.read_text(encoding='utf-8'))
+        if {(r['id'],r['sha256']) for r in prior['rows']}!={(r['id'],r['sha256']) for r in manifest}:
+            raise ValueError('sample changed; a new visual review is required')
+    notes={
+      191:('paved_surface_candidate','灰色铺装与白色圆点；小物体；是否为道路、目标区域及阻塞定义待核实。'),
+      386:('paved_surface_candidate','铺砖与碎石相邻；可见小物体；需定义目标区域，不能直接标道路阻塞。'),
+      614:('paved_surface_candidate','铺砖表面可见散落物；可作外观异物候选，道路身份和阻塞程度未知。'),
+      635:('paved_surface_candidate','灰色铺装与白色圆点；与 191 疑似同地点，不宜跨拆分。'),
+      132:('context_only','可见人行道与草地，垃圾标注在草地；可探索目标区域外干扰，不能直接设正常真值。'),
+      510:('context_only','弧形黄色座椅、铺砖与草地；与 549 疑似同地点。'),
+      549:('context_only','弧形黄色座椅、铺砖与草地；与 510 疑似同地点。'),
+      413:('out_of_target_scene','有球场标线，不能直接当道路。'),
+      99:('out_of_target_scene','草地低视角；EXIF 为 SM-G950F；拍摄载体未确认。'),
+      110:('out_of_target_scene','树林地面密集垃圾，较低视角；EXIF 为 HERO8 Black；不是已确认的道路。'),
+      127:('out_of_target_scene','近距离草地垃圾；拍摄载体未知。'),
+      167:('out_of_target_scene','草地斜视；未确认道路目标。'),
+      476:('out_of_target_scene','裸地与边缘铺装，斜视；没有确认道路目标。'),
+      595:('out_of_target_scene','俯拍草地与裸地垃圾；有相机和 GPS 元数据，但未确认道路目标。'),
+      581:('out_of_target_scene','草地与裸地垃圾；未确认道路目标。'),
+      749:('out_of_target_scene','草地、裸地与垃圾；未确认道路目标。')
+    }
+    reviewed=[]
+    for item in manifest:
+        if item['id'] in notes:
+            decision,note=notes[item['id']]
+        else:
+            assert item['group_hint']=='batch_d07'
+            decision,note='out_of_target_scene','草地与裸地垃圾；未确认道路目标。'
+        item['p6_split']='development_review_only'
+        item['exif_model']=item['exif_model'].rstrip('\x00')
+        reviewed.append({'id':item['id'],'file_name':item['file_name'],'sha256':item['sha256'],
+                         'suitability':decision,'note':note,'reviewer':'Codex AI visual review',
+                         'evidence':'original-framing thumbnails with source annotation boxes',
+                         'human_verified':False,'business_ground_truth':None})
+    review={'date':'2026-10-13','scope':'37 acquired images only; not a random or representative statistical sample',
+            'reviewed':len(reviewed),'counts':dict(collections.Counter(r['suitability'] for r in reviewed)),
+            'suspected_same_site_links':[{'ids':[510,549],'groups':['batch_01','batch_s01'],'evidence':'curved yellow bench and adjacent paving/grass'},
+                                          {'ids':[635,191],'groups':['batch_04','batch_s02'],'evidence':'white circular markings on grey paving'}],
+            'formal_ground_truth_confirmed':0,'rows':reviewed}
+    write(ROOT/'audit/visual-review.json',review)
+    write(ROOT/'audit/image-manifest.json',manifest)
+    for name in ('metadata-summary.json','summary.json','image-manifest.json','visual-review.json',
+                 'sample-selection.json','sample-download-receipt.json','annotation-member-receipt.json'):
+        shutil.copyfile(ROOT/'audit'/name,DEST/name)
+    sources=[]
+    for f in sorted((ROOT/'sources').iterdir()):
+        if f.is_file():
+            sources.append({'file':str(f.relative_to(ROOT)).replace('\\','/'),'bytes':f.stat().st_size,
+                            'sha256':hashlib.sha256(f.read_bytes()).hexdigest()})
+    write(DEST/'source-snapshots.json',{'local_root':str(ROOT),'files':sources})
+    registry={'format':'drone.p6-material-candidates/v1','status':'candidate_review_only',
+              'date':'2026-10-13','project_base_sha':'57dabf3cb31292eaa3a36e613aa70100360bdea3',
+              'local_data_root':str(ROOT),'formal_test_split_frozen':False,'external_model_api_calls':0,
+              'sources':[
+                {'id':'uavvaste','url':'https://zenodo.org/records/8214061','license':'CC BY 4.0',
+                 'authors':['Marek Kraft','Mateusz Piechocki','Bartosz Ptak','Krzysztof Walas'],
+                 'doi':'10.5281/zenodo.8214061','paper_doi':'10.3390/rs13050965',
+                 'source_commit':'6bd491d5945687550f9a2814a5e3418146fa3dc0',
+                 'official_archive_bytes':3010727259,'official_archive_md5':'1575c32c04bdf944047563e4a1786c2a',
+                 'full_archive_downloaded':False,'full_archive_md5_verified':False,
+                 'source_images':772,'acquired_images':len(manifest),'acquired_image_bytes':sum(i['bytes'] for i in manifest),
+                 'integrity':'each acquired member checked against official ZIP central-directory size and CRC32; local SHA256 recorded; directory source bytes saved',
+                 'coverage':'13 batch prefixes plus camera/GOPR/photo/DJI groups; hints are not independent locations',
+                 'selection_bias':'26 recoverable members plus supplementation to cover filename groups; 21 acquired images belong to batch_d07',
+                 'role':'development suitability candidates only','confirmed_road_obstruction_labels':0},
+                {'id':'road','url':'https://www.agtbaskara.com/road','status':'download_and_license_not_published','acquired_images':0},
+                {'id':'floodnet','url':'https://github.com/BinaLab/FloodNet-Supervised_v1.0','license':'CDLA-Permissive-1.0','status':'source_reviewed_not_acquired','acquired_images':0,'limitation':'road-non-flooded is not road-clear'},
+                {'id':'rescuenet','url':'https://github.com/BinaLab/RescueNet-A-High-Resolution-Post-Disaster-UAV-Dataset-for-Semantic-Segmentation','license':'CC BY-NC-ND as stated for data in author README','status':'not_selected_for_product_evaluation','acquired_images':0},
+                {'id':'semantic_drone','url':'https://ivc.tugraz.at/research-project/semantic-drone-dataset/','license':'custom noncommercial, no redistribution','status':'not_selected_for_product_evaluation','acquired_images':0},
+                {'id':'vdd','url':'https://github.com/RussRobin/VDD','status':'license_conflict_author_terms_vs_huggingface_card','acquired_images':0}
+              ]}
+    write(DEST/'sources.json',registry)
+    write(ROOT/'audit/sources.json',registry)
+    print(json.dumps({'acquired_images':len(manifest),'bytes':sum(i['bytes'] for i in manifest),'review_counts':review['counts']},ensure_ascii=False))
+
+
+if __name__=='__main__':
+    main()

@@ -1,0 +1,132 @@
+"""Snapshot actual reviews and check the formal annotation binding alone.
+
+快照实际二审并只核对正式标注绑定，不声称资产或业务准出。
+"""
+import argparse
+import json
+import runpy
+from collections import Counter
+from datetime import UTC, datetime
+from pathlib import Path
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+sys.path.insert(1,str(Path(__file__).resolve().parent.parent/'resume-20261021'))
+from current_observations_v4 import match, load_observations
+sys.path.insert(1,str(Path(__file__).resolve().parent.parent/'resume-20261022'))
+from review_selection_v5 import selection
+
+ROOT=Path(__file__).resolve().parent.parent
+DATA=ROOT.parent
+REPO=Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+def read(p):return json.loads(p.read_text(encoding='utf-8'))
+def actual(p):return C['rooted'](DATA,str(p))
+def rel(p):return actual(p).relative_to(DATA.resolve()).as_posix()
+def save(p,v):
+    with p.open('x',encoding='utf-8') as f:json.dump(v,f,ensure_ascii=False,indent=2)
+parser=argparse.ArgumentParser()
+parser.add_argument('--output',type=Path,required=True)
+parser.add_argument('--context-version',default='v3')
+parser.add_argument('--core-script',type=Path,default=REPO/'scripts/p6_business_eval.py')
+parser.add_argument('--protocol-file',type=Path,default=REPO/'eval/s2/road_business_v1/protocol-draft.json')
+parser.add_argument('--only-reviewer',action='append')
+parser.add_argument('--exclude-prior',action='store_true')
+parser.add_argument('--expected-count',type=int)
+args=parser.parse_args()
+C=runpy.run_path(str(args.core_script))
+args.output.mkdir(exist_ok=False)
+context=ROOT/('annotation-context-'+args.context_version+'.json')
+registration=ROOT/('review-registration-'+args.context_version+'.json')
+protocol=read(args.protocol_file)
+plan=read(ROOT/'frames-cloud-v5/plan.json')
+protocol['derived_capture_policy']={'mode':'traceable_uas_orthomosaic',
+    'source_inventory_sha256':C['digest'](ROOT/'source-audit/uas-inventory.json'),
+    'extractor_sha256':plan['tool_sha256'],'range_tool_sha256':plan['range_tool_sha256'],
+    'claim_raw_camera_frames':False,'synthetic_scene_content_allowed':False}
+protocol['annotation_policy'].update(independent_context_sha256=C['digest'](context),verification_context_sha256=C['digest'](registration))
+save(args.output/'protocol-annotation-only.json',protocol)
+frames=load_observations()
+results=[];saved=[];skipped=[];cache={}
+replacements,pending_reverification=selection()
+for p in sorted((ROOT/'verification').glob('*/reviews.json')):
+    review=read(p)
+    if args.only_reviewer and review['reviewer_id'] not in args.only_reviewer:continue
+    registered=C['unique'](read(registration)['assignments'],'reviewer_id').get(review['reviewer_id'])
+    if registered is None:raise ValueError('review context was not actually registered')
+    assignment=read(actual(registered['file']))
+    assigned=C['unique'](assignment['samples'],'sample_id')
+    snapshot=args.output/(review['reviewer_id']+'.json')
+    with snapshot.open('xb') as handle:handle.write(p.read_bytes())
+    for record in review['rows']:
+        if replacements.get(record['sample_id'],review['reviewer_id'])!=review['reviewer_id']:continue
+        ident=record['sample_id'];first=assigned[ident];frame=frames.get(ident)
+        if args.exclude_prior and first.get('target_selection')=='pre_registered_prior_task':continue
+        compatibility=match(first,frame)
+        if not compatibility:
+            skipped.append({'sample_id':ident,'reviewer_id':review['reviewer_id'],'reason':'not identical to current image and fixed geometry; historical review retained'})
+            continue
+        original=first['first_row'];final=record['final_row']
+        target_changed=any(k in record['changes'] for k in ('target_brief','target_polygon'))
+        registered_at=record['reviewed_at'] if target_changed else original['inspected_at']
+        sample={'sample_id':ident,'image_file':rel(Path(first['image_file'])),'image_sha256':frame['image_sha256'],
+                'width':frame['width'],'height':frame['height'],'split':None,'evaluation_role':None,
+                'asset_id':None,'site_id':None,'capture_batch_id':None,'near_duplicate_group':None,
+                'grouping_verified':False,'grouping_evidence':None,'proposed_asset_id':frame['asset_group_id'],
+                'media_origin':frame['media_origin'],'captured_at':None,'development_exposed':False,
+                'target':{'status':'ai_verified','brief':final['target_brief'],'polygon':final['target_polygon'],'registered_at':registered_at},
+                'ai_suggestion':original}
+        label={'sample_id':ident,'image_sha256':frame['image_sha256'],'verdict':final['verdict'],
+               'defect_types':sorted({o['defect_type'] for o in final['objects']}),'objects':final['objects'],
+               'origin':'delegated_ai','reviewer_id':review['reviewer_id'],'full_target_inspected':True,
+               'notes':final['notes'],'hints_seen':True,'model_outputs_seen':True,'recorded_at':record['reviewed_at'],
+               'ai_assistance':{'method':'independent_ai_then_ai','original_checked':True,'evaluated_model_outputs_seen':False,
+                    'draft_file':rel(Path(first['draft_file'])),'draft_sha256':first['draft_sha256'],'author_id':first['first_author_id'],
+                    'suggestion_sha256':C['canonical_digest'](original),'context_file':rel(context),'context_sha256':C['digest'](context),
+                    'verification_context_file':rel(registration),'verification_context_sha256':C['digest'](registration),
+                    'review_file':rel(snapshot),'review_sha256':C['digest'](snapshot),'review_row_sha256':C['canonical_digest'](record),
+                    'decision':record['decision']}}
+        if first.get('target_selection')=='pre_registered_prior_task':
+            task=read(actual(first['prior_task_file']))
+            assert C['digest'](actual(first['prior_task_file']))==first['prior_task_sha256']
+            sample['asset_id']=task['expected_asset_id']
+            sample['expected_asset_identity_verified']=False
+            sample['observed_proposed_asset_id']=frame['asset_group_id']
+            label['ai_assistance'].update(prior_task_file=rel(first['prior_task_file']),prior_task_sha256=first['prior_task_sha256'])
+        issues=C['delegated_label_issues'](sample,label,protocol,DATA,cache)
+        results.append({'sample_id':ident,'reviewer_id':review['reviewer_id'],'issues':issues})
+        saved.append({'sample':sample,'label':label,'current_extraction_compatibility':compatibility})
+scope_errors=[]
+if not results:scope_errors.append('no_current_records_checked')
+if args.expected_count is not None and len(results)!=args.expected_count:scope_errors.append('expected_current_record_count_mismatch')
+actual_pairs={(row['reviewer_id'],row['sample_id']) for row in results}
+if len(actual_pairs)!=len(results):scope_errors.append('duplicate_checked_reviewer_sample')
+if len({row['sample_id'] for row in results})!=len(results):scope_errors.append('duplicate_selected_sample')
+if args.only_reviewer:
+    expected_pairs=set()
+    registered_rows=C['unique'](read(registration)['assignments'],'reviewer_id')
+    for reviewer in args.only_reviewer:
+        if reviewer not in registered_rows:
+            scope_errors.append('requested_reviewer_not_registered')
+            continue
+        bound=registered_rows[reviewer]
+        path=actual(bound['file'])
+        if C['digest'](path)!=bound['sha256']:scope_errors.append('requested_assignment_bytes_changed')
+        for row in read(path)['samples']:expected_pairs.add((reviewer,row['sample_id']))
+    if expected_pairs!=actual_pairs:scope_errors.append('requested_assignment_not_fully_checked')
+save(args.output/'reviewed-candidates.json',{'rows':saved,'formal_release_eligible':False,'grouping_verified':False})
+result={'recorded_at':datetime.now(UTC).isoformat(),'scope':'annotation provenance only; no grouping or corpus admission',
+        'checked':len(results),'passed':sum(not r['issues'] for r in results),'rows':results,'historical_unmatched':skipped,
+        'counts':dict(Counter(r['label']['verdict'] for r in saved)),
+        'source_sha256':C['digest'](args.core_script),'checker_sha256':C['digest'](Path(__file__)),
+        'only_reviewers':args.only_reviewer,'excluded_prior':args.exclude_prior,
+        'execution_platform':sys.platform,'source_binding_policy_is_audit_only_not_formal_freeze':True,'human_labels_created':0,'formal_release_eligible':False}
+result['scope_errors']=scope_errors
+result['expected_current_record_count']=args.expected_count
+result['status']='passed' if results and result['checked']==result['passed'] and not scope_errors else 'failed'
+result['pending_protocol_reverification']=pending_reverification
+result['replacement_reviews_selected']=len(replacements)
+save(args.output/'result.json',result)
+print(json.dumps({k:v for k,v in result.items() if k not in ('rows','historical_unmatched')}))
+for row in results:
+    if row['issues']:print(json.dumps(row))
+raise SystemExit(0 if result['status']=='passed' else 1)

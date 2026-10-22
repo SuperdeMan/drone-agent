@@ -1,0 +1,137 @@
+"""Verify copy invariance and the exact execution packet without viewing images.
+
+不看图，复核副本不变式和准确执行包。
+"""
+import copy
+import hashlib
+import json
+from collections import Counter
+from datetime import datetime, timezone
+from pathlib import Path
+
+OUT = Path(__file__).resolve().parent
+ROOT = OUT.parent.parent
+DATA = ROOT.parent
+
+
+def read(path):
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+def sha(path):
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def canonical(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False,
+        separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+
+
+def assert_context_only(before, after):
+    before, after = copy.deepcopy(before), copy.deepcopy(after)
+    for row in (before, after):
+        for key in ('context_file', 'context_sha256', 'verification_context_file', 'verification_context_sha256'):
+            row['ai_assistance'].pop(key, None)
+    assert before == after
+
+
+base = ROOT / 'resume-20261022-fast/bulk-integrated-candidate-corpus-v1'
+manifest, labels, protocol, prep = (read(OUT / leaf) for leaf in ('manifest.json', 'labels.json', 'protocol-not-frozen.json', 'preparation.json'))
+old_manifest, old_labels, old_protocol = (read(base / leaf) for leaf in ('manifest.json', 'labels.json', 'protocol-not-frozen.json'))
+result = read(OUT / 'control-v2/result.json')
+execution = result['actual_execution']
+report = read(OUT / 'actual-audit-v1/core-audit.json')
+before, after = (read(OUT / 'control-v2' / leaf) for leaf in ('exact-inputs-before.json', 'exact-inputs-after.json'))
+assert before == after == result['input_bindings']
+assert execution['frozen_core_before'] == execution['frozen_core_after'] == prep['frozen_core_sha256']
+assert execution['input_ledger_before_sha256'] == sha(OUT / 'control-v2/exact-inputs-before.json')
+assert execution['input_ledger_after_sha256'] == sha(OUT / 'control-v2/exact-inputs-after.json')
+for row in result['returned_files']:
+    path = Path(row['file'])
+    assert sha(path) == row['sha256'] and path.stat().st_size == row['bytes']
+samples = {row['sample_id']: row for row in manifest['samples']}
+label_by_id = {row['sample_id']: row for row in labels['rows']}
+old_samples = {row['sample_id']: row for row in old_manifest['samples']}
+old_label_by_id = {row['sample_id']: row for row in old_labels['rows']}
+reviewed = {row['sample']['sample_id']: row for row in read(ROOT / 'resume-20261022-next/annotation-integrity-331-v1/reviewed-candidates.json')['rows']}
+assert len(samples) == len(manifest['samples']) == len(labels['rows']) == 22
+assert set(samples) - set(old_samples) == set(prep['selected_sample_ids'])
+for ident, original in old_samples.items():
+    actual = copy.deepcopy(samples[ident])
+    actual['capture_record']['inventory_file'] = original['capture_record']['inventory_file']
+    actual['capture_record']['inventory_sha256'] = original['capture_record']['inventory_sha256']
+    assert actual == original
+    assert_context_only(old_label_by_id[ident], label_by_id[ident])
+for ident in prep['selected_sample_ids']:
+    assert samples[ident]['target'] == reviewed[ident]['sample']['target']
+    assert samples[ident]['ai_suggestion'] == reviewed[ident]['sample']['ai_suggestion']
+    assert_context_only(reviewed[ident]['label'], label_by_id[ident])
+    assert samples[ident]['grouping_evidence']['metadata_report_sha256'] == prep['report54_sha256']
+    assert samples[ident]['grouping_evidence']['formal_exposure_adjudicated'] is False
+assert manifest['stability_pairs'] == old_manifest['stability_pairs'] and len(manifest['stability_pairs']) == 1
+restore_protocol = copy.deepcopy(protocol)
+restore_protocol.pop('oam_capture_policy')
+for key in ('independent_context_sha256', 'verification_context_sha256'):
+    restore_protocol['annotation_policy'][key] = old_protocol['annotation_policy'][key]
+assert restore_protocol == old_protocol
+assert sha(OUT / 'exposure.json') == sha(base / 'exposure.json')
+inventory = read(OUT / 'capture-inventory.json')
+assert len(inventory['rows']) == 841 and inventory['rows'][:837] == read(base / 'capture-inventory.json')['rows']
+sources = [row for original in prep['original_source_inventories'] for row in read(DATA / original['file'])]
+assert read(OUT / 'oam-union-source-inventory.json') == sources
+assert len(sources) == 2
+input_count = 0
+for name, original in prep['original_inputs'].items():
+    path = DATA / name
+    assert sha(path) == original['sha256'] and path.stat().st_size == original['bytes']
+    input_count += 1
+differences = read(OUT / 'control-v2/local-preflight.json')['local_differing_source_metadata_preserved']
+unique_differences = {row['different_local_file']: row for row in differences}
+for name, row in unique_differences.items():
+    assert sha(Path(name)) == row['local_sha256']
+    assert before[row['declared_file']]['sha256'] == row['expected_cloud_sha256']
+sample_issues = {ident: [issue for issue in report['issues'] if issue.get('sample_id') == ident] for ident in samples}
+assert sample_issues == execution['sample_issues']
+pair_issues = execution['pairs'][0]['issues_on_either_member']
+assert pair_issues == []
+assert report['status'] == 'missing' and report['data_ready'] is False
+primary = [row for row in samples.values() if row['evaluation_role'] == 'primary']
+assert len(primary) == len({row['asset_id'] for row in primary}) == 21
+assert execution['derived_captures_verified'] == report['derived_captures_verified'] == 22
+assert execution['core_audit_created'] and execution['all_bound_input_bytes_unchanged']
+unresolved = {ident: issues for ident, issues in sample_issues.items() if issues}
+assert set(unresolved) == set(prep['expected_unresolved_source_only_exposure_sample_ids'])
+assert all(issue['code'] == 'exposed_image_outside_development' for issues in unresolved.values() for issue in issues)
+summary = {
+    'format': 'drone.p6-composed22-postrun-verification/v1',
+    'recorded_at_utc': datetime.now(timezone.utc).isoformat(),
+    'status': 'verified_exact22_copy_with_exposure_residuals_preserved',
+    'samples': 22, 'primary_observations': 21, 'distinct_primary_assets': 21,
+    'repeat_observations': 1, 'real_existing_pair_count': 1, 'pair_issue_count': len(pair_issues),
+    'derived_captures_verified': report['derived_captures_verified'],
+    'annotation_only_issue_count': sum(len(row['issues']) for row in prep['annotation_only_checks']),
+    'exact_old16_meanings_preserved': True, 'exact_new6_target_draft_review_labels_preserved': True,
+    'all22_context_references_only_extended_to_actual_v49': True,
+    'protocol_changed_only_context_hashes_and_explicit_same_contract_oam_union_policy': True,
+    'original_source_rows_equal_union': True, 'original837_capture_rows_unchanged': True,
+    'cloud_bound_input_files_rehashed_before_and_after': len(before),
+    'cloud_bound_input_ledgers_identical': True, 'original_local_report_and_base_inputs_unchanged': input_count,
+    'different_local_source_http_receipts_unchanged': len(unique_differences),
+    'different_local_source_http_receipts_not_uploaded_or_used_instead_of_cloud': True,
+    'core_issue_counts': report['issue_counts'], 'remaining_sample_issues': unresolved,
+    'global_issues': execution['global_issues'],
+    'primary_label_counts': execution['primary_label_counts'], 'primary_site_counts': execution['primary_site_counts'],
+    'core_report_sha256': sha(OUT / 'actual-audit-v1/core-audit.json'),
+    'execution_receipt_sha256': sha(OUT / 'actual-audit-v1/execution-receipt.json'),
+    'control_result_sha256': sha(OUT / 'control-v2/result.json'),
+    'manifest_sha256': sha(OUT / 'manifest.json'), 'labels_sha256': sha(OUT / 'labels.json'),
+    'formal_data_frozen': False, 'data_ready': False, 'formal_assets_admitted': 0, 'formal_pairs_admitted': 0,
+    'formal_model_calls': 0, 'formal_release_eligible': False, 'wp_p6_01_closed': False,
+    'pixels_visually_viewed': False, 'new_business_judgments_created': False,
+}
+with (OUT / 'postrun-verification.json').open('x', encoding='utf-8', newline='\n') as stream:
+    json.dump(summary, stream, ensure_ascii=False, indent=2, allow_nan=False)
+    stream.write('\n')
+print(json.dumps({key: summary[key] for key in ('status', 'samples', 'primary_observations', 'real_existing_pair_count',
+    'pair_issue_count', 'derived_captures_verified', 'cloud_bound_input_files_rehashed_before_and_after', 'core_issue_counts')}))

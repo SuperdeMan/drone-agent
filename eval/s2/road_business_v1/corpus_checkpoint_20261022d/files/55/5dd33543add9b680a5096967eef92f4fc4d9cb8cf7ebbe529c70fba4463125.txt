@@ -1,0 +1,74 @@
+"""Validate census bindings and candidate graph invariants without opening images.
+
+不打开图像，只核验普查绑定与候选关系图的一致性。
+"""
+import hashlib
+import json
+from collections import defaultdict
+from datetime import UTC, datetime
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent
+
+
+def read(name):
+    return json.loads((ROOT / name).read_text(encoding="utf-8"))
+
+
+def main():
+    census = read("census.json")
+    binding = read("input-bindings.json")
+    nodes = {row["node_id"]: row for row in read("nodes.json")["nodes"]}
+    pairs = read("candidate-pairs.json")
+    components = read("components.json")
+    checks = {}
+    checks["actual_complete_original_sha_node_count"] = len(nodes) == census["unique_complete_original_sha256"] == 516
+    checks["source_batch_counts_415_500_85_9_7"] = [census["source_inventory_counts"][k]["declared_complete_rows"] for k in ("inventory_415", "merged_500", "verification_85", "extension_v1", "extension_v2")] == [415, 500, 85, 9, 7]
+    checks["all_present_originals_complete_and_bound"] = len(binding["original_inputs"]) == 516 and all(r["complete_original_verified"] and r["input_unchanged"] and r["sha256_before"] == r["sha256_after"] and r["source_member_matches"] for r in binding["original_inputs"])
+    checks["all_recorded_input_hashes_unchanged"] = binding["all_input_sha256_unchanged"] and all(r["input_unchanged"] and r["sha256_before"] == r["sha256_after"] for r in binding["metadata_inputs"].values())
+    checks["metadata_files_still_match_hashes"] = all(hashlib.sha256(Path(r["file"]).read_bytes()).hexdigest() == r["sha256_after"] for r in binding["metadata_inputs"].values())
+    checks["script_binding_matches"] = census["script_sha256"] == hashlib.sha256((ROOT / "census_metadata.py").read_bytes()).hexdigest()
+    checks["unique_sha_nodes"] = len({r["original_sha256"] for r in nodes.values()}) == len(nodes)
+    checks["no_timezone_or_flight_id_invention"] = all(n["capture_timezone"] is None and n["actual_flight_id"] is None for n in nodes.values())
+    checks["no_formal_admission_claims"] = census["formal_asset_count"] is None and census["formal_pair_count"] is None and census["formal_release_eligible"] is False and all(n["formal_asset_or_pair"] is False for n in nodes.values())
+    primary = pairs["primary_unheld_pair_leads"]
+    checks["primary_pairs_have_distinct_original_sha_and_full_footprints"] = all(p["a_sha256"] != p["b_sha256"] and nodes[p["a"]]["footprint_status"] == nodes[p["b"]]["footprint_status"] == "approximate_full_frame_ground_intersection" for p in primary)
+    checks["primary_pairs_pass_metadata_only_rule_and_holds"] = all(p["same_declared_local_date"] and p["local_clock_interval_seconds"] >= 30 and p["known_source_capture_order_distance"] >= 2 and p["approximate_footprint_overlap_fraction_of_smaller"] >= .30 and not nodes[p["a"]]["held_for_development_or_unknown_relation"] and not nodes[p["b"]]["held_for_development_or_unknown_relation"] for p in primary)
+    cross = pairs["first_review_cross_hold_pair_leads"]
+    within = pairs["within_hold_nonadjacent_context_leads"]
+    checks["cross_hold_and_within_hold_counts_are_separate"] = len(primary) == len(cross) + len(within) == 290 and len(cross) == 2 and all(not p["same_registered_capture_hold"] for p in cross) and all(p["same_registered_capture_hold"] for p in within)
+    parent = {i: i for i in nodes}
+
+    def find(i):
+        while parent[i] != i:
+            i = parent[i]
+        return i
+
+    for relation in pairs["all_positive_footprint_overlap_relations"]:
+        if relation["approximate_footprint_overlap_fraction_of_smaller"] >= .30:
+            a, b = find(relation["a"]), find(relation["b"])
+            if a != b:
+                parent[b] = a
+    candidate_ids = {p[k] for p in primary for k in ("a", "b")}
+    conservative = defaultdict(set)
+    for ident in candidate_ids:
+        conservative[find(ident)].add(ident)
+    reported = components["review_queue_components"]
+    checks["conservative_components_use_all_footprint_edges_including_adjacent_frames"] = {frozenset(v) for v in conservative.values()} == {frozenset(c["candidate_node_ids"]) for c in reported}
+    checks["conservative_component_and_time_filtered_counts_not_conflated"] = len(reported) == census["unheld_priority_review_components"] == 14 and len(components["time_filtered_graph_components_not_independent_groups"]) == census["time_filtered_graph_components_not_independent_groups"] == 18
+    checks["cross_hold_four_nodes_one_conservative_component"] = len({p[k] for p in cross for k in ("a", "b")}) == 4 and len({find(p["a"]) for p in cross}) == 1
+    checks["no_missing_or_failed_originals"] = census["missing_inputs"] == [] and census["verification_failures"] == []
+    result = {"format": "drone.raw-repeat-source-validation/v1", "checked_at": datetime.now(UTC).isoformat(),
+              "checks": checks, "all_passed": all(checks.values()),
+              "validator_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+              "output_bindings": {p.name: {"bytes": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
+                                  for p in sorted(ROOT.iterdir()) if p.is_file() and p.name != "validation.json"}}
+    (ROOT / "validation.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps({"all_passed": result["all_passed"], "checks": checks}, ensure_ascii=False))
+    if not result["all_passed"]:
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()

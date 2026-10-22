@@ -1,0 +1,56 @@
+"""Collect exact-candidate software and truthful missing-business evidence.
+
+归集准确候选的软件结果与真实业务缺口证据。
+"""
+import hashlib
+import json
+import shutil
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+REPO = Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+
+def read(path):
+    return json.loads(path.read_text(encoding='utf-8'))
+
+def save(path, value):
+    with path.open('x', encoding='utf-8', newline='\n') as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2)
+        stream.write('\n')
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+start, finish = read(ROOT / 'full-pytest-start.json'), read(ROOT / 'full-pytest-result.json')
+suite = ET.parse(ROOT / 'full-pytest.xml').getroot().find('testsuite')
+skips = [{'case': case.attrib, 'skip': case.find('skipped').attrib, 'text': case.find('skipped').text}
+         for case in suite.findall('testcase') if case.find('skipped') is not None]
+assert finish['exit_code'] == 0 and finish['source_unchanged_during_suite'] and not finish['failures']
+assert all(sha(REPO / name) == digest for name, digest in start['source_sha256'].items())
+result = {'format': 'drone.p6-road-business-software-verification/v1', 'date': '2026-10-18',
+    'code_freeze_commit': start['candidate_commit'], 'source_sha256': start['source_sha256'],
+    'ruff': {'exit_code': 0, 'log': 'ruff-final.log', 'log_sha256': sha(ROOT / 'ruff-final.log')},
+    'full_pytest': {'status': 'passed', 'exit_code': finish['exit_code'],
+        'collected': int(suite.get('tests')), 'passed': int(suite.get('tests')) - int(suite.get('skipped')),
+        'skipped': int(suite.get('skipped')), 'failed': int(suite.get('failures')), 'errors': int(suite.get('errors')),
+        'skip_reason': '; '.join(item['skip'].get('message', '') for item in skips),
+        'source_unchanged_during_suite': True, 'high_qos_at_startup': True,
+        'started_at': finish['started_at'], 'finished_at': finish['finished_at'], 'wall_seconds': finish['wall_seconds'],
+        'junit_seconds': float(suite.get('time')), 'junit_sha256': sha(ROOT / 'full-pytest.xml'), 'log_sha256': sha(ROOT / 'full-pytest.log')},
+    'scope': 'software only; AI reference reviews, asset coverage and live evaluation are separately required',
+    'formal_release_eligible': False, 'human_truth_claimed': False, 'human_efficiency_verified': False}
+save(ROOT / 'software-final.json', result)
+save(ROOT / 'full-pytest-skips.json', skips)
+output = ROOT / 'closure-evidence'
+output.mkdir(exist_ok=False)
+shutil.copyfile(ROOT / 'software-final.json', output / 'software-verification.json')
+shutil.copyfile(REPO / 'eval/s2/road_business_v1/protocol-draft.json', output / 'protocol.json')
+shutil.copyfile(REPO / 'eval/s2/road_business_v1/exposure-registry.json', output / 'exposure.json')
+save(output / 'evidence.json', {'format': 'drone.p6-road-business-evidence/v1', 'candidate_commit': start['candidate_commit'],
+    'purpose': 'AI delegation implemented and software verified; independent frozen corpus, repeat pairs and live runs are still missing',
+    'paths': {'manifest': 'manifest.json', 'labels': 'labels.json', 'protocol': 'protocol.json', 'exposure': 'exposure.json',
+        'tasks': 'test-tasks.json', 'test_package': 'test/package', 'test_cloud': 'test/cloud',
+        'software_verification': 'software-verification.json', 'calibration_package': 'calibration/package',
+        'calibration_cloud': 'calibration/cloud', 'calibration_tasks': 'calibration-tasks.json', 'calibration_selection': 'calibration-selection.json'}})
+print(json.dumps({'candidate': result['code_freeze_commit'], 'passed': result['full_pytest']['passed'], 'skipped': skips}))

@@ -1,0 +1,66 @@
+"""Snapshot actual compatible records and exact pending work without asset promotion.
+
+快照实际兼容记录及准确待办，不自动升级资产计数。
+"""
+import argparse
+import hashlib
+import json
+from collections import Counter
+from datetime import UTC, datetime
+from pathlib import Path
+
+from current_observations_v6 import ROOT, load_observations, match, read, sha
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--integrity', type=Path, required=True)
+parser.add_argument('--output', type=Path, required=True)
+args = parser.parse_args()
+observations = load_observations()
+checked = read(args.integrity/'result.json')
+reviewed_rows = read(args.integrity/'reviewed-candidates.json')['rows']
+assert checked['checked']==checked['passed']==len(reviewed_rows)
+reviewed = {row['sample']['sample_id'] for row in reviewed_rows}
+assert len(reviewed)==len(reviewed_rows)
+authors=[];drafts={};pending=[]
+for path in sorted((ROOT/'annotation').glob('*/suggestions.json')):
+    document=read(path);assignment_path=path.parent/'assignment.json';assignment=read(assignment_path)
+    assigned={row['sample_id']:row for row in assignment['samples']}
+    compatible=[]
+    for row in document['rows']:
+        ident=row['sample_id']
+        if not match(assigned[ident],observations.get(ident)):continue
+        assert sha(Path(assigned[ident]['image_file']))==row['image_sha256']
+        assert ident not in drafts
+        drafts[ident]=row;compatible.append(ident)
+    authors.append({'author_id':document['author_id'],'assigned':len(assigned),'saved':len(document['rows']),
+        'compatible_saved':len(compatible),'assignment_sha256':sha(assignment_path),'draft_sha256':sha(path)})
+    remaining=sorted(set(compatible)-reviewed)
+    if remaining:pending.append({'author_id':document['author_id'],'count':len(remaining),'sample_ids':remaining,
+        'assignment_file':str(assignment_path),'assignment_sha256':sha(assignment_path),'draft_file':str(path),'draft_sha256':sha(path)})
+assert reviewed <= set(drafts)
+derived=[row for row in observations.values() if row['media_origin']=='real_capture_derivative']
+raw=[row for row in observations.values() if row['media_origin']=='real_capture']
+document={'format':'drone.p6-current-data-checkpoint/v3','recorded_at':datetime.now(UTC).isoformat(),
+    'integrity_file':str(args.integrity/'result.json'),'integrity_sha256':sha(args.integrity/'result.json'),
+    'first_drafts':len(drafts),'selected_second_reviews':len(reviewed),'second_review_counts':checked['counts'],
+    'pending_second_reviews':pending,'pending_second_review_count':sum(row['count'] for row in pending),
+    'authors':authors,'actual_derived_views':len(derived),'geometric_derived_groups':len({row['asset_group_id'] for row in derived}),
+    'indexed_additional_originals':len(raw),'old_complete_originals':500,'new_complete_originals':16,
+    'total_complete_originals':516,'all_complete_originals_independent_or_admitted':False,
+    'formal_independent_assets_admitted':0,'formal_stability_pairs_admitted':0,'formal_live_model_calls':0,
+    'formal_data_frozen':False,'wp_p6_01_closed':False,'human_truth_claimed':False,
+    'software_candidate':'cdf5382d4b4ce54600921532ecbe2a5591775b58', 'software_result':read(ROOT/'resume-20261022-fast/software-cdf5382-qa-v1/result.json')['pytest'],
+    'source_extension_status':{},'prior_tasks':{'index_file':str(ROOT/'resume-20261021/prior-tasks-v1/index.json'),
+        'index_sha256':sha(ROOT/'resume-20261021/prior-tasks-v1/index.json'),'registered':11,'verified_wrong_target_labels':checked['counts'].get('wrong_target',0)}}
+for slug,version in [('mussett','v2'),('laura','v1')]:
+    folder=ROOT/('resume-20261021/'+slug+'-frames-'+version)
+    receipts=[read(path) for path in (folder/'receipts').glob('*.json')]
+    source=ROOT/('resume-20261021/'+slug+'-provenance-f132b98-v1/result.json')
+    document['source_extension_status'][slug]={'completed_receipts':len(receipts),'extracted':sum(row['status']=='extracted' for row in receipts),
+        'acquisition_result_present':(folder/'result.json').exists(),
+        'source_audit_result_file':str(source),'source_audit_result_sha256':sha(source),
+        'source_audit_result':read(source) if source.exists() else None,
+        'independent_replay_execution_receipt':str(ROOT/('resume-20261021/'+slug+'-source-execution-v1/result.json'))}
+args.output.parent.mkdir(exist_ok=True,parents=True)
+with args.output.open('x',encoding='utf-8') as handle:json.dump(document,handle,ensure_ascii=False,indent=2)
+print(json.dumps({key:value for key,value in document.items() if key not in ('authors','pending_second_reviews','source_extension_status')}))

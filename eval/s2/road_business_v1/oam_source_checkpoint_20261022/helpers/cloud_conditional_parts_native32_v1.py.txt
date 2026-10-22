@@ -1,0 +1,290 @@
+"""Run the scoped conditional-parts native32 data job without old200 aliases.
+
+执行限定范围的条件响应组合原生32数据作业，不使用旧200别名。
+"""
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tarfile
+from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
+
+FAST = Path(__file__).resolve().parent
+ROOT = FAST.parent
+DATA = ROOT.parent.resolve()
+REPO = DATA / 'p6-road-views-20261014/repo'
+TASK = '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/' + ROOT.name
+OUTER = '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud'
+COMMIT = '4800ea0726acbd3054e07f31abf3e8b44b94f0f4'
+CONTROL = FAST / 'conditional-parts-native32-control-v1'
+JOB = TASK + '/resume-20261022-fast/conditional-parts-native32-v1'
+LOCAL_JOB = FAST / 'conditional-parts-native32-v1'
+now = lambda: datetime.now(timezone.utc).isoformat()
+
+
+def read(path):
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+def sha(path):
+    with Path(path).open('rb') as handle:
+        return hashlib.file_digest(handle, 'sha256').hexdigest()
+
+
+def save(path, value):
+    with Path(path).open('x', encoding='ascii', newline='\n') as handle:
+        json.dump(value, handle, indent=2, ensure_ascii=True, allow_nan=False)
+        handle.write('\n')
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def remote_path(path):
+    return str(PurePosixPath(TASK).parent / Path(path).resolve().relative_to(DATA).as_posix())
+
+
+def bindings(paths):
+    return {p.relative_to(DATA).as_posix(): {'bytes': p.stat().st_size, 'sha256': sha(p)} for p in sorted(paths)}
+
+
+def archive(path, paths):
+    with path.open('xb') as out, tarfile.open(fileobj=out, mode='w') as bundle:
+        for p in sorted(paths):
+            bundle.add(p, arcname=p.relative_to(DATA).as_posix(), recursive=False)
+
+
+preparation_path = FAST / 'conditional-parts-native32-preparation-result-v1.json'
+preparation = read(preparation_path)
+assert preparation['status'] == 'prepared32_typed_conditional_source_only' and preparation['candidate_commit'] == COMMIT
+assert preparation['source_only_verification_passed'] is True and preparation['planned_views'] == 32
+prepared = Path(preparation['preparation_directory']).resolve()
+assert prepared == FAST / 'conditional-parts-native32-preparation-v1'
+frozen = Path(preparation['frozen_core_directory']).resolve()
+assert frozen == ROOT / 'software-audit-4800ea0-20261022'
+core = preparation['frozen_core_sha256']
+assert all(sha(frozen / n) == h for n, h in core.items())
+source_candidate_path = Path(preparation['source_candidate_file']).resolve()
+assert sha(source_candidate_path) == preparation['source_candidate_sha256']
+candidate = read(source_candidate_path)
+recipe_path = DATA / candidate['download_receipt_file']
+assert sha(recipe_path) == candidate['download_receipt_sha256'] == preparation['source_recipe_sha256']
+recipe = read(recipe_path)
+assert recipe['format'] == 'drone.p6-oam-conditional-parts-http/v1' and recipe['status'] == 'assembled_and_verified' and len(recipe['parts']) == 50
+parent = (DATA / candidate['object_file']).resolve()
+assert parent.stat().st_size == 253851020 and sha(parent) == candidate['local_full_object_sha256'] == '1127710341b5b785dd151e7e3fa8de9c0ab1cc3dc9f7f8b4df0acdee767be4c5'
+plan_path = Path(preparation['source_plan_file']).resolve()
+assert sha(plan_path) == preparation['source_plan_sha256']
+plan = read(plan_path)
+assert len(plan['items']) == 32 and plan['planned_whole_site_partition'] == 'calibration_candidate'
+assert all(i['proposed_partition'] == 'calibration_candidate' and i['target']['physical_asset_identity_verified'] is False for i in plan['items'])
+core_files = {p.resolve() for p in frozen.iterdir() if p.is_file()}
+metadata_files = {p.resolve() for p in prepared.rglob('*') if p.is_file()}
+metadata_files.add(preparation_path.resolve())
+for name in ['source-candidate.json', 'source-recipe.json', 'source-verification-result.json', 'raw-evidence-bindings.json', 'deterministic-mapping.json', 'implementation-handoff.json']:
+    metadata_files.add((source_candidate_path.parent / name).resolve())
+body_files = {(DATA / p['body_file']).resolve() for p in recipe['parts']}
+assert len(body_files) == 50
+for row in read(source_candidate_path.parent / 'raw-evidence-bindings.json')['files']:
+    p = (DATA / row['file']).resolve()
+    assert p.stat().st_size == row['bytes'] and sha(p) == row['sha256']
+    if p == parent:
+        continue
+    if p.suffix.lower() in {'.bin', '.tif', '.tiff'}:
+        body_files.add(p)
+    else:
+        metadata_files.add(p)
+assert parent not in core_files | metadata_files | body_files
+assert not core_files & metadata_files and not metadata_files & body_files and not core_files & body_files
+assert all(p.is_relative_to(ROOT.resolve()) and p.is_file() and not p.is_symlink() for p in core_files | metadata_files | body_files)
+assert all(p.suffix.lower() not in {'.tif', '.tiff', '.bin', '.jpg', '.jpeg', '.png'} for p in metadata_files | core_files)
+assert not CONTROL.exists() and not LOCAL_JOB.exists()
+CONTROL.mkdir(exist_ok=False)
+progress = (CONTROL / 'progress.jsonl').open('x', encoding='ascii')
+
+
+def event(phase, **fields):
+    value = {'phase': phase, 'recorded_at_utc': now(), **fields}
+    progress.write(json.dumps(value) + '\n')
+    progress.flush()
+    os.fsync(progress.fileno())
+    print(json.dumps(value), flush=True)
+
+
+core_archive = CONTROL / 'core-input.tar'
+metadata_archive = CONTROL / 'metadata-input.tar'
+archive(core_archive, core_files)
+archive(metadata_archive, metadata_files)
+runtime = FAST / 'conditional_parts_native32_remote_runtime_v1.py'
+runtime_bytes = runtime.read_bytes()
+compile(runtime_bytes, str(runtime), 'exec')
+request = {'format': 'drone.p6-conditional-parts-native32-runtime-request/v1', 'candidate_commit': COMMIT,
+    'task_root': TASK, 'control_directory': remote_path(CONTROL), 'job_directory': JOB,
+    'frozen_directory': remote_path(frozen), 'prepared_directory': remote_path(prepared),
+    'source_candidate_file': str(source_candidate_path), 'source_candidate_sha256': sha(source_candidate_path),
+    'source_recipe_sha256': sha(recipe_path), 'parent_remote_path': remote_path(parent), 'parent_sha256': sha(parent), 'parent_bytes': parent.stat().st_size,
+    'core_archive_path': remote_path(core_archive), 'core_archive_sha256': sha(core_archive), 'core_archive_bytes': core_archive.stat().st_size,
+    'metadata_archive_path': remote_path(metadata_archive), 'metadata_archive_sha256': sha(metadata_archive), 'metadata_archive_bytes': metadata_archive.stat().st_size,
+    'core_bindings': bindings(core_files), 'metadata_bindings': bindings(metadata_files), 'body_bindings': bindings(body_files),
+    'source_composition_body_files': 50, 'auxiliary_probe_body_files': len(body_files) - 50,
+    'local_plan_file': str(plan_path), 'local_plan_sha256': sha(plan_path), 'purpose_sha256': preparation['purpose_sha256'],
+    'frozen_core_sha256': core, 'extractor_file': preparation['extractor_file'], 'extractor_sha256': preparation['extractor_sha256'],
+    'runtime_sha256': sha(runtime), 'data_python': OUTER + '/tools-venv/bin/python',
+    'full_tif_in_input_tar': False, 'full_parent_upload_planned': False, 'formal_assets_admitted': 0,
+    'software_full_qa_status': 'parent_owned_not_asserted_here'}
+save(CONTROL / 'runtime-request.json', request)
+sys.path.insert(0, str(REPO / 'scripts'))
+from dev_stack import Connection
+
+connection = Connection.from_environment()
+phase = 'preflight'
+
+
+def transport(command, label, **kwargs):
+    started = now()
+    child = subprocess.run(command, capture_output=True, **kwargs)
+    receipt = {'started_at_utc': started, 'finished_at_utc': now(), 'returncode': child.returncode,
+        'stdout_bytes': len(child.stdout), 'stdout_sha256': hashlib.sha256(child.stdout).hexdigest(),
+        'stderr_bytes_withheld': len(child.stderr), 'stderr_sha256': hashlib.sha256(child.stderr).hexdigest(),
+        'ssh_stderr_not_printed': True}
+    save(CONTROL / (label + '-receipt.json'), receipt)
+    if label == 'execution':
+        with (CONTROL / 'execution-stdout.json').open('xb') as handle:
+            handle.write(child.stdout)
+    if child.returncode:
+        raise RuntimeError('Transport failed at ' + label + '; actual receipt retained, no overwrite retry')
+    return child
+
+
+preflight = r'''
+import hashlib,json,pathlib,shutil,stat
+from datetime import datetime,timezone
+R=REQUEST;task=pathlib.Path(R['task_root']);data=task.parent;control=pathlib.Path(R['control_directory']);job=pathlib.Path(R['job_directory']);frozen=pathlib.Path(R['frozen_directory']);parent=pathlib.Path(R['parent_remote_path'])
+assert str(task)=='/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018' and task.resolve()==task
+def contained(p):
+ assert p.resolve()==p and p.is_relative_to(task) and not p.is_symlink();return p
+def digest(p):
+ with p.open('rb') as h:return hashlib.file_digest(h,'sha256').hexdigest()
+def snap(p):
+ s=p.stat();return {'bytes':s.st_size,'sha256':digest(p),'device':s.st_dev,'inode':s.st_ino,'mode':s.st_mode,'uid':s.st_uid,'gid':s.st_gid,'mtime_ns':s.st_mtime_ns,'ctime_ns':s.st_ctime_ns}
+assert control==task/'resume-20261022-fast/conditional-parts-native32-control-v1' and job==task/'resume-20261022-fast/conditional-parts-native32-v1' and frozen==task/'software-audit-4800ea0-20261022'
+for p in [control,job,frozen,parent]:assert not contained(p).exists()
+ram=next(int(x.split()[1])*1024 for x in pathlib.Path('/proc/meminfo').read_text().splitlines() if x.startswith('MemAvailable:'));disk=shutil.disk_usage(task);assert ram>=3*1024**3 and disk.free>=8*1024**3
+all_inputs={**R['core_bindings'],**R['metadata_bindings'],**R['body_bindings']};assert len(all_inputs)==sum(len(R[k]) for k in ['core_bindings','metadata_bindings','body_bindings'])
+existing={};absent=[];uploads=[]
+for name,expected in all_inputs.items():
+ assert '..' not in pathlib.PurePosixPath(name).parts
+ p=contained(data/name)
+ if p.exists():
+  assert p.is_file() and stat.S_ISREG(p.lstat().st_mode) and p.stat().st_size==expected['bytes'] and digest(p)==expected['sha256'],'Existing input differs; never overwrite'
+  existing[name]=snap(p)
+ else:
+  absent.append(name)
+  if name in R['body_bindings']:uploads.append(name)
+old=task/'software-audit-f132b98-20261021';old_expected=dict(R['frozen_core_sha256']);old_expected['p6_oam_capture.py']='c36e99df13290fc997b75fc0a9d040a942bfcd305aabdfafcc5a28cfacbac047'
+old_snapshot={}
+for name,expected in old_expected.items():
+ p=contained(old/name);assert digest(p)==expected;old_snapshot[p.relative_to(data).as_posix()]=snap(p)
+control.mkdir(exist_ok=False);frozen.mkdir(exist_ok=False)
+for name in uploads:(data/name).parent.mkdir(parents=True,exist_ok=True);contained((data/name).parent)
+receipt={'format':'drone.p6-conditional-native32-upload-preflight/v1','passed':True,'candidate_commit':R['candidate_commit'],'recorded_at_utc':datetime.now(timezone.utc).isoformat(),'memory_available_bytes':ram,'disk_free_bytes':disk.free,'parent_target':str(parent),'parent_target_was_absent':True,'frozen_target_was_absent':True,'required_body_uploads':uploads,'existing_input_snapshots':existing,'initially_absent_inputs':absent,'old_f132_snapshot':old_snapshot,'full_parent_not_uploaded':True,'metadata_and_core_tars_exclude_source_bodies':True}
+with (control/'upload-preflight.json').open('x') as h:json.dump(receipt,h,indent=2)
+print(json.dumps(receipt))
+'''
+
+core_install = r'''
+import hashlib,json,pathlib,tarfile
+from datetime import datetime,timezone
+R=REQUEST;task=pathlib.Path(R['task_root']);data=task.parent;frozen=pathlib.Path(R['frozen_directory']);control=pathlib.Path(R['control_directory']);archive=pathlib.Path(R['core_archive_path'])
+def sha(p):
+ with p.open('rb') as h:return hashlib.file_digest(h,'sha256').hexdigest()
+assert frozen==task/'software-audit-4800ea0-20261022' and archive.parent==control and archive.stat().st_size==R['core_archive_bytes'] and sha(archive)==R['core_archive_sha256']
+with tarfile.open(archive,'r:') as bundle:
+ members=bundle.getmembers();assert len(members)==len(R['core_bindings']) and len({m.name for m in members})==len(members)
+ for m in members:
+  assert m.isfile() and m.name in R['core_bindings']
+  p=data/m.name;assert p.parent==frozen and p.resolve()==p and not p.exists()
+  raw=bundle.extractfile(m).read();expected=R['core_bindings'][m.name];assert len(raw)==expected['bytes'] and hashlib.sha256(raw).hexdigest()==expected['sha256']
+  with p.open('xb') as h:h.write(raw)
+assert all(sha(frozen/n)==h for n,h in R['frozen_core_sha256'].items())
+receipt={'format':'drone.p6-exact-core-install/v1','passed':True,'candidate_commit':R['candidate_commit'],'origin':'git show exact commit bytes','core_sha256':{n:sha(frozen/n) for n in R['frozen_core_sha256']},'old_f132_modified':False,'recorded_at_utc':datetime.now(timezone.utc).isoformat()}
+with (control/'core-install-result.json').open('x') as h:json.dump(receipt,h,indent=2)
+print(json.dumps(receipt))
+'''
+
+try:
+    event('cloud_preflight_started')
+    sent = ('REQUEST=' + repr(request) + '\n' + preflight).encode()
+    child = transport(['ssh', *connection.arguments(), connection.target, 'python3 -B -u -'], 'preflight', input=sent, timeout=180)
+    remote_preflight = json.loads(child.stdout)
+    save(CONTROL / 'cloud-upload-preflight.json', remote_preflight)
+    event('cloud_preflight_passed', ram=remote_preflight['memory_available_bytes'], free_disk=remote_preflight['disk_free_bytes'], body_uploads=len(remote_preflight['required_body_uploads']))
+    phase = 'upload_exact_core'
+    transport(['scp', *connection.arguments(), str(core_archive), connection.target + ':' + request['core_archive_path']], 'upload-core', timeout=300)
+    sent = ('REQUEST=' + repr(request) + '\n' + core_install).encode()
+    child = transport(['ssh', *connection.arguments(), connection.target, 'python3 -B -u -'], 'install-core', input=sent, timeout=180)
+    save(CONTROL / 'cloud-core-install-result.json', json.loads(child.stdout))
+    event('exact_core_installed_and_hashed', candidate_commit=COMMIT, core_sha256=core)
+    groups = {}
+    for relative in remote_preflight['required_body_uploads']:
+        p = DATA / relative
+        assert p in body_files and p.name.replace('-', '').replace('.', '').replace('_', '').isalnum()
+        groups.setdefault(str(PurePosixPath(remote_path(p)).parent), []).append(p)
+    for index, (destination, files) in enumerate(sorted(groups.items()), 1):
+        phase = 'upload_body_group_' + str(index)
+        event(phase + '_started', files=len(files), bytes=sum(p.stat().st_size for p in files))
+        transport(['scp', *connection.arguments(), *[str(p) for p in sorted(files)], connection.target + ':' + destination], 'upload-body-group-' + str(index), timeout=3600)
+        event(phase + '_finished')
+    phase = 'upload_metadata'
+    event('metadata_upload_started', bytes=metadata_archive.stat().st_size)
+    transport(['scp', *connection.arguments(), str(metadata_archive), connection.target + ':' + request['metadata_archive_path']], 'upload-metadata', timeout=600)
+    phase = 'execute_native32'
+    event('cloud_native32_runtime_started')
+    sent = ('REQUEST=' + repr(request) + '\nRUNTIME_SOURCE=' + repr(runtime_bytes) + '\nexec(compile(RUNTIME_SOURCE,"conditional_parts_native32_remote_runtime_v1.py","exec"))\n').encode()
+    child = transport(['ssh', *connection.arguments(), connection.target, OUTER + '/tools-venv/bin/python -B -u -'], 'execution', input=sent, timeout=3600)
+    payload = json.loads(child.stdout)
+    save(CONTROL / 'cloud-result.json', payload)
+    phase = 'fetch_full_results'
+    assert payload['job_directory'] == JOB and not LOCAL_JOB.exists()
+    event('fetch_full_primary_replay_and_metadata_started', bound_files=len(payload['bindings']))
+    transport(['scp', '-r', *connection.arguments(), connection.target + ':' + JOB, str(FAST)], 'download-results', timeout=3600)
+    expected_paths = set()
+    for relative, bound in payload['bindings'].items():
+        p = (DATA / relative).resolve()
+        assert p.is_relative_to(LOCAL_JOB.resolve()) and p.is_file() and not p.is_symlink()
+        assert p.stat().st_size == bound['bytes'] and sha(p) == bound['sha256']
+        expected_paths.add(p)
+    assert {p.resolve() for p in LOCAL_JOB.rglob('*') if p.is_file()} == expected_paths
+    witness = CONTROL / 'remote-witness-v1'
+    witness.mkdir(exist_ok=False)
+    for name, bound in payload['control_bindings'].items():
+        assert Path(name).name == name and name.endswith('.json')
+        transport(['scp', *connection.arguments(), connection.target + ':' + request['control_directory'] + '/' + name, str(witness / name)], 'fetch-witness-' + name, timeout=180)
+        assert (witness / name).stat().st_size == bound['bytes'] and sha(witness / name) == bound['sha256']
+    local_result = read(LOCAL_JOB / 'provenance/result.json')
+    assert local_result == payload['result'] and local_result['candidate_commit'] == COMMIT
+    frames, replay = read(LOCAL_JOB / 'frames/result.json'), read(LOCAL_JOB / 'replay/result.json')
+    passed = local_result['status'] == 'passed' and local_result['checked'] == local_result['passed'] == 32
+    passed = passed and frames['expected'] == frames['extracted'] == replay['expected'] == replay['extracted'] == replay['replay_count'] == replay['replay_matched'] == 32
+    summary = {'format': 'drone.p6-conditional-native32-controller-result/v1', 'status': 'passed' if passed else 'failed_source_or_native_gate',
+        'recorded_at_utc': now(), 'candidate_commit': COMMIT, 'native_extracted': frames['extracted'], 'offline_replay_matched': replay['replay_matched'],
+        'actual_derived_capture_checked': local_result['checked'], 'actual_derived_capture_passed': local_result['passed'],
+        'result_directory': str(LOCAL_JOB), 'result_sha256': sha(LOCAL_JOB / 'provenance/result.json'), 'frozen_core_sha256': core,
+        'runtime_sha256': sha(runtime), 'extractor_sha256': preparation['extractor_sha256'], 'source_recipe_sha256': request['source_recipe_sha256'],
+        'new_cloud_directory_space': payload['new_directory_space'], 'result_files': len(expected_paths), 'all_result_files_size_and_sha_verified': True,
+        'remote_control_witness_files_fetched_byte_identical': len(payload['control_bindings']), 'full_parent_uploaded': False,
+        'full_tif_in_input_tar': False, 'output_tar_created': False, 'images_viewed': 0, 'business_labels_created': 0, 'formal_model_calls': 0,
+        'formal_assets_admitted': 0, 'site_independence_admitted': False, 'repeated_capture_eligible': False, 'software_full_qa_status': 'parent_owned_not_asserted_here', 'wp_p6_01_closed': False}
+    save(CONTROL / 'controller-result.json', summary)
+    event('finished', **summary)
+    assert passed, 'Actual data gate failed; original evidence preserved'
+except Exception as exc:
+    failure = {'status': 'failed_preserved_evidence', 'phase': phase, 'recorded_at_utc': now(), 'candidate_commit': COMMIT,
+        'error_type': type(exc).__name__, 'error_message': str(exc), 'no_cleanup_or_overwrite_retry': True,
+        'images_viewed': 0, 'business_labels_created': 0, 'formal_assets_admitted': 0, 'formal_model_calls': 0}
+    save(CONTROL / 'controller-failure.json', failure)
+    event('failed', detail=failure)
+    raise
+finally:
+    progress.close()

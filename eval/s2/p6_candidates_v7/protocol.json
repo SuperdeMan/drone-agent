@@ -1,0 +1,42 @@
+{
+  "format": "drone.road-contact-protocol/v1",
+  "date": "2026-10-15",
+  "policy_id": "road-contact-dev-v1",
+  "user_policy": "暂无门槛，先按目标内实体遮挡候选推进",
+  "prompt_version": "road-region-contact-dev-v3",
+  "exposed_development_targets": 6,
+  "unique_source_images": 5,
+  "planned_calls": 6,
+  "maximum_attempts_per_case": 1,
+  "minimum_start_interval_s": 30,
+  "automatic_retry": false,
+  "consecutive_failure_stop": 3,
+  "minimum_size_threshold": null,
+  "minimum_occupancy_ratio": null,
+  "input_policy": "byte-identical v4 full views, original plus neutral cyan support outline",
+  "source_support_is_registered_asset": false,
+  "ai_boundary_drafts_or_labels_in_model_request": false,
+  "independent_human_ground_truth_available": false,
+  "expected_business_verdicts": null,
+  "report_fields": [
+    "attempted",
+    "answered",
+    "schema_valid",
+    "strict_replays",
+    "verdict_distribution",
+    "raw_candidate_boxes",
+    "reason",
+    "uncertainty",
+    "historical_response_transitions",
+    "token_usage"
+  ],
+  "forbidden_claims": [
+    "accuracy",
+    "recall",
+    "false_positive_rate",
+    "causal_prompt_improvement",
+    "formal_release_pass"
+  ],
+  "default_profile_change": false,
+  "formal_release_eligible": false
+}

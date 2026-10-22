@@ -1,0 +1,139 @@
+"""Summarize complete originals and header-only candidates without business labels.
+
+汇总完整原图和仅头部候选，保留业务标签缺失。
+"""
+import hashlib
+import json
+import math
+from collections import Counter, defaultdict
+from pathlib import Path
+
+from PIL import Image
+
+ROOT = Path(__file__).resolve().parent
+DATA = ROOT / "floodnet"
+
+
+def read(path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def save(path, value):
+    with path.open("x", encoding="utf-8") as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2, allow_nan=False)
+
+
+def distance(a, b):
+    first, second = map(math.radians, (a["gps"][0], b["gps"][0]))
+    delta = math.radians(b["gps"][1] - a["gps"][1])
+    value = math.sin((second - first) / 2) ** 2 + math.cos(first) * math.cos(second) * math.sin(delta / 2) ** 2
+    return 12742000 * math.asin(min(1, math.sqrt(value)))
+
+
+def main():
+    original = read(DATA / "image-metadata.json")
+    headers = read(DATA / "header-inspection-512/result.json")
+    expansion = read(DATA / "mirror-expansion-32/result.json")
+    resumed = read(DATA / "mirror-expansion-32-resume/result.json")
+    metadata = {r["image_id"]: dict(r) for r in original["rows"]}
+    for row in metadata.values():
+        row["completeness"] = "complete_original"
+        row["file"] = "floodnet/" + row["file"]
+    for row in headers["rows"]:
+        if row["status"] == "metadata_read":
+            metadata[row["image_id"]] = {**row, "completeness": "header_only", "file": None, "image_sha256": None}
+    acquisitions = [("mirror-expansion-32", r) for r in expansion["rows"]]
+    acquisitions += [("mirror-expansion-32-resume", r) for r in resumed["rows"]]
+    for directory, result in acquisitions:
+        if not result["image_verified"]:
+            continue
+        file = DATA / directory / result["image_file"]
+        if sha(file) != result["image_sha256"]:
+            raise ValueError("acquired image changed")
+        row = metadata[result["image_id"]]
+        with Image.open(file) as picture:
+            picture.load()
+            if list(picture.size) != [row["width"], row["height"]]:
+                raise ValueError("image dimensions differ from header metadata")
+        row.update(completeness="complete_original", file=file.relative_to(ROOT).as_posix(),
+                   image_sha256=result["image_sha256"], bytes=result["image_bytes"],
+                   all_pixels_decoded=True, full_image_crc_verified=True, full_image_acquired=True)
+    rows = sorted(metadata.values(), key=lambda r: int(r["image_id"]))
+    complete = [r for r in rows if r["completeness"] == "complete_original"]
+    for row in complete:
+        file = ROOT / row["file"]
+        if sha(file) != row["image_sha256"]:
+            raise ValueError("original image changed")
+        with Image.open(file) as picture:
+            picture.load()
+            pixels = picture.convert("L").resize((17, 16), Image.Resampling.BILINEAR).load()
+            fingerprint = 0
+            for y in range(16):
+                for x in range(16):
+                    fingerprint = (fingerprint << 1) | (pixels[x, y] > pixels[x + 1, y])
+        row["prior_dhash256"] = row.get("dhash256")
+        row["dhash256"] = f"{fingerprint:064x}"
+        row["dhash_method"] = "L,17x16,bilinear,row-major,left-greater-than-right,msb-first/v1"
+        row.update(asset_id=None, site_id=None, capture_batch_id=None, capture_timezone=None,
+                   human_grouping_verified=False, p6_split="unassigned_quarantine", business_label=None,
+                   agent_semantic_inspection=False)
+    gps_rows = [r for r in rows if r.get("gps")]
+    groups_by_radius = {}
+    for radius in (100, 250, 500, 1000):
+        parent = list(range(len(gps_rows)))
+        def find(i):
+            while i != parent[i]:
+                parent[i] = parent[parent[i]]
+                i = parent[i]
+            return i
+        for i, left in enumerate(gps_rows):
+            for j in range(i):
+                if distance(left, gps_rows[j]) <= radius:
+                    parent[find(i)] = find(j)
+        components = defaultdict(list)
+        for i, row in enumerate(gps_rows):
+            components[find(i)].append(row)
+        groups = []
+        for component in sorted(components.values(), key=lambda g: min(int(r["image_id"]) for r in g)):
+            ids = sorted((r["image_id"] for r in component), key=int)
+            groups.append({"candidate_group_id": f"gps{radius}-" + hashlib.sha256(",".join(ids).encode()).hexdigest()[:12],
+                           "image_ids": ids, "complete_originals": sum(r["completeness"] == "complete_original" for r in component),
+                           "camera_dates": sorted({r.get("capture_time_text", "")[:10] for r in component}),
+                           "human_verified": False, "independent_site_proven": False})
+        groups_by_radius[str(radius)] = groups
+    similar = []
+    for i, left in enumerate(complete):
+        for right in complete[:i]:
+            hamming = (int(left["dhash256"], 16) ^ int(right["dhash256"], 16)).bit_count()
+            if hamming <= 32:
+                similar.append({"image_ids": [left["image_id"], right["image_id"]], "dhash256_distance": hamming,
+                                "gps_distance_m": round(distance(left, right), 2) if left.get("gps") and right.get("gps") else None,
+                                "same_asset_verified": False})
+    result = {"format": "drone.floodnet-acquisition-pool/v1", "sources": {
+        "author": "https://github.com/BinaLab/FloodNet-Supervised_v1.0/tree/1cba183788e5661c1ec326d7ded1f2536f82e9ad",
+        "mirror": "https://huggingface.co/datasets/torchgeo/floodnet/tree/c5ea256ffb7832d5ae78cda3f4b812521faf32c5",
+        "license": "CDLA-Permissive-1.0"},
+        "inputs": {str(p.relative_to(ROOT)): sha(p) for p in [DATA / "image-metadata.json", DATA / "header-inspection-512/result.json", DATA / "mirror-expansion-32/result.json", DATA / "mirror-expansion-32-resume/result.json"]},
+        "tool_sha256": sha(Path(__file__)), "complete_originals": len(complete),
+        "unique_original_hashes": len({r["image_sha256"] for r in complete}),
+        "header_only_images": len(rows) - len(complete), "metadata_images": len(rows),
+        "camera_date_counts": dict(Counter(r.get("capture_time_text", "")[:10] for r in rows)),
+        "camera_model_counts": dict(Counter(r.get("exif_model", "").strip("\0 ") for r in rows)),
+        "gps_present": len(gps_rows), "human_business_labels": 0, "formal_split_assigned": 0,
+        "formal_release_eligible": False, "agent_semantic_inspection": False,
+        "caveats": ["Only complete originals count as acquired images; header bytes are not usable evaluation images.",
+                    "GPS components are conservative grouping candidates, not registered road assets or independent sites.",
+                    "Camera date has no known timezone; calendar date alone does not establish an independent capture batch.",
+                    "Original source train/validation/test folders are not P6 partitions.",
+                    "Byte integrity does not establish business suitability, labels, same-state pairs or clearance effects."],
+        "near_duplicate_candidates": similar, "gps_group_candidates": groups_by_radius, "rows": rows}
+    save(DATA / "acquisition-pool.json", result)
+    print(json.dumps({k: v for k, v in result.items() if k not in {"rows", "gps_group_candidates", "sources", "inputs"}}, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

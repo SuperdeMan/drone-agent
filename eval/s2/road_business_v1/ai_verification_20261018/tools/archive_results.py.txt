@@ -1,0 +1,76 @@
+"""Archive review metadata and software evidence without publishing original images.
+
+归档复核元数据与软件证据，不发布原图。
+"""
+import hashlib
+import json
+import shutil
+from datetime import UTC, datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+REPO = Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+ARCHIVE = REPO / 'eval/s2/road_business_v1/ai_verification_20261018'
+
+def read(path):
+    return json.loads(path.read_text(encoding='utf-8-sig'))
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def save(path, value):
+    with path.open('x', encoding='utf-8', newline='\n') as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2)
+        stream.write('\n')
+
+summary = read(ROOT / 'snapshot-final/summary.json')
+software = read(ROOT / 'software-v2/software-final.json')
+assert summary['complete'] and summary['reviewed'] == 415 and not summary['integrity_issues']
+assert software['code_freeze_commit'] == '8b936a4b40ebb09029496ea7c15afeeef900415c'
+assert software['full_pytest']['status'] == 'passed'
+copies = []
+
+def copy(source, destination):
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        assert destination.read_bytes() == source.read_bytes(), str(destination)
+    else:
+        shutil.copyfile(source, destination)
+    copies.append({'file': destination.relative_to(ARCHIVE).as_posix(), 'source': str(source), 'sha256': sha(source), 'bytes': source.stat().st_size})
+
+for relative in ('registration.json', 'registration-v2.json', 'registration-v3.json', 'assignment-1.json', 'assignment-2.json', 'assignment-3.json', 'assignment-4.json', 'assignment-5.json', '7099-correction-record.json',
+                 'reassignment.json', 'code-review.json', 'targeted.xml', 'targeted-pair.xml', 'targeted-v2.xml', 'documentation-audit.json', 'links-code-freeze.json', 'original-packages-preserved.json'):
+    copy(ROOT / relative, ARCHIVE / relative)
+for folder in ('snapshot-final', 'reassignment-snapshot', 'snapshot-before-correction'):
+    for source in sorted((ROOT / folder).rglob('*.json')):
+        copy(source, ARCHIVE / folder / source.relative_to(ROOT / folder))
+for subfolder, destination in ((ROOT, ARCHIVE / 'software-b5c7876'), (ROOT / 'software-v2', ARCHIVE / 'software-8b936a4')):
+    for name in ('software-final.json', 'full-pytest-start.json', 'full-pytest-result.json', 'full-pytest-skips.json',
+                 'full-pytest.xml', 'full-pytest.log', 'ruff-final.log', 'readiness-final.json'):
+        copy(subfolder / name, destination / name)
+    for source in sorted((subfolder / 'closure-evidence').glob('*.json')):
+        copy(source, destination / 'closure-evidence' / source.name)
+    for source in sorted((subfolder / 'closure-evidence-final').glob('*.json')):
+        copy(source, destination / 'closure-evidence-final' / source.name)
+for source in sorted((ROOT / 'source-discovery').iterdir()):
+    if source.suffix in {'.json', '.xml', '.md', '.html'}:
+        copy(source, ARCHIVE / 'source-discovery' / source.name)
+for name in ('plan.json', 'result.json', 'source-suitability.json'):
+    copy(ROOT / 'ladi-pilot' / name, ARCHIVE / 'ladi-pilot' / name)
+for source in sorted((ROOT / 'ladi-pilot').glob('*-receipt.json')):
+    copy(source, ARCHIVE / 'ladi-pilot/receipts' / source.name)
+for source in (ROOT / 'repeat-candidates.json', ROOT / 'repeat-review/reviews.json'):
+    if source.exists():
+        copy(source, ARCHIVE / 'repeat-candidates' / source.name)
+for source in sorted(ROOT.glob('*.py')):
+    copy(source, ARCHIVE / 'tools' / (source.name + '.txt'))
+copy(ROOT / 'software-v2/run_full_verification.py', ARCHIVE / 'tools/run_full_verification-v2.py.txt')
+guidance = Path('D:/drone-agent-data/p6-annotation-guidance-20261018/6337-guidance.json')
+copy(guidance, ARCHIVE / '6337-guidance.json')
+copy(REPO / 'eval/s2/road_business_v1/exposure-registry.json', ARCHIVE / 'exposure-registry-final.json')
+receipt = {'format': 'drone.p6-ai-verification-archive/v1', 'created_at': datetime.now(UTC).isoformat(),
+    'software_candidate': software['code_freeze_commit'], 'files': copies, 'original_images_published': 0,
+    'formal_release_eligible': False, 'wp_p6_01_closed': False}
+save(ARCHIVE / 'file-hashes.json', receipt)
+save(ROOT / 'archive-receipt.json', {'archive': str(ARCHIVE), 'files': len(copies), 'index_sha256': sha(ARCHIVE / 'file-hashes.json')})
+print(json.dumps({'files': len(copies), 'archive': str(ARCHIVE), 'sha256': sha(ARCHIVE / 'file-hashes.json')}))

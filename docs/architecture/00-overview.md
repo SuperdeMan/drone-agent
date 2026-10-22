@@ -10,7 +10,7 @@
 
 ### 当前实现与阅读边界（2026-10-15）
 
-**只有软件，全部在仿真中验证。** M0–M2 已完成单机仿真；M3-SITL 已通过，M3-JIL 待硬件（原 M3 总门禁仍为 `not_passed`，由 H1 承接）；P0–P5 已完成（软件 / SITL / 协议模拟范围），常驻任务台即平台 v0.1；P6 的 WP-P6-02–07 已准出，WP-P6-01 目标业务评测集尚未冻结；X1 的 WP-X1-01 空地联合仿真已准出（软件 / SITL 范围），常驻任务台不接入。2026-10-10 的[外部评审](../research/external-review-2026-10-10.md)带来契约加固（D075）、P4 的 S2 复验（D076）、持续检查（D077）与 P6 的七个工作包。各阶段的准确版本、证据与边界以[路线图 §1](../roadmap.md) 及其链接的验收记录为准；原架构审阅基线为 `9223d74`。
+**只有软件，全部在仿真中验证。** M0–M2 已完成单机仿真；M3-SITL 已通过，M3-JIL 待硬件（原 M3 总门禁仍为 `not_passed`，由 H1 承接）；P0–P5 已完成（软件 / SITL / 协议模拟范围），常驻任务台即平台 v0.1；P6 的 WP-P6-02–07 已准出，WP-P6-01已按D091工程交付收口，完整D089道路业务验收尚未通过；X1 的 WP-X1-01 空地联合仿真已准出（软件 / SITL 范围），常驻任务台不接入。2026-10-10 的[外部评审](../research/external-review-2026-10-10.md)带来契约加固（D075）、P4 的 S2 复验（D076）、持续检查（D077）与 P6 的七个工作包。各阶段的准确版本、证据与边界以[路线图 §1](../roadmap.md) 及其链接的验收记录为准；原架构审阅基线为 `9223d74`。
 
 | 链路 | 当前落地 | 进一步阅读 |
 |---|---|---|
@@ -184,6 +184,21 @@ flowchart TB
 
 | 文档 | 回答的问题 |
 |---|---|
+| [../p6-road-corpus-handoff-2026-10-22.md](../p6-road-corpus-handoff-2026-10-22.md) | WP-P6-01公开素材库存与历史核验；工程收口按D091，完整道路业务验收仍未通过 |
+| [../p6-engineering-readiness.md](../p6-engineering-readiness.md) | D091 已批准的P6工程交付范围、独立检查和准确验收版本；不授予道路业务验收资格 |
+| [../road-business-validation-backlog.md](../road-business-validation-backlog.md) | 从工程交付移交的完整D089道路业务验收，运营前完成；当前未验证 |
+| [../p6-materials-review.md](../p6-materials-review.md) · [第二批](../p6-materials-round2.md) | 公开来源、许可差异、图像 / 标注审计与正式数据缺口 |
+| [../p6-materials-development.md](../p6-materials-development.md) | 26 条开发输入、10 条实调与严格回放、复核工具及浏览器检查 |
+| [../p6-road-views-development.md](../p6-road-views-development.md) | 道路整图 / 分块的 24 条开发实调、离线工具、边界复核与未采用结论 |
+| [../p6-road-boundaries-development.md](../p6-road-boundaries-development.md) · [当前交接](../p6-road-corpus-handoff-2026-10-22.md) | 无大小门槛的遮挡候选口径、6 目标 / 13 组 AI 几何草稿与待业务复核项 |
+| [../p6-boundary-review-guide.md](../p6-boundary-review-guide.md) | 离线圈绘、道路版本依赖、复核导入导出、来源与几何校验；开发记录不自动升级为正式真值 |
+| [../p6-road-contact-development.md](../p6-road-contact-development.md) | 无大小门槛新提示的六条开发录制、候选范围风险与环境核对失败；未采用 |
+| [../p6-candidate-review-development.md](../p6-candidate-review-development.md) | 逐候选六次实调：环境核对通过、仅两条协议合格、33 项仍待复核；保留首次忙锁记录，协议未采用 |
+| [../p6-candidate-groups-development.md](../p6-candidate-groups-development.md) | 实体群协议六条实调合格：20 项候选 / 3 项范围外 / 10 项待复核；仍有定位矛盾，33 项未经人工确认 |
+| [../p6-proposal-viewer-guide.md](../p6-proposal-viewer-guide.md) | 固定提案 ID 的原图 / 模型视图与局部定位对照；只读开发工具，不登记人工结论 |
+| [../p6-business-evaluation.md](../p6-business-evaluation.md) | WP-P6-01 关闭主线：独立业务标注、道路数据准入、五类指标及冻结顺序；缺失证据不准出 |
+| [../p6-road-labeling-guide.md](../p6-road-labeling-guide.md) | 原图完整目标定义、独立业务标注、真实标注计时及受信包导入；不自动授予正式拆分或计作候选复核耗时 |
+| [../p6-floodnet-acquisition.md](../p6-floodnet-acquisition.md) | 新增公开航拍原图、作者与镜像范围校验、拍摄元数据和未确认分组；完整原图与仅头部记录分开 |
 | [../p6-implementation.md](../p6-implementation.md) | P6 主动补拍与目标区域质量的实施方案（D078，2026-10-10 批准） |
 | [../p6-recapture-readiness.md](../p6-recapture-readiness.md) | WP-P6-02 验收记录（2026-10-10，`ecee452`，软件 / SITL 范围） |
 | [../p6-adversarial-implementation.md](../p6-adversarial-implementation.md) | WP-P6-03 真实模型对抗录制与规划器按站点取上下文的实施方案（D079） |

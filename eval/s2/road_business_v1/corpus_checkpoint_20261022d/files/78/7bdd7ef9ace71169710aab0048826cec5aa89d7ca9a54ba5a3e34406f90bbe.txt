@@ -1,0 +1,81 @@
+"""Register only contexts actually launched by the orchestrator. / 只登记编排者已实际启动的上下文。"""
+import argparse
+import copy
+import hashlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+parser = argparse.ArgumentParser()
+parser.add_argument('--base-version', required=True)
+parser.add_argument('--new-version', required=True)
+parser.add_argument('--role', choices=['annotator', 'reviewer'], required=True)
+parser.add_argument('--worker', action='append', required=True)
+args = parser.parse_args()
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def read(path):
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
+def save(path, doc):
+    with path.open('x', encoding='utf-8', newline='\n') as stream:
+        json.dump(doc, stream, ensure_ascii=False, indent=2)
+
+
+now = datetime.now(timezone.utc).isoformat()
+old_context = ROOT / ('annotation-context-' + args.base_version + '.json')
+old_registration = ROOT / ('review-registration-' + args.base_version + '.json')
+context, registration = copy.deepcopy(read(old_context)), copy.deepcopy(read(old_registration))
+context['created_at'] = registration['created_at'] = now
+context['continuation_base'] = {'file': str(old_context), 'sha256': sha(old_context)}
+registration['continuation_base'] = {'file': str(old_registration), 'sha256': sha(old_registration)}
+events = []
+for worker in args.worker:
+    folder = ROOT / ('annotation' if args.role == 'annotator' else 'verification') / worker
+    assignment_path = folder / 'assignment.json'
+    assignment = read(assignment_path)
+    ident_key = 'author_id' if args.role == 'annotator' else 'reviewer_id'
+    assert assignment[ident_key] == worker and assignment['samples']
+    task = '/root/' + worker.replace('bounded_annotator_', 'bounded_road_annotator_').replace('bounded_verifier_', 'bounded_road_verifier_')
+    event = {'recorded_at': now, 'role': args.role, 'worker_id': worker, 'task_name': task,
+             'assignment_file': str(assignment_path), 'assignment_sha256': sha(assignment_path),
+             'history_fork': 'none', 'provider': 'codex-session', 'exact_model_identifier': None,
+             'evaluation_prompt_provided': False, 'evaluation_outputs_provided': False, 'source_labels_provided': False,
+             'actual_launch_record_basis': 'Successful collaboration.spawn_agent returned this canonical task before registration.',
+             'task_actually_launched': True, 'human_reviews_created': 0}
+    events.append((folder, event))
+    if args.role == 'annotator':
+        assert worker not in context['annotators']
+        context['annotators'][worker] = {key: event[key] for key in ('task_name', 'history_fork', 'provider', 'exact_model_identifier', 'evaluation_prompt_provided', 'evaluation_outputs_provided', 'source_labels_provided', 'assignment_file', 'assignment_sha256')}
+        context['annotators'][worker].update(neutral_geometry_hints_provided=True, assigned_images={s['sample_id']: s['image_sha256'] for s in assignment['samples']})
+    else:
+        assert worker not in {r['reviewer_id'] for r in registration['assignments']}
+        registration['assignments'].append({'file': str(assignment_path), 'sha256': sha(assignment_path),
+                                           'reviewer_id': worker, 'task_name': task, 'history_fork': 'none',
+                                           'provider': 'codex-session', 'exact_model_identifier': None, 'count': len(assignment['samples'])})
+new_context = ROOT / ('annotation-context-' + args.new_version + '.json')
+new_registration = ROOT / ('review-registration-' + args.new_version + '.json')
+save(new_context, context)
+save(new_registration, registration)
+log = ROOT / 'resume-20261021/actual-contexts.jsonl'
+prefix = log.read_bytes()
+assert not prefix or prefix.endswith(b'\n')
+with log.open('ab') as stream:
+    for _, event in events:
+        stream.write((json.dumps(event, ensure_ascii=False) + '\n').encode('utf-8'))
+assert log.read_bytes().startswith(prefix)
+for folder, event in events:
+    event['registered_context_file'] = str(new_context)
+    event['registered_context_sha256'] = sha(new_context)
+    event['registered_review_file'] = str(new_registration)
+    event['registered_review_sha256'] = sha(new_registration)
+    save(folder / 'actual-context.json', event)
+print(json.dumps({'context_file': str(new_context), 'context_sha256': sha(new_context),
+                  'registration_file': str(new_registration), 'registration_sha256': sha(new_registration),
+                  'actual_workers_registered': args.worker, 'base_files_unchanged': True}))

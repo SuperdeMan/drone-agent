@@ -1,0 +1,99 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "bounded_verifier_18",
+  "created_at": "2026-10-21T11:40:36.495943+00:00",
+  "assignment_file": "verification\\bounded_verifier_18\\assignment.json",
+  "assignment_sha256": "a26a2d3b439837b7bf7fc36770b9cd294c1ad9edcce5e570b42ac1fe906a4f37",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-22092640128cea",
+      "decision": "revised",
+      "findings": [
+        "已实际查看原图、固定导图、源有效区及三张覆盖首稿完整目标的原生像素裁片，并补看固定 A 端正交横断面；未移动或缩短 A/B 范围。",
+        "A 端位于白色驾驶室、红色车身车辆旁的宽铺装路口。沿固定首段方向的正交横断面向左延伸时，铺装面仍连续便进入黑色源无效区，完整横截面边缘不在可见源内；首稿在可见铺装面内部提前收边，不能作为真实道路边界。",
+        "据完整固定范围的源覆盖不足改为 excluded_source，target_polygon 置 null；不通过缩窄路口或把 A 端移到更清楚的位置补救。",
+        "首稿中文说明已编码为问号，原始首稿保持不变；本次依据实际图像重写 target_brief、notes、uncertainties。树冠及阴影不作为实际植被侵入证据，车辆不自动标作障碍。"
+      ],
+      "changes": {
+        "target_brief": "固定 A 端位于左下白色驾驶室、红色车身车辆旁的铺装路口；目标沿林间弯曲铺装道路向右上延伸，到树冠覆盖的固定 B 横断面。两端及整条约 49.33 米固定路线均保留；A 端完整横断面的左侧铺装边缘超出源有效影像。",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "notes": "二审已逐段查看原生像素，并用固定 A 点及首段方向绘制正交横断面。A 端铺装面在向左进入源无效黑区前仍未出现真实道路边缘，首稿左端落在铺装面内部；因此不能确认完整固定目标的横断面覆盖，按源范围不完整排除，目标 polygon 为 null。固定 A/B 未平移、未缩短、未改选清晰路段。道路中上段可见连续浅色铺装，但多处树冠、长阴影和车辆遮挡，不能以有效 mask 推定其下路面状态，也未把树冠投影或普通车辆作为障碍。原始首稿及其乱码文本保留在 assignment 引用记录中。",
+        "uncertainties": [
+          "A 端完整横断面的左侧铺装边缘位于源无效区之外，不能从该源恢复其真实边界或完整宽度。",
+          "树冠、阴影及车辆下方的路面和潜在实体无法可靠判断；可见覆盖不能证明植被实际侵入或车辆造成阻路。"
+        ]
+      },
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/images/bounded-extract-22092640128cea.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/guides/bounded-extract-22092640128cea.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/masks/bounded-extract-22092640128cea.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-01.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-02.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-03.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-first-draft-overlay.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-01.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-02.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-03.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-endpoint-A-cross-section.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "5f0c3a3803cc6c2a9eaea00558e481e28f0dedb5b0a0a7b5c449bed1f157e5dd",
+      "first_author_id": "bounded_annotator_20",
+      "first_row_sha256": "7230b90a2f9b8be86e287c63d17d7ea98d6f57d479d0a9be698791e2bf395632",
+      "reviewed_at": "2026-10-21T11:40:36.502949+00:00",
+      "reviewer_id": "bounded_verifier_18",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/images/bounded-extract-22092640128cea.jpg": "5f0c3a3803cc6c2a9eaea00558e481e28f0dedb5b0a0a7b5c449bed1f157e5dd",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/guides/bounded-extract-22092640128cea.jpg": "4ffcdea6826dad1bc66f7da08ab449ff1a626ef17b52dc2fd35a79114dc7afd4",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/masks/bounded-extract-22092640128cea.png": "7932dc69e0baa009c4229711bb2dd26ee2622ee4958450a7d4206613d0cba11a",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-01.png": "9bcd7a436ea0a25fe9c2edafdb8baf51f55e449497f5c213fdb9d74faed10f6c",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-02.png": "e35f36b7c77afa0a159d400d6eb1db186e5d0070d4da9721934da00fdc326337",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-03.png": "fe352aeba4778459f5aab552f47b0ae3fc2167c193de99c33ad1d76823870448",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-first-draft-overlay.png": "d2fafe34cabb183527bf65a876388163978f4d110a27ddc0d9f3d2271dcf4900",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-01.png": "fe7d0096cdc22390492d9c590722a1f60735e653000e3d1935e815a2c348b7da",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-02.png": "db96f8b7c02dbdcd8a9df2f4d038006a9bafea0c5538b03518da45af8a11de0c",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-03.png": "ed1f798d2ccee2a17d32fd68b95fa999f8f0176c70cb112951511953a3974f06",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-endpoint-A-cross-section.png": "d09a280179971bd2b1a4c0cd394430c4ffcaae6a2757a4f50a7237df2ac4a0ac"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-22092640128cea",
+        "image_sha256": "5f0c3a3803cc6c2a9eaea00558e481e28f0dedb5b0a0a7b5c449bed1f157e5dd",
+        "target_brief": "固定 A 端位于左下白色驾驶室、红色车身车辆旁的铺装路口；目标沿林间弯曲铺装道路向右上延伸，到树冠覆盖的固定 B 横断面。两端及整条约 49.33 米固定路线均保留；A 端完整横断面的左侧铺装边缘超出源有效影像。",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "二审已逐段查看原生像素，并用固定 A 点及首段方向绘制正交横断面。A 端铺装面在向左进入源无效黑区前仍未出现真实道路边缘，首稿左端落在铺装面内部；因此不能确认完整固定目标的横断面覆盖，按源范围不完整排除，目标 polygon 为 null。固定 A/B 未平移、未缩短、未改选清晰路段。道路中上段可见连续浅色铺装，但多处树冠、长阴影和车辆遮挡，不能以有效 mask 推定其下路面状态，也未把树冠投影或普通车辆作为障碍。原始首稿及其乱码文本保留在 assignment 引用记录中。",
+        "uncertainties": [
+          "A 端完整横断面的左侧铺装边缘位于源无效区之外，不能从该源恢复其真实边界或完整宽度。",
+          "树冠、阴影及车辆下方的路面和潜在实体无法可靠判断；可见覆盖不能证明植被实际侵入或车辆造成阻路。"
+        ],
+        "inspected_at": "2026-10-21T11:40:36.502949+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/images/bounded-extract-22092640128cea.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/guides/bounded-extract-22092640128cea.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/masks/bounded-extract-22092640128cea.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-01.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-02.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-03.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-first-draft-overlay.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-01.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-02.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-03.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-endpoint-A-cross-section.png"
+        ]
+      },
+      "final_row_sha256": "7a52171e0f69ca53f55291d604dc9bc075e7e386a15611e8afd3b1a7cfe02a1f"
+    }
+  ]
+}

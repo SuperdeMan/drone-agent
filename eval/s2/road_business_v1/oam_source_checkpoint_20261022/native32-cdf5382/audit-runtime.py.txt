@@ -1,0 +1,228 @@
+"""Reaudit immutable native32 evidence with a separately frozen candidate.
+
+使用另行冻结的候选重新审核不可变的原生32证据。
+"""
+import hashlib
+import json
+import os
+import pathlib
+import re
+import runpy
+import shutil
+import stat
+from datetime import datetime, timezone
+
+R = REQUEST
+task = pathlib.Path(R['task_root'])
+data = task.parent
+job = pathlib.Path(R['job_directory'])
+old_job = pathlib.Path(R['reused_job_directory'])
+frozen = pathlib.Path(R['frozen_directory'])
+commit = R['candidate_commit']
+assert str(task) == '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018'
+assert re.fullmatch('[a-f0-9]{40}', commit) and commit != '4800ea0726acbd3054e07f31abf3e8b44b94f0f4'
+assert frozen == task / ('software-audit-' + commit[:7] + '-20261022')
+assert job == task / 'resume-20261022-fast/conditional-parts-native32-v2' and not job.exists() and job.resolve() == job
+assert old_job == task / 'resume-20261022-fast/conditional-parts-native32-v1'
+job.mkdir(exist_ok=False)
+now = lambda: datetime.now(timezone.utc).isoformat()
+
+
+def sha(path):
+    with pathlib.Path(path).open('rb') as handle:
+        return hashlib.file_digest(handle, 'sha256').hexdigest()
+
+
+def read(path):
+    return json.loads(pathlib.Path(path).read_text())
+
+
+def safe(path):
+    path = pathlib.Path(path)
+    assert path.is_absolute() and path.resolve() == path and path.is_relative_to(task) and not path.is_symlink()
+    return path
+
+
+def relative(path):
+    return safe(path).relative_to(data).as_posix()
+
+
+def save(path, value):
+    with pathlib.Path(path).open('x', encoding='ascii', newline='\n') as handle:
+        json.dump(value, handle, indent=2, ensure_ascii=True, allow_nan=False)
+        handle.write('\n')
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def snapshot(path):
+    path = safe(path)
+    value = path.stat()
+    assert stat.S_ISREG(path.lstat().st_mode)
+    return {'bytes': value.st_size, 'sha256': sha(path), 'device': value.st_dev, 'inode': value.st_ino,
+        'mode': value.st_mode, 'uid': value.st_uid, 'gid': value.st_gid, 'mtime_ns': value.st_mtime_ns, 'ctime_ns': value.st_ctime_ns}
+
+
+def resources():
+    ram = next(int(line.split()[1]) * 1024 for line in pathlib.Path('/proc/meminfo').read_text().splitlines() if line.startswith('MemAvailable:'))
+    disk = shutil.disk_usage(task)
+    return {'recorded_at_utc': now(), 'available_memory_bytes': ram, 'disk_free_bytes': disk.free,
+        'ram_minimum_bytes': 3 * 1024 ** 3, 'disk_minimum_bytes': 8 * 1024 ** 3,
+        'sufficient': ram >= 3 * 1024 ** 3 and disk.free >= 8 * 1024 ** 3}
+
+
+progress = (job / 'progress.jsonl').open('x', encoding='ascii')
+
+
+def event(phase, **fields):
+    progress.write(json.dumps({'phase': phase, 'recorded_at_utc': now(), **fields}) + '\n')
+    progress.flush()
+    os.fsync(progress.fileno())
+
+
+result = {'format': 'drone.p6-conditional-native32-reused-evidence-audit/v2', 'status': 'running',
+    'candidate_commit': commit, 'frozen_core_directory': str(frozen), 'frozen_core_sha256': R['frozen_core_sha256'],
+    'started_at_utc': now(), 'expected': 32, 'checked': 0, 'passed': 0, 'rows': [], 'source_only_verified': False,
+    'reused_native_extracted': 0, 'reused_offline_replay_matched': 0, 'new_native_extraction_runs': 0,
+    'source_gate_function': 'p6_business_eval.derived_capture', 'source_gate_module_file': str(frozen / 'p6_business_eval.py'),
+    'source_gate_module_sha256': R['frozen_core_sha256']['p6_business_eval.py'],
+    'software_qa_evidence_file': R['software_qa_evidence_file'], 'software_qa_evidence_sha256': R['software_qa_evidence_sha256'],
+    'software_qa_observed_status': R['software_qa_observed_status'], 'formal_source_admitted': False,
+    'formal_assets_admitted': 0, 'site_independence_admitted': False, 'repeated_capture_eligible': False,
+    'images_viewed': 0, 'business_labels_created': 0, 'formal_model_calls': 0, 'new_source_http_requests': 0,
+    'old_source_bytes_or_plan_or_media_modified': False, 'main_grouping_registry_modified': False, 'wp_p6_01_closed': False}
+result['worker_pid'] = os.getpid()
+result['process_io_at_start'] = pathlib.Path('/proc/self/io').read_text()
+save(job / 'runtime-request.json', R)
+with (job / 'audit-runtime.py').open('xb') as handle:
+    handle.write(RUNTIME_SOURCE)
+assert sha(job / 'audit-runtime.py') == R['runtime_sha256']
+rows_dir = job / 'rows'
+rows_dir.mkdir()
+input_snapshots = {}
+reused_bindings = {}
+try:
+    event('verify_new_exact_frozen_core')
+    assert all(sha(safe(frozen / name)) == expected for name, expected in R['frozen_core_sha256'].items())
+    core_record = read(frozen / 'candidate-binding.json')
+    assert core_record['candidate_commit'] == commit and core_record['core_sha256'] == R['frozen_core_sha256']
+    initial_resources = resources()
+    save(job / 'resource-preflight.json', initial_resources)
+    assert initial_resources['sufficient']
+    C = runpy.run_path(str(frozen / 'p6_business_eval.py'))
+    G = runpy.run_path(str(frozen / 'p6_oam_capture.py'))
+    resolve = lambda name: safe(C['rooted'](data, name))
+    old_request = read(old_job / 'runtime-request.json')
+    stop_file = safe(R['old_stop_receipt_file'])
+    assert sha(stop_file) == R['old_stop_receipt_sha256']
+    assert read(stop_file)['status'] == 'stopped_incomplete'
+    assert old_request['candidate_commit'] == '4800ea0726acbd3054e07f31abf3e8b44b94f0f4'
+    assert old_request['source_recipe_sha256'] == '5d73bb9a579c5406d90ae2fafcdc9ee50cc5d6dfe36128ef6d517e2f14ac8873'
+    assert old_request['parent_sha256'] == '1127710341b5b785dd151e7e3fa8de9c0ab1cc3dc9f7f8b4df0acdee767be4c5'
+    frames, replay = read(old_job / 'frames/result.json'), read(old_job / 'replay/result.json')
+    assert frames['expected'] == frames['extracted'] == replay['expected'] == replay['extracted'] == replay['replay_count'] == replay['replay_matched'] == 32
+    assert frames['failed'] == replay['failed'] == 0 and frames['network_requests'] == replay['network_requests'] == 0
+    result.update(reused_native_extracted=32, reused_offline_replay_matched=32)
+    names = ['source-manifest.json', 'source-plan.json', 'portable-path-normalization.json',
+        'actual-frozen-core-verification.json', 'parent-assembly-and-source-verification.json',
+        'frames-execution.json', 'replay-execution.json', 'resource-preflight.json', 'runtime-request.json', 'controller-runtime.py']
+    evidence = {safe(old_job / name) for name in names}
+    evidence.update(safe(path) for folder in ['frames', 'replay'] for path in (old_job / folder).rglob('*') if path.is_file())
+    evidence.update(safe(path) for path in (old_job / 'provenance').glob('*-binding.json'))
+    evidence.update(safe(old_job / 'provenance' / name) for name in ['samples-provenance-only.json', 'protocol-provenance-only.json', 'unverified-grouping-capture-inventory.json'])
+    evidence.update(safe(path) for path in old_job.rglob('*') if path.is_file())
+    assert len(list((old_job / 'frames/receipts').glob('*.json'))) == len(list((old_job / 'replay/replay-proofs').glob('*.json'))) == 32
+    inputs = set(evidence)
+    for key in ['metadata_bindings', 'body_bindings', 'core_bindings']:
+        for name, expected in old_request[key].items():
+            path = safe(data / name)
+            assert path.stat().st_size == expected['bytes'] and sha(path) == expected['sha256']
+            inputs.add(path)
+    parent = safe(old_request['parent_remote_path'])
+    assert parent.stat().st_size == 253851020 and sha(parent) == old_request['parent_sha256']
+    inputs.add(parent)
+    for path in sorted(inputs):
+        input_snapshots[relative(path)] = snapshot(path)
+    reused_bindings = {relative(path): {'bytes': path.stat().st_size, 'sha256': sha(path)} for path in sorted(evidence)}
+    save(job / 'immutable-input-snapshots.json', input_snapshots)
+    save(job / 'reused-native32-evidence-bindings.json', reused_bindings)
+    old_result_path = old_job / 'provenance/result.json'
+    old_actual_result = read(old_result_path) if old_result_path.exists() else None
+    disclosure = {'old_job': str(old_job), 'old_actual_candidate_commit': old_request['candidate_commit'],
+        'old_actual_frozen_directory': old_request['frozen_directory'], 'old_actual_core_sha256': old_request['frozen_core_sha256'],
+        'old_runtime_sha256': sha(old_job / 'controller-runtime.py'),
+        'historical_incorrect_literal_field': {'source_gate_function': 'frozen_f132.p6_business_eval.derived_capture'},
+        'explanation': 'The v1 runtime retained a stale literal label. Its actual runpy loads and exact4 hash checks bind4800ea0, not f132. The old script and any old result remain unchanged.',
+        'old_result_exists_at_observation': old_actual_result is not None,
+        'old_result_sha256_at_observation': sha(old_result_path) if old_actual_result is not None else None,
+        'old_actual_checked_at_observation': old_actual_result.get('checked') if old_actual_result is not None else None,
+        'old_actual_passed_at_observation': old_actual_result.get('passed') if old_actual_result is not None else None,
+        'old_in_memory_completion_count_unknown_without_its_final_result': old_actual_result is None,
+        'new_audit_candidate_commit': commit, 'old_history_not_relabelled': True, 'recorded_at_utc': now()}
+    disclosure['development_exposed_true_flags'] = 'Conservative placeholders in the v1 temporary source-only inventory; no real-image viewing or business annotation was performed by this source workflow.'
+    disclosure['actual_visual_exposure_ids_in_this_source_workflow'] = []
+    disclosure['external_global_exposure_not_adjudicated'] = True
+    disclosure['original_sample_flags_kept_byte_identical'] = True
+    disclosure['formal_inventory_must_use_actual_exposure_and_noview_records'] = True
+    save(job / 'historical-v1-label-disclosure.json', disclosure)
+    source_plan = read(old_job / 'source-plan.json')
+    source_manifest = read(old_job / 'source-manifest.json')
+    assert len(source_plan['items']) == 32 and len(source_manifest) == 1
+    purpose = read(resolve(source_plan['purpose_reservation_file']))
+    assert sha(resolve(source_plan['purpose_reservation_file'])) == source_plan['purpose_reservation_sha256'] == 'd17c8682c714c1436bfeaf5a3911cb14337e4022158125ff65b709c636d1ad9a'
+    assert source_plan['planned_whole_site_partition'] == purpose['planned_whole_site_partition'] == 'calibration_candidate'
+    assert [item['asset_group_id'] for item in source_plan['items']] == purpose['registered_pilot32_primary_candidate_groups']
+    assert all(item['target']['physical_asset_identity_verified'] is False and item['proposed_partition'] == 'calibration_candidate' for item in source_plan['items'])
+    event('verify_unchanged_typed_source')
+    G['verify_source'](source_manifest[0], data, {}, {'read_bound': C['bound_evidence'], 'file_bound': C['derived_file'], 'timestamp': C['timestamp']})
+    result['source_only_verified'] = True
+    samples = read(old_job / 'provenance/samples-provenance-only.json')['samples']
+    protocol = read(old_job / 'provenance/protocol-provenance-only.json')
+    assert len(samples) == 32 and {sample['sample_id'] for sample in samples} == {item['extraction_item_id'] for item in source_plan['items']}
+    cache = {}
+    for index, sample in enumerate(samples, 1):
+        started = now()
+        event('derived_check_started', index=index, expected=32, checked=result['checked'], passed=result['passed'], sample_id=sample['sample_id'])
+        row = {'sample_id': sample['sample_id'], 'index': index, 'candidate_commit': commit, 'started_at_utc': started,
+            'source_gate_function': 'p6_business_eval.derived_capture', 'source_gate_module_sha256': R['frozen_core_sha256']['p6_business_eval.py']}
+        try:
+            C['derived_capture'](sample, protocol, data, cache, scope_before=C['timestamp'](purpose['recorded_at_utc']))
+            row['source_chain_verified'] = True
+        except Exception as exc:
+            row.update(source_chain_verified=False, error_type=type(exc).__name__, error_message=str(exc))
+        row['finished_at_utc'] = now()
+        save(rows_dir / (f'{index:02}-' + sample['sample_id'] + '.json'), row)
+        result['rows'].append(row)
+        result['checked'] += 1
+        result['passed'] += int(row['source_chain_verified'])
+        event('derived_check_finished', index=index, expected=32, checked=result['checked'], passed=result['passed'],
+            sample_id=sample['sample_id'], source_chain_verified=row['source_chain_verified'])
+    event('verify_immutable_inputs_after_actual_checks', checked=result['checked'], passed=result['passed'])
+    for name, before in input_snapshots.items():
+        assert snapshot(safe(data / name)) == before, 'Reused input changed during audit'
+    assert all(sha(safe(frozen / name)) == expected for name, expected in R['frozen_core_sha256'].items())
+    save(job / 'final-input-and-core-verification.json', {'passed': True, 'candidate_commit': commit,
+        'reused_input_files': len(input_snapshots), 'all_reused_input_bytes_and_filesystem_identity_unchanged': True,
+        'frozen_core_sha256': {name: sha(frozen / name) for name in R['frozen_core_sha256']}, 'recorded_at_utc': now()})
+    result['status'] = 'passed' if result['source_only_verified'] and result['checked'] == result['passed'] == 32 else 'failed_source_or_pixel_gate'
+except Exception as exc:
+    result.update(status='failed', error_type=type(exc).__name__, error_message=str(exc))
+    event('failed', error_type=type(exc).__name__, error_message=str(exc), checked=result['checked'], passed=result['passed'])
+result['failed'] = result['expected'] - result['passed']
+result['finished_at_utc'] = now()
+result['resource_after'] = resources()
+result['process_io_at_end'] = pathlib.Path('/proc/self/io').read_text()
+result['scope'] = 'A fresh-cache exact-candidate source/native-pixel/replay audit of unchanged prior32 extraction and32 replay outputs; not a new extraction or formal asset admission.'
+save(job / 'result.json', result)
+event('finished', status=result['status'], checked=result['checked'], passed=result['passed'])
+progress.close()
+exports = [path for path in job.rglob('*') if path.is_file()]
+assert all(path.resolve().is_relative_to(job) and not path.is_symlink() for path in exports)
+output_bindings = {relative(path): {'bytes': path.stat().st_size, 'sha256': sha(path)} for path in exports}
+save(job / 'result-file-bindings.json', output_bindings)
+output_bindings[relative(job / 'result-file-bindings.json')] = {'bytes': (job / 'result-file-bindings.json').stat().st_size, 'sha256': sha(job / 'result-file-bindings.json')}
+created = [path for path in job.rglob('*') if path.is_file()]
+print(json.dumps({'result': result, 'job_directory': str(job), 'bindings': output_bindings,
+    'reused_evidence_bindings': reused_bindings,
+    'new_audit_regular_file_space': {'files': len(created), 'logical_bytes': sum(path.stat().st_size for path in created),
+        'allocated_bytes': sum(path.stat().st_blocks * 512 for path in created)}, 'source_body_or_media_reuploaded': False, 'output_tar_created': False}))

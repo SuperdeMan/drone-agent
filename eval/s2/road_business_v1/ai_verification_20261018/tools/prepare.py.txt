@@ -1,0 +1,62 @@
+"""Prepare immutable disjoint second-review assignments. / 准备不可覆盖的独立二审分工。"""
+import hashlib
+import json
+from datetime import UTC, datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+SOURCE = Path('D:/drone-agent-data/p6-ai-annotation-20261016')
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def canonical(value):
+    return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+
+def write(path, value):
+    with path.open('x', encoding='utf-8', newline='\n') as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2)
+        stream.write('\n')
+
+samples = []
+bundles = []
+for index in (1, 2, 3):
+    folder = SOURCE / f'review-batch{index}'
+    path = folder / 'bundle.json'
+    bundle = json.loads(path.read_text(encoding='utf-8-sig'))
+    bundles.append({'file': str(path), 'sha256': sha(path), 'count': len(bundle['samples'])})
+    for sample in bundle['samples']:
+        assert canonical(sample['ai_suggestion']) == sample['ai_suggestion_sha256']
+        image = folder / sample['image_file']
+        assert sha(image) == sample['image_sha256']
+        samples.append({
+            'sample_id': sample['sample_id'], 'image_file': str(image), 'image_sha256': sample['image_sha256'],
+            'width': sample['width'], 'height': sample['height'],
+            'first_author_id': sample['ai_source']['author_id'],
+            'first_draft_file': str(folder / sample['ai_source']['file']),
+            'first_draft_file_sha256': sample['ai_source']['sha256'],
+            'first_row_sha256': sample['ai_suggestion_sha256'], 'first_row': sample['ai_suggestion']})
+assert len(samples) == len({s['sample_id'] for s in samples}) == len({s['image_sha256'] for s in samples}) == 415
+samples.sort(key=lambda sample: int(sample['sample_id'].split('-')[-1]))
+created = datetime.now(UTC).isoformat()
+assignments = []
+for index in (1, 2, 3):
+    folder = ROOT / f'reviewer-{index}'
+    folder.mkdir(exist_ok=True)
+    path = ROOT / f'assignment-{index}.json'
+    value = {'format': 'drone.p6-ai-review-assignment/v1', 'reviewer_id': f'independent_road_verifier_{index}',
+             'worker_dir': str(folder), 'created_at': created, 'parent_history': 'none',
+             'allowed_inputs': 'original images, neutral rubric, assigned first-pass drafts only',
+             'evaluation_prompt_access': 'forbidden', 'evaluation_outputs_access': 'forbidden',
+             'source_class_label_access': 'forbidden', 'samples': samples[index - 1::3]}
+    write(path, value)
+    assignments.append({'file': str(path), 'sha256': sha(path), 'reviewer_id': value['reviewer_id'], 'count': len(value['samples'])})
+write(ROOT / 'registration.json', {'format': 'drone.p6-ai-review-registration/v1', 'created_at': created,
+    'approval_reference': 'User 2026-10-18: 不用真人逐张复核，你的复核可以代表人类',
+    'method': 'independent_ai_draft_then_separate_ai_verification', 'provider': 'codex-session',
+    'exact_model_identifier': None, 'human_reviews_created': 0, 'formal_release_eligible': False,
+    'original_bundles': bundles, 'assignments': assignments,
+    'implementation_exposure': {'sample_id': 'floodnet-6337', 'record': 'D:/drone-agent-data/p6-annotation-guidance-20261018/6337-guidance.json'},
+    'candidate_review_timing': {'status': 'deferred_to_operational_validation',
+        'approval_reference': 'User 2026-10-18: 移至后续运营验证，继续完成本次验收', 'human_efficiency_claimed': False}})
+print(json.dumps({'samples': len(samples), 'assignments': assignments}, ensure_ascii=False))

@@ -1,0 +1,143 @@
+"""Audit a frozen group batch and prepare unconfirmed review priorities.
+
+核对冻结实体群批次，并准备未经确认的复核优先项。
+"""
+from __future__ import annotations
+
+import json
+import math
+import runpy
+import subprocess
+from collections import Counter
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+REPO = Path("D:/drone-agent-data/p6-road-views-20261014/repo")
+PACKAGE = Path(__file__).resolve().parent / "diagnostic"
+ATTEMPT = PACKAGE / "attempts/p6-candidate-review-dev-20261015T051249Z"
+TOOL = runpy.run_path(str(REPO / "scripts/p6_candidate_groups.py"))
+BOUNDARY = runpy.run_path(str(REPO / "scripts/p6_boundary_drafts.py"))
+read, write, digest = TOOL["read"], TOOL["write"], TOOL["digest"]
+
+
+def main():
+    """Keep model groups, conditional geometry and independent truth separate.
+
+分别记录模型分组、条件几何和独立业务真值。
+"""
+    plan, config, manifest = read(PACKAGE / "plan.json"), read(PACKAGE / "config.json"), read(PACKAGE / "inputs/manifest.json")
+    launch, execution = read(ATTEMPT / "launch.json"), read(ATTEMPT / "cloud/execution.json")
+    precall, header = read(ATTEMPT / "cloud/precall.json"), read(ATTEMPT / "cloud/output/run.json")
+    results, summary = read(ATTEMPT / "cloud/output/results.json"), read(ATTEMPT / "replay-summary.json")
+    committed = subprocess.check_output(["git", "show", "-s", "--format=%cI", launch["freeze_commit"]], cwd=REPO).decode().strip()
+    assert datetime.fromisoformat(committed) <= datetime.fromisoformat(launch["created_at"])
+    assert datetime.fromisoformat(launch["created_at"]) <= datetime.fromisoformat(precall["started_at"])
+    assert datetime.fromisoformat(precall["started_at"]) <= datetime.fromisoformat(header["started_at"].replace("Z", "+00:00"))
+    for key, path in [("config_sha256", PACKAGE / "config.json"), ("manifest_sha256", PACKAGE / "inputs/manifest.json")]:
+        assert digest(path) == plan[key] == launch[key] == precall[key] == header[key] == summary[key]
+    assert execution["project_lock_acquired"] and execution["lock_held_through_checks"]
+    assert execution["before"] == execution["after"] and execution["resident_container_identities_unchanged"]
+    assert execution["provider_invocations"] == len(results) == 6 and execution["container_exit_code"] == 0
+    lookup = {r["case_id"]: r for r in manifest}
+    for result in results:
+        parsed, issues = TOOL["validate_answer"](result["raw_content"], result["finish"], lookup[result["case_id"]]["proposals"])
+        assert parsed == result["parsed"] and issues == result["schema_issues"]
+        assert digest(ATTEMPT / "cloud/output/recordings" / (result["case_id"] + ".json")) == result["recording_sha256"]
+    drafts_file, index_file = REPO / "eval/s2/p6_candidates_v5/drafts.json", REPO / "eval/s2/p6_candidates_v3/input-index.json"
+    drafts, index = read(drafts_file), read(index_file)
+    assert digest(index_file) == drafts["source_index_sha256"]
+    geometry, sources = {}, []
+    for parent in plan["parents"]:
+        case = next(c for c in index["cases"] if c["case_id"] == parent["case_id"])
+        target = next(t for t in drafts["targets"] if t["case_id"] == parent["case_id"])
+        path = BOUNDARY["safe_source"](Path("D:/drone-agent-data/p6-materials-20261013-round3"), case["target_region"]["file"])
+        assert digest(path) == parent["source_target_sha256"] == case["target_region"]["sha256"]
+        with Image.open(path) as mask:
+            size = mask.size
+            support = np.asarray(mask) > 0
+        assert list(size) == parent["source_size"]
+        _, outer = BOUNDARY["envelope"](target["road_envelope"], size, core_optional=False)
+        possible = BOUNDARY["morph"](outer | support, shrink=False)
+        sources.append({"case_id": parent["case_id"], "support_sha256": digest(path), "size": list(size)})
+        for row in summary["rows"]:
+            if row["view_id"] != parent["view_id"]:
+                continue
+            l, t, r, b = row["source_bbox"]
+            x0, y0 = max(0, math.floor(l * size[0]) - 1), max(0, math.floor(t * size[1]) - 1)
+            x1, y1 = min(size[0], math.ceil(r * size[0]) + 1), min(size[1], math.ceil(b * size[1]) + 1)
+            geometry[row["proposal_id"]] = {"expanded_source_window_xyxy": [x0, y0, x1, y1],
+                "source_support_pixels": int(support[y0:y1, x0:x1].sum()),
+                "possible_road_pixels": int(possible[y0:y1, x0:x1].sum()), "conditional_on_ai_draft": True,
+                "object_footprint_inferred": False, "business_verdict": None}
+    queue, conflicts = [], []
+    for row in summary["rows"]:
+        obs, ident = row["observation"], row["proposal_id"]
+        reasons = []
+        if row["model_disposition"] == "candidate" and geometry[ident]["possible_road_pixels"] == 0:
+            reasons.append("candidate_window_disjoint_from_provisional_possible_road")
+            conflicts.append(ident)
+        if not row["response_valid"]:
+            reasons.append("response_quarantined")
+        elif row["model_disposition"] == "needs_review":
+            if obs["entity_kind"] == "vehicle":
+                reasons.append("vehicle_presence_does_not_establish_obstruction")
+            elif obs["entity_kind"] == "unknown":
+                reasons.append("physical_nature_unresolved")
+            elif obs["target_relation"] in {"unknown", "uncertain"}:
+                reasons.append("selected_road_relation_unresolved")
+            else:
+                reasons.append("decision_uncertainty_remains")
+        if ident == "view-f9b70d3e59bd-p06":
+            reasons.append("ai_visual_followup_distinguish_small_entity_from_road_marking")
+        if not reasons:
+            reasons.append("unconfirmed_model_group")
+        queue.append({"proposal_id": ident, "view_id": row["view_id"], "source_bbox": row["source_bbox"],
+            "model_disposition": row["model_disposition"], "model_observation": obs,
+            "priority": "first" if reasons != ["unconfirmed_model_group"] else "remaining",
+            "review_reasons": reasons, "conditional_geometry": geometry[ident],
+            "instance_bbox": None, "human_verdict": None, "reviewer": None, "reviewed_at": None,
+            "human_hint_exposure": None})
+    queue_file = ATTEMPT / "review-queue.json"
+    write(queue_file, {"format": "drone.group-candidate-review-queue/v1", "proposal_count": len(queue),
+        "queue_is_ai_generated": True, "independent_human_ground_truth": False,
+        "model_groups_unchanged": True, "all_proposals_require_human_confirmation": True,
+        "human_reviews_completed": 0, "formal_release_eligible": False, "rows": queue})
+    candidates = [r for r in summary["rows"] if r["model_disposition"] == "candidate"]
+    per_view = [{"view_id": m["case_id"], "model_groups": dict(Counter(r["model_disposition"] for r in summary["rows"] if r["view_id"] == m["case_id"]))} for m in manifest]
+    analysis = {"format": "drone.group-candidate-live-analysis/v1", "run_id": launch["run_id"],
+        "freeze_commit": launch["freeze_commit"], "freeze_before_calls": True,
+        "execution_status": "completed_with_environment_guard_passed",
+        "protocol_status": "all_responses_valid_development_only_semantic_review_open",
+        "resident_containers_checked": len(execution["before"]), "resident_snapshots_equal": True,
+        "project_lock_held_through_checks": True, "provider_invocations": 6, "answers": len(results),
+        "call_failures": header["cases_failed"], "valid_responses": summary["valid_responses"],
+        "cloud_strict_replays": header["strict_replays"], "local_strict_replays": summary["local_strict_replays"],
+        "proposals": len(summary["rows"]), "model_disposition_counts": summary["model_disposition_counts"],
+        "candidate_localizations": dict(Counter(r["observation"]["localization_status"] for r in candidates)),
+        "candidate_description_uncertainty_nonempty": sum(bool(r["observation"]["description_uncertainty"].strip()) for r in candidates),
+        "per_view": per_view, "candidate_window_conflicts_with_provisional_road": conflicts,
+        "conditional_geometry": {"drafts_sha256": digest(drafts_file), "index_sha256": digest(index_file),
+            "tool_sha256": digest(REPO / "scripts/p6_boundary_drafts.py"), "sources": sources,
+            "support_only_expands_possible_road": True, "guard_pixels_on_window_and_possible_road": 1,
+            "changes_model_group": False, "is_ground_truth": False, "is_accuracy_score": False},
+        "ai_visual_review": {"views_inspected": ["view-f9b70d3e59bd", "view-347d6ae24938"],
+            "author_kind": "assistant_development_review", "independent_human_review": False,
+            "notes": ["12892 p01 claims an upper-road entity, but its window is below the visible upper road; conditional draft geometry also has zero possible-road pixels.",
+                      "12892 p06 remains a visual review item for small physical material versus road marking or surface appearance; no business label is asserted."]},
+        "token_usage": {"input": header["usage_input"], "output": header["usage_output"], "cost_estimated": False},
+        "human_reviews_completed": 0, "proposals_without_human_confirmation": len(queue),
+        "accuracy_computed": False, "recall_computed": False, "scene_verdict": None,
+        "responses_modified": False, "additional_provider_calls_after_batch": 0, "v8_rescored": False,
+        "default_profile_change": False, "formal_release_eligible": False,
+        "analysis_script_sha256": digest(Path(__file__)), "review_queue_sha256": digest(queue_file),
+        "results_sha256": digest(ATTEMPT / "cloud/output/results.json"),
+        "replay_summary_sha256": digest(ATTEMPT / "replay-summary.json"), "execution_sha256": digest(ATTEMPT / "cloud/execution.json")}
+    write(ATTEMPT / "analysis.json", analysis)
+    print(json.dumps({k:v for k,v in analysis.items() if k not in ("conditional_geometry", "ai_visual_review")}, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

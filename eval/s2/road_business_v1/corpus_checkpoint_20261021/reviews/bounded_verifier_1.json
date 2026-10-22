@@ -1,0 +1,1696 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "bounded_verifier_1",
+  "created_at": "2026-10-18T16:04:59.779071+00:00",
+  "assignment_file": "verification\\bounded_verifier_1\\assignment.json",
+  "assignment_sha256": "25bdee26723771a1bf854554c5ca1bc9db507144dfebd2a9c8b1e9869923abcd",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-00556f529b8983",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图及 guide。A 对应下方横向支路汇入口，B 对应上方左转弯；白屋顶与东侧绿篱之间的窄路能连续对应，未转用右侧宽主路。",
+        "中段白色折叠板材具有明确折线和实体边缘，南端伸入沥青路东缘。上下可见路缘支持遮挡处道路连续性，首稿 debris 及完整 A—B 轮廓可保留；板材下地面并未直接看到。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-00556f529b8983.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-00556f529b8983.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "a0c9a335c1ff8154df4364828ed9a3cecb97d56d36e4e9cd7932564d71065874",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "5f086c2b40a1f94b29d7888b2f04af8cfb22ea7ec396a276449c12670301b799",
+      "reviewed_at": "2026-10-18T16:04:59.785520+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-00556f529b8983.jpg": "a0c9a335c1ff8154df4364828ed9a3cecb97d56d36e4e9cd7932564d71065874",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-00556f529b8983.jpg": "907f0499eee728e9f54979bc0611fbcbe5c5e4619951ea11c24ba18bb3501375"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-00556f529b8983",
+        "image_sha256": "a0c9a335c1ff8154df4364828ed9a3cecb97d56d36e4e9cd7932564d71065874",
+        "target_brief": "图中央靠右、白色屋顶住宅与右侧绿篱之间的内部沥青路；自下方横向支路中心的 A 截面，沿竖向路向上至左弯后 B 截面，检查两端之间完整路宽。",
+        "target_polygon": [
+          [
+            0.464,
+            0.248
+          ],
+          [
+            0.547,
+            0.253
+          ],
+          [
+            0.582,
+            0.287
+          ],
+          [
+            0.588,
+            0.729
+          ],
+          [
+            0.487,
+            0.729
+          ],
+          [
+            0.505,
+            0.688
+          ],
+          [
+            0.499,
+            0.612
+          ],
+          [
+            0.498,
+            0.317
+          ],
+          [
+            0.483,
+            0.294
+          ],
+          [
+            0.431,
+            0.291
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.612,
+                0.402
+              ],
+              [
+                0.721,
+                0.421
+              ],
+              [
+                0.674,
+                0.449
+              ],
+              [
+                0.665,
+                0.504
+              ],
+              [
+                0.633,
+                0.55
+              ],
+              [
+                0.62,
+                0.577
+              ],
+              [
+                0.549,
+                0.571
+              ],
+              [
+                0.566,
+                0.525
+              ],
+              [
+                0.585,
+                0.477
+              ]
+            ]
+          }
+        ],
+        "notes": "原图中部偏右的大块白色折叠板材或棚面覆盖路东侧边缘，实体有折痕、边缘和投影，并进入沥青道路；目标沿固定端点保留，未在遮挡处截短。路侧散落白条多在草地，未统统计作道路障碍。",
+        "uncertainties": [
+          "遮挡之下的道路东边界按上下相邻清楚路缘连续插值，局部轮廓存在数像素误差。"
+        ],
+        "inspected_at": "2026-10-18T16:04:59.785520+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-00556f529b8983.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-00556f529b8983.jpg"
+        ]
+      },
+      "final_row_sha256": "7477db23f7bf09457c24a5c3f6435bfff186b3afd54a8aad69c6a26cd1eb8385"
+    },
+    {
+      "sample_id": "bounded-extract-07e438d6cfe87f",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图及 guide。左侧停车场出入口、横向双向道路和北侧护栏可见，A 落在该道路内。",
+        "图像右部为黑色缺像，目标从中段到 B 的道路及两侧路缘均未显示；不能由左侧连续道路外推出完整全宽和实体状态。保留 indeterminate 与空几何。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-07e438d6cfe87f.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-07e438d6cfe87f.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "a1018dd422628e8dc4b0bacc99e1a3f6a8a92f63532fca9b07daa605125e4321",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "12a7f8291cada4896ad0645dea43ae6482dc5021b932cb7ffabe6ca346bb1199",
+      "reviewed_at": "2026-10-18T16:04:59.794091+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-07e438d6cfe87f.jpg": "a1018dd422628e8dc4b0bacc99e1a3f6a8a92f63532fca9b07daa605125e4321",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-07e438d6cfe87f.jpg": "0bc15611c4dcfbedd79dc7e0519e3f09610bc65847d73fa55cae0f4692289493"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-07e438d6cfe87f",
+        "image_sha256": "a1018dd422628e8dc4b0bacc99e1a3f6a8a92f63532fca9b07daa605125e4321",
+        "target_brief": "横向双向道路，自左侧停车场出入口对应的 A 截面至右方 B 固定截面；范围包含两端之间整条道路宽度。",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "原图只有左侧约43%的宽度包含影像，其余为纯黑无数据。A 附近道路可见，但约中段至 B 的固定范围完全缺像，无法核实完整道路宽度、实体占用及 B 截面，不把可见短段代替完整目标。",
+        "uncertainties": [
+          "A—B 后半段及 B 端位于黑色无数据区域，完整目标无法判定。"
+        ],
+        "inspected_at": "2026-10-18T16:04:59.794091+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-07e438d6cfe87f.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-07e438d6cfe87f.jpg"
+        ]
+      },
+      "final_row_sha256": "c14b87c9171ea89da9834c930f4456a6090b55197a8328e28b0fdd2b127b9ab3"
+    },
+    {
+      "sample_id": "bounded-extract-1f30dd9b105f5e",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图及 guide。A、B 所在建筑前空地之间的提示线穿过绿色多面屋顶和建筑体；该路径没有可核实的连续道路全宽。",
+        "右上斜向道路虽可见，但本图缺乏把冻结端点及道路身份可靠对应到它的依据。保留 indeterminate；不把建筑当作道路障碍，也不改选相邻道路。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-1f30dd9b105f5e.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-1f30dd9b105f5e.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "618c98ab6e6043713d563ccbeb5c7b7a81140515a2e3ddb7ced21f2bb5d95278",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "b8649e1bed65c1f07bf71a58e3c02c6df87b2b438040d896da3b5c8c6fc5951b",
+      "reviewed_at": "2026-10-18T16:04:59.810830+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-1f30dd9b105f5e.jpg": "618c98ab6e6043713d563ccbeb5c7b7a81140515a2e3ddb7ced21f2bb5d95278",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-1f30dd9b105f5e.jpg": "bf6964443975d93102b0b2fa94ba840d8efe2cf4b5441ecab1f57c89a5daf5c1"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-1f30dd9b105f5e",
+        "image_sha256": "618c98ab6e6043713d563ccbeb5c7b7a81140515a2e3ddb7ced21f2bb5d95278",
+        "target_brief": "按提示检查从画面右下 A 至左上 B 的固定斜向范围，并以实际地物确认两端之间是否存在连续道路及其全宽。",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "A 在建筑前空地，B 在另一处建筑前空间；两点间提示线中段穿过明显绿色屋顶及建筑体，不能据此构成连续道路。画面右上另有斜向道路，但无法仅凭该图把冻结的世界端点可靠平移到这条道路，因此不替换目标，也不把房屋判为道路障碍。",
+        "uncertainties": [
+          "提示线与实际地物关系不支持完整道路，可能存在配准或来源几何偏差。",
+          "邻近道路和空地的对应关系无法在此单图内核实。"
+        ],
+        "inspected_at": "2026-10-18T16:04:59.810830+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-1f30dd9b105f5e.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-1f30dd9b105f5e.jpg"
+        ]
+      },
+      "final_row_sha256": "5d5ea6ad4f99aea7d0c6ff9f1d98dd4b7539e9782753c3a2f7b2aa1c4f411dd3"
+    },
+    {
+      "sample_id": "bounded-extract-2923a9b0744569",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图、guide 及自行生成的原生北缘裁切。A、B 对应两处南侧出入口横截面，北侧护栏、草带和南侧路缘支持整段双向道路全宽。",
+        "北缘白色板材堆最下方尖端越过绿色草缘伸到灰色铺装；裁切能分辨板材本体及独立边缘，支持首稿微小 debris 入侵。南侧大块碎物位于草地，未并入道路。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-2923a9b0744569.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-2923a9b0744569.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-2923-north.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "526bb68924dc3596d1be27653f76a0bc48c71861a8175da4e05bf23e43ade715",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "59532eb2285e859ef7ee5e5c584a34278579651e7c2b9a5b35db748d3c870315",
+      "reviewed_at": "2026-10-18T16:04:59.833902+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-2923a9b0744569.jpg": "526bb68924dc3596d1be27653f76a0bc48c71861a8175da4e05bf23e43ade715",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-2923a9b0744569.jpg": "4ec80dccefb689f0153e66465e432ae9cd3496f15a8b3e8c74517ce137739d2c",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-2923-north.jpg": "b8ef89932677c7facbd47355e5f56ed7ebbe323a0a28e32a098ad3b1f2d4ba62"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-2923a9b0744569",
+        "image_sha256": "526bb68924dc3596d1be27653f76a0bc48c71861a8175da4e05bf23e43ade715",
+        "target_brief": "画面中部横向双向道路，以左右两处南侧出入口所对应 A、B 固定截面为端点，涵盖两端之间从北侧草缘到南侧路缘的完整铺装宽度。",
+        "target_polygon": [
+          [
+            0.1675,
+            0.413
+          ],
+          [
+            0.8315,
+            0.396
+          ],
+          [
+            0.8323,
+            0.562
+          ],
+          [
+            0.1687,
+            0.578
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.28,
+                0.382
+              ],
+              [
+                0.299,
+                0.379
+              ],
+              [
+                0.311,
+                0.393
+              ],
+              [
+                0.308,
+                0.41
+              ],
+              [
+                0.289,
+                0.4
+              ],
+              [
+                0.28,
+                0.399
+              ]
+            ]
+          }
+        ],
+        "notes": "逐段查看原图并放大原生道路条带。北侧护栏内侧的一组白色长板碎片中，最下方板尖越过草地与铺装交界，进入道路边缘铺装；该处是有形板材，非标线或影子。其他大片碎物主要在南侧草地与护栏之外，不计入目标。",
+        "uncertainties": [
+          "入侵只占道路北缘很窄的一部分，物体轮廓及草缘在原生图上约数像素定位误差。"
+        ],
+        "inspected_at": "2026-10-18T16:04:59.833902+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-2923a9b0744569.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-2923a9b0744569.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-2923-north.jpg"
+        ]
+      },
+      "final_row_sha256": "1fa90da09c950f79865bf6db79e3b97f28ed4547b9644473c9d6b76c1c2816dc"
+    },
+    {
+      "sample_id": "bounded-extract-3816f8bbc69fb6",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图、guide 以及自行生成的廊桥与深色形状原生裁切。斜向路、建筑间廊桥和右侧白屋顶可用于确认 A—B 同一道路身份。",
+        "廊桥下路面不见，阴影中虽有道路标线但局部表面细节不足，覆沙也使外缘不清；原生裁切中的深色形状模糊且缺少可靠接地关系。保留 indeterminate，不把模糊形状或正常廊桥自动列作障碍。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-3816f8bbc69fb6.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-3816f8bbc69fb6.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-3816-shape.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-3816-bridge.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "4c4bedf368eb12f18e8aa2ff0f08f17d865e66883c2c435e22c152e6af4e9924",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "16a99ecaa10e7bfdb9e1c1d402e318869cbe087441f731cdbac4a014ba26f6f2",
+      "reviewed_at": "2026-10-18T16:04:59.856166+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-3816f8bbc69fb6.jpg": "4c4bedf368eb12f18e8aa2ff0f08f17d865e66883c2c435e22c152e6af4e9924",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-3816f8bbc69fb6.jpg": "facc71c71fed74f3721a4da6f6b2580d6851f142ab5add6fdf16beeae744ffdf",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-3816-shape.jpg": "0f0c38b4b0d01f7ab157b3dd699dfeabb48746e0188a30dbba2c24a72c43f5fd",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-3816-bridge.jpg": "73c2f1e22b5d76698c4b7d5d36921648d8f54f67433e573b8f82f00410ed0a2a"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-3816f8bbc69fb6",
+        "image_sha256": "4c4bedf368eb12f18e8aa2ff0f08f17d865e66883c2c435e22c152e6af4e9924",
+        "target_brief": "穿过两侧建筑区、从右下 A 到左上 B 的斜向道路，保留 A—B 全段，包括横跨道路的连接廊桥附近及其两侧路宽。",
+        "target_polygon": [
+          [
+            0.201,
+            0.278
+          ],
+          [
+            0.38,
+            0.388
+          ],
+          [
+            0.594,
+            0.509
+          ],
+          [
+            0.827,
+            0.651
+          ],
+          [
+            0.797,
+            0.725
+          ],
+          [
+            0.581,
+            0.596
+          ],
+          [
+            0.353,
+            0.459
+          ],
+          [
+            0.174,
+            0.349
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "道路与提示整体对应，但左中段被连接两侧建筑的廊桥遮住，大片建筑阴影和路缘覆沙限制全宽核实。中部偏右路上有艇状深色影像，原生裁切仍呈模糊悬浮状且看不到可靠接地与投影关系，不能确认是真实落在道路上的实体还是影像伪影。保持完整范围，未据可疑形状直接定障碍。",
+        "uncertainties": [
+          "廊桥覆盖的路面不可见，不能完成该小段实体占用检查。",
+          "艇状形态与地面的物理关系不明。",
+          "沙覆盖使部分铺装外缘只能近似描绘。"
+        ],
+        "inspected_at": "2026-10-18T16:04:59.856166+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-3816f8bbc69fb6.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-3816f8bbc69fb6.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-3816-shape.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-3816-bridge.jpg"
+        ]
+      },
+      "final_row_sha256": "ee572c911bda1ce5a9aa8cd9f54f0e5eda7a226927be9dc3b78b6a348c620d18"
+    },
+    {
+      "sample_id": "bounded-extract-4d6596412ee186",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图及 guide。泳池、长屋顶建筑、黄色挡车设施和左侧有标线主路均可定位；提示范围位于两者之间的覆沙前场。",
+        "前场中可见散件，但停车区、内部通行带和建筑前场的横向分界不清，A 附近另有积水和植被。保留 indeterminate 与空道路几何，不把左侧主路替换进来。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-4d6596412ee186.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-4d6596412ee186.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "c7b0d81b9df0516ce5ae5e6b61b43e9c8c56c012e7e43535401943c7c4ec9152",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "b901dbda41a2de7727eeb042cb66d28f4ab8fef9b94821dbfb263bce8ffa4d4f",
+      "reviewed_at": "2026-10-18T16:09:02.182378+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-4d6596412ee186.jpg": "c7b0d81b9df0516ce5ae5e6b61b43e9c8c56c012e7e43535401943c7c4ec9152",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-4d6596412ee186.jpg": "ad607139ea6520cba9737da7677bf0fbfed90abb0fea141e711911bd15bc2170"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-4d6596412ee186",
+        "image_sha256": "c7b0d81b9df0516ce5ae5e6b61b43e9c8c56c012e7e43535401943c7c4ec9152",
+        "target_brief": "左侧标线主路与右侧泳池/长屋顶建筑之间的前场，从上方 A 至下方 B 的固定斜向范围；核验与主路平行的内部通行带及两侧边界。",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "提示线沿建筑前大片覆沙前场通过，左侧与主路间存在土埂，右侧有泳池围栏、树木和黄色挡车设施。场内可见板材、断管及蓝色框架等实体，但此单图不能可靠区分内部车道、停车区域与建筑前场，也不能确定 A 附近通行带在积水和植被之间的完整宽度。因此不将整片前场任意画成道路后判障碍。",
+        "uncertainties": [
+          "道路与停车/前场的横向边界无法完整核实。",
+          "A 附近道路连接范围受积水、植被和覆沙影响。"
+        ],
+        "inspected_at": "2026-10-18T16:09:02.182378+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-4d6596412ee186.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-4d6596412ee186.jpg"
+        ]
+      },
+      "final_row_sha256": "4a8143a3d9277d8c362439d79ffaddcb6ec6608a5dc1a669d7f8fefe1c4a7135"
+    },
+    {
+      "sample_id": "bounded-extract-523b8fdfbe20a9",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图及 guide，沿浅色建筑南侧通道检查至东侧弯道 B。道路身份可对应，停车位与通行带共用连续铺装，青线不能直接作为道路边界。",
+        "南侧弯道可见枝叶、树影与路缘重叠，单帧不能确认枝叶高度及实际占用；白色车辆在停车位/通行带边缘而缺少阻碍上下文。首稿 indeterminate 及近似完整范围可保留。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-523b8fdfbe20a9.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-523b8fdfbe20a9.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "60511007fcd5c96057d5b1f592f1edd7a9000955cb05dde4ea4d02eadc3ad442",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "209fcf1b22b91ea7abe9d8666ea724b269b8edb624700eb4299c41a94d40b626",
+      "reviewed_at": "2026-10-18T16:09:02.206804+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-523b8fdfbe20a9.jpg": "60511007fcd5c96057d5b1f592f1edd7a9000955cb05dde4ea4d02eadc3ad442",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-523b8fdfbe20a9.jpg": "32ad0ea48d0047635f610bf483d87353d3dd0625e5193461cfeb61eee7e78aec"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-523b8fdfbe20a9",
+        "image_sha256": "60511007fcd5c96057d5b1f592f1edd7a9000955cb05dde4ea4d02eadc3ad442",
+        "target_brief": "围绕浅色大屋顶建筑南侧、再向右北转至 B 的内部道路，自左上弯道 A 截面起，按道路实际走向检查全段及完整通行路宽。",
+        "target_polygon": [
+          [
+            0.224,
+            0.262
+          ],
+          [
+            0.318,
+            0.353
+          ],
+          [
+            0.344,
+            0.409
+          ],
+          [
+            0.665,
+            0.614
+          ],
+          [
+            0.719,
+            0.534
+          ],
+          [
+            0.755,
+            0.44
+          ],
+          [
+            0.835,
+            0.452
+          ],
+          [
+            0.8,
+            0.65
+          ],
+          [
+            0.765,
+            0.711
+          ],
+          [
+            0.706,
+            0.745
+          ],
+          [
+            0.673,
+            0.735
+          ],
+          [
+            0.473,
+            0.59
+          ],
+          [
+            0.257,
+            0.445
+          ],
+          [
+            0.23,
+            0.374
+          ],
+          [
+            0.19,
+            0.307
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "A、B 及绕建筑的道路可对应，青线部分靠近南侧停车位，轮廓按实际通行带描绘。南侧白色车辆位于停车位与通行带交界，其车头是否构成阻碍缺少上下文；南侧转弯内外树冠投影覆盖路缘，不能把俯视枝叶重叠直接算作物理侵入。没有把正常停车自动判障碍。",
+        "uncertainties": [
+          "白色车辆与通行边界关系及阻碍上下文不足。",
+          "南侧弯道部分树枝/树影遮挡路缘，实际枝叶侵入状态不明。",
+          "停车位与通行带交界处轮廓有近似误差。"
+        ],
+        "inspected_at": "2026-10-18T16:09:02.206804+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-523b8fdfbe20a9.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-523b8fdfbe20a9.jpg"
+        ]
+      },
+      "final_row_sha256": "8c7c418b4c2dc6dccdcd0523effbcf5011a046feff0d54ab4d31f56cdfa389b5"
+    },
+    {
+      "sample_id": "bounded-extract-5414c68d34835a",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查整张原生长图、guide 和自行生成的中段原生裁切。建筑东侧残骸带、棕榈分隔带、右侧斜向停车线及南端横向路口均已查看。",
+        "青线长段位于残骸及棕榈带，右侧才有清晰通行铺装与停车线。缺少可将冻结线可靠对应到该道路的独立地标关系，残骸带下的道路身份和全宽无法确认，保留 indeterminate。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-5414c68d34835a.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-5414c68d34835a.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-5414-middle.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "63f62e3de0d3806574ca7b8d8f6225086cfb44fbfdb69a0542ec9dd4da74d741",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "9d7df0c399c2d8f919f5df3fff211c577b15013acf6cbe99932ca419c8348d7c",
+      "reviewed_at": "2026-10-18T16:09:02.235462+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-5414c68d34835a.jpg": "63f62e3de0d3806574ca7b8d8f6225086cfb44fbfdb69a0542ec9dd4da74d741",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-5414c68d34835a.jpg": "4257f75709d75d90009d4d425cac297faa73442b58535e355f163644c4054eaa",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-5414-middle.jpg": "e298761bc871c979d759076aa011b37cb321b8a9fba7c22c2933ea7b75f4309a"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-5414c68d34835a",
+        "image_sha256": "63f62e3de0d3806574ca7b8d8f6225086cfb44fbfdb69a0542ec9dd4da74d741",
+        "target_brief": "从上方 A 至下方横向路口 B 的南北固定范围，位于左侧大型建筑与右侧停车/通行区域之间，核验此范围内实际道路位置及完整宽度。",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "原图和中部原生裁切显示，青线长距离落在建筑东侧密集构件残骸与棕榈带边缘；清晰的斜向停车线和通行区域位于其右侧。残骸下是否原有道路、该冻结线是否对应右侧道路及完整路宽，单图无法可靠核实。可见大量实体残骸，但不能先把残骸带命名为道路再判障碍。",
+        "uncertainties": [
+          "冻结提示与可见道路位置关系不明确。",
+          "建筑残骸遮盖带下方的道路身份与宽度未知。"
+        ],
+        "inspected_at": "2026-10-18T16:09:02.235462+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-5414c68d34835a.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-5414c68d34835a.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-5414-middle.jpg"
+        ]
+      },
+      "final_row_sha256": "2c59d03692d7721ad0166c4dadcd9cd6fd4c9f0fb39b8738a5dc05e464442c0c"
+    },
+    {
+      "sample_id": "bounded-extract-74e3e7a34a07c8",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图、guide 和自行生成的中段至 B 及南缘原生裁切。红色铺装交叉口 A、弧形连续路缘及 B 固定截面能对应同一道路。",
+        "中段南侧棕榈树干从草地低卧指向路面，树冠叶片跨过路缘；实体和树影可区分，支持 vegetation。另见南缘小型木构件/设施形态，但单帧不能确认其高度和失效状态，未据投影追加障碍。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-74e3e7a34a07c8.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-74e3e7a34a07c8.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-74e3-mid-to-b.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-74e3-south-curb.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "0624821c326db910e08c858cc63784c21edac82082ca8d3db0ecfb9debdb3b06",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "3daf2d63bdd167b542d795221201e6ca32fdac2aaede86adb497cab13b30d87c",
+      "reviewed_at": "2026-10-18T16:09:02.269293+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-74e3e7a34a07c8.jpg": "0624821c326db910e08c858cc63784c21edac82082ca8d3db0ecfb9debdb3b06",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-74e3e7a34a07c8.jpg": "21028c217db30efdb80191d87ef4e6f5cb806ef9b854c7942d2aa5a420d1becc",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-74e3-mid-to-b.jpg": "145da141eda329935fdeb6134b7ea0a3f0328663f06b63a9b9ff9a5260d175d2",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-74e3-south-curb.jpg": "487a03eb373ef1e4cd082f500893760b28d83a60a581ab505d7aab2518665c69"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-74e3e7a34a07c8",
+        "image_sha256": "0624821c326db910e08c858cc63784c21edac82082ca8d3db0ecfb9debdb3b06",
+        "target_brief": "住宅间弧形道路，自左下红色铺装交叉口 A 截面，沿上弯道路至右上 B 截面，按两侧路缘检查全段铺装宽度。",
+        "target_polygon": [
+          [
+            0.155,
+            0.692
+          ],
+          [
+            0.211,
+            0.625
+          ],
+          [
+            0.315,
+            0.462
+          ],
+          [
+            0.417,
+            0.357
+          ],
+          [
+            0.5,
+            0.292
+          ],
+          [
+            0.6,
+            0.238
+          ],
+          [
+            0.7,
+            0.219
+          ],
+          [
+            0.817,
+            0.215
+          ],
+          [
+            0.817,
+            0.305
+          ],
+          [
+            0.71,
+            0.305
+          ],
+          [
+            0.64,
+            0.322
+          ],
+          [
+            0.56,
+            0.354
+          ],
+          [
+            0.48,
+            0.402
+          ],
+          [
+            0.4,
+            0.466
+          ],
+          [
+            0.33,
+            0.547
+          ],
+          [
+            0.275,
+            0.619
+          ],
+          [
+            0.247,
+            0.676
+          ],
+          [
+            0.239,
+            0.72
+          ],
+          [
+            0.242,
+            0.76
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "vegetation",
+            "polygon": [
+              [
+                0.529,
+                0.326
+              ],
+              [
+                0.533,
+                0.31
+              ],
+              [
+                0.548,
+                0.302
+              ],
+              [
+                0.565,
+                0.312
+              ],
+              [
+                0.577,
+                0.34
+              ],
+              [
+                0.567,
+                0.361
+              ],
+              [
+                0.551,
+                0.375
+              ],
+              [
+                0.523,
+                0.415
+              ],
+              [
+                0.514,
+                0.41
+              ],
+              [
+                0.54,
+                0.367
+              ],
+              [
+                0.529,
+                0.352
+              ]
+            ]
+          }
+        ],
+        "notes": "中段南侧一株棕榈已从草地向道路倒伏；原生裁切能看清低卧树干、树冠根部和叶片，树冠越过路缘进入沥青路面，实体侵入关系明确。目标完整保留两端及弯道，未沿树冠内侧缩窄。其他大片暗色形态是树影，未当障碍。",
+        "uncertainties": [
+          "较细枝叶外缘和被树冠遮挡的几像素路缘存在定位误差；已用上下游清晰路缘校验。"
+        ],
+        "inspected_at": "2026-10-18T16:09:02.269293+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-74e3e7a34a07c8.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-74e3e7a34a07c8.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-74e3-mid-to-b.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-74e3-south-curb.jpg"
+        ]
+      },
+      "final_row_sha256": "105c9feaa516b7e11d50bca2e3d41e9c186db5ac5e8df485d00484386f2c6c16"
+    },
+    {
+      "sample_id": "bounded-extract-7891812c210074",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图、guide 和自行生成的北端原生裁切。下段可由景观岛、停车线端部和建筑前路缘识别通行带，A 位于下方内部横向道路处。",
+        "北端 B 附近密集船只及木材覆盖区域右缘，影像没有给出足以核实该段完整宽度的连续边界；可见实体是真实的，但不应据青线自造被遮道路边界。保留 indeterminate。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-7891812c210074.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-7891812c210074.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-7891-north.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "6b247b4a2150b6e5057a795e61d5fc9971e983a7c56af2b34ff67ddd6a6d1121",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "3923e8dd978268dcd19e1b59e2830bcf5a464ca6c6b457ab0cd282ee9d149da5",
+      "reviewed_at": "2026-10-18T16:09:02.299669+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-7891812c210074.jpg": "6b247b4a2150b6e5057a795e61d5fc9971e983a7c56af2b34ff67ddd6a6d1121",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-7891812c210074.jpg": "f51a8f20ec48b1092b7441cd0d64a370b87033767c01527bbe28448f58db7e41",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-7891-north.jpg": "8bc43b8c9ca23483b2576bc868a45d00b5395f4b56018cf83b25fcab949df6bb"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-7891812c210074",
+        "image_sha256": "6b247b4a2150b6e5057a795e61d5fc9971e983a7c56af2b34ff67ddd6a6d1121",
+        "target_brief": "停车场东侧、建筑西侧的纵向通行带，自下方横向内部道路处 A 截面向上到船只聚集区 B 截面，检查固定全段及其完整道路宽度。",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "下半段可根据建筑边缘、景观岛和停车线识别通行带；上半段有密集船只与木板堆，B 落在堆积带内。船只、碎片是可见实体，但北端道路右缘及停车区与通行带界线被遮盖，不能完整确定冻结目标的全宽。中段红色车辆也缺少是否阻碍的上下文；没有用可见空带缩短或缩窄目标。",
+        "uncertainties": [
+          "B 附近堆积之下道路边界及全宽不明。",
+          "普通车辆占用通行带的业务关系不能仅由静态位置确定。"
+        ],
+        "inspected_at": "2026-10-18T16:09:02.299669+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-7891812c210074.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-7891812c210074.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-7891-north.jpg"
+        ]
+      },
+      "final_row_sha256": "679a20947019dacdd409dc6f69913d805f99369c82d5c90f7d99b9cd907085dc"
+    },
+    {
+      "sample_id": "bounded-extract-7ed60987ee5785",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图及 guide。A 对应住宅间 T 形路口；纵向支路可见段的两侧路缘清楚，暗形可与棕榈投影对应。",
+        "图顶黑色缺像覆盖 B 和邻近固定路段，无法核实端面或全目标状态。保留 indeterminate 和空几何，没有把影像上缘当成新的 B。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-7ed60987ee5785.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-7ed60987ee5785.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "3be06927603db751c29af84524bde7b867d21c2f9e531cc2a2f224d3ba898216",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "10a1bcb751a76fee12d9528d0aa63623a1c526878c66d04262cb5446c8e12f72",
+      "reviewed_at": "2026-10-18T16:12:12.927022+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-7ed60987ee5785.jpg": "3be06927603db751c29af84524bde7b867d21c2f9e531cc2a2f224d3ba898216",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-7ed60987ee5785.jpg": "0801a2e814c834f3f52821fd27e8a6946753064ef3e75498a18332decf85d7f6"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-7ed60987ee5785",
+        "image_sha256": "3be06927603db751c29af84524bde7b867d21c2f9e531cc2a2f224d3ba898216",
+        "target_brief": "住宅间南北向支路，自下方 T 形路口 A 截面到图顶 B 固定截面，包含两侧路缘间全宽，不以有效影像的上边缘代替 B。",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "A 和大部分纵向支路清楚可见，路面暗色形态可对应树影；但原图上端有黑色无数据带，B 位于图顶黑区，最后一段固定道路与端面完全缺像。可见段外观通畅不能推出完整 A—B 为正常。",
+        "uncertainties": [
+          "B 端及紧邻路段无有效影像，不能检查全目标。"
+        ],
+        "inspected_at": "2026-10-18T16:12:12.927022+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-7ed60987ee5785.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-7ed60987ee5785.jpg"
+        ]
+      },
+      "final_row_sha256": "891bf13fd76a89cf76a7d20774ae5c150e40dd4126e872ac95246d6444283695"
+    },
+    {
+      "sample_id": "bounded-extract-8051f4a0e23744",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图、guide 及自行生成的南侧树冠、北侧长条和北缘碎片原生裁切。A、B 分别对应南侧两个出入口，横向双向道路及大部分两侧边缘清楚。",
+        "南侧浅色枝条本体投影到路面，旁边深色树影可区分，但其离地高度和实际通行侵入仍不能确定。北侧蓝白碎片末端接近草缘，裁切未给出确定越界证据；保留 indeterminate，没有把树影或边界疑点自动判障碍。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-8051f4a0e23744.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-8051f4a0e23744.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-8051-tree.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-8051-north.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-8051-north-tip.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "17f0a995a7eb19f9ffdb2b3234d8fd6cc424a3645f05602061157bde1f61a77a",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "26168e8715c03b07d66ea3aa2668b4ef92f37bc0c971e6fb9a5ee11b69cba5e8",
+      "reviewed_at": "2026-10-18T16:12:12.939110+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-8051f4a0e23744.jpg": "17f0a995a7eb19f9ffdb2b3234d8fd6cc424a3645f05602061157bde1f61a77a",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-8051f4a0e23744.jpg": "618a4cbba509d337c08d1f89ab3fca9978dffa446c397f9ec4bc41fbc3ffc5da",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-8051-tree.jpg": "354ece86df61e36e800037948f9b306716dbb572cdeed5497fb98122ba0cc45a",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-8051-north.jpg": "d228240372fa2b51e7f1f785673233684a30a93bdc4130457eff6d63b6822a2d",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-8051-north-tip.jpg": "54d08e8f171d7095ae0116a52a843f41b4bf81e7d48e5c435702fb4e6003fcd5"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-8051f4a0e23744",
+        "image_sha256": "17f0a995a7eb19f9ffdb2b3234d8fd6cc424a3645f05602061157bde1f61a77a",
+        "target_brief": "水渠护栏南侧横向双向道路，自左侧住宅出入口对应 A 截面至右侧停车场入口对应 B 截面，检查两端之间从北草缘到南路缘的全铺装宽度。",
+        "target_polygon": [
+          [
+            0.1685,
+            0.402
+          ],
+          [
+            0.831,
+            0.407
+          ],
+          [
+            0.831,
+            0.551
+          ],
+          [
+            0.1694,
+            0.568
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "原图与原生条带显示大部分路面及两侧边缘清楚。右段南侧树的浅色枝冠在俯视图上越过南路缘，其深色投影继续伸向北侧；单图不能确定这些枝条距路面的高度或是否实际阻碍目标。北侧零散白片主要停在草带/护栏处，没有把它们或树影自动计作道路障碍。",
+        "uncertainties": [
+          "右段树冠与道路的竖向关系和实体侵入状态不明，不能直接判正常或植被障碍。"
+        ],
+        "inspected_at": "2026-10-18T16:12:12.939110+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-8051f4a0e23744.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-8051f4a0e23744.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-8051-tree.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-8051-north.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-8051-north-tip.jpg"
+        ]
+      },
+      "final_row_sha256": "dab6a794060a998c300654d5d3a4ce0bcb0e6e08031bcea2859f2ea2fbd7a679"
+    },
+    {
+      "sample_id": "bounded-extract-aea2cf8baf5e24",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图及 guide，沿中央植栽岛南、西、北侧追踪完整固定弧段，未改成右侧直路。中央岛、灯柱及右侧接口能确认道路身份。",
+        "路面大范围覆沙并有车辙，南侧白车紧邻覆沙外缘，不能确认其与道路边界及阻碍的关系。保留 indeterminate，既未把表面覆沙自动定为实体，也未把普通车辆自动判障碍。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-aea2cf8baf5e24.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-aea2cf8baf5e24.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "e100eeaea55babc27a5525948dc720dfa0e55444affaa2ed4cb22ee2b231eefd",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "59e167510b2a7b058e05c1ce88da2160e8f5db857e7fca86cb471997035a007b",
+      "reviewed_at": "2026-10-18T16:12:12.962209+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-aea2cf8baf5e24.jpg": "e100eeaea55babc27a5525948dc720dfa0e55444affaa2ed4cb22ee2b231eefd",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-aea2cf8baf5e24.jpg": "2ffbe6ef231972221461234fec2b09f913cc43b0c58c626b8fa36511228ebc57"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-aea2cf8baf5e24",
+        "image_sha256": "e100eeaea55babc27a5525948dc720dfa0e55444affaa2ed4cb22ee2b231eefd",
+        "target_brief": "围绕中央植栽岛的弯环道路，自右下 A 接口沿岛南侧、西侧、北侧绕行至右上 B 截面，保留冻结的整段弧线及道路全宽。",
+        "target_polygon": [
+          [
+            0.665,
+            0.748
+          ],
+          [
+            0.525,
+            0.704
+          ],
+          [
+            0.39,
+            0.655
+          ],
+          [
+            0.285,
+            0.611
+          ],
+          [
+            0.234,
+            0.561
+          ],
+          [
+            0.206,
+            0.475
+          ],
+          [
+            0.193,
+            0.366
+          ],
+          [
+            0.192,
+            0.319
+          ],
+          [
+            0.225,
+            0.291
+          ],
+          [
+            0.33,
+            0.267
+          ],
+          [
+            0.44,
+            0.235
+          ],
+          [
+            0.52,
+            0.22
+          ],
+          [
+            0.585,
+            0.248
+          ],
+          [
+            0.615,
+            0.282
+          ],
+          [
+            0.548,
+            0.35
+          ],
+          [
+            0.525,
+            0.327
+          ],
+          [
+            0.47,
+            0.327
+          ],
+          [
+            0.412,
+            0.348
+          ],
+          [
+            0.365,
+            0.387
+          ],
+          [
+            0.336,
+            0.432
+          ],
+          [
+            0.33,
+            0.485
+          ],
+          [
+            0.35,
+            0.539
+          ],
+          [
+            0.405,
+            0.579
+          ],
+          [
+            0.492,
+            0.611
+          ],
+          [
+            0.589,
+            0.645
+          ],
+          [
+            0.617,
+            0.651
+          ],
+          [
+            0.724,
+            0.675
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "固定弧线可在中央岛外围道路上追踪；道路普遍覆沙并有轮迹，不能仅以表面变色或车辙判实体障碍。南侧弧段外缘有一辆普通白色车，靠近道路边界，但该处被沙覆盖，无法确认属于路边停放、通行或阻挡，因而不直接给正常或障碍结论。",
+        "uncertainties": [
+          "南侧白色车辆与被沙覆盖的道路外缘关系、阻碍上下文不足。",
+          "覆沙使部分路宽外缘仅能按可见路缘和连续走向近似定位。"
+        ],
+        "inspected_at": "2026-10-18T16:12:12.962209+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-aea2cf8baf5e24.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-aea2cf8baf5e24.jpg"
+        ]
+      },
+      "final_row_sha256": "420a6b7b60adf235184f120e3ee0301f4f4b0206dcafa0e2e49a0adf50d1f4a7"
+    },
+    {
+      "sample_id": "bounded-extract-afd8ea1cd0657b",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图及 guide。北侧白色屋顶、停车位、左侧接入道路与南侧树带支持同一横向道路身份；提示线左端靠近南缘而非可靠中心线。",
+        "左段及 A 附近枝叶遮住实际南侧路缘，冠层高度和路面实体状态不能从阴影中分离到足够确定。保留全段不可判及空道路几何，未按可见中间空带缩窄目标。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-afd8ea1cd0657b.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-afd8ea1cd0657b.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "8f4c27338479aac8d4d7d32beb7c09cd9ac29b3dcade4a785ce0b88e80241625",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "8984384bcde1cd1eba64f360417eaed04e578f59fdf5e2a5f74917680c8775ba",
+      "reviewed_at": "2026-10-18T16:12:12.991944+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-afd8ea1cd0657b.jpg": "8f4c27338479aac8d4d7d32beb7c09cd9ac29b3dcade4a785ce0b88e80241625",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-afd8ea1cd0657b.jpg": "9e9e902ec811b82397ceb30bac0b34eb8004a040bf40c1887b07d90fbf528073"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-afd8ea1cd0657b",
+        "image_sha256": "8f4c27338479aac8d4d7d32beb7c09cd9ac29b3dcade4a785ce0b88e80241625",
+        "target_brief": "白色屋顶住宅及停车位南侧的横向弯路，自左侧 A 固定截面到右侧 B 截面，核验完整路面及北侧停车边界、南侧植被边界之间的宽度。",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "右半段实际道路可辨；左段 A 附近提示偏至南路缘树带，多个树冠与路面重叠，大量阴影覆盖铺装。无法沿全段可靠辨明南侧实际路缘，也不能确定枝叶是高处冠层还是低卧侵入，不能因可见中间空带而缩窄目标或直接给正常结论。",
+        "uncertainties": [
+          "A 与左半段路缘被树冠遮盖，完整全宽不明。",
+          "树冠对道路的实体侵入和高度关系不明确。"
+        ],
+        "inspected_at": "2026-10-18T16:12:12.991944+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-afd8ea1cd0657b.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-afd8ea1cd0657b.jpg"
+        ]
+      },
+      "final_row_sha256": "e9478cbd0230f9f30e8591f2fb3961d9304536f738de313c35c54ec938793582"
+    },
+    {
+      "sample_id": "bounded-extract-c66c5eb099818a",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查原生图及 guide。A 位于社区入口前横向道路，B 位于西侧树带对应路段；中间宽黑色缺像块明确横断固定目标。",
+        "缺像块内没有有效道路表面或路缘数据，B 邻近另有冠层遮挡。保留 indeterminate 与空几何，不跨缺像声称已观察到连续道路全宽。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-c66c5eb099818a.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-c66c5eb099818a.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "305e9204464c54764677c004521e8b36135fd6114e2c9593df4cad080409cef3",
+      "first_author_id": "bounded_annotator_1",
+      "first_row_sha256": "6cbc625c0618a252b01bef9c18c99a89bb08df7337b168b9cdcf3cb15fb9e853",
+      "reviewed_at": "2026-10-18T16:12:13.016728+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-c66c5eb099818a.jpg": "305e9204464c54764677c004521e8b36135fd6114e2c9593df4cad080409cef3",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-c66c5eb099818a.jpg": "921fa1a9bac09cea16c56655a51ebbc9e37b9613397eeae483f9dba877e3a00c"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-c66c5eb099818a",
+        "image_sha256": "305e9204464c54764677c004521e8b36135fd6114e2c9593df4cad080409cef3",
+        "target_brief": "画面中央横向道路，从右侧社区入口附近 A 截面向左至树带处 B 截面，检查两端间完整道路全宽。",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "原图中左中部一条宽黑色缺像带横断目标道路，使 A—B 中段无任何有效路面影像。B 邻近段另被树冠覆盖；即使右半段道路可见，也不能跨越缺像连接成已检查的完整目标。",
+        "uncertainties": [
+          "中段黑色无数据带截断固定路段。",
+          "B 附近冠层遮挡路缘及路面，实体关系不明。"
+        ],
+        "inspected_at": "2026-10-18T16:12:13.016728+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-c66c5eb099818a.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-c66c5eb099818a.jpg"
+        ]
+      },
+      "final_row_sha256": "d4823656a8211b84f6ccde61570d1021bb1d6e7ae5a28edbda13013aec71c6ff"
+    },
+    {
+      "sample_id": "bounded-extract-14d2a5d80630b4",
+      "decision": "revised",
+      "findings": [
+        "亲自检查原生图、guide 及自行生成的东西两段完整道路条带、北缘白物和南缘枝条原生裁切。两端出入口与北侧水渠护栏可确认整个固定主路范围。",
+        "首稿北边界中东段纳入了窄草带，按实际草地/铺装交界调整轮廓。约 x=1803、y=445 的微小白色碎片位于草缘与铺装交界，原生像素不能充分确定其尖端是否越界；不直接认定障碍，也不保留无疑点的 normal。南侧枝条仍在草带。"
+      ],
+      "changes": {
+        "target_polygon": [
+          [
+            0.16528,
+            0.334549
+          ],
+          [
+            0.300062,
+            0.365542
+          ],
+          [
+            0.4313,
+            0.398359
+          ],
+          [
+            0.492914,
+            0.40474
+          ],
+          [
+            0.554529,
+            0.406563
+          ],
+          [
+            0.677757,
+            0.398359
+          ],
+          [
+            0.770179,
+            0.396536
+          ],
+          [
+            0.83472,
+            0.39289
+          ],
+          [
+            0.83472,
+            0.556062
+          ],
+          [
+            0.677757,
+            0.563355
+          ],
+          [
+            0.492914,
+            0.570647
+          ],
+          [
+            0.308071,
+            0.576117
+          ],
+          [
+            0.16528,
+            0.582498
+          ]
+        ],
+        "verdict": "indeterminate",
+        "notes": "A—B 全段及两侧道路边缘已经逐段检查，路面标线、接缝与投影本身不计障碍。北边界按实际铺装/草地交界校正，保持原固定两端。中段北缘约 x=1803、y=445 的微小白色碎片贴近道路边界，原生细节中其尖端与草缘仅相差数像素，不能确定是否实际越入铺装；因此保留不可判，不将疑似碎片直接列为已确认障碍。南侧枝条位于草带。",
+        "uncertainties": [
+          "北缘微小白色碎片的尖端与草地/铺装边界关系受数像素模糊影响；尚不足以确认实体侵入，也不足以给出无疑点的 normal。"
+        ]
+      },
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-14d2a5d80630b4.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-14d2a5d80630b4.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-14d2-west.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-14d2-east.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-14d2-white-tip.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-14d2-south-branch.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "313993abbbc166f1f8b753755736e3fbda48bc8b4316073cc58a680d13595f6d",
+      "first_author_id": "bounded_annotator_2",
+      "first_row_sha256": "d8c7c5f3846b657213d9cc35bf500fcea415f1f4b8080588175479fd2a43d0b6",
+      "reviewed_at": "2026-10-18T16:16:56.599999+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-14d2a5d80630b4.jpg": "313993abbbc166f1f8b753755736e3fbda48bc8b4316073cc58a680d13595f6d",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-14d2a5d80630b4.jpg": "2fbf15f5e64c9a5e18e47875c1c8483ccb96c3f1dd4f96396bbbb50356aaeaf4",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-14d2-west.jpg": "aad1d72edea090c6d51eb3b8b1f4dc5a5adeb9eda54a0f2ef5f13898c44bb485",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-14d2-east.jpg": "0d681c5b440a6d95c13a92ede6d0f8a1d8f9ef7c65c172fbef3deb8dc1c003fa",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-14d2-white-tip.jpg": "aa154cd19cfc69280a02e02fa43028713d68269b1b8d919081a0a91b08b90c1f",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-14d2-south-branch.jpg": "702738899dbe0576246bab9aa2631f3f27fa75e8a55882fd6ef1de7d3fda6f83"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-14d2a5d80630b4",
+        "target_brief": "沿上方排水渠及护栏、下方住宅入口与人行道之间的横向主路；范围从左侧支路中心处 B 横断面到右侧支路中心处 A 横断面，包含两侧路缘间完整路宽。",
+        "target_polygon": [
+          [
+            0.16528,
+            0.334549
+          ],
+          [
+            0.300062,
+            0.365542
+          ],
+          [
+            0.4313,
+            0.398359
+          ],
+          [
+            0.492914,
+            0.40474
+          ],
+          [
+            0.554529,
+            0.406563
+          ],
+          [
+            0.677757,
+            0.398359
+          ],
+          [
+            0.770179,
+            0.396536
+          ],
+          [
+            0.83472,
+            0.39289
+          ],
+          [
+            0.83472,
+            0.556062
+          ],
+          [
+            0.677757,
+            0.563355
+          ],
+          [
+            0.492914,
+            0.570647
+          ],
+          [
+            0.308071,
+            0.576117
+          ],
+          [
+            0.16528,
+            0.582498
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "A—B 全段及两侧道路边缘已经逐段检查，路面标线、接缝与投影本身不计障碍。北边界按实际铺装/草地交界校正，保持原固定两端。中段北缘约 x=1803、y=445 的微小白色碎片贴近道路边界，原生细节中其尖端与草缘仅相差数像素，不能确定是否实际越入铺装；因此保留不可判，不将疑似碎片直接列为已确认障碍。南侧枝条位于草带。",
+        "uncertainties": [
+          "北缘微小白色碎片的尖端与草地/铺装边界关系受数像素模糊影响；尚不足以确认实体侵入，也不足以给出无疑点的 normal。"
+        ],
+        "inspected_at": "2026-10-18T16:16:56.599999+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-14d2a5d80630b4.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-14d2a5d80630b4.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-14d2-west.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-14d2-east.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-14d2-white-tip.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-14d2-south-branch.jpg"
+        ],
+        "image_sha256": "313993abbbc166f1f8b753755736e3fbda48bc8b4316073cc58a680d13595f6d"
+      },
+      "final_row_sha256": "a3ba8af21b874f2bcd35e32e2a184bc30bfb3c34b6b288060266046ad17c9e74"
+    },
+    {
+      "sample_id": "bounded-extract-1b9f88a24c0fef",
+      "decision": "accepted",
+      "findings": [
+        "亲自检查整张原生图、guide 和自行生成的中下段原生裁切。目标是右侧宽主路西侧、停车场东侧的窄支路，A 对应南侧横向支路，B 对应北侧停车场入口，未混入主路或步道。",
+        "南半段深褐色积水/湿泥覆盖使表面细节不能充分观察，西侧局部树冠还遮住边缘。道路范围仍可由连续两侧草缘追踪，但不能因范围可定位就断言无实体；保留 indeterminate。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-1b9f88a24c0fef.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-1b9f88a24c0fef.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-1b9f-lower.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "2a4f3d4cf42f9b8257b0e5ccdf749fee7817e75cbf07c7afad6f06e600f5a14d",
+      "first_author_id": "bounded_annotator_2",
+      "first_row_sha256": "27d83cde935a4a07f22c4d2c81276f78aba4833452fda4f70b8a923cd525c4a6",
+      "reviewed_at": "2026-10-18T16:16:56.610513+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-1b9f88a24c0fef.jpg": "2a4f3d4cf42f9b8257b0e5ccdf749fee7817e75cbf07c7afad6f06e600f5a14d",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-1b9f88a24c0fef.jpg": "30ffcf15fcfbf3a48c27f407a2d2a050bf8cb7ab49731a40115fff4f7513b83a",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-1b9f-lower.jpg": "ab643f7a2333f35c60e13a6cf86682e8286e44d6025b2d073dc9d96e33f57ab6"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-1b9f88a24c0fef",
+        "target_brief": "右侧较宽双向主路以西、停车场与建筑以东的南北向支路；北端为停车场入口对应 B 横断面，南端为左侧支路汇入处 A 横断面。范围仅沿该支路两侧边界，不含右侧主路和中间步道。",
+        "target_polygon": [
+          [
+            0.445,
+            0.1612
+          ],
+          [
+            0.447,
+            0.236
+          ],
+          [
+            0.466,
+            0.29
+          ],
+          [
+            0.474,
+            0.37
+          ],
+          [
+            0.46,
+            0.44
+          ],
+          [
+            0.45,
+            0.489
+          ],
+          [
+            0.446,
+            0.555
+          ],
+          [
+            0.44,
+            0.61
+          ],
+          [
+            0.42,
+            0.7
+          ],
+          [
+            0.425,
+            0.776
+          ],
+          [
+            0.408,
+            0.8388
+          ],
+          [
+            0.604,
+            0.8388
+          ],
+          [
+            0.589,
+            0.776
+          ],
+          [
+            0.583,
+            0.7
+          ],
+          [
+            0.581,
+            0.61
+          ],
+          [
+            0.576,
+            0.489
+          ],
+          [
+            0.566,
+            0.37
+          ],
+          [
+            0.558,
+            0.29
+          ],
+          [
+            0.552,
+            0.236
+          ],
+          [
+            0.55,
+            0.1612
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "完整逐段检查固定 A–B 支路及两侧边界。南半段有连续深褐色积水或湿泥覆盖，局部树影与岸侧树冠遮住路缘附近表面，不能充分排除被遮蔽的小实体。未将水色、阴影、路面接缝或正常主路车辆当作障碍。",
+        "uncertainties": [
+          "南半段覆盖物不透明且路面细节不可充分判读，无法给出完整目标无实体侵入的 normal 结论。",
+          "左侧局部树冠与阴影相接，仅凭垂直视角不能确认枝叶是否实际落入通行空间。"
+        ],
+        "inspected_at": "2026-10-18T16:16:56.610513+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-1b9f88a24c0fef.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-1b9f88a24c0fef.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-1b9f-lower.jpg"
+        ],
+        "image_sha256": "2a4f3d4cf42f9b8257b0e5ccdf749fee7817e75cbf07c7afad6f06e600f5a14d"
+      },
+      "final_row_sha256": "78390858e712b5d211b5ae3a42c8a9117ce952edd26e9b7f1e8d491bbddef10a"
+    },
+    {
+      "sample_id": "bounded-extract-27b19da37c95dc",
+      "decision": "revised",
+      "findings": [
+        "亲自检查原生图、guide、自行生成的东西两段道路原生条带和两个北缘细节。B 是左侧纵路汇合处，A 在右侧上弯起点，两端之间同一条带黄色箭头的窄路全宽可定位。",
+        "确认首稿中右部南缘破损白构件尖端进入铺装；另在 A 前方约 x=3252、y=534 发现孤立白色细条，原生裁切显示它在灰色路面内且与草地分离，应补录 debris，不以尺寸小而忽略。北侧较大构件末端仍贴近草缘，未追加不确定越界；红顶小车缺阻碍上下文，未自动记障碍。"
+      ],
+      "changes": {
+        "objects": [
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.601,
+                0.5162
+              ],
+              [
+                0.604,
+                0.527
+              ],
+              [
+                0.6138,
+                0.5351
+              ],
+              [
+                0.6297,
+                0.5351
+              ],
+              [
+                0.6312,
+                0.545
+              ],
+              [
+                0.6207,
+                0.5532
+              ],
+              [
+                0.5997,
+                0.5414
+              ],
+              [
+                0.5941,
+                0.5423
+              ],
+              [
+                0.593,
+                0.5306
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.832137,
+                0.475676
+              ],
+              [
+                0.834188,
+                0.479279
+              ],
+              [
+                0.834956,
+                0.484685
+              ],
+              [
+                0.833675,
+                0.485586
+              ],
+              [
+                0.83265,
+                0.481982
+              ]
+            ]
+          }
+        ],
+        "notes": "A—B 全段及道路全宽已经逐段检查。中右部南侧白色破损构件尖端与连接条伸入铺装下缘，保留原 debris。A 之前靠北侧的灰色路面内另有孤立白色细条，约原图 x=3252、y=534，实体与草缘可分离，补录第二个 debris 多边形。北侧较大构件末端贴近草缘，未据不确定边界另加对象。中左部红色顶棚小车缺少停驶或阻挡语境，未把普通车辆计为障碍。",
+        "uncertainties": [
+          "红顶小车的运行状态和通行影响不能由此单帧确定。",
+          "新增细条仅数像素宽，其实体存在及位于铺装内可见，但精确外缘有约数像素误差。"
+        ]
+      },
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-27b19da37c95dc.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-27b19da37c95dc.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-27b1-west.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-27b1-east.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-27b1-a-fragment.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-27b1-north-tip.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "e06dd085903daa3e8ed9cad43a107b4ce8bd93003f2a4f1e3259957ee7a21be3",
+      "first_author_id": "bounded_annotator_2",
+      "first_row_sha256": "4dfdfaf312fef2681ac32d2ae36373c2390e6856981dafde3eb7ca64d776fe2f",
+      "reviewed_at": "2026-10-18T16:16:56.624141+00:00",
+      "reviewer_id": "bounded_verifier_1",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-27b19da37c95dc.jpg": "e06dd085903daa3e8ed9cad43a107b4ce8bd93003f2a4f1e3259957ee7a21be3",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-27b19da37c95dc.jpg": "483ebfe999f3d60ca1192b8b651f69cdb6f4d0bfff3cce34a07c186a89cf694e",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-27b1-west.jpg": "f237a1f77b9a04b0f370f1217ca5d22310eb647da5e31e8aa6e0ebad3432e921",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-27b1-east.jpg": "94c6029371753eb39865903cea1233343d09056a7b8a1b15083eab90e88a5cd2",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-27b1-a-fragment.jpg": "9b821b0cc3f22bc87bc537ff0d64cb54f79d6afbf6b97896acab72b8080e7e4a",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-27b1-north-tip.jpg": "aaca8cab1f4b9e5cf393601c98ee4924e27c4808060f9616bcf89ca61a7bf22d"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-27b19da37c95dc",
+        "target_brief": "位于成排活动房屋之间、带黄色方向箭头的横向窄路；从左侧纵路交会处 B 到右侧向上转弯起点 A 的固定横断面，包含铺装路面全宽。",
+        "target_polygon": [
+          [
+            0.1375,
+            0.472
+          ],
+          [
+            0.162,
+            0.473
+          ],
+          [
+            0.3,
+            0.474
+          ],
+          [
+            0.5,
+            0.467
+          ],
+          [
+            0.7,
+            0.463
+          ],
+          [
+            0.83,
+            0.459
+          ],
+          [
+            0.851,
+            0.445
+          ],
+          [
+            0.874,
+            0.518
+          ],
+          [
+            0.833,
+            0.536
+          ],
+          [
+            0.7,
+            0.537
+          ],
+          [
+            0.5,
+            0.54
+          ],
+          [
+            0.3,
+            0.545
+          ],
+          [
+            0.162,
+            0.548
+          ],
+          [
+            0.1375,
+            0.558
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.601,
+                0.5162
+              ],
+              [
+                0.604,
+                0.527
+              ],
+              [
+                0.6138,
+                0.5351
+              ],
+              [
+                0.6297,
+                0.5351
+              ],
+              [
+                0.6312,
+                0.545
+              ],
+              [
+                0.6207,
+                0.5532
+              ],
+              [
+                0.5997,
+                0.5414
+              ],
+              [
+                0.5941,
+                0.5423
+              ],
+              [
+                0.593,
+                0.5306
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.832137,
+                0.475676
+              ],
+              [
+                0.834188,
+                0.479279
+              ],
+              [
+                0.834956,
+                0.484685
+              ],
+              [
+                0.833675,
+                0.485586
+              ],
+              [
+                0.83265,
+                0.481982
+              ]
+            ]
+          }
+        ],
+        "notes": "A—B 全段及道路全宽已经逐段检查。中右部南侧白色破损构件尖端与连接条伸入铺装下缘，保留原 debris。A 之前靠北侧的灰色路面内另有孤立白色细条，约原图 x=3252、y=534，实体与草缘可分离，补录第二个 debris 多边形。北侧较大构件末端贴近草缘，未据不确定边界另加对象。中左部红色顶棚小车缺少停驶或阻挡语境，未把普通车辆计为障碍。",
+        "uncertainties": [
+          "红顶小车的运行状态和通行影响不能由此单帧确定。",
+          "新增细条仅数像素宽，其实体存在及位于铺装内可见，但精确外缘有约数像素误差。"
+        ],
+        "inspected_at": "2026-10-18T16:16:56.624141+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/images/bounded-extract-27b19da37c95dc.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-relay-v2/guides/bounded-extract-27b19da37c95dc.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-27b1-west.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-27b1-east.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-27b1-a-fragment.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_1/detail-27b1-north-tip.jpg"
+        ],
+        "image_sha256": "e06dd085903daa3e8ed9cad43a107b4ce8bd93003f2a4f1e3259957ee7a21be3"
+      },
+      "final_row_sha256": "4f3d85359ca66d686be3c9f8cb0c80bb65eb5d56af016f7b35e4d66c173eec6d"
+    }
+  ]
+}

@@ -1,0 +1,140 @@
+"""Verify frozen requests and replay every recorded answer before rendering comparisons.
+
+先核对冻结请求并回放全部录制回答，再生成比较预览。
+"""
+import asyncio
+import base64
+import hashlib
+import json
+import runpy
+import subprocess
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+from drone_agent.providers.replay import Recording, ReplayProvider
+
+ROOT = Path(__file__).resolve().parent
+REPO = ROOT.parent / 'repo'
+DIAG = ROOT / 'diagnostic'
+TOOL = runpy.run_path(str(REPO / 'scripts/p6_road_views.py'))
+
+
+def sha(path):
+    """Hash the recorded bytes. / 对记录字节求摘要。"""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def write(path, value):
+    """Write a new UTF-8 receipt. / 写入新的 UTF-8 回执。"""
+    with path.open('xb') as stream:
+        stream.write((json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode())
+
+
+async def main():
+    """Keep source data, raw model responses and comparison views distinct.
+
+分别保留源数据、原始模型回答与比较视图。
+"""
+    config = json.loads((DIAG / 'config.json').read_text())
+    manifest = json.loads((DIAG / 'inputs/manifest.json').read_text())
+    plan = json.loads((DIAG / 'plan.json').read_text())
+    header = json.loads((DIAG / 'cloud/output/run.json').read_text())
+    results = json.loads((DIAG / 'cloud/output/results.json').read_text())
+    precall = json.loads((DIAG / 'precall.json').read_text())
+    execution = json.loads((DIAG / 'cloud/execution.json').read_text())
+    assert header['config_sha256'] == plan['config_sha256'] == sha(DIAG / 'config.json')
+    assert header['manifest_sha256'] == plan['manifest_sha256'] == sha(DIAG / 'inputs/manifest.json')
+    assert header['runner_sha256'] == sha(ROOT / 'diagnostic_runner.py')
+    assert header['runtime_source_sha'] == '6249129596b7cfe88c7322f8b425c7b432dba24b'
+    assert execution['preflight']['image_id'] == 'sha256:4f84962ee6b75f899ee50afa153dca439942d9bf518b25d7c780c0b17c2b2377'
+    assert precall['plan_sha256'] == sha(DIAG / 'plan.json')
+    committed = subprocess.check_output(['git', 'show', '-s', '--format=%cI', precall['freeze_commit']], cwd=REPO).decode().strip()
+    assert datetime.fromisoformat(committed) <= datetime.fromisoformat(precall['recorded_at_utc'])
+    assert datetime.fromisoformat(precall['recorded_at_utc']) <= datetime.fromisoformat(header['started_at'].replace('Z', '+00:00'))
+    lookup = {r['case_id']: r for r in results}
+    kwargs = {k: config[k] for k in ('model', 'temperature', 'max_tokens', 'thinking', 'reasoning_effort', 'timeout_s')}
+    replayed = []
+    for row in manifest:
+        content = [{'type': 'text', 'text': config['instruction']}]
+        for item in row['images']:
+            path = DIAG / 'inputs' / item['file']
+            assert sha(path) == item['sha256']
+            content.append({'type': 'image_url', 'image_url': {'url': 'data:image/jpeg;base64,' + base64.b64encode(path.read_bytes()).decode(), 'detail': 'high'}})
+        result = lookup.get(row['case_id'])
+        if not result or result['status'] != 'answered':
+            continue
+        path = DIAG / 'cloud/output/recordings' / (row['case_id'] + '.json')
+        assert sha(path) == result['recording_sha256']
+        replay = ReplayProvider(Recording.load(path))
+        answer = await replay.complete([{'role': 'system', 'content': config['system_prompt']}, {'role': 'user', 'content': content}], **kwargs)
+        assert replay.exhausted and answer[0] == result['raw_content'] and answer[1] == result['model_used']
+        assert answer[2] == result['finish'] and list(answer[3]) == result['usage']
+        replayed.append(row['case_id'])
+    summary = TOOL['summarize'](plan, results)
+    out = DIAG / 'analysis'
+    out.mkdir()
+    data = Path('D:/drone-agent-data/p6-materials-20261013-round3')
+    cases = {c['case_id']: c for c in json.loads((data / 'audit/review-bundle.json').read_text(encoding='utf-8'))['cases']}
+    old = {r['case_id']: r for r in json.loads((REPO / 'eval/s2/p6_candidates_v3/diagnostic/summary.json').read_text())['rows']}
+    parent_map = {p['case_id']: p for p in plan['parents']}
+    fonts = Path('C:/Windows/Fonts/arial.ttf')
+    font = ImageFont.truetype(str(fonts), 16) if fonts.exists() else ImageFont.load_default()
+    arm_totals = {arm: {'calls': 0, 'answered': 0, 'input_tokens': 0, 'output_tokens': 0} for arm in ('full', 'tiles')}
+    view_map = {v['case_id']: v for p in plan['parents'] for v in p['views']}
+    for result in results:
+        total = arm_totals[view_map[result['case_id']]['arm']]
+        total['calls'] += 1
+        total['answered'] += result['status'] == 'answered'
+        total['input_tokens'] += result.get('usage', [0, 0])[0]
+        total['output_tokens'] += result.get('usage', [0, 0])[1]
+    for row in summary['rows']:
+        case = cases[row['case_id']]
+        row['image_id'] = case['image_id']
+        row['source_class_for_audit_only'] = case['source_class']
+        row['prior_v1_verdict_context_only'] = old[row['case_id']]['model_verdict']
+        row['source_support_bbox'] = parent_map[row['case_id']]['source_support_bbox']
+        image = Image.open(data / case['image_file']).convert('RGB')
+        image.thumbnail((1200, 900))
+        full_mask = np.asarray(Image.open(data / case['target_region']['file'])) > 0
+        mask = Image.fromarray(full_mask.astype(np.uint8) * 255).resize(image.size, Image.Resampling.NEAREST)
+        edge = mask.filter(ImageFilter.FIND_EDGES()).filter(ImageFilter.MaxFilter(3))
+        overlay = Image.new('RGBA', image.size, (32, 176, 222, 0))
+        overlay.putalpha(edge)
+        image = Image.alpha_composite(image.convert('RGBA'), overlay).convert('RGB')
+        draw = ImageDraw.Draw(image)
+        for i, obstacle in enumerate(row['obstacles']):
+            box = obstacle['bbox_in_source']
+            color = '#ff8b20' if obstacle['arm'] == 'full' else '#c13bca'
+            draw.rectangle([box[0] * image.width, box[1] * image.height, box[2] * image.width, box[3] * image.height], outline=color, width=3)
+            draw.text((max(2, box[0] * image.width), max(2, box[1] * image.height - 19)), obstacle['arm'][0].upper() + str(i + 1), fill=color, font=font)
+            width, height = parent_map[row['case_id']]['source_size']
+            x0, y0, x1, y1 = int(box[0] * width), int(box[1] * height), min(width, int(np.ceil(box[2] * width))), min(height, int(np.ceil(box[3] * height)))
+            pixels = full_mask[y0:y1, x0:x1]
+            obstacle['fraction_within_source_support'] = round(float(pixels.mean()), 4) if pixels.size else None
+            obstacle['overlap_is_not_a_correctness_judgment'] = True
+        canvas = Image.new('RGB', (image.width, image.height + 48), '#f3f0e7')
+        canvas.paste(image)
+        ImageDraw.Draw(canvas).text((10, image.height + 12), f"{case['image_id']} / source {case['source_class']} | full {row['full_verdict']} | tiles {row['tiles_verdict']}", fill='#173330', font=font)
+        canvas.save(out / (row['case_id'] + '.jpg'), quality=93)
+    summary.update(run_id=json.loads((DIAG / 'launch.json').read_text())['run_id'], freeze_commit=precall['freeze_commit'],
+                   runtime_source_sha=header['runtime_source_sha'], runner_sha256=header['runner_sha256'],
+                   config_sha256=header['config_sha256'], manifest_sha256=header['manifest_sha256'],
+                   local_strict_replays=len(replayed), usage_by_arm=arm_totals,
+                   source_labels_are_not_business_ground_truth=True,
+                   additional_views_and_calls_confounded_with_scale=True)
+    write(out / 'summary.json', summary)
+    write(out / 'verification.json', {'status': 'development_comparison_verified_not_release', 'local_strict_replays': len(replayed),
+          'input_images_verified': sum(len(r['images']) for r in manifest), 'freeze_before_calls': True,
+          'resident_container_identities_unchanged': execution['resident_container_identities_unchanged'],
+          'model_answers_unchanged': True, 'accuracy_computed': False, 'human_reviews_completed': 0,
+          'formal_release_eligible': False, 'summary_sha256': sha(out / 'summary.json'),
+          'analysis_script_sha256': sha(Path(__file__))})
+    print(json.dumps({k: v for k, v in summary.items() if k != 'rows'}, ensure_ascii=False))
+    print(json.dumps([{'image': r['image_id'], 'target': r['source_class_for_audit_only'], 'full': r['full_verdict'], 'tiles': r['tiles_verdict'], 'invalid': r['invalid_or_missing_views']} for r in summary['rows']], ensure_ascii=False))
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

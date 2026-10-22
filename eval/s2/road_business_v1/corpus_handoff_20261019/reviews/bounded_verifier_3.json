@@ -1,0 +1,128 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "bounded_verifier_3",
+  "created_at": "2026-10-19T08:41:24.628725+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_3\\assignment.json",
+  "assignment_sha256": "72cb5d0840af75f6613b2c90d3d198725f49afd75c28f4d761fcb2e4dd91b658",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-2b5b051f30ff7c",
+      "decision": "accepted",
+      "findings": [
+        "已实际查看原图、guide、overview 和 mask；B 端与线路中北部落在黑色缺像区，mask 在对应位置为黑色，不能当作地面或阴影。",
+        "A 点可定位到可见主路路面，但 A–B 定位线的可见上段穿过路旁草地；图像没有给出沿这条固定线路延伸的连续道路及双侧边界，不能仅凭青线构造道路。",
+        "无法在冻结的 A–B 两端之间定义完整实际道路目标；同意首稿 excluded_source，保留 target_polygon=null，不改为 wrong_target，也不缩到可见主路片段。",
+        "可见庭院中的散落材料和路面暗纹不足以建立固定目标路幅内的实体占路判断；未据此标注对象。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-2b5b051f30ff7c.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-2b5b051f30ff7c.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\overviews\\bounded-extract-2b5b051f30ff7c.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-2b5b051f30ff7c.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "40ea864d693e5e4d60250e882479f849358d78054f9281c3455b10467b2de8c4",
+      "first_author_id": "bounded_annotator_4",
+      "first_row_sha256": "606027bc62081f715110a659299552e9cf88b34ba01f24d7f15bda6ddfec2798",
+      "reviewed_at": "2026-10-19T08:41:24.632725+00:00",
+      "reviewer_id": "bounded_verifier_3",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-2b5b051f30ff7c.jpg": "40ea864d693e5e4d60250e882479f849358d78054f9281c3455b10467b2de8c4",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-2b5b051f30ff7c.jpg": "2982ed248e38fd6dbb46bf3b6f5b30a4295a33679c6c4d549d4f4e715d9ffc5b",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\overviews\\bounded-extract-2b5b051f30ff7c.jpg": "c9362ab2e947e29fc353d847ef017d14b27c70e0ffdc70150e6fcda2b0ef612e",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-2b5b051f30ff7c.png": "c460971908f466b0b81e9dbd7a135c2cfa1eaedbffcaf574de2544184a3c7baf"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-2b5b051f30ff7c",
+        "image_sha256": "40ea864d693e5e4d60250e882479f849358d78054f9281c3455b10467b2de8c4",
+        "target_brief": "主路附近由东南 A 至西北 B 的固定斜向线路，A 位于可见多车道路面，目标保持世界两端之间完整实际道路宽度。",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "原图及 guide 已检查，B 与大段线路位于黑色缺像区。可见片段不足以确认固定目标的全部实际道路范围，不能将目标缩短到主路可见部分。",
+        "uncertainties": [
+          "B 及大段目标缺像",
+          "缺像区实际道路对应无法核实"
+        ],
+        "inspected_at": "2026-10-19T08:41:24.632725+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-2b5b051f30ff7c.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-2b5b051f30ff7c.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\overviews\\bounded-extract-2b5b051f30ff7c.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-2b5b051f30ff7c.png"
+        ]
+      },
+      "final_row_sha256": "1375194316f75c3c43c046003669608803847f0376c0304a431a1925e3513015"
+    },
+    {
+      "sample_id": "bounded-extract-de0aa982d4bf80",
+      "decision": "revised",
+      "findings": [
+        "已实际查看原图、guide、overview 和 mask；B 位于可识别的多车道主路，青线可见部分与道路走向一致，目标道路至少在 B 端可被识别。",
+        "A 端及沿线大段位于黑色缺像区；mask 对应为黑色。不能确认 A 端横断面、该段双侧道路边界或全部路幅的地面状态。",
+        "首稿把有效像素不足直接记为 excluded_source；本图已有明确的 B 端道路身份，主要未决问题是固定目标的有效像素与完整边界，因此改为 indeterminate。",
+        "冻结端点、完整路幅要求不变；不沿缺像边界截短目标，不把可见片段的状态推广到整段，也不凭路面暗纹、树影或庭院杂物构造障碍对象。"
+      ],
+      "changes": {
+        "verdict": "indeterminate",
+        "notes": "原图、guide、overview 与 mask 均已实际查看。B 端可识别为多车道主路，定位线的可见部分与道路走向一致；A 端及东北长段处于黑色无效像素区。固定道路身份在 B 端可识别，但整段两侧边界、A 端横断面和完整路幅地面状态无法确认，因此保留 indeterminate、target_polygon=null、objects=[]。保持冻结的 A–B 范围，不在缺像边界截短或把可见片段认作完整目标。",
+        "uncertainties": [
+          "A 端及东北长段没有有效图像像素",
+          "A 端道路横断面和固定整段双侧道路边界无法确认",
+          "未见部分是否存在占路实体无法判断"
+        ]
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-de0aa982d4bf80.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-de0aa982d4bf80.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\overviews\\bounded-extract-de0aa982d4bf80.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-de0aa982d4bf80.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "a5b1601630bf8c6b98147cc43d7c4d390c79c1c197db91b05a9d5ace62dca206",
+      "first_author_id": "bounded_annotator_4",
+      "first_row_sha256": "dc461c799a256df95f5c17c68f2f804ecd7837c7bd213ab55f6edb0b889a00cd",
+      "reviewed_at": "2026-10-19T08:41:24.640020+00:00",
+      "reviewer_id": "bounded_verifier_3",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-de0aa982d4bf80.jpg": "a5b1601630bf8c6b98147cc43d7c4d390c79c1c197db91b05a9d5ace62dca206",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-de0aa982d4bf80.jpg": "8f640087116fc54cddde5cfd0b78bf1a82a945c31cfb185e498f5635e3d96ac4",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\overviews\\bounded-extract-de0aa982d4bf80.jpg": "67eb3f2a6321cfa4f7fcfeb12a970dd0dddfda891c07a914ef84c3b390f2e93a",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-de0aa982d4bf80.png": "fbb84b781c4805c84a04fbd3a70263e441e63a9a2d812cedfe12e4cc816248e0"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-de0aa982d4bf80",
+        "image_sha256": "a5b1601630bf8c6b98147cc43d7c4d390c79c1c197db91b05a9d5ace62dca206",
+        "target_brief": "多车道主路的固定斜向路段，西南 B 至东北 A，两侧可见住宅和人行道，目标为两端之间实际道路全宽。",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "原图、guide、overview 与 mask 均已实际查看。B 端可识别为多车道主路，定位线的可见部分与道路走向一致；A 端及东北长段处于黑色无效像素区。固定道路身份在 B 端可识别，但整段两侧边界、A 端横断面和完整路幅地面状态无法确认，因此保留 indeterminate、target_polygon=null、objects=[]。保持冻结的 A–B 范围，不在缺像边界截短或把可见片段认作完整目标。",
+        "uncertainties": [
+          "A 端及东北长段没有有效图像像素",
+          "A 端道路横断面和固定整段双侧道路边界无法确认",
+          "未见部分是否存在占路实体无法判断"
+        ],
+        "inspected_at": "2026-10-19T08:41:24.640020+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-de0aa982d4bf80.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-de0aa982d4bf80.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\overviews\\bounded-extract-de0aa982d4bf80.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-de0aa982d4bf80.png"
+        ]
+      },
+      "final_row_sha256": "fb73057983953f515363a525ca1a8c5bbfd662681e40c93d47d2edb407d595ed"
+    }
+  ]
+}

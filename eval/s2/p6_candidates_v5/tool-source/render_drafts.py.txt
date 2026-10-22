@@ -1,0 +1,91 @@
+"""Render review-only source overlays and entity crops with explicit AI provenance.
+
+生成带 AI 来源标记的原图叠加与实体裁剪，仅供复核。
+"""
+import hashlib
+import json
+import runpy
+from pathlib import Path
+
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+ROOT = Path(__file__).resolve().parent
+REPO = Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+DATA = Path('D:/drone-agent-data/p6-materials-20261013-round3')
+TOOL = runpy.run_path(str(REPO/'scripts/p6_boundary_drafts.py'))
+
+
+def add_layer(image, mask, color, alpha, edge_alpha=220):
+    """Draw declared regions without changing original source files. / 绘制声明区域，不改变源文件。"""
+    small = Image.fromarray(mask.astype(np.uint8)*255).resize(image.size, Image.Resampling.NEAREST)
+    edge = np.asarray(small.filter(ImageFilter.FIND_EDGES()).filter(ImageFilter.MaxFilter(3))) > 0
+    overlay = np.zeros((image.height,image.width,4),dtype=np.uint8)
+    overlay[np.asarray(small)>0] = (*color,alpha)
+    overlay[edge] = (*color,edge_alpha)
+    return Image.alpha_composite(image.convert('RGBA'),Image.fromarray(overlay)).convert('RGB')
+
+
+def label(image, title):
+    """Keep the provenance warning visible on every standalone preview. / 每张独立预览都显示来源边界。"""
+    font=ImageFont.truetype('C:/Windows/Fonts/arial.ttf',16)
+    lines=['AI DRAFT - NOT GROUND TRUTH',title,'Road: blue core / amber possible','Entity: purple core / possible extent']
+    canvas=Image.new('RGB',(image.width,image.height+96),'#142a32')
+    canvas.paste(image,(0,96));draw=ImageDraw.Draw(canvas)
+    for i,line in enumerate(lines):
+        assert draw.textlength(line,font=font)<=image.width-20
+        draw.text((10,5+23*i),line,font=font,fill='white' if i==0 else '#e1d9f5')
+    return canvas
+
+
+def main():
+    """Preserve per-draft preview hashes and never replace a previous version.
+
+按草稿保存预览摘要，不覆盖旧版本。
+"""
+    draft_path=REPO/'eval/s2/p6_candidates_v5/drafts.json'
+    draft=json.loads(draft_path.read_text(encoding='utf-8'));sha=hashlib.sha256(draft_path.read_bytes()).hexdigest()
+    audit=json.loads((ROOT/'audit-final.json').read_text())
+    assert audit['drafts_sha256']==sha
+    relations={r['entity_id']:r['relation'] for r in audit['rows']}
+    render_sha=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    out=ROOT/'previews'/(sha[:12]+'-'+render_sha[:8]);out.mkdir(parents=True)
+    index={c['case_id']:c for c in json.loads((REPO/'eval/s2/p6_candidates_v3/input-index.json').read_text())['cases']}
+    manifest=[]
+    for target in draft['targets']:
+        case=index[target['case_id']]
+        original=Image.open(DATA/case['image_file']).convert('RGB')
+        support=np.asarray(Image.open(DATA/case['target_region']['file']))>0
+        core,outer=TOOL['envelope'](target['road_envelope'],original.size,core_optional=False)
+        outer|=support
+        shown=original.copy();shown.thumbnail((1400,1050))
+        shown=add_layer(shown,outer,(230,164,60),18)
+        shown=add_layer(shown,core,(42,161,210),12)
+        for group in target['entities']:
+            inside,extent=TOOL['envelope'](group['object_envelope'],original.size,core_optional=True)
+            shown=add_layer(shown,extent,(183,112,206),0)
+            shown=add_layer(shown,inside,(155,42,190),65)
+            points=[p for polygon in group['object_envelope']['outer'] for p in polygon]
+            x=min(p[0] for p in points);y=min(p[1] for p in points)
+            ImageDraw.Draw(shown).text((x*shown.width,max(0,y*shown.height-18)),group['entity_id'],fill='#d037e9',font=ImageFont.truetype('C:/Windows/Fonts/arial.ttf',18))
+            px=[int(min(p[0] for p in points)*original.width),int(min(p[1] for p in points)*original.height),int(max(p[0] for p in points)*original.width),int(max(p[1] for p in points)*original.height)]
+            pad=max(30,int(max(px[2]-px[0],px[3]-px[1])*.12))
+            box=(max(0,px[0]-pad),max(0,px[1]-pad),min(original.width,px[2]+pad),min(original.height,px[3]+pad))
+            raw=original.crop(box);raw.thumbnail((760,850))
+            x0,y0,x1,y1=box
+            overlay=add_layer(raw,outer[y0:y1,x0:x1],(230,164,60),18)
+            overlay=add_layer(overlay,core[y0:y1,x0:x1],(42,161,210),12)
+            overlay=add_layer(overlay,extent[y0:y1,x0:x1],(183,112,206),0)
+            overlay=add_layer(overlay,inside[y0:y1,x0:x1],(155,42,190),65)
+            pair=Image.new('RGB',(raw.width*2,raw.height),'white');pair.paste(raw);pair.paste(overlay,(raw.width,0))
+            preview=label(pair,group['entity_id']+' | '+relations[group['entity_id']])
+            path=out/(group['entity_id']+'.png');preview.save(path)
+            manifest.append({'entity_id':group['entity_id'],'case_id':target['case_id'],'file':path.relative_to(ROOT).as_posix(),'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'source_crop_px':list(box)})
+        path=out/(target['case_id']+'.png');label(shown,target['image_id']+' | '+target['case_id']).save(path)
+        manifest.append({'case_id':target['case_id'],'file':path.relative_to(ROOT).as_posix(),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
+    value={'drafts_sha256':sha,'source_image_and_support_unchanged':True,'author_kind':'ai_draft','formal_release_eligible':False,'previews':manifest,'render_script_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+    (out/'manifest.json').write_text(json.dumps(value,indent=2)+'\n',encoding='utf-8',newline='\n')
+    print(json.dumps({'previews':len(manifest),'folder':str(out)}))
+
+
+if __name__=='__main__':main()

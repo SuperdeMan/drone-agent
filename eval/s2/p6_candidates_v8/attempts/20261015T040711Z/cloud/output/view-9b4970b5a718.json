@@ -1,0 +1,81 @@
+{
+  "case_id": "view-9b4970b5a718",
+  "source": "live_model",
+  "attempts": 1,
+  "status": "answered",
+  "model_used": "MiniMax-M3.1-Flash-Preview",
+  "finish": "stop",
+  "usage": [
+    4445,
+    2987
+  ],
+  "raw_content": "{\"schema_version\":\"0.1.0\",\"image_usable\":true,\"target_visible\":true,\"observations\":[{\"proposal_id\":\"view-9b4970b5a718-p01\",\"entity_kind\":\"physical_object\",\"target_relation\":\"outside\",\"separability\":\"mixed\",\"refined_bbox\":null,\"entity_evidence\":\"候选框右缘可见黄色标志局部，主体被框边裁切且与另一处黄色标志重叠。\",\"relation_evidence\":\"黄色标志位于青色道路支撑右边界外侧，不在所选道路内。\",\"uncertainty\":\"多处标志外观无法在本框内分离，且主体均未完整包含，完整位置不能确定。\"},{\"proposal_id\":\"view-9b4970b5a718-p02\",\"entity_kind\":\"physical_object\",\"target_relation\":\"outside\",\"separability\":\"isolated\",\"refined_bbox\":[0.541,0.244,0.573,0.307],\"entity_evidence\":\"可见带白色边框的黄色菱形板及向下延伸的杆件，外观属于独立实体。\",\"relation_evidence\":\"该实体位于青色道路支撑拐角外侧，落在相邻碎料区域内。\",\"uncertainty\":\"\"},{\"proposal_id\":\"view-9b4970b5a718-p03\",\"entity_kind\":\"unknown\",\"target_relation\":\"inside\",\"separability\":\"isolated\",\"refined_bbox\":[0.739,0.462,0.749,0.474],\"entity_evidence\":\"可见一处很小的不规则深色斑块，但不足以确定其材料或实体类型。\",\"relation_evidence\":\"该斑块位于青色道路下边界以上，处于所选道路范围内。\",\"uncertainty\":\"目标尺寸过小，材质、是否为实体以及精确轮廓仍无法可靠确认。\"},{\"proposal_id\":\"view-9b4970b5a718-p04\",\"entity_kind\":\"physical_object\",\"target_relation\":\"inside\",\"separability\":\"mixed\",\"refined_bbox\":[0.858,0.441,0.944,0.486],\"entity_evidence\":\"可见灰色碎块、破碎板块、深色孔隙及零散材料相互混杂。\",\"relation_evidence\":\"该混杂区域位于青色道路下边界以内，属于所选道路范围。\",\"uncertainty\":\"多个碎块、地面纹理和阴影相互遮挡，无法分离并定位各独立实体。\"}]}",
+  "parsed": {
+    "schema_version": "0.1.0",
+    "image_usable": true,
+    "target_visible": true,
+    "observations": [
+      {
+        "proposal_id": "view-9b4970b5a718-p01",
+        "entity_kind": "physical_object",
+        "target_relation": "outside",
+        "separability": "mixed",
+        "refined_bbox": null,
+        "entity_evidence": "候选框右缘可见黄色标志局部，主体被框边裁切且与另一处黄色标志重叠。",
+        "relation_evidence": "黄色标志位于青色道路支撑右边界外侧，不在所选道路内。",
+        "uncertainty": "多处标志外观无法在本框内分离，且主体均未完整包含，完整位置不能确定。"
+      },
+      {
+        "proposal_id": "view-9b4970b5a718-p02",
+        "entity_kind": "physical_object",
+        "target_relation": "outside",
+        "separability": "isolated",
+        "refined_bbox": [
+          0.541,
+          0.244,
+          0.573,
+          0.307
+        ],
+        "entity_evidence": "可见带白色边框的黄色菱形板及向下延伸的杆件，外观属于独立实体。",
+        "relation_evidence": "该实体位于青色道路支撑拐角外侧，落在相邻碎料区域内。",
+        "uncertainty": ""
+      },
+      {
+        "proposal_id": "view-9b4970b5a718-p03",
+        "entity_kind": "unknown",
+        "target_relation": "inside",
+        "separability": "isolated",
+        "refined_bbox": [
+          0.739,
+          0.462,
+          0.749,
+          0.474
+        ],
+        "entity_evidence": "可见一处很小的不规则深色斑块，但不足以确定其材料或实体类型。",
+        "relation_evidence": "该斑块位于青色道路下边界以上，处于所选道路范围内。",
+        "uncertainty": "目标尺寸过小，材质、是否为实体以及精确轮廓仍无法可靠确认。"
+      },
+      {
+        "proposal_id": "view-9b4970b5a718-p04",
+        "entity_kind": "physical_object",
+        "target_relation": "inside",
+        "separability": "mixed",
+        "refined_bbox": [
+          0.858,
+          0.441,
+          0.944,
+          0.486
+        ],
+        "entity_evidence": "可见灰色碎块、破碎板块、深色孔隙及零散材料相互混杂。",
+        "relation_evidence": "该混杂区域位于青色道路下边界以内，属于所选道路范围。",
+        "uncertainty": "多个碎块、地面纹理和阴影相互遮挡，无法分离并定位各独立实体。"
+      }
+    ]
+  },
+  "schema_issues": [
+    "refinement_leaves_proposal"
+  ],
+  "strict_replay": "passed",
+  "recording_sha256": "a950609f1e4b49ec82f98e9700efdfc6eb80e2244d57ddacf10cefbdcfee5769",
+  "duration_s": 50.387
+}

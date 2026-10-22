@@ -1,0 +1,106 @@
+"""Launch an isolated diagnostic using the existing cloud model proxy and key.
+
+经已有云端模型代理和密钥启动隔离诊断，不部署或更改常驻服务。
+"""
+import hashlib
+import json
+import subprocess
+import sys
+import tarfile
+from datetime import datetime,timezone
+from pathlib import Path
+
+ROOT=Path(__file__).resolve().parent
+REPO=Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+sys.path.insert(0,str(REPO/'scripts'))
+from dev_stack import Connection
+
+
+def ssh(connection,code,timeout=60):
+    """Do not forward the host login banner. / 不转发主机登录横幅。"""
+    result=subprocess.run(['ssh',*connection.arguments(),connection.target,'python3 -'],input=code.encode(),capture_output=True,timeout=timeout)
+    if result.returncode:
+        raise RuntimeError(f'remote process failed with exit {result.returncode}; {result.stdout.decode(errors="replace")[-2000:]}')
+    return result.stdout
+
+
+def main():
+    """Preserve all receipts and compare resident container identities before and after. / 保存全部回执，并核对常驻容器前后身份。"""
+    if (ROOT/'diagnostic/launch.json').exists():
+        raise RuntimeError('refusing to launch this frozen batch twice')
+    freeze='81de84ed90e65066646d3d31bd3c80812dd7c7b7'
+    assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=REPO).decode().strip()==freeze
+    plan=json.loads((ROOT/'diagnostic/plan.json').read_text())
+    for local,name,expected in [(ROOT/'diagnostic/config.json','config.json',plan['config_sha256']),
+                                (ROOT/'diagnostic/inputs/manifest.json','input-manifest.json',plan['manifest_sha256'])]:
+        assert hashlib.sha256(local.read_bytes()).hexdigest()==expected
+        assert local.read_bytes()==(REPO/'eval/s2/p6_candidates_v4'/name).read_bytes()
+    assert len(json.loads((ROOT/'diagnostic/inputs/manifest.json').read_text()))==24
+    assert hashlib.sha256((ROOT/'diagnostic_runner.py').read_bytes()).hexdigest()=='c3e0d56264b2ed22adb78347494a7f96089ddb81e2ea0261ca0adab0f8682536'
+    precall={'freeze_commit':freeze,'recorded_at_utc':datetime.now(timezone.utc).isoformat(),
+             'config_sha256':plan['config_sha256'],'manifest_sha256':plan['manifest_sha256'],
+             'plan_sha256':hashlib.sha256((ROOT/'diagnostic/plan.json').read_bytes()).hexdigest(),
+             'launcher_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+             'planned_calls':24,'formal_release_eligible':False}
+    with (ROOT/'diagnostic/precall.json').open('xb') as f:
+        f.write((json.dumps(precall,indent=2)+'\n').encode())
+    connection=Connection.from_environment()
+    ident='p6-road-views-dev-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+    remote='/home/ubuntu/drone-agent/artifacts/'+ident
+    packet=ROOT/'diagnostic'/f'{ident}.tar'
+    with tarfile.open(packet,'w') as t:
+        t.add(ROOT/'diagnostic/config.json',arcname='config.json')
+        t.add(ROOT/'diagnostic_runner.py',arcname='runner.py')
+        for file in sorted((ROOT/'diagnostic/inputs').iterdir()):t.add(file,arcname='input/'+file.name)
+    digest=hashlib.sha256(packet.read_bytes()).hexdigest()
+    launch={'run_id':ident,'remote_directory':remote,'packet_sha256':digest,'packet_bytes':packet.stat().st_size,
+            'container_runtime_sha':'6249129596b7cfe88c7322f8b425c7b432dba24b','project_worktree_base_sha':'81de84ed90e65066646d3d31bd3c80812dd7c7b7',
+            'scope':'development model diagnostic only, no service deployment or flight'}
+    (ROOT/'diagnostic/launch.json').write_text(json.dumps(launch,indent=2)+'\n')
+    ssh(connection,f"from pathlib import Path\np=Path({remote!r})\np.mkdir(parents=True,exist_ok=False)\n")
+    copy=subprocess.run(['scp',*connection.arguments(),str(packet),connection.target+':'+remote+'/packet.tar'],capture_output=True,timeout=180)
+    if copy.returncode:raise RuntimeError('packet upload failed')
+    print(json.dumps({'status':'uploaded','run_id':ident,'bytes':packet.stat().st_size}),flush=True)
+    code=f'''import subprocess,json,tarfile,hashlib,os
+from pathlib import Path
+p=Path({remote!r})
+assert hashlib.sha256((p/'packet.tar').read_bytes()).hexdigest()=={digest!r}
+with tarfile.open(p/'packet.tar') as t:
+ for m in t.getmembers():
+  assert m.isfile() and not m.issym()
+  target=(p/m.name).resolve();assert target.is_relative_to(p.resolve())
+  target.parent.mkdir(parents=True,exist_ok=True)
+  target.write_bytes(t.extractfile(m).read())
+(p/'output').mkdir()
+def identities():
+ ids=subprocess.check_output(['docker','ps','--filter','name=drone-agent-cloud','--format','{{{{.Names}}}}|{{{{.ID}}}}']).decode().splitlines()
+ return sorted(ids)
+before=identities()
+network=json.loads(subprocess.check_output(['docker','network','inspect','drone-agent-cloud_desk_model']))[0]
+assert network['Internal'] is True
+image='sha256:4f84962ee6b75f899ee50afa153dca439942d9bf518b25d7c780c0b17c2b2377'
+pre={{'before':before,'network':network['Name'],'network_internal':True,'image_id':image}}
+(p/'preflight.json').write_text(json.dumps(pre,indent=2))
+args=['docker','run','--rm','--pull','never','--name',{ident!r},'--read-only','--cap-drop','ALL','--security-opt','no-new-privileges:true','--memory','1g','--cpus','1','--pids-limit','64','--tmpfs','/tmp:size=64m,mode=1777','--user',f'{{os.getuid()}}:{{os.getgid()}}','--network','drone-agent-cloud_desk_model']
+envs={{'DRONE_SOURCE_SHA':'6249129596b7cfe88c7322f8b425c7b432dba24b','VISION_PROVIDER':'minimax-vl','MINIMAX_API_KEY_FILE':'/model/minimax.key','HTTPS_PROXY':'http://desk-model-proxy:3128','NO_PROXY':'localhost,127.0.0.1','LLM_HTTP_READ_CAP_S':'600','REQUIRE_REAL_PROVIDERS':'on','PYTHONDONTWRITEBYTECODE':'1','PYTHONUNBUFFERED':'1'}}
+for k,v in envs.items():args+=['-e',k+'='+v]
+for src,dst in [(p/'input','/input:ro'),(p/'config.json','/config.json:ro'),(p/'runner.py','/runner.py:ro'),(p/'output','/output'),(Path('/home/ubuntu/drone-agent/secrets/m2-model/minimax.key'),'/model/minimax.key:ro')]:args+=['-v',str(src)+':'+dst]
+args += [image,'python3','/runner.py']
+with (p/'diagnostic.log').open('wb') as log:
+ result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=5200)
+after=identities();receipt={{'exit_code':result.returncode,'resident_container_identities_unchanged':before==after,'after':after,'preflight':pre}}
+(p/'execution.json').write_text(json.dumps(receipt,indent=2))
+print(json.dumps(receipt),flush=True)
+'''
+    result=ssh(connection,code,timeout=5260)
+    (ROOT/'diagnostic/execution.json').write_bytes(result)
+    dest=ROOT/'diagnostic/cloud';dest.mkdir(exist_ok=True)
+    for name in ('output','preflight.json','execution.json','diagnostic.log'):
+        copied=subprocess.run(['scp',*connection.arguments(),'-r',connection.target+':'+remote+'/'+name,str(dest)],capture_output=True,timeout=180)
+        if copied.returncode:raise RuntimeError('result download failed: '+name)
+    print(result.decode(),flush=True)
+    header=dest/'output/run.json'
+    if header.exists():print(header.read_text(),flush=True)
+
+
+if __name__=='__main__':main()

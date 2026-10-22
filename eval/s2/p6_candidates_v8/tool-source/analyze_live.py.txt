@@ -1,0 +1,124 @@
+"""Explain frozen candidate-review failures without repairing or rescoring answers.
+
+解释冻结候选复核中的失败，不修补回答或改变判定规则。
+"""
+from __future__ import annotations
+
+import json
+import runpy
+import subprocess
+from collections import Counter
+from datetime import datetime
+from pathlib import Path
+
+REPO = Path("D:/drone-agent-data/p6-road-views-20261014/repo")
+PACKAGE = Path(__file__).resolve().parent / "diagnostic"
+ATTEMPT = PACKAGE / "attempts/p6-candidate-review-dev-20261015T040711Z"
+TOOL = runpy.run_path(str(REPO / "scripts/p6_candidate_review.py"))
+read, write, digest = TOOL["read"], TOOL["write"], TOOL["digest"]
+
+
+class ObjectPairs(list):
+    """Retain duplicate keys for forensic inspection only. / 仅为诊断保留重复键。"""
+
+
+def repeated_keys(text):
+    """Locate repeated keys without promoting a repaired observation.
+
+定位重复键，不将修补后的观察值用于分组。
+"""
+    value = json.loads(text, object_pairs_hook=ObjectPairs)
+    findings = []
+
+    def visit(node):
+        if isinstance(node, ObjectPairs):
+            ids = [v for k, v in node if k == "proposal_id"]
+            for key, count in Counter(k for k, v in node).items():
+                if count > 1:
+                    findings.append({"proposal_id": ids[0] if len(ids) == 1 else None, "key": key,
+                                     "count": count, "values": [v for k, v in node if k == key]})
+            for k, v in node:
+                visit(v)
+        elif isinstance(node, list):
+            for v in node:
+                visit(v)
+
+    visit(value)
+    return findings
+
+
+def main():
+    """Keep environment evidence, protocol errors and business truth separate.
+
+分别记录环境证据、协议错误和业务真值。
+"""
+    plan, config, manifest = read(PACKAGE / "plan.json"), read(PACKAGE / "config.json"), read(PACKAGE / "inputs/manifest.json")
+    launch, execution = read(ATTEMPT / "launch.json"), read(ATTEMPT / "cloud/execution.json")
+    precall, header = read(ATTEMPT / "cloud/precall.json"), read(ATTEMPT / "cloud/output/run.json")
+    results, summary = read(ATTEMPT / "cloud/output/results.json"), read(ATTEMPT / "replay-summary.json")
+    committed = subprocess.check_output(["git", "show", "-s", "--format=%cI", launch["freeze_commit"]], cwd=REPO).decode().strip()
+    assert datetime.fromisoformat(committed) <= datetime.fromisoformat(launch["created_at"])
+    assert datetime.fromisoformat(launch["created_at"]) <= datetime.fromisoformat(precall["started_at"])
+    assert datetime.fromisoformat(precall["started_at"]) <= datetime.fromisoformat(header["started_at"].replace("Z", "+00:00"))
+    for key, path in [("config_sha256", PACKAGE / "config.json"), ("manifest_sha256", PACKAGE / "inputs/manifest.json")]:
+        assert digest(path) == plan[key] == launch[key] == precall[key] == header[key] == summary[key]
+    assert execution["project_lock_acquired"] and execution["lock_held_through_checks"]
+    assert execution["before"] == execution["after"] and execution["resident_container_identities_unchanged"]
+    assert execution["provider_invocations"] == len(results) == 6 and execution["container_exit_code"] == 0
+    lookup = {r["case_id"]: r for r in manifest}
+    details = []
+    for result in results:
+        value, issues = TOOL["validate_answer"](result["raw_content"], result["finish"], lookup[result["case_id"]]["proposals"])
+        assert issues == result["schema_issues"]
+        detail = {"view_id": result["case_id"], "case_issues": issues, "item_diagnostics": [], "duplicate_keys": [],
+                  "diagnostics_do_not_change_case_acceptance": True}
+        if "invalid_json" in issues:
+            detail["duplicate_keys"] = repeated_keys(result["raw_content"])
+        elif issues:
+            proposals = {p["proposal_id"]: p for p in lookup[result["case_id"]]["proposals"]}
+            for item in value["observations"]:
+                proposal = proposals[item["proposal_id"]]
+                single = {**value, "observations": [item]}
+                _, item_issues = TOOL["validate_answer"](json.dumps(single, ensure_ascii=False), result["finish"], [proposal])
+                if item_issues:
+                    detail["item_diagnostics"].append({"proposal_id": item["proposal_id"], "issues": item_issues,
+                        "source_bbox": proposal["bbox"], "returned_bbox": item["refined_bbox"],
+                        "entity_kind": item["entity_kind"], "target_relation": item["target_relation"],
+                        "separability": item["separability"], "uncertainty": item["uncertainty"]})
+        details.append(detail)
+    accepted = [r for r in summary["rows"] if r["response_valid"]]
+    invalid = [r for r in summary["rows"] if not r["response_valid"]]
+    assert len(accepted) == 7 and len(invalid) == 26 and all(r["model_disposition"] == "needs_review" for r in summary["rows"])
+    analysis = {"format": "drone.candidate-review-live-analysis/v1", "attempt_id": launch["run_id"],
+                "freeze_commit": launch["freeze_commit"], "freeze_before_calls": True,
+                "execution_status": "completed_with_environment_guard_passed",
+                "protocol_status": "not_adopted_contract_failures_and_no_usable_candidate_group",
+                "project_lock_held": True, "resident_snapshots_equal": True,
+                "resident_containers_checked": len(execution["before"]),
+                "snapshot_fields": ["name", "id", "image", "started_at", "restart_count"],
+                "calls": 6, "answers": 6, "call_failures": 0, "valid_responses": summary["valid_responses"],
+                "cloud_strict_replays": header["strict_replays"], "local_strict_replays": summary["local_strict_replays"],
+                "proposals": 33, "observations_in_valid_responses": len(accepted), "proposals_quarantined_by_atomic_case_validation": len(invalid),
+                "valid_observation_separability": dict(Counter(r["observation"]["separability"] for r in accepted)),
+                "model_disposition_counts": summary["model_disposition_counts"], "validation_details": details,
+                "token_usage": {"input": header["usage_input"], "output": header["usage_output"], "cost_estimated": False},
+                "analysis_observations": [
+                    "The seven accepted observations are all still needs_review: six mixed regions and one isolated object with unresolved material/type text.",
+                    "The frozen rule treats any uncertainty text as needs_review; material/type uncertainty can remain even when visible physical nature and an in-target location are declared.",
+                    "One invalid observation rejects its entire response under the frozen atomic rule. Other observations from that response are not silently salvaged.",
+                    "A response with repeated separability keys is rejected by the frozen strict JSON parser even when the repeated values happen to be identical.",
+                    "Neither a mixed debris group nor an unresolved fine material subtype proves that no business candidate exists. Candidate utility and single-instance localization must be distinguished in a future protocol."
+                ], "old_busy_attempt_preserved": True, "v7_environment_failure_requalified": False,
+                "responses_modified": False, "partial_observations_salvaged": False, "additional_provider_calls_after_batch": 0,
+                "human_reviews_completed": 0, "accuracy_computed": False, "recall_computed": False,
+                "scene_verdict": None, "default_profile_change": False, "formal_release_eligible": False,
+                "analysis_script_sha256": digest(Path(__file__)), "replay_summary_sha256": digest(ATTEMPT / "replay-summary.json"),
+                "execution_sha256": digest(ATTEMPT / "cloud/execution.json"), "results_sha256": digest(ATTEMPT / "cloud/output/results.json"),
+                "configured_model": config["model"]}
+    write(ATTEMPT / "analysis.json", analysis)
+    print(json.dumps({k: v for k, v in analysis.items() if k not in ("validation_details", "analysis_observations")}, ensure_ascii=False))
+    print(json.dumps([d for d in details if d["case_issues"]], ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

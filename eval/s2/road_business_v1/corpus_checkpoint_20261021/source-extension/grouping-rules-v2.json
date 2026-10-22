@@ -1,0 +1,519 @@
+{
+  "format": "drone.p6-grouping-rules/v2",
+  "created_at": "2026-10-21T09:56:15.836077+00:00",
+  "rule_source_sha256": "9ffe9226531cb051daed1ac332611c54b7c8c5ef6adfaa262640099c4e833c27",
+  "labels_or_model_outputs_read": false,
+  "images_viewed": false,
+  "rules": {
+    "crasar_uas_derivative": {
+      "asset_id": "planning asset_group_id",
+      "near_duplicate_group": "asset_group_id",
+      "capture_batch_id": "author-parent-<parent LFS sha256>",
+      "site_id": "single-linkage of orthomosaic road bboxes within one event, link <= 1.0 km"
+    },
+    "floodnet_original": {
+      "site_id": "single-linkage of camera GPS positions, link <= 1.0 km",
+      "capture_batch_id": "same camera model and date, consecutive captures with gaps <= 15 min",
+      "asset_id": "connected components of ground-projected target outlines, 5 m buffer, intersection >= 15% of the smaller",
+      "near_duplicate_group": "connected components of ground-projected camera footprints, intersection >= 30% of the smaller"
+    },
+    "oam_uav_derivative": {
+      "site_id": "parent catalog object",
+      "capture_batch_id": "parent catalog object",
+      "asset_id": "planning asset_group_id",
+      "near_duplicate_group": "asset_group_id"
+    }
+  },
+  "partition": {
+    "crasar": "whole event as frozen in asset-planning (Ida calibration; Ian, Idalia, Mayfield test); whole-event additions registered before visual labels: Mussett Bayou Fire test; Hurricane Laura calibration",
+    "floodnet_and_oam": "assigned per site in a later pre-registration before any model run"
+  },
+  "crasar_site_map": {
+    "20211213-Candle-Factory-AO.geo.tif": {
+      "site_id": "crasar-site-bfe991bb27a2",
+      "event": "Mayfield Tornado",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "20211213-Candle-Factory-AO.geo.tif",
+        "20211214-Mayfield.geo.tif"
+      ]
+    },
+    "20211214-Mayfield.geo.tif": {
+      "site_id": "crasar-site-bfe991bb27a2",
+      "event": "Mayfield Tornado",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "20211213-Candle-Factory-AO.geo.tif",
+        "20211214-Mayfield.geo.tif"
+      ]
+    },
+    "20211215-Russelville-Middle.geo.tif": {
+      "site_id": "crasar-site-d499df9f94e4",
+      "event": "Mayfield Tornado",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "20211215-Russelville-Middle.geo.tif"
+      ]
+    },
+    "20230830-SteinhatcheeRiver.geo.tif": {
+      "site_id": "crasar-site-70ff07b42641",
+      "event": "Hurricane Idalia",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "20230830-SteinhatcheeRiver.geo.tif",
+        "20230831-Jena-SteinhatcheeRiverSouth.geo.tif"
+      ]
+    },
+    "20230831-Jena-SteinhatcheeRiverSouth.geo.tif": {
+      "site_id": "crasar-site-70ff07b42641",
+      "event": "Hurricane Idalia",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "20230830-SteinhatcheeRiver.geo.tif",
+        "20230831-Jena-SteinhatcheeRiverSouth.geo.tif"
+      ]
+    },
+    "1001-Ft-Myers-Beach-Boone.geo.tif": {
+      "site_id": "crasar-site-5f8a501d3906",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-Ft-Myers-Beach-Boone.geo.tif",
+        "1001-Ft-Myers-Beach-DIRT.geo.tif",
+        "1001-San-Carlos-Island.geo.tif",
+        "1002-Ft-Myers-Beach-LCSO.geo.tif",
+        "1002-Ft-Myers-Beach-TFD.geo.tif"
+      ]
+    },
+    "1001-Ft-Myers-Beach-DIRT.geo.tif": {
+      "site_id": "crasar-site-5f8a501d3906",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-Ft-Myers-Beach-Boone.geo.tif",
+        "1001-Ft-Myers-Beach-DIRT.geo.tif",
+        "1001-San-Carlos-Island.geo.tif",
+        "1002-Ft-Myers-Beach-LCSO.geo.tif",
+        "1002-Ft-Myers-Beach-TFD.geo.tif"
+      ]
+    },
+    "1001-San-Carlos-Island.geo.tif": {
+      "site_id": "crasar-site-5f8a501d3906",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-Ft-Myers-Beach-Boone.geo.tif",
+        "1001-Ft-Myers-Beach-DIRT.geo.tif",
+        "1001-San-Carlos-Island.geo.tif",
+        "1002-Ft-Myers-Beach-LCSO.geo.tif",
+        "1002-Ft-Myers-Beach-TFD.geo.tif"
+      ]
+    },
+    "1002-Ft-Myers-Beach-LCSO.geo.tif": {
+      "site_id": "crasar-site-5f8a501d3906",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-Ft-Myers-Beach-Boone.geo.tif",
+        "1001-Ft-Myers-Beach-DIRT.geo.tif",
+        "1001-San-Carlos-Island.geo.tif",
+        "1002-Ft-Myers-Beach-LCSO.geo.tif",
+        "1002-Ft-Myers-Beach-TFD.geo.tif"
+      ]
+    },
+    "1002-Ft-Myers-Beach-TFD.geo.tif": {
+      "site_id": "crasar-site-5f8a501d3906",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-Ft-Myers-Beach-Boone.geo.tif",
+        "1001-Ft-Myers-Beach-DIRT.geo.tif",
+        "1001-San-Carlos-Island.geo.tif",
+        "1002-Ft-Myers-Beach-LCSO.geo.tif",
+        "1002-Ft-Myers-Beach-TFD.geo.tif"
+      ]
+    },
+    "1001-Harlem-Heights.geo.tif": {
+      "site_id": "crasar-site-ace074f9d431",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-Harlem-Heights.geo.tif",
+        "1001-Iona-Point.geo.tif",
+        "1001-Kennedy-Green-Mobile-Homes.geo.tif",
+        "1001-Palmeto-Palms.geo.tif",
+        "1001-Summerlin-San-Carlos.geo.tif",
+        "1002-Kelly-Road.geo.tif",
+        "1002-Palm-Acers.1.geo.tif",
+        "1002-Palm-Acers.4.geo.tif"
+      ]
+    },
+    "1001-Iona-Point.geo.tif": {
+      "site_id": "crasar-site-ace074f9d431",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-Harlem-Heights.geo.tif",
+        "1001-Iona-Point.geo.tif",
+        "1001-Kennedy-Green-Mobile-Homes.geo.tif",
+        "1001-Palmeto-Palms.geo.tif",
+        "1001-Summerlin-San-Carlos.geo.tif",
+        "1002-Kelly-Road.geo.tif",
+        "1002-Palm-Acers.1.geo.tif",
+        "1002-Palm-Acers.4.geo.tif"
+      ]
+    },
+    "1001-Kennedy-Green-Mobile-Homes.geo.tif": {
+      "site_id": "crasar-site-ace074f9d431",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-Harlem-Heights.geo.tif",
+        "1001-Iona-Point.geo.tif",
+        "1001-Kennedy-Green-Mobile-Homes.geo.tif",
+        "1001-Palmeto-Palms.geo.tif",
+        "1001-Summerlin-San-Carlos.geo.tif",
+        "1002-Kelly-Road.geo.tif",
+        "1002-Palm-Acers.1.geo.tif",
+        "1002-Palm-Acers.4.geo.tif"
+      ]
+    },
+    "1001-Palmeto-Palms.geo.tif": {
+      "site_id": "crasar-site-ace074f9d431",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-Harlem-Heights.geo.tif",
+        "1001-Iona-Point.geo.tif",
+        "1001-Kennedy-Green-Mobile-Homes.geo.tif",
+        "1001-Palmeto-Palms.geo.tif",
+        "1001-Summerlin-San-Carlos.geo.tif",
+        "1002-Kelly-Road.geo.tif",
+        "1002-Palm-Acers.1.geo.tif",
+        "1002-Palm-Acers.4.geo.tif"
+      ]
+    },
+    "1001-Summerlin-San-Carlos.geo.tif": {
+      "site_id": "crasar-site-ace074f9d431",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-Harlem-Heights.geo.tif",
+        "1001-Iona-Point.geo.tif",
+        "1001-Kennedy-Green-Mobile-Homes.geo.tif",
+        "1001-Palmeto-Palms.geo.tif",
+        "1001-Summerlin-San-Carlos.geo.tif",
+        "1002-Kelly-Road.geo.tif",
+        "1002-Palm-Acers.1.geo.tif",
+        "1002-Palm-Acers.4.geo.tif"
+      ]
+    },
+    "1002-Kelly-Road.geo.tif": {
+      "site_id": "crasar-site-ace074f9d431",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-Harlem-Heights.geo.tif",
+        "1001-Iona-Point.geo.tif",
+        "1001-Kennedy-Green-Mobile-Homes.geo.tif",
+        "1001-Palmeto-Palms.geo.tif",
+        "1001-Summerlin-San-Carlos.geo.tif",
+        "1002-Kelly-Road.geo.tif",
+        "1002-Palm-Acers.1.geo.tif",
+        "1002-Palm-Acers.4.geo.tif"
+      ]
+    },
+    "1002-Palm-Acers.1.geo.tif": {
+      "site_id": "crasar-site-ace074f9d431",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-Harlem-Heights.geo.tif",
+        "1001-Iona-Point.geo.tif",
+        "1001-Kennedy-Green-Mobile-Homes.geo.tif",
+        "1001-Palmeto-Palms.geo.tif",
+        "1001-Summerlin-San-Carlos.geo.tif",
+        "1002-Kelly-Road.geo.tif",
+        "1002-Palm-Acers.1.geo.tif",
+        "1002-Palm-Acers.4.geo.tif"
+      ]
+    },
+    "1002-Palm-Acers.4.geo.tif": {
+      "site_id": "crasar-site-ace074f9d431",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-Harlem-Heights.geo.tif",
+        "1001-Iona-Point.geo.tif",
+        "1001-Kennedy-Green-Mobile-Homes.geo.tif",
+        "1001-Palmeto-Palms.geo.tif",
+        "1001-Summerlin-San-Carlos.geo.tif",
+        "1002-Kelly-Road.geo.tif",
+        "1002-Palm-Acers.1.geo.tif",
+        "1002-Palm-Acers.4.geo.tif"
+      ]
+    },
+    "1001-McGregor-College-Pkwy-South.1.geo.tif": {
+      "site_id": "crasar-site-1dd36dd2afcc",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-McGregor-College-Pkwy-South.1.geo.tif",
+        "1001-McGregor-College-Pkwy-South.2.geo.tif",
+        "1001-McGregor-College-Pkwy-South.3.geo.tif"
+      ]
+    },
+    "1001-McGregor-College-Pkwy-South.2.geo.tif": {
+      "site_id": "crasar-site-1dd36dd2afcc",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-McGregor-College-Pkwy-South.1.geo.tif",
+        "1001-McGregor-College-Pkwy-South.2.geo.tif",
+        "1001-McGregor-College-Pkwy-South.3.geo.tif"
+      ]
+    },
+    "1001-McGregor-College-Pkwy-South.3.geo.tif": {
+      "site_id": "crasar-site-1dd36dd2afcc",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1001-McGregor-College-Pkwy-South.1.geo.tif",
+        "1001-McGregor-College-Pkwy-South.2.geo.tif",
+        "1001-McGregor-College-Pkwy-South.3.geo.tif"
+      ]
+    },
+    "1002-Boca-Grande.1.geo.tif": {
+      "site_id": "crasar-site-d85a7a402446",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1002-Boca-Grande.1.geo.tif",
+        "1002-Boca-Grande.2.geo.tif",
+        "1002-Boca-Grande.3.geo.tif",
+        "1002-Boca-Grande.4.geo.tif",
+        "1002-Boca-Grande.5.geo.tif",
+        "1002-Boca-Grande.6.geo.tif"
+      ]
+    },
+    "1002-Boca-Grande.2.geo.tif": {
+      "site_id": "crasar-site-d85a7a402446",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1002-Boca-Grande.1.geo.tif",
+        "1002-Boca-Grande.2.geo.tif",
+        "1002-Boca-Grande.3.geo.tif",
+        "1002-Boca-Grande.4.geo.tif",
+        "1002-Boca-Grande.5.geo.tif",
+        "1002-Boca-Grande.6.geo.tif"
+      ]
+    },
+    "1002-Boca-Grande.3.geo.tif": {
+      "site_id": "crasar-site-d85a7a402446",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1002-Boca-Grande.1.geo.tif",
+        "1002-Boca-Grande.2.geo.tif",
+        "1002-Boca-Grande.3.geo.tif",
+        "1002-Boca-Grande.4.geo.tif",
+        "1002-Boca-Grande.5.geo.tif",
+        "1002-Boca-Grande.6.geo.tif"
+      ]
+    },
+    "1002-Boca-Grande.4.geo.tif": {
+      "site_id": "crasar-site-d85a7a402446",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1002-Boca-Grande.1.geo.tif",
+        "1002-Boca-Grande.2.geo.tif",
+        "1002-Boca-Grande.3.geo.tif",
+        "1002-Boca-Grande.4.geo.tif",
+        "1002-Boca-Grande.5.geo.tif",
+        "1002-Boca-Grande.6.geo.tif"
+      ]
+    },
+    "1002-Boca-Grande.5.geo.tif": {
+      "site_id": "crasar-site-d85a7a402446",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1002-Boca-Grande.1.geo.tif",
+        "1002-Boca-Grande.2.geo.tif",
+        "1002-Boca-Grande.3.geo.tif",
+        "1002-Boca-Grande.4.geo.tif",
+        "1002-Boca-Grande.5.geo.tif",
+        "1002-Boca-Grande.6.geo.tif"
+      ]
+    },
+    "1002-Boca-Grande.6.geo.tif": {
+      "site_id": "crasar-site-d85a7a402446",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1002-Boca-Grande.1.geo.tif",
+        "1002-Boca-Grande.2.geo.tif",
+        "1002-Boca-Grande.3.geo.tif",
+        "1002-Boca-Grande.4.geo.tif",
+        "1002-Boca-Grande.5.geo.tif",
+        "1002-Boca-Grande.6.geo.tif"
+      ]
+    },
+    "1002-Palm-Acers.2.geo.tif": {
+      "site_id": "crasar-site-6956b2674151",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1002-Palm-Acers.2.geo.tif"
+      ]
+    },
+    "1002-Palm-Acers.3.geo.tif": {
+      "site_id": "crasar-site-3a0809b0779e",
+      "event": "Hurricane Ian",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "1002-Palm-Acers.3.geo.tif"
+      ]
+    },
+    "20210831-LA-DIV-01.geo.tif": {
+      "site_id": "crasar-site-0e7ba31e02a5",
+      "event": "Hurricane Ida",
+      "planned_partition": "calibration_candidate",
+      "site_members": [
+        "20210831-LA-DIV-01.geo.tif"
+      ]
+    },
+    "20210901-Cocodrie-1.geo.tif": {
+      "site_id": "crasar-site-383869f64d35",
+      "event": "Hurricane Ida",
+      "planned_partition": "calibration_candidate",
+      "site_members": [
+        "20210901-Cocodrie-1.geo.tif"
+      ]
+    },
+    "20210901-Cocodrie-2.geo.tif": {
+      "site_id": "crasar-site-c93d430e7b3a",
+      "event": "Hurricane Ida",
+      "planned_partition": "calibration_candidate",
+      "site_members": [
+        "20210901-Cocodrie-2.geo.tif",
+        "20210901-Cocodrie-3.geo.tif"
+      ]
+    },
+    "20210901-Cocodrie-3.geo.tif": {
+      "site_id": "crasar-site-c93d430e7b3a",
+      "event": "Hurricane Ida",
+      "planned_partition": "calibration_candidate",
+      "site_members": [
+        "20210901-Cocodrie-2.geo.tif",
+        "20210901-Cocodrie-3.geo.tif"
+      ]
+    },
+    "20210902-LA-DIV-01.geo.tif": {
+      "site_id": "crasar-site-d0175f1ba0ae",
+      "event": "Hurricane Ida",
+      "planned_partition": "calibration_candidate",
+      "site_members": [
+        "20210902-LA-DIV-01.geo.tif"
+      ]
+    },
+    "05-08-2020-MussettBayouFire-01.geo.tif": {
+      "site_id": "crasar-site-4016463e543a",
+      "event": "Mussett Bayou Fire",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "05-08-2020-MussettBayouFire-01.geo.tif",
+        "05-08-2020-MussettBayouFire-NorthOf98.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-AnchorLakeDr.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-DelbertLn.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-LakeParkCove.geo.tif"
+      ]
+    },
+    "05-08-2020-MussettBayouFire-NorthOf98.geo.tif": {
+      "site_id": "crasar-site-4016463e543a",
+      "event": "Mussett Bayou Fire",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "05-08-2020-MussettBayouFire-01.geo.tif",
+        "05-08-2020-MussettBayouFire-NorthOf98.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-AnchorLakeDr.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-DelbertLn.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-LakeParkCove.geo.tif"
+      ]
+    },
+    "05-08-2020-MussettBayouFire-SouthOf98-AnchorLakeDr.geo.tif": {
+      "site_id": "crasar-site-4016463e543a",
+      "event": "Mussett Bayou Fire",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "05-08-2020-MussettBayouFire-01.geo.tif",
+        "05-08-2020-MussettBayouFire-NorthOf98.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-AnchorLakeDr.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-DelbertLn.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-LakeParkCove.geo.tif"
+      ]
+    },
+    "05-08-2020-MussettBayouFire-SouthOf98-DelbertLn.geo.tif": {
+      "site_id": "crasar-site-4016463e543a",
+      "event": "Mussett Bayou Fire",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "05-08-2020-MussettBayouFire-01.geo.tif",
+        "05-08-2020-MussettBayouFire-NorthOf98.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-AnchorLakeDr.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-DelbertLn.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-LakeParkCove.geo.tif"
+      ]
+    },
+    "05-08-2020-MussettBayouFire-SouthOf98-LakeParkCove.geo.tif": {
+      "site_id": "crasar-site-4016463e543a",
+      "event": "Mussett Bayou Fire",
+      "planned_partition": "test_candidate",
+      "site_members": [
+        "05-08-2020-MussettBayouFire-01.geo.tif",
+        "05-08-2020-MussettBayouFire-NorthOf98.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-AnchorLakeDr.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-DelbertLn.geo.tif",
+        "05-08-2020-MussettBayouFire-SouthOf98-LakeParkCove.geo.tif"
+      ]
+    },
+    "0827-A-01.geo.tif": {
+      "site_id": "crasar-site-9abbc5707da8",
+      "event": "Hurricane Laura",
+      "planned_partition": "calibration_candidate",
+      "site_members": [
+        "0827-A-01.geo.tif"
+      ]
+    },
+    "0827-B-02.geo.tif": {
+      "site_id": "crasar-site-dedf7d7853a0",
+      "event": "Hurricane Laura",
+      "planned_partition": "calibration_candidate",
+      "site_members": [
+        "0827-B-02.geo.tif"
+      ]
+    }
+  },
+  "continuation_base": {
+    "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\claude-orchestrator\\registrations\\grouping-rules-v1.json",
+    "sha256": "951904d943b555c3a3cb65aef24cd1e3851b99a0673d1998bb888ef85b66cbda"
+  },
+  "extension_pool_registrations": [
+    {
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-geometry-v1\\registration.json",
+      "sha256": "e406c5232739133b59324e0078097c653edf08cbd5e601cd5520a617f0b9d319"
+    },
+    {
+      "file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-geometry-v1\\registration.json",
+      "sha256": "70fee2b2f5efbf3f2014c62cfa5cb63d8d5814b865ca464f3fbf0756f7253d99"
+    }
+  ],
+  "extension_rule": "Same1km within-event source-road-bbox single linkage; preserve existing groups, site IDs and whole-event partitions. Source geometry only; no business labels or evaluated outputs used.",
+  "existing_site_mapping_unchanged": true,
+  "metadata_grouping_only": true,
+  "physical_asset_identity_verified": false,
+  "capture_holds_are_not_verified_flight_ids": true,
+  "cross_partition_bbox_minimum_distance_km": 379.7220422460047
+}

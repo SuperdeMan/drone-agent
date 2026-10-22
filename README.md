@@ -11,7 +11,9 @@
 
 drone-agent is a drone inspection operations platform built on a safety-constrained mission runtime. An operator asks for an inspection in plain language. A language model drafts a typed mission, deterministic code compiles and admits it, and a person approves and signs the exact package. On board, a `guardian` process, the only holder of the flight-controller link, checks every control write. Around this runtime the platform manages sites and docks, durable workflows, multi-aircraft scheduling, findings, work orders and reinspection, and it hands ground rechecks over to a rover.
 
-> **Status (2026-10-15): software only, validated in simulation.** Release gates have passed for the single-drone runtime (M0–M2), local autonomy (M3-SITL), the hardware-free platform v0.1 (P0–P5), six of the seven P6 work packages and the first air-ground simulation (X1-01). They ran in PX4 SITL + Gazebo, logical fleets and a vendor protocol simulator. No real aircraft, dock or vendor firmware has been connected; hardware validation is a separate track (H1–H3).
+> **Status (2026-10-22): software / simulation scope.** M0–M2, M3-SITL, P0–P5 and X1-01 have passed their recorded gates. P6 engineering delivery is complete under D091; full road business acceptance remains unverified. No real aircraft, dock or vendor firmware has been connected; hardware validation remains on H1–H3.
+
+> **P6 engineering delivery is closed (D091).** Evaluation tools and traceable public materials have been delivered. Full road business acceptance moves to [pre-operation validation](docs/road-business-validation-backlog.md) and is not passed. See the [engineering record](docs/p6-engineering-readiness.md) and [material handoff](docs/p6-road-corpus-handoff-2026-10-22.md); human review efficiency and field clearing remain unverified.
 
 <p align="center">
   <img src="docs/images/desk-mission-approval.png" alt="The operations desk showing a mission awaiting approval: lifecycle steps, the package hash bound to the approval, the mission package, the admission checks, dispatch eligibility and run provenance" width="900">
@@ -42,7 +44,7 @@ S0 is a logical world, S1 is PX4 SITL + Gazebo, S2 is a live model on frozen, au
 | **Multi-site scheduling**<br>P3 | A replayable decision names the reason for every excluded robot. One transaction assigns the task and holds the robot, the dock and the airspace cells of its route; withdrawal before a claim and task-level relay | [P3](docs/p3-readiness.md) `73fcf23`: S0 45/45 plus a 10 / 30 / 100-node ladder; S1 with two aircraft in one Gazebo world 5/5 |
 | **Findings to reinspection**<br>P4 | A quality layer and durable analysis jobs turn verified captures into candidate findings with labelled sources. A reviewer confirms; each finding gets one work order, which a reinspection closes only with new evidence | [P4](docs/p4-readiness.md) `8f41112`, S2 re-verified at `f4b1b99`: S0 45/45; S1 with a Gazebo damage patch 5/5; S2 on VisA close-ups with MiniMax-M3.1-Flash-Preview: precision 0.9703, recall 0.8167 |
 | **Platform v0.1**<br>P5 | One resident desk over three execution backends (PX4 SITL, a logical fleet, a vendor protocol simulator), with a second business template, a vendor mission gateway and a project audit trail | [P5](docs/p5-readiness.md) `1716843`: 22/22 criteria, including a 72-hour wall-clock soak in which dock sessions recovered within 10.6 s after 9 restarts and 3 kills |
-| **Evidence-driven operations**<br>P6 | Recapture, target-region quality, real-model adversarial recordings, safer planning prompts, a fact-checked mission explainer, trajectory-checked airspace holds, capacity and retention, an asset archive | [Six of seven work packages passed](#evidence-driven-operations-p6), 2026-10-10 to 10-13 |
+| **Evidence-driven operations**<br>P6 | Recapture, target-region quality, real-model adversarial recordings, safer planning prompts, a fact-checked mission explainer, trajectory-checked airspace holds, capacity and retention, an asset archive | [Engineering delivery complete](docs/p6-engineering-readiness.md), 2026-10-22; road business acceptance deferred |
 | **Air-ground recheck**<br>X1-01 | An x500 and a PX4 rover share one Gazebo world. The aircraft finds an anomaly, the coordinator offers a ground recheck, and the rover answers from its own map. After a person approves, it drives at no more than 1.0 m/s, captures and disarms once still. The rover runs the same onboard `uplink`, `executive` and `guardian` | [X1](docs/x1-readiness.md) `75cfde6`: S0 13 cases × 3 seeds = 39/39; S1 5 × 3 = 15/15 |
 
 Skills cover aerial takeoff, registered routes, image capture, asset inspection, return-home and landing, and ground navigation, recheck and return-home. Inspection uses registered observation routes in the [simulation scenes](configs/scenarios/). People and agents enter through the web operations desk and an A2A gateway that can submit tasks and query status but cannot approve or control.
@@ -62,7 +64,7 @@ P6 follows an [external review](docs/research/external-review-2026-10-10.md) of 
 | [Capacity and retention](docs/capacity-readiness.md) (WP-P6-07) | Tail latencies and backlogs through `capacity.get`; dock status archived after 7 days into verifiable gzip chunks | `a63f3ac` | Per-pass p95 8.0 → 9.0 ms at 16× history (control without it: 1148.5 ms) |
 | [Asset archive](docs/asset-archive-readiness.md) (WP-P6-04) | Append-only asset revisions, observations and events tagged fact, decision or belief; comparisons list factors and never name a cause | `6249129` | S0 18/18 |
 | [Explanation check v2](docs/explain-check-v2-readiness.md) (D086) | Counts approval or completion phrases as claims only where a clause asserts them | `7f7b97b` | Not adopted: 3 missed assertions, 1 allowed |
-| Target-business evaluation set (WP-P6-01) | Drone imagery for one inspection business, split by asset, place and batch and frozen before any test | — | Open: not frozen ([plan](docs/operations-implementation.md)) |
+| Road evaluation engineering delivery (WP-P6-01, D091) | Evaluation tools, 331 independently AI-reviewed references and traceable public-material handoff | `900abf1` | [Engineering closed](docs/p6-engineering-readiness.md); full road business acceptance deferred |
 
 ## Architecture
 
@@ -199,7 +201,7 @@ Each record owns the full gate results, failures and limitations for the revisio
 - **Simulation only.** No real aircraft, dock, vendor firmware or work-order system is connected. Jetson-in-the-loop (H1), bench and restricted flights (H2) and field operations (H3) form a separate hardware track that simulation results do not unlock.
 - **Docks and vendors.** Docks are logical simulators. Vendor-managed docks are tested only against a protocol simulator, and the vendor profile declares `verified_against_firmware: false`.
 - **Airspace and energy.** Airspace admission has a recorded UOM backend and rejects real-mode missions without a filing; reservation cells are a simulation grid. Energy estimates are for simulation only.
-- **Vision.** Analysis precision was measured on VisA circuit-board close-ups, not drone imagery; the drone-imagery evaluation set (WP-P6-01) is not frozen yet. Camera heading is declared rather than measured and was checked only against Gazebo truth.
+- **Vision.** Analysis precision was measured on VisA circuit-board close-ups, not drone imagery; the full road-business evaluation set (D089) is not frozen yet. Camera heading is declared rather than measured and was checked only against Gazebo truth.
 - **Air-ground.** Handoff goes through the coordinator; robots do not hand tasks to each other directly. Nav2 is not integrated yet, the ground recovery edges are a draft, and the resident desk does not run the rover.
 - **Platforms.** PX4 v1.17 with MAVSDK-Python 3.17.4 only; DJI and ArduPilot are not implemented.
 
@@ -208,7 +210,7 @@ Each record owns the full gate results, failures and limitations for the revisio
 | Track | Stages | Status |
 |---|---|---|
 | Mission runtime | M0–M2 contracts, single-drone runtime and constrained agent · M3 local autonomy | M0–M2 complete in simulation; M3-SITL passed, and M3 closes after Jetson-in-the-loop (H1) |
-| Operations | P0 provenance · P1 sites and docks · P2 workflows · P3 scheduling · P4 business loop · P5 platform v0.1 · P6 evidence-driven operations | P0–P5 complete for the software / SITL scope; P6 six of seven work packages complete, WP-P6-01 open |
+| Operations | P0 provenance · P1 sites and docks · P2 workflows · P3 scheduling · P4 business loop · P5 platform v0.1 · P6 evidence-driven operations | P0–P5 complete for the software / SITL scope; P6 engineering delivery complete (D091); full D089 road business acceptance deferred |
 | Hardware | H1 Jetson-in-the-loop · H2 bench and restricted flights · H3 field operations | Waiting for hardware |
 | Extensions | X1 air-ground · X2 vendor hardware · X3 models and a shared kernel | X1-01 complete for the software / SITL scope; Nav2 and real ground platforms (X1-02), X2 and X3 are conditional |
 
@@ -229,7 +231,7 @@ ros2_ws/           ROS 2 Jazzy nodes for local autonomy (M3)
 proto/             wire contracts drone.*.v1 with locked field numbers
 configs/           platforms, skills, recovery policies, scenarios and operations catalogs
 eval/              adversarial corpora and recordings, S2 manifests, append-only BASELINES.md
-docs/              architecture, decisions D001–D088, readiness records, verification receipts
+docs/              architecture, decisions D001–D091, readiness records, verification receipts
 scripts/           dev_stack.py for the cloud workspace, release gates verify_*.py, desk tools
 sim/               PX4 / Gazebo images and compose files per stage
 tests/             mirrors src/; tests/contracts/ turn the red lines into executable tests
@@ -258,7 +260,8 @@ Read [CLAUDE.md](CLAUDE.md) before contributing ([AGENTS.md](AGENTS.md) is the c
 | Air-ground collaboration | [Air-ground architecture](docs/architecture/04-air-ground.md) · [X1 plan](docs/x1-implementation.md) · [X1 validation](docs/x1-readiness.md) |
 | Running the platform | [Cloud development](docs/cloud-development.md) · [Flight desk](docs/tailnet-desk.md) · [Operations guide](docs/operations-guide.md) · [Simulation](sim/README.md) |
 | Evidence, judges and replay | [Evaluation](docs/architecture/08-evaluation.md) · [Fetch and view a run](docs/cloud-development.md#查看与人工核对结果) · [Baselines](eval/BASELINES.md) |
-| Design rationale | [Decision log D001–D088](docs/decisions.md) · [Research and technology radar](docs/research/) · [Sibling-project reuse](docs/reuse-from-embodied-agent.md) |
+| P6 public materials and remaining work | [Current handoff](docs/p6-road-corpus-handoff-2026-10-22.md) · [Business evaluation protocol](docs/p6-business-evaluation.md) · [Sources](docs/p6-materials-review.md) |
+| Design rationale | [Decision log D001–D091](docs/decisions.md) · [Research and technology radar](docs/research/) · [Sibling-project reuse](docs/reuse-from-embodied-agent.md) |
 
 ## License
 

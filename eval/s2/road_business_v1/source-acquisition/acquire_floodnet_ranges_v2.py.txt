@@ -1,0 +1,126 @@
+"""Acquire selected public ZIP members with exact range, size and CRC validation.
+
+按精确范围、长度和 CRC 校验取得选定的公开 ZIP 条目。
+"""
+import argparse
+import hashlib
+import json
+import re
+import struct
+import subprocess
+import zlib
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+def sha(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def encoded(value):
+    return (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode()
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--index", type=Path, required=True)
+    parser.add_argument("--plan", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    index, plan = (json.loads(p.read_text(encoding="utf-8")) for p in (args.index, args.plan))
+    if index["revision"] != plan["revision"] or sha(args.index.read_bytes()) != plan["index_sha256"]:
+        raise ValueError("plan identity mismatch")
+    revision = index["revision"]
+    if not re.fullmatch("[0-9a-f]{40}", revision):
+        raise ValueError("invalid revision")
+    entries = {r["member"]: r for r in index["entries"]}
+    selected = plan["members"]
+    if len(selected) != len(set(selected)):
+        raise ValueError("duplicate planned member")
+    output = args.output.resolve()
+    output.mkdir(parents=True, exist_ok=False)
+    (output / "ranges").mkdir()
+    (output / "images").mkdir()
+    (output / "receipts").mkdir()
+    url = f"https://huggingface.co/datasets/torchgeo/floodnet/resolve/{revision}/floodnet.zip"
+
+    def acquire(member):
+        entry = entries[member]
+        ident = Path(member).stem
+        if not re.fullmatch(r"[0-9]+", ident) or not member.endswith(".jpg"):
+            raise ValueError("only numbered JPG members are admitted")
+        size, compressed = entry["original_bytes"], entry["compressed_bytes"]
+        if entry["flags"] & 1 or entry["method"] not in {0, 8} or not 0 < size <= 20000000 or not 0 < compressed <= 20000000:
+            raise ValueError("unsupported member")
+        start, end = entry["offset"], entry["offset"] + compressed + 4095
+        if end >= index["zip_bytes"]:
+            raise ValueError("range beyond archive")
+        binary, headers = output / "ranges" / (ident + ".bin"), output / "ranges" / (ident + ".headers.txt")
+        receipt = {"member": member, "image_id": ident, "range": [start, end], "started_at": datetime.now(timezone.utc).isoformat(),
+                   "source_url": url, "status": "failed", "image_verified": False, "formal_release_eligible": False}
+        try:
+            command = ["curl.exe", "--fail", "--silent", "--show-error", "--location", "--max-time", "300",
+                       "--max-filesize", str(end - start + 1), "--range", f"{start}-{end}", "--dump-header", str(headers),
+                       "--output", str(binary), url]
+            result = subprocess.run(command, capture_output=True, timeout=315)
+            receipt["curl_exit"] = result.returncode
+            receipt["stderr"] = result.stderr.decode("utf-8", errors="replace")[-1200:]
+            if result.returncode:
+                raise ValueError("range transfer failed")
+            lines = headers.read_text(encoding="utf-8", errors="replace").splitlines()
+            ranges = [line.split(":", 1)[1].strip() for line in lines if line.lower().startswith("content-range:")]
+            if not ranges or ranges[-1] != f"bytes {start}-{end}/{index['zip_bytes']}":
+                raise ValueError("content range mismatch")
+            raw = binary.read_bytes()
+            if len(raw) != end - start + 1:
+                raise ValueError("range length mismatch")
+            fields = struct.unpack_from("<4s5H3I2H", raw)
+            signature, version, flags, method, mtime, mdate, crc, comp, uncompressed, nlen, xlen = fields
+            name = raw[30:30 + nlen].decode("utf-8" if flags & 2048 else "cp437")
+            if signature != b"PK\x03\x04" or name != member or flags != entry["flags"] or method != entry["method"]:
+                raise ValueError("local header mismatch")
+            begin = 30 + nlen + xlen
+            payload = raw[begin:begin + compressed]
+            if len(payload) != compressed:
+                raise ValueError("incomplete compressed member")
+            if method == 8:
+                decoder = zlib.decompressobj(-15)
+                image = decoder.decompress(payload, size + 1)
+                if not decoder.eof or decoder.unused_data or decoder.unconsumed_tail:
+                    raise ValueError("compressed stream not exactly consumed")
+            else:
+                image = payload
+            if len(image) != size or f"{zlib.crc32(image) & 0xffffffff:08x}" != entry["crc32"]:
+                raise ValueError("image size or CRC mismatch")
+            target = output / "images" / (ident + ".jpg")
+            with target.open("xb") as stream:
+                stream.write(image)
+            receipt.update(status="verified", image_verified=True, image_file=target.relative_to(output).as_posix(),
+                           image_sha256=sha(image), image_bytes=len(image), crc32=entry["crc32"], range_sha256=sha(raw))
+        except Exception as error:
+            receipt["error"] = f"{type(error).__name__}: {error}"
+        receipt["finished_at"] = datetime.now(timezone.utc).isoformat()
+        with (output / "receipts" / (ident + ".json")).open("xb") as stream:
+            stream.write(encoded(receipt))
+        return receipt
+
+    rows = []
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(acquire, member) for member in selected]
+        for future in as_completed(futures):
+            rows.append(future.result())
+            if len(rows) % 20 == 0 or len(rows) == len(selected):
+                print(json.dumps({"completed": len(rows), "planned": len(selected), "verified": sum(r["image_verified"] for r in rows)}), flush=True)
+    result = {"format": "drone.floodnet-range-acquisition/v1", "revision": revision,
+              "plan_sha256": sha(args.plan.read_bytes()), "index_sha256": sha(args.index.read_bytes()),
+              "tool_sha256": sha(Path(__file__).read_bytes()), "planned": len(selected),
+              "verified": sum(r["image_verified"] for r in rows), "rows": sorted(rows, key=lambda r: r["member"]),
+              "whole_archive_hash_verified": False, "agent_semantic_inspection": False,
+              "human_business_labels": 0, "formal_release_eligible": False}
+    with (output / "result.json").open("xb") as stream:
+        stream.write(encoded(result))
+
+
+if __name__ == "__main__":
+    main()

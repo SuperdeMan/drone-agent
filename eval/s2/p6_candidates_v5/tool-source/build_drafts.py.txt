@@ -1,0 +1,179 @@
+"""Record exposed AI polygon drafts from original-resolution visual inspection.
+
+根据原始分辨率查看记录已经曝光的 AI 多边形草稿，不冒充独立人工标注。
+"""
+import hashlib
+import json
+from pathlib import Path
+
+REPO = Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+OUT = REPO / 'eval/s2/p6_candidates_v5'
+
+
+def rect(a, b, c, d):
+    """Declare a rectangle explicitly. / 显式声明矩形。"""
+    return [[a, b], [c, b], [c, d], [a, d]]
+
+
+def domain(core, outer):
+    """Keep core and possible extent separate. / 分开保存内域与可能范围。"""
+    return {'core': core, 'outer': outer}
+
+
+def from_crop(box, points):
+    """Map hand-marked crop coordinates to the original frame. / 将裁剪图上的手工草稿坐标换算到原图。"""
+    a, b, c, d = box
+    return [[round(a + x * (c - a), 6), round(b + y * (d - b), 6)] for x, y in points]
+
+
+def entity(ident, description, core, outer, bindings, notes):
+    """Record a proposed physical group, not a verified unique defect.
+
+记录拟定的实体分组，不将其记为已核实的独立缺陷。
+"""
+    return {'entity_id': ident, 'description': description, 'object_envelope': domain(core, outer),
+            'candidate_refs': bindings, 'ai_notes': notes, 'grouping_confirmed_by_human': False,
+            'human_verdict': None, 'physical_scale_known': False}
+
+
+def refs(case, *pairs):
+    """Bind every raw box to its original view and ordinal. / 将原始框绑定到原视图与序号。"""
+    return [f'{case}:{view}:{ordinal}' for view, ordinal in pairs]
+
+
+def main():
+    """Write the review-only bundle while retaining all earlier recordings.
+
+写入仅供复核的草稿包，保留全部旧录制。
+"""
+    a = 'case-8305aeb37905'
+    b = 'case-d1b8866d1484'
+    c = 'case-3796b34d624b'
+    d = 'case-98c37eea9470'
+    e = 'case-b2816a2e7bb3'
+    f = 'case-d382a1ce7ef4'
+    crop_tree = (.08, .18, .36, .40)
+    crop_edge = (.42, .62, .56, 1.0)
+    crop_chair = (.13, .32, .29, .58)
+    targets = [
+        {'case_id': a, 'image_id': '12494', 'road_description': '上方纵向道路；连续道路内域含被物体遮住的部分，仅为提案',
+         'road_envelope': domain([[[.286, 0], [.349, 0], [.326, .55], [.251, .55]]],
+                                 [[[.268, 0], [.372, 0], [.346, .57], [.231, .57]]]),
+         'entities': [entity('E01', '纵向道路中的板材与建筑碎片堆',
+             [[[.265, .30], [.31, .26], [.335, .37], [.30, .43], [.26, .40]]],
+             [[[.235, .22], [.36, .20], [.405, .32], [.365, .51], [.33, .565], [.24, .55], [.225, .40]]],
+             refs(a, ('view-6cda4badce65', 0), ('view-e42ed6da05d7', 0)),
+             '两个框暂按同一片堆积关联；实体范围取自整张原图，不由框交叠推定真值。')]},
+        {'case_id': b, 'image_id': '12326', 'road_description': '路口、左侧纵向路面与右上道路；停车/道路资产范围尚未登记',
+         'road_envelope': domain([[[.01, 0], [.138, 0], [.114, .385], [1, .058], [1, .134], [.428, .335], [.483, 1], [.01, 1]]],
+                                 [[[0, 0], [.162, 0], [.142, .349], [1, .024], [1, .165], [.457, .366], [.511, 1], [0, 1]]]),
+         'entities': [
+             entity('E02', '路口树枝及其阴影混杂区域',
+                 [from_crop(crop_tree, [[.365, .50], [.41, .51], [.445, .60], [.402, .61]])],
+                 [from_crop(crop_tree, [[.15, .35], [.55, .28], [.90, .22], [.94, .48], [.80, .70], [.61, .78], [.42, .95], [.22, .86], [.16, .59]])],
+                 refs(b, ('view-3b3abd83241f', 0)),
+                 '原图能见枝干，但最靠近路面的部分与阴影混杂；内域只圈较可靠枝干，可能范围保留伸入路口的部分。'),
+             entity('E03', '下部大堆积中的可见板材',
+                 [[[.178, .605], [.234, .582], [.263, .641], [.206, .674]]],
+                 [[[.012, .625], [.075, .568], [.202, .555], [.286, .527], [.405, .503], [.431, .58], [.366, .656], [.291, .69], [.23, .762], [.108, .78], [.005, .731]]],
+                 refs(b, ('view-3b3abd83241f', 1), ('view-efa01a197e2e', 0), ('view-e0f2ecc668d5', 0)),
+                 '内域选取可见实体板材，外域表示整片候选范围；重复观察不计为多个独立缺陷。'),
+             entity('E04', '右下路缘的局部碎片和板材',
+                 [from_crop(crop_edge, [[.49, .62], [.69, .68], [.52, .72], [.445, .67]])],
+                 [from_crop(crop_edge, [[.42, .60], [.95, .64], [1, 1], [.58, 1], [.45, .94], [.37, .84], [.45, .76]])],
+                 refs(b, ('view-bf9627257b39', 0)),
+                 '只标注该框对应的路缘可见碎片，整堆范围延伸到裁剪区域外；路缘几何与遮挡范围仍待复核。'),
+             entity('E05', '向路面方向伸出的白色长条构件',
+                 [from_crop(crop_edge, [[.285, .131], [.489, .190], [.481, .198], [.278, .143]])],
+                 [from_crop(crop_edge, [[.265, .120], [.505, .183], [.51, .21], [.265, .16]])],
+                 refs(b, ('view-bf9627257b39', 1)),
+                 '原图能区分白色实体与向下延伸的黑色阴影；仅圈实体投影，不由阴影扩大遮挡范围，也不推断离地高度。')
+         ]},
+        {'case_id': c, 'image_id': '12494', 'road_description': '底部横向道路；路缘/路肩包含关系未登记，保留较宽可能带',
+         'road_envelope': domain([[[0, .815], [1, .943], [1, 1], [0, 1]]],
+                                 [[[0, .750], [1, .875], [1, 1], [0, 1]]]),
+         'entities': [
+             entity('E06', '左侧道路北缘木料，排除黑色车辆和纯阴影',
+                 [[[.285, .787], [.31, .791], [.306, .801], [.281, .797]]],
+                 [[[.12, .755], [.255, .770], [.344, .790], [.334, .829], [.20, .818], [.115, .801]]],
+                 refs(c, ('view-5b7d661ca296', 0)),
+                 '模型矩形含车辆、阴影和路面；实体内域只取可见木料，是否伸入本项目目标路面仍不确定。'),
+             entity('E07', '右侧道路北缘木料和碎片',
+                 [[[.857, .859], [.919, .869], [.948, .888], [.896, .887]]],
+                 [[[.82, .827], [.99, .855], [1, .912], [.925, .925], [.855, .90], [.813, .875]]],
+                 refs(c, ('view-c8d1d9d1a4c1', 0)),
+                 '实体和路缘边界接近，影子不能等同于实体遮挡；目标是否包含路肩需要业务复核。')
+         ]},
+        {'case_id': d, 'image_id': '14431', 'road_description': '横向道路与北侧支路；北侧建筑地面不作为确定路面',
+         'road_envelope': domain([[[0, .278], [.437, .295], [.491, .226], [.499, 0], [.518, 0], [.521, .254], [.545, .281], [1, .335], [1, .503], [0, .384]]],
+                                 [[[0, .246], [.427, .260], [.458, .203], [.470, 0], [.546, 0], [.547, .234], [.562, .252], [1, .305], [1, .539], [0, .417]]]),
+         'entities': [
+             entity('E08', '道路南缘的木料与长条碎片',
+                 [[[.58, .478], [.62, .480], [.65, .493], [.625, .502], [.575, .49]]],
+                 [[[.54, .45], [.72, .476], [.724, .53], [.57, .51]]],
+                 refs(d, ('view-66a5536b471f', 0)),
+                 '实体位于道路与废墟交界；原框上半部包含路面，不把框覆盖的路面当作实体。'),
+             entity('E09', '北侧路口边缘木料与碎片',
+                 [[[.54, .20], [.582, .188], [.607, .232], [.56, .251], [.531, .231]]],
+                 [[[.515, .151], [.61, .15], [.637, .253], [.574, .286], [.529, .274], [.51, .23]]],
+                 refs(d, ('view-94a3dbb0e944', 0)),
+                 '破碎地面与木料交叠，支路边缘的实际占用仍不确定，保留可能范围而不按源7判正常。'),
+             entity('E10', '北侧建筑地面/破碎铺装区域，实体属性待确认',
+                 [], [rect(.598, .108, .718, .240)],
+                 refs(d, ('view-94a3dbb0e944', 1)),
+                 '不能从灰色铺装破损直接确认存在独立遮挡物；该候选位置整体在拟定道路之外。'),
+             entity('E11', '道路北侧板状建筑结构',
+                 [[[.738, .011], [.81, .013], [.812, .205], [.748, .218]]],
+                 [[[.715, 0], [.837, 0], [.838, .249], [.746, .262], [.717, .15]]],
+                 refs(d, ('view-94a3dbb0e944', 2)),
+                 '可见板状结构在道路北侧地块，顶部超出画面；此草稿只描述画面内位置，不推断整个结构或通行情况。')
+         ]},
+        {'case_id': e, 'image_id': '12892', 'road_description': '左侧纵向道路及上下连接路段；不沿车辆轮廓挖道路孔洞',
+         'road_envelope': domain([
+             [[.07, 0], [1, 0], [1, .043], [.35, .017], [.22, .152], [.15, .14]],
+             [[.149, .105], [.207, .14], [.184, .85], [.114, .85]],
+             [[.115, .82], [.20, .86], [.421, .945], [.405, .975], [.18, .94], [.115, .90]],
+             [[0, .837], [.105, .862], [.105, .902], [0, .91]],
+         ], [
+             [[0, 0], [1, 0], [1, .080], [.38, .065], [.22, .20], [.10, .18]],
+             [[.120, .105], [.232, .132], [.204, .875], [.084, .875]],
+             [[.075, .78], [.24, .84], [.445, .925], [.43, 1], [.18, .97], [.075, .91]],
+             [[0, .81], [.12, .84], [.12, .93], [0, .94]],
+         ]),
+         'entities': [entity('E12', '伸入路面的白色椅架和木条',
+             [from_crop(crop_chair, [[217/640, 470/780], [222/640, 470/780], [210/640, 520/780], [205/640, 520/780]])],
+             [from_crop(crop_chair, [[.31, .30], [.62, .26], [.69, .36], [.66, .55], [.59, .72], [.54, .90], [.41, .90], [.30, .75], [.30, .49]])],
+             refs(e, ('view-861494243f08', 0)),
+             '原始分辨率能看到椅架和木条伸入可见沥青路面。按用户确认的无大小门槛口径应保留候选；不能用源Road-Clear或整图normal证明其为误报。')]},
+        {'case_id': f, 'image_id': '12876', 'road_description': '左侧纵向道路；下部堆积遮挡处的道路延续仍为拟定范围',
+         'road_envelope': domain([[[.127, 0], [.196, 0], [.180, 1], [.100, 1]]],
+                                 [[[.106, 0], [.219, 0], [.201, 1], [.079, 1]]]),
+         'entities': [entity('E13', '左侧纵向道路上的大堆积',
+             [[[.11, .535], [.155, .514], [.181, .59], [.13, .634]]],
+             [[[.081, .50], [.205, .47], [.256, .63], [.233, .92], [.20, 1], [.07, 1]]],
+             refs(f, ('view-347d6ae24938', 0), ('view-59660793e5d8', 0), ('view-be46fafef130', 0)),
+             '整图和上下分块暂按同片堆积关联，分组未获人工确认；不计为三个独立缺陷。')]},
+    ]
+    value = {'format': 'drone.p6-boundary-drafts/v1', 'date': '2026-10-14', 'author_kind': 'ai_draft',
+             'author': 'Codex AI visual drafting', 'policy_id': 'road-contact-dev-v1',
+             'user_policy': '暂无门槛，先按目标内实体遮挡候选推进',
+             'minimum_size_threshold': None, 'minimum_occupancy_ratio': None,
+             'source_index_sha256': hashlib.sha256((REPO/'eval/s2/p6_candidates_v3/input-index.json').read_bytes()).hexdigest(),
+             'prior_summary_sha256': hashlib.sha256((REPO/'eval/s2/p6_candidates_v4/summary.json').read_bytes()).hexdigest(),
+             'hint_exposure': ['source masks', 'v3 and v4 model outputs', 'full-resolution source crops'],
+             'independent_human_review': False, 'human_reviews_completed': 0, 'formal_release_eligible': False,
+             'road_outer_policy': 'union_of_manual_possible_envelope_and_source_support',
+             'previous_draft_sha256': '740b44c81d3a3ce250045040a305f85f212149c3e9527a25cd2cf2f5cba7482f',
+             'draft_history': [
+                 {'sha256':'6059065b97948bad6307a736dd521b359638fc298610e318f6fc78761c2451b6','status':'failed_containment'},
+                 {'sha256':'740b44c81d3a3ce250045040a305f85f212149c3e9527a25cd2cf2f5cba7482f','status':'passed_geometry; E12 core refined after native-resolution visual review'}],
+             'revision_note': '初稿内域越出外域：E06 286 像素、12892 道路 6237 像素，已修正可能外域。随后按原生像素网格收紧 E12 内域，只保留可见木条中段，避免将相邻路面计作实体；未改变业务口径。',
+             'builder_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), 'targets': targets}
+    OUT.mkdir(exist_ok=True)
+    (OUT/'drafts.json').write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n',encoding='utf-8',newline='\n')
+    print(json.dumps({'targets':len(targets),'entity_groups':sum(len(t['entities']) for t in targets),
+                      'raw_bindings':sum(len(g['candidate_refs']) for t in targets for g in t['entities'])}))
+
+
+if __name__ == '__main__':
+    main()

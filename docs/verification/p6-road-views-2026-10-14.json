@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-14",
+  "scope": "offline road-view development tooling; not runtime release",
+  "tested_commit": "81de84ed90e65066646d3d31bd3c80812dd7c7b7",
+  "builder_sha256": "c0cbf78e0300da9d458b6c98f0167ff4aff5b379223c834ebf724f36abbae07f",
+  "ruff": {
+    "command": "uv run --frozen ruff check .",
+    "exit_code": 0
+  },
+  "targeted_tests": {
+    "passed": 21,
+    "failed": 0
+  },
+  "full_pytest": {
+    "command": "uv run --frozen pytest -q --junitxml=../pytest.xml",
+    "passed": 1608,
+    "skipped": 1,
+    "failed": 0,
+    "errors": 0,
+    "seconds": 865.0,
+    "skip_reason": "existing Windows Unix socket exclusion",
+    "high_qos_at_startup": true,
+    "junit_sha256": "6f4fc1357101be6fecd05b69ab26a2f03df5dcf7b38eabe982d1077e0c3211d4"
+  },
+  "runtime_source_unchanged": true,
+  "model_probe_runtime_source_sha": "6249129596b7cfe88c7322f8b425c7b432dba24b",
+  "formal_release_eligible": false,
+  "artifact_packaging": {
+    "modified_or_new_files": 47,
+    "json_files": 34,
+    "relative_links": 444,
+    "old_evidence_unchanged": true,
+    "recording_hashes": 24,
+    "script_hashes_verified": true,
+    "cli_summary_matches_analyzed_result": true,
+    "code_unchanged_since_full_suite": true,
+    "secrets_or_embedded_images": false
+  },
+  "offline_cli_summary": "passed against the archived plan and results; this command does not call a provider"
+}

@@ -1,0 +1,56 @@
+{
+  "cases": [
+    {
+      "mode": "annotation",
+      "name": "valid",
+      "exit_code": 0,
+      "expected_rejected": false,
+      "stdout": "{\"validated_rows\": 2, \"writer_invoked\": false}\n",
+      "batch_sha256": "cd48dc920216beadc51983a7ec686971881a80b07fa3d30b5560e2d2c94360db",
+      "formal_samples_added": 0
+    },
+    {
+      "mode": "annotation",
+      "name": "scalar_uncertainties",
+      "exit_code": 1,
+      "expected_rejected": true,
+      "stdout": "",
+      "batch_sha256": "7f8d54ef87d9fd9fdec1351027bbbe034d43d6b583e9d4f0cd6279d5a33226e2",
+      "formal_samples_added": 0
+    },
+    {
+      "mode": "annotation",
+      "name": "damaged_notes",
+      "exit_code": 1,
+      "expected_rejected": true,
+      "stdout": "",
+      "batch_sha256": "9eafda805a101d62d74cb315206ec364e74871dc3289fa875dc4f9569c6d8e2c",
+      "formal_samples_added": 0
+    },
+    {
+      "mode": "verification",
+      "name": "valid",
+      "exit_code": 0,
+      "expected_rejected": false,
+      "stdout": "{\"validated_rows\": 1, \"writer_invoked\": false}\n",
+      "batch_sha256": "2951c0484629f7733af2e30382ed34e138d9de9d493f80f0702930cd08b60551",
+      "formal_samples_added": 0
+    },
+    {
+      "mode": "verification",
+      "name": "damaged_findings",
+      "exit_code": 1,
+      "expected_rejected": true,
+      "stdout": "",
+      "batch_sha256": "48f14a86d105013f017951c02a3b415a7046727c9524b713dc0f3b2f6562a122",
+      "formal_samples_added": 0
+    }
+  ],
+  "actual_label_bytes_unchanged": true,
+  "source_files": {
+    "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_15\\suggestions.json": "901b1c6ac9f4ac4209e96e2beeb816052c8dbfb6b4b05bcbeedc2b755b49ad5f",
+    "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_13\\reviews.json": "53e1f2090fac6f57d323a3314476472b62ef6ae4b030998b6e5c41073398f1f9"
+  },
+  "writer_helper_sha256": "91e1ef96fb47f2c5ccfbfb66c7868e5f1fbb9875e9aabd18bb95a294e30830cd",
+  "scope": "Copied structural probe payloads only. Both original writers were not invoked; no visual or reference-label work claimed."
+}

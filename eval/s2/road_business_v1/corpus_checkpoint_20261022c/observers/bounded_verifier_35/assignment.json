@@ -1,0 +1,2438 @@
+{
+  "format": "drone.p6-ai-review-assignment/v1",
+  "reviewer_id": "bounded_verifier_35",
+  "worker_dir": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_35",
+  "created_at": "2026-10-22T04:28:04.679293+00:00",
+  "parent_history": "none",
+  "evaluation_prompt_access": "forbidden",
+  "evaluation_outputs_access": "forbidden",
+  "source_class_label_access": "forbidden",
+  "samples": [
+    {
+      "sample_id": "bounded-extract-4d8348998de657",
+      "asset_group_id": "crasar-road-a135f077f26406",
+      "bounded_target_id": "target-v2-b495d1351e05be42",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-4d8348998de657.jpg",
+      "image_sha256": "1a8b6759e11d5ccb559ad1a37253356005c4cf2c0bf68b739fc5ec0c6a07c938",
+      "width": 2557,
+      "height": 6186,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\overviews\\bounded-extract-4d8348998de657.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-4d8348998de657.jpg",
+      "guide_sha256": "2a2502ab3491620d127d4ec9b96579e81a02de095f1984dea29f3679af83ea2c",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-4d8348998de657.png",
+      "target_endpoints_normalized": [
+        [
+          0.4845522096206492,
+          0.799655096062468
+        ],
+        [
+          0.515447788621093,
+          0.20029101374104805
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.4845522096206492,
+            0.799655096062468
+          ],
+          [
+            0.5154477886210729,
+            0.20029101374144062
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "b495d1351e05be42c5a14622cc1fe8e437012c4417615b7b35e8119fb81826e5",
+        "frozen_at_utc": "2026-10-21T09:02:05.967454+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-02-0006",
+        "reference_chain_station_interval_m": [
+          0,
+          75.92297231819785
+        ],
+        "length_m": 75.92297231819785,
+        "utm_epsg": 32616,
+        "utm_polyline_m": [
+          [
+            572447.1810831903,
+            3360016.41126416
+          ],
+          [
+            572448.2107945618,
+            3360092.327253386
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -86.2460435793,
+              30.3699088809
+            ],
+            [
+              -86.2460276076,
+              30.3705938331
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -86.2460435793,
+            30.3699088809
+          ],
+          [
+            -86.2460276076,
+            30.3705938331
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 0.0,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2460435793,
+              30.3699088809
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 75.92297231819785,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2460276076,
+              30.3705938331
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 2,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          75.92297231819785
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "first_author_id": "bounded_annotator_28",
+      "first_row": {
+        "sample_id": "bounded-extract-4d8348998de657",
+        "image_sha256": "1a8b6759e11d5ccb559ad1a37253356005c4cf2c0bf68b739fc5ec0c6a07c938",
+        "target_brief": "Entire two-lane north-south paved main road between A and B, including both terminal cross-sections; driveways follow the continuous main-road edges.",
+        "target_polygon": [
+          [
+            0.45800077,
+            0.19978506
+          ],
+          [
+            0.58100163,
+            0.20086837
+          ],
+          [
+            0.569,
+            0.4
+          ],
+          [
+            0.556,
+            0.6
+          ],
+          [
+            0.54899883,
+            0.8002227
+          ],
+          [
+            0.42499842,
+            0.79913058
+          ],
+          [
+            0.435,
+            0.6
+          ],
+          [
+            0.447,
+            0.4
+          ]
+        ],
+        "verdict": "normal",
+        "objects": [],
+        "notes": "The full main-road width and both A/B cross-sections are readable. Trees and utility lines cast shadows across pavement; no confirmed physical obstruction lies inside the target. Adjacent rubble is beyond the road edge.",
+        "uncertainties": [],
+        "inspected_at": "2026-10-22T02:45:43.306605+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-4d8348998de657.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-4d8348998de657.jpg"
+        ]
+      },
+      "first_row_sha256": "7bf450951a46b3effa21ab8cec2c5ee306f6dc25db85eaef88060885a1ebf5a1",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\suggestions.json",
+      "draft_sha256": "6f21e1d26ba105c00273404b9c9ceb5e73b763d9ff17ac5dd82f28ed5cee0ab0",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\receipts\\bounded-extract-4d8348998de657.json",
+      "current_extraction_sha256": "ce7f67de66cff8174782ce9308d67baaf86a4520e4a6a04f08de03e0dd76f3d2"
+    },
+    {
+      "sample_id": "bounded-extract-696045722e0228",
+      "asset_group_id": "crasar-road-9b0bd51c9c684e",
+      "bounded_target_id": "target-v2-210d6b8894d5ccdf",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-696045722e0228.jpg",
+      "image_sha256": "8a50edc2f99f37779f55a8348a58f5fcedc8506021e3fb2a6989e8c7c6e12adb",
+      "width": 5955,
+      "height": 2006,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\overviews\\bounded-extract-696045722e0228.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-696045722e0228.jpg",
+      "guide_sha256": "a0e230374aa53f0c9f8324828fa01457250076ff512c2791161b3fcc0465a4c1",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-696045722e0228.png",
+      "target_endpoints_normalized": [
+        [
+          0.8692414929483034,
+          0.39680959072442457
+        ],
+        [
+          0.13075834886551913,
+          0.38800249079725935
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.8692414777497902,
+            0.3968095712861416
+          ],
+          [
+            0.6654350965575148,
+            0.3889995014955128
+          ]
+        ],
+        [
+          [
+            0.6654350965575148,
+            0.3889995014955128
+          ],
+          [
+            0.618079932829555,
+            0.40943818544366833
+          ]
+        ],
+        [
+          [
+            0.618079932829555,
+            0.40943818544366833
+          ],
+          [
+            0.4561991603694375,
+            0.581422233300099
+          ]
+        ],
+        [
+          [
+            0.4561991603694375,
+            0.581422233300099
+          ],
+          [
+            0.38180789252728803,
+            0.6118310069790621
+          ]
+        ],
+        [
+          [
+            0.38180789252728803,
+            0.6118310069790621
+          ],
+          [
+            0.3171563392107473,
+            0.6033564307078757
+          ]
+        ],
+        [
+          [
+            0.3171563392107473,
+            0.6033564307078757
+          ],
+          [
+            0.21522518891687661,
+            0.519607676969092
+          ]
+        ],
+        [
+          [
+            0.21522518891687661,
+            0.519607676969092
+          ],
+          [
+            0.13075835432409744,
+            0.3880024925224321
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "210d6b8894d5ccdfec89e01c07e897f31b7b8caff20a8c608bc88a78abba02ca",
+        "frozen_at_utc": "2026-10-21T09:02:05.967454+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-00-0022",
+        "reference_chain_station_interval_m": [
+          27.076747581906087,
+          175.5111044358985
+        ],
+        "length_m": 148.4343568539924,
+        "utm_epsg": 32616,
+        "utm_polyline_m": [
+          [
+            572821.4531821479,
+            3360087.956661764
+          ],
+          [
+            572780.3932869639,
+            3360088.5997258243
+          ],
+          [
+            572771.3260228881,
+            3360087.2814358994
+          ],
+          [
+            572740.3301465195,
+            3360076.1885205074
+          ],
+          [
+            572726.086191442,
+            3360074.227163661
+          ],
+          [
+            572713.70712833,
+            3360074.7737710765
+          ],
+          [
+            572694.1900157299,
+            3360080.1755365366
+          ],
+          [
+            572678.0168550963,
+            3360088.6640408556
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -86.2421438429,
+              30.3705319296
+            ],
+            [
+              -86.242571079,
+              30.3705402093
+            ],
+            [
+              -86.2426655272,
+              30.3705288608
+            ],
+            [
+              -86.2429888502,
+              30.3704306348
+            ],
+            [
+              -86.243137213,
+              30.3704137954
+            ],
+            [
+              -86.2432659949,
+              30.3704194736
+            ],
+            [
+              -86.24346872,
+              30.3704693913
+            ],
+            [
+              -86.2436364328,
+              30.3705469599
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -86.2421438429,
+            30.3705319296
+          ],
+          [
+            -86.2436364328,
+            30.3705469599
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 27.076747581906087,
+            "kind": "source_curvature_node",
+            "turn_degrees": 22.411,
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2421438429,
+              30.3705319296
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 175.5111044358985,
+            "kind": "source_curvature_node",
+            "turn_degrees": 21.616,
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2436364328,
+              30.3705469599
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 2,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          184.01523664422155
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "first_author_id": "bounded_annotator_28",
+      "first_row": {
+        "sample_id": "bounded-extract-696045722e0228",
+        "image_sha256": "8a50edc2f99f37779f55a8348a58f5fcedc8506021e3fb2a6989e8c7c6e12adb",
+        "target_brief": "Entire crescent-shaped residential road from right-hand A to left-hand B, across its full width and both frozen end cross-sections.",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "The south curb can be followed, but tree crowns hide sections of the north road edge around the west-middle bend. Ordinary road vehicles alone are not labeled as obstructions. The target has not been shortened to avoid the canopy.",
+        "uncertainties": [
+          "North main-road boundary and underlying full width are hidden by canopy around normalized x 0.29-0.43; a complete target polygon cannot be traced from visible edges."
+        ],
+        "inspected_at": "2026-10-22T02:45:43.312604+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-696045722e0228.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-696045722e0228.jpg"
+        ]
+      },
+      "first_row_sha256": "db40a7fa212b38e34954e24d9610b33622295fe22b6849d3ef643be596936be2",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\suggestions.json",
+      "draft_sha256": "6f21e1d26ba105c00273404b9c9ceb5e73b763d9ff17ac5dd82f28ed5cee0ab0",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\receipts\\bounded-extract-696045722e0228.json",
+      "current_extraction_sha256": "cb001a709a8e52c75dccaabfcccdecc9f485eec1da4f1a346d37ac015fad4dc6"
+    },
+    {
+      "sample_id": "bounded-extract-6a6bb02510b0ac",
+      "asset_group_id": "crasar-road-fb0369b55846b7",
+      "bounded_target_id": "target-v2-d5fd34e22c38a57e",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-6a6bb02510b0ac.jpg",
+      "image_sha256": "d63f37c11764f6e640eea9fa38882b0ab3c22e0cf67892409428ebe1bc9467e7",
+      "width": 5962,
+      "height": 1616,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\overviews\\bounded-extract-6a6bb02510b0ac.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-6a6bb02510b0ac.jpg",
+      "guide_sha256": "99d92d23d11669802732182f42140df7338dc47070c42efa8b53a1ce4e9805c0",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-6a6bb02510b0ac.png",
+      "target_endpoints_normalized": [
+        [
+          0.130605006013483,
+          0.5099009901859612
+        ],
+        [
+          0.8695068768869507,
+          0.5182549504950495
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.13060500601372144,
+            0.509900990185964
+          ],
+          [
+            0.8695068768869507,
+            0.5182549504950495
+          ]
+        ],
+        [
+          [
+            0.1306050060751392,
+            0.5099009788017271
+          ],
+          [
+            0.1500760111788139,
+            0.48152671570836775
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "d5fd34e22c38a57e80f3c34783c9653fe98f7010d7448ee88b5191bd579eb240",
+        "frozen_at_utc": "2026-10-21T09:02:05.967454+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-00-0020",
+        "reference_chain_station_interval_m": [
+          0,
+          141.82408873211665
+        ],
+        "length_m": 141.82408873211665,
+        "utm_epsg": 32616,
+        "utm_polyline_m": [
+          [
+            572672.2935517071,
+            3360495.7903994736
+          ],
+          [
+            572814.0900503022,
+            3360492.993055939
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -86.2436677122,
+              30.3742209315
+            ],
+            [
+              -86.2421922771,
+              30.3741871412
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -86.2436677122,
+            30.3742209315
+          ],
+          [
+            -86.2421922771,
+            30.3741871412
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 0.0,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2436677122,
+              30.3742209315
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 141.82408873211665,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2421922771,
+              30.3741871412
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 2,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          141.82408873211665
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "first_author_id": "bounded_annotator_28",
+      "first_row": {
+        "sample_id": "bounded-extract-6a6bb02510b0ac",
+        "image_sha256": "d63f37c11764f6e640eea9fa38882b0ab3c22e0cf67892409428ebe1bc9467e7",
+        "target_brief": "Entire lower divided-highway carriageway between A and B, including its attached turn bay where unseparated and the through-road width past raised islands; opposite carriageway is separated by a median.",
+        "target_polygon": [
+          [
+            0.13077271,
+            0.30799969
+          ],
+          [
+            0.25,
+            0.322
+          ],
+          [
+            0.45,
+            0.338
+          ],
+          [
+            0.62,
+            0.351
+          ],
+          [
+            0.625,
+            0.43
+          ],
+          [
+            0.623,
+            0.468
+          ],
+          [
+            0.828,
+            0.478
+          ],
+          [
+            0.86954031,
+            0.47800046
+          ],
+          [
+            0.86940077,
+            0.64600001
+          ],
+          [
+            0.65,
+            0.638
+          ],
+          [
+            0.4,
+            0.618
+          ],
+          [
+            0.13053183,
+            0.59800036
+          ]
+        ],
+        "verdict": "normal",
+        "objects": [],
+        "notes": "Both pavement boundaries and both frozen cross-sections are visible. Attached lanes and paved margins are retained; the continuous through-road width is used across side connections. Ordinary cars are visible, with no confirmed physical road obstruction.",
+        "uncertainties": [],
+        "inspected_at": "2026-10-22T02:45:43.316607+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-6a6bb02510b0ac.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-6a6bb02510b0ac.jpg"
+        ]
+      },
+      "first_row_sha256": "a0717b1a408d5597d790e22646d3bee1b2d15cad95b0ab07a53dbd4c66509648",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\suggestions.json",
+      "draft_sha256": "6f21e1d26ba105c00273404b9c9ceb5e73b763d9ff17ac5dd82f28ed5cee0ab0",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\receipts\\bounded-extract-6a6bb02510b0ac.json",
+      "current_extraction_sha256": "cc9f0277d8ec7fbe8925d03db7384169948f644efa1c49ac1d5cb6ae92866202"
+    },
+    {
+      "sample_id": "bounded-extract-73eb7621f00650",
+      "asset_group_id": "crasar-road-40ff25190c09d7",
+      "bounded_target_id": "target-v2-614ff763c7d6b11f",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-73eb7621f00650.jpg",
+      "image_sha256": "eb311583ce4e083fd4f357dc3a030ba03e10b9acd0f656887e04332b58d2428b",
+      "width": 2811,
+      "height": 4955,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\overviews\\bounded-extract-73eb7621f00650.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-73eb7621f00650.jpg",
+      "guide_sha256": "4a03855cf6a9ec7b63583521c0ada3eaecdb7fe4924de82d4ad9ebee16d266dd",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-73eb7621f00650.png",
+      "target_endpoints_normalized": [
+        [
+          0.5592315738927064,
+          0.8031616908616528
+        ],
+        [
+          0.4407684338810388,
+          0.2501850060228836
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.5592315738930282,
+            0.8031616908626337
+          ],
+          [
+            0.5353966559943081,
+            0.7305078555484211
+          ]
+        ],
+        [
+          [
+            0.5353966559943081,
+            0.7305078555484211
+          ],
+          [
+            0.5435787975809321,
+            0.5720820230559892
+          ]
+        ],
+        [
+          [
+            0.5435787975809321,
+            0.5720820230559892
+          ],
+          [
+            0.5222340803984348,
+            0.44191047916093373
+          ]
+        ],
+        [
+          [
+            0.5222340803984348,
+            0.44191047916093373
+          ],
+          [
+            0.44076843388016373,
+            0.25018500602082416
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "614ff763c7d6b11f1d8d6a040d673f75b7e0ed6e750b237f6cc92bb2baa9b57b",
+        "frozen_at_utc": "2026-10-21T09:02:05.967454+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-02-0012",
+        "reference_chain_station_interval_m": [
+          6.534246194770323,
+          62.59322851971572
+        ],
+        "length_m": 56.058982324945404,
+        "utm_epsg": 32616,
+        "utm_polyline_m": [
+          [
+            572406.9617592565,
+            3359726.416216798
+          ],
+          [
+            572405.6090049143,
+            3359733.6847641254
+          ],
+          [
+            572406.0733834596,
+            3359749.534244633
+          ],
+          [
+            572404.8619523166,
+            3359762.557067845
+          ],
+          [
+            572400.2383523077,
+            3359781.7379670436
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -86.2464821763,
+              30.3672945767
+            ],
+            [
+              -86.2464957501,
+              30.3673602443
+            ],
+            [
+              -86.2464898212,
+              30.3675032314
+            ],
+            [
+              -86.2465015263,
+              30.3676208132
+            ],
+            [
+              -86.2465483124,
+              30.367794166
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -86.2464821763,
+            30.3672945767
+          ],
+          [
+            -86.2465483124,
+            30.367794166
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 6.534246194770323,
+            "kind": "source_curvature_node",
+            "turn_degrees": 20.937,
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2464821763,
+              30.3672945767
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 62.59322851971572,
+            "kind": "source_curvature_node",
+            "turn_degrees": 58.012,
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2465483124,
+              30.367794166
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 2,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          79.85923186389708
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "first_author_id": "bounded_annotator_28",
+      "first_row": {
+        "sample_id": "bounded-extract-73eb7621f00650",
+        "image_sha256": "eb311583ce4e083fd4f357dc3a030ba03e10b9acd0f656887e04332b58d2428b",
+        "target_brief": "Full frozen curved A/B corridor through the wooded strip, including both terminal road cross-sections if visually identifiable.",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "Tree crowns cover most of the indicated corridor and both road edges cannot be established. Intermittent pale ground does not establish a continuous full-width road. The guide centerline is used only for locating the frozen scope.",
+        "uncertainties": [
+          "Road identity, complete width and terminal cross-sections are hidden by canopy and heavy tree shadows; a road polygon would require invented boundaries."
+        ],
+        "inspected_at": "2026-10-22T02:47:46.251955+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-73eb7621f00650.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-73eb7621f00650.jpg"
+        ]
+      },
+      "first_row_sha256": "25d695e0fd81b2a71ad0ddd5466fdcd7facee37cc8755cbecdbbe1514ba31361",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\suggestions.json",
+      "draft_sha256": "6f21e1d26ba105c00273404b9c9ceb5e73b763d9ff17ac5dd82f28ed5cee0ab0",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\receipts\\bounded-extract-73eb7621f00650.json",
+      "current_extraction_sha256": "563593d0c5dfd717b275bcd44719b458b3e0437454659ac2a11268dca48d3795"
+    },
+    {
+      "sample_id": "bounded-extract-83aa91da47cb08",
+      "asset_group_id": "crasar-road-bdbf19e82081f6",
+      "bounded_target_id": "target-v2-206cbc86435750d9",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-83aa91da47cb08.jpg",
+      "image_sha256": "893f35532600a90730d07038617e2cd8adf1f90e286c67a57a70c7f0840e64ea",
+      "width": 4667,
+      "height": 1614,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\overviews\\bounded-extract-83aa91da47cb08.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-83aa91da47cb08.jpg",
+      "guide_sha256": "574574e751a19e9aa361472a779c2c5fc1cfe0b134da223fd2726f97c9020ed8",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-83aa91da47cb08.png",
+      "target_endpoints_normalized": [
+        [
+          0.8331764375829449,
+          0.5176539530366912
+        ],
+        [
+          0.16688986902604988,
+          0.48203221830642745
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.8331764375830649,
+            0.5176539530366973
+          ],
+          [
+            0.16688986902592284,
+            0.4820322183064207
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "206cbc86435750d98bdc1d1a7c3fa257a0428d25c971d2de33c3ebad932347b9",
+        "frozen_at_utc": "2026-10-21T09:02:05.967454+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-00-0013",
+        "reference_chain_station_interval_m": [
+          246.126208574827,
+          346.126208574827
+        ],
+        "length_m": 100.00000000005214,
+        "utm_epsg": 32616,
+        "utm_polyline_m": [
+          [
+            573029.5036729033,
+            3360510.3721765024
+          ],
+          [
+            572929.5207611714,
+            3360512.220787228
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -86.2399493266,
+              30.3743309389
+            ],
+            [
+              -86.2409896878,
+              30.3743536671
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -86.2399493266,
+            30.3743309389
+          ],
+          [
+            -86.2409896878,
+            30.3743536671
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 246.126208574827,
+            "kind": "fixed_geographic_road_cross_section",
+            "natural_geometry_anchor": false,
+            "visual_boundary_verified": false,
+            "note": "Fixed geographic terminal cross-section; a natural landmark or facility boundary is not asserted.",
+            "world_endpoint_lon_lat": [
+              -86.2399493266,
+              30.3743309389
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 346.126208574827,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2409896878,
+              30.3743536671
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 1,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          346.126208574827
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "first_author_id": "bounded_annotator_28",
+      "first_row": {
+        "sample_id": "bounded-extract-83aa91da47cb08",
+        "image_sha256": "893f35532600a90730d07038617e2cd8adf1f90e286c67a57a70c7f0840e64ea",
+        "target_brief": "Entire upper divided-highway carriageway between right A and left B, retaining the west attached widening and both terminal cross-sections.",
+        "target_polygon": [
+          [
+            0.16743989,
+            0.39601283
+          ],
+          [
+            0.4,
+            0.41
+          ],
+          [
+            0.65,
+            0.422
+          ],
+          [
+            0.83370487,
+            0.43501095
+          ],
+          [
+            0.83271391,
+            0.58999005
+          ],
+          [
+            0.5,
+            0.577
+          ],
+          [
+            0.308,
+            0.561
+          ],
+          [
+            0.295,
+            0.568
+          ],
+          [
+            0.208,
+            0.675
+          ],
+          [
+            0.16567536,
+            0.67197195
+          ]
+        ],
+        "verdict": "normal",
+        "objects": [],
+        "notes": "The whole target carriageway and both caps are clear. The paved west widening is included; the lower opposite carriageway is beyond the grass median. Ordinary road vehicles are present, with no confirmed physical obstruction.",
+        "uncertainties": [],
+        "inspected_at": "2026-10-22T02:47:46.254959+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-83aa91da47cb08.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-83aa91da47cb08.jpg"
+        ]
+      },
+      "first_row_sha256": "113c1d01fe39205ea3e3a57e2523154dd6f44cb7a857f7fcabdc394e2ab060f9",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\suggestions.json",
+      "draft_sha256": "6f21e1d26ba105c00273404b9c9ceb5e73b763d9ff17ac5dd82f28ed5cee0ab0",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\receipts\\bounded-extract-83aa91da47cb08.json",
+      "current_extraction_sha256": "3696f38a2cb2d8c7e48cf10f2e4d493929decb91e9fbbefdc9121c6775edd78b"
+    },
+    {
+      "sample_id": "bounded-extract-844d7eb6d8eb96",
+      "asset_group_id": "crasar-road-aca19d0c77fe02",
+      "bounded_target_id": "target-v2-32a00d40043fa3f8",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-844d7eb6d8eb96.jpg",
+      "image_sha256": "3e4703a0fb9af802debf40a275e3a768fd459e300c07770899c02f9351b508b2",
+      "width": 3798,
+      "height": 1154,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\overviews\\bounded-extract-844d7eb6d8eb96.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-844d7eb6d8eb96.jpg",
+      "guide_sha256": "d34717ab072ef28e1f21ef2e12244e161ff4d2b4bf2a4512a2a0aa0861723e53",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-844d7eb6d8eb96.png",
+      "target_endpoints_normalized": [
+        [
+          0.8962611750573671,
+          0.49306759126727706
+        ],
+        [
+          0.14981571097534704,
+          0.5069324086683995
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.8962611750572248,
+            0.49306759126728017
+          ],
+          [
+            0.14981571097519572,
+            0.5069324086684026
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "32a00d40043fa3f86960cda7c5e483746326798bd7f2a606b02ebfc6dde85b54",
+        "frozen_at_utc": "2026-10-21T09:02:05.967454+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-01-0015",
+        "reference_chain_station_interval_m": [
+          0,
+          124.79737856752408
+        ],
+        "length_m": 124.79737856752408,
+        "utm_epsg": 32616,
+        "utm_polyline_m": [
+          [
+            572713.0370060164,
+            3360516.229467123
+          ],
+          [
+            572588.2606152189,
+            3360518.518134177
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -86.2432422877,
+              30.3744029047
+            ],
+            [
+              -86.2445406388,
+              30.3744310694
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -86.2432422877,
+            30.3744029047
+          ],
+          [
+            -86.2445406388,
+            30.3744310694
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 0.0,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2432422877,
+              30.3744029047
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 124.79737856752408,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2445406388,
+              30.3744310694
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 2,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          124.79737856752408
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "first_author_id": "bounded_annotator_28",
+      "first_row": {
+        "sample_id": "bounded-extract-844d7eb6d8eb96",
+        "image_sha256": "3e4703a0fb9af802debf40a275e3a768fd459e300c07770899c02f9351b508b2",
+        "target_brief": "Entire upper highway carriageway from left B to right A, including the curbside turning lane, through lanes and both full A/B cross-sections; side driveways follow main-road continuity.",
+        "target_polygon": [
+          [
+            0.14961691,
+            0.39099969
+          ],
+          [
+            0.3,
+            0.381
+          ],
+          [
+            0.55,
+            0.36
+          ],
+          [
+            0.75,
+            0.344
+          ],
+          [
+            0.89598326,
+            0.33099845
+          ],
+          [
+            0.89638453,
+            0.56500029
+          ],
+          [
+            0.7,
+            0.583
+          ],
+          [
+            0.45,
+            0.603
+          ],
+          [
+            0.16,
+            0.619
+          ],
+          [
+            0.15001475,
+            0.62299973
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.1496,
+                0.388
+              ],
+              [
+                0.1513,
+                0.38
+              ],
+              [
+                0.1537,
+                0.383
+              ],
+              [
+                0.155,
+                0.392
+              ],
+              [
+                0.158,
+                0.397
+              ],
+              [
+                0.1575,
+                0.402
+              ],
+              [
+                0.1496,
+                0.4
+              ]
+            ]
+          }
+        ],
+        "notes": "A discrete irregular tan material deposit lies on the pavement at the north curb, immediately inside the B cross-section. It was inspected in a native crop and is recorded as debris without a size threshold. The remaining road width is visible; ordinary cars and their shadows are not obstacle labels.",
+        "uncertainties": [],
+        "inspected_at": "2026-10-22T02:47:46.257961+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-844d7eb6d8eb96.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-844d7eb6d8eb96.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\inspection-06-curb.png"
+        ]
+      },
+      "first_row_sha256": "883949f512156337310516c7c057bfc15cac06c4dad7c8b314fa746fc662a7f8",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\suggestions.json",
+      "draft_sha256": "6f21e1d26ba105c00273404b9c9ceb5e73b763d9ff17ac5dd82f28ed5cee0ab0",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\receipts\\bounded-extract-844d7eb6d8eb96.json",
+      "current_extraction_sha256": "fe92d90c75ec2a45f0fc82454735c1ff386ae81293410e4ffc7a6e5d5c3141cd"
+    },
+    {
+      "sample_id": "bounded-extract-861f335160f9a6",
+      "asset_group_id": "crasar-road-f887a098ef37f5",
+      "bounded_target_id": "target-v2-3b072440f2ccd68c",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-861f335160f9a6.jpg",
+      "image_sha256": "30e0c28bfec97e1460b2071b27793e76d4c5bfac21bdfc0c5bc69ca0304a434b",
+      "width": 3371,
+      "height": 4204,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\overviews\\bounded-extract-861f335160f9a6.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-861f335160f9a6.jpg",
+      "guide_sha256": "2a71f4dab5a38936ffd2e666b7cca19dd326f4be9ed594b51b2faf13e7fb659a",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-861f335160f9a6.png",
+      "target_endpoints_normalized": [
+        [
+          0.6369029499554684,
+          0.29115130131373435
+        ],
+        [
+          0.3630970126080925,
+          0.708848688803273
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.6369029499541464,
+            0.29115130131421635
+          ],
+          [
+            0.5526549985167606,
+            0.32183634633682207
+          ]
+        ],
+        [
+          [
+            0.5526549985167606,
+            0.32183634633682207
+          ],
+          [
+            0.5040047463660635,
+            0.36132254995242624
+          ]
+        ],
+        [
+          [
+            0.5040047463660635,
+            0.36132254995242624
+          ],
+          [
+            0.45535449421536633,
+            0.44148430066603234
+          ]
+        ],
+        [
+          [
+            0.45535449421536633,
+            0.44148430066603234
+          ],
+          [
+            0.4301394245031148,
+            0.5325880114176974
+          ]
+        ],
+        [
+          [
+            0.4301394245031148,
+            0.5325880114176974
+          ],
+          [
+            0.38445565114209435,
+            0.6436726926736441
+          ]
+        ],
+        [
+          [
+            0.38445565114209435,
+            0.6436726926736441
+          ],
+          [
+            0.36309701260880806,
+            0.7088486888010889
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "3b072440f2ccd68cfea4d542a1725cabb9470c88f1c8b92876d1c9589d2b2553",
+        "frozen_at_utc": "2026-10-21T09:02:05.967454+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-04-0007",
+        "reference_chain_station_interval_m": [
+          95.12861703230018,
+          138.33940208795383
+        ],
+        "length_m": 43.21078505565363,
+        "utm_epsg": 32616,
+        "utm_polyline_m": [
+          [
+            572893.8738933671,
+            3359408.208200327
+          ],
+          [
+            572893.8738933671,
+            3359408.208200327
+          ],
+          [
+            572888.0719208664,
+            3359405.5727966153
+          ],
+          [
+            572884.7214790502,
+            3359402.1815022617
+          ],
+          [
+            572881.3710498483,
+            3359395.296770424
+          ],
+          [
+            572878.5109216677,
+            3359387.206685086
+          ],
+          [
+            572875.3647786994,
+            3359377.666117488
+          ],
+          [
+            572873.8938525919,
+            3359372.068440648
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -86.2414375602,
+              30.3643939753
+            ],
+            [
+              -86.2414375602,
+              30.3643939753
+            ],
+            [
+              -86.2414981169,
+              30.3643705456
+            ],
+            [
+              -86.2415332165,
+              30.3643401472
+            ],
+            [
+              -86.2415685592,
+              30.3642782264
+            ],
+            [
+              -86.2415988839,
+              30.3642053997
+            ],
+            [
+              -86.2416322857,
+              30.3641195021
+            ],
+            [
+              -86.2416479813,
+              30.3640690813
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -86.2414375602,
+            30.3643939753
+          ],
+          [
+            -86.2416479813,
+            30.3640690813
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 95.12861703230018,
+            "kind": "source_curvature_node",
+            "turn_degrees": 22.78,
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2414375602,
+              30.3643939753
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 138.33940208795383,
+            "kind": "source_curvature_node",
+            "turn_degrees": 21.804,
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2416479813,
+              30.3640690813
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 2,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          362.06399788240043
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "first_author_id": "bounded_annotator_28",
+      "first_row": {
+        "sample_id": "bounded-extract-861f335160f9a6",
+        "image_sha256": "30e0c28bfec97e1460b2071b27793e76d4c5bfac21bdfc0c5bc69ca0304a434b",
+        "target_brief": "Complete curved paved course path from upper-right A to lower-left B, preserving its full concrete width and both frozen cross-sections.",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "The paved path is identifiable and most of its surface is visible. Native detail shows several east-side shrub crowns extending across the concrete edge; the hidden edge is not reconstructed from the guide or neighboring clear portions.",
+        "uncertainties": [
+          "Shrub canopy hides short sections of the east pavement boundary and underlying path surface around normalized y 0.42-0.58. Ground-level obstruction cannot be distinguished from overhead crown overlap."
+        ],
+        "inspected_at": "2026-10-22T03:02:53.466965+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-861f335160f9a6.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-861f335160f9a6.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\inspection-07-path-edge.png"
+        ]
+      },
+      "first_row_sha256": "bf9a1791b9875834ec402e8aded09f39166c444daf1b80ab0908ed3bdea6a49a",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\suggestions.json",
+      "draft_sha256": "6f21e1d26ba105c00273404b9c9ceb5e73b763d9ff17ac5dd82f28ed5cee0ab0",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\receipts\\bounded-extract-861f335160f9a6.json",
+      "current_extraction_sha256": "31791aa0e8a8e3186699a88ded36bee0d95e17b7862742d260547c81d77a81f1"
+    },
+    {
+      "sample_id": "bounded-extract-8c674023119113",
+      "asset_group_id": "crasar-road-12d07d4e4356c7",
+      "bounded_target_id": "target-v2-042a83e0669f655d",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-8c674023119113.jpg",
+      "image_sha256": "e978a290752bb2418ac19769c752fe8f928f1060afb38fe51542540dc617ef8b",
+      "width": 2526,
+      "height": 7504,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\overviews\\bounded-extract-8c674023119113.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-8c674023119113.jpg",
+      "guide_sha256": "e0b8f05927208794176fd7630010c3e2ddd14d90e381da6d4ebb53e2684a6d4c",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-8c674023119113.png",
+      "target_endpoints_normalized": [
+        [
+          0.4948535233570863,
+          0.8333777985074626
+        ],
+        [
+          0.505092925888684,
+          0.16663506790295393
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.4948535233570863,
+            0.8333777985074626
+          ],
+          [
+            0.5050929258886667,
+            0.166635067904101
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "042a83e0669f655dfc3afc5636fca9263d73a7ca16baff56f9ff9c0b11c4a2cc",
+        "frozen_at_utc": "2026-10-21T09:02:05.967454+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-03-0000",
+        "reference_chain_station_interval_m": [
+          0,
+          100.0
+        ],
+        "length_m": 99.99999999984941,
+        "utm_epsg": 32616,
+        "utm_polyline_m": [
+          [
+            572449.7942111727,
+            3360171.7758379607
+          ],
+          [
+            572450.8295774881,
+            3360271.7704779
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -86.2460056289,
+              30.3713106277
+            ],
+            [
+              -86.2459879303,
+              30.3722128486
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -86.2460056289,
+            30.3713106277
+          ],
+          [
+            -86.2459879303,
+            30.3722128486
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 0.0,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2460056289,
+              30.3713106277
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 100.0,
+            "kind": "fixed_geographic_road_cross_section",
+            "natural_geometry_anchor": false,
+            "visual_boundary_verified": false,
+            "note": "Fixed geographic terminal cross-section; a natural landmark or facility boundary is not asserted.",
+            "world_endpoint_lon_lat": [
+              -86.2459879303,
+              30.3722128486
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 1,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          146.91821036451503
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "first_author_id": "bounded_annotator_28",
+      "first_row": {
+        "sample_id": "bounded-extract-8c674023119113",
+        "image_sha256": "e978a290752bb2418ac19769c752fe8f928f1060afb38fe51542540dc617ef8b",
+        "target_brief": "Full two-lane paved north-south road from lower A to upper B, including both terminal cross-sections and continuing the main-road edges across west driveways.",
+        "target_polygon": [
+          [
+            0.45200088,
+            0.16654268
+          ],
+          [
+            0.58499886,
+            0.16677412
+          ],
+          [
+            0.576,
+            0.4
+          ],
+          [
+            0.566,
+            0.65
+          ],
+          [
+            0.55500027,
+            0.83348247
+          ],
+          [
+            0.42200075,
+            0.83325102
+          ],
+          [
+            0.435,
+            0.65
+          ],
+          [
+            0.444,
+            0.4
+          ]
+        ],
+        "verdict": "normal",
+        "objects": [],
+        "notes": "Both main-road edges and the complete A/B interval are clearly visible. The west access aprons are not substituted for the main-road width. Pavement markings, shadows and adjacent vehicles do not show a confirmed road obstruction.",
+        "uncertainties": [],
+        "inspected_at": "2026-10-22T03:02:53.478294+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-8c674023119113.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-8c674023119113.jpg"
+        ]
+      },
+      "first_row_sha256": "3e03f9d30200a43cc58536e3bb3617eb5ea06c456698540201d4ce8606a34179",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\suggestions.json",
+      "draft_sha256": "6f21e1d26ba105c00273404b9c9ceb5e73b763d9ff17ac5dd82f28ed5cee0ab0",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\receipts\\bounded-extract-8c674023119113.json",
+      "current_extraction_sha256": "95b02e7281a7df5dca14681096003396a46b376d153cf643b072420b20743361"
+    },
+    {
+      "sample_id": "bounded-extract-9131bcbf9fa7fa",
+      "asset_group_id": "crasar-road-d1ac6be7033948",
+      "bounded_target_id": "target-v2-529003c338831aec",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-9131bcbf9fa7fa.jpg",
+      "image_sha256": "71f887552e078d0ae1d8f6a6e8760d60ed8ebf364c8ea5350c5c7599681a8e59",
+      "width": 7445,
+      "height": 2558,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\overviews\\bounded-extract-9131bcbf9fa7fa.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-9131bcbf9fa7fa.jpg",
+      "guide_sha256": "3eae72731cd2ca8d652634be4028aefbf0184d4440d14777ad6af6fe8e1236c0",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-9131bcbf9fa7fa.png",
+      "target_endpoints_normalized": [
+        [
+          0.1664658392152563,
+          0.4846615639520766
+        ],
+        [
+          0.8335795836131632,
+          0.5156372165754496
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.16646583921501074,
+            0.4846615639520652
+          ],
+          [
+            0.8335795836131632,
+            0.5156372165754496
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "529003c338831aece9055e7c080874d0a4571aaee1bf433807f06441946b24c1",
+        "frozen_at_utc": "2026-10-21T09:02:05.967454+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-02-0011",
+        "reference_chain_station_interval_m": [
+          105.93389152882739,
+          205.9338915288274
+        ],
+        "length_m": 99.9999999999979,
+        "utm_epsg": 32616,
+        "utm_polyline_m": [
+          [
+            572602.191838259,
+            3359981.721692701
+          ],
+          [
+            572702.1861385619,
+            3359980.6540284622
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -86.2444329099,
+              30.3695865499
+            ],
+            [
+              -86.2433924249,
+              30.369570896
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -86.2444329099,
+            30.3695865499
+          ],
+          [
+            -86.2433924249,
+            30.369570896
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 105.93389152882739,
+            "kind": "fixed_geographic_road_cross_section",
+            "natural_geometry_anchor": false,
+            "visual_boundary_verified": false,
+            "note": "Fixed geographic terminal cross-section; a natural landmark or facility boundary is not asserted.",
+            "world_endpoint_lon_lat": [
+              -86.2444329099,
+              30.3695865499
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 205.9338915288274,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2433924249,
+              30.369570896
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 1,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          205.9338915288274
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "first_author_id": "bounded_annotator_28",
+      "first_row": {
+        "sample_id": "bounded-extract-9131bcbf9fa7fa",
+        "image_sha256": "71f887552e078d0ae1d8f6a6e8760d60ed8ebf364c8ea5350c5c7599681a8e59",
+        "target_brief": "Complete east-west paved residential road between left A and right B, with the continuous main-road width across the south side-road opening at B.",
+        "target_polygon": [
+          [
+            0.16684219,
+            0.41600196
+          ],
+          [
+            0.5,
+            0.432
+          ],
+          [
+            0.83397224,
+            0.44400335
+          ],
+          [
+            0.83323776,
+            0.57799711
+          ],
+          [
+            0.5,
+            0.568
+          ],
+          [
+            0.16610767,
+            0.550005
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "The full road width can be traced and is retained across the side opening. Native road crops show scattered small dark flecks whose physical identity cannot be resolved; regular round covers, crosswalk stripes and resurfacing bands are not labeled as obstacles.",
+        "uncertainties": [
+          "Several dark flecks on the target, especially in the eastern half, cannot reliably be distinguished as loose physical material versus flat pavement marks at available detail. No confirmed entity polygon is asserted."
+        ],
+        "inspected_at": "2026-10-22T03:02:53.487471+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-9131bcbf9fa7fa.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-9131bcbf9fa7fa.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\inspection-09-road-west.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\inspection-09-road-east.png"
+        ]
+      },
+      "first_row_sha256": "6092269017f369691ab046773984ee0f3bd95b018382d286a3dca6f17bbaa6cc",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\suggestions.json",
+      "draft_sha256": "6f21e1d26ba105c00273404b9c9ceb5e73b763d9ff17ac5dd82f28ed5cee0ab0",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\receipts\\bounded-extract-9131bcbf9fa7fa.json",
+      "current_extraction_sha256": "71ceb07416f2dd8773e4ac8e823bc4663583ab70007c97f671a914f8e092ccee"
+    },
+    {
+      "sample_id": "bounded-extract-9e61dadac9b6be",
+      "asset_group_id": "crasar-road-ddd34668b1508a",
+      "bounded_target_id": "target-v2-83305e3b3cb279a6",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-9e61dadac9b6be.jpg",
+      "image_sha256": "5fa4419a640e5a65ea1dd67b51d05b421802df9c5edc88ed6f636c51f720edf5",
+      "width": 1610,
+      "height": 4662,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\overviews\\bounded-extract-9e61dadac9b6be.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-9e61dadac9b6be.jpg",
+      "guide_sha256": "c059d5ec2900775d7c19b0148523ed5121d7317c3c2eda2f0927795f8e0aba85",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-9e61dadac9b6be.png",
+      "target_endpoints_normalized": [
+        [
+          0.48343335061981324,
+          0.8330842479595776
+        ],
+        [
+          0.516562093780217,
+          0.1669978438093951
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.48343339925080026,
+            0.8330841966254914
+          ],
+          [
+            0.499792546583851,
+            0.815815744315744
+          ]
+        ],
+        [
+          [
+            0.499792546583851,
+            0.815815744315744
+          ],
+          [
+            0.5078670807453417,
+            0.7795652080652078
+          ]
+        ],
+        [
+          [
+            0.5078670807453417,
+            0.7795652080652078
+          ],
+          [
+            0.5159416149068324,
+            0.21092513942513916
+          ]
+        ],
+        [
+          [
+            0.5159416149068324,
+            0.21092513942513916
+          ],
+          [
+            0.5165620925719463,
+            0.16699792934988142
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "83305e3b3cb279a679f206e6dda8dc375f32f200d72d3ecdd391eda1d203c837",
+        "frozen_at_utc": "2026-10-21T09:02:05.967454+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-02-0002",
+        "reference_chain_station_interval_m": [
+          81.67140639308329,
+          181.6714063930833
+        ],
+        "length_m": 99.99999999991374,
+        "utm_epsg": 32616,
+        "utm_polyline_m": [
+          [
+            572700.4849159672,
+            3359880.8069752334
+          ],
+          [
+            572701.3381400191,
+            3359883.396756973
+          ],
+          [
+            572701.7419479897,
+            3359888.8481720234
+          ],
+          [
+            572702.1457501146,
+            3359974.0921328426
+          ],
+          [
+            572702.1861385619,
+            3359980.6540284622
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -86.243417065,
+              30.3686700473
+            ],
+            [
+              -86.2434080064,
+              30.3686933643
+            ],
+            [
+              -86.2434034256,
+              30.3687425298
+            ],
+            [
+              -86.2433933011,
+              30.3695116884
+            ],
+            [
+              -86.2433924249,
+              30.369570896
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -86.243417065,
+            30.3686700473
+          ],
+          [
+            -86.2433924249,
+            30.369570896
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 81.67140639308329,
+            "kind": "fixed_geographic_road_cross_section",
+            "natural_geometry_anchor": false,
+            "visual_boundary_verified": false,
+            "note": "Fixed geographic terminal cross-section; a natural landmark or facility boundary is not asserted.",
+            "world_endpoint_lon_lat": [
+              -86.243417065,
+              30.3686700473
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 181.6714063930833,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2433924249,
+              30.369570896
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 1,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          181.6714063930833
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "first_author_id": "bounded_annotator_28",
+      "first_row": {
+        "sample_id": "bounded-extract-9e61dadac9b6be",
+        "image_sha256": "5fa4419a640e5a65ea1dd67b51d05b421802df9c5edc88ed6f636c51f720edf5",
+        "target_brief": "Entire north-south paved approach between curved lower A and upper B in the T-junction, keeping both frozen terminal cross-sections.",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "The approach pavement is readable, but the B cap lies in the connected T-junction beyond the visible longitudinal curb edges. The road was not shortened to the curb flare or crosswalk. A full target boundary at that cap cannot be based on visible main-road edges on both sides of the opening.",
+        "uncertainties": [
+          "The lateral limits of the north-south road at frozen B cannot be uniquely traced within the connected crossroad; extending the approach width there would invent the missing terminal side boundaries."
+        ],
+        "inspected_at": "2026-10-22T03:02:53.491780+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-9e61dadac9b6be.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-9e61dadac9b6be.jpg"
+        ]
+      },
+      "first_row_sha256": "7a447c80b685355d869e8ef87684852a3e07b8f2f327ffed83ea57c66116f0bc",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\suggestions.json",
+      "draft_sha256": "6f21e1d26ba105c00273404b9c9ceb5e73b763d9ff17ac5dd82f28ed5cee0ab0",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\receipts\\bounded-extract-9e61dadac9b6be.json",
+      "current_extraction_sha256": "94ba181e185a43ecedbcf86e324718633270dfc4e5ee39b3b32f099661a0a4e2"
+    },
+    {
+      "sample_id": "bounded-extract-a2e8dcf8217d5c",
+      "asset_group_id": "crasar-road-3fdddead9338ff",
+      "bounded_target_id": "target-v2-b26d0241ca687e9b",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-a2e8dcf8217d5c.jpg",
+      "image_sha256": "72f7d2a6d736d0b87eec80cca588ba7434025f56ee5d7a11f94d78403b7d1434",
+      "width": 3487,
+      "height": 1228,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\overviews\\bounded-extract-a2e8dcf8217d5c.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-a2e8dcf8217d5c.jpg",
+      "guide_sha256": "df11a436c92272c1bd83f639eaed1d25dafd7b00d5c97e16e87e956da0340ea6",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-a2e8dcf8217d5c.png",
+      "target_endpoints_normalized": [
+        [
+          0.8368224784762316,
+          0.463355049405762
+        ],
+        [
+          0.16323224884403695,
+          0.5363918698496449
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.8368224784763609,
+            0.46335504940574723
+          ],
+          [
+            0.1632322488436431,
+            0.5363918698496893
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "b26d0241ca687e9baa06389c93b436a09dde7f39e8afb6b4eb5ad7ce428c8497",
+        "frozen_at_utc": "2026-10-21T09:02:05.967454+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-01-0008",
+        "reference_chain_station_interval_m": [
+          0,
+          100.0
+        ],
+        "length_m": 99.99999999999783,
+        "utm_epsg": 32616,
+        "utm_polyline_m": [
+          [
+            572451.9528514752,
+            3360521.0268728375
+          ],
+          [
+            572351.9586468388,
+            3360522.1034596325
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -86.2459589793,
+              30.3744618995
+            ],
+            [
+              -86.2469995153,
+              30.3744776144
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -86.2459589793,
+            30.3744618995
+          ],
+          [
+            -86.2469995153,
+            30.3744776144
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 0.0,
+            "kind": "junction_degree_4",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2459589793,
+              30.3744618995
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 100.0,
+            "kind": "fixed_geographic_road_cross_section",
+            "natural_geometry_anchor": false,
+            "visual_boundary_verified": false,
+            "note": "Fixed geographic terminal cross-section; a natural landmark or facility boundary is not asserted.",
+            "world_endpoint_lon_lat": [
+              -86.2469995153,
+              30.3744776144
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 1,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          214.3158228322954
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "first_author_id": "bounded_annotator_28",
+      "first_row": {
+        "sample_id": "bounded-extract-a2e8dcf8217d5c",
+        "image_sha256": "72f7d2a6d736d0b87eec80cca588ba7434025f56ee5d7a11f94d78403b7d1434",
+        "target_brief": "Full upper divided-highway carriageway from left B to right A, preserving its width across the visible side-road junction and retaining both frozen terminal cross-sections.",
+        "target_polygon": [
+          [
+            0.16215126,
+            0.45600529
+          ],
+          [
+            0.4,
+            0.447
+          ],
+          [
+            0.7,
+            0.438
+          ],
+          [
+            0.83597056,
+            0.40000319
+          ],
+          [
+            0.83895576,
+            0.62199395
+          ],
+          [
+            0.7,
+            0.626
+          ],
+          [
+            0.6,
+            0.608
+          ],
+          [
+            0.35,
+            0.618
+          ],
+          [
+            0.16435648,
+            0.61999388
+          ]
+        ],
+        "verdict": "normal",
+        "objects": [],
+        "notes": "The main carriageway surface is readable. Visible main-road edges before and after the junction establish its continuous width through the opening. The target includes its paved margins and full caps; utility wires, tire traces and road markings do not show a physical obstruction.",
+        "uncertainties": [],
+        "inspected_at": "2026-10-22T03:17:51.268375+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-a2e8dcf8217d5c.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-a2e8dcf8217d5c.jpg"
+        ]
+      },
+      "first_row_sha256": "45fcff7a410b4253faf58125c6c7499fc09d27274b8663663eec1452cef06a70",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\suggestions.json",
+      "draft_sha256": "6f21e1d26ba105c00273404b9c9ceb5e73b763d9ff17ac5dd82f28ed5cee0ab0",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\receipts\\bounded-extract-a2e8dcf8217d5c.json",
+      "current_extraction_sha256": "369df8231673589abbbc9fd4b1eb93c640c58e93a2f7949a497d896871b5d392"
+    },
+    {
+      "sample_id": "bounded-extract-a73cfe020538fb",
+      "asset_group_id": "crasar-road-029f287a9e2765",
+      "bounded_target_id": "target-v2-7d061861624d9df2",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-a73cfe020538fb.jpg",
+      "image_sha256": "bdbfdd59198621823c2fbf8bfe51b4adb697312000aa32143c525426920fe53c",
+      "width": 2451,
+      "height": 1500,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\overviews\\bounded-extract-a73cfe020538fb.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-a73cfe020538fb.jpg",
+      "guide_sha256": "6cb8c762d0125af30750b774149e92e6e753b2aea1b029ceb30ac350b54c5d0c",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-a73cfe020538fb.png",
+      "target_endpoints_normalized": [
+        [
+          0.26642190930505694,
+          0.3799999854768951
+        ],
+        [
+          0.890656874745002,
+          0.5453333333333333
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.266421868625051,
+            0.38
+          ],
+          [
+            0.23215014279885762,
+            0.4593333333333333
+          ]
+        ],
+        [
+          [
+            0.23215014279885762,
+            0.4593333333333333
+          ],
+          [
+            0.23255813953488372,
+            0.5253333333333333
+          ]
+        ],
+        [
+          [
+            0.23255813953488372,
+            0.5253333333333333
+          ],
+          [
+            0.25091799265605874,
+            0.5993333333333334
+          ]
+        ],
+        [
+          [
+            0.25091799265605874,
+            0.5993333333333334
+          ],
+          [
+            0.29008567931456547,
+            0.6206666666666667
+          ]
+        ],
+        [
+          [
+            0.29008567931456547,
+            0.6206666666666667
+          ],
+          [
+            0.7360261117911057,
+            0.596
+          ]
+        ],
+        [
+          [
+            0.7360261117911057,
+            0.596
+          ],
+          [
+            0.890656874745002,
+            0.5453333333333333
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "7d061861624d9df2cede9092f7e6c89d6bb5fd86673e9fee60fb0c20215195d6",
+        "frozen_at_utc": "2026-10-21T09:02:05.967454+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-01-0025",
+        "reference_chain_station_interval_m": [
+          0,
+          82.89019305344294
+        ],
+        "length_m": 82.89019305344294,
+        "utm_epsg": 32616,
+        "utm_polyline_m": [
+          [
+            572653.9717838294,
+            3360559.097978601
+          ],
+          [
+            572650.2747007781,
+            3360553.860449734
+          ],
+          [
+            572650.3187106657,
+            3360549.503183192
+          ],
+          [
+            572652.2992936583,
+            3360544.617752414
+          ],
+          [
+            572656.524525786,
+            3360543.2093369523
+          ],
+          [
+            572701.9017609584,
+            3360542.461126597
+          ],
+          [
+            572718.5826274205,
+            3360545.80609439
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -86.2438539842,
+              30.3747932786
+            ],
+            [
+              -86.2438928225,
+              30.3747462414
+            ],
+            [
+              -86.2438926671,
+              30.3747069218
+            ],
+            [
+              -86.243872395,
+              30.3746627198
+            ],
+            [
+              -86.243828522,
+              30.3746497568
+            ],
+            [
+              -86.2433563458,
+              30.374640272
+            ],
+            [
+              -86.2431825202,
+              30.3746694494
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -86.2438539842,
+            30.3747932786
+          ],
+          [
+            -86.2431825202,
+            30.3746694494
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 0.0,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2438539842,
+              30.3747932786
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 82.89019305344294,
+            "kind": "junction_degree_5",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -86.2431825202,
+              30.3746694494
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 2,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          82.89019305344294
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "first_author_id": "bounded_annotator_28",
+      "first_row": {
+        "sample_id": "bounded-extract-a73cfe020538fb",
+        "image_sha256": "bdbfdd59198621823c2fbf8bfe51b4adb697312000aa32143c525426920fe53c",
+        "target_brief": "Complete parking-area circulation route from upper-left A around the west end of the parking island to right B, with its entire driving width and terminal cross-sections.",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "The indicated circulation route is visible, but its A and B sections merge into open paved parking forecourt without a pair of continuous main-road edges establishing the full width. The full connected lot is not taken as the target. Ordinary parked cars alone are not obstacles.",
+        "uncertainties": [
+          "Full driving-aisle boundary and A/B cap widths cannot be uniquely separated from the open forecourt and adjoining parking areas using visible edges on both sides."
+        ],
+        "inspected_at": "2026-10-22T03:17:51.271383+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-a73cfe020538fb.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-a73cfe020538fb.jpg"
+        ]
+      },
+      "first_row_sha256": "9bd8d41e0d9002fb78ea8cee50f6852e460b39f06a5a7ff846faa44b25926d6e",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_28\\suggestions.json",
+      "draft_sha256": "6f21e1d26ba105c00273404b9c9ceb5e73b763d9ff17ac5dd82f28ed5cee0ab0",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\receipts\\bounded-extract-a73cfe020538fb.json",
+      "current_extraction_sha256": "aa65a6541359a65820efb9ac655336274709810c53bfe916b58433fabfb9e032"
+    }
+  ]
+}

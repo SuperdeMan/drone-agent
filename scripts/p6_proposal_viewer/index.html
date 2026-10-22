@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>P6 · 提案定位对照</title><link rel="icon" href="data:,"><link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+<header class="masthead"><div class="brand"><b>P6</b><span>FIELDNOTES<small>公开道路 · 提案定位</small></span></div><span class="readonly">只读对照 · 原始结果保留</span></header>
+<section class="intro"><div><p class="eyebrow">PROPOSAL ATLAS / 02</p><h1>看清它，落在哪里。</h1><p>全图保留位置，局部辨认细节。提案框是观察窗口，尚不是实体边界。</p></div><div class="totals"><div><strong id="total">33</strong><span>固定提案</span></div><div><strong id="priorityTotal">12</strong><span>优先复核</span></div><div><strong>0</strong><span>人工确认</span></div></div></section>
+<main class="layout">
+<nav class="queue-panel" aria-label="提案清单"><div class="caption">复核索引 <span id="filteredCount"></span></div><label for="scope">道路目标</label><select id="scope"><option value="">全部目标</option></select><label class="check"><input id="priorityOnly" type="checkbox">只看优先项</label><div id="queue"></div><p class="queue-note">所有分组均待独立确认。浏览和筛选不会登记人工结论。</p></nav>
+<section class="workspace" aria-label="提案定位对照">
+<div id="empty" hidden><p class="eyebrow">NO MATCHING PROPOSAL</p><h2>这个筛选下没有提案</h2><p>切换目标或取消“只看优先项”，可继续查看。</p><button id="clearFilters">查看全部提案</button></div>
+<div id="active">
+<div class="current-heading"><div><p id="targetLabel" class="eyebrow"></p><h2 id="currentTitle"></h2><p id="proposalId" class="identifier"></p></div><div class="stepper"><button id="previous" aria-label="上一项">← 上一项</button><button id="next" aria-label="下一项">下一项 →</button></div></div>
+<div id="risk" class="risk" hidden><span>优先复核</span><p id="riskText"></p></div>
+<div class="view-controls"><fieldset><legend>查看哪张图</legend><label><input type="radio" name="mode" value="original" checked>原始分辨率</label><label><input type="radio" name="mode" value="model">模型输入原图</label><label><input type="radio" name="mode" value="support">模型道路提示</label></fieldset><label class="check"><input id="showAll" type="checkbox" checked>全图显示同目标全部框</label></div>
+<p id="modeNote" class="help"></p>
+<div class="views">
+<article class="view-card"><div class="view-title"><span><b>01</b> 全图位置</span><small>点击窗口切换提案</small></div><div class="overview-frame"><svg id="overview" viewBox="0 0 4000 3000" role="img" aria-label="全图与提案 ID"><image id="overviewPhoto" width="4000" height="3000"/><g id="overviewBoxes"></g></svg></div><p class="legend"><i></i>当前提案 <i class="other"></i>同目标其他提案</p></article>
+<article class="view-card"><div class="view-title"><span><b>02</b> 局部对照</span><small id="resolution"></small></div><div class="detail-toolbar"><button id="context">包含周边</button><button id="tight">贴近窗口</button><button id="zoomIn" aria-label="放大局部">＋</button><button id="zoomOut" aria-label="缩小局部">−</button></div><div id="detailFrame" tabindex="0" aria-label="局部视图；滚轮缩放，拖动平移"><svg id="detail" viewBox="0 0 4000 3000" role="img" aria-label="当前提案局部"><image id="detailPhoto" width="4000" height="3000"/><g id="detailBoxes"></g></svg></div><p class="help">滚轮缩放 · 拖动平移 · 放大不增加原图细节</p></article>
+</div>
+<div class="coordinates"><span>窗口坐标 / 归一化</span><code id="coordinates"></code><span id="pixelBounds"></span></div>
+<details id="reference"><summary>开发参考 <span>模型说明与条件几何 · 非真值</span></summary><div class="reference-grid"><div><p class="caption">模型原始分组</p><strong id="modelGroup"></strong><dl id="observation"></dl></div><div><p class="caption">复核线索</p><ul id="reviewReasons"></ul><p id="geometryNote"></p><p class="help">几何检查以既有 AI 草稿为条件，只定位风险，不自动改判模型结果。源支持域也不是已登记道路边界。</p></div></div></details>
+<p id="imageStatus" role="status" aria-live="polite"></p>
+</div>
+</section>
+</main>
+<footer><span>P6 / DEVELOPMENT EVIDENCE</span><span id="bundleLabel"></span><span>本机查看 · 无上传 · 不生成标签</span></footer>
+<script src="data.js"></script><script src="core.js"></script><script src="app.js"></script>
+</body></html>

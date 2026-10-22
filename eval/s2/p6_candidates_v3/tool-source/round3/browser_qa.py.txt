@@ -1,0 +1,153 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["playwright==1.63.0"]
+# ///
+"""Exercise the local review page in an isolated installed Edge browser.
+
+在已安装 Edge 的隔离会话中验证本地复核页；所有写入都是 QA 夹具，不是真人标注。
+"""
+import asyncio
+import hashlib
+import json
+from datetime import datetime,timezone
+from pathlib import Path
+
+from playwright.async_api import async_playwright
+
+ROOT=Path(__file__).resolve().parent
+URL='http://127.0.0.1:8879/p6-materials-20261013-round3/review.html'
+
+
+async def main():
+    """Capture interactions, failures and screenshots with source hashes. / 保存交互、失败、截图及源码摘要。"""
+    out=ROOT/'audit'/('browser-qa-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
+    out.mkdir();checks=[];errors=[];network_errors=[];console_errors=[];http_errors=[]
+    receipt={'scope':'local review tool only','test_data':'synthetic QA fixtures, excluded from all business ground truth',
+             'real_human_reviews_created':0,'browser_channel':'msedge','headless':True,'checks':checks,
+             'page_errors':errors,'failed_requests':network_errors,'console_errors':console_errors,'http_errors':http_errors,'output_directory':str(out),
+             'source_sha256':{f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest() for f in ('review.html','review-icon.svg','review-app.js','review-core.js','data.js')}}
+    def check(name,condition,**details):
+        checks.append({'name':name,'passed':bool(condition),**details})
+        if not condition:raise AssertionError(name+': '+str(details))
+    async def ready(page):
+        await page.locator('#photo').evaluate('(im)=>im.decode()')
+    async def export(page,name):
+        async with page.expect_download() as info:
+            await page.locator('#exportBtn').click()
+        dl=await info.value;path=out/name;await dl.save_as(path)
+        return json.loads(path.read_text(encoding='utf-8'))
+    async def draw(page,button,pts):
+        await page.locator(button).click()
+        for x,y in pts:
+            box=await page.locator('#geometry').bounding_box()
+            await page.locator('#geometry').click(position={'x':x*box['width'],'y':y*box['height']})
+        await page.locator('#finishDraw').click()
+    async with async_playwright() as pw:
+        browser=await pw.chromium.launch(channel='msedge',headless=True)
+        receipt['browser_version']=browser.version
+        context=await browser.new_context(viewport={'width':1440,'height':1000},accept_downloads=True)
+        page=await context.new_page()
+        page.on('pageerror',lambda e:errors.append(str(e)))
+        page.on('requestfailed',lambda r:network_errors.append({'url':r.url,'failure':r.failure}))
+        page.on('console',lambda m:console_errors.append(m.text) if m.type=='error' else None)
+        page.on('response',lambda r:http_errors.append({'url':r.url,'status':r.status}) if r.status>=400 else None)
+        try:
+            response=await page.goto(URL,wait_until='networkidle');await ready(page)
+            check('initial_load',response.status==200 and await page.locator('#caseList button').count()==26)
+            check('initial_no_review',await page.locator('#progress').inner_text()=='0 / 26 已登记')
+            check('hints_hidden_by_default',not await page.locator('#sourceImage').is_visible() and not await page.locator('#aiPanel').get_attribute('open'))
+            await page.screenshot(path=str(out/'desktop-initial.png'),full_page=True)
+            for width,height in [(1440,1000),(1024,900),(900,1100),(390,844)]:
+                await page.set_viewport_size({'width':width,'height':height});await ready(page)
+                overflow=await page.evaluate('document.documentElement.scrollWidth-innerWidth')
+                check('viewport_'+str(width),overflow<=1,overflow_px=overflow)
+                await page.screenshot(path=str(out/f'viewport-{width}.png'),full_page=True)
+            await page.set_viewport_size({'width':1440,'height':1000})
+            for i in range(26):
+                await page.locator('#caseList button').nth(i).click();await ready(page)
+                check('image_'+str(i+1),await page.locator('#photo').evaluate('im=>im.complete&&im.naturalWidth>0'))
+            check('all_images_toured',await page.locator('#position').inner_text()=='26 / 26')
+            await page.locator('#caseList button').first.click();await ready(page)
+            await page.locator('#saveReview').click()
+            check('blank_review_rejected','请填写复核人' in await page.locator('#message').inner_text())
+            await page.locator('#reviewer').fill('QA_FIXTURE_NOT_HUMAN')
+            await page.locator('#notes').fill('AUTOMATED QA ONLY; this is not a business annotation.')
+            await page.locator('#startTimer').click()
+            await page.locator('#verdict').select_option('suspected')
+            await page.locator('#targetConfirmed').check()
+            await page.locator('#saveReview').click()
+            check('missing_obstacle_rejected','单独圈出' in await page.locator('#message').inner_text())
+            await page.locator('#zoom').focus();await page.keyboard.press('End');await page.keyboard.press('ArrowLeft');await page.keyboard.press('ArrowLeft')
+            check('zoom_200_applied',await page.locator('#zoom').input_value()=='200')
+            await draw(page,'#drawTarget',[(.12,.12),(.38,.12),(.38,.38),(.12,.38)])
+            check('changed_target_unconfirms',not await page.locator('#targetConfirmed').is_checked())
+            await draw(page,'#drawObstacle',[(.18,.18),(.3,.18),(.3,.3)])
+            await page.locator('#zoom').focus();await page.keyboard.press('Home')
+            await page.locator('#targetConfirmed').check()
+            await page.locator('#maskToggle').click()
+            await page.locator('#aiPanel summary').click()
+            await page.wait_for_function('document.getElementById("aiPanel").open')
+            await page.locator('#saveReview').click()
+            check('fixture_saved',await page.locator('#progress').inner_text()=='1 / 26 已登记',message=await page.locator('#message').inner_text())
+            await page.screenshot(path=str(out/'fixture-geometry.png'),full_page=True)
+            saved=await export(page,'qa-only-one-record.json');record=saved['records'][0]
+            check('export_metadata',len(saved['records'])==1 and saved['formal_release_eligible'] is False and saved['reviewer_identity_authenticated'] is False)
+            check('geometry_roundtrip',all(abs(a-b)<.005 for p,q in zip(record['target_region']['points'],[(.12,.12),(.38,.12),(.38,.38),(.12,.38)]) for a,b in zip(p,q)),points=record['target_region']['points'])
+            check('exposure_recorded',record['source_hints_viewed'] and record['ai_hints_viewed'])
+            check('timer_active',record['active_review_ms']>0,active_review_ms=record['active_review_ms'])
+            await page.reload(wait_until='networkidle');await ready(page)
+            check('reload_preserves_review',await page.locator('#progress').inner_text()=='1 / 26 已登记')
+            check('reload_pauses_timer',await page.locator('#startTimer').inner_text()=='继续复核')
+            # Only the isolated test context imports synthetic records. / 仅隔离测试会话导入合成记录。
+            other=await browser.new_context(viewport={'width':1440,'height':1000},accept_downloads=True)
+            second=await other.new_page();await second.goto(URL,wait_until='networkidle');await ready(second)
+            check('fresh_import_context_empty',await second.locator('#progress').inner_text()=='0 / 26 已登记')
+            await second.locator('#importFile').set_input_files(str(out/'qa-only-one-record.json'))
+            await second.wait_for_function('document.getElementById("message").textContent.includes("已导入")')
+            check('import_roundtrip',await second.locator('#progress').inner_text()=='1 / 26 已登记')
+            wrong=json.loads(json.dumps(saved));wrong['bundle_id']='WRONG_BUNDLE'
+            file=out/'qa-only-invalid-bundle.json';file.write_text(json.dumps(wrong))
+            await second.locator('#importFile').set_input_files(str(file))
+            await second.wait_for_function('document.getElementById("message").textContent.includes("未导入")')
+            check('invalid_import_atomic',await second.locator('#progress').inner_text()=='1 / 26 已登记')
+            wrong=json.loads(json.dumps(saved));wrong['records'][0]['image_sha256']='0'*64
+            file=out/'qa-only-invalid-image.json';file.write_text(json.dumps(wrong))
+            await second.locator('#importFile').set_input_files(str(file))
+            await second.wait_for_function('document.getElementById("message").textContent.includes("摘要不匹配")')
+            check('wrong_image_rejected',await second.locator('#progress').inner_text()=='1 / 26 已登记')
+            await other.close()
+            await page.locator('#caseList button').last.click();await ready(page)
+            await page.locator('#startTimer').click();await page.locator('#notes').fill('QA-only absent target fixture; not a human label.')
+            await page.locator('#verdict').select_option('normal');await page.locator('#targetConfirmed').check();await page.locator('#saveReview').click()
+            check('absent_target_normal_rejected','请确认目标区域' in await page.locator('#message').inner_text())
+            await page.locator('#verdict').select_option('wrong_target');await page.locator('#saveReview').click()
+            check('wrong_target_fixture_saved',await page.locator('#progress').inner_text()=='2 / 26 已登记')
+            final=await export(page,'qa-only-two-records.json');check('final_export_two',len(final['records'])==2)
+            offline_context=await browser.new_context(viewport={'width':1440,'height':1000},accept_downloads=True)
+            offline=await offline_context.new_page();offline.on('pageerror',lambda e:errors.append(str(e)))
+            await offline.goto((ROOT/'review.html').as_uri(),wait_until='load');await ready(offline)
+            check('file_url_load',await offline.locator('#caseList button').count()==26)
+            check('file_url_fresh_records',await offline.locator('#progress').inner_text()=='0 / 26 已登记')
+            await offline.locator('#importFile').set_input_files(str(out/'qa-only-two-records.json'))
+            await offline.wait_for_function('document.getElementById("message").textContent.includes("已导入")')
+            check('file_url_import',await offline.locator('#progress').inner_text()=='2 / 26 已登记')
+            offline_export=await export(offline,'qa-only-offline-roundtrip.json')
+            check('file_url_export_preserves_records',offline_export['records']==final['records'])
+            await offline_context.close()
+            check('no_page_errors',not errors,errors=errors)
+            check('no_failed_requests',not network_errors,failed_requests=network_errors)
+            check('no_console_errors',not console_errors,console_errors=console_errors)
+            check('no_http_errors',not http_errors,http_errors=http_errors)
+            receipt['status']='passed'
+        except Exception as e:
+            receipt['status']='failed';receipt['failure']=str(e)
+            await page.screenshot(path=str(out/'failure.png'),full_page=True)
+        finally:
+            receipt['checks_passed']=sum(x['passed'] for x in checks)
+            (out/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+            print(json.dumps(receipt,ensure_ascii=False),flush=True)
+            await browser.close()
+            if receipt['status']!='passed':raise SystemExit(1)
+
+
+if __name__=='__main__':asyncio.run(main())

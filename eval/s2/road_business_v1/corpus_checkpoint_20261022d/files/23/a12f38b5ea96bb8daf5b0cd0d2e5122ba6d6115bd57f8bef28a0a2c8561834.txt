@@ -1,0 +1,70 @@
+"""Combine separately executed audits while retaining their real execution scope.
+
+合并分别实际执行的审核，并保留各自真实执行范围。
+"""
+import argparse
+import hashlib
+import json
+from collections import Counter
+from datetime import UTC, datetime
+from pathlib import Path
+
+read = lambda path: json.loads(path.read_text(encoding='utf-8'))
+sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+parser = argparse.ArgumentParser()
+parser.add_argument('--input', type=Path, action='append', required=True)
+parser.add_argument('--output', type=Path, required=True)
+parser.add_argument('--expected-total',type=int,required=True)
+args = parser.parse_args()
+parts, rows, checks, ids, snapshots = [], [], [], set(), {}
+historical_unmatched=[]
+pending=[]
+for folder in args.input:
+    result = read(folder / 'result.json')
+    candidates = read(folder / 'reviewed-candidates.json')['rows']
+    assert result['checked'] == result['passed'] == len(candidates) > 0
+    assert result.get('status')=='passed' and result.get('scope_errors')==[]
+    pending.extend(result['pending_protocol_reverification'])
+    historical_unmatched.extend({**row,'source_result_file':str(folder/'result.json')} for row in result['historical_unmatched'])
+    assert len(result['rows']) == len(candidates) and all(not row['issues'] for row in result['rows'])
+    assert result['source_sha256'] == 'd0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2'
+    for item in candidates:
+        ident = item['sample']['sample_id']
+        assert ident not in ids
+        ids.add(ident)
+        rows.append(item)
+    checks.extend(result['rows'])
+    wanted={row['label']['reviewer_id']:{row['label']['ai_assistance']['review_sha256']} for row in candidates}
+    for row in candidates:wanted[row['label']['reviewer_id']].add(row['label']['ai_assistance']['review_sha256'])
+    for path in folder.glob('*.json'):
+        document = read(path)
+        if document.get('format') != 'drone.p6-road-ai-verification/v1' or document['reviewer_id'] not in wanted:
+            continue
+        assert sha(path) in wanted[document['reviewer_id']]
+        if path.name in snapshots:
+            assert snapshots[path.name].read_bytes() == path.read_bytes()
+        snapshots[path.name] = path
+    parts.append({'result_file': str(folder / 'result.json'), 'result_sha256': sha(folder / 'result.json'),
+        'candidates_file': str(folder / 'reviewed-candidates.json'), 'candidates_sha256': sha(folder / 'reviewed-candidates.json'),
+        'checked': result['checked'], 'passed': result['passed'], 'counts': result['counts'],
+        'execution_platform': result['execution_platform'], 'checker_sha256': result['checker_sha256'],
+        'excluded_prior': result['excluded_prior'], 'only_reviewers': result['only_reviewers']})
+assert len(rows)==args.expected_total,'merged_record_count_mismatch'
+assert not pending,'unresolved_protocol_reverification'
+args.output.mkdir(exist_ok=False)
+for name, path in snapshots.items():
+    with (args.output / name).open('xb') as handle:
+        handle.write(path.read_bytes())
+result = {'recorded_at': datetime.now(UTC).isoformat(), 'scope': 'Union of actual local ordinary and cloud prior-task annotation audits; not corpus admission.',
+    'checked': len(rows), 'passed': len(rows), 'rows': checks, 'parts': parts,
+    'counts': dict(Counter(row['label']['verdict'] for row in rows)),
+    'source_sha256': 'd0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2',
+    'candidate_commit': None, 'candidate_scope': 'Separate historical and current annotation-provenance executions; no single candidate/host/full-suite claim',
+    'combined_result_is_not_a_single_host_execution': True, 'pending_protocol_reverification': pending,
+    'historical_unmatched':historical_unmatched,'expected_total':args.expected_total,'scope_errors':[], 'status':'passed',
+    'human_labels_created': 0, 'formal_release_eligible': False, 'formal_independent_assets_admitted': 0,
+    'formal_stability_pairs_admitted': 0, 'formal_data_frozen': False, 'formal_live_model_calls': 0}
+for name, document in [('result.json', result), ('reviewed-candidates.json', {'rows': rows, 'formal_release_eligible': False, 'grouping_verified': False})]:
+    with (args.output / name).open('x', encoding='utf-8', newline='\n') as handle:
+        json.dump(document, handle, ensure_ascii=False, indent=2)
+print(json.dumps({key: value for key, value in result.items() if key not in ('rows', 'parts')}))

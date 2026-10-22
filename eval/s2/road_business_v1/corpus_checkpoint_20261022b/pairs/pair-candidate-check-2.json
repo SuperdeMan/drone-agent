@@ -1,0 +1,51 @@
+{
+  "format": "drone.p6-pair-candidate-check/v1",
+  "recorded_at": "2026-10-22T01:32:24.362520+00:00",
+  "source_sha256": "d0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2",
+  "review_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_2\\review.json",
+  "review_sha256": "13fcc92f8b4f824519eef3823219a0e0822d073bb7c6717894596935bacf4334",
+  "integrity_sha256": "597248c27ac07919885e27fad749d42c175e39968068c1b608029f1e36d53b34",
+  "pair_context_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022\\pair-context-v2.json",
+  "pair_context_sha256": "11e68f0ccc755428aed7ef6778bceed5d30b463c6eebfdf3065f5732107af81f",
+  "pair": {
+    "pair_id": "bounded-repeat-08efb8d7377f45",
+    "sample_ids": [
+      "bounded-extract-3110863d076621",
+      "bounded-extract-b0de00c6cc4764"
+    ],
+    "origin": "delegated_ai",
+    "reviewer_id": "pair_verifier_2",
+    "comparison_scope": "distinct_author_dated_derived_captures_unordered",
+    "same_condition_ai_verified": null,
+    "distinct_captures_ai_verified": true,
+    "evidence": "I inspected both original images, both guides and masks, and unresized native crops containing the entire registered target polygon with margins, including both terminal cross-sections and both road edges. The fixed 44.48266138343642 m A/B interval was retained. The diagonal multilane road, yellow-bounded central turn lane with two opposed white arrows, distinctive black repair marks, northwest BAIT SHOP roof and adjacent larger gray roof, entrances on the northwest side, and southeast sidewalk with narrow grass strips and openings correspond in both images. These visual landmarks establish the same asset independently of its identifier; the bound world endpoints also agree. The masks are uniformly valid at 255. Across the complete target, the visible central and southeast lanes have comparable exposed pavement and scattered small dark material, and the northwest roadside tree projects over the outer lane in both views. However, branches and foliage obscure part of that lane and its edge, with extensive tree shadows in the first image; the different viewing and lighting geometry does not reveal the ground beneath the canopy. I therefore cannot verify that the actual state of the entire fixed road width is identical and leave same_condition unknown rather than treating two incomplete observations as agreement. The bound verified author date groups are 2022-10-01 for 1001-Kennedy-Green-Mobile-Homes.geo.tif and 2022-10-02 for 1002-Palm-Acers.4.geo.tif, with different parent SHA256 values ffab4194aaeddbbc214649647a53954201b12c0cd42b3127f0b10c8fc2d3da82 and 8c7eb124e355b41c74c0dd49cb18c3eae130da559a2d54731d9ddd34691e84e4. The visibly different tree/building parallax and shadow patterns support distinct derived views. distinct_captures is true only within the assigned scope of real UAV-derived captures in different verified author date groups; no exact UTC acquisition time, flight ID, raw camera-frame identity, temporal ordering, or reason for any apparent change is inferred.",
+    "ai_verification": {
+      "file": "p6-corpus-completion-20261018/pair-verification/pair_verifier_2/review.json",
+      "sha256": "13fcc92f8b4f824519eef3823219a0e0822d073bb7c6717894596935bacf4334",
+      "context_file": "p6-corpus-completion-20261018/resume-20261022/pair-context-v2.json",
+      "context_sha256": "11e68f0ccc755428aed7ef6778bceed5d30b463c6eebfdf3065f5732107af81f",
+      "pair_id": "bounded-repeat-08efb8d7377f45",
+      "row_sha256": "2f411167fc7bf34200a0446dd4a675cda495af6db8b981198e1757dcbbd69346"
+    }
+  },
+  "delegated_pair_issues": [
+    "delegated_pair_review_mismatch"
+  ],
+  "pair_problems": [
+    "stability_pair_not_verified"
+  ],
+  "independent_observer_conclusions": {
+    "same_asset": true,
+    "same_condition": null,
+    "distinct_captures": true,
+    "uncertainties": [
+      "Branches and foliage over the northwest outer lane hide part of the fixed target surface and edge. The images do not establish the condition beneath them or distinguish elevated overhang from material on the pavement sufficiently to certify complete-state equality.",
+      "Different illumination and viewing geometry change canopy appearance and road shadows. Similar exposed pavement and scattered material cannot resolve the occluded portion of the full comparison target.",
+      "Capture provenance is limited to the supplied verified author date groups and distinct UAV-derived parent products; exact acquisition UTC, flight identifiers and raw camera frames are not provided."
+    ]
+  },
+  "candidate_passes_pair_binding_and_state_checks": false,
+  "scope": "Pair identity/state and byte bindings only; full source, task scope, independence, split and coverage admission still required.",
+  "formal_pair_admitted": false,
+  "formal_release_eligible": false
+}

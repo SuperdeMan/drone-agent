@@ -1,0 +1,32 @@
+{
+  "primary_retrieval_rule": {
+    "same_declared_local_date": true,
+    "minimum_local_clock_interval_seconds": 30,
+    "nonadjacent_known_source_capture_order": true,
+    "minimum_approximate_full_frame_overlap_fraction_of_smaller": 0.3
+  },
+  "interval_is_search_rule_not_new_D089_requirement": true,
+  "development_hold_propagation": [
+    "registered capture-hold-3 membership",
+    "existing GPS <=1km site single linkage on all allowed metadata including header-only coordinates",
+    "existing full-camera footprint overlap >=30% of smaller connected components on complete originals"
+  ],
+  "header_only_data_role": "Development site association and source-local chronological reference only; never counted as original or candidate image",
+  "site_component_ids_are_census_bookkeeping_not_new_registered_site_ids": true,
+  "footprint_model": "DJI XMP gimbal yaw/pitch/roll, EXIF 35mm-equivalent diagonal focal, pinhole rays to flat ground at takeoff height using RelativeAltitude; all 4 frame corners must intersect ground within 400m; no corner clipping",
+  "footprint_error": "Several-metre or larger error can occur from GPS/altitude/gimbal uncertainty, flat-ground and takeoff elevation assumptions, lens distortion, equivalent-focal conversion and ignored terrain/buildings. No georectification or common target alignment is verified.",
+  "same_date_seconds": "Naive source local EXIF clock comparison only. No timezone, actual flightID or independent sortie is inferred.",
+  "nonadjacent": "At least one other capture appears between source IDs in the same known camera-model/local-date metadata order; source gaps and equal-timestamp order remain uncertain.",
+  "review_components": "Candidate nodes grouped by the complete registered >=30% camera-footprint graph, including links via adjacent or short-interval complete frames. The time-filtered graph is reported separately and does not establish independent groups.",
+  "first_review_priority": "Cross-registered-capture-hold leads precede within-hold nonadjacent context. Distinct holds are conservative clock groups, not verified separate flights.",
+  "registered_asset_rule_not_applied": "Ground-projected target outlines with 5m buffer and >=15% smaller-area intersection require target geometry; no target outlines, business annotation or asset admission were read or created.",
+  "unresolved": [
+    "No physical road identity or full common target extent proven",
+    "No road presence, state equality/difference or business labels determined",
+    "No actual flight IDs or timezone verified",
+    "No independent asset or compliant genuine cross-visit pair admission",
+    "Metadata site and near-duplicate components are conservative and may merge distinct real roads",
+    "No comparison to existing CRASAR target geometry performed; only distinct source-family metadata leads counted",
+    "Whole source ZIP hash was not newly verified; per-member source CRC/size and recorded original SHA were checked"
+  ]
+}

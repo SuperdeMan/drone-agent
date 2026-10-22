@@ -1,0 +1,126 @@
+"""Archive raw diagnostic facts and a failed environment guard without promoting labels.
+
+归档诊断原始事实与失败的环境核对，不提升标签权限。
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import subprocess
+from collections import Counter
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+ROOT = Path(__file__).resolve().parent
+REPO = Path("D:/drone-agent-data/p6-road-views-20261014/repo")
+DIAG = ROOT / "diagnostic"
+DATA = Path("D:/drone-agent-data/p6-materials-20261013-round3")
+
+
+def read(path):
+    """Read UTF-8 evidence. / 读取 UTF-8 证据。"""
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def sha(path):
+    """Hash source bytes. / 对源字节求摘要。"""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def write(path, value):
+    """Retain every prior artifact. / 保留每份已有产物。"""
+    with path.open("xb") as stream:
+        stream.write((json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode())
+
+
+def main():
+    """Keep response validity, container continuity and business truth separate.
+
+分别记录回答有效性、容器连续性与业务真值。
+"""
+    plan, summary = read(DIAG / "plan.json"), read(DIAG / "summary.json")
+    header, execution = read(DIAG / "cloud/output/run.json"), read(DIAG / "cloud/execution.json")
+    precall = read(DIAG / "precall.json")
+    commit_time = subprocess.check_output(["git", "show", "-s", "--format=%cI", precall["freeze_commit"]], cwd=REPO).decode().strip()
+    assert datetime.fromisoformat(commit_time) <= datetime.fromisoformat(precall["recorded_at_utc"])
+    assert datetime.fromisoformat(precall["recorded_at_utc"]) <= datetime.fromisoformat(header["started_at"].replace("Z", "+00:00"))
+    assert precall["plan_sha256"] == sha(DIAG / "plan.json")
+    for name, field in [("config.json", "config_sha256"), ("inputs/manifest.json", "manifest_sha256")]:
+        assert sha(DIAG / name) == plan[field] == header[field] == summary[field]
+    before = dict(s.split("|", 1) for s in execution["preflight"]["before"])
+    after = dict(s.split("|", 1) for s in execution["after"])
+    continuity = {"before_count": len(before), "after_count": len(after),
+                  "replaced": [{"name": n, "before_id": before[n], "after_id": after[n]} for n in before.keys() & after.keys() if before[n] != after[n]],
+                  "added": [{"name": n, "id": after[n]} for n in after.keys() - before.keys()],
+                  "removed": [{"name": n, "id": before[n]} for n in before.keys() - after.keys()],
+                  "unchanged_names": sorted(n for n in before.keys() & after.keys() if before[n] == after[n]),
+                  "guard_passed": execution["resident_container_identities_unchanged"],
+                  "cause_attributed": False, "historical_event_query_count": len(read(DIAG / "container-events.json")["events"]),
+                  "scope_not_relaxed_after_run": True}
+    for key in ("replaced", "added", "removed"):
+        continuity[key].sort(key=lambda row: row["name"])
+    old_results = {r["case_id"]: r for r in read(REPO / "eval/s2/p6_candidates_v4/diagnostic/results.json")}
+    prior = [old_results[p["view_id"]] for p in plan["parents"]]
+    input_index = REPO / "eval/s2/p6_candidates_v3/input-index.json"
+    assert sha(input_index) == plan["source_index_sha256"]
+    cases = {c["case_id"]: c for c in read(input_index)["cases"]}
+    support_checks, types = [], Counter()
+    for row in summary["rows"]:
+        case = cases[row["case_id"]]
+        mask_file = DATA / case["target_region"]["file"]
+        assert sha(mask_file) == case["target_region"]["sha256"]
+        with Image.open(mask_file) as image:
+            mask = np.asarray(image) > 0
+        height, width = mask.shape
+        for ordinal, obstacle in enumerate(row["obstacles"]):
+            types[obstacle["type"]] += 1
+            l, t, r, b = obstacle["bbox"]
+            pixels = mask[int(t * height):min(height, math.ceil(b * height)), int(l * width):min(width, math.ceil(r * width))]
+            support_checks.append({"case_id": row["case_id"], "image_id": case["image_id"], "ordinal": ordinal,
+                                   "type": obstacle["type"], "bbox": obstacle["bbox"],
+                                   "source_support_overlap_pixels": int(pixels.sum()),
+                                   "bbox_pixels": int(pixels.size), "overlap_is_not_a_correctness_judgment": True})
+    drafts_path = REPO / "eval/s2/p6_candidates_v5/drafts.json"
+    draft = next(t for t in read(drafts_path)["targets"] if t["case_id"] == "case-b2816a2e7bb3")
+    entity = next(e for e in draft["entities"] if e["entity_id"] == "E12")
+    pts = [p for polygon in entity["object_envelope"]["core"] for p in polygon]
+    core_box = [min(p[0] for p in pts), min(p[1] for p in pts), max(p[0] for p in pts), max(p[1] for p in pts)]
+    current = next(r for r in summary["rows"] if r["case_id"] == draft["case_id"])
+    overlap = [i for i, o in enumerate(current["obstacles"]) if o["bbox"][0] < core_box[2] and o["bbox"][2] > core_box[0]
+               and o["bbox"][1] < core_box[3] and o["bbox"][3] > core_box[1]]
+    analysis = {"format": "drone.road-contact-development-analysis/v1", "run_id": read(DIAG / "launch.json")["run_id"],
+                "freeze_commit": precall["freeze_commit"], "freeze_before_calls": True,
+                "batch_status": "not_qualified_environment_changed", "launcher_exit_code": 1,
+                "container_exit_code": execution["exit_code"], "container_continuity": continuity,
+                "source_summary_sha256": sha(DIAG / "summary.json"), "execution_sha256": sha(DIAG / "cloud/execution.json"),
+                "analysis_script_sha256": sha(Path(__file__)),
+                "responses": {"attempted": header["cases_attempted"], "answered": header["cases_answered"],
+                              "cloud_schema_valid": header["schema_valid"], "local_valid": summary["valid_answers"],
+                              "cloud_strict_replays": header["strict_replays"], "local_strict_replays": summary["local_strict_replays"],
+                              "verdicts": dict(Counter(r["new_verdict"] for r in summary["rows"])),
+                              "candidate_boxes": len(support_checks), "types": dict(types),
+                              "views_at_eight_box_cap": [r["view_id"] for r in summary["rows"] if len(r["obstacles"]) == 8]},
+                "token_usage": {"v7_input": header["usage_input"], "v7_output": header["usage_output"],
+                                "v4_full_input": sum(r["usage"][0] for r in prior), "v4_full_output": sum(r["usage"][1] for r in prior),
+                                "billing_or_price_estimated": False},
+                "support_overlap_checks": support_checks,
+                "prior_ai_E12_context": {"drafts_sha256": sha(drafts_path), "core_bbox": core_box,
+                                        "new_candidate_boxes_overlapping_core_bbox": overlap,
+                                        "business_ground_truth": False, "recall_computed": False,
+                                        "interpretation": "An image-level suspected response does not establish detection of the earlier AI-drafted wood segment."},
+                "human_reviews_completed": 0, "accuracy_computed": False, "default_profile_change": False,
+                "formal_release_eligible": False}
+    assert execution["exit_code"] == 0 and continuity["guard_passed"] is False
+    write(DIAG / "analysis.json", analysis)
+    print(json.dumps({"status": analysis["batch_status"], "responses": analysis["responses"],
+                      "tokens": analysis["token_usage"], "containers_replaced": len(continuity["replaced"]),
+                      "containers_added": len(continuity["added"]), "zero_support_overlap_boxes": sum(r["source_support_overlap_pixels"] == 0 for r in support_checks),
+                      "E12_core_bbox_overlapping_new_boxes": overlap}, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

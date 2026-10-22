@@ -1,0 +1,351 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "bounded_verifier_31",
+  "created_at": "2026-10-22T01:26:07.755021+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_31\\assignment.json",
+  "assignment_sha256": "1ffaf3087e8a250fb343b22e58e439681de52fa369cdb43b5b123be80fa4d101",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-36bb636c767103",
+      "decision": "accepted",
+      "findings": [
+        "已实际查看完整原图、guide、mask及四块重叠原生裁片；固定30.43168374472548米A/B全段、两端完整横截面与两侧主路边缘均纳入检查，mask为全白有效覆盖。",
+        "主路包含中央转向车道及两侧通行车道，首稿多边形与可辨认路缘和连续主路宽度相符；东南接入口采用两侧主路边缘的延续线截止，没有扩入整片停车前场。",
+        "连续主路范围内未见可确认的独立地面障碍实体；规则长条黑线、细裂纹及明暗变化未作为散落物，保留normal有图像依据。",
+        "东南接入口附近短黑物及前场白色散落物处于连续主路界外；西北侧草地与人行道上的碎片也未进入该固定主路范围。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-36bb636c767103.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-36bb636c767103.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-36bb636c767103.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-scope-check.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-native-1.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-native-2.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-native-3.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-native-4.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "f123db1e0a922c9728063076863ecffaf43b88b884079ad2ae0f8716533e4b9c",
+      "first_author_id": "bounded_annotator_26",
+      "first_row_sha256": "7f6c4ac63335d2537d269063661a2bc57e10efd6a15e5105cac6eeb133a64aa2",
+      "reviewed_at": "2026-10-22T01:26:07.761029+00:00",
+      "reviewer_id": "bounded_verifier_31",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-36bb636c767103.jpg": "f123db1e0a922c9728063076863ecffaf43b88b884079ad2ae0f8716533e4b9c",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-36bb636c767103.jpg": "5410a0b652970f2ff81789022db95f7d8a4d53e9c049e2a5e5158ed735fde1ab",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-36bb636c767103.png": "f36ec2c1e270b75e848a26de54697811b49a316df9d9739c2e39aa595d07850b",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-scope-check.png": "481bbff479448a525c59bddd569dfac705fc280742bd28bb935bc961363e4b66",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-native-1.png": "f1c1bfeb1322d5c60b067fcd6fa9b5646f8024795d709272ebb9f834d30319b9",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-native-2.png": "af3294067231f48e830f5b7a7ebd62005394d16e9cf9988bf656ceabcc5e2e91",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-native-3.png": "c1b2f40d6287507720038418bb9bbea6e267ddb9bfdf58b5270bbd5523895d35",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-native-4.png": "89e6b90452beb10bd6d75bb36140fe3ad5f100131e52e931922732a9f3461ea6"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-36bb636c767103",
+        "image_sha256": "f123db1e0a922c9728063076863ecffaf43b88b884079ad2ae0f8716533e4b9c",
+        "target_brief": "固定 A/B 端点之间的斜向多车道主路，含中央转向车道；两端以固定端点的完整横截面截止，两侧按主路连续宽度界定。",
+        "target_polygon": [
+          [
+            0.25243336,
+            0.53006156
+          ],
+          [
+            0.5694742,
+            0.24823658
+          ],
+          [
+            0.73137263,
+            0.4499793
+          ],
+          [
+            0.41511094,
+            0.73277518
+          ]
+        ],
+        "verdict": "normal",
+        "objects": [],
+        "notes": "已查看原图、guide 及四块重叠原生裁片，覆盖完整固定 A/B 范围、两端横截面和两侧路缘。主路路面及连续宽度可辨认，未见可确认进入主路的实体。东南侧接入口沿相邻主路边缘的连续宽度截止，未将停车前场及其碎片纳入目标；草地、人行道及前场上的碎片均位于主路之外。阴影、路面裂缝和黑色修补线未作为障碍。",
+        "uncertainties": [],
+        "inspected_at": "2026-10-22T01:26:07.761029+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-36bb636c767103.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-36bb636c767103.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-36bb636c767103.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-scope-check.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-native-1.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-native-2.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-native-3.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-36bb636c767103-native-4.png"
+        ]
+      },
+      "final_row_sha256": "c25824efb1317c8441bc4a8f4c14260d48dcace949ccfe7a44c6764b5e25d534",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_31\\review-payload.json",
+        "observer_payload_sha256": "7155ab1b340b1973e1368258af3e69f2fe7a0772ee46fcadb9fda629b6fd4473",
+        "payload_file_modified_at_utc": "2026-10-22T01:23:53.285599+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-22T01:26:07.166405+00:00",
+        "business_fields_changed": false,
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    },
+    {
+      "sample_id": "bounded-extract-b0de00c6cc4764",
+      "decision": "accepted",
+      "findings": [
+        "已实际查看完整原图、guide、mask及四块重叠原生裁片，覆盖固定44.48266138343642米A/B全段与两端完整横截面；另查看中央车道原生细节及最近邻四倍图，mask为全白有效覆盖。",
+        "首稿五处圈选分别落在中央转向车道内的独立不规则深色小物上；它们与连续长条黑线分离，局部轮廓可辨，足以支持debris及obstacle，具体材质仍无法确定。",
+        "主路两侧边缘及接入口相邻路段的连续宽度支持首稿目标范围；固定端点与全长未移动，路外前场、东南草地上的大片白色散落物未被扩入目标。",
+        "西北树冠遮住局部地表，但不提供实际地面植被侵入证据；首稿保留该观察限制及其他小深色点的实体不确定性，与原图证据一致。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-b0de00c6cc4764.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-b0de00c6cc4764.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-b0de00c6cc4764.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-scope-check.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-native-1.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-native-2.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-native-3.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-native-4.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-detail-native.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-detail-4x.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "ea8df8955e8ba50a0fd9a71371c1d29f2c9d05d39b5d71df6864dedb5c24ff67",
+      "first_author_id": "bounded_annotator_26",
+      "first_row_sha256": "d0157f32ae66abc300c4a1b5b057201e3c15e6c7c4309d1c2edba9c30c32d3ba",
+      "reviewed_at": "2026-10-22T01:26:07.781029+00:00",
+      "reviewer_id": "bounded_verifier_31",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-b0de00c6cc4764.jpg": "ea8df8955e8ba50a0fd9a71371c1d29f2c9d05d39b5d71df6864dedb5c24ff67",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-b0de00c6cc4764.jpg": "d54452aadb9d43bce82c42d82006afacf6f624c59ac3e4494404452c273d5941",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-b0de00c6cc4764.png": "e1402ddba1120be6ab78274587c37c76f6b90449b0f3c0adc8eb8ddcf1ffc32b",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-scope-check.png": "f583da85c02b7ae1cc11d5e60d961bf712c8752ab3b7f35c513f2501cae991ae",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-native-1.png": "64e1e07f80ca69ce32fb532ff669478b580b2bc76ed6066f68d88a925c56f0ea",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-native-2.png": "a1d5b9ca4bbc538292a3e800bd8cfbc45777d0680dc356e30ba7de3377c3682e",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-native-3.png": "7fb3040b766dc79b4c3cc40def06f6f38417cd1ce5e2b899aa49f944258d2aef",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-native-4.png": "641a7d21b73878bb9c1e7384e89e2378eb69413f7237d660746c90ac8a8150ec",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-detail-native.png": "c3be072a71dd0aa836a250870c7038c8c03d9a9e753908f57b2c0f4fa13d34f0",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-detail-4x.png": "2a2c2a2cabc544ead2389136158730d7f7983c2e0cc59386082ccbdff0bb1aca"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-b0de00c6cc4764",
+        "image_sha256": "ea8df8955e8ba50a0fd9a71371c1d29f2c9d05d39b5d71df6864dedb5c24ff67",
+        "target_brief": "固定 A/B 端点之间的斜向多车道主路，含中央转向车道；两端以固定端点的完整横截面截止，两侧按主路连续宽度界定。",
+        "target_polygon": [
+          [
+            0.22568982,
+            0.58762534
+          ],
+          [
+            0.62951161,
+            0.22181616
+          ],
+          [
+            0.76036841,
+            0.39358557
+          ],
+          [
+            0.35654662,
+            0.75939474
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.41789216,
+                0.53920705
+              ],
+              [
+                0.42116013,
+                0.53876652
+              ],
+              [
+                0.42197712,
+                0.54449339
+              ],
+              [
+                0.41870915,
+                0.54581498
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.42279412,
+                0.54801762
+              ],
+              [
+                0.42606209,
+                0.54625551
+              ],
+              [
+                0.42728758,
+                0.54801762
+              ],
+              [
+                0.42606209,
+                0.55022026
+              ],
+              [
+                0.42810458,
+                0.55242291
+              ],
+              [
+                0.42401961,
+                0.55374449
+              ],
+              [
+                0.42197712,
+                0.55154185
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.43423203,
+                0.52422907
+              ],
+              [
+                0.43627451,
+                0.52378855
+              ],
+              [
+                0.4379085,
+                0.52599119
+              ],
+              [
+                0.43627451,
+                0.5277533
+              ],
+              [
+                0.43464052,
+                0.52731278
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.45915033,
+                0.5030837
+              ],
+              [
+                0.46078431,
+                0.50264317
+              ],
+              [
+                0.4624183,
+                0.50528634
+              ],
+              [
+                0.46119281,
+                0.50748899
+              ],
+              [
+                0.45915033,
+                0.5061674
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.46527778,
+                0.51894273
+              ],
+              [
+                0.46772876,
+                0.51806167
+              ],
+              [
+                0.46854575,
+                0.52114537
+              ],
+              [
+                0.46772876,
+                0.52511013
+              ],
+              [
+                0.46486928,
+                0.52599119
+              ]
+            ]
+          }
+        ],
+        "notes": "已查看原图、guide 及四块重叠原生裁片，覆盖完整固定 A/B 范围、两端横截面和两侧边缘；另查看中央车道原生细节及其最近邻四倍放大图。中央转向车道内可辨认多块独立、不规则深色小碎片，其局部轮廓与连续黑色修补线及裂缝不同；五个最清楚的碎片分别圈出。主路边缘及连续宽度可建立，接入口没有扩展为整片前场；西北侧树冠及阴影不作为地面植被侵入证据，路外大片白色散落物未纳入对象。",
+        "uncertainties": [
+          "碎片的具体材质无法从静态图确认。",
+          "其他更小的深色点缺少足够轮廓证据，未逐个判为实体。",
+          "树冠下局部地表不可直接观察，未据树冠推断地面侵入。"
+        ],
+        "inspected_at": "2026-10-22T01:26:07.781029+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-b0de00c6cc4764.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-b0de00c6cc4764.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-b0de00c6cc4764.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-scope-check.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-native-1.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-native-2.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-native-3.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-native-4.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-detail-native.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_31/bounded-extract-b0de00c6cc4764-detail-4x.png"
+        ]
+      },
+      "final_row_sha256": "0976c9a74b9e2b355b724e0c567ac463a28e4afaac80e01f72f0cc2beece06de",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_31\\review-payload.json",
+        "observer_payload_sha256": "7155ab1b340b1973e1368258af3e69f2fe7a0772ee46fcadb9fda629b6fd4473",
+        "payload_file_modified_at_utc": "2026-10-22T01:23:53.285599+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-22T01:26:07.166405+00:00",
+        "business_fields_changed": false,
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    }
+  ],
+  "persistence_events": [
+    {
+      "operator": "root_orchestrator_deterministic_storage_only",
+      "observer_declared_status": "complete",
+      "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_31\\review-payload.json",
+      "observer_payload_sha256": "7155ab1b340b1973e1368258af3e69f2fe7a0772ee46fcadb9fda629b6fd4473",
+      "payload_file_modified_at_utc": "2026-10-22T01:23:53.285599+00:00",
+      "filesystem_time_is_not_claimed_visual_inspection_time": true,
+      "stored_at_utc": "2026-10-22T01:26:07.166405+00:00",
+      "business_fields_changed": false,
+      "new_visual_inspection_claimed": false,
+      "observer_storage_cli_execution_claimed": false
+    }
+  ]
+}

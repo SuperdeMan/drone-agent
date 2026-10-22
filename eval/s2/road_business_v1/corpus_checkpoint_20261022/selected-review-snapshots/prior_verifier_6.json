@@ -1,0 +1,152 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "prior_verifier_6",
+  "created_at": "2026-10-21T16:59:03.131170+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_6\\assignment.json",
+  "assignment_sha256": "4f881e32e6925c4d660c1eba956456a6876402e030cefe1193d07ea63b964736",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-bef0e4d0ec9a3d",
+      "decision": "accepted",
+      "findings": [
+        "真实参考原图显示横向双黄线主路，左侧有近垂直交叉道路，右侧有南侧支路接入口；主路上方是黑色平屋顶建筑和停车场，下方是带小塔状金属屋顶的建筑及浅色人行道。两个无缩放原生裁片覆盖参考图登记轮廓的完整包围框 [798,617,2708,1015]，可辨认连续双黄线与两侧路缘。",
+        "当前原图可见的是斜向无中心线住宅道路，上部道路分支具有圆弧路缘，沿路为草地、住宅车道及受损的坡屋顶住宅。可见区域没有建立起参考图双黄线主路、两端路口、黑色平屋顶停车场与塔状屋顶建筑的对应组合；判断依据来自实际道路和固定布局比较，未使用文件名或文件不同作为缺席证据。",
+        "实际查看的四个当前图原生裁片相互覆盖，完整覆盖未移动的登记轮廓包围框 [1030,2138,3495,3515]。其中左部及上部有源黑区，其余范围跨过斜向道路、路缘、碎物带、草地和受损住宅，无法确认登记道路的完整身份、两端冻结截面及两侧道路边界。",
+        "源黑区使部分登记范围缺少地面影像，现有可见布局差异仍不足以严格确认预期目标在当前图中缺席，因此接受初稿的 indeterminate 和空 objects，task_mismatch 保持 null。主路连续宽度约定不能恢复缺失影像或改用当前图另一条道路，target_brief 与 target_polygon 原样保留。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-bef0e4d0ec9a3d.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-1d2a940ddb502a.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-current-native-r1c1.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-current-native-r1c3.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-current-native-r2c1.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-current-native-r2c3.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-expected-native-r1c1.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-expected-native-r1c2.png"
+      ],
+      "original_image_checked": true,
+      "task_mismatch": null,
+      "image_sha256": "817e5bfb5d4337d15c444925d83acbbf68009505d966cb555b4f020849400088",
+      "first_author_id": "prior_annotator_3",
+      "first_row_sha256": "b120d9def35aa1184d1d6bbb79666dadb481075927cca9e1a0bca4a6a7961705",
+      "reviewed_at": "2026-10-21T16:59:03.152575+00:00",
+      "reviewer_id": "prior_verifier_6",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-bef0e4d0ec9a3d.jpg": "817e5bfb5d4337d15c444925d83acbbf68009505d966cb555b4f020849400088",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-1d2a940ddb502a.jpg": "fd722edc8f02cfa1365ff5afaf3af297e6c9a87e980bc73f0bca79a9bee949f7",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-current-native-r1c1.png": "d43525d357d18e8d483662370beef27817f8bfa57023740417918be9eca2bf49",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-current-native-r1c3.png": "09d7fb87c7412991b22f988bde6720ee82aabc179d6e59f5d4f2a7764545ed64",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-current-native-r2c1.png": "43a808818c65f7915da0ab9dfd87bdf69f3e9b0d7a709df7d4fb042293bdfc01",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-current-native-r2c3.png": "396b41a4d255c410f2c84cbd0b455445a9bee903b9892dbb39e41c2bf211e8a6",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-expected-native-r1c1.png": "9e783a7a9cf23d31a4730d529162f4be09c857178d476508943012b8cc7b60b1",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-expected-native-r1c2.png": "1e9c9bcb032a00456d3ec63919383c44b76a0b8d0d83916774865218d5652d43"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-bef0e4d0ec9a3d",
+        "image_sha256": "817e5bfb5d4337d15c444925d83acbbf68009505d966cb555b4f020849400088",
+        "target_brief": "画面中部横向双黄线道路，从左侧 A 交叉口延伸至右侧 B 南侧支路接入口附近的冻结截面。上方是黑色平屋顶建筑及停车场，下方有带褐色金属屋顶的小型塔状屋顶建筑和浅色人行道。登记两侧路缘之间的全幅沥青，排除人行道、停车场及南北支路延伸。",
+        "target_polygon": [
+          [
+            0.231111,
+            0.369034
+          ],
+          [
+            0.361111,
+            0.381839
+          ],
+          [
+            0.555556,
+            0.389988
+          ],
+          [
+            0.677778,
+            0.399302
+          ],
+          [
+            0.772222,
+            0.403958
+          ],
+          [
+            0.768889,
+            0.606519
+          ],
+          [
+            0.666667,
+            0.597206
+          ],
+          [
+            0.555556,
+            0.589057
+          ],
+          [
+            0.444444,
+            0.580908
+          ],
+          [
+            0.333333,
+            0.570431
+          ],
+          [
+            0.227778,
+            0.562282
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "已查看当前原图、真实预期参考图及覆盖固定目标全部范围的原生裁片。参考图为黑色平屋顶建筑与带小塔状屋顶建筑之间的横向双黄线路段；当前图可见受损住宅旁的斜向无中心线道路，固定轮廓横跨源黑区、道路、草地、碎物及建筑，未能找到参考图所示道路和两端布局。保留登记目标原样。",
+        "uncertainties": [
+          "当前场景与登记任务无法建立对应，固定范围的一部分为源黑区，无法确认任务道路的完整身份、两端横截面和两侧边界。"
+        ],
+        "inspected_at": "2026-10-21T16:59:03.152575+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-bef0e4d0ec9a3d.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-1d2a940ddb502a.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-current-native-r1c1.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-current-native-r1c3.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-current-native-r2c1.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-current-native-r2c3.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-expected-native-r1c1.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/prior_verifier_6/bounded-extract-bef0e4d0ec9a3d-expected-native-r1c2.png"
+        ]
+      },
+      "final_row_sha256": "7f4a2483c9e175c086fb08ac7a2eed35933b718d481c5fb92e07f5c9f36b5df4",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_6\\review-payload.json",
+        "observer_payload_sha256": "4aaf07da80813a560ed769cde90be3df45948f6574bd0c9b003430ebe5021e9f",
+        "payload_file_modified_at_utc": "2026-10-21T16:58:51.321657+00:00",
+        "stored_at_utc": "2026-10-21T16:59:03.131170+00:00",
+        "business_fields_changed": false,
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not additional visual inspection or human timing."
+      }
+    }
+  ],
+  "persistence_events": [
+    {
+      "operator": "root_orchestrator_deterministic_storage_only",
+      "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_6\\review-payload.json",
+      "observer_payload_sha256": "4aaf07da80813a560ed769cde90be3df45948f6574bd0c9b003430ebe5021e9f",
+      "payload_file_modified_at_utc": "2026-10-21T16:58:51.321657+00:00",
+      "stored_at_utc": "2026-10-21T16:59:03.131170+00:00",
+      "business_fields_changed": false,
+      "new_visual_inspection_claimed": false,
+      "observer_storage_cli_execution_claimed": false,
+      "filesystem_time_is_not_claimed_visual_inspection_time": true,
+      "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not additional visual inspection or human timing."
+    }
+  ]
+}

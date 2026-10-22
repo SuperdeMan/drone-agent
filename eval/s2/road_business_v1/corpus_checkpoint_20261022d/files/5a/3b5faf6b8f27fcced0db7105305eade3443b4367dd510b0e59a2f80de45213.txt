@@ -1,0 +1,5 @@
+import runpy,sys
+import rasterio
+tool=sys.argv[1];sys.argv=sys.argv[1:]
+with rasterio.Env(GDAL_CACHEMAX=67108864,GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR',GDAL_PAM_ENABLED='NO'):
+ runpy.run_path(tool,run_name='__main__')

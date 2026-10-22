@@ -1,0 +1,296 @@
+{
+  "format": "drone.p6-ai-pair-verification/v1",
+  "origin": "delegated_ai",
+  "reviewer_id": "pair_verifier_1",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\assignment.json",
+  "assignment_sha256": "b4f55ce558f8e7f1d90ded129eb6e545968c79a11e0d13e0ac8381e98cc8bac1",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "pair_id": "bounded-repeat-4bd072792fc2d2",
+      "same_asset": true,
+      "same_condition": null,
+      "distinct_captures": true,
+      "evidence": "I personally inspected the two original panoramas, both guides and validity masks, both full-target native crops, both fixed-scope overlays, and all six overlapping native-resolution tiles for each image. The tiles cover the complete supplied polygon bounding boxes, including both A/B endpoints; no endpoint, centerline, or target polygon was moved or reduced. All six supplied image/guide/mask hashes match the assignment. The unchanged polygons contain 700488 and 848543 rasterized pixels respectively; each has only mask value 255 and zero invalid pixels. This checks image validity coverage, not absence of occlusion. same_asset=True is based on visual correspondence, not the asset identifier: in both images the same elongated red multi-hip roof has a smaller projecting rear/service roof on its west side and a white awning on its southern/front side; the same narrow rear lane runs north-south west of that building, rounds the southwest corner, and becomes a diagonal front lane with matching parking-bay stripes, pavement cracks and directional arrows. The long landscaped island between the front lane and diagonal public road has the same small silver-roofed sign/panel structure and a red object near its eastern end. The upper apron, northwest masonry enclosure, west public road, and island of palms also agree in relative placement. Assigned A is the cross-section near the front-lane/east turn, southeast of the small quadrilateral landscaped parking island (approximately pixel 2016,1598 in the first image and 2022,1602 in the second). Assigned B is where the west rear lane meets the broad upper apron and left-road entrance, south of the masonry enclosure (approximately 802,723 and 805,725). The route between these fixed endpoints is visibly the same physical lane around the building. same_condition=None: both images visibly contain confirmed non-vegetation debris on the western rear pavement beside the building, including irregular rectangular panels, box-like pieces and mixed piled fragments extending into the fixed road corridor (clearest in native-r2c1 for each image). The exposed southern bend and front diagonal lane can be compared throughout and show pavement, markings and scattered fragments; the debris layout, lighting and vehicle placements are not identical. The confirmed visible neutral type set is {debris} in each image, but I cannot certify that this is the complete set over both full fixed targets: canopy overlap and strong shadow along the northern part of the west lane obscure local ground/edge details, especially at the palm island. I did not classify planted palms, their crowns or their shadows as actual vegetation intrusion. Ordinary parked or road vehicles were not counted as obstacles; no object-size threshold was applied. No additional other_entity was confirmed. This is an indeterminate comparison, not a finding that conditions differ. distinct_captures=True is limited to the supplied unordered, distinct-author-dated UAV-derived capture scope: source 1001-Kennedy-Green-Mobile-Homes.geo.tif has author date group 2022-10-01 and parent SHA256 ffab4194aaeddbbc214649647a53954201b12c0cd42b3127f0b10c8fc2d3da82, whereas 1002-Palm-Acers.4.geo.tif has author date group 2022-10-02 and parent SHA256 8c7eb124e355b41c74c0dd49cb18c3eae130da559a2d54731d9ddd34691e84e4. The provided assignment has no conflicting date fields for these sources; both flight IDs are null and raw_camera_frame_claimed is false. I did not independently verify flight identity, UTC acquisition time or original camera frames. No clearing cause or human efficiency was inferred.",
+      "uncertainties": [
+        "Canopy overlap and strong local shadows in the upper western fixed corridor prevent a full-target guarantee of the complete neutral entity-type set, so same_condition remains null despite visible debris in both.",
+        "The validity masks cover the complete supplied polygons but do not establish ground visibility beneath canopy or shadows.",
+        "A and B are the supplied projected cross-sections. Their surrounding road geometry matches visually, but no independent painted terminal line or survey proves exact natural/facility boundary placement.",
+        "The polygons include verge and planted-island edges. Apparent crown overlap is not sufficient to establish actual vegetation intrusion into the road.",
+        "Distinct capture status relies only on the supplied distinct parent digests and nonconflicting 2022-10-01/2022-10-02 author-date groups; no flight ID, UTC timestamp, raw-frame lineage, temporal ordering or clearing event was independently verified.",
+        "This is a delegated AI visual inspection only; no human verification or formal release decision was created."
+      ],
+      "inspection_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-e5e042c327f83a.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\guides\\bounded-extract-e5e042c327f83a.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\masks\\bounded-extract-e5e042c327f83a.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-full-target-native.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-fixed-scope-overlay.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-native-r1c1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-native-r1c2.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-native-r2c1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-native-r2c2.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-native-r3c1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-native-r3c2.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-785300c43ff308.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\guides\\bounded-extract-785300c43ff308.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\masks\\bounded-extract-785300c43ff308.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-full-target-native.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-fixed-scope-overlay.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-native-r1c1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-native-r1c2.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-native-r2c1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-native-r2c2.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-native-r3c1.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-native-r3c2.png"
+      ],
+      "sample_ids": [
+        "bounded-extract-e5e042c327f83a",
+        "bounded-extract-785300c43ff308"
+      ],
+      "asset_id": "crasar-road-11cf7288d92313",
+      "reviewed_at": "2026-10-21T11:31:07.208239+00:00",
+      "images": {
+        "bounded-extract-e5e042c327f83a": {
+          "file": "p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-e5e042c327f83a.jpg",
+          "image_sha256": "7be0ae5ea7e97f12e321ae86027d9063c6437b7249fdca1b400f280b3ecb97ed",
+          "original_checked": true,
+          "target_polygon": [
+            [
+              0.705,
+              0.496
+            ],
+            [
+              0.774,
+              0.547
+            ],
+            [
+              0.505,
+              0.769
+            ],
+            [
+              0.438,
+              0.793
+            ],
+            [
+              0.344,
+              0.793
+            ],
+            [
+              0.252,
+              0.72
+            ],
+            [
+              0.234,
+              0.641
+            ],
+            [
+              0.235,
+              0.486
+            ],
+            [
+              0.243,
+              0.236
+            ],
+            [
+              0.35,
+              0.238
+            ],
+            [
+              0.311,
+              0.409
+            ],
+            [
+              0.304,
+              0.488
+            ],
+            [
+              0.302,
+              0.634
+            ],
+            [
+              0.377,
+              0.708
+            ],
+            [
+              0.433,
+              0.714
+            ]
+          ]
+        },
+        "bounded-extract-785300c43ff308": {
+          "file": "p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-785300c43ff308.jpg",
+          "image_sha256": "2507c67f590c42d00b400411a35d38441584b4e005ee25d8a1bbad2f221832d5",
+          "original_checked": true,
+          "target_polygon": [
+            [
+              0.69505095,
+              0.48157725
+            ],
+            [
+              0.69141194,
+              0.50096962
+            ],
+            [
+              0.68704512,
+              0.52359405
+            ],
+            [
+              0.68413392,
+              0.54298643
+            ],
+            [
+              0.66229985,
+              0.56399483
+            ],
+            [
+              0.63318777,
+              0.5623788
+            ],
+            [
+              0.61499272,
+              0.54298643
+            ],
+            [
+              0.60407569,
+              0.5365223
+            ],
+            [
+              0.58224163,
+              0.55268261
+            ],
+            [
+              0.5349345,
+              0.58985133
+            ],
+            [
+              0.50946143,
+              0.63348416
+            ],
+            [
+              0.39665211,
+              0.71105365
+            ],
+            [
+              0.36390102,
+              0.68196509
+            ],
+            [
+              0.33296943,
+              0.63671622
+            ],
+            [
+              0.32751092,
+              0.6043956
+            ],
+            [
+              0.36754003,
+              0.53329024
+            ],
+            [
+              0.37845706,
+              0.48804137
+            ],
+            [
+              0.356623,
+              0.45248869
+            ],
+            [
+              0.34934498,
+              0.37168714
+            ],
+            [
+              0.32751092,
+              0.31351002
+            ],
+            [
+              0.3202329,
+              0.23755656
+            ],
+            [
+              0.26200873,
+              0.23109244
+            ],
+            [
+              0.24017467,
+              0.3490627
+            ],
+            [
+              0.23653566,
+              0.48480931
+            ],
+            [
+              0.23471616,
+              0.58500323
+            ],
+            [
+              0.24745269,
+              0.65287654
+            ],
+            [
+              0.28930131,
+              0.71751778
+            ],
+            [
+              0.36754003,
+              0.78054299
+            ],
+            [
+              0.41848617,
+              0.79023917
+            ],
+            [
+              0.47307132,
+              0.77892696
+            ],
+            [
+              0.58224163,
+              0.71105365
+            ],
+            [
+              0.70960699,
+              0.62055591
+            ],
+            [
+              0.80786026,
+              0.58177117
+            ]
+          ]
+        }
+      },
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-e5e042c327f83a.jpg": "7be0ae5ea7e97f12e321ae86027d9063c6437b7249fdca1b400f280b3ecb97ed",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\guides\\bounded-extract-e5e042c327f83a.jpg": "cad92a7399a56987bc465de5d8f7847e5d80638f687cd560aa5e0ae6ce6ed1a0",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\masks\\bounded-extract-e5e042c327f83a.png": "e3020b7ea670b280aa977282e6174cd3c7440df3ab717e788dc61a3d31393e82",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-full-target-native.png": "ae647f227995600c77a67d691db528730d00901f818569a3ecacd66e6ab10e86",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-fixed-scope-overlay.png": "bfacb427f6296895963658790969faaa73182ac9ae494d6753c7fc88d86ba7e2",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-native-r1c1.png": "80d74162c3d516602c1e1d7a8c9107816cec70a28cd08a741a9a518663e33e03",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-native-r1c2.png": "79df8ec078903f1919e9c302fd13d97eaff0e0759e67f02e7f7823ab3c3fddfd",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-native-r2c1.png": "dbd917eb97452328a8ccd4350d79eace565e95452af4717311f2f137014abc9e",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-native-r2c2.png": "32f7acf774aafc3f76c25b864527ff7fbc9b193b0deada473d0d4a0ccffb85fe",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-native-r3c1.png": "bb34387072f7abccd7c8889f637b2baf75a4e0806f0ae2b3652281facf796dde",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-e5e042c327f83a-native-r3c2.png": "8583a6cc0d76fc261e7ef24b2798c5ed180ce99eef4f2939ec726c3932e65f02",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-785300c43ff308.jpg": "2507c67f590c42d00b400411a35d38441584b4e005ee25d8a1bbad2f221832d5",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\guides\\bounded-extract-785300c43ff308.jpg": "ff5a1377f9348ba6834c75372b454894a24c98191bbae29479bb1b42092499fa",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\masks\\bounded-extract-785300c43ff308.png": "5caf201b9b00e823f0eaa37f395e7ef896801e755b01ca0acc8858df36aa129d",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-full-target-native.png": "e4c737addbd4c84d8cad3ad5fe75c87a9f3d22e0531729d1dd023cc4e67f6670",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-fixed-scope-overlay.png": "97566b8e6a5f7683e8e7cc51031eb10cbae0058a152027155662addf3d004a4c",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-native-r1c1.png": "36917449ba895123b7f8700709d316b828faa2f5fa7c140e4ea2a01c76fadf02",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-native-r1c2.png": "eacc1a41655911f14d190f2e406f2c19d6e4174de3c9e446356568627e5485fe",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-native-r2c1.png": "a6b6e9d2531cc3559b30ecfe454ff3c71e8e571bf10c59964bce3cc9243ce644",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-native-r2c2.png": "a880432862dfb5998e15d3077b8e9210180750071b879dc62e2dae44bf38f6b0",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-native-r3c1.png": "574a610972e0810125e1f148d75d478e501c0da519bcae7dc79edcbe68a7a5f6",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\pair-verification\\pair_verifier_1\\inspection\\bounded-extract-785300c43ff308-native-r3c2.png": "83323daecbec8f7fa22df76e684b5b0ea7bbe1c131edc7dff3d40ae81059ea2f"
+      },
+      "temporal_scope": "distinct_author_dated_derived_captures_unordered",
+      "human_reviews_created": 0
+    }
+  ]
+}

@@ -1,0 +1,172 @@
+"""Collect traceable RescueNet development samples from the official train ZIP.
+
+从官方训练 ZIP 采集可追溯的 RescueNet 开发样本。
+"""
+import argparse
+import concurrent.futures
+import hashlib
+import io
+import json
+import struct
+import threading
+import time
+import zlib
+from pathlib import Path
+
+import httpx
+import numpy as np
+from PIL import Image
+
+ROOT=Path(__file__).resolve().parent
+META=json.loads((ROOT/'sources/rescuenet-train.json').read_text())['files'][0]
+DIRECTORY=json.loads((ROOT/'sources/rescuenet-train-directory.json').read_text())
+MEMBERS={r['name']:{**r,'end':DIRECTORY[n+1]['offset'] if n+1<len(DIRECTORY) else r['offset']+r['compressed_size']+2048}
+         for n,r in enumerate(DIRECTORY)}
+LOCK=threading.Lock()
+LOCAL=threading.local()
+
+
+def client():
+    """Reuse TLS connections through the existing proxy. / 经已有代理复用 TLS 连接。"""
+    if not hasattr(LOCAL,'client'):
+        LOCAL.client=httpx.Client(proxy='http://127.0.0.1:10808',trust_env=False,follow_redirects=True,
+                                 timeout=httpx.Timeout(35,connect=15),
+                                 limits=httpx.Limits(keepalive_expiry=180))
+    return LOCAL.client
+
+
+def fetch(name):
+    """Validate a complete original member against official size and CRC. / 按官方长度和 CRC 验证完整原始条目。"""
+    m=MEMBERS[name]
+    out=ROOT/'raw'/name
+    out.parent.mkdir(parents=True,exist_ok=True)
+    if out.exists():
+        raw=out.read_bytes()
+        if len(raw)==m['size'] and zlib.crc32(raw)==m['crc32']:
+            return raw
+        raise ValueError('existing original does not match source')
+    part=ROOT/'raw/member-parts'/(name.replace('/','__')+'.part')
+    part.parent.mkdir(exist_ok=True)
+    total=m['end']-m['offset']
+    for attempt in range(40):
+        have=part.stat().st_size if part.exists() else 0
+        if have==total:
+            break
+        if have>total:
+            raise ValueError('part exceeds expected size')
+        start=m['offset']+have
+        end=min(m['end'],start+4*1024*1024)
+        try:
+            with client().stream('GET',META['download_url'],params={'download':1,'fresh':time.time_ns()},
+                                 headers={'Range':f'bytes={start}-{end-1}','Cache-Control':'no-cache'}) as response:
+                if response.status_code!=206:
+                    # Drain small expired-link responses so the TLS connection stays reusable.
+                    # 读完小型过期链接响应，使 TLS 连接可复用。
+                    if response.status_code==403:
+                        response.read()
+                    raise ValueError(f'HTTP {response.status_code}')
+                if response.headers.get('Content-Range')!=f"bytes {start}-{end-1}/{META['size']}":
+                    raise ValueError('range response mismatch')
+                received=0
+                with part.open('ab') as output:
+                    for block in response.iter_bytes(16384):
+                        if received+len(block)>end-start:
+                            raise ValueError('oversized range')
+                        output.write(block)
+                        received+=len(block)
+                if received!=end-start:
+                    raise ValueError('short range')
+        except Exception as exc:
+            with LOCK:
+                print(json.dumps({'member':name,'attempt':attempt+1,'error':str(exc) if isinstance(exc,ValueError) else type(exc).__name__}),flush=True)
+            time.sleep(min(2+attempt,10))
+    data=part.read_bytes() if part.exists() else b''
+    if len(data)!=total or data[:4]!=b'PK\x03\x04':
+        raise ValueError(f'incomplete member: {name}')
+    name_len,extra_len=struct.unpack_from('<HH',data,26)
+    if data[30:30+name_len].decode()!=name:
+        raise ValueError('member header name mismatch')
+    compressed=data[30+name_len+extra_len:30+name_len+extra_len+m['compressed_size']]
+    raw=zlib.decompress(compressed,-15) if m['compression']==8 else compressed
+    if len(raw)!=m['size'] or zlib.crc32(raw)!=m['crc32']:
+        raise ValueError(f'member CRC mismatch: {name}')
+    out.write_bytes(raw)
+    return raw
+
+
+def save(name,value):
+    """Record screening evidence. / 记录筛选证据。"""
+    (ROOT/'audit'/name).write_text(json.dumps(value,indent=2)+'\n',encoding='utf-8')
+
+
+def masks():
+    """Sample 80 IDs using the plan saved before any mask inspection. / 按查看掩码前保存的规则抽取 80 个 ID。"""
+    names=sorted((n for n in MEMBERS if n.endswith('_lab.png')),
+                 key=lambda n:hashlib.sha256(('p6-rescuenet-screen-v1:'+Path(n).stem.removesuffix('_lab')).encode()).digest())[:80]
+    save('mask-selection.json',{'names':names,'purpose':'development screening only'})
+    results=[]
+    def one(name):
+        raw=fetch(name)
+        with Image.open(io.BytesIO(raw)) as im:
+            pixels=np.asarray(im)
+            if pixels.ndim!=2:
+                raise ValueError('mask is not indexed labels')
+            unique,counts=np.unique(pixels,return_counts=True)
+            hist={str(int(k)):int(v) for k,v in zip(unique,counts)}
+            if any(int(k)>10 for k in hist):
+                raise ValueError('unknown semantic label')
+            clear,blocked=hist.get('7',0),hist.get('8',0)
+            stratum='mixed' if clear and blocked else 'clear_only' if clear else 'blocked_only' if blocked else 'no_road'
+            row={'id':Path(name).stem.removesuffix('_lab'),'mask_member':name,'mask_sha256':hashlib.sha256(raw).hexdigest(),
+                 'mask_bytes':len(raw),'width':im.width,'height':im.height,'class_pixels':hist,'stratum':stratum}
+        with LOCK:
+            results.append(row)
+            save('mask-screen-partial.json',results)
+            if len(results)%10==0:
+                print(json.dumps({'masks_verified':len(results),'planned':80}),flush=True)
+        return row
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        results=list(pool.map(one,names))
+    save('mask-screen.json',results)
+    selected=[]
+    for stratum in ('clear_only','blocked_only','mixed','no_road'):
+        selected.extend([r for r in results if r['stratum']==stratum][:8])
+    save('image-selection.json',selected)
+    print(json.dumps({'mask_counts':{s:sum(r['stratum']==s for r in results) for s in ('clear_only','blocked_only','mixed','no_road')},'images_selected':len(selected)}),flush=True)
+
+
+def images(limit):
+    """Acquire selected originals without interpreting model performance. / 获取选定原图，不推断模型表现。"""
+    selected=json.loads((ROOT/'audit/image-selection.json').read_text())
+    if limit:
+        # Balance a network-limited first tranche across available strata. / 网络受限时首批按已有类别轮询平衡。
+        groups={s:[r for r in selected if r['stratum']==s] for s in ('clear_only','blocked_only','mixed','no_road')}
+        selected=[g[i] for i in range(8) for g in groups.values() if len(g)>i][:limit]
+    results=[]
+    def one(row):
+        name=f"train-org-img/{row['id']}.jpg"
+        raw=fetch(name)
+        with Image.open(io.BytesIO(raw)) as im:
+            im.load()
+            if im.size!=(row['width'],row['height']):
+                raise ValueError('image/mask dimensions differ')
+            exif=im.getexif()
+            result={**row,'image_member':name,'image_sha256':hashlib.sha256(raw).hexdigest(),'image_bytes':len(raw),
+                    'exif_model':str(exif.get(272,'')),'exif_date':str(exif.get(306,'')),'has_gps':34853 in exif,
+                    'p6_split':'development_review_only','business_ground_truth':None}
+        with LOCK:
+            results.append(result)
+            save('image-pairs-partial.json',results)
+            print(json.dumps({'image_verified':row['id'],'stratum':row['stratum'],'complete_pairs':len(results),'planned':len(selected)}),flush=True)
+        return result
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+        results=list(pool.map(one,selected))
+    save('image-pairs.json',results)
+
+
+if __name__=='__main__':
+    parser=argparse.ArgumentParser()
+    parser.add_argument('stage',choices=['masks','images'])
+    parser.add_argument('--limit',type=int,default=0)
+    args=parser.parse_args()
+    masks() if args.stage=='masks' else images(args.limit)

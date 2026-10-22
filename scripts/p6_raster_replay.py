@@ -1,0 +1,295 @@
+"""Reconstruct bounded native windows only from already verified local TIFF ranges.
+
+仅从已验证的本地 TIFF 字节范围重建有界原生窗口。
+"""
+from __future__ import annotations
+
+import hashlib
+import io
+import math
+from collections import OrderedDict
+from pathlib import Path, PureWindowsPath
+
+MAX_WINDOW_PIXELS = 60_000_000
+MAX_READ_BYTES = 256 * 1024 * 1024
+MAX_BLOCK_CACHE_BYTES = 64 * 1024 * 1024
+_FULL_RASTER_CHUNK_BYTES = 4 * 1024 * 1024
+# Absolute data roots under which evidence paths were recorded (local workstation, cloud audit host).
+# 证据路径被记录时使用的绝对数据根（本机、云端核验主机）。
+RECORDED_DATA_ROOTS = ("D:/drone-agent-data/", "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/")
+
+
+def portable(name) -> str:
+    """Map an absolute path recorded under a known data root to its data-root-relative form.
+
+Unmapped Windows drives are rejected on every host; containment and digest checks still decide admission.
+
+将记录在已知数据根下的绝对路径映射为相对数据根并规范分隔符；在任何主机上都拒绝
+未映射的Windows盘符/共享路径，是否准入仍由包含关系与摘要核对决定。
+"""
+    text = str(name).replace("\\", "/")
+    for prefix in RECORDED_DATA_ROOTS:
+        if text.startswith(prefix):
+            return text[len(prefix):]
+    if PureWindowsPath(text).drive:
+        raise ValueError("unregistered Windows evidence root")
+    return text
+
+
+def rooted(data_root: Path, name) -> Path:
+    """Resolve a recorded evidence path inside the current data root. / 在当前数据根内解析记录的证据路径。"""
+    return (data_root / portable(name)).resolve()
+
+
+class RangeFile(io.RawIOBase):
+    """Expose only acquired byte blocks; missing bytes are errors, never zero-filled.
+
+只暴露已取得的字节块；缺失字节报错，绝不补零。
+"""
+
+    def __init__(self, source, *, gdal_callback=False):
+        super().__init__()
+        self.source, self.position = source, 0
+        self.gdal_callback = gdal_callback
+
+    def readable(self):
+        """Allow reads only. / 仅允许读取。"""
+        return True
+
+    def seekable(self):
+        """Support local random reads. / 支持本地随机读取。"""
+        return True
+
+    def tell(self):
+        """Return the local cursor. / 返回本地游标。"""
+        return self.position
+
+    def seek(self, offset, whence=0):
+        """Move a cursor without fetching anything. / 移动游标，不获取任何数据。"""
+        self._checkClosed()
+        if whence not in (0, 1, 2):
+            raise ValueError("invalid raster seek mode")
+        position = offset + (0 if whence == 0 else self.position if whence == 1 else self.source.size)
+        if position < 0:
+            raise ValueError("negative raster offset")
+        self.position = position
+        return position
+
+    def read(self, size=-1):
+        """Assemble a bounded read from explicit local files. / 从明确的本地文件组装有界读取。"""
+        self._checkClosed()
+        try:
+            return self._read(size)
+        except (OSError, ValueError):
+            self.source.failed_reads = True
+            if self.gdal_callback:
+                # C callbacks must return short reads; the caller rejects the failure flag. / C 回调返回短读，由调用者拒绝失败标记。
+                return b""
+            raise
+
+    def _read(self, size):
+        """Read strict local ranges without filling gaps. / 严格读取本地范围，不填补空缺。"""
+        size = self.source.size - self.position if size is None or size < 0 else size
+        size = max(0, min(size, self.source.size - self.position))
+        if size > MAX_READ_BYTES:
+            raise OSError("raster read exceeds bounded decoder allowance")
+        chunks, remaining = [], size
+        while remaining:
+            start = self.position // self.source.block_bytes * self.source.block_bytes
+            block = self._block(start)
+            offset = self.position - start
+            count = min(remaining, len(block) - offset)
+            if count <= 0:
+                raise OSError("incomplete local TIFF block")
+            chunks.append(block[offset:offset + count])
+            self.position += count
+            remaining -= count
+        return b"".join(chunks)
+
+    def _block(self, start):
+        """Verify one complete recorded range file. / 验证一份完整的已记录范围文件。"""
+        if start not in self.source.rows:
+            self.source.missing.add(start)
+            raise OSError(f"required local TIFF block is missing: {start}")
+        row = self.source.rows[start]
+        path = rooted(self.source.root, row["file"])
+        if not path.is_relative_to(self.source.root) or ".." in Path(portable(row["file"])).parts:
+            raise OSError("TIFF block is outside data root")
+        cache_key = (str(path), row["sha256"])
+        block = self.source.blocks.pop(cache_key, None)
+        if block is None:
+            block = path.read_bytes()
+            if len(block) != row["range"][1] - start + 1 or hashlib.sha256(block).hexdigest() != row["sha256"]:
+                raise OSError("TIFF block changed after provenance verification")
+        return self._cache_block(cache_key, block)
+
+    def _cache_block(self, cache_key, block):
+        """Keep the shared least-recently-used byte budget. / 保持共享的最近最少使用字节预算。"""
+        if len(block) <= MAX_BLOCK_CACHE_BYTES:
+            self.source.blocks[cache_key] = block
+            while sum(map(len, self.source.blocks.values())) > MAX_BLOCK_CACHE_BYTES:
+                self.source.blocks.popitem(last=False)
+        return block
+
+    def readinto(self, buffer):
+        """Fill a caller buffer from local bytes. / 用本地字节填充调用者缓冲。"""
+        value = self.read(len(buffer))
+        buffer[:len(value)] = value
+        return len(value)
+
+
+class LocalRaster:
+    """Offer exactly one TIFF name to GDAL with no sidecar or URL fallback.
+
+只向 GDAL 提供一个 TIFF 名称，不回退到附属文件或 URL。
+"""
+
+    _reader = RangeFile
+
+    def __init__(self, manifest, root, cache):
+        self.size = manifest["source"]["imagery_published_bytes"]
+        self.block_bytes = manifest["block_bytes"]
+        self.rows = {row["range"][0]: row for row in manifest["ranges"]}
+        self.root = root.resolve()
+        self.blocks = cache.setdefault("p6_local_tiff_blocks", OrderedDict())
+        self.missing = set()
+        self.failed_reads = False
+        self.name = "p6-local-source.tif"
+
+    def __call__(self, path, mode="rb"):
+        """Refuse everything except this read-only virtual TIFF. / 拒绝只读虚拟 TIFF 以外的一切请求。"""
+        if str(path) != self.name or mode not in {"r", "rb"}:
+            raise FileNotFoundError("only the bound local TIFF is available")
+        return self._reader(self, gdal_callback=True)
+
+
+class _FullRangeFile(RangeFile):
+    """Read private chunks bound to a verified complete parent digest.
+
+读取已绑定到完整父文件验证摘要的私有块。
+"""
+
+    def _block(self, start):
+        """Seek only to a verified private chunk, never a manifest-provided offset.
+
+只定位到已验证的私有块，不采用清单提供的文件偏移。
+"""
+        if start not in self.source._chunk_sha256:
+            self.source.missing.add(start)
+            raise OSError(f"required local TIFF block is missing: {start}")
+        path = self.source.parent.resolve()
+        if not path.is_relative_to(self.source.root):
+            raise OSError("full raster is outside the data root")
+        count = min(self.source.block_bytes, self.source.size - start)
+        digest = self.source._chunk_sha256[start]
+        cache_key = ("p6_full_tiff_chunk", str(path), self.source.parent_sha256, start, count, digest)
+        block = self.source.blocks.pop(cache_key, None)
+        if block is None:
+            with path.open("rb") as stream:
+                stream.seek(start)
+                block = stream.read(count)
+            if len(block) != count or hashlib.sha256(block).hexdigest() != digest:
+                raise OSError("TIFF block changed after provenance verification")
+        return self._cache_block(cache_key, block)
+
+
+class _FullRaster(LocalRaster):
+    """Build a private chunk index only while verifying the complete local parent.
+
+只在验证完整本地父文件时建立私有分块索引。
+"""
+
+    _reader = _FullRangeFile
+
+    def __init__(self, parent, parent_sha256, data_root, cache):
+        self.parent, self.parent_sha256 = parent.resolve(), parent_sha256
+        root = data_root.resolve()
+        if not self.parent.is_relative_to(root):
+            raise ValueError("full raster is outside the data root")
+        size = self.parent.stat().st_size
+        if not 0 < size <= MAX_READ_BYTES:
+            raise ValueError("full-object raster exceeds the bounded source allowance")
+        super().__init__({"source": {"imagery_published_bytes": size}, "block_bytes": _FULL_RASTER_CHUNK_BYTES, "ranges": []}, root, cache)
+        self._chunk_sha256 = {}
+        digest = hashlib.sha256()
+        with self.parent.open("rb") as stream:
+            for start in range(0, size, self.block_bytes):
+                count = min(self.block_bytes, size - start)
+                block = stream.read(count)
+                if len(block) != count:
+                    raise ValueError("full raster changed after provenance verification")
+                digest.update(block)
+                self._chunk_sha256[start] = hashlib.sha256(block).hexdigest()
+            if stream.read(1):
+                raise ValueError("full raster changed after provenance verification")
+        if digest.hexdigest() != parent_sha256:
+            raise ValueError("full raster changed after provenance verification")
+
+
+def verify_window(receipt: dict, manifest: dict | _FullRaster, data_root: Path, cache: dict, manifest_sha256: str, *, expected_bands: int = 4) -> None:
+    """Decode real source bytes and recompute native RGB, JPEG and alpha digests.
+
+解码实际源字节并重算原生 RGB、JPEG 与 alpha 摘要。
+"""
+    x, y, width, height = receipt["native_window_xywh"]
+    if (any(type(v) is not int for v in (x, y, width, height)) or min(x, y) < 0 or min(width, height) <= 0
+            or width * height > MAX_WINDOW_PIXELS):
+        raise ValueError("native window exceeds the 60 MP decoder bound")
+    if expected_bands not in {3, 4}:
+        raise ValueError("unsupported source channel contract")
+    key = ("p6_decoded_source_window", manifest_sha256, expected_bands, x, y, width, height)
+    if key not in cache:
+        try:
+            import numpy as np
+            import rasterio
+            from PIL import Image
+            from rasterio.enums import ColorInterp
+            from rasterio.windows import Window
+        except ImportError as exc:
+            raise ValueError("the pinned local raster decoder is unavailable") from exc
+        source = manifest if isinstance(manifest, _FullRaster) else LocalRaster(manifest, data_root, cache)
+        # A custom opener prevents eager full-file reads and all network access. / 自定义 opener 避免全文件预读及任何联网。
+        try:
+            with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_PAM_ENABLED="NO"):
+                with rasterio.open(source.name, "r", driver="GTiff", opener=source, sharing=False) as dataset:
+                    colors = (ColorInterp.red, ColorInterp.green, ColorInterp.blue) + ((ColorInterp.alpha,) if expected_bands == 4 else ())
+                    if (dataset.driver != "GTiff" or dataset.count != expected_bands or dataset.dtypes != ("uint8",) * expected_bands
+                            or dataset.colorinterp != colors
+                            or x + width > dataset.width or y + height > dataset.height):
+                        raise ValueError("actual TIFF format, channels or window bounds disagree")
+                    window = Window(x, y, width, height)
+                    pixels = dataset.read(list(range(1, expected_bands + 1)), window=window)
+                    alpha = pixels[3] if expected_bands == 4 else dataset.dataset_mask(window=window)
+                    if source.failed_reads or pixels.shape != (expected_bands, height, width) or alpha.shape != (height, width):
+                        raise ValueError("not all required local TIFF bytes were available")
+                    rgb = np.ascontiguousarray(pixels[:3].transpose(1, 2, 0))
+                    jpeg, mask = io.BytesIO(), io.BytesIO()
+                    Image.fromarray(rgb).save(jpeg, format="JPEG", quality=98, subsampling=0)
+                    Image.fromarray(alpha).save(mask, format="PNG")
+                    actual = {"width": dataset.width, "height": dataset.height, "crs": str(dataset.crs),
+                              "transform": list(dataset.transform), "window_transform": list(dataset.window_transform(window)),
+                              "native_rgb_sha256": hashlib.sha256(rgb.tobytes()).hexdigest(),
+                              "image_sha256": hashlib.sha256(jpeg.getvalue()).hexdigest(),
+                              "mask_sha256": hashlib.sha256(mask.getvalue()).hexdigest(),
+                              "valid_pixel_fraction": float(np.count_nonzero(alpha) / alpha.size)}
+        except (OSError, rasterio.errors.RasterioError) as exc:
+            raise ValueError("local TIFF bytes could not reproduce the declared window") from exc
+        cache[key] = actual
+    actual = cache[key]
+    raster = receipt["raster"]
+    if (any(actual[k] != receipt[k] for k in ("native_rgb_sha256", "image_sha256", "mask_sha256"))
+            or any(actual[k] != raster[k] for k in ("width", "height", "crs"))
+            or len(raster["transform"]) != 9 or len(receipt["window_transform"]) != 9
+            or any(not math.isclose(a, b, rel_tol=0, abs_tol=1e-8) for a, b in zip(actual["transform"], raster["transform"], strict=True))
+            or any(not math.isclose(a, b, rel_tol=0, abs_tol=1e-8) for a, b in zip(actual["window_transform"], receipt["window_transform"], strict=True))
+            or not math.isclose(actual["valid_pixel_fraction"], receipt["valid_pixel_fraction"], abs_tol=1e-9)):
+        raise ValueError("actual local TIFF pixels or georeferencing do not match the extraction")
+
+
+def verify_full_window(receipt: dict, parent: Path, parent_sha256: str, data_root: Path, cache: dict) -> None:
+    """Decode an already validated complete RGB TIFF, without inventing HTTP ranges.
+
+解码已验证的完整 RGB TIFF；内部文件视图不冒充 HTTP 范围回执。
+"""
+    local_view = _FullRaster(parent, parent_sha256, data_root, cache)
+    verify_window(receipt, local_view, data_root, cache, "full_object:" + parent_sha256, expected_bands=3)

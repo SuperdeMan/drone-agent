@@ -1,0 +1,634 @@
+{
+  "format": "drone.p6-ai-review-assignment/v1",
+  "reviewer_id": "prior_verifier_3",
+  "worker_dir": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\prior_verifier_3",
+  "created_at": "2026-10-21T13:58:16.800184+00:00",
+  "parent_history": "none",
+  "evaluation_prompt_access": "forbidden",
+  "evaluation_outputs_access": "forbidden",
+  "source_class_label_access": "forbidden",
+  "samples": [
+    {
+      "sample_id": "bounded-extract-6bab4e2bfdfb5c",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-6bab4e2bfdfb5c.jpg",
+      "image_sha256": "967c0de1f7485a854ba99b5bad2aa990ee197e4a8a024eaf5f72a95279f8e37d",
+      "width": 1169,
+      "height": 528,
+      "media_origin": "real_capture_derivative",
+      "asset_group_id": "crasar-road-59e6ddf3e5e11b",
+      "observed_world_scope": {
+        "freeze_scope_sha256": "51a9db53f1c0da442ccdc05a50145967485bbc8493f9a2dd5069f890efef844d",
+        "frozen_at_utc": "2026-10-18T13:58:53.915621+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-11-0011",
+        "reference_chain_station_interval_m": [
+          0,
+          100.0
+        ],
+        "length_m": 100.00000000000995,
+        "utm_epsg": 32617,
+        "utm_polyline_m": [
+          [
+            270702.3437613457,
+            3283853.781592049
+          ],
+          [
+            270800.72745755565,
+            3283835.8749363013
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -83.369131856,
+              29.6635666679
+            ],
+            [
+              -83.3681122825,
+              29.663423359
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -83.369131856,
+            29.6635666679
+          ],
+          [
+            -83.3681122825,
+            29.663423359
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 0.0,
+            "kind": "junction_degree_3",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -83.369131856,
+              29.6635666679
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 100.0,
+            "kind": "fixed_geographic_road_cross_section",
+            "natural_geometry_anchor": false,
+            "visual_boundary_verified": false,
+            "note": "Fixed geographic terminal cross-section; a natural landmark or facility boundary is not asserted.",
+            "world_endpoint_lon_lat": [
+              -83.3681122825,
+              29.663423359
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 1,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          226.6323173913662
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "prior_task_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\prior-tasks-v1\\bounded-extract-6bab4e2bfdfb5c.json",
+      "prior_task_sha256": "75e259d8fddc958ac6ebc81c010271ae2680ea151cb0d346d25827e3dfecdd78",
+      "target_brief": "画面中部横向浅灰道路，从左侧树林下 A 固定截面延伸到右侧 B 十字路口。上方有两处浅色出入口和小型白色金属屋顶棚，下方是草地、白色建筑与铺装停车区。登记 A–B 间可见道路全幅；B 处保持主路连续宽度截止，不延伸入南北支路。",
+      "target_polygon": [
+        [
+          0.129921,
+          0.430657
+        ],
+        [
+          0.262467,
+          0.423358
+        ],
+        [
+          0.393701,
+          0.425791
+        ],
+        [
+          0.524934,
+          0.43309
+        ],
+        [
+          0.656168,
+          0.43309
+        ],
+        [
+          0.793963,
+          0.435523
+        ],
+        [
+          0.870735,
+          0.437956
+        ],
+        [
+          0.870079,
+          0.554745
+        ],
+        [
+          0.787402,
+          0.549878
+        ],
+        [
+          0.656168,
+          0.549878
+        ],
+        [
+          0.524934,
+          0.545012
+        ],
+        [
+          0.426509,
+          0.53528
+        ],
+        [
+          0.295276,
+          0.532847
+        ],
+        [
+          0.19685,
+          0.525547
+        ],
+        [
+          0.129265,
+          0.530414
+        ]
+      ],
+      "expected_reference_image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\reserve-extract-d5115042d2b358.jpg",
+      "expected_reference_image_sha256": "789b7fe9285eeda3d47cb6680ccc4051f12d5b78acea75c3ee0a6dd256630212",
+      "target_selection": "pre_registered_prior_task",
+      "data_root": "D:\\drone-agent-data",
+      "first_author_id": "prior_annotator_2",
+      "first_row": {
+        "sample_id": "bounded-extract-6bab4e2bfdfb5c",
+        "image_sha256": "967c0de1f7485a854ba99b5bad2aa990ee197e4a8a024eaf5f72a95279f8e37d",
+        "target_brief": "画面中部横向浅灰道路，从左侧树林下 A 固定截面延伸到右侧 B 十字路口。上方有两处浅色出入口和小型白色金属屋顶棚，下方是草地、白色建筑与铺装停车区。登记 A–B 间可见道路全幅；B 处保持主路连续宽度截止，不延伸入南北支路。",
+        "target_polygon": [
+          [
+            0.129921,
+            0.430657
+          ],
+          [
+            0.262467,
+            0.423358
+          ],
+          [
+            0.393701,
+            0.425791
+          ],
+          [
+            0.524934,
+            0.43309
+          ],
+          [
+            0.656168,
+            0.43309
+          ],
+          [
+            0.793963,
+            0.435523
+          ],
+          [
+            0.870735,
+            0.437956
+          ],
+          [
+            0.870079,
+            0.554745
+          ],
+          [
+            0.787402,
+            0.549878
+          ],
+          [
+            0.656168,
+            0.549878
+          ],
+          [
+            0.524934,
+            0.545012
+          ],
+          [
+            0.426509,
+            0.53528
+          ],
+          [
+            0.295276,
+            0.532847
+          ],
+          [
+            0.19685,
+            0.525547
+          ],
+          [
+            0.129265,
+            0.530414
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "已按原生像素查看当前图与真实预期参考图。参考图可见横向道路、右端十字路口、上侧白色金属屋顶棚及下侧建筑停车区；当前图则是向右下倾斜的双黄线道路，上侧为大片裸地，下侧为树林及零散建筑，画面右侧未见登记的十字路口。保留的登记多边形在当前图中跨越道路及路旁地面，无法据此确认任务要求的 A–B 完整道路全幅和两端横截面。",
+        "uncertainties": [
+          "当前图未能对应预期参考图中的右端十字路口及两侧地物，登记 A/B 在当前图中的位置无法确认。",
+          "无法针对事前任务所指的完整道路范围判定实体是否进入路面。"
+        ],
+        "inspected_at": "2026-10-21T13:51:22.906189+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-6bab4e2bfdfb5c.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\reserve-extract-d5115042d2b358.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\prior_annotator_2\\bounded-extract-6bab4e2bfdfb5c-current.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\prior_annotator_2\\bounded-extract-6bab4e2bfdfb5c-reference.jpg"
+        ]
+      },
+      "first_row_sha256": "bd1bd35e03646fbb7e387493ea6d46427506a79d4948f0c522f5adbac243ad39",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\prior_annotator_2\\suggestions.json",
+      "draft_sha256": "d51f2185ac461091953a145aebe534a18d29ec5687ad859763944dc676cb4963",
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\receipts\\bounded-extract-6bab4e2bfdfb5c.json",
+      "current_extraction_sha256": "3b949c5d0251b0ceee36d7c9e2d7a939cc9687116afe8b84e41ee8698209411d",
+      "prior_task_target_must_remain_unchanged": true,
+      "observed_asset_identity_is_distinct_from_expected_task_asset": true
+    },
+    {
+      "sample_id": "bounded-extract-e589e7736b4601",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-e589e7736b4601.jpg",
+      "image_sha256": "d7b7ccf3e84a67099c4c95d93c281e6611a71d0dbe1d259994630fc6934dc6c5",
+      "width": 1819,
+      "height": 1817,
+      "media_origin": "real_capture_derivative",
+      "asset_group_id": "crasar-road-143784a719712c",
+      "observed_world_scope": {
+        "freeze_scope_sha256": "645bc62a16d4f473c9497e98a057168887900d7df11ae8d9ff65b6a29f32518b",
+        "frozen_at_utc": "2026-10-18T13:58:53.915621+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "selection_inputs": "source line geometry, source graph/curvature endpoints, common annotated view extent and clean author date groups only",
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "reference_chain_id": "chain-33-0022",
+        "reference_chain_station_interval_m": [
+          0,
+          64.15726590491848
+        ],
+        "length_m": 64.15726590491848,
+        "utm_epsg": 32617,
+        "utm_polyline_m": [
+          [
+            373152.67494625354,
+            2964701.4657547637
+          ],
+          [
+            373153.95433851396,
+            2964698.4417286427
+          ],
+          [
+            373154.18695387314,
+            2964695.1851012115
+          ],
+          [
+            373153.3727945675,
+            2964692.0060000345
+          ],
+          [
+            373151.5894000688,
+            2964689.2533682515
+          ],
+          [
+            373148.99184174614,
+            2964687.1985863564
+          ],
+          [
+            373145.8902898774,
+            2964686.074264884
+          ],
+          [
+            373142.5948790121,
+            2964685.957961777
+          ],
+          [
+            373139.45455414726,
+            2964686.888425097
+          ],
+          [
+            373136.74069053004,
+            2964688.7881277525
+          ],
+          [
+            373134.72467287653,
+            2964691.5795312584
+          ],
+          [
+            373133.7166739938,
+            2964694.8749452783
+          ],
+          [
+            373133.9105201619,
+            2964698.325426045
+          ],
+          [
+            373135.2286782461,
+            2964701.5432895683
+          ],
+          [
+            373137.51607854775,
+            2964704.1020701486
+          ],
+          [
+            373140.54009586666,
+            2964705.769166057
+          ],
+          [
+            373143.95180939283,
+            2964706.35069929
+          ],
+          [
+            373147.3635204746,
+            2964705.73039724
+          ],
+          [
+            373150.38754162146,
+            2964704.0633069747
+          ],
+          [
+            373152.67494625354,
+            2964701.4657547637
+          ]
+        ],
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              -82.2761718258,
+              26.7980207538
+            ],
+            [
+              -82.2761586513,
+              26.7979935731
+            ],
+            [
+              -82.2761559825,
+              26.7979641979
+            ],
+            [
+              -82.2761638507,
+              26.7979354276
+            ],
+            [
+              -82.2761815112,
+              26.797910419
+            ],
+            [
+              -82.2762074316,
+              26.7978916358
+            ],
+            [
+              -82.2762385155,
+              26.7978812058
+            ],
+            [
+              -82.2762716512,
+              26.7978798572
+            ],
+            [
+              -82.2763033327,
+              26.7978879714
+            ],
+            [
+              -82.2763308225,
+              26.7979048732
+            ],
+            [
+              -82.276351383,
+              26.7979298873
+            ],
+            [
+              -82.2763618551,
+              26.7979595423
+            ],
+            [
+              -82.2763602539,
+              26.797990706
+            ],
+            [
+              -82.2763473201,
+              26.7980198719
+            ],
+            [
+              -82.2763245704,
+              26.7980431764
+            ],
+            [
+              -82.2762943212,
+              26.7980584988
+            ],
+            [
+              -82.2762600626,
+              26.7980640574
+            ],
+            [
+              -82.2762256826,
+              26.7980587675
+            ],
+            [
+              -82.2761950965,
+              26.7980439935
+            ],
+            [
+              -82.2761718258,
+              26.7980207538
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            -82.2761718258,
+            26.7980207538
+          ],
+          [
+            -82.2761718258,
+            26.7980207538
+          ]
+        ],
+        "terminal_boundaries": [
+          {
+            "station_m": 0.0,
+            "kind": "junction_degree_4",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -82.2761718258,
+              26.7980207538
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          },
+          {
+            "station_m": 64.15726590491848,
+            "kind": "junction_degree_4",
+            "natural_geometry_anchor": true,
+            "visual_boundary_verified": false,
+            "world_endpoint_lon_lat": [
+              -82.2761718258,
+              26.7980207538
+            ],
+            "physical_definition": "road terminal cross-section at frozen world endpoint; source junction or curvature anchor when recorded",
+            "road_width_measured_m": null
+          }
+        ],
+        "natural_geometry_anchor_count": 2,
+        "natural_or_facility_boundary_visual_verified": false,
+        "common_annotated_interval_on_reference_chain_m": [
+          0,
+          64.15726590491848
+        ],
+        "common_actual_image_mask_coverage_verified": false
+      },
+      "prior_task_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\prior-tasks-v1\\bounded-extract-e589e7736b4601.json",
+      "prior_task_sha256": "02e4d9cc837b38dc5fa967a442b35ba5b205b70862d4388414cb41fcc410b936",
+      "target_brief": "画面中央由左向右微弯的浅色道路固定段。A 横断面位于左侧支路口南侧、两辆深色车下方；B 横断面位于右侧停车场入口北侧、园内圆形构筑物东南方向。北侧是带弯曲步道和圆形构筑物的绿地，南侧为白色人行道及长条浅色屋顶建筑。沿 A–B 登记道路两侧路缘之间的完整铺装全幅，保留轻微弯曲；两侧人行道、草地、停车位和支路不并入。",
+      "target_polygon": [
+        [
+          0.2161,
+          0.4227
+        ],
+        [
+          0.2667,
+          0.4432
+        ],
+        [
+          0.4222,
+          0.4505
+        ],
+        [
+          0.6,
+          0.4481
+        ],
+        [
+          0.6833,
+          0.4348
+        ],
+        [
+          0.78,
+          0.3937
+        ],
+        [
+          0.7894,
+          0.5435
+        ],
+        [
+          0.695,
+          0.5616
+        ],
+        [
+          0.5833,
+          0.5652
+        ],
+        [
+          0.4222,
+          0.5652
+        ],
+        [
+          0.3,
+          0.5628
+        ],
+        [
+          0.215,
+          0.5652
+        ]
+      ],
+      "expected_reference_image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-274646b23eb972.jpg",
+      "expected_reference_image_sha256": "4c294a9101f3435996ddc9c597b7586030ca412138c88f9e99a39ef4b1169f8f",
+      "target_selection": "pre_registered_prior_task",
+      "data_root": "D:\\drone-agent-data",
+      "first_author_id": "prior_annotator_2",
+      "first_row": {
+        "sample_id": "bounded-extract-e589e7736b4601",
+        "image_sha256": "d7b7ccf3e84a67099c4c95d93c281e6611a71d0dbe1d259994630fc6934dc6c5",
+        "target_brief": "画面中央由左向右微弯的浅色道路固定段。A 横断面位于左侧支路口南侧、两辆深色车下方；B 横断面位于右侧停车场入口北侧、园内圆形构筑物东南方向。北侧是带弯曲步道和圆形构筑物的绿地，南侧为白色人行道及长条浅色屋顶建筑。沿 A–B 登记道路两侧路缘之间的完整铺装全幅，保留轻微弯曲；两侧人行道、草地、停车位和支路不并入。",
+        "target_polygon": [
+          [
+            0.2161,
+            0.4227
+          ],
+          [
+            0.2667,
+            0.4432
+          ],
+          [
+            0.4222,
+            0.4505
+          ],
+          [
+            0.6,
+            0.4481
+          ],
+          [
+            0.6833,
+            0.4348
+          ],
+          [
+            0.78,
+            0.3937
+          ],
+          [
+            0.7894,
+            0.5435
+          ],
+          [
+            0.695,
+            0.5616
+          ],
+          [
+            0.5833,
+            0.5652
+          ],
+          [
+            0.4222,
+            0.5652
+          ],
+          [
+            0.3,
+            0.5628
+          ],
+          [
+            0.215,
+            0.5652
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "已查看当前图全幅及覆盖全部像素的四张原生裁片，并逐段查看参考图登记范围的原生裁片。参考图中横向浅色道路北侧有绿地、弯曲步道和圆形构筑物，南侧有白色人行道及长条建筑；当前图主要是左侧大面积屋顶、中央铺装场地、下侧网球场和右侧斜向双黄线道路，未见登记描述的中央横向道路及圆形构筑物。保留的登记多边形落在屋顶、内部铺装场地和植被等区域，无法核定 A/B 两端和两侧实际路缘。",
+        "uncertainties": [
+          "当前图中的道路方向和周边设施无法与事前任务及预期参考图建立对应关系。",
+          "当前图内部铺装场地可见散落物，但无法确认其属于任务登记道路范围，不能据此给出该目标的障碍结论。"
+        ],
+        "inspected_at": "2026-10-21T13:51:22.906189+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-e589e7736b4601.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\images\\bounded-extract-274646b23eb972.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\prior_annotator_2\\bounded-extract-e589e7736b4601-current.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\prior_annotator_2\\bounded-extract-e589e7736b4601-reference.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\prior_annotator_2\\bounded-extract-e589e7736b4601-current-native-1.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\prior_annotator_2\\bounded-extract-e589e7736b4601-current-native-2.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\prior_annotator_2\\bounded-extract-e589e7736b4601-current-native-3.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\prior_annotator_2\\bounded-extract-e589e7736b4601-current-native-4.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\prior_annotator_2\\bounded-extract-e589e7736b4601-reference-native-1.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\prior_annotator_2\\bounded-extract-e589e7736b4601-reference-native-2.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\prior_annotator_2\\bounded-extract-e589e7736b4601-reference-native-3.png"
+        ]
+      },
+      "first_row_sha256": "cfa2d7674b290ef6c88f31bb88fb843b5dda0ddaeb93b64cb422dfa0714bbdcf",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\prior_annotator_2\\suggestions.json",
+      "draft_sha256": "d51f2185ac461091953a145aebe534a18d29ec5687ad859763944dc676cb4963",
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-cloud-v5\\receipts\\bounded-extract-e589e7736b4601.json",
+      "current_extraction_sha256": "a5802c29480a3d8b62b88db0c871755f989cd34211c085e16cf3cf8fda7bfa7b",
+      "prior_task_target_must_remain_unchanged": true,
+      "observed_asset_identity_is_distinct_from_expected_task_asset": true
+    }
+  ]
+}

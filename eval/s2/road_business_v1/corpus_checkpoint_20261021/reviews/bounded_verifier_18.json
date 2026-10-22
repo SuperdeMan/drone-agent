@@ -1,0 +1,832 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "bounded_verifier_18",
+  "created_at": "2026-10-21T11:40:36.495943+00:00",
+  "assignment_file": "verification\\bounded_verifier_18\\assignment.json",
+  "assignment_sha256": "a26a2d3b439837b7bf7fc36770b9cd294c1ad9edcce5e570b42ac1fe906a4f37",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-22092640128cea",
+      "decision": "revised",
+      "findings": [
+        "已实际查看原图、固定导图、源有效区及三张覆盖首稿完整目标的原生像素裁片，并补看固定 A 端正交横断面；未移动或缩短 A/B 范围。",
+        "A 端位于白色驾驶室、红色车身车辆旁的宽铺装路口。沿固定首段方向的正交横断面向左延伸时，铺装面仍连续便进入黑色源无效区，完整横截面边缘不在可见源内；首稿在可见铺装面内部提前收边，不能作为真实道路边界。",
+        "据完整固定范围的源覆盖不足改为 excluded_source，target_polygon 置 null；不通过缩窄路口或把 A 端移到更清楚的位置补救。",
+        "首稿中文说明已编码为问号，原始首稿保持不变；本次依据实际图像重写 target_brief、notes、uncertainties。树冠及阴影不作为实际植被侵入证据，车辆不自动标作障碍。"
+      ],
+      "changes": {
+        "target_brief": "固定 A 端位于左下白色驾驶室、红色车身车辆旁的铺装路口；目标沿林间弯曲铺装道路向右上延伸，到树冠覆盖的固定 B 横断面。两端及整条约 49.33 米固定路线均保留；A 端完整横断面的左侧铺装边缘超出源有效影像。",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "notes": "二审已逐段查看原生像素，并用固定 A 点及首段方向绘制正交横断面。A 端铺装面在向左进入源无效黑区前仍未出现真实道路边缘，首稿左端落在铺装面内部；因此不能确认完整固定目标的横断面覆盖，按源范围不完整排除，目标 polygon 为 null。固定 A/B 未平移、未缩短、未改选清晰路段。道路中上段可见连续浅色铺装，但多处树冠、长阴影和车辆遮挡，不能以有效 mask 推定其下路面状态，也未把树冠投影或普通车辆作为障碍。原始首稿及其乱码文本保留在 assignment 引用记录中。",
+        "uncertainties": [
+          "A 端完整横断面的左侧铺装边缘位于源无效区之外，不能从该源恢复其真实边界或完整宽度。",
+          "树冠、阴影及车辆下方的路面和潜在实体无法可靠判断；可见覆盖不能证明植被实际侵入或车辆造成阻路。"
+        ]
+      },
+      "inspected_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/images/bounded-extract-22092640128cea.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/guides/bounded-extract-22092640128cea.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/masks/bounded-extract-22092640128cea.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-01.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-02.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-03.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-first-draft-overlay.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-01.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-02.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-03.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-endpoint-A-cross-section.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "5f0c3a3803cc6c2a9eaea00558e481e28f0dedb5b0a0a7b5c449bed1f157e5dd",
+      "first_author_id": "bounded_annotator_20",
+      "first_row_sha256": "7230b90a2f9b8be86e287c63d17d7ea98d6f57d479d0a9be698791e2bf395632",
+      "reviewed_at": "2026-10-21T11:40:36.502949+00:00",
+      "reviewer_id": "bounded_verifier_18",
+      "inspection_file_sha256": {
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/images/bounded-extract-22092640128cea.jpg": "5f0c3a3803cc6c2a9eaea00558e481e28f0dedb5b0a0a7b5c449bed1f157e5dd",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/guides/bounded-extract-22092640128cea.jpg": "4ffcdea6826dad1bc66f7da08ab449ff1a626ef17b52dc2fd35a79114dc7afd4",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/masks/bounded-extract-22092640128cea.png": "7932dc69e0baa009c4229711bb2dd26ee2622ee4958450a7d4206613d0cba11a",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-01.png": "9bcd7a436ea0a25fe9c2edafdb8baf51f55e449497f5c213fdb9d74faed10f6c",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-02.png": "e35f36b7c77afa0a159d400d6eb1db186e5d0070d4da9721934da00fdc326337",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-03.png": "fe352aeba4778459f5aab552f47b0ae3fc2167c193de99c33ad1d76823870448",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-first-draft-overlay.png": "d2fafe34cabb183527bf65a876388163978f4d110a27ddc0d9f3d2271dcf4900",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-01.png": "fe7d0096cdc22390492d9c590722a1f60735e653000e3d1935e815a2c348b7da",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-02.png": "db96f8b7c02dbdcd8a9df2f4d038006a9bafea0c5538b03518da45af8a11de0c",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-03.png": "ed1f798d2ccee2a17d32fd68b95fa999f8f0176c70cb112951511953a3974f06",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-endpoint-A-cross-section.png": "d09a280179971bd2b1a4c0cd394430c4ffcaae6a2757a4f50a7237df2ac4a0ac"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-22092640128cea",
+        "image_sha256": "5f0c3a3803cc6c2a9eaea00558e481e28f0dedb5b0a0a7b5c449bed1f157e5dd",
+        "target_brief": "固定 A 端位于左下白色驾驶室、红色车身车辆旁的铺装路口；目标沿林间弯曲铺装道路向右上延伸，到树冠覆盖的固定 B 横断面。两端及整条约 49.33 米固定路线均保留；A 端完整横断面的左侧铺装边缘超出源有效影像。",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "二审已逐段查看原生像素，并用固定 A 点及首段方向绘制正交横断面。A 端铺装面在向左进入源无效黑区前仍未出现真实道路边缘，首稿左端落在铺装面内部；因此不能确认完整固定目标的横断面覆盖，按源范围不完整排除，目标 polygon 为 null。固定 A/B 未平移、未缩短、未改选清晰路段。道路中上段可见连续浅色铺装，但多处树冠、长阴影和车辆遮挡，不能以有效 mask 推定其下路面状态，也未把树冠投影或普通车辆作为障碍。原始首稿及其乱码文本保留在 assignment 引用记录中。",
+        "uncertainties": [
+          "A 端完整横断面的左侧铺装边缘位于源无效区之外，不能从该源恢复其真实边界或完整宽度。",
+          "树冠、阴影及车辆下方的路面和潜在实体无法可靠判断；可见覆盖不能证明植被实际侵入或车辆造成阻路。"
+        ],
+        "inspected_at": "2026-10-21T11:40:36.502949+00:00",
+        "inspection_files": [
+          "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/images/bounded-extract-22092640128cea.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/guides/bounded-extract-22092640128cea.jpg",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261021/mussett-frames-v2/masks/bounded-extract-22092640128cea.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-01.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-02.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-native-03.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-first-draft-overlay.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-01.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-02.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-geometry-03.png",
+          "D:/drone-agent-data/p6-corpus-completion-20261018/verification/bounded_verifier_18/inspection/bounded-extract-22092640128cea-endpoint-A-cross-section.png"
+        ]
+      },
+      "final_row_sha256": "7a52171e0f69ca53f55291d604dc9bc075e7e386a15611e8afd3b1a7cfe02a1f"
+    },
+    {
+      "sample_id": "bounded-extract-24331bcbfd3083",
+      "decision": "revised",
+      "findings": [
+        "已实际查看原图、固定导图、源有效区、四张覆盖完整固定目标的原生裁片，以及两端正交横断面和路缘候选细节；固定 A/B 未移动或缩短。",
+        "目标是球场内连续铺装通道，源有效区完整；首稿上段与弯道边界有部分越入草地，A 端在汇合口处也未覆盖完整铺装横截面。本次沿可见铺装边缘修订，并把 A 横断面延展到两侧可见边缘。树冠下及汇合口的侧向界线仍为带不确定性的估计。",
+        "左侧路缘的弯折细线结构及其投影在细节中难以可靠分开，不能确认首稿 other_entity polygon 所覆盖部分都是实际伸入路面的实体；撤下确定障碍对象。",
+        "上段树冠和阴影遮蔽部分路面，不能由白色有效 mask 推定其下正常。最终记 indeterminate，保留实际实体位置和状态的不确定性；首稿乱码说明按实际图像重写，原始首稿保留。"
+      ],
+      "changes": {
+        "target_brief": "固定 A 端为画面右下球场铺装通道汇合口的横断面；目标沿右侧细长种植区与草坪之间的通道北行，再向左上转弯，经过树冠和阴影覆盖段，到左上林缘旁的固定 B 横断面。完整约 110.27 米固定路线与两端保持不变。",
+        "target_polygon": [
+          [
+            0.7870396802740508,
+            0.7888985996265293
+          ],
+          [
+            0.782186697116757,
+            0.7700563455862625
+          ],
+          [
+            0.7773337139594633,
+            0.745908237188087
+          ],
+          [
+            0.7744790179845846,
+            0.7163938824792058
+          ],
+          [
+            0.7721952612046817,
+            0.6841964046149718
+          ],
+          [
+            0.7721952612046817,
+            0.6519989267507379
+          ],
+          [
+            0.7724807308021696,
+            0.6171183257311511
+          ],
+          [
+            0.7739080787896089,
+            0.5822377247115642
+          ],
+          [
+            0.7767627747644876,
+            0.5500402468473303
+          ],
+          [
+            0.7807593491293178,
+            0.5151596458277435
+          ],
+          [
+            0.7841849842991722,
+            0.48564529111886234
+          ],
+          [
+            0.78447045389666,
+            0.46954655218674535
+          ],
+          [
+            0.7813302883242934,
+            0.4534478132546284
+          ],
+          [
+            0.7733371395946331,
+            0.4373490743225114
+          ],
+          [
+            0.7639166428775336,
+            0.4250067078078884
+          ],
+          [
+            0.7493576934056523,
+            0.41346927823987123
+          ],
+          [
+            0.7336568655438196,
+            0.4040783471961363
+          ],
+          [
+            0.7165286896945475,
+            0.3976388516232895
+          ],
+          [
+            0.6908364259206394,
+            0.39093104373490745
+          ],
+          [
+            0.659434770196974,
+            0.3804668634290314
+          ],
+          [
+            0.6280331144733086,
+            0.36839280922994366
+          ],
+          [
+            0.5994861547245218,
+            0.35712369197746174
+          ],
+          [
+            0.5709391949757351,
+            0.34612288704051514
+          ],
+          [
+            0.5395375392520697,
+            0.33324389589482156
+          ],
+          [
+            0.5109905795032829,
+            0.3219747786423397
+          ],
+          [
+            0.4852983157293748,
+            0.3125838475986048
+          ],
+          [
+            0.4567513559805881,
+            0.3026562919237993
+          ],
+          [
+            0.4282043962318013,
+            0.2970217332975584
+          ],
+          [
+            0.39965743648301455,
+            0.28950898846257045
+          ],
+          [
+            0.3711104767342278,
+            0.27931312047222967
+          ],
+          [
+            0.3454182129603197,
+            0.26831231553528306
+          ],
+          [
+            0.316871253211533,
+            0.25140863965656024
+          ],
+          [
+            0.28832429346274624,
+            0.23584652535551381
+          ],
+          [
+            0.26548672566371684,
+            0.22377247115642607
+          ],
+          [
+            0.24835854981444477,
+            0.21357660316608532
+          ],
+          [
+            0.23265772195261206,
+            0.2060638583310974
+          ],
+          [
+            0.22637739080787897,
+            0.19965940523601328
+          ],
+          [
+            0.2180987724807308,
+            0.21798811763502499
+          ],
+          [
+            0.2312303739651727,
+            0.22162597263214381
+          ],
+          [
+            0.24835854981444477,
+            0.22726053125838477
+          ],
+          [
+            0.26548672566371684,
+            0.23370002683123156
+          ],
+          [
+            0.28832429346274624,
+            0.24496914408371345
+          ],
+          [
+            0.316871253211533,
+            0.26106788301583045
+          ],
+          [
+            0.3454182129603197,
+            0.27931312047222967
+          ],
+          [
+            0.3711104767342278,
+            0.290045613093641
+          ],
+          [
+            0.39965743648301455,
+            0.2997048564529112
+          ],
+          [
+            0.4282043962318013,
+            0.3104373490743225
+          ],
+          [
+            0.4567513559805881,
+            0.318486718540381
+          ],
+          [
+            0.4852983157293748,
+            0.33056077273946877
+          ],
+          [
+            0.5138452754781616,
+            0.3423665146230212
+          ],
+          [
+            0.5423922352269483,
+            0.35444056882210895
+          ],
+          [
+            0.5709391949757351,
+            0.3659779983901261
+          ],
+          [
+            0.5994861547245218,
+            0.37697880332707273
+          ],
+          [
+            0.6280331144733086,
+            0.38797960826401934
+          ],
+          [
+            0.6565800742220953,
+            0.39817547625436006
+          ],
+          [
+            0.6851270339708821,
+            0.4081030319291655
+          ],
+          [
+            0.7108192977447901,
+            0.41561577676415346
+          ],
+          [
+            0.730802169568941,
+            0.42447008317681784
+          ],
+          [
+            0.7450756494433343,
+            0.43681244969144084
+          ],
+          [
+            0.7556380245503854,
+            0.4513013147303461
+          ],
+          [
+            0.7622038252926063,
+            0.4687416152401395
+          ],
+          [
+            0.7653439908649728,
+            0.48564529111886234
+          ],
+          [
+            0.7656294604624607,
+            0.5097933995170378
+          ],
+          [
+            0.7622038252926063,
+            0.5419908773812718
+          ],
+          [
+            0.7593491293177277,
+            0.5741883552455058
+          ],
+          [
+            0.7564944333428489,
+            0.6037027099543869
+          ],
+          [
+            0.7562089637453612,
+            0.6385833109739737
+          ],
+          [
+            0.7559234941478733,
+            0.6707807888382077
+          ],
+          [
+            0.7564944333428489,
+            0.7029782667024417
+          ],
+          [
+            0.7582072509277762,
+            0.7351757445666756
+          ],
+          [
+            0.760776477305167,
+            0.7526160450764691
+          ],
+          [
+            0.7556380245503854,
+            0.7646900992755568
+          ],
+          [
+            0.7470739366257494,
+            0.7959180834369979
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "二审核对了完整固定范围、源有效区和两端横断面。源图覆盖完整，道路身份可由连续铺装及两侧草地确认；沿可见铺装边缘修正首稿包入草地的侧边，并补足 A 端汇合口的横截面，不为避开遮挡改选路段。左侧种植区旁有弯折细线状结构及深色投影，但当前像素不能可靠区分实体轮廓、投影以及实际伸入铺装面的部分，故不保留首稿确定 other_entity 对象。上段树冠下和阴影中的路面状态仍不可判断，最终记 indeterminate。树冠投影未作为植被入侵，路面白色斑驳纹理未直接当作独立碎片实体。",
+        "uncertainties": [
+          "路缘弯折候选的具体类别及实体与投影的分界不清，不能确认其实际占用铺装面的范围，也不能由静态图证明通行影响。",
+          "左上至中段的树冠、枝叶与阴影遮住部分铺装，不能排除遮挡下存在其他实体或状态异常。",
+          "遮蔽段边缘依据相邻可见铺装连续性估计；A 端汇合口与侧路连接处缺少独立路缘，目标侧界采用本路线的连接估计，保留边界不确定性。"
+        ]
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-24331bcbfd3083.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-24331bcbfd3083.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-24331bcbfd3083.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-native-01.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-native-02.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-native-03.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-native-04.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-first-draft-overlay.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-geometry-01.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-geometry-02.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-geometry-03.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-geometry-04.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-coordinates-01.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-coordinates-02.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-coordinates-03.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-coordinates-04.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-entity-native.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-entity-4x-nearest.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-endpoint-A-cross-section.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-endpoint-B-cross-section.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-revised-overlay.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "1318e5b0e57cf0191d049d3fb4755ecc17c0d6cc9edcfc8af404b5068e0ad9b8",
+      "first_author_id": "bounded_annotator_20",
+      "first_row_sha256": "9c97926926a893de2e1e56f5f1e0b9ee497375595a564223e930b7911ddd4ad5",
+      "reviewed_at": "2026-10-21T12:46:39.879614+00:00",
+      "reviewer_id": "bounded_verifier_18",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-24331bcbfd3083.jpg": "1318e5b0e57cf0191d049d3fb4755ecc17c0d6cc9edcfc8af404b5068e0ad9b8",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-24331bcbfd3083.jpg": "875e130fd6027a0fc0fcac988338b55388e5cee9083b760a86be1c617e7dfc8e",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-24331bcbfd3083.png": "f7876f5a274fcd0e40eafb84c473ec29868d1e28b29e6b95121998254fb21811",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-native-01.png": "3eef2577a6f0430b8163c4e4448028fb6aa07977d57f862861bf400243233785",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-native-02.png": "f16cef669739a682d5a207043b1f06d10c598ba7ee96a9628907cff212297e51",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-native-03.png": "422977def1ff6ab2c4d234a7b2170b674eda38e6b8bc5a735b9e0e61e1e309ab",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-native-04.png": "ec66e5c93362faa037991135cc13bbd047e16e5d2a348feda6f67b351fc94576",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-first-draft-overlay.png": "db6b74ccc4d7f49677da86fca852786e188bf731c88ebaa5d80e3a96d42cae40",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-geometry-01.png": "9aa939e5f9b065086bd7ba68c23af857315da55397248fadb5cae193adbfaa09",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-geometry-02.png": "418f549d01f12bbb16e0c2785bab9c4ccf25b28a320af02868ecfc6371f23ebb",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-geometry-03.png": "1d38d81bbaa8428f6632ba3e63b8a1042e37f4d44eadc4c2b619621bf8e47823",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-geometry-04.png": "b2eb9b81511753713ad2a6d6c2d86198c0f7221983c16b9573ebacb98093fe76",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-coordinates-01.png": "3831427d2f7f5c0516042f2a51ed04229359cb81373009164f9ea34abac89174",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-coordinates-02.png": "43611ec696ff0004247a48778ac63de2c1b11fae5c288146734a902b1b3c1701",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-coordinates-03.png": "b42b8f6deff0443d8bb0a8abc867b7d3c61494bfba55c917ca2c464c926ea497",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-coordinates-04.png": "82546d60eef70fa02e5c57a3ea6f8421d6d57fcf5bf5e87b58bc4e5a3d506339",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-entity-native.png": "6c1f2a2446e7b0cdadeeb15055e5e32681ee48a4d403f9df294af3373956a7a8",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-entity-4x-nearest.png": "a88bcbf3dbcc64f701eec3f88982b1ea21fd471fc4c2180219421902e98545bc",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-endpoint-A-cross-section.png": "1b192d43be3682cb73ec8a76dd3e9badc7777d1eca3794fe4c3077933c85f594",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-endpoint-B-cross-section.png": "f7218308a4cea05e9e26c6a4cb3c4fc7a55ab97ac9b872c70d75d7d6a97afef4",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-revised-overlay.png": "8b07713b8c87c660b343e029ebaa5d0cb2190ce61b1a987b2bb8ef10193abcd1"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-24331bcbfd3083",
+        "image_sha256": "1318e5b0e57cf0191d049d3fb4755ecc17c0d6cc9edcfc8af404b5068e0ad9b8",
+        "target_brief": "固定 A 端为画面右下球场铺装通道汇合口的横断面；目标沿右侧细长种植区与草坪之间的通道北行，再向左上转弯，经过树冠和阴影覆盖段，到左上林缘旁的固定 B 横断面。完整约 110.27 米固定路线与两端保持不变。",
+        "target_polygon": [
+          [
+            0.7870396802740508,
+            0.7888985996265293
+          ],
+          [
+            0.782186697116757,
+            0.7700563455862625
+          ],
+          [
+            0.7773337139594633,
+            0.745908237188087
+          ],
+          [
+            0.7744790179845846,
+            0.7163938824792058
+          ],
+          [
+            0.7721952612046817,
+            0.6841964046149718
+          ],
+          [
+            0.7721952612046817,
+            0.6519989267507379
+          ],
+          [
+            0.7724807308021696,
+            0.6171183257311511
+          ],
+          [
+            0.7739080787896089,
+            0.5822377247115642
+          ],
+          [
+            0.7767627747644876,
+            0.5500402468473303
+          ],
+          [
+            0.7807593491293178,
+            0.5151596458277435
+          ],
+          [
+            0.7841849842991722,
+            0.48564529111886234
+          ],
+          [
+            0.78447045389666,
+            0.46954655218674535
+          ],
+          [
+            0.7813302883242934,
+            0.4534478132546284
+          ],
+          [
+            0.7733371395946331,
+            0.4373490743225114
+          ],
+          [
+            0.7639166428775336,
+            0.4250067078078884
+          ],
+          [
+            0.7493576934056523,
+            0.41346927823987123
+          ],
+          [
+            0.7336568655438196,
+            0.4040783471961363
+          ],
+          [
+            0.7165286896945475,
+            0.3976388516232895
+          ],
+          [
+            0.6908364259206394,
+            0.39093104373490745
+          ],
+          [
+            0.659434770196974,
+            0.3804668634290314
+          ],
+          [
+            0.6280331144733086,
+            0.36839280922994366
+          ],
+          [
+            0.5994861547245218,
+            0.35712369197746174
+          ],
+          [
+            0.5709391949757351,
+            0.34612288704051514
+          ],
+          [
+            0.5395375392520697,
+            0.33324389589482156
+          ],
+          [
+            0.5109905795032829,
+            0.3219747786423397
+          ],
+          [
+            0.4852983157293748,
+            0.3125838475986048
+          ],
+          [
+            0.4567513559805881,
+            0.3026562919237993
+          ],
+          [
+            0.4282043962318013,
+            0.2970217332975584
+          ],
+          [
+            0.39965743648301455,
+            0.28950898846257045
+          ],
+          [
+            0.3711104767342278,
+            0.27931312047222967
+          ],
+          [
+            0.3454182129603197,
+            0.26831231553528306
+          ],
+          [
+            0.316871253211533,
+            0.25140863965656024
+          ],
+          [
+            0.28832429346274624,
+            0.23584652535551381
+          ],
+          [
+            0.26548672566371684,
+            0.22377247115642607
+          ],
+          [
+            0.24835854981444477,
+            0.21357660316608532
+          ],
+          [
+            0.23265772195261206,
+            0.2060638583310974
+          ],
+          [
+            0.22637739080787897,
+            0.19965940523601328
+          ],
+          [
+            0.2180987724807308,
+            0.21798811763502499
+          ],
+          [
+            0.2312303739651727,
+            0.22162597263214381
+          ],
+          [
+            0.24835854981444477,
+            0.22726053125838477
+          ],
+          [
+            0.26548672566371684,
+            0.23370002683123156
+          ],
+          [
+            0.28832429346274624,
+            0.24496914408371345
+          ],
+          [
+            0.316871253211533,
+            0.26106788301583045
+          ],
+          [
+            0.3454182129603197,
+            0.27931312047222967
+          ],
+          [
+            0.3711104767342278,
+            0.290045613093641
+          ],
+          [
+            0.39965743648301455,
+            0.2997048564529112
+          ],
+          [
+            0.4282043962318013,
+            0.3104373490743225
+          ],
+          [
+            0.4567513559805881,
+            0.318486718540381
+          ],
+          [
+            0.4852983157293748,
+            0.33056077273946877
+          ],
+          [
+            0.5138452754781616,
+            0.3423665146230212
+          ],
+          [
+            0.5423922352269483,
+            0.35444056882210895
+          ],
+          [
+            0.5709391949757351,
+            0.3659779983901261
+          ],
+          [
+            0.5994861547245218,
+            0.37697880332707273
+          ],
+          [
+            0.6280331144733086,
+            0.38797960826401934
+          ],
+          [
+            0.6565800742220953,
+            0.39817547625436006
+          ],
+          [
+            0.6851270339708821,
+            0.4081030319291655
+          ],
+          [
+            0.7108192977447901,
+            0.41561577676415346
+          ],
+          [
+            0.730802169568941,
+            0.42447008317681784
+          ],
+          [
+            0.7450756494433343,
+            0.43681244969144084
+          ],
+          [
+            0.7556380245503854,
+            0.4513013147303461
+          ],
+          [
+            0.7622038252926063,
+            0.4687416152401395
+          ],
+          [
+            0.7653439908649728,
+            0.48564529111886234
+          ],
+          [
+            0.7656294604624607,
+            0.5097933995170378
+          ],
+          [
+            0.7622038252926063,
+            0.5419908773812718
+          ],
+          [
+            0.7593491293177277,
+            0.5741883552455058
+          ],
+          [
+            0.7564944333428489,
+            0.6037027099543869
+          ],
+          [
+            0.7562089637453612,
+            0.6385833109739737
+          ],
+          [
+            0.7559234941478733,
+            0.6707807888382077
+          ],
+          [
+            0.7564944333428489,
+            0.7029782667024417
+          ],
+          [
+            0.7582072509277762,
+            0.7351757445666756
+          ],
+          [
+            0.760776477305167,
+            0.7526160450764691
+          ],
+          [
+            0.7556380245503854,
+            0.7646900992755568
+          ],
+          [
+            0.7470739366257494,
+            0.7959180834369979
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "二审核对了完整固定范围、源有效区和两端横断面。源图覆盖完整，道路身份可由连续铺装及两侧草地确认；沿可见铺装边缘修正首稿包入草地的侧边，并补足 A 端汇合口的横截面，不为避开遮挡改选路段。左侧种植区旁有弯折细线状结构及深色投影，但当前像素不能可靠区分实体轮廓、投影以及实际伸入铺装面的部分，故不保留首稿确定 other_entity 对象。上段树冠下和阴影中的路面状态仍不可判断，最终记 indeterminate。树冠投影未作为植被入侵，路面白色斑驳纹理未直接当作独立碎片实体。",
+        "uncertainties": [
+          "路缘弯折候选的具体类别及实体与投影的分界不清，不能确认其实际占用铺装面的范围，也不能由静态图证明通行影响。",
+          "左上至中段的树冠、枝叶与阴影遮住部分铺装，不能排除遮挡下存在其他实体或状态异常。",
+          "遮蔽段边缘依据相邻可见铺装连续性估计；A 端汇合口与侧路连接处缺少独立路缘，目标侧界采用本路线的连接估计，保留边界不确定性。"
+        ],
+        "inspected_at": "2026-10-21T12:46:39.879614+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-24331bcbfd3083.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-24331bcbfd3083.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-24331bcbfd3083.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-native-01.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-native-02.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-native-03.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-native-04.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-first-draft-overlay.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-geometry-01.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-geometry-02.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-geometry-03.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-geometry-04.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-coordinates-01.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-coordinates-02.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-coordinates-03.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-coordinates-04.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-entity-native.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-entity-4x-nearest.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-endpoint-A-cross-section.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-endpoint-B-cross-section.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\inspection\\bounded-extract-24331bcbfd3083-revised-overlay.png"
+        ]
+      },
+      "final_row_sha256": "f19eefbe02485e26e672173d42ceffd5849dcf1c3a10fe073f0a7d1496cbed07",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "semantic_observer_task": "/root/bounded_road_verifier_18",
+        "observer_authored_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\batch-02.json",
+        "observer_authored_payload_sha256": "46d703d3ceb7eabe90c688b283ffe64a649345062c3aae0bde8f786e5ab795af",
+        "immutable_captured_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\observer-authored-payload-captured-v1.json",
+        "immutable_captured_payload_sha256": "46d703d3ceb7eabe90c688b283ffe64a649345062c3aae0bde8f786e5ab795af",
+        "payload_filesystem_modified_at_utc": "2026-10-21T12:33:15.035236+00:00",
+        "payload_filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-21T12:46:39.981531+00:00",
+        "business_fields_changed_by_storage_operator": false,
+        "new_visual_inspection_claimed": false,
+        "observer_persistence_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at and final.inspected_at mark record storage; actual independent observer authorship is bound to the original payload and inspection files. No additional look or human timing is claimed.",
+        "agent_turn_state": "interrupted after the complete observer-authored payload was saved; source payload and all inspection files preserved"
+      }
+    }
+  ],
+  "persistence_events": [
+    {
+      "operator": "root_orchestrator_deterministic_storage_only",
+      "semantic_observer_task": "/root/bounded_road_verifier_18",
+      "observer_authored_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\batch-02.json",
+      "observer_authored_payload_sha256": "46d703d3ceb7eabe90c688b283ffe64a649345062c3aae0bde8f786e5ab795af",
+      "immutable_captured_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_18\\observer-authored-payload-captured-v1.json",
+      "immutable_captured_payload_sha256": "46d703d3ceb7eabe90c688b283ffe64a649345062c3aae0bde8f786e5ab795af",
+      "payload_filesystem_modified_at_utc": "2026-10-21T12:33:15.035236+00:00",
+      "payload_filesystem_time_is_not_claimed_visual_inspection_time": true,
+      "stored_at_utc": "2026-10-21T12:46:39.981531+00:00",
+      "business_fields_changed_by_storage_operator": false,
+      "new_visual_inspection_claimed": false,
+      "observer_persistence_cli_execution_claimed": false,
+      "timing_semantics": "reviewed_at and final.inspected_at mark record storage; actual independent observer authorship is bound to the original payload and inspection files. No additional look or human timing is claimed.",
+      "agent_turn_state": "interrupted after the complete observer-authored payload was saved; source payload and all inspection files preserved"
+    }
+  ]
+}

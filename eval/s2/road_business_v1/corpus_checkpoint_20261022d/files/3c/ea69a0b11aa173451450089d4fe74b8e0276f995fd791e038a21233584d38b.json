@@ -1,0 +1,606 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "bounded_verifier_44",
+  "created_at": "2026-10-22T11:18:41.947549+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\assignment.json",
+  "assignment_sha256": "251888bb6ef5c6c9e32e0455014d09c2e4e8ed202c131a610d78e66483c8dbe8",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "oam-extract-68bff40c18fbea",
+      "decision": "accepted",
+      "findings": [
+        "The residential lane is present from A toward B. The lower half has visible paired margins; broad crowns across the middle/upper diagonal hide the road surface and both margins near green roofs. No complete polygon can be recovered without guessing beneath canopy."
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-68bff40c18fbea.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-68bff40c18fbea.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-68bff40c18fbea-native.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "0de2a93c06256ec0b6eb1e97df8b412696e71a9df2eb75ef0a9b3231970cb815",
+      "first_author_id": "bounded_annotator_44",
+      "first_row_sha256": "ef30b5909cb1f6b39ad8e99eace65a12ba9d3d01e7fcfa65996b3746a6d72661",
+      "reviewed_at": "2026-10-22T11:18:41.950546+00:00",
+      "reviewer_id": "bounded_verifier_44",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-68bff40c18fbea.jpg": "0de2a93c06256ec0b6eb1e97df8b412696e71a9df2eb75ef0a9b3231970cb815",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-68bff40c18fbea.jpg": "02adb91a9df21d8a43ea1e6b1d003d02af1b4b614fc8d6209f0444cd42940e65",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-68bff40c18fbea-native.jpg": "859dad9aff8593cf52271a3f1a6d75ad49d1c2df5e33b5fad27f09695fb7f8ab"
+      },
+      "final_row": {
+        "sample_id": "oam-extract-68bff40c18fbea",
+        "image_sha256": "0de2a93c06256ec0b6eb1e97df8b412696e71a9df2eb75ef0a9b3231970cb815",
+        "target_brief": "Narrow residential road from lower-left A to upper-right B.",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "The lower residential lane is visible, but the middle-to-upper diagonal segment passes beneath broad tree crowns. Both road edges and the full cross-section cannot be followed through those crowns. No hidden edge was inferred.",
+        "uncertainties": [
+          "Tree crowns obscure the full road width and edges between the green-roofed buildings and the approach to B."
+        ],
+        "inspected_at": "2026-10-22T11:18:41.950546+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-68bff40c18fbea.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-68bff40c18fbea.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-68bff40c18fbea-native.jpg"
+        ]
+      },
+      "final_row_sha256": "bc687d331a6089e81e072a0e422b2e98d58eb614ba8b1c33d06aa055a2233631",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\review-payload.json",
+        "observer_payload_sha256": "0fafaeeb508d2892f7ca5c28748fe2d37815c5f14f87b728e658b6088f3fe462",
+        "payload_file_modified_at_utc": "2026-10-22T11:16:24.690322+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-22T11:18:41.394220+00:00",
+        "business_fields_changed": false,
+        "bounded_writer_chunks_maximum": 10,
+        "base_ingestion_source_sha256": "d4a346bac670e39e8157827f10aaaa1d24f22fbfe5db6e085d52ed9db2c4867c",
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    },
+    {
+      "sample_id": "oam-extract-885c9e179333f8",
+      "decision": "accepted",
+      "findings": [
+        "A and B lie on the same narrow residential lane, with full-length alignment traceable through the exposed pavement. Palm foliage near the central/lower approach and vegetation at the upper approach interrupt a reliable full-width road margin. Shadows alone are not evidence of an entity."
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-885c9e179333f8.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-885c9e179333f8.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-885c9e179333f8-native.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "a59c1217fc1d6483340bcce61a0c662b82d7d393b6038c87bd16b49219904011",
+      "first_author_id": "bounded_annotator_44",
+      "first_row_sha256": "7db06538b4ae0bf96adfea17242187d78fc0b3be5058b437ee3e09dab004b194",
+      "reviewed_at": "2026-10-22T11:18:41.956548+00:00",
+      "reviewer_id": "bounded_verifier_44",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-885c9e179333f8.jpg": "a59c1217fc1d6483340bcce61a0c662b82d7d393b6038c87bd16b49219904011",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-885c9e179333f8.jpg": "df4ca2a57d5def819d13eb10479d874ef8f82c96e793250b736dcfb54b31703e",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-885c9e179333f8-native.jpg": "86bdab83545545ca0b13736ace96a51b899b05ab6caefb8e05f6e50f272e3c7b"
+      },
+      "final_row": {
+        "sample_id": "oam-extract-885c9e179333f8",
+        "image_sha256": "a59c1217fc1d6483340bcce61a0c662b82d7d393b6038c87bd16b49219904011",
+        "target_brief": "Residential lane from lower A to upper B, including the full main-road width at side accesses.",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "The exposed lane and both endpoints were checked at native scale. Palm/tree foliage near the lower-middle approach and vegetation along the upper lane obscure portions of the road margins; the continuous full-width boundary is not reliably recoverable. Shadows alone were not treated as obstacles.",
+        "uncertainties": [
+          "Foliage and dark areas interrupt certainty about the full main-road margin; no crown-hidden boundary was invented."
+        ],
+        "inspected_at": "2026-10-22T11:18:41.956548+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-885c9e179333f8.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-885c9e179333f8.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-885c9e179333f8-native.jpg"
+        ]
+      },
+      "final_row_sha256": "ece0c54e0f00786280ef569b894e1c1d1d0b87ffe234bca2265b1ece07e8ed8a",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\review-payload.json",
+        "observer_payload_sha256": "0fafaeeb508d2892f7ca5c28748fe2d37815c5f14f87b728e658b6088f3fe462",
+        "payload_file_modified_at_utc": "2026-10-22T11:16:24.690322+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-22T11:18:41.394220+00:00",
+        "business_fields_changed": false,
+        "bounded_writer_chunks_maximum": 10,
+        "base_ingestion_source_sha256": "d4a346bac670e39e8157827f10aaaa1d24f22fbfe5db6e085d52ed9db2c4867c",
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    },
+    {
+      "sample_id": "oam-extract-d0225e8230d136",
+      "decision": "accepted",
+      "findings": [
+        "The narrow east-west lane is visible from the A junction through the middle, including its bordering fence/plots. Immediately west of B, crown cover and dark shade interrupt the northern margin and the complete cross-section. The original indeterminate and null polygon avoid inventing that covered boundary."
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-d0225e8230d136.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-d0225e8230d136.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-d0225e8230d136-native.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "dbd8d3f9fac2d245834ea23135bc1ee62e41f97a1e489a90593dd258c7b0fd82",
+      "first_author_id": "bounded_annotator_44",
+      "first_row_sha256": "467a4a3439542f6ffb0b5c4cec554bcf1e7450a0b95d725d9b271c81249dc8b1",
+      "reviewed_at": "2026-10-22T11:18:41.961068+00:00",
+      "reviewer_id": "bounded_verifier_44",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-d0225e8230d136.jpg": "dbd8d3f9fac2d245834ea23135bc1ee62e41f97a1e489a90593dd258c7b0fd82",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-d0225e8230d136.jpg": "25488246ee5de5bd175dddcbbd2e24a2ba18380a9e031b8f9b4f8a399fdf5e23",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-d0225e8230d136-native.jpg": "4897e915c9aa4286d71fec703538d9d2fa47a73641ca98057cadf5c3c3765754"
+      },
+      "final_row": {
+        "sample_id": "oam-extract-d0225e8230d136",
+        "image_sha256": "dbd8d3f9fac2d245834ea23135bc1ee62e41f97a1e489a90593dd258c7b0fd82",
+        "target_brief": "Narrow east-west lane from the A junction to B beside the red-roofed property.",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "The lane is visible through much of its length, bounded by houses and fenced plots. A tree crown and dark area immediately west of B hide part of the narrow lane and its margins. Full-width continuity there cannot be established without inventing an edge.",
+        "uncertainties": [
+          "The main-road boundary and possible entity overlap under the crown near B remain unknown."
+        ],
+        "inspected_at": "2026-10-22T11:18:41.961068+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-d0225e8230d136.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-d0225e8230d136.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-d0225e8230d136-native.jpg"
+        ]
+      },
+      "final_row_sha256": "6bdd4857221604f2560f717e4d1bf102d1f3bf0994eb5783ca5552a9b434dd92",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\review-payload.json",
+        "observer_payload_sha256": "0fafaeeb508d2892f7ca5c28748fe2d37815c5f14f87b728e658b6088f3fe462",
+        "payload_file_modified_at_utc": "2026-10-22T11:16:24.690322+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-22T11:18:41.394220+00:00",
+        "business_fields_changed": false,
+        "bounded_writer_chunks_maximum": 10,
+        "base_ingestion_source_sha256": "d4a346bac670e39e8157827f10aaaa1d24f22fbfe5db6e085d52ed9db2c4867c",
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    },
+    {
+      "sample_id": "oam-extract-e71f4d6e754b00",
+      "decision": "accepted",
+      "findings": [
+        "The north-south lane is identifiable from upper A through several exposed sections. Palm foliage locally covers road margins, and the broad crown at lower B masks the complete lane cross-section. No full-scope polygon is justified by the visible margins."
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-e71f4d6e754b00.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-e71f4d6e754b00.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-e71f4d6e754b00-native.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "4b99ea335b38796ac9998e586567ef5789da49dedbfb504d21eec281d17aa45b",
+      "first_author_id": "bounded_annotator_44",
+      "first_row_sha256": "ce71b9236b96313c30f64112b757f98eea665ab5f50cca1d91601da56058ffb7",
+      "reviewed_at": "2026-10-22T11:18:41.964067+00:00",
+      "reviewer_id": "bounded_verifier_44",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-e71f4d6e754b00.jpg": "4b99ea335b38796ac9998e586567ef5789da49dedbfb504d21eec281d17aa45b",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-e71f4d6e754b00.jpg": "ef428872b9befb51ffa1ba57e8b55f0053ad475ceaae7eca21d00cfa9bd86d7f",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-e71f4d6e754b00-native.jpg": "3472f5de9c0075f856a50cd9abe1a94386cfa89ac345800fbbae8e8c78ca101d"
+      },
+      "final_row": {
+        "sample_id": "oam-extract-e71f4d6e754b00",
+        "image_sha256": "4b99ea335b38796ac9998e586567ef5789da49dedbfb504d21eec281d17aa45b",
+        "target_brief": "North-south residential lane from upper A to lower B.",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "Native inspection covered A, B, both margins and the intervening lane. The upper lane and multiple middle sections are visible, but palm foliage interrupts some margins and the large crown at the B approach hides the complete roadway cross-section.",
+        "uncertainties": [
+          "The B-end boundary is occluded by a broad crown; its hidden road margins cannot be reliably continued."
+        ],
+        "inspected_at": "2026-10-22T11:18:41.964067+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-e71f4d6e754b00.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-e71f4d6e754b00.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-e71f4d6e754b00-native.jpg"
+        ]
+      },
+      "final_row_sha256": "8b4a2137271ab0d7a347bf1db39374ff7a5210ed3ab9ac453252c409e9ca32a1",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\review-payload.json",
+        "observer_payload_sha256": "0fafaeeb508d2892f7ca5c28748fe2d37815c5f14f87b728e658b6088f3fe462",
+        "payload_file_modified_at_utc": "2026-10-22T11:16:24.690322+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-22T11:18:41.394220+00:00",
+        "business_fields_changed": false,
+        "bounded_writer_chunks_maximum": 10,
+        "base_ingestion_source_sha256": "d4a346bac670e39e8157827f10aaaa1d24f22fbfe5db6e085d52ed9db2c4867c",
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    },
+    {
+      "sample_id": "oam-extract-f98c0cd910ef16",
+      "decision": "accepted",
+      "findings": [
+        "The fixed lane is identifiable from western A through the northward bend to eastern B. The pale eastern pavement and its paired margins are exposed, but the broad crown over the early residential stretch hides both road margins and surface. A complete target polygon remains unsupported."
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-f98c0cd910ef16.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-f98c0cd910ef16.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-f98c0cd910ef16-native.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "15a226329b9b2171b20dd04cc22c7502c3210eea5aa2f08286d88d5d2c549305",
+      "first_author_id": "bounded_annotator_44",
+      "first_row_sha256": "8c37f5889ca7f46cdea463e70aafda36fe54d2a19e7d3d92962bea7560c3ff8f",
+      "reviewed_at": "2026-10-22T11:18:41.968068+00:00",
+      "reviewer_id": "bounded_verifier_44",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-f98c0cd910ef16.jpg": "15a226329b9b2171b20dd04cc22c7502c3210eea5aa2f08286d88d5d2c549305",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-f98c0cd910ef16.jpg": "e1872ba3439f624073f4ccff19a65cb019ca5094ed618b1ceb33f2623b9f7d06",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-f98c0cd910ef16-native.jpg": "8e679fd909306d782f05d147dc9461530e4ee7e0ca1bb81557f3b75e055116ad"
+      },
+      "final_row": {
+        "sample_id": "oam-extract-f98c0cd910ef16",
+        "image_sha256": "15a226329b9b2171b20dd04cc22c7502c3210eea5aa2f08286d88d5d2c549305",
+        "target_brief": "Lane from western A through the residential strip, bending north-east and then east to B.",
+        "target_polygon": null,
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "The open bent eastern section and both fixed endpoints were inspected. A broad crown over the early residential section hides the lane surface and both margins. A full-segment target polygon cannot be drawn from visible edges; canopy-hidden edges were not fabricated.",
+        "uncertainties": [
+          "The full-width lane beneath the broad crown between A and the first bend is not observable; overlap with the hidden road cannot be delimited."
+        ],
+        "inspected_at": "2026-10-22T11:18:41.968068+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-f98c0cd910ef16.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-f98c0cd910ef16.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-f98c0cd910ef16-native.jpg"
+        ]
+      },
+      "final_row_sha256": "ba3fc2b5bede089c11ed111dd818f1af1aebb22108d3763bda31d333761151ba",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\review-payload.json",
+        "observer_payload_sha256": "0fafaeeb508d2892f7ca5c28748fe2d37815c5f14f87b728e658b6088f3fe462",
+        "payload_file_modified_at_utc": "2026-10-22T11:16:24.690322+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-22T11:18:41.394220+00:00",
+        "business_fields_changed": false,
+        "bounded_writer_chunks_maximum": 10,
+        "base_ingestion_source_sha256": "d4a346bac670e39e8157827f10aaaa1d24f22fbfe5db6e085d52ed9db2c4867c",
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    },
+    {
+      "sample_id": "oam-extract-fbb660c0c9e407",
+      "decision": "revised",
+      "findings": [
+        "The complete pale main lane from A to B is visible, with paired boundaries distinguishable along the residential frontage and northern bend. The original lower polygon edge crossed the adjacent blue roof at approximately x610-690; the revised polygon follows the visible pavement edge against that roof and the adjoining fence lines. Open yards are excluded by the continuous main-road width. Nearby stored items and shadows do not present a discernible physical intrusion."
+      ],
+      "changes": {
+        "target_polygon": [
+          [
+            0.228422,
+            0.5045872
+          ],
+          [
+            0.2833479,
+            0.5100917
+          ],
+          [
+            0.3487358,
+            0.506422
+          ],
+          [
+            0.4097646,
+            0.5027523
+          ],
+          [
+            0.4777681,
+            0.5009174
+          ],
+          [
+            0.5318221,
+            0.4972477
+          ],
+          [
+            0.5448997,
+            0.4972477
+          ],
+          [
+            0.5928509,
+            0.4990826
+          ],
+          [
+            0.6129032,
+            0.4954128
+          ],
+          [
+            0.6451613,
+            0.4733945
+          ],
+          [
+            0.6730602,
+            0.4623853
+          ],
+          [
+            0.7183958,
+            0.466055
+          ],
+          [
+            0.771578,
+            0.4623853
+          ],
+          [
+            0.771578,
+            0.4899083
+          ],
+          [
+            0.7183958,
+            0.493578
+          ],
+          [
+            0.6730602,
+            0.4899083
+          ],
+          [
+            0.6451613,
+            0.5009174
+          ],
+          [
+            0.6129032,
+            0.5192661
+          ],
+          [
+            0.5928509,
+            0.5174312
+          ],
+          [
+            0.5448997,
+            0.5137615
+          ],
+          [
+            0.5318221,
+            0.5137615
+          ],
+          [
+            0.4777681,
+            0.5266055
+          ],
+          [
+            0.4097646,
+            0.5284404
+          ],
+          [
+            0.3487358,
+            0.5321101
+          ],
+          [
+            0.2833479,
+            0.5357798
+          ],
+          [
+            0.228422,
+            0.533945
+          ]
+        ],
+        "notes": "The original image, guide, native full-segment crop and enlarged details show the full A-B main lane. The polygon follows the visible pale pavement margins, including the narrower strip adjoining the blue roof, and retains the continuous main-road width at yard accesses. Adjacent roofs, forecourts and stored items are outside those visible road margins; shadows are not treated as physical objects. No discernible physical entity intrudes into the complete target lane."
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-fbb660c0c9e407.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-fbb660c0c9e407.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-fbb660c0c9e407-native.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\fbb660c0c9e407-detail2x.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\fbb660c0c9e407-polygon-audit2x.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\fbb660c0c9e407-center4x.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\fbb660c0c9e407-revised-audit2x.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "fd448ee98f02b895972e02827bde26537a7daa4da6861fdd0c2b9445878c9fa4",
+      "first_author_id": "bounded_annotator_44",
+      "first_row_sha256": "b6dff8f886b56e62cc7f2d0acb9a108d206b808b24335f11b5b732ed6b5e85ed",
+      "reviewed_at": "2026-10-22T11:18:41.974740+00:00",
+      "reviewer_id": "bounded_verifier_44",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-fbb660c0c9e407.jpg": "fd448ee98f02b895972e02827bde26537a7daa4da6861fdd0c2b9445878c9fa4",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-fbb660c0c9e407.jpg": "5922affd321bed8e15a9b552fc9d3dabce5cbf3f600a9fd493ffd91d06e0d6f5",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-fbb660c0c9e407-native.jpg": "bc91d498006771b944d0b7323943e5b1f3c3701992b5b6881b590399b370c4d4",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\fbb660c0c9e407-detail2x.jpg": "04bb650a923c7ec013e03db79e37c112c3e81b28353642e71f97616da67eaab6",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\fbb660c0c9e407-polygon-audit2x.jpg": "3147aed3f4fdc8211e66894804ad71104b80064938a87da085238f7bcfa3e281",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\fbb660c0c9e407-center4x.jpg": "31c458512679c744dabe2e1e29dbb4c0a4b5287a1ea3b1ed47dc908867cc660c",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\fbb660c0c9e407-revised-audit2x.jpg": "450706897db7f8c4a7ce57f6485d682c80149e4415db46ac5586014b23cc964e"
+      },
+      "final_row": {
+        "sample_id": "oam-extract-fbb660c0c9e407",
+        "image_sha256": "fd448ee98f02b895972e02827bde26537a7daa4da6861fdd0c2b9445878c9fa4",
+        "target_brief": "Full main-lane width from western A to eastern B; the lane curves slightly north near the red-roofed property.",
+        "target_polygon": [
+          [
+            0.228422,
+            0.5045872
+          ],
+          [
+            0.2833479,
+            0.5100917
+          ],
+          [
+            0.3487358,
+            0.506422
+          ],
+          [
+            0.4097646,
+            0.5027523
+          ],
+          [
+            0.4777681,
+            0.5009174
+          ],
+          [
+            0.5318221,
+            0.4972477
+          ],
+          [
+            0.5448997,
+            0.4972477
+          ],
+          [
+            0.5928509,
+            0.4990826
+          ],
+          [
+            0.6129032,
+            0.4954128
+          ],
+          [
+            0.6451613,
+            0.4733945
+          ],
+          [
+            0.6730602,
+            0.4623853
+          ],
+          [
+            0.7183958,
+            0.466055
+          ],
+          [
+            0.771578,
+            0.4623853
+          ],
+          [
+            0.771578,
+            0.4899083
+          ],
+          [
+            0.7183958,
+            0.493578
+          ],
+          [
+            0.6730602,
+            0.4899083
+          ],
+          [
+            0.6451613,
+            0.5009174
+          ],
+          [
+            0.6129032,
+            0.5192661
+          ],
+          [
+            0.5928509,
+            0.5174312
+          ],
+          [
+            0.5448997,
+            0.5137615
+          ],
+          [
+            0.5318221,
+            0.5137615
+          ],
+          [
+            0.4777681,
+            0.5266055
+          ],
+          [
+            0.4097646,
+            0.5284404
+          ],
+          [
+            0.3487358,
+            0.5321101
+          ],
+          [
+            0.2833479,
+            0.5357798
+          ],
+          [
+            0.228422,
+            0.533945
+          ]
+        ],
+        "verdict": "normal",
+        "objects": [],
+        "notes": "The original image, guide, native full-segment crop and enlarged details show the full A-B main lane. The polygon follows the visible pale pavement margins, including the narrower strip adjoining the blue roof, and retains the continuous main-road width at yard accesses. Adjacent roofs, forecourts and stored items are outside those visible road margins; shadows are not treated as physical objects. No discernible physical entity intrudes into the complete target lane.",
+        "uncertainties": [],
+        "inspected_at": "2026-10-22T11:18:41.974740+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\images\\oam-extract-fbb660c0c9e407.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\new-oam-ambil-local-v1\\frames\\guides\\oam-extract-fbb660c0c9e407.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\oam-extract-fbb660c0c9e407-native.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\fbb660c0c9e407-detail2x.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\fbb660c0c9e407-polygon-audit2x.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\fbb660c0c9e407-center4x.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\fbb660c0c9e407-revised-audit2x.jpg"
+        ]
+      },
+      "final_row_sha256": "981298b34640b3af466546ae3336cff9a9144d3956c20c3b33590be4ee6e8639",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\review-payload.json",
+        "observer_payload_sha256": "0fafaeeb508d2892f7ca5c28748fe2d37815c5f14f87b728e658b6088f3fe462",
+        "payload_file_modified_at_utc": "2026-10-22T11:16:24.690322+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-22T11:18:41.394220+00:00",
+        "business_fields_changed": false,
+        "bounded_writer_chunks_maximum": 10,
+        "base_ingestion_source_sha256": "d4a346bac670e39e8157827f10aaaa1d24f22fbfe5db6e085d52ed9db2c4867c",
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    }
+  ],
+  "persistence_events": [
+    {
+      "operator": "root_orchestrator_deterministic_storage_only",
+      "observer_declared_status": "complete",
+      "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_44\\review-payload.json",
+      "observer_payload_sha256": "0fafaeeb508d2892f7ca5c28748fe2d37815c5f14f87b728e658b6088f3fe462",
+      "payload_file_modified_at_utc": "2026-10-22T11:16:24.690322+00:00",
+      "filesystem_time_is_not_claimed_visual_inspection_time": true,
+      "stored_at_utc": "2026-10-22T11:18:41.394220+00:00",
+      "business_fields_changed": false,
+      "bounded_writer_chunks_maximum": 10,
+      "base_ingestion_source_sha256": "d4a346bac670e39e8157827f10aaaa1d24f22fbfe5db6e085d52ed9db2c4867c",
+      "new_visual_inspection_claimed": false,
+      "observer_storage_cli_execution_claimed": false
+    }
+  ]
+}

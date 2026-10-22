@@ -1,0 +1,248 @@
+"""Compose the exact supported local copy without making visual judgments.
+
+只组合精确支持的局部副本，不作新的视觉判断。
+"""
+import copy
+import hashlib
+import json
+import runpy
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+OUT = Path(__file__).resolve().parent
+NEXT = OUT.parent
+ROOT = NEXT.parent
+DATA = ROOT.parent
+REPO = DATA / 'p6-road-views-20261014/repo'
+BASE = ROOT / 'resume-20261022-fast/bulk-integrated-candidate-corpus-v1'
+REPORT = NEXT / 'medium-physical-meta-audit-v1/report54-v1.json'
+REPORT_SHA = '6a9f74c4f1c147a2c698788f912fddf62892972883084e38ac63f28832b04a96'
+COMMIT = 'cdf5382d4b4ce54600921532ecbe2a5591775b58'
+CORE = {
+    'p6_business_eval.py': 'd0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2',
+    'p6_boundary_drafts.py': 'f2476184e8172312853fcb07e692012b20f0bfb3bdeabf0c754443d90b19fc0b',
+    'p6_raster_replay.py': '0bd7ab81ee788bc012b3ca11f2e580fabb103a85ee184cdbffd8e179d6eada81',
+    'p6_oam_capture.py': 'bd49f89a5916b6401705524990170e6224cdf485c5dc8e7016b71d42898c0c88',
+}
+
+
+def sha(path):
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def read(path):
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+def save(path, value):
+    with Path(path).open('x', encoding='utf-8', newline='\n') as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2, allow_nan=False)
+        stream.write('\n')
+
+
+def rel(path):
+    return Path(path).resolve().relative_to(DATA.resolve()).as_posix()
+
+
+def only_context_diff(before, after):
+    first, second = copy.deepcopy(before), copy.deepcopy(after)
+    for row in (first, second):
+        for key in ('context_file', 'context_sha256', 'verification_context_file', 'verification_context_sha256'):
+            row['ai_assistance'].pop(key, None)
+    return first == second
+
+
+def main():
+    assert sha(REPORT) == REPORT_SHA
+    report = read(REPORT)
+    assert report['verdict'] == 'supports_exact_subset_only'
+    assert report['cases_checked'] == 54 and report['selected_count'] == 6 and report['hold_count'] == 48
+    assert report['frozen_core_sha256'] == CORE and report['binding_issue_count'] == 0
+    assert report['all_local_input_bytes_unchanged_during_audit'] is True
+    original_inputs = {Path(row['file']): {'sha256': row['sha256'], 'bytes': row['bytes']} for row in report['input_bindings']}
+    for path, expected in original_inputs.items():
+        assert path.is_file() and sha(path) == expected['sha256'] and path.stat().st_size == expected['bytes']
+    for path in BASE.iterdir():
+        if path.is_file():
+            original_inputs[path] = {'sha256': sha(path), 'bytes': path.stat().st_size}
+    frozen = OUT / 'frozen-cdf-core'
+    frozen.mkdir(exist_ok=False)
+    for name, expected in CORE.items():
+        child = subprocess.run(['git', 'show', COMMIT + ':scripts/' + name], cwd=REPO, capture_output=True, check=True)
+        assert hashlib.sha256(child.stdout).hexdigest() == expected
+        with (frozen / name).open('xb') as stream:
+            stream.write(child.stdout)
+    core = runpy.run_path(str(frozen / 'p6_business_eval.py'))
+    sys.path.insert(0, str(ROOT / 'resume-20261021-b'))
+    from formal_observation_index_v2 import configure
+    index = configure(core_script=frozen / 'p6_business_eval.py')
+    index.require_integrity()
+    reviewed_path = NEXT / 'annotation-integrity-331-v1/reviewed-candidates.json'
+    reviewed_rows = read(reviewed_path)['rows']
+    reviewed = {row['sample']['sample_id']: row for row in reviewed_rows}
+    assert len(reviewed_rows) == len(reviewed) == 331
+    selected = report['selected_sample_ids']
+    cases = {row['sample_id']: row for row in report['cases']}
+    manifest, labels, protocol = (copy.deepcopy(read(BASE / leaf)) for leaf in ('manifest.json', 'labels.json', 'protocol-not-frozen.json'))
+    assert len(manifest['samples']) == 16 and len(manifest['stability_pairs']) == 1
+    assert protocol['status'] == 'targets_approved_data_pending' and manifest['formal_data_frozen'] is False
+    base_samples = {row['sample_id']: row for row in read(BASE / 'manifest.json')['samples']}
+    assert not set(selected).intersection(base_samples)
+    source_inputs = [NEXT / 'santolan-mask-next-v1/cloud-job/source-manifest.json',
+                     NEXT / 'new-oam-full-acquisition-v1/new-oam-metadata-v1/source-manifest-ambil-v4.json']
+    union = [copy.deepcopy(row) for path in source_inputs for row in read(path)]
+    assert len(union) == len({row['catalog_object_id'] for row in union}) == 2
+    union_file = OUT / 'oam-union-source-inventory.json'
+    save(union_file, union)
+    source_bindings = [{'file': rel(path), 'sha256': sha(path), 'rows': len(read(path))} for path in source_inputs]
+    oam_provenance_paths = [NEXT / 'santolan-mask-next-v1/cloud-job/provenance/samples-provenance-only.json',
+                            NEXT / 'new-oam-native-ambil-control-v4/evidence/source-audit/samples-provenance-only.json']
+    provenance = {row['sample_id']: (row, path) for path in oam_provenance_paths for row in read(path)['samples']}
+    source_policy = read(NEXT / 'santolan-mask-next-v1/cloud-job/provenance/protocol-provenance-only.json')['oam_capture_policy']
+    other_policy = read(NEXT / 'new-oam-native-ambil-control-v4/evidence/source-audit/protocol-provenance-only.json')['oam_capture_policy']
+    for key in set(source_policy) - {'source_inventory_sha256'}:
+        assert source_policy[key] == other_policy[key]
+    protocol['oam_capture_policy'] = {**source_policy, 'source_inventory_sha256': sha(union_file)}
+    inventory = copy.deepcopy(read(BASE / 'capture-inventory.json'))
+    assert len(inventory['rows']) == 837
+    inventory_file = OUT / 'capture-inventory.json'
+    evidence = {
+        'format': 'drone.p6-exact-local-composed-grouping/v1',
+        'recorded_at_utc': datetime.now(timezone.utc).isoformat(),
+        'scope': 'Exact six supported report54 physical segments added to the unchanged old16 candidate meaning; no hold promoted.',
+        'metadata_report_file': rel(REPORT), 'metadata_report_sha256': REPORT_SHA,
+        'grouping_rules_file': rel(index.rules_path), 'grouping_rules_sha256': sha(index.rules_path),
+        'selected_sample_ids': selected, 'all_other_48_remain_hold': True,
+        'actual_second_review_with_first_answers_visible': True, 'separate_blind_review_claimed': False,
+        'geometric_group_alone_is_not_identity_evidence': True, 'full_native_image_nonoverlap_bound_to_report54': True,
+        'original_source_only_site_and_exposure_declarations_preserved': True,
+        'formal_site_independence_granted_for_oam': False, 'formal_exposure_adjudicated_for_oam': False,
+        'new_visual_judgments_created': False, 'pixels_viewed_by_composer': False,
+        'human_reviews_created': 0, 'formal_assets_admitted': 0, 'formal_pairs_admitted': 0,
+        'formal_release_eligible': False,
+    }
+    evidence_file = OUT / 'grouping-composition-evidence.json'
+    save(evidence_file, evidence)
+    additions, provenance_checks = [], []
+    for ident in selected:
+        case, actual = cases[ident], reviewed[ident]
+        assert case['decision'] == 'supports_exact_local_candidate_composition_only' and not case['binding_issues'] and not case['hold_reasons']
+        assert actual['sample']['image_sha256'] == case['final_row']['image_sha256']
+        assert actual['sample']['target']['polygon'] == case['final_row']['target_polygon']
+        if case['source_kind'] == 'crasar':
+            sample = index.sample(ident, BASE / 'capture-inventory.json')
+            assert sample['observed'] == case['proposed_observed_grouping'] and index.partition(ident) == case['preregistered_partition']
+            original_provenance = {'file': rel(index.binding_paths[ident][0]), 'sha256': sha(index.binding_paths[ident][0])}
+        else:
+            original, path = provenance[ident]
+            sample = copy.deepcopy(original)
+            assert sample['observed'] == case['proposed_observed_grouping']
+            original_provenance = {'file': rel(path), 'sha256': sha(path), 'original_sample': copy.deepcopy(original)}
+            sample['derivation']['source_inventory_file'] = rel(union_file)
+            sample['derivation']['source_inventory_sha256'] = sha(union_file)
+            source_row = next(row for row in union if row['catalog_object_id'] == case['registered_site']['catalog_object_id'])
+            capture = {
+                'source_observation_id': ident, 'source_id': sample['source_id'], 'image_sha256': sample['image_sha256'],
+                'catalog_object_id': source_row['catalog_object_id'], 'parent_sha256': source_row['local_full_object_sha256'],
+                'author_date_group': None, 'author_date_verified': False, 'repeated_capture_eligible': False,
+                'observed': copy.deepcopy(sample['observed']), 'derivation_sha256': core['canonical_digest'](sample['derivation']),
+            }
+            inventory['rows'].append(capture)
+        original_declaration = {key: actual['sample'].get(key) for key in ('image_file', 'split', 'evaluation_role', 'asset_id', 'site_id',
+            'capture_batch_id', 'near_duplicate_group', 'grouping_verified', 'grouping_evidence', 'development_exposed')}
+        group = copy.deepcopy(case['proposed_observed_grouping'])
+        sample.update({key: group[key] for key in ('asset_id', 'site_id', 'capture_batch_id', 'near_duplicate_group', 'development_exposed')})
+        sample.update(split=case['preregistered_partition'].removesuffix('_candidate'), evaluation_role='primary',
+            target=copy.deepcopy(actual['sample']['target']), ai_suggestion=copy.deepcopy(actual['sample']['ai_suggestion']),
+            grouping_verified=True, physical_asset_identity_verified=True, formal_release_eligible=False,
+            grouping_evidence={**evidence, 'evidence_file': rel(evidence_file), 'evidence_sha256': sha(evidence_file),
+                'exact_sample_id': ident, 'registered_site': copy.deepcopy(case['registered_site']),
+                'preregistered_partition': case['preregistered_partition'], 'original_reference_declaration': original_declaration,
+                'original_source_provenance': original_provenance,
+                'source_only_exposure_placeholder_preserved': case['source_only_exposure_placeholder_preserved'],
+                'formal_exposure_adjudicated': case['formal_exposure_adjudicated']})
+        assert sample['image_sha256'] == actual['sample']['image_sha256']
+        assert sample['asset_id'] == case['proposed_group_id']
+        additions.append(sample)
+        manifest['samples'].append(sample)
+        labels['rows'].append(copy.deepcopy(actual['label']))
+        provenance_checks.append({'sample_id': ident, 'original_reference_sample_canonical_sha256': core['canonical_digest'](actual['sample']),
+            'original_label_canonical_sha256': core['canonical_digest'](actual['label']),
+            'world_scope_canonical_sha256': case['fixed_scope_canonical_sha256'],
+            'original_review_inspection_path_preserved': True,
+            'sample_image_path_uses_extraction_receipt': sample['image_file'] != actual['sample']['image_file'] if ident.endswith('fbb660c0c9e407') else True,
+            'source_only_development_exposure_preserved': sample['development_exposed']})
+    assert inventory['rows'][:837] == read(BASE / 'capture-inventory.json')['rows'] and len(inventory['rows']) == 841
+    inventory['local_composition_evidence'] = {'file': rel(evidence_file), 'sha256': sha(evidence_file),
+        'original837_rows_identical': True, 'new_oam_rows': 4, 'synthetic_captures_created': 0,
+        'oam_original_exposure_values_preserved': True, 'formal_release_eligible': False}
+    save(inventory_file, inventory)
+    for sample in manifest['samples']:
+        sample['capture_record'].update(inventory_file=rel(inventory_file), inventory_sha256=sha(inventory_file))
+    catalog_bindings = [{key: row[key] for key in ('catalog_object_id', 'catalog_url', 'catalog_file', 'catalog_sha256')} for row in union]
+    permission_file = OUT / 'oam-per-object-license-evidence.json'
+    save(permission_file, {'format': 'drone.p6-oam-object-license-bindings/v1', 'license': 'CC-BY 4.0',
+        'catalogs': catalog_bindings, 'original_source_inventories': source_bindings,
+        'original_source_rows_unchanged_in_union': True, 'permission_scope': 'The exact two UAV catalog objects only.'})
+    manifest['sources']['oam_uav'] = {'permission_status': 'documented', 'license': 'CC-BY 4.0',
+        'license_evidence_file': rel(permission_file), 'license_evidence_sha256': sha(permission_file),
+        'permission_scope': 'Per-object OAM publisher catalog evidence for the exact two parents; native source gate checks each object.'}
+    context, registration = ROOT / 'annotation-context-v49.json', ROOT / 'review-registration-v49.json'
+    assert sha(context) == 'd74defff19234594034c5130bfa7dd1e16fc875b43ddb6eb35671c4d1443f3d6'
+    assert sha(registration) == '9f814972ec1a121c4bdd45a945c5bd9abe23a0e8863cdd9fc7c1bf380751618d'
+    protocol['annotation_policy'].update(independent_context_sha256=sha(context), verification_context_sha256=sha(registration))
+    rebindings, annotation_checks = [], []
+    cache = {}
+    samples = {row['sample_id']: row for row in manifest['samples']}
+    for label in labels['rows']:
+        before = copy.deepcopy(label)
+        label['ai_assistance'].update(context_file=rel(context), context_sha256=sha(context),
+            verification_context_file=rel(registration), verification_context_sha256=sha(registration))
+        assert only_context_diff(before, label)
+        rebindings.append({'sample_id': label['sample_id'], 'before_sha256': core['canonical_digest'](before),
+            'after_sha256': core['canonical_digest'](label), 'business_fields_first_draft_second_review_and_timestamps_unchanged': True})
+        issues = core['delegated_label_issues'](samples[label['sample_id']], label, protocol, DATA, cache)
+        annotation_checks.append({'sample_id': label['sample_id'], 'issues': issues})
+    assert all(not row['issues'] for row in annotation_checks)
+    old_sample_checks = []
+    for ident, original in base_samples.items():
+        restored = copy.deepcopy(samples[ident])
+        restored['capture_record']['inventory_file'] = original['capture_record']['inventory_file']
+        restored['capture_record']['inventory_sha256'] = original['capture_record']['inventory_sha256']
+        assert restored == original
+        old_sample_checks.append({'sample_id': ident, 'only_capture_inventory_copy_binding_changed': True})
+    assert manifest['stability_pairs'] == read(BASE / 'manifest.json')['stability_pairs']
+    assert len(samples) == len(manifest['samples']) == len(labels['rows']) == 22
+    assert sum(row['evaluation_role'] == 'primary' for row in samples.values()) == 21
+    assert len({row['asset_id'] for row in samples.values() if row['evaluation_role'] == 'primary'}) == 21
+    for leaf, value in [('manifest.json', manifest), ('labels.json', labels), ('protocol-not-frozen.json', protocol)]:
+        save(OUT / leaf, value)
+    with (OUT / 'exposure.json').open('xb') as stream:
+        stream.write((BASE / 'exposure.json').read_bytes())
+    for path, expected in original_inputs.items():
+        assert sha(path) == expected['sha256'] and path.stat().st_size == expected['bytes']
+    save(OUT / 'preparation.json', {'candidate_commit': COMMIT, 'frozen_core_sha256': CORE,
+        'samples': 22, 'primary_observations': 21, 'distinct_primary_assets': 21, 'repeat_observations': 1, 'stability_pairs': 1,
+        'selected_sample_ids': selected, 'report54_sha256': REPORT_SHA, 'all48_holds_preserved': True,
+        'original_inputs': {rel(path): expected for path, expected in original_inputs.items()},
+        'all_original977_report_inputs_and_base_files_rehashed_unchanged': True,
+        'original_source_inventories': source_bindings, 'oam_source_rows_identical_in_union': True,
+        'capture_inventory_old837_rows_identical': True, 'capture_inventory_rows': 841,
+        'old_sample_invariance_checks': old_sample_checks, 'new_sample_provenance_checks': provenance_checks,
+        'context_only_rebindings': rebindings, 'annotation_only_checks': annotation_checks,
+        'expected_unresolved_source_only_exposure_sample_ids': [row['sample_id'] for row in additions if row['development_exposed']],
+        'expected_core_exposure_issues_preserved_instead_of_changing_placeholder': True,
+        'source_native_core_audit_for_this22_not_yet_run': True,
+        'no_new_visual_judgments': True, 'formal_assets_admitted': 0, 'formal_model_calls': 0,
+        'formal_data_frozen': False, 'formal_release_eligible': False, 'wp_p6_01_closed': False})
+    print(json.dumps({'phase': 'prepared', 'samples': 22, 'primary_assets': 21, 'pairs': 1,
+        'annotation_issue_count': sum(len(row['issues']) for row in annotation_checks),
+        'source_only_exposure_flags_preserved': 3, 'manifest_sha256': sha(OUT / 'manifest.json')}), flush=True)
+
+
+if __name__ == '__main__':
+    main()

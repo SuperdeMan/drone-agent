@@ -1,0 +1,413 @@
+"""Run the frozen cdf audit on the exact22 copy, preserving all failures.
+
+在精确22条副本运行冻结cdf审核，保留所有失败。
+"""
+import base64
+import hashlib
+import json
+import runpy
+import subprocess
+import sys
+import tarfile
+from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
+
+sys.dont_write_bytecode = True
+OUT = Path(__file__).resolve().parent
+ROOT = OUT.parent.parent
+DATA = ROOT.parent
+REPO = DATA / 'p6-road-views-20261014/repo'
+CONTROL = OUT / 'control-v1'
+LOCAL_OUTPUT = OUT / 'actual-audit-v1'
+REMOTE_DATA = '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data'
+REMOTE_ROOT = REMOTE_DATA + '/' + ROOT.name
+REMOTE_OUT = REMOTE_ROOT + '/resume-20261022-next/composed22-v1'
+REMOTE_CONTROL = REMOTE_OUT + '/control-v1'
+REMOTE_OUTPUT = REMOTE_OUT + '/actual-audit-v1'
+REMOTE_PYTHON = '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/tools-venv/bin/python'
+
+
+def now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def sha(path):
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def read(path):
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+def save(path, value):
+    with Path(path).open('x', encoding='utf-8', newline='\n') as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2, allow_nan=False)
+        stream.write('\n')
+
+
+def brief(value):
+    print(json.dumps(value, ensure_ascii=True), flush=True)
+
+
+assert not CONTROL.exists() and not LOCAL_OUTPUT.exists(), 'Use a new controller/output version; prior results are immutable.'
+CONTROL.mkdir()
+preparation = read(OUT / 'preparation.json')
+CORE = preparation['frozen_core_sha256']
+for name, wanted in CORE.items():
+    assert sha(OUT / 'frozen-cdf-core' / name) == wanted
+C = runpy.run_path(str(OUT / 'frozen-cdf-core/p6_business_eval.py'))
+manifest, labels, protocol = (read(OUT / leaf) for leaf in ('manifest.json', 'labels.json', 'protocol-not-frozen.json'))
+assert len(manifest['samples']) == len(labels['rows']) == 22 and len(manifest['stability_pairs']) == 1
+BINDINGS = {}
+LOCAL = {}
+ALIASES = []
+
+
+def relative(value):
+    path = Path(C['rooted'](DATA, value)).resolve()
+    assert path.is_relative_to(ROOT.resolve()), 'Input outside this data task.'
+    return path.relative_to(DATA.resolve()).as_posix()
+
+
+def locate(name):
+    direct = DATA / name
+    if direct.is_file():
+        return direct
+    tail = direct.relative_to(ROOT)
+    legacy = ROOT / 'cloud-final-source-evidence-v1' / tail
+    if legacy.is_file():
+        return legacy
+    native = ROOT / 'resume-20261022-next/new-oam-full-acquisition-v1/native-ambil-v4'
+    if direct.is_relative_to(native):
+        rest = direct.relative_to(native)
+        for folder in ('resume-20261022-next/new-oam-ambil-local-v1',
+                       'resume-20261022-next/new-oam-native-ambil-control-v4/evidence'):
+            candidate = ROOT / folder / rest
+            if candidate.is_file():
+                return candidate
+    return None
+
+
+def add(value, expected=None, size=None):
+    name = relative(value)
+    local = locate(name)
+    if local is not None:
+        assert not local.is_symlink()
+        actual = sha(local)
+        assert expected is None or actual == expected, 'Local dependency hash differs: ' + name
+        assert size is None or local.stat().st_size == size
+        expected, size = actual, local.stat().st_size
+        LOCAL[name] = local
+        if local.resolve() != (DATA / name).resolve():
+            ALIASES.append({'declared_file': name, 'exact_local_mirror_file': str(local),
+                            'sha256': expected, 'bytes': size, 'declared_path_not_rewritten': True})
+    assert C['sha256_value'](expected), 'Missing exact dependency SHA: ' + name
+    old = BINDINGS.get(name)
+    assert old is None or old['sha256'] == expected, 'Conflicting exact dependency: ' + name
+    if old is not None and size is None:
+        size = old['bytes']
+    BINDINGS[name] = {'sha256': expected, 'bytes': size}
+    return local
+
+
+def metadata(value, expected=None):
+    path = add(value, expected)
+    assert path is not None, 'Necessary metadata needs an exact read-only mirror: ' + relative(value)
+    return read(path)
+
+
+def receipt_files(receipt):
+    for key in ('image', 'mask', 'guide', 'overview', 'source_geometry', 'source_alignment'):
+        if key + '_file' in receipt:
+            add(receipt[key + '_file'], receipt[key + '_sha256'])
+
+
+# Reuse the exact old16 dependency ledger, then extend it with current22 inputs.
+# 沿用精确旧16依赖账本，再追加当前22条输入。
+old_result = ROOT / 'resume-20261022-fast/bulk-integrated-audit-cloud-control-v3/result.json'
+for name, wanted in read(old_result)['input_file_bindings'].items():
+    add(name, wanted['sha256'], wanted['bytes'])
+for path in OUT.iterdir():
+    if path.is_file() and path.suffix in {'.py', '.json'}:
+        add(path)
+for path in (OUT / 'frozen-cdf-core').iterdir():
+    add(path)
+report_file = ROOT / 'resume-20261022-next/medium-physical-meta-audit-v1/report54-v1.json'
+report = metadata(report_file, preparation['report54_sha256'])
+reviewed_file = ROOT / 'resume-20261022-next/annotation-integrity-331-v1/reviewed-candidates.json'
+add(reviewed_file)
+add(ROOT / 'resume-20261022-next/annotation-integrity-331-v1/result.json')
+add(ROOT / 'resume-20261021/grouping-rules-v2.json')
+add(ROOT / 'resume-20261022-next/repeat82-native-cdf-control-v1/result.json')
+add(ROOT / 'resume-20261022-next/repeat82-native-cdf-control-v1/ssh-receipt.json')
+add(ROOT / 'resume-20261022-next/santolan-mask-next-v1/cloud-job/result.json')
+add(ROOT / 'resume-20261022-next/santolan-mask-next-v1/cloud-job/final-immutable-source-and-core-check.json')
+add(ROOT / 'resume-20261022-next/new-oam-native-ambil-control-v4/result.json')
+add(ROOT / 'resume-20261022-next/new-oam-native-ambil-control-v4/ssh-receipt.json')
+add(ROOT / 'resume-20261022-next/ambil-source-metadata-mirror-v1/result.json')
+for sample in manifest['samples']:
+    add(sample['image_file'], sample['image_sha256'])
+    binding = sample['derivation']
+    for key, value in binding.items():
+        if key.endswith('_file'):
+            add(value, binding[key[:-5] + '_sha256'])
+    receipt = metadata(binding['extraction_file'], binding['extraction_sha256'])
+    receipt_files(receipt)
+    plan = metadata(binding['extraction_plan_file'], binding['extraction_plan_sha256'])
+    add(plan['source_plan_file'], plan['source_plan_sha256'])
+    replay = metadata(binding['replay_file'], binding['replay_sha256'])
+    reproduced = metadata(replay['replay_extraction_file'], replay['replay_extraction_sha256'])
+    receipt_files(reproduced)
+    if 'range_manifest_file' in binding:
+        ranges = metadata(binding['range_manifest_file'], binding['range_manifest_sha256'])
+        for row in ranges['ranges']:
+            add(row['file'], row['sha256'], row['range'][1] - row['range'][0] + 1)
+            add(row['receipt_file'], row['receipt_sha256'])
+for source in manifest['sources'].values():
+    add(source['license_evidence_file'], source['license_evidence_sha256'])
+for source in read(OUT / 'oam-union-source-inventory.json'):
+    add(source['catalog_file'], source['catalog_sha256'])
+    add(source['object_file'], source['local_full_object_sha256'], source['expected_object_bytes'])
+    download = metadata(source['download_receipt_file'], source['download_receipt_sha256'])
+    if download['format'] == 'drone.p6-oam-conditional-parts-http/v1':
+        for part in download['parts']:
+            add(part['http_record_file'], part['http_record_sha256'])
+            add(part['body_file'], part['body_sha256'], part['body_bytes'])
+for label in labels['rows']:
+    assistance = label['ai_assistance']
+    for key in ('draft', 'context', 'verification_context', 'review'):
+        add(assistance[key + '_file'], assistance[key + '_sha256'])
+    context = metadata(assistance['context_file'], assistance['context_sha256'])
+    author = context['annotators'][assistance['author_id']]
+    add(author['assignment_file'], author.get('assignment_sha256'))
+    registration = metadata(assistance['verification_context_file'], assistance['verification_context_sha256'])
+    registered = next(row for row in registration['assignments'] if row['reviewer_id'] == label['reviewer_id'])
+    add(registered['file'], registered['sha256'])
+    review = metadata(assistance['review_file'], assistance['review_sha256'])
+    add(review['assignment_file'], review['assignment_sha256'])
+    record = next(row for row in review['rows'] if row['sample_id'] == label['sample_id'])
+    for name, expected in record['inspection_file_sha256'].items():
+        add(name, expected)
+    if label['sample_id'] in report['selected_sample_ids']:
+        case = next(row for row in report['cases'] if row['sample_id'] == label['sample_id'])
+        for name in ('payload_file', 'review_file', 'physical_findings_file'):
+            digest_key = {'payload_file': 'payload', 'review_file': 'reviews', 'physical_findings_file': 'physical_findings'}[name]
+            add(case[name], case['input_sha256'][digest_key])
+
+for original in preparation['original_source_inventories']:
+    add(original['file'], original['sha256'])
+save(CONTROL / 'local-preflight.json', {'recorded_at_utc': now(), 'candidate_commit': preparation['candidate_commit'],
+    'frozen_core_sha256': CORE, 'samples': 22, 'primary_assets': 21, 'pairs': 1,
+    'bound_input_files': len(BINDINGS), 'local_bound_files': len(LOCAL),
+    'cloud_only_bound_files': len(BINDINGS) - len(LOCAL), 'exact_local_mirror_mappings': ALIASES,
+    'input_bindings': BINDINGS, 'pixels_viewed': False, 'model_calls': 0,
+    'three_source_only_exposure_flags_preserved': True})
+brief({'phase': 'local-preflight-passed', 'bound_files': len(BINDINGS), 'local_files': len(LOCAL),
+       'cloud_only_files': len(BINDINGS) - len(LOCAL)})
+sys.path.insert(0, str(REPO / 'scripts'))
+from dev_stack import Connection
+connection = Connection.from_environment()
+
+
+def ssh(code, phase, timeout=1200):
+    started = now()
+    try:
+        child = subprocess.run(['ssh', *connection.arguments(), connection.target, REMOTE_PYTHON + ' -B -u -'],
+            input=code.encode('utf-8'), capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        save(CONTROL / (phase + '-transport-timeout.json'), {'started_at': started, 'finished_at': now(),
+            'timeout_seconds': timeout, 'stdout_bytes': len(exc.stdout or b''),
+            'stdout_sha256': hashlib.sha256(exc.stdout or b'').hexdigest(),
+            'stderr_bytes': len(exc.stderr or b''), 'stderr_sha256': hashlib.sha256(exc.stderr or b'').hexdigest(),
+            'raw_ssh_stderr_printed': False, 'automatic_rerun_attempted': False})
+        raise RuntimeError('Transport timeout; only byte counts and hashes retained; inspect exact remote state before any retry.') from None
+    receipt = {'started_at': started, 'finished_at': now(), 'returncode': child.returncode,
+        'stdout_bytes': len(child.stdout), 'stdout_sha256': hashlib.sha256(child.stdout).hexdigest(),
+        'stderr_bytes': len(child.stderr), 'stderr_sha256': hashlib.sha256(child.stderr).hexdigest(),
+        'raw_ssh_stderr_printed': False}
+    save(CONTROL / (phase + '-transport-receipt.json'), receipt)
+    if child.returncode != 0:
+        raise RuntimeError('Remote ' + phase + ' failed; SSH diagnostics withheld, receipt retained.')
+    try:
+        return json.loads(child.stdout)
+    except (ValueError, UnicodeError):
+        raise RuntimeError('Remote ' + phase + ' did not return strict JSON; diagnostics withheld.') from None
+
+
+preflight_code = 'ROOT=' + repr(REMOTE_ROOT) + '\nCONTROL=' + repr(REMOTE_CONTROL)
+preflight_code += '\nOUTPUT=' + repr(REMOTE_OUTPUT) + '\nBINDINGS=' + repr(BINDINGS) + '\nCORE=' + repr(CORE) + '\n' + r'''
+import hashlib,json,pathlib
+from datetime import datetime,timezone
+root=pathlib.Path(ROOT).resolve();data=root.parent;control=pathlib.Path(CONTROL)
+assert control.resolve().is_relative_to(root) and not control.exists() and not pathlib.Path(OUTPUT).exists()
+control.mkdir(parents=True,exist_ok=False)
+def sha(p):
+ with p.open('rb') as s:return hashlib.file_digest(s,'sha256').hexdigest()
+frozen=root/'software-audit-cdf5382-20261022';cores={n:sha(frozen/n) for n in CORE}
+rows=[]
+for name,wanted in BINDINGS.items():
+ p=(data/name).resolve();assert p.is_relative_to(root)
+ if not p.is_file():rows.append({'file':name,'status':'missing'});continue
+ actual=sha(p);size=p.stat().st_size
+ rows.append({'file':name,'status':'identical' if actual==wanted['sha256'] and (wanted['bytes'] is None or size==wanted['bytes']) else 'different','sha256':actual,'bytes':size})
+result={'recorded_at':datetime.now(timezone.utc).isoformat(),'frozen_core_sha256':cores,'core_matches':cores==CORE,
+ 'files':rows,'missing':[r['file'] for r in rows if r['status']=='missing'],'different':[r['file'] for r in rows if r['status']=='different'],
+ 'existing_input_files_overwritten':False,'source_cache_modified':False}
+with (control/'remote-preflight.json').open('x') as s:json.dump(result,s,indent=2)
+print(json.dumps(result))
+'''
+(CONTROL / 'remote_preflight.py').write_text(preflight_code, encoding='utf-8', newline='\n')
+preflight = ssh(preflight_code, 'preflight')
+save(CONTROL / 'remote-preflight.json', preflight)
+assert preflight['core_matches'] and not preflight['different'], 'Frozen source or existing evidence differs; no overwrite allowed.'
+missing = set(preflight['missing'])
+unavailable = sorted(missing - set(LOCAL))
+if unavailable:
+    save(CONTROL / 'missing-cloud-only-inputs.json', {'files': unavailable, 'audit_started': False, 'existing_files_overwritten': False})
+    raise RuntimeError('Exact cloud-only source inputs are missing; no reconstruction attempted.')
+for row in preflight['files']:
+    if row['status'] == 'identical':
+        BINDINGS[row['file']]['bytes'] = row['bytes']
+for name in missing:
+    path = LOCAL[name]
+    assert path.suffix.lower() in {'.json', '.py', '.jpg', '.jpeg', '.png', '.md', '.txt'}, 'Do not upload source TIFF/cache data.'
+archive = CONTROL / 'missing-inputs.tar.gz'
+with archive.open('xb') as handle, tarfile.open(fileobj=handle, mode='w:gz') as bundle:
+    for name in sorted(missing):
+        bundle.add(LOCAL[name], arcname=name, recursive=False)
+archive_sha = sha(archive)
+remote_archive = REMOTE_CONTROL + '/inputs-' + archive_sha[:24] + '.tar.gz'
+brief({'phase': 'remote-preflight-passed', 'existing_exact_files': len(BINDINGS)-len(missing),
+       'new_files_to_stage': len(missing), 'new_file_bytes': sum(BINDINGS[n]['bytes'] for n in missing),
+       'archive_bytes': archive.stat().st_size})
+upload = subprocess.run(['scp', *connection.arguments(), str(archive), connection.target + ':' + remote_archive],
+                        capture_output=True, timeout=600)
+save(CONTROL / 'upload-receipt.json', {'recorded_at': now(), 'returncode': upload.returncode,
+    'archive_sha256': archive_sha, 'archive_bytes': archive.stat().st_size, 'files': len(missing),
+    'stdout_bytes': len(upload.stdout), 'stdout_sha256': hashlib.sha256(upload.stdout).hexdigest(),
+    'stderr_bytes': len(upload.stderr), 'stderr_sha256': hashlib.sha256(upload.stderr).hexdigest(),
+    'raw_ssh_stderr_printed': False})
+assert upload.returncode == 0, 'Upload failed; SSH stderr withheld.'
+
+runtime = 'ROOT=' + repr(REMOTE_ROOT) + '\nCONTROL=' + repr(REMOTE_CONTROL) + '\nOUTPUT=' + repr(REMOTE_OUTPUT)
+runtime += '\nCORPUS=' + repr(REMOTE_OUT) + '\nARCHIVE=' + repr(remote_archive) + '\nARCHIVE_SHA=' + repr(archive_sha)
+runtime += '\nPYTHON=' + repr(REMOTE_PYTHON) + '\nBINDINGS=' + repr(BINDINGS) + '\nMISSING=' + repr(sorted(missing))
+runtime += '\nCORE=' + repr(CORE) + '\nCONTROLLER_SHA=' + repr(sha(Path(__file__))) + '\n' + r'''
+import base64,hashlib,json,os,pathlib,subprocess,tarfile
+from collections import Counter
+from datetime import datetime,timezone
+root=pathlib.Path(ROOT).resolve();data=root.parent;control=pathlib.Path(CONTROL);output=pathlib.Path(OUTPUT);corpus=pathlib.Path(CORPUS)
+assert output.resolve().is_relative_to(corpus.resolve()) and not output.exists()
+def sha(p):
+ with p.open('rb') as s:return hashlib.file_digest(s,'sha256').hexdigest()
+def read(p):return json.loads(p.read_text())
+archive=pathlib.Path(ARCHIVE);assert sha(archive)==ARCHIVE_SHA
+added=[]
+with tarfile.open(archive,'r:gz') as bundle:
+ members=bundle.getmembers();assert {m.name for m in members}==set(MISSING)
+ for member in members:
+  assert member.isfile() and member.name in BINDINGS
+  p=(data/member.name).resolve();assert p.is_relative_to(root)
+  blob=bundle.extractfile(member).read();wanted=BINDINGS[member.name]
+  assert len(blob)==wanted['bytes'] and hashlib.sha256(blob).hexdigest()==wanted['sha256']
+  p.parent.mkdir(parents=True,exist_ok=True)
+  if p.exists():assert p.is_file() and sha(p)==wanted['sha256'],'Concurrent differing bytes; do not overwrite'
+  else:
+   with p.open('xb') as s:s.write(blob)
+   added.append(member.name)
+before={}
+for name,wanted in BINDINGS.items():
+ p=(data/name).resolve();assert p.is_file() and p.is_relative_to(root)
+ actual={'sha256':sha(p),'bytes':p.stat().st_size};assert actual==wanted
+ before[name]=actual
+frozen=root/'software-audit-cdf5382-20261022';before_core={n:sha(frozen/n) for n in CORE};assert before_core==CORE
+output.mkdir(exist_ok=False)
+with (control/'exact-inputs-before.json').open('x') as s:json.dump(before,s,indent=2)
+command=[PYTHON,'-B',str(frozen/'p6_business_eval.py'),'audit','--manifest',str(corpus/'manifest.json'),
+ '--labels',str(corpus/'labels.json'),'--protocol',str(corpus/'protocol-not-frozen.json'),
+ '--exposure',str(corpus/'exposure.json'),'--data-root',str(data),'--output',str(output/'core-audit.json')]
+started=datetime.now(timezone.utc).isoformat()
+with (output/'stdout.log').open('xb') as stdout,(output/'stderr.log').open('xb') as stderr:
+ child=subprocess.run(command,cwd=data,env=dict(os.environ,OPENBLAS_NUM_THREADS='1',OMP_NUM_THREADS='1',PYTHONDONTWRITEBYTECODE='1'),stdout=stdout,stderr=stderr)
+finished=datetime.now(timezone.utc).isoformat()
+report=read(output/'core-audit.json') if (output/'core-audit.json').is_file() else None
+manifest=read(corpus/'manifest.json');labels=read(corpus/'labels.json');label_by_id={r['sample_id']:r for r in labels['rows']}
+samples=manifest['samples'];ids={s['sample_id'] for s in samples};issues=report['issues'] if report else []
+sample_issues={i:[r for r in issues if r.get('sample_id')==i] for i in sorted(ids)}
+global_issues=[r for r in issues if r.get('sample_id') is None]
+pairs=[{'pair_id':p['pair_id'],'sample_ids':p['sample_ids'],'comparison_scope':p['comparison_scope'],
+ 'issues_on_either_member':[r for r in issues if r.get('sample_id') in p['sample_ids']],
+ 'pair_checks_executed':report is not None,'pair_record_identical_to_old16':p==read(data/'p6-corpus-completion-20261018/resume-20261022-fast/bulk-integrated-candidate-corpus-v1/manifest.json')['stability_pairs'][0]} for p in manifest['stability_pairs']]
+after={name:{'sha256':sha(data/name),'bytes':(data/name).stat().st_size} for name in BINDINGS}
+after_core={n:sha(frozen/n) for n in CORE}
+assert before==after and before_core==after_core
+with (control/'exact-inputs-after.json').open('x') as s:json.dump(after,s,indent=2)
+primary=[r for r in samples if r['evaluation_role']=='primary']
+receipt={'candidate_commit':'cdf5382d4b4ce54600921532ecbe2a5591775b58','started_at_utc':started,'finished_at_utc':finished,
+ 'process_exit_code':child.returncode,'command':command,'execution_python':PYTHON,'controller_sha256':CONTROLLER_SHA,
+ 'frozen_core_before':before_core,'frozen_core_after':after_core,'frozen_core_unchanged':True,
+ 'bound_input_files':len(before),'all_bound_inputs_rehashed_before_and_after':True,'all_bound_input_bytes_unchanged':True,
+ 'input_ledger_before_sha256':sha(control/'exact-inputs-before.json'),'input_ledger_after_sha256':sha(control/'exact-inputs-after.json'),
+ 'samples':len(samples),'primary_observations':len(primary),'distinct_primary_assets':len({r['asset_id'] for r in primary}),
+ 'repeat_observations':len(samples)-len(primary),'pair_count':len(pairs),'pairs':pairs,
+ 'primary_label_counts':{split:dict(Counter(label_by_id[r['sample_id']]['verdict'] for r in primary if r['split']==split)) for split in ('calibration','test')},
+ 'primary_site_counts':{split:dict(Counter(r['site_id'] for r in primary if r['split']==split)) for split in ('calibration','test')},
+ 'core_audit_created':report is not None,'core_audit_status':report['status'] if report else None,
+ 'derived_captures_verified':report.get('derived_captures_verified') if report else None,
+ 'sample_issues':sample_issues,'sample_issue_count':sum(len(v) for v in sample_issues.values()),'global_issues':global_issues,
+ 'unassigned_issues':[r for r in issues if r.get('sample_id') is not None and r.get('sample_id') not in ids],
+ 'data_ready':report.get('data_ready') if report else False,'new_source_native_decoder_audit_performed':True,
+ 'newly_staged_files':len(added),'existing_exact_inputs_reused':len(before)-len(added),
+ 'existing_input_files_overwritten':False,'source_cache_redownloaded_or_recreated':False,
+ 'source_only_exposure_flags_preserved':True,'pixels_visually_viewed_by_composer':False,'human_reviews_created':0,
+ 'formal_assets_admitted':0,'formal_pairs_admitted':0,'formal_model_calls':0,'formal_data_frozen':False,
+ 'formal_release_eligible':False,'wp_p6_01_closed':False}
+with (output/'execution-receipt.json').open('x') as s:json.dump(receipt,s,indent=2)
+packet={}
+for p in [*output.iterdir(),control/'exact-inputs-before.json',control/'exact-inputs-after.json']:
+ if not p.is_file():continue
+ blob=p.read_bytes();packet[p.relative_to(corpus).as_posix()]={'sha256':hashlib.sha256(blob).hexdigest(),'bytes':len(blob),'data':base64.b64encode(blob).decode()}
+print(json.dumps({'execution':receipt,'files':packet}))
+'''
+(CONTROL / 'remote_runtime.py').write_text(runtime, encoding='utf-8', newline='\n')
+compile(runtime, str(CONTROL / 'remote_runtime.py'), 'exec')
+brief({'phase': 'actual-cloud-frozen-cdf-audit-started', 'samples': 22, 'primary_assets': 21, 'pairs': 1,
+       'source_input_hashes_verified_before_execution': True, 'preserved_exposure_placeholder_rows': 3})
+packet = ssh(runtime, 'audit', 1500)
+returned = []
+for name, item in packet['files'].items():
+    relative_name = PurePosixPath(name)
+    assert not relative_name.is_absolute() and '..' not in relative_name.parts
+    assert relative_name.parts[0] in {'actual-audit-v1', 'control-v1'}
+    blob = base64.b64decode(item['data'], validate=True)
+    assert len(blob) == item['bytes'] and hashlib.sha256(blob).hexdigest() == item['sha256']
+    path = (OUT / Path(*relative_name.parts)).resolve()
+    assert path.is_relative_to(OUT.resolve())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('xb') as stream:
+        stream.write(blob)
+    returned.append({'file': str(path), 'sha256': item['sha256'], 'bytes': item['bytes']})
+for name, local in LOCAL.items():
+    assert sha(local) == BINDINGS[name]['sha256'] and local.stat().st_size == BINDINGS[name]['bytes']
+for name, expected in preparation['original_inputs'].items():
+    path = DATA / name
+    assert sha(path) == expected['sha256'] and path.stat().st_size == expected['bytes']
+result = {'recorded_at_utc': now(), 'status': 'actual_audit_completed_with_all_residuals_preserved',
+    'candidate_commit': preparation['candidate_commit'], 'frozen_core_sha256': CORE,
+    'controller_sha256': sha(Path(__file__)), 'actual_execution': packet['execution'],
+    'input_bindings': BINDINGS, 'returned_files': returned,
+    'all_local_bound_inputs_unchanged_after': True, 'all_original_report977_and_base_inputs_unchanged_after': True,
+    'existing_input_files_overwritten': False, 'raw_ssh_stderr_printed': False,
+    'pixels_visually_viewed_by_composer': False, 'new_visual_judgments_created': False,
+    'formal_assets_admitted': 0, 'formal_model_calls': 0, 'formal_data_frozen': False,
+    'formal_release_eligible': False, 'wp_p6_01_closed': False}
+save(CONTROL / 'result.json', result)
+execution = packet['execution']
+brief({'phase': 'completed', 'result_file': str(CONTROL / 'result.json'), 'result_sha256': sha(CONTROL / 'result.json'),
+    'core_report_sha256': sha(LOCAL_OUTPUT / 'core-audit.json') if (LOCAL_OUTPUT / 'core-audit.json').is_file() else None,
+    'samples': execution['samples'], 'primary_assets': execution['distinct_primary_assets'], 'pairs': execution['pair_count'],
+    'core_status': execution['core_audit_status'], 'derived_captures_verified': execution['derived_captures_verified'],
+    'sample_issue_count': execution['sample_issue_count'], 'global_issue_count': len(execution['global_issues']),
+    'pair_issue_count': sum(len(p['issues_on_either_member']) for p in execution['pairs'])})
+raise SystemExit(0 if execution['core_audit_created'] else 1)

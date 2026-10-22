@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-15",
+  "reviewer_kind": "Codex AI visual UI inspection",
+  "business_annotations_created": 0,
+  "independent_ground_truth": false,
+  "formal_release_eligible": false,
+  "inspected_final_screenshots": {
+    "zoom-200.png": "f623e2200e64e93e2f4ab18a03eadfe4555c011a36d9a931a56d0726003d949c",
+    "viewport-390.png": "5f7ab011218fde5eab0e856ced9f6a3c34b5ee43e9d9914d49b17ca5ce8ffb99",
+    "entity-qa.png": "71072cbab275de5a3b3efb0d8e93a3f89e29f9851b0cc99f081297045c0705b1"
+  },
+  "scope": [
+    "desktop source image and candidate overlay form",
+    "390 px single-column layout",
+    "200 percent layout and image width"
+  ],
+  "findings": [
+    "Initial overflow-only check missed an impractically narrow image pane at 200 percent zoom.",
+    "Container-based layout keeps the image usable; the added width assertion rejects the old package and passes the new one.",
+    "Form text, controls, QA markings and image overlays are visible in inspected final screenshots."
+  ],
+  "screenshots_not_listed_are_automated_captures_only": true,
+  "old_layout_failure_receipt": "browser-qa/layout-regression.json",
+  "final_receipt": "browser-qa/final.json"
+}

@@ -1,0 +1,103 @@
+{
+  "recorded_at_utc": "2026-10-22T06:16:02Z",
+  "repo": "D:/drone-agent-data/p6-road-views-20261014/repo",
+  "base_commit": "4800ea0726acbd3054e07f31abf3e8b44b94f0f4",
+  "candidate_commit": "cdf5382d4b4ce54600921532ecbe2a5591775b58",
+  "commit_owner": "root",
+  "scope": "完整本地 TIFF 私有分块读取与有界缓存；不改变来源、提取、几何或业务门槛。",
+  "files_sha256": {
+    "scripts/p6_raster_replay.py": "0bd7ab81ee788bc012b3ca11f2e580fabb103a85ee184cdbffd8e179d6eada81",
+    "tests/test_p6_raster_replay.py": "ab5ce36bce3c58b65cd2a51d7a4261c3d6bf57353b63d91df351b26e10ed5b91",
+    "docs/p6-derived-road-evidence.md": "e44df09377b6f9dba7acbf97b7e4767aa144c6ce81a164f99dced862c3959203"
+  },
+  "implementation": {
+    "parent_verification": "每次 verify_full_window 流式核完整父 SHA-256，同时生成私有 4 MiB chunk SHA-256 索引。",
+    "small_reads": "仅 seek/read 相关内部 chunk 并按其已绑定 SHA-256 校验；缓存键区分父身份、路径、offset、长度及 chunk SHA。",
+    "cache": "沿用原 p6_local_tiff_blocks OrderedDict；完整文件内部块和旧范围文件共用原 64 MiB LRU 上限。",
+    "legacy_ranges": "普通 RangeFile 仍整读对应范围文件、核原范围长度及 SHA；任意旧 JSON 字段不能启用私有 offset 读取。",
+    "index_cache": "未引入跨调用的分块索引缓存；每个完整窗口调用仍重核父文件。"
+  },
+  "limits": {
+    "full_file_chunk_bytes": 4194304,
+    "max_block_cache_bytes": 67108864,
+    "max_read_bytes": 268435456,
+    "max_window_pixels": 60000000,
+    "complete_parent_guard": "0 < parent bytes <= MAX_READ_BYTES"
+  },
+  "checks": [
+    {
+      "command": "uv run ruff check .",
+      "environment": {"UV_DEFAULT_INDEX": "https://pypi.tuna.tsinghua.edu.cn/simple"},
+      "exit_code": 0,
+      "observed_stdout": "All checks passed!"
+    },
+    {
+      "command": "uv run pytest -q tests/test_p6_raster_replay.py",
+      "environment": {"UV_DEFAULT_INDEX": "https://pypi.tuna.tsinghua.edu.cn/simple"},
+      "exit_code": 0,
+      "passed": 24,
+      "configuration": "项目默认 addopts；新增 helper 先行检查。"
+    },
+    {
+      "command": "uv run pytest -o addopts= -q tests/test_p6_raster_replay.py tests/test_p6_derived_captures.py tests/test_p6_oam_captures.py tests/test_p6_oam_conditional_parts.py tests/test_p6_portable_paths.py",
+      "environment": {"UV_DEFAULT_INDEX": "https://pypi.tuna.tsinghua.edu.cn/simple"},
+      "exit_code": 0,
+      "passed": 221,
+      "failed": 0,
+      "duration_seconds": 86.77,
+      "stdout_file": "targeted-pytest.log",
+      "exit_code_file": "targeted-pytest.rc",
+      "configuration": "此命令清空项目 addopts 以显示计数，也未沿用其中的 --import-mode=importlib；根流程标准全量仍按默认配置独立执行。"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "observed_stdout": ""
+    }
+  ],
+  "synthetic_io_probe": {
+    "test": "test_small_reads_reuse_chunks_and_eviction_rereads_only_one_chunk",
+    "parent_bytes": 79,
+    "test_chunk_bytes": 16,
+    "test_cache_bytes": 32,
+    "initial_stream_bytes_read": 79,
+    "initial_hash_input_bytes": 158,
+    "explanation_initial_hash_input": "同一流式读取同时计算整体 SHA 和各块 SHA，因此输入总计 2 倍父字节；并非两次父文件 I/O。",
+    "repeated_cached_small_reads": 20,
+    "additional_bytes_read_for_repeated_cached_reads": 0,
+    "additional_hash_input_for_repeated_cached_reads": 0,
+    "all_read_requests_max_bytes": 16,
+    "final_bytes_read_after_crossing_and_eviction": 143,
+    "final_hash_input_bytes_after_crossing_and_eviction": 222,
+    "final_cached_bytes": 32,
+    "measurement": "测试中拦截文件 read 与 SHA 输入字节计数并断言，不使用墙钟阈值。"
+  },
+  "coverage": [
+    "跨内部块读取、readinto、末块短长度与 EOF 字节一致",
+    "共享 LRU 总量与真实淘汰后重读",
+    "相同 chunk SHA 的不同 offset 不别名",
+    "错误完整父 SHA 拒收",
+    "未缓存和已淘汰块的修改、截短拒收；GDAL 短读与 failed_reads 保持",
+    "缺块 missing 与 failed_reads 标记",
+    "完整父文件大小 guard、越界路径、旧范围路径穿越拒收",
+    "sidecar、URL 与写入拒收",
+    "旧 HTTP range 文件兼容与旧 JSON offset 注入拒收",
+    "程序性 RGB TIFF 内部 mask、JPEG、原生 RGB 与地理变换跨块复算",
+    "既有三／四通道 derived、OAM full、OAM conditional parts 与 portable paths 回归"
+  ],
+  "boundaries": {
+    "real_business_images_or_labels_inspected": false,
+    "model_prompts_or_outputs_inspected": false,
+    "source_recipe_geometry_thresholds_modified": false,
+    "source_transport_modified": false,
+    "frozen_cores_modified": false,
+    "live_running_inputs_modified": false,
+    "full_suite_run_by_this_agent": false,
+    "cloud_source_pixel_verification_run_by_this_agent": false,
+    "formal_corpus_or_release_acceptance_claimed": false
+  },
+  "root_followup": {
+    "full_suite": "根流程报告于 2026-10-22T06:15:27Z 启动候选全量；本回执不将 221 目标测试冒充全套通过。",
+    "source_pixel_checks": "新候选的真实 32 源像素复核由根流程与来源代理独立执行；旧候选成绩不转借。"
+  }
+}
