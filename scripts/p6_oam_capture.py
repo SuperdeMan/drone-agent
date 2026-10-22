@@ -22,10 +22,125 @@ def object_key(url: str) -> str:
     return parsed.path
 
 
-def verify_source(source, root, cache, h):
-    """Bind per-object publisher metadata, conditional full GET and actual bytes.
+def _headers(value):
+    """Reject ambiguous header mappings before case-insensitive comparison.
 
-绑定逐对象发布元数据、条件完整 GET 与真实本地字节。
+在不区分大小写比较前拒绝含糊的头字段映射。
+"""
+    if not isinstance(value, dict) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in value.items()):
+        raise ValueError("invalid conditional-parts headers")
+    result = {k.lower(): v for k, v in value.items()}
+    if len(result) != len(value):
+        raise ValueError("duplicate conditional-parts header")
+    return result
+
+
+def _integers_differ(value, **expected):
+    """Keep booleans and coercible strings out of byte counts and statuses.
+
+字节计数与状态不得使用布尔值或可转换的字符串。
+"""
+    return any(type(value.get(k)) is not int or value[k] != v for k, v in expected.items())
+
+
+def _conditional_part(part, catalog, etag, root, cache, h):
+    """Bind one unmodified flat HTTP record to its actually saved bytes.
+
+将一条未改写的平面 HTTP 记录绑定到实际保存的字节。
+"""
+    offset, length, size = part.get("offset"), part.get("body_bytes"), catalog["file_size"]
+    if (part.get("evidence_layout") != "flat_request_response_v1"
+            or type(offset) is not int or type(length) is not int
+            or offset < 0 or length <= 0 or offset + length > size):
+        raise ValueError("invalid conditional-parts bounds or evidence layout")
+    record = h["read_bound"](root, part["http_record_file"], part["http_record_sha256"], cache)
+    body = h["file_bound"](root, part["body_file"], part["body_sha256"], cache)
+    request_headers, response_headers = _headers(record["request_headers"]), _headers(record["headers"])
+    started, finished = (h["timestamp"](record[k]) for k in ("started_at_utc", "finished_at_utc"))
+    if (record.get("method") != "GET" or object_key(record["request_url"]) != object_key(catalog["uuid"])
+            or object_key(record["final_url"]) != object_key(catalog["uuid"])
+            or request_headers.get("if-match") != etag or response_headers.get("etag") != etag
+            or request_headers.get("accept-encoding") != "identity"
+            or response_headers.get("content-encoding", "identity") != "identity"
+            or body.stat().st_size != length or finished < started):
+        raise ValueError("conditional-parts request, validator, encoding or body mismatch")
+    if part.get("kind") == "complete_206":
+        end = offset + length - 1
+        if (_integers_differ(record, status=206, range_start=offset, range_end=end, expected_bytes=length, body_bytes=length)
+                or record.get("complete") is not True or record.get("sha256") != part["body_sha256"]
+                or record.get("error") is not None or record.get("outcome", "completed") != "completed"
+                or request_headers.get("range") != f"bytes={offset}-{end}"
+                or response_headers.get("content-range") != f"bytes {offset}-{end}/{size}"
+                or response_headers.get("content-length") != str(length)
+                or h["file_bound"](root, record["file"], part["body_sha256"], cache) != body):
+            raise ValueError("conditional-parts complete 206 mismatch")
+    elif part.get("kind") == "incomplete_200_prefix":
+        error = record.get("error")
+        if (_integers_differ(record, status=200, expected_bytes=size, saved_bytes=length, received_bytes=length)
+                or offset != 0 or length >= size or record.get("outcome") != "incomplete_or_failed"
+                or record.get("complete", False) is not False
+                or not isinstance(error, dict) or any(not isinstance(error.get(k), str) or not error[k] for k in ("type", "message"))
+                or record.get("saved_sha256") != part["body_sha256"]
+                or "range" in request_headers or "content-range" in response_headers
+                or response_headers.get("content-length") != str(size)
+                or h["file_bound"](root, record["local_file"], part["body_sha256"], cache) != body):
+            raise ValueError("conditional-parts incomplete 200 prefix mismatch")
+    else:
+        raise ValueError("unsupported conditional-parts response kind")
+    return offset, length, body, started, finished
+
+
+def _verify_conditional_parts(receipt, source, catalog, parent, root, cache, h):
+    """Require complete, byte-consistent coverage under one strong validator.
+
+要求同一强验证器下完整且逐字一致的覆盖。
+"""
+    size, etag, properties = catalog["file_size"], receipt.get("expected_etag"), catalog["properties"]
+    dimensions = properties.get("dimensions")
+    if (receipt.get("status") != "assembled_and_verified" or receipt.get("catalog_object_id") != source["catalog_object_id"]
+            or receipt.get("source_metadata_url") != source["catalog_url"]
+            or receipt.get("source_metadata_sha256") != source["catalog_sha256"]
+            or receipt.get("checksum_origin") != "locally_computed_full_object" or receipt.get("publisher_sha256") is not None
+            or _integers_differ(receipt, expected_bytes=size, body_bytes=size) or parent.stat().st_size != size
+            or receipt.get("local_full_object_sha256") != source["local_full_object_sha256"]
+            or h["file_bound"](root, receipt["local_file"], source["local_full_object_sha256"], cache) != parent
+            or not isinstance(etag, str) or re.fullmatch(r'"[a-f0-9]{32}(?:-\d+)?"', etag) is None
+            or not isinstance(dimensions, list) or len(dimensions) != 2
+            or any(type(v) is not int or v <= 0 for v in dimensions)
+            or not isinstance(properties.get("crs"), str) or not properties["crs"].strip()
+            or any(k in receipt for k in ("request", "response", "response_content_length", "response_etag"))):
+        raise ValueError("conditional-parts representation or publisher binding mismatch")
+    parts = receipt.get("parts")
+    if not isinstance(parts, list) or not parts or any(not isinstance(part, dict) for part in parts):
+        raise ValueError("conditional-parts list missing")
+    verified = sorted((_conditional_part(part, catalog, etag, root, cache, h) for part in parts), key=lambda row: row[:2])
+    covered = 0
+    with parent.open("rb") as representation:
+        for offset, length, body, _, _ in verified:
+            if offset > covered:
+                raise ValueError("conditional-parts coverage gap")
+            representation.seek(offset)
+            remaining = length
+            with body.open("rb") as segment:
+                while remaining:
+                    block = segment.read(min(1024 * 1024, remaining))
+                    if not block or block != representation.read(len(block)):
+                        raise ValueError("conditional-parts bytes or overlap conflict")
+                    remaining -= len(block)
+            covered = max(covered, offset + length)
+    if covered != size:
+        raise ValueError("conditional-parts coverage incomplete")
+    started, acquired, verification_started, finished = (h["timestamp"](receipt[k]) for k in (
+        "started_at_utc", "acquisition_finished_at_utc", "verification_started_at_utc", "finished_at_utc"))
+    if (started != min(row[3] for row in verified) or acquired != max(row[4] for row in verified)
+            or not acquired <= verification_started <= finished):
+        raise ValueError("conditional-parts acquisition or verification timing mismatch")
+
+
+def verify_source(source, root, cache, h):
+    """Bind publisher metadata to a strict full GET or typed conditional parts.
+
+将发布者元数据绑定到严格完整 GET 或类型化条件响应部分。
 """
     ident = source["catalog_object_id"]
     if not isinstance(ident, str) or re.fullmatch(r"[a-f0-9]{24}", ident) is None:
@@ -47,6 +162,9 @@ def verify_source(source, root, cache, h):
     parent_hash = source["local_full_object_sha256"]
     parent = h["file_bound"](root, source["object_file"], parent_hash, cache)
     receipt = h["read_bound"](root, source["download_receipt_file"], source["download_receipt_sha256"], cache)
+    if receipt.get("format") == "drone.p6-oam-conditional-parts-http/v1":
+        _verify_conditional_parts(receipt, source, catalog, parent, root, cache, h)
+        return catalog, parent, receipt
     request, response = receipt["request"], receipt["response"]
     request_headers = {k.lower(): v for k, v in request["headers"].items()}
     response_headers = {k.lower(): v for k, v in response["headers"].items()}

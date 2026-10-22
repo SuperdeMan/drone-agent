@@ -41,6 +41,22 @@ CRASAR-U-DROIDs 固定源版本为 `c3f5421e1167bb7e88a765e3afa38bebd9898479`，
 
 该分支仅提供来源准入能力。没有经过独立标注、身份核验及正式冻结的道路组仍是候选；不能从道路名称或公开许可推导“正常”。
 
+## OpenAerialMap 条件响应组合来源（独立 v1）
+
+`drone.p6-oam-conditional-parts-http/v1` 是显式的新来源回执，不是完整单次 GET 200 回执。依据 [RFC 9110 §15.3.7.3](https://www.rfc-editor.org/rfc/rfc9110.html#section-15.3.7.3)，同一资源、同一强验证器的已取得响应部分可以组合；只有完整覆盖才构成完整表示。旧 `drone.p6-oam-full-object-http/v1` 继续严格要求真实完整 200、无 Range / Content-Range，所有既有语义不变；不得把分段来源改记成旧格式的 `downloaded_and_verified`。
+
+新回执记录 `status=assembled_and_verified`、官方逐对象元数据 URL / 摘要、`expected_etag`、`expected_bytes` / `body_bytes`、完整本地文件路径 / SHA-256、`checksum_origin=locally_computed_full_object`、`publisher_sha256=null` 和非空 `parts`。它不伪造一个汇总 HTTP 请求或响应。UAV、逐对象许可、sensor、RGB / uint8、有效尺寸 / CRS、发布者采集区间和官方对象 key 仍须验证；允许的两个官方 OIN 主机不因此扩大。
+
+每条 part 明确 `kind=complete_206` 或 `incomplete_200_prefix`、严格整数 `offset` / `body_bytes`，以及原始 `http_record_file` / `http_record_sha256`、实际保存的 `body_file` / `body_sha256`。当前唯一支持的原始记录布局是 `flat_request_response_v1`：同一不可改写的 JSON 中保留 `method`、`request_url`、`request_headers`、真实 `status`、`final_url`、响应 `headers` 和起止时间；不是从组合结论反向补造的传输记录。
+
+- 全部真实请求必须是 GET，`If-Match` 与响应 ETag 必须逐字等于同一个已知强 ETag；请求 `Accept-Encoding=identity`，响应不得有非 identity 内容编码；请求和最终 URL 都必须是发布对象的同一个 key。
+- `complete_206` 仅接受原始 `complete=true`、真实整数状态 206。请求单一闭区间 Range、响应 Content-Range 的起止和总长、Content-Length、原记录 `range_start` / `range_end` / `expected_bytes` / `body_bytes`、保存文件长度和摘要全部一致。未知总长、后缀范围、多范围或缺字段均拒绝。
+- `incomplete_200_prefix` 仅能从 offset 0 使用，且保存长度严格小于完整表示。原始状态保持 200、无 Range / Content-Range，响应 Content-Length 必须仍是完整表示大小；`outcome=incomplete_or_failed`、真实 `error`、`received_bytes` / `saved_bytes` / `saved_sha256` 和实际保存文件必须一致。不把被截断或主动停止的 200 记成完成响应。
+- 按 offset 排序检查覆盖恰为 `[0, expected_bytes)`，不允许空段、越界或缺口。允许真实重复覆盖，但每段每个字节都重新与完整本地文件对应区间比较，因此重叠也必须逐字相同；完整文件 SHA-256 另行重算。重叠不增加独立字节、资产或观察数。
+- `started_at_utc` / `acquisition_finished_at_utc` 分别等于各原始 HTTP 起点的最早值 / 终点的最晚值；`verification_started_at_utc` / `finished_at_utc` 单独记录之后的完整组合校验区间。原生提取只能发生在 `finished_at_utc` 之后，不能借较早的最后一段 HTTP 时间提前通过。布尔值不能充当整数；弱 / 缺失 ETag、跨对象、错误长度、摘要改动、重叠冲突或与原始记录不符的状态均拒绝。
+
+新格式只建立完整公共源字节的组合来源。原始失败记录、请求 / 响应、每段 body 及其摘要原样绑定；不会创造发布者 checksum、精确拍摄 UTC 或 flight ID。原生 RGB / 内部 mask 校验、冻结世界范围、单独离线再提取、独立 AI 隔离、物理身份 / 资产独立性、校准 / 测试曝光边界、数量 / 质量及真实跨次门槛全部沿用；来源通过不代表资产准入或 WP-P6-01 关闭。
+
 ## 跨次派生观察
 
 `capture_record` 引用 `drone.p6-derived-capture-inventory/v1` 中的具体观察。清单逐条绑定观察图片、来源父图、源日期、提取绑定，不把日期改为虚构 UTC。
