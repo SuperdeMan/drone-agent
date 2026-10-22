@@ -13,7 +13,7 @@ drone-agent is a drone inspection operations platform built on a safety-constrai
 
 > **Status (2026-10-22): software only, validated in simulation.** Release gates have passed for the single-drone runtime (M0–M2), local autonomy (M3-SITL), the hardware-free platform v0.1 (P0–P5), six of the seven P6 work packages and the first air-ground simulation (X1-01). They ran in PX4 SITL + Gazebo, logical fleets and a vendor protocol simulator. No real aircraft, dock or vendor firmware has been connected; hardware validation is a separate track (H1–H3).
 
-> **P6 road evaluation remains open.** Public UAV collection and owner-authorized independent AI annotation and verification have produced reference material; independent asset coverage, verified repeat pairs and the formal model evaluation remain pending. Human review timing is deferred to operational validation. See the [current P6 handoff](docs/p6-road-corpus-handoff-2026-10-22.md) for exact evidence and remaining work.
+> **P6 engineering closeout is being checked (D091).** The owner approved closing the evaluation tools and public-material delivery scope. Full road business acceptance remains unverified and moves to [pre-operation validation](docs/road-business-validation-backlog.md). See the [engineering record](docs/p6-engineering-readiness.md) and [material handoff](docs/p6-road-corpus-handoff-2026-10-22.md); human review efficiency and field clearing remain unverified.
 
 <p align="center">
   <img src="docs/images/desk-mission-approval.png" alt="The operations desk showing a mission awaiting approval: lifecycle steps, the package hash bound to the approval, the mission package, the admission checks, dispatch eligibility and run provenance" width="900">
@@ -64,7 +64,7 @@ P6 follows an [external review](docs/research/external-review-2026-10-10.md) of 
 | [Capacity and retention](docs/capacity-readiness.md) (WP-P6-07) | Tail latencies and backlogs through `capacity.get`; dock status archived after 7 days into verifiable gzip chunks | `a63f3ac` | Per-pass p95 8.0 → 9.0 ms at 16× history (control without it: 1148.5 ms) |
 | [Asset archive](docs/asset-archive-readiness.md) (WP-P6-04) | Append-only asset revisions, observations and events tagged fact, decision or belief; comparisons list factors and never name a cause | `6249129` | S0 18/18 |
 | [Explanation check v2](docs/explain-check-v2-readiness.md) (D086) | Counts approval or completion phrases as claims only where a clause asserts them | `7f7b97b` | Not adopted: 3 missed assertions, 1 allowed |
-| Target-business evaluation set (WP-P6-01) | Drone imagery for one inspection business, split by asset, place and batch and frozen before any test | — | Open: not frozen ([plan](docs/operations-implementation.md)) |
+| Road evaluation engineering delivery (WP-P6-01, D091) | Evaluation tools, 331 independently AI-reviewed references and traceable public-material handoff | — | [Engineering checks pending](docs/p6-engineering-readiness.md); full road business acceptance deferred |
 
 ## Architecture
 
@@ -231,7 +231,7 @@ ros2_ws/           ROS 2 Jazzy nodes for local autonomy (M3)
 proto/             wire contracts drone.*.v1 with locked field numbers
 configs/           platforms, skills, recovery policies, scenarios and operations catalogs
 eval/              adversarial corpora and recordings, S2 manifests, append-only BASELINES.md
-docs/              architecture, decisions D001–D090, readiness records, verification receipts
+docs/              architecture, decisions D001–D091, readiness records, verification receipts
 scripts/           dev_stack.py for the cloud workspace, release gates verify_*.py, desk tools
 sim/               PX4 / Gazebo images and compose files per stage
 tests/             mirrors src/; tests/contracts/ turn the red lines into executable tests
@@ -261,7 +261,7 @@ Read [CLAUDE.md](CLAUDE.md) before contributing ([AGENTS.md](AGENTS.md) is the c
 | Running the platform | [Cloud development](docs/cloud-development.md) · [Flight desk](docs/tailnet-desk.md) · [Operations guide](docs/operations-guide.md) · [Simulation](sim/README.md) |
 | Evidence, judges and replay | [Evaluation](docs/architecture/08-evaluation.md) · [Fetch and view a run](docs/cloud-development.md#查看与人工核对结果) · [Baselines](eval/BASELINES.md) |
 | P6 public materials and remaining work | [Current handoff](docs/p6-road-corpus-handoff-2026-10-22.md) · [Business evaluation protocol](docs/p6-business-evaluation.md) · [Sources](docs/p6-materials-review.md) |
-| Design rationale | [Decision log D001–D090](docs/decisions.md) · [Research and technology radar](docs/research/) · [Sibling-project reuse](docs/reuse-from-embodied-agent.md) |
+| Design rationale | [Decision log D001–D091](docs/decisions.md) · [Research and technology radar](docs/research/) · [Sibling-project reuse](docs/reuse-from-embodied-agent.md) |
 
 ## License
 

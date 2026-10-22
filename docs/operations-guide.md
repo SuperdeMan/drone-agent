@@ -103,3 +103,7 @@ $env:UV_DEFAULT_INDEX = 'https://pypi.tuna.tsinghua.edu.cn/simple'
 - **停止**：`desk-soak --stop --apply`（提前结束；编排先停用排班、结束所有故障、恢复世界）。到时自动结束。
 - **裁判**：`desk-soak --judge --apply` 复制账本后在无网络容器中运行 `eval/judge_p5_soak.py`，结果写在 `desk/soak/<ID>/judge/<运行ID>/result.json`，七条判据逐条给出；回执与结果按 P5 验收记录归档。长稳进行中也可以运行（只读，不影响长稳）：时长与发生时刻两项在结束前必然未完成，排班、恢复、资源与分层判据中尚未到时的条目也列为未完成，其余（运行、计数、已发生故障的恢复、意外重启）可作早期预警；中期结果只作预警，不替代结束后的裁判。
 - **缺陷**：长稳中出现阻断缺陷时停止，修复后以新候选重新开始 72 h，旧记录保留为负记录（D073）。
+
+## 10. 道路业务采用前验证（D091）
+
+P6工程交付的状态见[工程验收](p6-engineering-readiness.md)。完整道路业务效果验收由[后续任务](road-business-validation-backlog.md)承接，当前尚未通过；采用道路业务画像或对外声称识别效果达标前，应完成该清单并通过原 `verify_p6_road_business.py`。工程关闭不更改在用画像或常驻服务，真人复核效率与现场清障继续未验证。

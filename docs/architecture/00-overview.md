@@ -184,7 +184,9 @@ flowchart TB
 
 | 文档 | 回答的问题 |
 |---|---|
-| [../p6-road-corpus-handoff-2026-10-22.md](../p6-road-corpus-handoff-2026-10-22.md) | WP-P6-01 公开素材开发交接、剩余工作与提交范围；P6 仍未整体准出 |
+| [../p6-road-corpus-handoff-2026-10-22.md](../p6-road-corpus-handoff-2026-10-22.md) | WP-P6-01公开素材库存与历史核验；工程收口按D091，完整道路业务验收仍未通过 |
+| [../p6-engineering-readiness.md](../p6-engineering-readiness.md) | D091 已批准的P6工程交付范围、独立检查和准确验收版本；不授予道路业务验收资格 |
+| [../road-business-validation-backlog.md](../road-business-validation-backlog.md) | 从工程交付移交的完整D089道路业务验收，运营前完成；当前未验证 |
 | [../p6-materials-review.md](../p6-materials-review.md) · [第二批](../p6-materials-round2.md) | 公开来源、许可差异、图像 / 标注审计与正式数据缺口 |
 | [../p6-materials-development.md](../p6-materials-development.md) | 26 条开发输入、10 条实调与严格回放、复核工具及浏览器检查 |
 | [../p6-road-views-development.md](../p6-road-views-development.md) | 道路整图 / 分块的 24 条开发实调、离线工具、边界复核与未采用结论 |

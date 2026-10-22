@@ -13,7 +13,7 @@ drone-agent 是以安全约束任务运行时为底座的无人机巡检运营�
 
 > **当前状态（2026-10-22）：只有软件，全部在仿真中验证。** 单机运行时（M0–M2）、局部自主（M3-SITL）、无硬件平台 v0.1（P0–P5）、P6 七个工作包中的六个，以及首个空地联合仿真（X1-01）均已通过门禁。验证环境是 PX4 SITL + Gazebo、逻辑机队与厂商协议模拟器。尚未接入任何真实飞行器、机场或厂商固件；硬件验证是独立的 H1–H3 线。
 
-> **P6 道路业务评测仍开放。** 公开无人机采集及用户授权的独立 AI 初标与核验已形成参考材料；独立资产覆盖、真实跨次配对与正式模型评测仍未完成，真人候选计时延期至运营验证。准确证据、剩余工作见 [P6 当前交接](docs/p6-road-corpus-handoff-2026-10-22.md)。
+> **P6 工程范围关闭检查中（D091）。** 用户已批准按评测工具与公开素材交付收口；完整道路业务验收移至[运营前验证](docs/road-business-validation-backlog.md)，当前尚未通过。准确状态见[工程验收](docs/p6-engineering-readiness.md)和[材料交接](docs/p6-road-corpus-handoff-2026-10-22.md)；真人复核效率与现场清障仍未验证。
 
 <p align="center">
   <img src="docs/images/desk-mission-approval.png" alt="运营台中一个待审批的任务：生命周期步骤、与审批绑定的任务包哈希、任务包节点、准入检查、可派遣判定与运行来源" width="900">
@@ -64,7 +64,7 @@ P6 来自对平台的一次[外部评审](docs/research/external-review-2026-10-
 | [容量与数据保留](docs/capacity-readiness.md)（WP-P6-07） | 经 `capacity.get` 报告尾延迟与积压；机场状态超过 7 天按日归档为可校验的 gzip 块 | `a63f3ac` | 历史增长到 16× 时每轮 p95 8.0 → 9.0 ms（不带迁移的对照组 1148.5 ms） |
 | [资产档案](docs/asset-archive-readiness.md)（WP-P6-04） | 只追加的资产修订、观测与带 fact / decision / belief 标记的事件；比较只列因素、从不下归因结论 | `6249129` | S0 18/18 |
 | [解释核对 v2](docs/explain-check-v2-readiness.md)（D086） | 只在分句确实断言时，才把关于批准或完成的措辞当作断言 | `7f7b97b` | 未采用：漏拦 3 句，上限 1 句 |
-| 目标业务评测集（WP-P6-01） | 一个巡检业务的无人机视角素材，按资产、地点与批次拆分，测试前冻结 | — | 进行中，尚未冻结（[计划](docs/operations-implementation.md)） |
+| 道路评测工程交付（WP-P6-01，D091） | 评测工具、331条独立AI二审参考及可追溯公开素材交接 | — | [工程检查待完成](docs/p6-engineering-readiness.md)；完整道路业务验收移交后续 |
 
 ## 架构
 
@@ -231,7 +231,7 @@ ros2_ws/           M3 局部自主的 ROS 2 Jazzy 节点
 proto/             进程间与车队契约 drone.*.v1，字段号锁定
 configs/           平台、技能、恢复策略、场景与运营目录
 eval/              对抗语料与录制、S2 清单、只追加的 BASELINES.md
-docs/              架构、决策 D001–D090、验收记录、验证回执
+docs/              架构、决策 D001–D091、验收记录、验证回执
 scripts/           云端工作区入口 dev_stack.py、发布门禁 verify_*.py、任务台工具
 sim/               按阶段的 PX4 / Gazebo 镜像与 compose
 tests/             镜像 src/；tests/contracts/ 把红线写成可执行的测试
@@ -261,7 +261,7 @@ uv run python scripts/generate_proto.py
 | 运行平台 | [云端开发](docs/cloud-development.md) · [飞行台](docs/tailnet-desk.md) · [运维手册](docs/operations-guide.md) · [仿真](sim/README.md) |
 | 证据、裁判与回放 | [评测体系](docs/architecture/08-evaluation.md) · [拉取与查看运行](docs/cloud-development.md#查看与人工核对结果) · [基线](eval/BASELINES.md) |
 | P6 公开材料与剩余工作 | [当前交接](docs/p6-road-corpus-handoff-2026-10-22.md) · [业务评测协议](docs/p6-business-evaluation.md) · [来源审查](docs/p6-materials-review.md) |
-| 设计理由 | [决策记录 D001–D090](docs/decisions.md) · [调研与技术雷达](docs/research/) · [姊妹项目复用](docs/reuse-from-embodied-agent.md) |
+| 设计理由 | [决策记录 D001–D091](docs/decisions.md) · [调研与技术雷达](docs/research/) · [姊妹项目复用](docs/reuse-from-embodied-agent.md) |
 
 ## 许可证
 

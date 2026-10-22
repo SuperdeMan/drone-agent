@@ -143,7 +143,7 @@ H1/H2 的采购、系统变更和现场执行条件不因本次文档修订获�
 - [x] WP-P6-04 资产时空证据档案（D087；新增 3 张表与 4 个索引，用户批准）：2026-10-13 按 `6249129` 验收，档案只给因素、不下归因结论；证据仍不带姿态，视角由位置推出，见 [资产档案验收](asset-archive-readiness.md)。
 - [x] 解释核对 v2（D086）：2026-10-12 评测完成，按预登记规则不采用，服务继续用 v1；v3 需要新的留出集，见 [v2 验收](explain-check-v2-readiness.md)。
 - [x] WP-X1-01 空地联合仿真（D088；只在带 `--air-ground` 的账本上新增 3 张表，用户批准）：[实施方案](x1-implementation.md)于 2026-10-14 经用户批准，2026-10-15 按 `75cfde6` 验收，软件 / SITL 范围，见 [X1 验收](x1-readiness.md)。地面恢复边仍为草稿，常驻任务台不接入；MAVSDK v4 迁移后要重跑 X1 S1 与完整 M1 回归。
-- [ ] WP-P6-01 仍开放：最新参考数量、剩余数据与当前局部准入范围统一见[2026-10-22交接](p6-road-corpus-handoff-2026-10-22.md)。已归档[D本批检查点](../eval/s2/road_business_v1/corpus_checkpoint_20261022d/README.md)与[cdf5382来源/软件回执](../eval/s2/road_business_v1/oam_source_checkpoint_20261022/README.md)各对自己的版本负责；本轮新增参考和来源核验不替代正式数据冻结、唯一模型测试及业务门禁。D089门槛保持，真人候选计时延期、现场清障未验证；授权云端清理已完成。
+- [ ] WP-P6-01 工程范围检查中（D091）：用户已批准按道路评测工程与公开素材交付收口，见[工程验收](p6-engineering-readiness.md)。完整D089样本、真实跨次与正式模型质量移交[后续业务验收](road-business-validation-backlog.md)，尚未通过；331参考和19局部审核见[材料交接](p6-road-corpus-handoff-2026-10-22.md)。真人效率与现场清障未验证，授权云端清理已完成。
 - [x] 持续检查（D077）：`.github/workflows/checks.yml` 在 main 推送与 PR 上跑 ruff、契约字段、全量 pytest 与客户端测试；不开分支保护。
 
 P4 的 S2 已按 D076 复验通过；VisA 测试拆分已用两次，之后不再用于任何画像，目标业务的识别能力由 WP-P6-01 的评测集验证。P6 补拍的接手项见 [P6 补拍验收](p6-recapture-readiness.md)，P5 的见 [P5 记录](p5-readiness.md)，P4 的见 [P4 记录](p4-readiness.md)，P3 的见 [P3 记录](p3-readiness.md)。每阶段更新入口、对应 readiness 和路线状态；只有实际运行才向 `eval/BASELINES.md` 追加结果。季度技术雷达继续保留。
