@@ -1,11 +1,11 @@
 # CLAUDE.md — drone-agent
 
-建设无人机巡检运营平台，以安全约束任务运行时为执行底座：业务目标 → 持久工作流 → 资源调度 → 受约束任务 → 本地执行与证据 → 复核 / 工单 / 复检。P0–P5 已完成软件 / SITL 范围验证；P6 仍在推进，硬件验证另行开展。架构入口 `docs/architecture/00-overview.md`，运营设计 `09-operations.md`；决策记录只增不删，阶段状态见 `docs/roadmap.md`。复用 `../embodied-agent` / `../car-agent` 前读指定复用清单，不建立运行时依赖。
+建设无人机巡检运营平台，以安全约束任务运行时为执行底座：业务目标 → 持久工作流 → 资源调度 → 受约束任务 → 本地执行与证据 → 复核 / 工单 / 复检。P0–P5 已完成软件 / SITL 范围验证；P6工程范围已交付，完整道路业务验收移至运营前，硬件验证另行开展。架构入口 `docs/architecture/00-overview.md`，运营设计 `09-operations.md`；决策记录只增不删，阶段状态见 `docs/roadmap.md`。复用 `../embodied-agent` / `../car-agent` 前读指定复用清单，不建立运行时依赖。
 
 ## 当前阶段
 
 - M0–M2 已完成，M3-SITL 已通过；原 M3 未关闭，Jetson-in-the-loop 由 H1 承接。P0–P5 已完成软件 / SITL 范围验证，厂商机场只验证到协议模拟器。准确提交、负记录、门禁与历史成绩见 [路线图](docs/roadmap.md)及各 readiness；不得把历史成绩转借给新提交。
-- P6 的 WP-P6-02–07 已按各自范围准出；航段走廊与解释核对 v2 按预登记规则不采用。用户已按D091将WP-P6-01改为工程交付范围，检查待完成，见[工程验收](docs/p6-engineering-readiness.md)。完整道路业务验收移至[后续任务](docs/road-business-validation-backlog.md)，D089尚未通过，真人效率和现场清障未验证；原业务门禁字段不由工程关闭改为true。
+- P6 的 WP-P6-02–07 已按各自范围准出；航段走廊与解释核对 v2 按预登记规则不采用。WP-P6-01已按D091工程范围关闭，见[工程验收](docs/p6-engineering-readiness.md)。完整道路业务验收移至[后续任务](docs/road-business-validation-backlog.md)，D089尚未通过，真人效率和现场清障未验证；原业务门禁字段不由工程关闭改为true。
 - WP-X1-01 已在 `75cfde6` 按软件 / SITL 范围准出（D088），见 [X1 验收](docs/x1-readiness.md)。地面车按自己的地图作答，飞控限速 1.0 m/s，安全终态为停车并在静止后上锁；常驻任务台不接入，地面恢复边仍为草稿，MAVSDK 保持 3.17.4。后续 v4 迁移须重跑 X1 S1 与完整 M1 回归。
 - 常驻任务台配置以 `desk-cloud --status` 和实际回执为准；最近已验证的工作流 / 业务目录为 `p6_desk_v1`，运营 / 调度目录为 `p5_desk_v1`，视觉画像 change-v3、规划提示 planner-v3、解释核对 v1。统一入口为 8448（`/` 任务台，`/fixed/` M1）；激活按 console-cloud 再 desk-cloud 并核对两条版本。M3 外部模式尚未接入常驻任务台。
 - 账本的运营 schema v2 与 workflow / scheduling / business / capacity / asset / handoff 子版本各自独立；仅带 `--air-ground`（同时带 `--scheduling` 与 `--business`）才迁移 X1 交接表，常驻任务台不带。详细表与迁移见 [运营架构](docs/architecture/09-operations.md)、[运维指南](docs/operations-guide.md)和相应设计。任何新增持久化表仍属于 schema 变更，须先设计并获批准。
