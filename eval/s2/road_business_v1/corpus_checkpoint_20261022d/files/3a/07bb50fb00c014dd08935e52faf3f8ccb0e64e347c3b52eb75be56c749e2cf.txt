@@ -1,0 +1,111 @@
+"""Seal both exact scopes and stage specified new review metadata only.
+
+封存两个精确范围，仅补入指定的新审查元数据。
+"""
+import base64
+import hashlib
+import json
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+OUT = Path(__file__).resolve().parent
+REPO = OUT.parent.parent.parent / 'p6-road-views-20261014/repo'
+REMOTE = '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/composed22-v1'
+NAMES = [
+    'README.md', 'README-current-v2.md', 'postrun-verification.json', 'verify_composed22_postrun_v1.py',
+    'finalization-known-difference-v2.json', 'final-cloud-metadata-sync-receipt.json', 'final-cloud-sync-diagnostic-v1.json',
+    'control-v2/result.json', 'control-v2/remote_runtime.py', 'control-v2/remote_preflight.py',
+    'filtered19-v1/README.md', 'filtered19-v1/postrun-verification.json', 'filtered19-v1/verify_filtered19_postrun_v1.py',
+    'filtered19-v1/control-v1/result.json', 'filtered19-v1/control-v1/remote_runtime.py', 'finalize_outputs_v2.py',
+]
+
+
+def sha(path):
+    with path.open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+assert sha(OUT / 'actual-audit-v1/core-audit.json') == '667a1603811f2716b710cd9c981da9df4e146905a709c6a3b2fecbdd6d57f2c4'
+assert sha(OUT / 'filtered19-v1/actual-audit-v1/core-audit.json') == 'c2802a83b35acb1b4ddd9c0e7905017162258803b8c26a2bbc336e39099d78e1'
+assert not (OUT / 'SHA256SUMS-final-v2.txt').exists()
+sealed_files = sorted(path for path in OUT.rglob('*') if path.is_file())
+with (OUT / 'SHA256SUMS-final-v2.txt').open('x', encoding='ascii', newline='\n') as stream:
+    for path in sealed_files:
+        stream.write(sha(path) + '  ' + path.relative_to(OUT).as_posix() + '\n')
+NAMES.append('SHA256SUMS-final-v2.txt')
+payload = {}
+for name in NAMES:
+    path = OUT / name
+    assert path.is_file() and path.resolve().is_relative_to(OUT.resolve()) and not path.is_symlink()
+    blob = path.read_bytes()
+    payload[name] = {'sha256': hashlib.sha256(blob).hexdigest(), 'bytes': len(blob), 'data': base64.b64encode(blob).decode()}
+code = 'ROOT=' + repr(REMOTE) + '\nFILES=' + repr(payload) + '\n' + r'''
+import base64,hashlib,json,pathlib
+from datetime import datetime,timezone
+root=pathlib.Path(ROOT).resolve()
+def sha(p):
+ with p.open('rb') as s:return hashlib.file_digest(s,'sha256').hexdigest()
+originals={'actual-audit-v1/core-audit.json':'667a1603811f2716b710cd9c981da9df4e146905a709c6a3b2fecbdd6d57f2c4',
+ 'filtered19-v1/actual-audit-v1/core-audit.json':'c2802a83b35acb1b4ddd9c0e7905017162258803b8c26a2bbc336e39099d78e1'}
+for name,wanted in originals.items():assert sha(root/name)==wanted
+for name,item in FILES.items():
+ p=(root/name).resolve();assert p.is_relative_to(root)
+ blob=base64.b64decode(item['data'],validate=True)
+ assert len(blob)==item['bytes'] and hashlib.sha256(blob).hexdigest()==item['sha256']
+ if p.exists():assert p.is_file() and sha(p)==item['sha256'],'Differing review metadata; no overwrite allowed'
+rows=[]
+for name,item in FILES.items():
+ p=(root/name).resolve();added=not p.exists()
+ if added:
+  p.parent.mkdir(parents=True,exist_ok=True)
+  with p.open('xb') as s:s.write(base64.b64decode(item['data'],validate=True))
+ assert sha(p)==item['sha256'] and p.stat().st_size==item['bytes']
+ rows.append({'file':name,'sha256':item['sha256'],'bytes':item['bytes'],'added':added})
+for name,wanted in originals.items():assert sha(root/name)==wanted
+receipt={'recorded_at_utc':datetime.now(timezone.utc).isoformat(),'cloud_directory':str(root),'files':rows,
+ 'new_files':sum(row['added'] for row in rows),'exact_bytes_verified_after':True,
+ 'original22_negative_and_filtered19_reports_unchanged':True,'source_cache_uploads_or_downloads':0,
+ 'different_local_remote_preflight_mirror_not_uploaded':True,'existing_files_overwritten':False,'core_audits_not_repeated':True}
+blob=json.dumps(receipt,indent=2).encode()
+with (root/'cloud-final-metadata-sync-v2.json').open('xb') as s:s.write(blob)
+print(json.dumps({'receipt':receipt,'receipt_blob':base64.b64encode(blob).decode(),'receipt_sha256':hashlib.sha256(blob).hexdigest()}))
+'''
+compile(code, 'final-cloud-metadata-sync-v2.py', 'exec')
+sys.path.insert(0, str(REPO / 'scripts'))
+from dev_stack import Connection
+connection = Connection.from_environment()
+started = datetime.now(timezone.utc).isoformat()
+print(json.dumps({'phase': 'final-metadata-only-sync', 'files': len(payload), 'bytes': sum(row['bytes'] for row in payload.values()),
+    'existing_original_reports_preserved': True}), flush=True)
+try:
+    child = subprocess.run(['ssh', *connection.arguments(), connection.target, 'python3 -B -u -'],
+        input=code.encode(), capture_output=True, timeout=600)
+except subprocess.TimeoutExpired as exc:
+    with (OUT / 'final-cloud-metadata-sync-timeout-v2.json').open('x', encoding='utf-8') as stream:
+        json.dump({'started_at': started, 'timeout_seconds': 600, 'stdout_bytes': len(exc.stdout or b''),
+            'stdout_sha256': hashlib.sha256(exc.stdout or b'').hexdigest(), 'stderr_bytes': len(exc.stderr or b''),
+            'stderr_sha256': hashlib.sha256(exc.stderr or b'').hexdigest(), 'raw_ssh_stderr_printed': False,
+            'automatic_retry': False}, stream, indent=2)
+    raise RuntimeError('Final metadata transport timed out; preserve and inspect exact remote state before retry.') from None
+transport = {'started_at': started, 'finished_at': datetime.now(timezone.utc).isoformat(), 'returncode': child.returncode,
+    'stdout_bytes': len(child.stdout), 'stdout_sha256': hashlib.sha256(child.stdout).hexdigest(),
+    'stderr_bytes': len(child.stderr), 'stderr_sha256': hashlib.sha256(child.stderr).hexdigest(),
+    'raw_ssh_stderr_printed': False, 'sha256sums_final_v2_sha256': sha(OUT / 'SHA256SUMS-final-v2.txt')}
+with (OUT / 'final-cloud-metadata-sync-receipt-v2.json').open('x', encoding='utf-8', newline='\n') as stream:
+    json.dump(transport, stream, indent=2)
+    stream.write('\n')
+assert child.returncode == 0, 'Final metadata sync failed; raw SSH stderr withheld.'
+packet = json.loads(child.stdout)
+blob = base64.b64decode(packet['receipt_blob'], validate=True)
+assert hashlib.sha256(blob).hexdigest() == packet['receipt_sha256']
+with (OUT / 'cloud-final-metadata-sync-v2.json').open('xb') as stream:
+    stream.write(blob)
+for name, wanted in payload.items():
+    assert sha(OUT / name) == wanted['sha256'] and (OUT / name).stat().st_size == wanted['bytes']
+print(json.dumps({'status': 'final_metadata_synced', 'files': len(payload), 'new_cloud_files': packet['receipt']['new_files'],
+    'sha256sums_final_v2_sha256': transport['sha256sums_final_v2_sha256'],
+    'actual_cloud_metadata_receipt_sha256': packet['receipt_sha256'],
+    'transport_receipt_sha256': sha(OUT / 'final-cloud-metadata-sync-receipt-v2.json')}), flush=True)

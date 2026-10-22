@@ -1,0 +1,130 @@
+{
+  "format": "drone.p6-observation-candidate-coverage/v2",
+  "recorded_at": "2026-10-22T09:03:38.248980+00:00",
+  "integrity_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-next\\annotation-integrity-277-v1\\result.json",
+  "integrity_sha256": "5e910001b6eb77ca1f3430fa20620d1d16f41708706f72d1cca41092039dc730",
+  "grouping_rules_sha256": "243f15d3d37758228e5ccb5f526cd5662d0aafb22a37e9717a5650a4db0e2187",
+  "scope": "Saved selected second-review observations only. Proposed partitions and geometric group counts are planning metadata, not verified independent assets or formal coverage.",
+  "by_proposed_partition": {
+    "test_candidate": {
+      "observations": {
+        "indeterminate": 62,
+        "excluded_source": 19,
+        "obstacle": 41,
+        "normal": 17,
+        "wrong_target": 4
+      },
+      "obstacle_type_observations": {
+        "other_entity": 11,
+        "debris": 26,
+        "vegetation": 12
+      },
+      "geometric_groups_not_assets": 134
+    },
+    "calibration_candidate": {
+      "observations": {
+        "excluded_source": 40,
+        "indeterminate": 53,
+        "obstacle": 21,
+        "normal": 4
+      },
+      "obstacle_type_observations": {
+        "debris": 18,
+        "other_entity": 2,
+        "vegetation": 4
+      },
+      "geometric_groups_not_assets": 118
+    },
+    "unassigned": {
+      "observations": {
+        "excluded_source": 9,
+        "normal": 1,
+        "indeterminate": 6
+      },
+      "obstacle_type_observations": {},
+      "geometric_groups_not_assets": 4
+    }
+  },
+  "by_registered_purpose": {
+    "test_candidate/primary_or_repeat_candidate_not_yet_admitted": {
+      "indeterminate": 61,
+      "excluded_source": 19,
+      "obstacle": 41,
+      "normal": 17
+    },
+    "calibration_candidate/primary_or_repeat_candidate_not_yet_admitted": {
+      "excluded_source": 40,
+      "indeterminate": 53,
+      "obstacle": 21,
+      "normal": 4
+    },
+    "unassigned/primary_or_repeat_candidate_not_yet_admitted": {
+      "excluded_source": 9,
+      "normal": 1,
+      "indeterminate": 6
+    },
+    "test_candidate/current_observation_reserved_for_prior_task": {
+      "wrong_target": 4,
+      "indeterminate": 1
+    }
+  },
+  "purpose_note": "Do not count an expected-reference-only observation as a primary asset; do not count an intended asset twice through a normal/obstacle primary and a wrong-target task. Planned task roles are not truth labels.",
+  "requirements_retained": {
+    "test_primary_assets": {
+      "normal": 100,
+      "obstacle": 100,
+      "indeterminate": 30,
+      "wrong_target": 30
+    },
+    "calibration_primary_assets": {
+      "normal": 20,
+      "obstacle": 20,
+      "indeterminate": 10,
+      "wrong_target": 10
+    },
+    "test_minimum_each_obstacle_type": 30,
+    "true_same_asset_same_state_pairs": 30,
+    "repeat_assets": 15,
+    "minimum_verified_sites": 3,
+    "maximum_site_share": 0.5
+  },
+  "legacy_floodnet_415_separate": {
+    "impact_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\legacy-development-hold-impact-v2.json",
+    "impact_sha256": "a970a98050946d23008ab0a9673f13c240ff075c01707a8a6d7244d8ea00bf86",
+    "known_outside_development_hold_counts": {
+      "indeterminate": 111,
+      "normal": 48,
+      "obstacle": 23
+    },
+    "unknown_capture_hold_counts": {
+      "indeterminate": 13
+    },
+    "possible_outside_development_hold_observation_upper_bounds": {
+      "indeterminate": 124,
+      "normal": 48,
+      "obstacle": 23
+    },
+    "not_currently_admitted": true,
+    "requires_current_rule_review_asset_deduplication_and_partition": true
+  },
+  "formal_independent_assets_admitted": 0,
+  "formal_stability_pairs_admitted": 0,
+  "formal_data_frozen": false,
+  "formal_live_model_calls": 0,
+  "wp_p6_01_closed": false,
+  "optimistic_additional_reference_observations_needed": {
+    "by_class": {
+      "normal": 50,
+      "obstacle": 35,
+      "indeterminate": 0,
+      "wrong_target": 36
+    },
+    "required_primary_assets_across_both_partitions": {
+      "normal": 120,
+      "obstacle": 120,
+      "indeterminate": 40,
+      "wrong_target": 40
+    },
+    "assumptions": "Optimistically treat all current and legacy outside-hold observations as unique, valid and freely allocatable across partitions; ignore role conflicts, near duplicates and site limits. These are observation lower bounds, not admitted assets, achieved coverage or a time estimate. Existing unannotated candidates may supply the additional observations."
+  }
+}

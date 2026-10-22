@@ -1,0 +1,2808 @@
+{
+  "format": "drone.p6-oam-geometry-proposal/v2",
+  "created_at": "2026-10-22T10:20:32.601479+00:00",
+  "image_visual_inspections": 0,
+  "source_condition_tags_or_model_outputs_used": false,
+  "business_labels_created": 0,
+  "rules": [
+    "Use highway/name/ref identity and geometry only; no surface/access/condition/smoothness",
+    "Associate same named roads, straight unnamed continuations and nearby parallel full geometries before defining one scope per conservative group",
+    "20m footprint margin; longest simple non-ring interior line >=40m; single centered scope up to100m; endpoint separation >=30m; no nominal buffer holes",
+    "Geometric distances are de-duplication and viewport screening, never an obstacle-size threshold or proof of independent physical identity",
+    "No grouping is formally verified until physical road and neighboring group identities are checked",
+    "All imagery from a parent/site remains in one future split; no per-tile site inflation"
+  ],
+  "source_bindings": [
+    {
+      "id": "6a6b46c24848939db162da04",
+      "catalog_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a6b46c24848939db162da04-catalog.json",
+      "catalog_sha256": "e8fcf37009d3f3b057da9f0f62cb2d095de118e75b4df9aa036bbd929047c804",
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a6b46c24848939db162da04-osm.xml",
+      "osm_snapshot_sha256": "ee6d65cce265a97d966fa9375630a4e653dc2165f33cc327b13f5c917ad44d88"
+    },
+    {
+      "id": "6a8fa0148f75f1daf8b408fd",
+      "catalog_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-catalog.json",
+      "catalog_sha256": "90badc8ee15984dcb1e231f93a693576e52e32509d7643ae5b23f5a064b86513",
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3"
+    },
+    {
+      "id": "5b003a702b6a08001185f139",
+      "catalog_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-catalog.json",
+      "catalog_sha256": "35bffa354ef0d3cb142453ea833b402ccabd7e431f54dec50b0c5366294484de",
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73"
+    }
+  ],
+  "audit": [
+    {
+      "parent": "6a6b46c24848939db162da04",
+      "road_ways": 16,
+      "conservative_preliminary_groups": 11,
+      "eligible_fixed_scopes": 6,
+      "merge_evidence": [
+        {
+          "a": "784126140",
+          "b": "784126141",
+          "node": "7324689454",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "1551474851",
+          "b": "1563721316",
+          "node": "14111927330",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "1551477085",
+          "b": "1563721319",
+          "node": "14233778646",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "1563721315",
+          "b": "1563721316",
+          "node": "14111927331",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "1563721318",
+          "b": "1563721319",
+          "node": "14233778645",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "1563721316",
+          "b": "1563721315",
+          "reason": "conservative nearby parallel or repeated full geometry association within 15m Hausdorff distance"
+        }
+      ]
+    },
+    {
+      "parent": "6a8fa0148f75f1daf8b408fd",
+      "road_ways": 37,
+      "conservative_preliminary_groups": 23,
+      "eligible_fixed_scopes": 18,
+      "merge_evidence": [
+        {
+          "a": "1128415151",
+          "b": "1557251429",
+          "node": "3026635488",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "298744773",
+          "b": "1553974285",
+          "node": "14138193801",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "340466914",
+          "b": "1553013039",
+          "node": "3476974491",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "341058030",
+          "b": "1553974285",
+          "node": "3482849210",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "341058030",
+          "b": "1552917138",
+          "node": "3026635579",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "341771090",
+          "b": "343007940",
+          "node": "3488678682",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "341771090",
+          "b": "341771104",
+          "node": "3026635604",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "342518686",
+          "b": "342601852",
+          "node": "3495781039",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "342601852",
+          "b": "1552914387",
+          "node": "3495780996",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "854204183",
+          "b": "1552957635",
+          "node": "7966234447",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "1552917137",
+          "b": "1552917138",
+          "node": "3026635582",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "1552957613",
+          "b": "1552957635",
+          "node": "7966234459",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "1553974282",
+          "b": "1553974283",
+          "node": "14138182499",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        },
+        {
+          "a": "1553974283",
+          "b": "1553974284",
+          "node": "14138182500",
+          "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"
+        }
+      ]
+    },
+    {
+      "parent": "5b003a702b6a08001185f139",
+      "road_ways": 16,
+      "conservative_preliminary_groups": 16,
+      "eligible_fixed_scopes": 16,
+      "merge_evidence": []
+    }
+  ],
+  "groups": [
+    {
+      "candidate_group_id": "oam-road-fdfe2c7a01180438",
+      "parent_object_id": "6a6b46c24848939db162da04",
+      "site_group_id": "oam-site-6a6b46c24848939db162da04",
+      "osm_way_versions": [
+        {
+          "id": "784126140",
+          "version": "5",
+          "timestamp": "2026-09-30T07:19:22Z"
+        },
+        {
+          "id": "784126141",
+          "version": "9",
+          "timestamp": "2026-09-30T07:16:22Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a6b46c24848939db162da04-osm.xml",
+      "osm_snapshot_sha256": "ee6d65cce265a97d966fa9375630a4e653dc2165f33cc327b13f5c917ad44d88",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 624.8093023305573,
+      "utm_epsg": 32651,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.2747225449343,
+            13.793646419917843
+          ],
+          [
+            120.27470440000002,
+            13.7937979
+          ],
+          [
+            120.27468439999998,
+            13.793923200000004
+          ],
+          [
+            120.27468,
+            13.793951
+          ],
+          [
+            120.2746389,
+            13.794080600000001
+          ],
+          [
+            120.27454510000001,
+            13.794383799999999
+          ],
+          [
+            120.27454120000002,
+            13.794396499999996
+          ],
+          [
+            120.274518,
+            13.794515900000002
+          ],
+          [
+            120.27451755504687,
+            13.794524440924262
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000005221,
+      "scope_sha256": "37ccd1a6d0515f82804819c40550008f7e303b32659cc37abfb3135fe4ff02c4",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "5c4a5d602e198c3b40aae96ee3aa60da0139fb4952c30c42101d4e48dbc81454",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-1ec0df7125a3b885",
+      "parent_object_id": "6a6b46c24848939db162da04",
+      "site_group_id": "oam-site-6a6b46c24848939db162da04",
+      "osm_way_versions": [
+        {
+          "id": "1551474851",
+          "version": "4",
+          "timestamp": "2026-09-30T07:16:22Z"
+        },
+        {
+          "id": "1563721315",
+          "version": "1",
+          "timestamp": "2026-09-30T07:16:22Z"
+        },
+        {
+          "id": "1563721316",
+          "version": "1",
+          "timestamp": "2026-09-30T07:16:22Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a6b46c24848939db162da04-osm.xml",
+      "osm_snapshot_sha256": "ee6d65cce265a97d966fa9375630a4e653dc2165f33cc327b13f5c917ad44d88",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 182.530848272403,
+      "utm_epsg": 32651,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.27494617945597,
+            13.797168599668439
+          ],
+          [
+            120.27494720000001,
+            13.797171099999998
+          ],
+          [
+            120.2749881,
+            13.797244799999998
+          ],
+          [
+            120.2750262,
+            13.797327100000002
+          ],
+          [
+            120.2750745,
+            13.7974059
+          ],
+          [
+            120.2751819,
+            13.797549999999998
+          ],
+          [
+            120.27544090000002,
+            13.7978365
+          ],
+          [
+            120.27550401206945,
+            13.797877283988406
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000003503,
+      "scope_sha256": "6badcf359fb8ee7ebffc43d1a3392b8b4e5b2ca7dd59b9405e179609ca8baa1c",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "a6bcbf52f1e875250eb7d08fa506ab58985ba97a144a34b953b886e5108b4287",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-8dd9a529cb0b32b9",
+      "parent_object_id": "6a6b46c24848939db162da04",
+      "site_group_id": "oam-site-6a6b46c24848939db162da04",
+      "osm_way_versions": [
+        {
+          "id": "1551477085",
+          "version": "2",
+          "timestamp": "2026-09-30T07:16:22Z"
+        },
+        {
+          "id": "1563721318",
+          "version": "1",
+          "timestamp": "2026-09-30T07:16:22Z"
+        },
+        {
+          "id": "1563721319",
+          "version": "1",
+          "timestamp": "2026-09-30T07:16:22Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a6b46c24848939db162da04-osm.xml",
+      "osm_snapshot_sha256": "ee6d65cce265a97d966fa9375630a4e653dc2165f33cc327b13f5c917ad44d88",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 111.96833576595989,
+      "utm_epsg": 32651,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.27494516742505,
+            13.792421290435955
+          ],
+          [
+            120.2750565,
+            13.792425299999998
+          ],
+          [
+            120.2752165,
+            13.792441800000002
+          ],
+          [
+            120.2753632,
+            13.792426
+          ],
+          [
+            120.27537239999998,
+            13.7924269
+          ],
+          [
+            120.27538040000002,
+            13.792431199999998
+          ],
+          [
+            120.27538609999999,
+            13.7924382
+          ],
+          [
+            120.27544250000001,
+            13.792545799999997
+          ],
+          [
+            120.27549350000001,
+            13.792603299999998
+          ],
+          [
+            120.27550370000002,
+            13.792611099999998
+          ],
+          [
+            120.2755161,
+            13.792614699999996
+          ],
+          [
+            120.275529,
+            13.792613500000002
+          ],
+          [
+            120.27564329999998,
+            13.7925811
+          ],
+          [
+            120.2756606,
+            13.7925762
+          ],
+          [
+            120.27575599433766,
+            13.79254909131877
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000000462,
+      "scope_sha256": "6ec2761a55d6966c3042666c5dc307c9f421666fa50585367a8f587699a06624",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "0ccf5e9ff5b5a471d176401d36a971c60d882c91431fd388b549a0ac7da12369",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-24ed8c47328e359e",
+      "parent_object_id": "6a6b46c24848939db162da04",
+      "site_group_id": "oam-site-6a6b46c24848939db162da04",
+      "osm_way_versions": [
+        {
+          "id": "1563721313",
+          "version": "1",
+          "timestamp": "2026-09-30T07:16:22Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a6b46c24848939db162da04-osm.xml",
+      "osm_snapshot_sha256": "ee6d65cce265a97d966fa9375630a4e653dc2165f33cc327b13f5c917ad44d88",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 60.61764905590534,
+      "utm_epsg": 32651,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.27446499999999,
+            13.7954632
+          ],
+          [
+            120.2747203,
+            13.795469099999996
+          ],
+          [
+            120.2747927,
+            13.7954717
+          ],
+          [
+            120.27486190000002,
+            13.795473
+          ],
+          [
+            120.2749221,
+            13.795489399999997
+          ],
+          [
+            120.27502279999999,
+            13.7954894
+          ]
+        ]
+      },
+      "scope_length_m": 60.61764905590534,
+      "scope_sha256": "49bf9b2b5c4db1425b31ec5bb5c8d2bd3a92916ede245a613cfebf7a4935eff6",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "bda6b0546468415f6415d333c8cf9d70e81abb0a23e60803f7e4347c9c4a18db",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-c2b3500b8555d357",
+      "parent_object_id": "6a6b46c24848939db162da04",
+      "site_group_id": "oam-site-6a6b46c24848939db162da04",
+      "osm_way_versions": [
+        {
+          "id": "1563721322",
+          "version": "1",
+          "timestamp": "2026-09-30T07:16:22Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a6b46c24848939db162da04-osm.xml",
+      "osm_snapshot_sha256": "ee6d65cce265a97d966fa9375630a4e653dc2165f33cc327b13f5c917ad44d88",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 98.18043633779887,
+      "utm_epsg": 32651,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.2743914,
+            13.7943578
+          ],
+          [
+            120.27441610000001,
+            13.7942304
+          ],
+          [
+            120.2744475,
+            13.794031299999997
+          ],
+          [
+            120.2744568,
+            13.793888599999999
+          ],
+          [
+            120.2744672,
+            13.793711599999998
+          ],
+          [
+            120.27448900000002,
+            13.793505499999998
+          ],
+          [
+            120.27449770000001,
+            13.7934786
+          ]
+        ]
+      },
+      "scope_length_m": 98.18043633779887,
+      "scope_sha256": "ccf29b52eab6ccb78b4f738fe9bcc489ef6d9659b78b09fc1c075a3bb316366e",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "22ebf455b1fd503dc6b7011261064985ea2e7e18f86b338aec03403a662410a1",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-4d552b6ea1a48339",
+      "parent_object_id": "6a6b46c24848939db162da04",
+      "site_group_id": "oam-site-6a6b46c24848939db162da04",
+      "osm_way_versions": [
+        {
+          "id": "1563721324",
+          "version": "1",
+          "timestamp": "2026-09-30T07:16:22Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a6b46c24848939db162da04-osm.xml",
+      "osm_snapshot_sha256": "ee6d65cce265a97d966fa9375630a4e653dc2165f33cc327b13f5c917ad44d88",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 47.079897623652364,
+      "utm_epsg": 32651,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            120.27454120000002,
+            13.794396499999996
+          ],
+          [
+            120.274795,
+            13.7944445
+          ],
+          [
+            120.2749716,
+            13.794443699999999
+          ]
+        ]
+      },
+      "scope_length_m": 47.079897623652364,
+      "scope_sha256": "ff713f1d4bcd16be25d09b88f9736f131cef4bbea87eb06c44b3d6e3a976fd14",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "d6edffe95b148f9e22a15118ec9da87d11468d98dba32743d2615449b34ad2fd",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-57fb4e72258c6218",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "298744773",
+          "version": "6",
+          "timestamp": "2026-08-31T19:51:22Z"
+        },
+        {
+          "id": "341058030",
+          "version": "17",
+          "timestamp": "2026-08-31T19:51:22Z"
+        },
+        {
+          "id": "1552917137",
+          "version": "4",
+          "timestamp": "2026-08-31T19:51:22Z"
+        },
+        {
+          "id": "1552917138",
+          "version": "2",
+          "timestamp": "2026-08-31T19:51:22Z"
+        },
+        {
+          "id": "1553974285",
+          "version": "1",
+          "timestamp": "2026-08-31T19:51:22Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 2442.5011330685993,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.18344433919874,
+            28.004973482158977
+          ],
+          [
+            85.1834713,
+            28.0051031
+          ],
+          [
+            85.1834435,
+            28.005314599999988
+          ],
+          [
+            85.1833643,
+            28.005592599999993
+          ],
+          [
+            85.18316824473692,
+            28.005800202030805
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000000182,
+      "scope_sha256": "22a7e8c7efbc0d49cad307bb52b7ce0f957bc513d24d414b88e7a181cd974883",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "628fc9471da34d7e5e5a86cb863943736b0bfe3e615a6a74c5b2b652327e572a",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-de98b4c22f367010",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "340466914",
+          "version": "7",
+          "timestamp": "2026-09-03T07:41:32Z"
+        },
+        {
+          "id": "1553013039",
+          "version": "2",
+          "timestamp": "2026-09-03T08:12:33Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 469.9846838590202,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.17475958195493,
+            28.024912966300175
+          ],
+          [
+            85.1747611,
+            28.0250735
+          ],
+          [
+            85.174773,
+            28.0251823
+          ],
+          [
+            85.1748531,
+            28.0252948
+          ],
+          [
+            85.1751389,
+            28.025502499999995
+          ],
+          [
+            85.17532200154048,
+            28.02555781032486
+          ]
+        ]
+      },
+      "scope_length_m": 99.99999999994057,
+      "scope_sha256": "a66654be459a5f718605bba5fab86e637b3ca6990fdb58b9a04a56a767dffbe1",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "182e9d59b030cfd55f86985f9d5731a9da8ddfb6b3b5053d13a235af20e7fcd4",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-0464a97b58b03f52",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "341647710",
+          "version": "7",
+          "timestamp": "2026-08-28T01:38:39Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 287.5323280229145,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.18878255052275,
+            27.994044812222132
+          ],
+          [
+            85.1887847,
+            27.993982199999998
+          ],
+          [
+            85.1887042,
+            27.993983599999996
+          ],
+          [
+            85.1886375,
+            27.9939912
+          ],
+          [
+            85.1886059,
+            27.993963299999997
+          ],
+          [
+            85.1885428,
+            27.993979799999998
+          ],
+          [
+            85.1884536,
+            27.994009400000003
+          ],
+          [
+            85.1884288,
+            27.993982199999994
+          ],
+          [
+            85.1884302,
+            27.993938999999997
+          ],
+          [
+            85.188463,
+            27.993905799999993
+          ],
+          [
+            85.1885194,
+            27.9938952
+          ],
+          [
+            85.188569,
+            27.993857299999995
+          ],
+          [
+            85.1885482,
+            27.993829999999992
+          ],
+          [
+            85.1884604,
+            27.9937822
+          ],
+          [
+            85.18844480000001,
+            27.993691400000003
+          ],
+          [
+            85.18842074503722,
+            27.993616140697878
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000033988,
+      "scope_sha256": "be74be7812510d3495b5be0de4dcc04df275c3960eff369fe47db877148367a0",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "9f0b97f238ab8761bbefb9ed689a35546972d9b2948ec4a65ce4cdc6c1cb60f5",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-a99763b950dab2f5",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "341771090",
+          "version": "2",
+          "timestamp": "2023-01-18T21:12:05Z"
+        },
+        {
+          "id": "341771104",
+          "version": "13",
+          "timestamp": "2026-09-02T07:22:54Z"
+        },
+        {
+          "id": "343007940",
+          "version": "9",
+          "timestamp": "2026-08-27T15:46:38Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 1618.2790787653455,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.18335811808602,
+            28.019803464477295
+          ],
+          [
+            85.1834253,
+            28.019937599999995
+          ],
+          [
+            85.1834597,
+            28.020032900000004
+          ],
+          [
+            85.1834721,
+            28.0201767
+          ],
+          [
+            85.1834339,
+            28.020244399999996
+          ],
+          [
+            85.18347950000002,
+            28.0204172
+          ],
+          [
+            85.1835237,
+            28.020515499999995
+          ],
+          [
+            85.18356,
+            28.0205593
+          ],
+          [
+            85.18360148611991,
+            28.020650012309765
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000017835,
+      "scope_sha256": "c1294c5eb7ef65c1a6006c721b56e95e6b2e7d0155c723511f6e09bd245b2b56",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "37f9da6eb59b7413d8b4303be52fbeab6c5fa4a1344b6ca775815df54116623d",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-5936c9428fdfe5b4",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "341771092",
+          "version": "13",
+          "timestamp": "2026-10-01T07:29:42Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 2838.435839603667,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.17909159413142,
+            28.002881095108496
+          ],
+          [
+            85.1790887,
+            28.002916600000002
+          ],
+          [
+            85.1790713,
+            28.0031498
+          ],
+          [
+            85.1790163,
+            28.003162899999996
+          ],
+          [
+            85.1789492,
+            28.003134399999993
+          ],
+          [
+            85.17893553096604,
+            28.00261804524597
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000002647,
+      "scope_sha256": "f1b2f187bd87f564df311f6f6f253a4eb3c0686532bdb42f33c90124adf89031",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "e148e3bcfc82fc5aa1941d09498b04a3931753f5b96588f03783f26ba90d24b5",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-501173f477066b9c",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "341862310",
+          "version": "16",
+          "timestamp": "2026-09-03T08:12:33Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 1914.0522023522926,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.18230913532533,
+            28.023024623307286
+          ],
+          [
+            85.1822048,
+            28.022963199999996
+          ],
+          [
+            85.1819352,
+            28.022878
+          ],
+          [
+            85.1816623,
+            28.022818199999996
+          ],
+          [
+            85.1815128,
+            28.022845799999992
+          ],
+          [
+            85.1815677,
+            28.0229241
+          ],
+          [
+            85.18162114300839,
+            28.022961069496265
+          ]
+        ]
+      },
+      "scope_length_m": 99.99999999998744,
+      "scope_sha256": "d0e5497fdd874a27198474443dc06e8de49bec10fe50cb7b6aa569ca663f53df",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "ad190e955807684a4458601ece74e79c9dbda1f0d066d1e7aa4677e60f13e97f",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-2a7102dfe3788c5c",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "342518686",
+          "version": "8",
+          "timestamp": "2026-09-30T12:12:24Z"
+        },
+        {
+          "id": "342601852",
+          "version": "20",
+          "timestamp": "2026-09-30T12:12:24Z"
+        },
+        {
+          "id": "1552914387",
+          "version": "3",
+          "timestamp": "2026-08-27T13:22:37Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 2638.603325236633,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.17903030043561,
+            28.018170252478345
+          ],
+          [
+            85.178965,
+            28.0180646
+          ],
+          [
+            85.1788406,
+            28.017865899999997
+          ],
+          [
+            85.1788125,
+            28.017749999999992
+          ],
+          [
+            85.1787478,
+            28.017585800000003
+          ],
+          [
+            85.1786439,
+            28.017397900000002
+          ],
+          [
+            85.17859497125896,
+            28.017367940460996
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000014816,
+      "scope_sha256": "fb01662360de6858b3314270c5695cfce252e5950ea494263ade22709a2784a7",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "ac71f2ce161bd25c661894d4b686dc5810160cb24796bc9e146b928f0b895019",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-1c38c9eec48512a2",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "854204183",
+          "version": "6",
+          "timestamp": "2026-08-27T15:19:54Z"
+        },
+        {
+          "id": "1552957613",
+          "version": "2",
+          "timestamp": "2026-08-27T16:08:00Z"
+        },
+        {
+          "id": "1552957635",
+          "version": "1",
+          "timestamp": "2026-08-27T15:19:54Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 1411.4592508488229,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.18783628384003,
+            28.00980573881267
+          ],
+          [
+            85.1877795,
+            28.0097365
+          ],
+          [
+            85.1877441,
+            28.009644
+          ],
+          [
+            85.1876209,
+            28.0094332
+          ],
+          [
+            85.1875947,
+            28.009327099999997
+          ],
+          [
+            85.1875639,
+            28.009131299999996
+          ],
+          [
+            85.1875793,
+            28.0090442
+          ],
+          [
+            85.18764170723836,
+            28.008976986258382
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000019598,
+      "scope_sha256": "f63452ea0ad8bce0274af84dac18621a93b24bc3db68dec94366dd705c774ca0",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "3507b625fbc08db8acd151a0c87960366d409b3319fa5e7eb3cb3816bd6bb188",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-629ee628da8d8d3f",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "854956518",
+          "version": "5",
+          "timestamp": "2026-08-27T18:32:52Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 1529.9593698549495,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.1751717673429,
+            28.001922104536437
+          ],
+          [
+            85.1751794,
+            28.001939699999998
+          ],
+          [
+            85.1752304,
+            28.002072299999995
+          ],
+          [
+            85.1752505,
+            28.002149299999992
+          ],
+          [
+            85.1752371,
+            28.002211999999997
+          ],
+          [
+            85.17516870000001,
+            28.002328099999996
+          ],
+          [
+            85.1751244,
+            28.002439400000007
+          ],
+          [
+            85.1750962,
+            28.0025566
+          ],
+          [
+            85.1750667,
+            28.002642999999996
+          ],
+          [
+            85.1750641,
+            28.0027437
+          ],
+          [
+            85.17507388046799,
+            28.00278340168103
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000028449,
+      "scope_sha256": "cf8f624be6ebfdfcf0a8ff2ea7e750b0ec053444ca32be5e5c17f6ce3312a058",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "4eccd2432ec23ee622b0b7dad9367d3edfb4d311bfb1994271c76196847c26c3",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-02e082d01aad4392",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "860372453",
+          "version": "1",
+          "timestamp": "2020-10-18T14:50:46Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 91.7387330675493,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.1883745,
+            27.993509699999994
+          ],
+          [
+            85.188341,
+            27.993518
+          ],
+          [
+            85.1882927,
+            27.993471800000002
+          ],
+          [
+            85.1881894,
+            27.9932977
+          ],
+          [
+            85.1881425,
+            27.993188800000002
+          ],
+          [
+            85.1880835,
+            27.993072700000006
+          ],
+          [
+            85.1880084,
+            27.992924700000007
+          ],
+          [
+            85.1879612,
+            27.9928007
+          ]
+        ]
+      },
+      "scope_length_m": 91.7387330675493,
+      "scope_sha256": "abcdfb0f9edcbac01abcb8f643ed11b4aa7444d69abeea991aac2e2b9c2e4718",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "a9f7763fa35aafd1751bebbd7d2675003caf981b92925c23ac2ddd2397b7593c",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-578ce5003bf3e49d",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "886262247",
+          "version": "2",
+          "timestamp": "2026-08-27T18:52:27Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 657.8397931674905,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.17809589532469,
+            27.995781909497
+          ],
+          [
+            85.1779853,
+            27.995678299999998
+          ],
+          [
+            85.1778806,
+            27.9955599
+          ],
+          [
+            85.1777251,
+            27.995484100000002
+          ],
+          [
+            85.1776178,
+            27.9954628
+          ],
+          [
+            85.1775668,
+            27.995500599999996
+          ],
+          [
+            85.1775668,
+            27.9955906
+          ],
+          [
+            85.17769601826069,
+            27.995760614856554
+          ]
+        ]
+      },
+      "scope_length_m": 99.99999999976546,
+      "scope_sha256": "e7eb732779cb69062624ba999332991db8a407a67f08bca7e2fae2f2daa0f396",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "ce9d636bfbad0b7aa020dc60aa6f2f34b2d668a26b6df92e1a9aacb9792815a6",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-0d96ae1a4734da93",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "886461639",
+          "version": "3",
+          "timestamp": "2026-09-02T06:44:51Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 92.62586362042894,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.1871244,
+            28.0262759
+          ],
+          [
+            85.1872506,
+            28.0261684
+          ],
+          [
+            85.1874732,
+            28.026196799999997
+          ],
+          [
+            85.1877522,
+            28.026253599999997
+          ],
+          [
+            85.18799572648955,
+            28.026323204459676
+          ]
+        ]
+      },
+      "scope_length_m": 92.62586362042894,
+      "scope_sha256": "6f70d4dea5ad05410b9fbc87ae8b90bce29757ddb4d261db1b685aad25192769",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "104e5e0338e6651c5df3673c9f38f2ffde2fea211413744ec6d7172c72d5748d",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-d460e8e41114f8ad",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "886462017",
+          "version": "6",
+          "timestamp": "2026-08-27T15:01:53Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 106.28888334535915,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.17465302410353,
+            27.993434198011677
+          ],
+          [
+            85.1746787,
+            27.993444300000004
+          ],
+          [
+            85.1747113,
+            27.9934495
+          ],
+          [
+            85.174751,
+            27.993391799999998
+          ],
+          [
+            85.1747324,
+            27.993277300000003
+          ],
+          [
+            85.1746588,
+            27.993149499999998
+          ],
+          [
+            85.1746296,
+            27.9929918
+          ],
+          [
+            85.1745712,
+            27.992844399999996
+          ],
+          [
+            85.1745584,
+            27.992656699999998
+          ],
+          [
+            85.17456340343662,
+            27.99264017847354
+          ]
+        ]
+      },
+      "scope_length_m": 99.99999999983379,
+      "scope_sha256": "fb4959cd3a7dba9bd688e81e3659a0828bacd01c45b8e4b8002c60b75dabae4d",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "a5f582af87a3adc4267a081388ff117ea3fd1d4b17736290921da33f3bef8ac9",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-de8f17cdfb89871c",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "1008025813",
+          "version": "3",
+          "timestamp": "2026-08-27T15:46:38Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 222.94129694184366,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.18049089563607,
+            28.014727454298374
+          ],
+          [
+            85.1805178,
+            28.014734300000004
+          ],
+          [
+            85.1806654,
+            28.0147514
+          ],
+          [
+            85.1808022,
+            28.0147647
+          ],
+          [
+            85.1809179,
+            28.0148266
+          ],
+          [
+            85.1810452,
+            28.0148988
+          ],
+          [
+            85.1812036,
+            28.014956999999995
+          ],
+          [
+            85.1812734,
+            28.015003099999994
+          ],
+          [
+            85.18142117456833,
+            28.0150520137427
+          ]
+        ]
+      },
+      "scope_length_m": 99.99999999994077,
+      "scope_sha256": "c72e92c41d4950d36c698cd3081f337369aa3da497e229940e53e4d08d665a15",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "9969a9267700c9f4f33f14f376264c46addf8faac9401d118ede0ebbefeb970d",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-2104b7c1e2b53598",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "1128415151",
+          "version": "3",
+          "timestamp": "2026-08-31T19:51:22Z"
+        },
+        {
+          "id": "1557251429",
+          "version": "1",
+          "timestamp": "2026-09-08T05:08:36Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 1949.6795678410497,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.18571335077023,
+            28.00018280321807
+          ],
+          [
+            85.185264,
+            28.000803100000002
+          ],
+          [
+            85.18520447184855,
+            28.000959328454993
+          ]
+        ]
+      },
+      "scope_length_m": 99.9999999998428,
+      "scope_sha256": "74f631a2c9a146b019217b56cb535a78f81b99b25845591fed225d5faf939840",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "bbf4d4f3562c4e9bef7564bf7d163481a9528a2fff6a345c46bcf1b2cc192b08",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-0dad68dbab3a9dd0",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "1552896300",
+          "version": "1",
+          "timestamp": "2026-08-27T11:18:08Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 160.15930501667467,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.18418887309859,
+            28.017569356173002
+          ],
+          [
+            85.1843599,
+            28.017471599999997
+          ],
+          [
+            85.1841943,
+            28.017136599999997
+          ],
+          [
+            85.1842506,
+            28.017059599999996
+          ],
+          [
+            85.1842951,
+            28.0170453
+          ],
+          [
+            85.1844109,
+            28.0170104
+          ],
+          [
+            85.18445642379324,
+            28.017116681478676
+          ]
+        ]
+      },
+      "scope_length_m": 99.99999999988333,
+      "scope_sha256": "d9e72d7430f00307fb53b1709d316d55de047f1e0619eb70c9489547b2ce0708",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "ed1fa8157b194b0935f21a56d262e725a8a2832d3212c71d3b13914430b36c01",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-c359f2e38ea8bac1",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "1552896302",
+          "version": "1",
+          "timestamp": "2026-08-27T11:18:08Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 209.95206256663047,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.18303861161681,
+            28.017780106425192
+          ],
+          [
+            85.18309730000001,
+            28.017759299999998
+          ],
+          [
+            85.1832569,
+            28.017723799999995
+          ],
+          [
+            85.1833186,
+            28.0176113
+          ],
+          [
+            85.1835586,
+            28.0175521
+          ],
+          [
+            85.1838858,
+            28.017587699999996
+          ],
+          [
+            85.18387429184178,
+            28.01764839574772
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000012592,
+      "scope_sha256": "ff364abad9acf9c936a0f34a488c408dd050cbc63094491c0ea762587b55df7a",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "840ed2cb93714de18c8163ba98c12152021a2ca18d3528891728492462221f67",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-9254829911b90d56",
+      "parent_object_id": "6a8fa0148f75f1daf8b408fd",
+      "site_group_id": "oam-site-6a8fa0148f75f1daf8b408fd",
+      "osm_way_versions": [
+        {
+          "id": "1553974282",
+          "version": "1",
+          "timestamp": "2026-08-31T19:51:22Z"
+        },
+        {
+          "id": "1553974283",
+          "version": "1",
+          "timestamp": "2026-08-31T19:51:22Z"
+        },
+        {
+          "id": "1553974284",
+          "version": "1",
+          "timestamp": "2026-08-31T19:51:22Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/6a8fa0148f75f1daf8b408fd-osm.xml",
+      "osm_snapshot_sha256": "faf5ad47b08aff2f14ae870ec6f9b4215f7a3486b94d9c589c60c2fe9c017ae3",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 88.37691822367516,
+      "utm_epsg": 32645,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            85.1845637,
+            27.995674199999996
+          ],
+          [
+            85.1846945,
+            27.995758499999997
+          ],
+          [
+            85.1848541,
+            27.995623499999997
+          ],
+          [
+            85.1852055,
+            27.995351100000004
+          ],
+          [
+            85.1852479,
+            27.995327899999996
+          ]
+        ]
+      },
+      "scope_length_m": 88.37691822367516,
+      "scope_sha256": "88c2b3f916795d757dd5e945e7d1a0ca60cf31fcc61027afd56860c1f0e7e361",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "acc804db56efdb9b7bdc9ffed3b1e17eefbe4a4d312ff696261d9b736fc33a8f",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-fe98c13b94b20c47",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529630734",
+          "version": "10",
+          "timestamp": "2022-01-13T13:44:59Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 153.57318124415977,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.42353276252195,
+            -6.094767809667148
+          ],
+          [
+            39.4234152,
+            -6.094791500000008
+          ],
+          [
+            39.4231604,
+            -6.094868900000001
+          ],
+          [
+            39.422919,
+            -6.0949236000000075
+          ],
+          [
+            39.4227071,
+            -6.094982299999996
+          ],
+          [
+            39.42265918750113,
+            -6.094997147561187
+          ]
+        ]
+      },
+      "scope_length_m": 99.99999999963323,
+      "scope_sha256": "faa5752d105d6dca6191bb18ce2a0a1bdcac5e9db4ca3e3f0dbc6848f2e82e90",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "10d91ec50ee9557b8baeb178ddad32b181aeccdea3d5d28c711a9ce9abaa40e8",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-7f5658876f62cb7f",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529897431",
+          "version": "2",
+          "timestamp": "2022-01-14T07:39:23Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 1081.8844676057058,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.430322061607065,
+            -6.073810459283825
+          ],
+          [
+            39.4303474,
+            -6.073805399999994
+          ],
+          [
+            39.4303957,
+            -6.073701400000008
+          ],
+          [
+            39.4304252,
+            -6.073432000000006
+          ],
+          [
+            39.4305485,
+            -6.073240000000003
+          ],
+          [
+            39.4306156,
+            -6.0731626000000025
+          ],
+          [
+            39.4306397,
+            -6.073021300000003
+          ],
+          [
+            39.43064398908817,
+            -6.073002829398239
+          ]
+        ]
+      },
+      "scope_length_m": 99.9999999994351,
+      "scope_sha256": "9b004564cc1b4b0a99ad6a3d5718e1a7ae3e3557f2bc13a3a62356ee88232fc2",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "5c7c56e05173935289c7545ec601ccde51b5cb775a7ef7577353b436fe0a4692",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-9dba9c08da8a1fab",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529916860",
+          "version": "1",
+          "timestamp": "2017-10-04T08:54:01Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 150.53481388272175,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.423554755839156,
+            -6.090935464540012
+          ],
+          [
+            39.4235131,
+            -6.090921699999996
+          ],
+          [
+            39.4234287,
+            -6.090908999999993
+          ],
+          [
+            39.4232878,
+            -6.090911000000002
+          ],
+          [
+            39.4232194,
+            -6.090907000000003
+          ],
+          [
+            39.4231081,
+            -6.090905599999994
+          ],
+          [
+            39.4230437,
+            -6.090905600000002
+          ],
+          [
+            39.422919,
+            -6.0908950000000015
+          ],
+          [
+            39.4228452,
+            -6.090893600000005
+          ],
+          [
+            39.4227527,
+            -6.090891
+          ],
+          [
+            39.4226789,
+            -6.090892300000001
+          ],
+          [
+            39.422654867431994,
+            -6.0908933031375865
+          ]
+        ]
+      },
+      "scope_length_m": 99.9999999997879,
+      "scope_sha256": "861b2276a14b45ad0a4d3af2786e3af8503b54fd09b210330eced2b50ca860f2",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "40e5a6bf143e80ca1a5fa70351bdf583b16e0e9656ac46339765c4c2246c4bff",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-4a8f822ac1ffe890",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529916865",
+          "version": "1",
+          "timestamp": "2017-10-04T08:54:01Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 144.51427338330637,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.42353005038726,
+            -6.091808280656941
+          ],
+          [
+            39.4232798,
+            -6.091797799999995
+          ],
+          [
+            39.4231993,
+            -6.091792399999995
+          ],
+          [
+            39.4230303,
+            -6.0917731
+          ],
+          [
+            39.422826500000006,
+            -6.091762499999995
+          ],
+          [
+            39.4226508,
+            -6.0917542
+          ],
+          [
+            39.42262836322956,
+            -6.091752474095892
+          ]
+        ]
+      },
+      "scope_length_m": 99.99999999998148,
+      "scope_sha256": "617c9d83111b03610b7da84def6dcc66637cc70ae60bbffe595833c7246782e7",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "a5aad577620fed824d4fcb0fd309adaf3b22de3cff49c64527e37a5ecdefe53e",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-7a8771c98759c34e",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529916869",
+          "version": "2",
+          "timestamp": "2020-01-23T18:28:04Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 139.29720485886418,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.42350613021974,
+            -6.09272210204908
+          ],
+          [
+            39.4234477,
+            -6.0927142000000005
+          ],
+          [
+            39.4233656,
+            -6.092709900000006
+          ],
+          [
+            39.4232503,
+            -6.092704600000002
+          ],
+          [
+            39.4231248,
+            -6.092685899999998
+          ],
+          [
+            39.4230324,
+            -6.092677900000005
+          ],
+          [
+            39.4228385,
+            -6.092659199999992
+          ],
+          [
+            39.4227312,
+            -6.092662900000005
+          ],
+          [
+            39.4226709,
+            -6.092661900000006
+          ],
+          [
+            39.42260588170601,
+            -6.092663057072406
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000001837,
+      "scope_sha256": "34bc14b91e925c63bca6bb99725ab91dc365868217aa88115893889013a133b4",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "9ddb11230c69d8f11e2e1abf63e00f38fa6e64021314be77b9b13fd50306b3d8",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-3acc129159f8244a",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529916882",
+          "version": "2",
+          "timestamp": "2020-08-03T14:50:54Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 79.73440512871898,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.4248601,
+            -6.093967600000001
+          ],
+          [
+            39.4250588,
+            -6.093999399999993
+          ],
+          [
+            39.4251982,
+            -6.094014099999993
+          ],
+          [
+            39.4253431,
+            -6.094010699999995
+          ],
+          [
+            39.4254604,
+            -6.093991400000007
+          ],
+          [
+            39.4255757,
+            -6.093987399999997
+          ]
+        ]
+      },
+      "scope_length_m": 79.73440512871898,
+      "scope_sha256": "098ac7c84b8a9f65bc87909f023e5fe4af029163306252c366b783ea53732d71",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "29059db0199f2f8e35e51dfb0bbcd47e9fbc4ee3a6b3884783774df05131e898",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-d8ca5de7b2dd1e99",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529916887",
+          "version": "2",
+          "timestamp": "2020-08-03T14:50:54Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 83.751978377019,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.4250222,
+            -6.089481999999998
+          ],
+          [
+            39.4251674,
+            -6.089536099999993
+          ],
+          [
+            39.4252773,
+            -6.0895780999999936
+          ],
+          [
+            39.4253266,
+            -6.089601900000006
+          ],
+          [
+            39.4253914,
+            -6.089626799999995
+          ],
+          [
+            39.425459,
+            -6.0896480999999945
+          ],
+          [
+            39.4255168,
+            -6.089676099999999
+          ],
+          [
+            39.4255999,
+            -6.089718800000005
+          ],
+          [
+            39.4256468,
+            -6.089730800000007
+          ],
+          [
+            39.4257273,
+            -6.089752100000008
+          ]
+        ]
+      },
+      "scope_length_m": 83.751978377019,
+      "scope_sha256": "1c35aa0ad8dc699f657f081fce19d44db51114e11e46306b74aff9dfa0192857",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "4c0bea73884917152d8d0c405321faaabf547e461ea69018a65538153c81e93a",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-8ef5b9ac09678ea9",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529916888",
+          "version": "2",
+          "timestamp": "2023-05-09T12:46:10Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 417.00179317300785,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.42518086580066,
+            -6.091902316859392
+          ],
+          [
+            39.4251771,
+            -6.091877999999997
+          ],
+          [
+            39.4251983,
+            -6.091712000000004
+          ],
+          [
+            39.4252143,
+            -6.091660799999999
+          ],
+          [
+            39.4252274,
+            -6.091572999999993
+          ],
+          [
+            39.4252411,
+            -6.091499699999996
+          ],
+          [
+            39.4252351,
+            -6.0913737000000046
+          ],
+          [
+            39.4252314,
+            -6.091257699999994
+          ],
+          [
+            39.425233,
+            -6.091235
+          ],
+          [
+            39.4252431,
+            -6.091106999999999
+          ],
+          [
+            39.42525694234901,
+            -6.0910056458676785
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000041133,
+      "scope_sha256": "318a8ade73c458b9f336ff21a4b41cd9e43dfe647fb2357ff40c2796adf0ce4b",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "774a03c34b07bcecb6433fe158203a00cadfbe43ef3482a9976753566e20a2ad",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-f849f7a6526998be",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529916890",
+          "version": "2",
+          "timestamp": "2020-09-01T14:11:57Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 128.34524051847407,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.42511771378116,
+            -6.089132211411321
+          ],
+          [
+            39.42511970000001,
+            -6.0891274000000015
+          ],
+          [
+            39.4251412,
+            -6.0889973000000035
+          ],
+          [
+            39.4251546,
+            -6.088903299999998
+          ],
+          [
+            39.4251741,
+            -6.0888293000000075
+          ],
+          [
+            39.4251834,
+            -6.088756599999997
+          ],
+          [
+            39.4252336,
+            -6.088704199999995
+          ],
+          [
+            39.4252472,
+            -6.088651900000006
+          ],
+          [
+            39.4252619,
+            -6.088550600000007
+          ],
+          [
+            39.4252954,
+            -6.088459899999999
+          ],
+          [
+            39.4253008,
+            -6.088389199999998
+          ],
+          [
+            39.42531420000001,
+            -6.088321199999999
+          ],
+          [
+            39.42532399622113,
+            -6.088265221597265
+          ]
+        ]
+      },
+      "scope_length_m": 100.000000000163,
+      "scope_sha256": "a9bbcccdb45f7d6e29cb20809c8a3a5c0b1d3c2e06038ce2de6f24cde9061543",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "573ec2d1102600f9f30b46f27f7bfde7eaf8902396caaeab2e9226f58c694974",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-2961520a454161f6",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529916891",
+          "version": "2",
+          "timestamp": "2020-08-03T14:50:54Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 213.07800399156588,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.4245343315601,
+            -6.088329042637626
+          ],
+          [
+            39.4246128,
+            -6.088313299999994
+          ],
+          [
+            39.424755000000005,
+            -6.088284499999997
+          ],
+          [
+            39.4248783,
+            -6.088288500000002
+          ],
+          [
+            39.4250474,
+            -6.088198600000002
+          ],
+          [
+            39.425203,
+            -6.088142500000007
+          ],
+          [
+            39.4253853,
+            -6.088157199999993
+          ],
+          [
+            39.42540072696068,
+            -6.088155783022743
+          ]
+        ]
+      },
+      "scope_length_m": 99.99999999994758,
+      "scope_sha256": "80dcb133b2b290037f0012ab9690b101b3b59a039d495eb7395a9e0d11ab6a6d",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "ae3f10a396e1aacefc3471180c5a8e14200d843d7806b7033764a1854aae4642",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-a98c6119426ba822",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529916909",
+          "version": "4",
+          "timestamp": "2017-11-29T18:30:40Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 266.9957043196159,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.42318199904214,
+            -6.093216313670173
+          ],
+          [
+            39.4234514,
+            -6.093227299999996
+          ],
+          [
+            39.4236566,
+            -6.093219299999995
+          ],
+          [
+            39.4238618,
+            -6.0932140000000015
+          ],
+          [
+            39.4240268,
+            -6.093231299999996
+          ],
+          [
+            39.4240718,
+            -6.0932386000000065
+          ],
+          [
+            39.42408366603792,
+            -6.093240277737649
+          ]
+        ]
+      },
+      "scope_length_m": 99.99999999990649,
+      "scope_sha256": "d31db3d6e729dfd58ec22099a12c8fc00944a304966a591ed41640182670c71a",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "96a61252efb0d52f5802d430bf8357de06fae86131b6280626e7530d39d7a13e",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-d961ad42e5a8a775",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529916922",
+          "version": "5",
+          "timestamp": "2022-01-13T12:58:13Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 835.897395328194,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.42493278920429,
+            -6.091374072204502
+          ],
+          [
+            39.4249293,
+            -6.091387000000001
+          ],
+          [
+            39.4249241,
+            -6.091438300000003
+          ],
+          [
+            39.4249159,
+            -6.091517699999994
+          ],
+          [
+            39.4249079,
+            -6.091685700000006
+          ],
+          [
+            39.4248918,
+            -6.091789800000005
+          ],
+          [
+            39.4248676,
+            -6.092003100000004
+          ],
+          [
+            39.4248703,
+            -6.0921417999999985
+          ],
+          [
+            39.42487029999945,
+            -6.092274698286675
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000067477,
+      "scope_sha256": "88c5e64793c8e40efcfa292e2eaf7eb2d5bf9411cc558331f816cd83163985d9",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "3244780a0b23d91dc3197c0d7eca5b498b77cce5844fbe303a7bc32e7c285d70",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-b8801ba4aa123569",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529916928",
+          "version": "2",
+          "timestamp": "2022-01-14T07:32:22Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 190.6323787992296,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.42362337770899,
+            -6.088356381799167
+          ],
+          [
+            39.4235091,
+            -6.0883051999999935
+          ],
+          [
+            39.4232408,
+            -6.0881851999999945
+          ],
+          [
+            39.4230451,
+            -6.088043900000001
+          ],
+          [
+            39.42282250000001,
+            -6.087957099999996
+          ],
+          [
+            39.42281804122103,
+            -6.087956937938553
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000022128,
+      "scope_sha256": "46cfeb6fc9398fe644908cd826513ec4e5544c11394c49333111ed6eee390211",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "6006321fcb558803de9f9295f6177e023679fa4c4565334cd387ca0af5daf4b9",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-e3072a5ef8021f05",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529916931",
+          "version": "2",
+          "timestamp": "2017-10-04T09:07:45Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 1036.831950716237,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.42647579089273,
+            -6.084203208202586
+          ],
+          [
+            39.4264796,
+            -6.084177899999997
+          ],
+          [
+            39.42650650000001,
+            -6.0840818999999975
+          ],
+          [
+            39.426536,
+            -6.083945900000001
+          ],
+          [
+            39.4265488,
+            -6.0838946999999965
+          ],
+          [
+            39.4265896,
+            -6.083799200000002
+          ],
+          [
+            39.4266259,
+            -6.083653800000004
+          ],
+          [
+            39.4266567,
+            -6.083524499999999
+          ],
+          [
+            39.4266996,
+            -6.083412400000007
+          ],
+          [
+            39.42670223490458,
+            -6.083331791437594
+          ]
+        ]
+      },
+      "scope_length_m": 99.9999999995214,
+      "scope_sha256": "d2006dace77c7375c32bcdf5a1242e83bbd2e7869a72692f03405c2af57e6266",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "ee1adbf2c43b8aa74f39a29285efcdecfb70df38e51e65d3ff3d1abce74d58b0",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-b2fc0f4c8e27dbfe",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "529916933",
+          "version": "2",
+          "timestamp": "2022-01-14T07:32:22Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 471.99632124157665,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.42398759266141,
+            -6.0797441131381715
+          ],
+          [
+            39.4240161,
+            -6.079773200000005
+          ],
+          [
+            39.4240724,
+            -6.0798758
+          ],
+          [
+            39.4241112,
+            -6.080025199999996
+          ],
+          [
+            39.4241729,
+            -6.0801186000000005
+          ],
+          [
+            39.4242319,
+            -6.080130600000001
+          ],
+          [
+            39.4243285,
+            -6.080122600000006
+          ],
+          [
+            39.4244264,
+            -6.080070500000004
+          ],
+          [
+            39.4244653,
+            -6.080001199999998
+          ],
+          [
+            39.4245297,
+            -6.079915800000004
+          ],
+          [
+            39.42454748253102,
+            -6.079897276532178
+          ]
+        ]
+      },
+      "scope_length_m": 100.00000000035264,
+      "scope_sha256": "b9d28a527f4e4511fdfae6034534e7d961b8a6c4b7530354bad7aca27210b781",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "b4ca8327da809c8524abcdb55ea05442fda75cd6a3b6c61d2b61a08b332bdd01",
+      "geometry_current_not_capture_time_snapshot": true
+    },
+    {
+      "candidate_group_id": "oam-road-deebbb3fbd6dc7b9",
+      "parent_object_id": "5b003a702b6a08001185f139",
+      "site_group_id": "oam-site-5b003a702b6a08001185f139",
+      "osm_way_versions": [
+        {
+          "id": "900638455",
+          "version": "10",
+          "timestamp": "2026-04-30T12:41:53Z"
+        }
+      ],
+      "osm_snapshot_file": "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018/resume-20261022-next/new-oam-full-acquisition-v1/new-oam-metadata-v1/selected/5b003a702b6a08001185f139-osm.xml",
+      "osm_snapshot_sha256": "bbb475776fbf513b94fdf7be1462ae1b3b7a210197f0d9e173004cf003022d73",
+      "geometry_selection_only": true,
+      "normal_truth": null,
+      "physical_asset_identity_verified": false,
+      "all_associated_fragments_count_as_one_group": true,
+      "names_for_provenance_only": [],
+      "longest_interior_component_length_m": 3028.4134694646923,
+      "utm_epsg": 32737,
+      "world_scope": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            39.42549506457427,
+            -6.082577744224444
+          ],
+          [
+            39.4255824,
+            -6.082265599999997
+          ],
+          [
+            39.425721851031724,
+            -6.0817021855697275
+          ]
+        ]
+      },
+      "scope_length_m": 99.9999999988227,
+      "scope_sha256": "370713d35b37eeab7327a49af45529eca5f4bd9f335dfea7ceca684a7131b4c1",
+      "scope_predeclared_at": "2026-10-22T10:20:32.601479+00:00",
+      "selection_rank_hash": "714ab2019d3d6b4f7d320fa4b4c11f5aef4676773459d17a83bb1536159a0535",
+      "geometry_current_not_capture_time_snapshot": true
+    }
+  ],
+  "formal_release_eligible": false
+}

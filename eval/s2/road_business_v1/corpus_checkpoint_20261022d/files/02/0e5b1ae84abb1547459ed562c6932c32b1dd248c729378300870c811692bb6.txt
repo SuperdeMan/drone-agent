@@ -1,0 +1,39 @@
+"""Append the second source-verified32 while retaining all prior observations.
+
+保留所有既有观察，再追加第二批来源核验32。
+"""
+import runpy
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+_previous = runpy.run_path(str(Path(__file__).with_name('current_observations_v4.py')))
+match, read, sha = (_previous[key] for key in ('match', 'read', 'sha'))
+
+
+def load_observations():
+    """Keep source availability separate from business and physical admission.
+
+将来源可用性与业务及物理准入分开。
+"""
+    old = _previous['load_observations']()
+    base = ROOT / 'resume-20261022-next/santolan-mask-next-v1'
+    proof_file = base / 'cloud-job/result.json'
+    assert sha(proof_file) == '2002b875b816c188d45f82241e22a7acac77e75ea6b1c1f6c2a1b53db7dafaef'
+    gate = read(proof_file)
+    assert gate['status'] == 'passed' and gate['checked'] == gate['passed'] == gate['independent_replay_matched'] == 32
+    pool = read(base / 'selected-observation-inputs.json')
+    assert sha(base / 'selected-observation-inputs.json') == 'f6df6205549161feb7161e7b98bfadbba96badb74f092fed2a0050ddfe7b5a2d'
+    allowed = set(pool['selected_sample_ids'])
+    additions = {}
+    folder = base / 'cloud-job/frames'
+    for path in sorted((folder / 'receipts').glob('*.json')):
+        row = read(path)
+        assert row['sample_id'] in allowed and row['sample_id'] not in old
+        assert row['status'] == 'extracted' and row['proposed_partition'] == 'calibration_candidate'
+        assert row['business_label'] is None and row['formal_release_eligible'] is False and row['repeated_capture_eligible'] is False
+        for field, subdir, ext in [('image', 'images', 'jpg'), ('guide', 'guides', 'jpg'), ('mask', 'masks', 'png'), ('overview', 'overviews', 'jpg')]:
+            p = folder / subdir / (row['sample_id'] + '.' + ext)
+            assert p.is_file() and sha(p) == row[field + '_sha256']
+        additions[row['sample_id']] = row
+    assert set(additions) == allowed and len(additions) == 32
+    return {**old, **additions}

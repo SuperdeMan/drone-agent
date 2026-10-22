@@ -1,0 +1,105 @@
+"""Acquire condition-blind registered parents in a new cloud data directory.
+
+在新云端数据目录取得已预登记、未使用路况的公开来源。
+"""
+import base64
+import hashlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+REPO = Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+META = HERE / 'new-oam-metadata-v1'
+CONTROL = HERE / 'new-oam-acquisition-control-v1'
+CONTROL.mkdir(exist_ok=False)
+read = lambda p: json.loads(p.read_text(encoding='utf-8'))
+sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+registration = read(META / 'prospective-registration.json')
+ids = registration['selected_ids']
+assert ids == ['6a6b46c24848939db162da04', '6a8fa0148f75f1daf8b408fd', '5b003a702b6a08001185f139']
+receipts = read(META / 'metadata-http-receipts.json')
+assert len(receipts) == 9 and all(r.get('status') == 200 and not r.get('error') for r in receipts)
+for row in receipts:
+    p = Path(row['file'])
+    assert sha(p) == row['sha256']
+for ident in ids:
+    catalog = read(META / 'selected' / (ident + '-catalog.json'))['results']
+    head = read(META / 'selected' / (ident + '-head.json'))
+    h = {k.lower(): v for k, v in head['headers'].items()}
+    assert catalog['_id'] == ident and catalog['platform'] == 'uav'
+    assert catalog['properties']['license'] == 'CC-BY 4.0'
+    assert catalog['file_size'] == int(h['content-length']) <= 256 * 1024 * 1024
+    assert h['etag'] and head['final_url'] == catalog['uuid']
+
+original = ROOT / 'acquire_oam_expansion.py'
+script = original.read_text(encoding='utf-8')
+script = script.replace('ROOT = Path(__file__).resolve().parent / "oam-expansion-v1"',
+                        'ROOT = Path(__file__).resolve().parent / "new-oam-metadata-v1"')
+script = script.replace('IDS = ["6024868fe316a7000568a583", "65ca73a58931500001717e78", "67c07c2bef4638644e11279e"]',
+                        'IDS = ' + json.dumps(ids))
+compile(script, 'acquire_new_oam_objects.py', 'exec')
+with (CONTROL / 'acquire_new_oam_objects.py').open('x', encoding='utf-8', newline='\n') as f:
+    f.write(script)
+files = {}
+for p in [META / 'prospective-registration.json', META / 'metadata-http-receipts.json', META / 'geometry-proposal.json', *sorted((META / 'selected').glob('*'))]:
+    files[str(p.relative_to(HERE)).replace('\\', '/')] = {'bytes': p.stat().st_size, 'sha256': sha(p), 'base64': base64.b64encode(p.read_bytes()).decode()}
+files['acquire_new_oam_objects.py'] = {'bytes': len(script.encode()), 'sha256': hashlib.sha256(script.encode()).hexdigest(), 'base64': base64.b64encode(script.encode()).decode()}
+request = {'files': files, 'original_acquisition_helper_sha256': sha(original),
+           'helper_changes': ['new output root', 'new source parent IDs'],
+           'current_core_modified': False, 'formal_model_calls': 0}
+with (CONTROL / 'request-summary.json').open('x', encoding='utf-8') as f:
+    json.dump({**request, 'files': {k: {x: v[x] for x in ('bytes', 'sha256')} for k, v in files.items()}}, f, indent=2)
+runtime = '''
+import base64,hashlib,json,pathlib,subprocess,sys
+task=pathlib.Path('/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018')
+out=task/'resume-20261022-next/new-oam-full-acquisition-v1'
+assert out.resolve().is_relative_to(task) and not out.exists()
+out.mkdir(parents=True,exist_ok=False)
+for name,row in REQUEST['files'].items():
+ p=(out/name).resolve();assert p.is_relative_to(out)
+ raw=base64.b64decode(row['base64']);assert len(raw)==row['bytes'] and hashlib.sha256(raw).hexdigest()==row['sha256']
+ p.parent.mkdir(parents=True,exist_ok=True)
+ with p.open('xb') as f:f.write(raw)
+child=subprocess.run([sys.executable,'-B','-u',str(out/'acquire_new_oam_objects.py')],cwd=out,capture_output=True,timeout=720)
+with (out/'acquire-stdout.log').open('xb') as f:f.write(child.stdout)
+with (out/'acquire-stderr.log').open('xb') as f:f.write(child.stderr)
+result_path=out/'new-oam-metadata-v1/acquisition-result.json'
+response={'cloud_directory':str(out),'child_returncode':child.returncode,'result':json.loads(result_path.read_text()) if result_path.exists() else None,'evidence':{}}
+for p in sorted(out.rglob('*')):
+ if not p.is_file() or p.suffix=='.tif':continue
+ raw=p.read_bytes();response['evidence'][str(p.relative_to(out))]={'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),'base64':base64.b64encode(raw).decode()}
+print(json.dumps(response))
+'''
+runtime = 'REQUEST=' + repr(request) + '\n' + runtime
+compile(runtime, 'cloud-runtime.py', 'exec')
+with (CONTROL / 'cloud-runtime.py').open('x', encoding='utf-8', newline='\n') as f:
+    f.write(runtime)
+sys.path.insert(0, str(REPO / 'scripts'))
+from dev_stack import Connection
+
+connection = Connection.from_environment()
+child = subprocess.run(['ssh', *connection.arguments(), connection.target,
+                        '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/tools-venv/bin/python -B -u -'],
+                       input=runtime.encode(), capture_output=True, timeout=900)
+with (CONTROL / 'ssh-receipt.json').open('x', encoding='utf-8') as f:
+    json.dump({'returncode': child.returncode, 'stderr_bytes': len(child.stderr), 'stderr_sha256': hashlib.sha256(child.stderr).hexdigest(),
+               'stdout_bytes': len(child.stdout), 'stdout_sha256': hashlib.sha256(child.stdout).hexdigest()}, f, indent=2)
+assert child.returncode == 0, 'Cloud failed; raw SSH stderr remains hash-only'
+response = json.loads(child.stdout)
+mirror = CONTROL / 'evidence'
+mirror.mkdir(exist_ok=False)
+for name, row in response.pop('evidence').items():
+    path = (mirror / name).resolve()
+    assert path.is_relative_to(mirror.resolve())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    raw = base64.b64decode(row['base64'])
+    assert len(raw) == row['bytes'] and hashlib.sha256(raw).hexdigest() == row['sha256']
+    with path.open('xb') as f:
+        f.write(raw)
+with (CONTROL / 'result.json').open('x', encoding='utf-8', newline='\n') as f:
+    json.dump(response, f, indent=2)
+print(json.dumps({'child_returncode': response['child_returncode'], 'complete': response['result']['complete'] if response.get('result') else None,
+                  'expected': 3, 'cloud_directory': response['cloud_directory'], 'image_objects_mirrored_locally': 0}), flush=True)

@@ -1,0 +1,65 @@
+"""Fetch only six verified native views, preserving their original receipts.
+
+仅取回六个已核验原生视图，保留原始回执字节。
+"""
+import concurrent.futures
+import hashlib
+import json
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+HERE = Path(__file__).resolve().parent
+EVIDENCE = HERE / 'new-oam-native-ambil-control-v4/evidence'
+OUT = HERE / 'new-oam-ambil-local-v1'
+OUT.mkdir(exist_ok=False)
+FRAMES = OUT / 'frames'
+for name in ('receipts', 'images', 'guides', 'masks', 'overviews'):
+    (FRAMES / name).mkdir(parents=True, exist_ok=False)
+read = lambda p: json.loads(p.read_text(encoding='utf-8'))
+sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+result_path = HERE / 'new-oam-native-ambil-control-v4/result.json'
+gate = read(result_path)
+assert gate['status'] == 'passed' and gate['checked'] == gate['passed'] == gate['independent_replay_matched'] == 6
+requests = []
+for receipt in sorted((EVIDENCE / 'frames/receipts').glob('*.json')):
+    row = read(receipt)
+    assert row['status'] == 'extracted' and row['proposed_partition'] == 'test_candidate'
+    with (FRAMES / 'receipts' / receipt.name).open('xb') as f:
+        f.write(receipt.read_bytes())
+    for kind, subdir, ext in [('image', 'images', 'jpg'), ('guide', 'guides', 'jpg'), ('mask', 'masks', 'png'), ('overview', 'overviews', 'jpg')]:
+        requests.append({'source': row[kind + '_file'], 'sha256': row[kind + '_sha256'],
+                         'destination': str(FRAMES / subdir / (row['sample_id'] + '.' + ext))})
+assert len(requests) == 24
+sys.path.insert(0, 'D:/drone-agent-data/p6-road-views-20261014/repo/scripts')
+from dev_stack import Connection
+
+connection = Connection.from_environment()
+scp = shutil.which('scp')
+assert scp
+
+
+def fetch(item):
+    child = subprocess.run([scp, *connection.arguments(), connection.target + ':' + item['source'], item['destination']],
+                           stdin=subprocess.DEVNULL, capture_output=True, timeout=120)
+    status = {**item, 'returncode': child.returncode, 'stderr_bytes': len(child.stderr),
+              'stderr_sha256': hashlib.sha256(child.stderr).hexdigest()}
+    path = Path(item['destination'])
+    if path.is_file():
+        status.update(bytes=path.stat().st_size, actual_sha256=sha(path))
+    status['passed'] = child.returncode == 0 and status.get('actual_sha256') == item['sha256']
+    return status
+
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+    rows = list(pool.map(fetch, requests))
+doc = {'source_gate_file': str(result_path), 'source_gate_sha256': sha(result_path),
+       'expected_media_files': 24, 'passed_media_files': sum(x['passed'] for x in rows),
+       'receipts_mirrored_raw_bytes': 6, 'bytes_fetched': sum(x.get('bytes', 0) for x in rows), 'rows': rows,
+       'images_visually_viewed': 0, 'new_source_cache_downloads': 0, 'formal_release_eligible': False}
+with (OUT / 'fetch-result.json').open('x', encoding='utf-8', newline='\n') as f:
+    json.dump(doc, f, indent=2)
+print(json.dumps({k: v for k, v in doc.items() if k != 'rows'}), flush=True)
+raise SystemExit(0 if doc['passed_media_files'] == 24 else 1)

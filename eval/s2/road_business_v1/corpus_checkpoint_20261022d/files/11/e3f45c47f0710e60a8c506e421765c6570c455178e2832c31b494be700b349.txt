@@ -1,0 +1,87 @@
+"""Reconstruct the neutral41-pair sources with the frozen current decoder.
+
+使用当前冻结解码器重建中立41对的来源，不作标签或配对裁定。
+"""
+import hashlib
+import json
+import runpy
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+REPO = Path('D:/drone-agent-data/p6-road-views-20261014/repo')
+OUT = HERE / 'repeat82-native-cdf-control-v1'
+OUT.mkdir(exist_ok=False)
+sys.path.insert(0, str(ROOT / 'resume-20261021-b'))
+from formal_observation_index_v2 import configure
+
+index = configure(core_script=REPO / 'scripts/p6_business_eval.py')
+index.require_integrity()
+queue_file = HERE / 'repeat-queue-census-v1/next-assignment-proposals.json'
+queue = json.loads(queue_file.read_text())
+ids = sorted({r['sample_id'] for p in queue['pairs'] for r in p['observations']})
+assert len(ids) == 82
+old_report = ROOT / 'resume-20261021-b/full-crasar-source-f132b98-v1/result.json'
+history = json.loads(old_report.read_text())
+inventory = ROOT / 'resume-20261021-b/full-crasar-source-f132b98-v1/unverified-grouping-capture-inventory.json'
+samples = [index.sample(ident, inventory) for ident in ids]
+core = {'p6_business_eval.py': 'd0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2', 'p6_boundary_drafts.py': 'f2476184e8172312853fcb07e692012b20f0bfb3bdeabf0c754443d90b19fc0b', 'p6_raster_replay.py': '0bd7ab81ee788bc012b3ca11f2e580fabb103a85ee184cdbffd8e179d6eada81', 'p6_oam_capture.py': 'bd49f89a5916b6401705524990170e6224cdf485c5dc8e7016b71d42898c0c88'}
+request = {'candidate_commit': 'cdf5382d4b4ce54600921532ecbe2a5591775b58', 'core_sha256': core,
+           'queue_sha256': hashlib.sha256(queue_file.read_bytes()).hexdigest(),
+           'inventory_file': 'p6-corpus-completion-20261018/resume-20261021-b/full-crasar-source-f132b98-v1/unverified-grouping-capture-inventory.json',
+           'inventory_sha256': hashlib.sha256(inventory.read_bytes()).hexdigest(),
+           'policy': history['derived_capture_policy'], 'samples': samples,
+           'scope': 'Source binding, actual cached native decode and independent replay for all82 observations in neutral41-pair queue only; no label timing, physical identity, same-state, grouping or admission claims.'}
+with (OUT / 'request.json').open('x', encoding='utf-8', newline='\n') as f:
+    json.dump(request, f, indent=2)
+runtime = r'''
+import hashlib,json,os,pathlib,runpy,time
+from datetime import datetime,timezone
+R=REQUEST
+task=pathlib.Path('/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018');data=task.parent
+frozen=task/'software-audit-cdf5382-20261022';out=task/'resume-20261022-next/repeat82-native-cdf-v1'
+assert out.resolve().is_relative_to(task) and not out.exists()
+def sha(p):
+ with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
+def cores():
+ values={name:sha(frozen/name) for name in R['core_sha256']};assert values==R['core_sha256'];return values
+before=cores();assert sha(data/R['inventory_file'])==R['inventory_sha256']
+out.mkdir(parents=True,exist_ok=False)
+with (out/'request.json').open('x') as f:json.dump(R,f,indent=2)
+C=runpy.run_path(str(frozen/'p6_business_eval.py'));cache={};rows=[];started=datetime.now(timezone.utc).isoformat()
+with (out/'progress.jsonl').open('x') as progress:
+ for i,sample in enumerate(R['samples'],1):
+  row={'index':i,'sample_id':sample['sample_id'],'started_at_utc':datetime.now(timezone.utc).isoformat()}
+  try:
+   C['derived_capture'](sample,{'derived_capture_policy':R['policy']},data,cache,scope_before=None)
+   row['source_native_and_replay_verified']=True
+  except Exception as exc:row.update(source_native_and_replay_verified=False,error_type=type(exc).__name__,error=str(exc))
+  row['finished_at_utc']=datetime.now(timezone.utc).isoformat();rows.append(row)
+  progress.write(json.dumps(row)+'\n');progress.flush();os.fsync(progress.fileno())
+after=cores();assert before==after and sha(data/R['inventory_file'])==R['inventory_sha256']
+result={'candidate_commit':R['candidate_commit'],'started_at_utc':started,'finished_at_utc':datetime.now(timezone.utc).isoformat(),'expected':82,'checked':len(rows),'passed':sum(x['source_native_and_replay_verified'] for x in rows),'rows':rows,'frozen_core_before':before,'frozen_core_after':after,'inventory_sha256':R['inventory_sha256'],'queue_sha256':R['queue_sha256'],'scope':R['scope'],'images_visually_viewed':0,'new_network_requests_in_decoder':0,'source_inputs_modified':False,'source_cache_downloaded_or_recreated':False,'formal_model_calls':0,'formal_pairs_admitted':0,'wp_p6_01_closed':False}
+result['status']='passed' if result['checked']==result['passed']==82 else 'failed'
+with (out/'result.json').open('x') as f:json.dump(result,f,indent=2)
+print(json.dumps(result))
+'''
+runtime = 'REQUEST=' + repr(request) + '\n' + runtime
+(OUT / 'runtime.py').write_text(runtime, encoding='utf-8', newline='\n')
+compile(runtime, 'runtime.py', 'exec')
+sys.path.insert(0, str(REPO / 'scripts'))
+from dev_stack import Connection
+
+connection = Connection.from_environment()
+child = subprocess.run(['ssh', *connection.arguments(), connection.target,
+                        '/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/tools-venv/bin/python -B -u -'],
+                       input=runtime.encode(), capture_output=True, timeout=1200)
+transport = {'returncode': child.returncode, 'stderr_bytes': len(child.stderr), 'stderr_sha256': hashlib.sha256(child.stderr).hexdigest(), 'stdout_bytes': len(child.stdout), 'stdout_sha256': hashlib.sha256(child.stdout).hexdigest()}
+with (OUT / 'ssh-receipt.json').open('x', encoding='utf-8', newline='\n') as f:
+    json.dump(transport, f, indent=2)
+assert child.returncode == 0, 'Cloud execution failed; stderr is hash-only'
+result = json.loads(child.stdout)
+with (OUT / 'result.json').open('xb') as f:
+    f.write(child.stdout)
+print(json.dumps({k: v for k, v in result.items() if k != 'rows'}), flush=True)
+raise SystemExit(0 if result['status'] == 'passed' else 1)

@@ -1,0 +1,1320 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "bounded_verifier_8",
+  "created_at": "2026-10-21T07:59:40.371655+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\assignment.json",
+  "assignment_sha256": "f91ab16515e08fff1b09ac42628332e08ffc5fe745278c166a54cac6871866ce",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-d4b782962fbf50",
+      "decision": "accepted",
+      "findings": [
+        "已逐张查看原图、guide 及道路轮廓叠图。固定目标确为主干道西侧的窄内部路，A–B 纵向范围及实际路幅可连续辨认，首稿轮廓与可见铺装边界基本吻合。",
+        "中上段西侧破损结构板件越过路缘进入目标，B 截面附近东侧长白板的北部也在目标内；debris 分类及两处定位证据成立。检查全段未发现需要新增分类的明确实体，B 以南普通车辆不作为证据。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-d4b782962fbf50.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-d4b782962fbf50.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-d4b782962fbf50-road-overlay.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "fa38b88754ca371654a00981e8f37ca5f9f1df5604dc9931fb7257dee0202196",
+      "first_author_id": "bounded_annotator_3",
+      "first_row_sha256": "4e11209e03e4207e6b05adcd7b93c604115570c0a9b094dee237f03927ed9724",
+      "reviewed_at": "2026-10-21T07:59:40.376175+00:00",
+      "reviewer_id": "bounded_verifier_8",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-d4b782962fbf50.jpg": "fa38b88754ca371654a00981e8f37ca5f9f1df5604dc9931fb7257dee0202196",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-d4b782962fbf50.jpg": "ce3e62c055a11852a38c6e190246275eb77096ad415a4caffdca11b2bcd12124",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-d4b782962fbf50-road-overlay.jpg": "295829b3bfb73f60951d3155e9fa371f78b1fe850527178cc85e679c9efd3024"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-d4b782962fbf50",
+        "image_sha256": "fa38b88754ca371654a00981e8f37ca5f9f1df5604dc9931fb7257dee0202196",
+        "target_brief": "东侧主干道西边、四栋白色长屋之间的南北向窄内部道路，从上方西接支路 A 至下方 B 截面。东侧有连续电线走廊和狭长植被隔离带。",
+        "target_polygon": [
+          [
+            0.434,
+            0.166
+          ],
+          [
+            0.552,
+            0.166
+          ],
+          [
+            0.568,
+            0.33
+          ],
+          [
+            0.566,
+            0.64
+          ],
+          [
+            0.589,
+            0.834
+          ],
+          [
+            0.474,
+            0.834
+          ],
+          [
+            0.46,
+            0.59
+          ],
+          [
+            0.445,
+            0.38
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.403,
+                0.334
+              ],
+              [
+                0.45,
+                0.338
+              ],
+              [
+                0.464,
+                0.361
+              ],
+              [
+                0.462,
+                0.379
+              ],
+              [
+                0.443,
+                0.374
+              ],
+              [
+                0.414,
+                0.36
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.548,
+                0.815
+              ],
+              [
+                0.585,
+                0.814
+              ],
+              [
+                0.591,
+                0.842
+              ],
+              [
+                0.559,
+                0.844
+              ]
+            ]
+          }
+        ],
+        "notes": "道路与东侧主干道可明确分开，固定目标为西侧窄内部道路。中上段左侧破损板件伸入通道，B 附近东侧白色长板也侵入铺装；两侧边界及连续道路支持定位。B 以下车辆未作为障碍依据。",
+        "uncertainties": [
+          "第二个实体跨过 B 截面，其在范围内的部分足以确认侵入；道路范围未为它而延长。"
+        ],
+        "inspected_at": "2026-10-21T07:59:40.376175+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-d4b782962fbf50.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-d4b782962fbf50.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-d4b782962fbf50-road-overlay.jpg"
+        ]
+      },
+      "final_row_sha256": "50159ec6061d5a8f3789a506366a426d12f33271da7296df45fbb45f0e78f6bb"
+    },
+    {
+      "sample_id": "bounded-extract-db3658af865a84",
+      "decision": "accepted",
+      "findings": [
+        "原图、guide、全幅轮廓叠图及东北段原生局部共同确认目标为绿化岛南侧弧形道路；首稿没有合并北侧平行道路，A–B 全路幅可表达。",
+        "东北段北路缘的长柄棕榈叶实体及叶端可见，其叶端越过实际路缘进入铺装，与黑色树影可区分；vegetation 定位和 obstacle 结论成立。其余路段的开裂、标线和阴影不构成实体，未见需要增加的明确类型。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-db3658af865a84.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-db3658af865a84.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-db3658af865a84-vegetation-detail.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-db3658af865a84-target-overlay.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "c74ae27f87b52833a83008655c5ee6268bdd112dd610db4b65d958d063035946",
+      "first_author_id": "bounded_annotator_3",
+      "first_row_sha256": "58f89b6809fd2099ece4cf340db93e97cf69947510cc0c17d6f4f6e0b97b9ba7",
+      "reviewed_at": "2026-10-21T07:59:40.392796+00:00",
+      "reviewer_id": "bounded_verifier_8",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-db3658af865a84.jpg": "c74ae27f87b52833a83008655c5ee6268bdd112dd610db4b65d958d063035946",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-db3658af865a84.jpg": "8a28e0cc3adadd01af0ed63bf999fd75293300f586bf022c30cb181d056d58d1",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-db3658af865a84-vegetation-detail.jpg": "041b2eb3fe21f1b455040f68dcd7b5a73c320a15d5568cfaf3ed483527da39a9",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-db3658af865a84-target-overlay.jpg": "cba67df8a965db3d675e96e39b08c5a8e797ff8daad4f710eeb36d05640c0cfd"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-db3658af865a84",
+        "image_sha256": "c74ae27f87b52833a83008655c5ee6268bdd112dd610db4b65d958d063035946",
+        "target_brief": "从东北侧接道路口 A 沿狭长绿化岛南侧的弧形车行道至西南侧主路接入口 B。北侧隔岛还有平行道路，南侧为住宅与环形车道。",
+        "target_polygon": [
+          [
+            0.838,
+            0.21
+          ],
+          [
+            0.77,
+            0.216
+          ],
+          [
+            0.652,
+            0.254
+          ],
+          [
+            0.535,
+            0.328
+          ],
+          [
+            0.412,
+            0.423
+          ],
+          [
+            0.275,
+            0.575
+          ],
+          [
+            0.145,
+            0.731
+          ],
+          [
+            0.181,
+            0.784
+          ],
+          [
+            0.308,
+            0.628
+          ],
+          [
+            0.444,
+            0.486
+          ],
+          [
+            0.56,
+            0.39
+          ],
+          [
+            0.679,
+            0.315
+          ],
+          [
+            0.78,
+            0.277
+          ],
+          [
+            0.846,
+            0.279
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "vegetation",
+            "polygon": [
+              [
+                0.682,
+                0.226
+              ],
+              [
+                0.688,
+                0.217
+              ],
+              [
+                0.702,
+                0.233
+              ],
+              [
+                0.698,
+                0.252
+              ],
+              [
+                0.685,
+                0.251
+              ],
+              [
+                0.679,
+                0.241
+              ]
+            ]
+          }
+        ],
+        "notes": "三个原生裁切分别覆盖西南入口、中部和东北端。东北段北路缘的一段脱落棕榈枝叶横越道路边缘，绿色叶端伸入铺装，可与其暗影区分。道路开裂为表面损伤，不作为实体。",
+        "uncertainties": [
+          "平行道路与中间绿化岛不属于固定目标，未横移或合并。"
+        ],
+        "inspected_at": "2026-10-21T07:59:40.392796+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-db3658af865a84.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-db3658af865a84.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-db3658af865a84-vegetation-detail.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-db3658af865a84-target-overlay.jpg"
+        ]
+      },
+      "final_row_sha256": "2fadd7783739ea274cffa7fc69f519fe179ee777ba617da6df2429141b4a2cb8"
+    },
+    {
+      "sample_id": "bounded-extract-f02804e8919841",
+      "decision": "revised",
+      "findings": [
+        "原图和 guide 显示固定 A–B 都在图内，但西段与宽阔开放铺装场地融为一体；B 附近南侧无法确定真实道路边界。不能从中心线虚构路宽，也不能将整片场地并入目标。",
+        "首稿 target_polygon=null 及不作实体分类的处理成立；问题是完整固定目标本身不能可靠表达，应使用 excluded_source，而不是目标明确但局部关系不清的 indeterminate。固定端点和目标范围保持原值。"
+      ],
+      "changes": {
+        "verdict": "excluded_source"
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-f02804e8919841.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-f02804e8919841.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "0bd5626d7951930eb433fd7b04a54cd6fb5e46c9dc94028ff3587c4c426427cc",
+      "first_author_id": "bounded_annotator_3",
+      "first_row_sha256": "63a3fa48e2fffb341c4a4bfaa17b47b1ab3173325d8600644f9cbb550d2be73c",
+      "reviewed_at": "2026-10-21T08:01:22.668729+00:00",
+      "reviewer_id": "bounded_verifier_8",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-f02804e8919841.jpg": "0bd5626d7951930eb433fd7b04a54cd6fb5e46c9dc94028ff3587c4c426427cc",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-f02804e8919841.jpg": "e7261a6194a780753a671b67d89611f92a5306d305d894fd91715608403c65a8"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-f02804e8919841",
+        "image_sha256": "0bd5626d7951930eb433fd7b04a54cd6fb5e46c9dc94028ff3587c4c426427cc",
+        "target_brief": "从右侧南北公路接入口 A 穿过蓝色门架，沿西北方向延至 B 固定截面的通道。北侧为草地与木栈道水面，南侧为草岛和大片铺装场地。",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "全 A–B 纵向范围入像，蓝色门架与浅色方片可见。西段通道逐渐并入大面积开放铺装场地，B 处南侧没有足够证据区分道路与场地的真实边界，无法绘制不造宽度的完整目标轮廓。",
+        "uncertainties": [
+          "B 邻近开放场地的完整实际路宽无法唯一确认。",
+          "没有将整片铺装自动视为道路，也未因门架位置缩短目标。"
+        ],
+        "inspected_at": "2026-10-21T08:01:22.668729+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-f02804e8919841.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-f02804e8919841.jpg"
+        ]
+      },
+      "final_row_sha256": "3915e816d1abd7490a8e1aac4a10bc90998dbd9aac37b4529fc7b7b68628d6ac"
+    },
+    {
+      "sample_id": "bounded-extract-f4549f120237df",
+      "decision": "accepted",
+      "findings": [
+        "已查看原图和 guide，A–B 两端及双向道路实际全宽均明确；首稿沿北侧路缘和南侧铺装边缘表达目标，未用中心线代替宽度。",
+        "原生局部确认北侧路缘下方有数条交叠的白色实体碎片，确在路缘与白色道路边线之间，debris 定位吻合。黄色标线、树影及目标外普通车辆均不作为障碍；全目标未发现需补充的明确类型。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-f4549f120237df.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-f4549f120237df.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-f4549f120237df-debris-detail.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "129acd0dd7b6e934940397cb7a5be4b3443449ed1f6c75ed78849599da9e336d",
+      "first_author_id": "bounded_annotator_3",
+      "first_row_sha256": "fc9aeca108103a7aa6d74ec7c73a15e9899c917da5503a78fa3f721f7ce31f73",
+      "reviewed_at": "2026-10-21T08:01:22.679736+00:00",
+      "reviewer_id": "bounded_verifier_8",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-f4549f120237df.jpg": "129acd0dd7b6e934940397cb7a5be4b3443449ed1f6c75ed78849599da9e336d",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-f4549f120237df.jpg": "ca0b73bd8d0c747d5e3589266cf6a2a03da4fd97d3b3eb50b45c225acc861236",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-f4549f120237df-debris-detail.jpg": "bb4506095d5b4190ff05e6c30ca1859840cd6ab99cf3fa5e57caeb90d5c924d5"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-f4549f120237df",
+        "image_sha256": "129acd0dd7b6e934940397cb7a5be4b3443449ed1f6c75ed78849599da9e336d",
+        "target_brief": "从左侧 A 至右侧 B 固定截面的东西向双向道路，北侧为带立柱的连续石质边界与绿篱，南侧为停车场入口及草带。",
+        "target_polygon": [
+          [
+            0.306,
+            0.361
+          ],
+          [
+            0.5,
+            0.357
+          ],
+          [
+            0.694,
+            0.361
+          ],
+          [
+            0.694,
+            0.676
+          ],
+          [
+            0.5,
+            0.671
+          ],
+          [
+            0.306,
+            0.685
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.476,
+                0.35
+              ],
+              [
+                0.485,
+                0.353
+              ],
+              [
+                0.491,
+                0.363
+              ],
+              [
+                0.486,
+                0.372
+              ],
+              [
+                0.478,
+                0.368
+              ]
+            ]
+          }
+        ],
+        "notes": "原生分辨率可见北侧路缘内有一簇白色条状碎片，位于道路边线与路缘之间。双侧道路边界和固定两端均完整，中央黄色斜线区与树影不作为实体。",
+        "uncertainties": [
+          "白色条状碎片材质不能细分。"
+        ],
+        "inspected_at": "2026-10-21T08:01:22.679736+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-f4549f120237df.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-f4549f120237df.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-f4549f120237df-debris-detail.jpg"
+        ]
+      },
+      "final_row_sha256": "b1ee580db481b6a42175c4915b969363d87200f6b9ba379323b0d03636c91556"
+    },
+    {
+      "sample_id": "bounded-extract-f54acfb6f77efe",
+      "decision": "accepted",
+      "findings": [
+        "已查看原图、guide、目标轮廓叠图和中段原生局部。A 绕白色建筑东角至停车位外侧、再向 B 接公路的道路连续，分隔岛北侧通道可确认；首稿轮廓沿此实际路面，未移到岛南侧铺装支路。",
+        "中段白色门板及横向破损结构件有明确部分越过岛缘进入北侧通道，东北端阴影中的条状框架也可见。debris 类定位证据成立；全段检查未见需要增加分类的明确实体，正常绿化与树影不推作落地障碍。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-f54acfb6f77efe.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-f54acfb6f77efe.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-f54acfb6f77efe-target-overlay.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-f54acfb6f77efe-mid-detail.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "7b9f71cad617ea1f07395463bd51f9321ca61b7af9004edb62666ec4862f1dc3",
+      "first_author_id": "bounded_annotator_3",
+      "first_row_sha256": "63df22d8b090e07a78725bab9fa0f36bfca0124d940ff064758068c37ec63628",
+      "reviewed_at": "2026-10-21T08:24:05.419359+00:00",
+      "reviewer_id": "bounded_verifier_8",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-f54acfb6f77efe.jpg": "7b9f71cad617ea1f07395463bd51f9321ca61b7af9004edb62666ec4862f1dc3",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-f54acfb6f77efe.jpg": "c2334227819ae4649287b4b9f549cd13b00c5649fe13a67c63f4569b411e70b1",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-f54acfb6f77efe-target-overlay.jpg": "4fdc383c29d6cce189e5839af23a7abcc1b5de69a5c6a8003ea255882b669885",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-f54acfb6f77efe-mid-detail.jpg": "788536f53df5c72d633a4a235e8f613e7275f4cbda1071eab67d94c37a35b7a6"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-f54acfb6f77efe",
+        "image_sha256": "7b9f71cad617ea1f07395463bd51f9321ca61b7af9004edb62666ec4862f1dc3",
+        "target_brief": "白色长屋东南侧的内部通道，从东北端 A 绕建筑东角，沿停车位外侧通道向西南连接至公路 B。其东南侧有狭长分隔岛与另一条铺装支路。",
+        "target_polygon": [
+          [
+            0.196,
+            0.75
+          ],
+          [
+            0.29,
+            0.67
+          ],
+          [
+            0.46,
+            0.53
+          ],
+          [
+            0.59,
+            0.443
+          ],
+          [
+            0.7,
+            0.362
+          ],
+          [
+            0.753,
+            0.306
+          ],
+          [
+            0.741,
+            0.229
+          ],
+          [
+            0.813,
+            0.229
+          ],
+          [
+            0.821,
+            0.29
+          ],
+          [
+            0.79,
+            0.33
+          ],
+          [
+            0.71,
+            0.39
+          ],
+          [
+            0.61,
+            0.47
+          ],
+          [
+            0.48,
+            0.57
+          ],
+          [
+            0.33,
+            0.69
+          ],
+          [
+            0.252,
+            0.794
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.569,
+                0.471
+              ],
+              [
+                0.593,
+                0.465
+              ],
+              [
+                0.605,
+                0.477
+              ],
+              [
+                0.59,
+                0.491
+              ],
+              [
+                0.571,
+                0.485
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.62,
+                0.426
+              ],
+              [
+                0.678,
+                0.425
+              ],
+              [
+                0.697,
+                0.443
+              ],
+              [
+                0.677,
+                0.457
+              ],
+              [
+                0.631,
+                0.445
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.756,
+                0.266
+              ],
+              [
+                0.773,
+                0.264
+              ],
+              [
+                0.769,
+                0.287
+              ],
+              [
+                0.783,
+                0.301
+              ],
+              [
+                0.77,
+                0.306
+              ],
+              [
+                0.757,
+                0.288
+              ]
+            ]
+          }
+        ],
+        "notes": "原生中段和东北端裁切确认分隔岛北侧、建筑停车位外侧的同一通道上有白色板件、长条结构件及散落框架。提示线中段偏在分隔岛边缘，A 绕建筑角与 B 接公路的连续关系可锁定建筑侧通道，没有移到分隔岛南侧支路。",
+        "uncertainties": [
+          "中段局部被板件遮住，实际边界由停车位端线、分隔岛两侧可见路缘连接。"
+        ],
+        "inspected_at": "2026-10-21T08:24:05.419359+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-f54acfb6f77efe.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-f54acfb6f77efe.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-f54acfb6f77efe-target-overlay.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-f54acfb6f77efe-mid-detail.jpg"
+        ]
+      },
+      "final_row_sha256": "c8957a6c1bad47bdbf5037b9ecb5080979297249c39fc09bcd0af49bbfccaa1d"
+    },
+    {
+      "sample_id": "bounded-extract-f79fa98955df7f",
+      "decision": "accepted",
+      "findings": [
+        "已查看原图、guide 及 A 以东北路缘棕榈原生局部，A–B 全长和道路边界清楚，首稿 target_polygon 表达了完整路面及 B 的丁字接入口。",
+        "局部棕榈叶的可见实体确有投影覆盖路面，但单张俯视图不能确认其高度或是否落地，不能据此判 vegetation 障碍，也不能对被遮区域判 normal。其余目标内无明确新增实体，维持 indeterminate 和 objects=[]。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-f79fa98955df7f.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-f79fa98955df7f.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-f79fa98955df7f-palm-detail.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "d8e20b59a52e8013aa3d87aa3512349783da183aa5f3a659d70cb9fd6a73ed48",
+      "first_author_id": "bounded_annotator_3",
+      "first_row_sha256": "76bd0a1bc72f9c0c5fc22a90095ff125369764cd8f03c07c2ecf82e841284504",
+      "reviewed_at": "2026-10-21T08:24:05.438707+00:00",
+      "reviewer_id": "bounded_verifier_8",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-f79fa98955df7f.jpg": "d8e20b59a52e8013aa3d87aa3512349783da183aa5f3a659d70cb9fd6a73ed48",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-f79fa98955df7f.jpg": "ff4115ffc2aeea9fe8876cedef0557b9f8c9a46028ffd646c6f2f119d60497ab",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-f79fa98955df7f-palm-detail.jpg": "09082089f1f66e4ffd86d078e2820a65729b4f54347ac729a825c9424d9174fb"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-f79fa98955df7f",
+        "image_sha256": "d8e20b59a52e8013aa3d87aa3512349783da183aa5f3a659d70cb9fd6a73ed48",
+        "target_brief": "住宅区东西向直路，从西侧 A 固定截面至东侧北向丁字口 B。两侧为连续草坪、车道入口和独立住宅。",
+        "target_polygon": [
+          [
+            0.167,
+            0.457
+          ],
+          [
+            0.75,
+            0.438
+          ],
+          [
+            0.79,
+            0.416
+          ],
+          [
+            0.815,
+            0.35
+          ],
+          [
+            0.833,
+            0.35
+          ],
+          [
+            0.833,
+            0.573
+          ],
+          [
+            0.167,
+            0.589
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "道路与固定端点完整可见，路幅清楚。补看 A 以东北侧路缘原生裁切，棕榈枝叶越过路缘投影并遮住一小块道路，但不能从此图确定是否低垂/倒伏到通行空间；其余路面没有明确侵入实体。因此保留局部关系不明。",
+        "uncertainties": [
+          "约 (0.20,0.45) 的棕榈枝叶高度与路面关系不明，不能用阴影代替实体依据。"
+        ],
+        "inspected_at": "2026-10-21T08:24:05.438707+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-f79fa98955df7f.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-f79fa98955df7f.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-f79fa98955df7f-palm-detail.jpg"
+        ]
+      },
+      "final_row_sha256": "1a6068df3b0abf20dac15c427e822394d85b18b2b403a01fc00ff265fd22b607"
+    },
+    {
+      "sample_id": "bounded-extract-fb40b3be9e2f91",
+      "decision": "revised",
+      "findings": [
+        "原图、guide 及覆盖完整 A–B 的南北两幅原生叠图确认目标路线和路幅；首稿轮廓可保留。中北段残骸、脱落棕榈叶与南段白色长构件均有清晰入路关系，原有 debris、vegetation 定位成立。",
+        "全目标检查另见北段路面中央一件黑色方形容器状实体，原生局部确认其有独立边缘及投影、与表面斑痕可区分。补充 other_entity 分类定位；不推断其具体用途。"
+      ],
+      "changes": {
+        "objects": [
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.45,
+                0.323
+              ],
+              [
+                0.63,
+                0.318
+              ],
+              [
+                0.697,
+                0.365
+              ],
+              [
+                0.61,
+                0.39
+              ],
+              [
+                0.52,
+                0.379
+              ],
+              [
+                0.43,
+                0.347
+              ]
+            ]
+          },
+          {
+            "defect_type": "vegetation",
+            "polygon": [
+              [
+                0.503,
+                0.298
+              ],
+              [
+                0.525,
+                0.307
+              ],
+              [
+                0.526,
+                0.321
+              ],
+              [
+                0.509,
+                0.324
+              ],
+              [
+                0.498,
+                0.313
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.47,
+                0.744
+              ],
+              [
+                0.53,
+                0.742
+              ],
+              [
+                0.63,
+                0.753
+              ],
+              [
+                0.619,
+                0.764
+              ],
+              [
+                0.535,
+                0.759
+              ],
+              [
+                0.48,
+                0.751
+              ]
+            ]
+          },
+          {
+            "defect_type": "other_entity",
+            "polygon": [
+              [
+                0.496,
+                0.244
+              ],
+              [
+                0.511,
+                0.242
+              ],
+              [
+                0.522,
+                0.245
+              ],
+              [
+                0.519,
+                0.25
+              ],
+              [
+                0.497,
+                0.25
+              ]
+            ]
+          }
+        ],
+        "notes": "固定 A–B 全段的两侧接缝、房屋入口和未遮挡路面支持完整路线及宽度。中北部房屋残骸、脱落棕榈叶和南段白色长条构件明确进入目标路面；北段路面中央另有黑色方形容器状实体，归 other_entity，不推断其具体用途。树影未计作对象。"
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-fb40b3be9e2f91.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-fb40b3be9e2f91.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fb40b3be9e2f91-north-overlay.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fb40b3be9e2f91-south-overlay.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fb40b3be9e2f91-container-detail.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "2cee8572f001d1863972cfb2004b9eba3c01af03eeb966fc77a3203123c1cf06",
+      "first_author_id": "bounded_annotator_3",
+      "first_row_sha256": "c60dd0064fc90edba076c7baeb9e71ad1f1225b983cb7357aa05f8aec286ee53",
+      "reviewed_at": "2026-10-21T08:58:08.212546+00:00",
+      "reviewer_id": "bounded_verifier_8",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-fb40b3be9e2f91.jpg": "2cee8572f001d1863972cfb2004b9eba3c01af03eeb966fc77a3203123c1cf06",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-fb40b3be9e2f91.jpg": "26736a6b6dd5b105de8b508df01d831c26d8820b94a796924d2c512f6f90ab08",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fb40b3be9e2f91-north-overlay.jpg": "02398b60a77ea01d8430e201063d94fa096112818d1ee3853a11cc728193e413",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fb40b3be9e2f91-south-overlay.jpg": "a08af5e1539ad6093c37850b20c9801a048e983481681b72af60270b84664ca8",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fb40b3be9e2f91-container-detail.jpg": "384f1aa2b87ec90ddf2da8d43af10c02ff8ede79b9e5382aad9a66455d84d735"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-fb40b3be9e2f91",
+        "image_sha256": "2cee8572f001d1863972cfb2004b9eba3c01af03eeb966fc77a3203123c1cf06",
+        "target_brief": "两排独立住宅之间的南北向道路，从南端交汇处 A 至北端向东弯转附近 B。西侧有绿、蓝绿及灰屋顶住宅，东侧为连续白灰屋顶住宅。",
+        "target_polygon": [
+          [
+            0.402,
+            0.126
+          ],
+          [
+            0.381,
+            0.214
+          ],
+          [
+            0.387,
+            0.34
+          ],
+          [
+            0.408,
+            0.44
+          ],
+          [
+            0.414,
+            0.6
+          ],
+          [
+            0.398,
+            0.735
+          ],
+          [
+            0.402,
+            0.83
+          ],
+          [
+            0.432,
+            0.882
+          ],
+          [
+            0.601,
+            0.865
+          ],
+          [
+            0.591,
+            0.822
+          ],
+          [
+            0.576,
+            0.736
+          ],
+          [
+            0.569,
+            0.601
+          ],
+          [
+            0.569,
+            0.43
+          ],
+          [
+            0.592,
+            0.34
+          ],
+          [
+            0.579,
+            0.211
+          ],
+          [
+            0.633,
+            0.126
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.45,
+                0.323
+              ],
+              [
+                0.63,
+                0.318
+              ],
+              [
+                0.697,
+                0.365
+              ],
+              [
+                0.61,
+                0.39
+              ],
+              [
+                0.52,
+                0.379
+              ],
+              [
+                0.43,
+                0.347
+              ]
+            ]
+          },
+          {
+            "defect_type": "vegetation",
+            "polygon": [
+              [
+                0.503,
+                0.298
+              ],
+              [
+                0.525,
+                0.307
+              ],
+              [
+                0.526,
+                0.321
+              ],
+              [
+                0.509,
+                0.324
+              ],
+              [
+                0.498,
+                0.313
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.47,
+                0.744
+              ],
+              [
+                0.53,
+                0.742
+              ],
+              [
+                0.63,
+                0.753
+              ],
+              [
+                0.619,
+                0.764
+              ],
+              [
+                0.535,
+                0.759
+              ],
+              [
+                0.48,
+                0.751
+              ]
+            ]
+          },
+          {
+            "defect_type": "other_entity",
+            "polygon": [
+              [
+                0.496,
+                0.244
+              ],
+              [
+                0.511,
+                0.242
+              ],
+              [
+                0.522,
+                0.245
+              ],
+              [
+                0.519,
+                0.25
+              ],
+              [
+                0.497,
+                0.25
+              ]
+            ]
+          }
+        ],
+        "notes": "固定 A–B 全段的两侧接缝、房屋入口和未遮挡路面支持完整路线及宽度。中北部房屋残骸、脱落棕榈叶和南段白色长条构件明确进入目标路面；北段路面中央另有黑色方形容器状实体，归 other_entity，不推断其具体用途。树影未计作对象。",
+        "uncertainties": [
+          "破损房屋残骸种类繁杂，以可见混合结构碎片区表达，不推断材质细类。"
+        ],
+        "inspected_at": "2026-10-21T08:58:08.212546+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-fb40b3be9e2f91.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-fb40b3be9e2f91.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fb40b3be9e2f91-north-overlay.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fb40b3be9e2f91-south-overlay.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fb40b3be9e2f91-container-detail.jpg"
+        ]
+      },
+      "final_row_sha256": "d350be67b95d9a30a5177329cd67c64885ad27ea4da70411a7e8b0909416dc28"
+    },
+    {
+      "sample_id": "bounded-extract-fc69ee7ed14c53",
+      "decision": "revised",
+      "findings": [
+        "已查看原图、guide、南段原生叠图及北段原生局部；完整目标可由两侧连续路缘和固定端点表达。南段粗树干及连通枝条横过路面、船体脱离泊位伸入道路的关系明确，原有 vegetation 和 other_entity 定位可保留。",
+        "北段泳池入口西侧有白色栅板部件，部分明确伸入固定目标东侧路缘内。首稿遗漏了这类结构碎片，补充 debris 定位证据；普通车辆和树影不作为新增障碍依据。"
+      ],
+      "changes": {
+        "objects": [
+          {
+            "defect_type": "vegetation",
+            "polygon": [
+              [
+                0.59,
+                0.76
+              ],
+              [
+                0.64,
+                0.74
+              ],
+              [
+                0.78,
+                0.75
+              ],
+              [
+                0.87,
+                0.79
+              ],
+              [
+                0.83,
+                0.82
+              ],
+              [
+                0.7,
+                0.81
+              ],
+              [
+                0.61,
+                0.8
+              ]
+            ]
+          },
+          {
+            "defect_type": "other_entity",
+            "polygon": [
+              [
+                0.556,
+                0.748
+              ],
+              [
+                0.583,
+                0.744
+              ],
+              [
+                0.636,
+                0.764
+              ],
+              [
+                0.666,
+                0.791
+              ],
+              [
+                0.64,
+                0.801
+              ],
+              [
+                0.602,
+                0.789
+              ],
+              [
+                0.57,
+                0.769
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.35,
+                0.177
+              ],
+              [
+                0.39,
+                0.177
+              ],
+              [
+                0.396,
+                0.188
+              ],
+              [
+                0.35,
+                0.188
+              ]
+            ]
+          }
+        ],
+        "notes": "南段粗树干及连通枝条横过道路，离开泊位的船体部分侵入路面；北段泳池入口西侧的白色栅板部件也有明确入路部分。固定 A 两侧、遮挡前后路缘与上方连续铺装支持完整道路范围，目标未延伸到更南方公路。普通车辆及树影未作为障碍。"
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-fc69ee7ed14c53.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-fc69ee7ed14c53.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fc69ee7ed14c53-south-overlay.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fc69ee7ed14c53-north-detail.jpg"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "10f1b9505fd4c1e2ddfe355a3544fe79fab992448737c213d5539b7384573199",
+      "first_author_id": "bounded_annotator_3",
+      "first_row_sha256": "cde831c9bc9aa1312667ee8d7424634b0c4ab54bee1ff3e26e835667b71f45f9",
+      "reviewed_at": "2026-10-21T08:58:08.229247+00:00",
+      "reviewer_id": "bounded_verifier_8",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-fc69ee7ed14c53.jpg": "10f1b9505fd4c1e2ddfe355a3544fe79fab992448737c213d5539b7384573199",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-fc69ee7ed14c53.jpg": "3359614e77b22962527b2f31ac4631105dd00f7b3cfec2ef56b24f58d8bf7a8b",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fc69ee7ed14c53-south-overlay.jpg": "ffa7bf41e129102994609b13bbbf06f0540c068581b66e5e197c281dfa2eacd2",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fc69ee7ed14c53-north-detail.jpg": "63c4855c681817055f1c7c67e9e729ec93f6d253cabab302466be85217710162"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-fc69ee7ed14c53",
+        "image_sha256": "10f1b9505fd4c1e2ddfe355a3544fe79fab992448737c213d5539b7384573199",
+        "target_brief": "码头东侧、酒店及泳池西侧的弯曲内部道路，从南端 A 沿码头与建筑之间向北，经泳池西侧至 B。西侧为船泊和滨水步道，东侧为白屋顶酒店与红瓦亭。",
+        "target_polygon": [
+          [
+            0.252,
+            0.159
+          ],
+          [
+            0.245,
+            0.233
+          ],
+          [
+            0.285,
+            0.315
+          ],
+          [
+            0.332,
+            0.39
+          ],
+          [
+            0.401,
+            0.449
+          ],
+          [
+            0.442,
+            0.509
+          ],
+          [
+            0.517,
+            0.651
+          ],
+          [
+            0.585,
+            0.741
+          ],
+          [
+            0.622,
+            0.841
+          ],
+          [
+            0.815,
+            0.841
+          ],
+          [
+            0.774,
+            0.765
+          ],
+          [
+            0.716,
+            0.687
+          ],
+          [
+            0.65,
+            0.526
+          ],
+          [
+            0.587,
+            0.431
+          ],
+          [
+            0.501,
+            0.4
+          ],
+          [
+            0.437,
+            0.369
+          ],
+          [
+            0.385,
+            0.303
+          ],
+          [
+            0.351,
+            0.231
+          ],
+          [
+            0.36,
+            0.159
+          ]
+        ],
+        "verdict": "obstacle",
+        "objects": [
+          {
+            "defect_type": "vegetation",
+            "polygon": [
+              [
+                0.59,
+                0.76
+              ],
+              [
+                0.64,
+                0.74
+              ],
+              [
+                0.78,
+                0.75
+              ],
+              [
+                0.87,
+                0.79
+              ],
+              [
+                0.83,
+                0.82
+              ],
+              [
+                0.7,
+                0.81
+              ],
+              [
+                0.61,
+                0.8
+              ]
+            ]
+          },
+          {
+            "defect_type": "other_entity",
+            "polygon": [
+              [
+                0.556,
+                0.748
+              ],
+              [
+                0.583,
+                0.744
+              ],
+              [
+                0.636,
+                0.764
+              ],
+              [
+                0.666,
+                0.791
+              ],
+              [
+                0.64,
+                0.801
+              ],
+              [
+                0.602,
+                0.789
+              ],
+              [
+                0.57,
+                0.769
+              ]
+            ]
+          },
+          {
+            "defect_type": "debris",
+            "polygon": [
+              [
+                0.35,
+                0.177
+              ],
+              [
+                0.39,
+                0.177
+              ],
+              [
+                0.396,
+                0.188
+              ],
+              [
+                0.35,
+                0.188
+              ]
+            ]
+          }
+        ],
+        "notes": "南段粗树干及连通枝条横过道路，离开泊位的船体部分侵入路面；北段泳池入口西侧的白色栅板部件也有明确入路部分。固定 A 两侧、遮挡前后路缘与上方连续铺装支持完整道路范围，目标未延伸到更南方公路。普通车辆及树影未作为障碍。",
+        "uncertainties": [
+          "北段普通车辆不作为障碍依据；船体具有脱离泊位并横置路面的明确上下文。"
+        ],
+        "inspected_at": "2026-10-21T08:58:08.229247+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-fc69ee7ed14c53.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-fc69ee7ed14c53.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fc69ee7ed14c53-south-overlay.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_8\\bounded-extract-fc69ee7ed14c53-north-detail.jpg"
+        ]
+      },
+      "final_row_sha256": "5120774d136d8cf8be35db52ccff8d64e753f9cf23a72ba03f91295606461fee"
+    }
+  ]
+}

@@ -1,0 +1,165 @@
+"""Freeze condition-blind OSM road scopes, retaining conservative same-road groups.
+
+冻结不使用路况的 OSM 道路范围，保留保守同路分组。
+"""
+import hashlib
+import json
+import math
+import unicodedata
+import xml.etree.ElementTree as ET
+from collections import defaultdict
+from datetime import UTC, datetime
+from pathlib import Path
+
+from rasterio.warp import transform as warp_transform
+from shapely.geometry import LineString, mapping, shape
+from shapely.ops import linemerge, substring, transform, unary_union
+
+ROOT = Path(__file__).resolve().parent / "new-oam-metadata-v1"
+IDS = ["6a6b46c24848939db162da04", "6a8fa0148f75f1daf8b408fd", "5b003a702b6a08001185f139"]
+ROAD_TYPES = {"primary", "secondary", "tertiary", "unclassified", "residential", "living_street", "primary_link", "secondary_link", "tertiary_link"}
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def lines(geometry):
+    if geometry.is_empty:
+        return []
+    if geometry.geom_type == "LineString":
+        return [geometry]
+    return [line for child in getattr(geometry, "geoms", []) for line in lines(child)]
+
+
+def normal_name(value):
+    return " ".join(unicodedata.normalize("NFKC", value).casefold().split())
+
+
+def projector(source, target):
+    def project(x, y, z=None):
+        scalar = isinstance(x, (float, int))
+        xx, yy = warp_transform(source, target, [x] if scalar else x, [y] if scalar else y)
+        return (xx[0], yy[0]) if scalar else (xx, yy)
+    return project
+
+
+def outward(row, node):
+    refs, coords = row["node_ids"], list(row["line"].coords)
+    if node == refs[0]:
+        first, second = coords[0], coords[1]
+    elif node == refs[-1]:
+        first, second = coords[-1], coords[-2]
+    else:
+        return None
+    dx, dy = second[0] - first[0], second[1] - first[1]
+    length = math.hypot(dx, dy)
+    return (dx / length, dy / length) if length else None
+
+
+stamp = datetime.now(UTC).isoformat()
+all_groups, audit, all_sources = [], [], []
+for ident in IDS:
+    catalog_path = ROOT / "selected" / (ident + "-catalog.json")
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))["results"]
+    osm = ROOT / "selected" / (ident + "-osm-highways.xml")
+    if not osm.exists():
+        osm = ROOT / "selected" / (ident + "-osm.xml")
+    tree = ET.fromstring(osm.read_bytes())
+    nodes = {row.attrib["id"]: (float(row.attrib["lon"]), float(row.attrib["lat"])) for row in tree.findall("node")}
+    lon, lat = (catalog["bbox"][0] + catalog["bbox"][2]) / 2, (catalog["bbox"][1] + catalog["bbox"][3]) / 2
+    epsg = (32600 if lat >= 0 else 32700) + int((lon + 180) // 6) + 1
+    project = projector('EPSG:4326', f'EPSG:{epsg}')
+    unproject = projector(f'EPSG:{epsg}', 'EPSG:4326')
+    interior = transform(project, shape(catalog["geojson"])).buffer(-20)
+    roads = []
+    for way in tree.findall("way"):
+        tags = {t.attrib["k"]: t.attrib["v"] for t in way.findall("tag") if t.attrib["k"] in {"highway", "name", "ref"}}
+        if tags.get("highway") not in ROAD_TYPES:
+            continue
+        refs = [n.attrib["ref"] for n in way.findall("nd")]
+        if len(refs) < 2 or any(node not in nodes for node in refs):
+            continue
+        geometry = transform(project, LineString([nodes[node] for node in refs]))
+        if geometry.is_empty or geometry.length == 0 or not geometry.is_simple:
+            continue
+        roads.append({"id": way.attrib["id"], "version": way.attrib.get("version"), "timestamp": way.attrib.get("timestamp"),
+                      "name": normal_name(tags.get("name", "")), "highway": tags["highway"], "node_ids": refs, "line": geometry})
+    parent = list(range(len(roads)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def union(a, b):
+        parent[find(b)] = find(a)
+
+    named, endpoints = defaultdict(list), defaultdict(list)
+    for i, row in enumerate(roads):
+        if row["name"]:
+            named[row["name"]].append(i)
+        for node in (row["node_ids"][0], row["node_ids"][-1]):
+            endpoints[node].append(i)
+    merges = []
+    for name, members in named.items():
+        for i in members[1:]:
+            union(members[0], i)
+            merges.append({"a": roads[members[0]]["id"], "b": roads[i]["id"], "reason": "same normalized road name in this one parent/site"})
+    for node, members in endpoints.items():
+        for a in members:
+            for b in members:
+                if a >= b or roads[a]["name"] or roads[b]["name"] or roads[a]["highway"] != roads[b]["highway"]:
+                    continue
+                va, vb = outward(roads[a], node), outward(roads[b], node)
+                if va is not None and vb is not None and sum(x * y for x, y in zip(va, vb)) <= -math.cos(math.radians(30)):
+                    union(a, b)
+                    merges.append({"a": roads[a]["id"], "b": roads[b]["id"], "node": node, "reason": "same-class unnamed road continuation within 30 degrees at a shared endpoint"})
+    for a in range(len(roads)):
+        for b in range(a):
+            if roads[a]["highway"] == roads[b]["highway"] and roads[a]["line"].hausdorff_distance(roads[b]["line"]) <= 15:
+                union(a, b)
+                merges.append({"a": roads[a]["id"], "b": roads[b]["id"], "reason": "conservative nearby parallel or repeated full geometry association within 15m Hausdorff distance"})
+    groups = defaultdict(list)
+    for i, row in enumerate(roads):
+        groups[find(i)].append(row)
+    admitted = []
+    for members in groups.values():
+        merged = unary_union([row["line"] for row in members])
+        merged = merged if merged.geom_type == "LineString" else linemerge(merged)
+        pieces = [line for line in lines(merged.intersection(interior)) if line.is_simple and not line.is_ring]
+        if not pieces:
+            continue
+        longest = max(pieces, key=lambda line: line.length)
+        if longest.length < 40:
+            continue
+        length = min(100.0, longest.length)
+        start = (longest.length - length) / 2
+        target = substring(longest, start, start + length)
+        if LineString([target.coords[0], target.coords[-1]]).length < 30 or target.buffer(3.6).interiors:
+            continue
+        ids = sorted(row["id"] for row in members)
+        gid = "oam-road-" + hashlib.sha256((ident + "|" + ",".join(ids)).encode()).hexdigest()[:16]
+        geometry = mapping(transform(unproject, target))
+        group = {"candidate_group_id": gid, "parent_object_id": ident, "site_group_id": "oam-site-" + ident,
+                 "osm_way_versions": [{k: row[k] for k in ("id", "version", "timestamp")} for row in members],
+                 "osm_snapshot_file": str(osm), "osm_snapshot_sha256": sha(osm), "geometry_selection_only": True,
+                 "normal_truth": None, "physical_asset_identity_verified": False, "all_associated_fragments_count_as_one_group": True,
+                 "names_for_provenance_only": sorted({row["name"] for row in members if row["name"]}),
+                 "longest_interior_component_length_m": longest.length, "utm_epsg": epsg, "world_scope": geometry,
+                 "scope_length_m": target.length, "scope_sha256": hashlib.sha256(json.dumps(geometry, sort_keys=True).encode()).hexdigest(),
+                 "scope_predeclared_at": stamp, "selection_rank_hash": hashlib.sha256(("oam-expansion-v1|" + gid).encode()).hexdigest(),
+                 "geometry_current_not_capture_time_snapshot": True}
+        all_groups.append(group)
+        admitted.append(gid)
+    all_sources.append({"id": ident, "catalog_file": str(catalog_path), "catalog_sha256": sha(catalog_path),
+                        "osm_snapshot_file": str(osm), "osm_snapshot_sha256": sha(osm)})
+    audit.append({"parent": ident, "road_ways": len(roads), "conservative_preliminary_groups": len(groups), "eligible_fixed_scopes": len(admitted), "merge_evidence": merges})
+document = {"format": "drone.p6-oam-geometry-proposal/v2", "created_at": stamp, "image_visual_inspections": 0,
+            "source_condition_tags_or_model_outputs_used": False, "business_labels_created": 0,
+            "rules": ["Use highway/name/ref identity and geometry only; no surface/access/condition/smoothness", "Associate same named roads, straight unnamed continuations and nearby parallel full geometries before defining one scope per conservative group", "20m footprint margin; longest simple non-ring interior line >=40m; single centered scope up to100m; endpoint separation >=30m; no nominal buffer holes", "Geometric distances are de-duplication and viewport screening, never an obstacle-size threshold or proof of independent physical identity", "No grouping is formally verified until physical road and neighboring group identities are checked", "All imagery from a parent/site remains in one future split; no per-tile site inflation"],
+            "source_bindings": all_sources, "audit": audit, "groups": all_groups, "formal_release_eligible": False}
+with (ROOT / "geometry-proposal.json").open("x", encoding="utf-8") as handle:
+    json.dump(document, handle, ensure_ascii=False, indent=2)
+print(json.dumps({"groups": len(all_groups), "per_parent": [{k: v for k, v in row.items() if k != "merge_evidence"} for row in audit], "formal_release_eligible": False}))

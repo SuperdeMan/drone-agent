@@ -1,0 +1,481 @@
+"""Census existing repeat metadata without visual or business adjudication.
+
+只普查已有跨次元数据，不做视觉或业务裁决。
+"""
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
+from hashlib import sha256
+from pathlib import Path
+import itertools
+import json
+
+
+ROOT = Path("D:/drone-agent-data/p6-corpus-completion-20261018")
+REPO = Path("D:/drone-agent-data/p6-road-views-20261014/repo")
+OUT = Path(__file__).resolve().parent
+REMOTE = "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/p6-corpus-completion-20261018"
+HASH_CACHE = {}
+READ_BINDINGS = {}
+REMOTE_REQUIREMENTS = {}
+
+
+def digest(path):
+    """Hash encoded bytes without decoding images. / 只哈希编码字节，不解码图片。"""
+    path = Path(path)
+    key = (str(path), path.stat().st_size, path.stat().st_mtime_ns)
+    if key not in HASH_CACHE:
+        h = sha256()
+        with path.open("rb") as f:
+            while block := f.read(4 * 1024 * 1024):
+                h.update(block)
+        HASH_CACHE[key] = h.hexdigest()
+    return HASH_CACHE[key]
+
+
+def binding(path, expected=None):
+    """Bind an actual file and retain a missing file explicitly. / 绑定实存文件，明确保留缺失。"""
+    path = Path(path)
+    result = {"file": str(path), "exists": path.is_file()}
+    if result["exists"]:
+        result.update(bytes=path.stat().st_size, sha256=digest(path))
+    if expected:
+        result.update(expected_sha256=expected, sha256_matches=result.get("sha256") == expected)
+    READ_BINDINGS[str(path)] = result
+    return result.copy()
+
+
+def read(path):
+    """Read a JSON container; callers select metadata only. / 读取JSON容器，由调用方只选元数据。"""
+    path = Path(path)
+    binding(path)
+    return json.loads(path.read_text(encoding="utf-8-sig"))
+
+
+def local_path(declared):
+    """Map the documented data-root prefix without changing source files. / 只映射已知数据根前缀，不改来源文件。"""
+    normalized = str(declared).replace("\\", "/")
+    marker = ROOT.name + "/"
+    if marker in normalized:
+        return ROOT / normalized.split(marker, 1)[1]
+    return Path(declared)
+
+
+def resolve(declared, expected):
+    """Find the original or its known byte-identical metadata mirror. / 查原路径及已知同字节元数据镜像。"""
+    primary = local_path(declared)
+    possibilities = [primary]
+    if primary.is_relative_to(ROOT):
+        possibilities.append(ROOT / "cloud-final-source-evidence-v1" / primary.relative_to(ROOT))
+    found = [p for p in possibilities if p.is_file() and digest(p) == expected]
+    record = {"declared_file": str(declared), "declared_local_file": str(primary),
+              "expected_sha256": expected, "declared_local_exists": primary.is_file()}
+    if not found:
+        record.update(exists=False, sha256_matches=False)
+        return None, record
+    actual = found[0]
+    record.update(binding(actual, expected), path_relocated=actual != primary)
+    return actual, record
+
+
+def require_remote(declared, expected, size, role, observation=None):
+    """Record exact existing-cloud checks; do not contact the cloud. / 记录云端待核精确清单，不连接云端。"""
+    normalized = str(declared).replace("\\", "/")
+    marker = ROOT.name + "/"
+    remote = REMOTE + "/" + normalized.split(marker, 1)[1]
+    if remote in REMOTE_REQUIREMENTS:
+        record = REMOTE_REQUIREMENTS[remote]
+        assert record["expected_sha256"] == expected
+        if size is not None:
+            assert record["expected_bytes"] in (None, size)
+            record["expected_bytes"] = size
+    else:
+        record = {"file": remote, "expected_sha256": expected, "expected_bytes": size,
+                  "roles": [], "sample_ids": []}
+        REMOTE_REQUIREMENTS[remote] = record
+    if role not in record["roles"]:
+        record["roles"].append(role)
+    if observation and observation not in record["sample_ids"]:
+        record["sample_ids"].append(observation)
+    return record
+
+
+def author_date(source):
+    """Use agreeing author dates without inventing flight identity. / 采用一致作者日期，不虚构飞行身份。"""
+    try:
+        table = datetime.strptime(source["author_statistics"]["Date (mm/dd/yyy)"], "%m/%d/%Y").date()
+        code = datetime.strptime(source["author_code_date_mm_dd_yyyy"], "%m-%d-%Y").date()
+        if table == code and source.get("author_code_date_marked_double_check") is False:
+            return table.isoformat()
+    except (KeyError, TypeError, ValueError):
+        pass
+    return None
+
+
+def same_assignment(first, current):
+    """Compare image, fixed target and actual display metadata. / 比较图片、固定目标及实际显示元数据。"""
+    if (first.get("image_sha256") != current["image_sha256"]
+            or first.get("fixed_world_scope") != current["world_scope"]):
+        return False
+    keys = ("target_endpoints_normalized", "centerline_segments_normalized")
+    if all(first.get(k) == current[k] for k in keys):
+        return True
+    bridge = ROOT / "frames-author-aligned-v4/receipts" / (current["sample_id"] + ".json")
+    if not bridge.is_file():
+        return False
+    other = read(bridge)
+    if (other["image_sha256"] != current["image_sha256"] or other["world_scope"] != current["world_scope"]
+            or any(other[k] != current[k] for k in keys)):
+        return False
+    old_guide = local_path(first["guide_file"])
+    bridge_guide = ROOT / "frames-author-aligned-v4/guides" / (current["sample_id"] + ".jpg")
+    return (old_guide.is_file() and bridge_guide.is_file()
+            and digest(old_guide) == other["guide_sha256"] == digest(bridge_guide))
+
+
+def save(name, document):
+    """Create a new report, refusing to rewrite evidence. / 新建报告，拒绝覆盖证据。"""
+    with (OUT / name).open("x", encoding="utf-8") as f:
+        json.dump(document, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+
+
+plan_path = ROOT / "asset-planning/v2-bounded-targets/cross-date-bounded-plan.json"
+coverage_path = ROOT / "resume-20261022-fast/repeat-coverage-final-v1.json"
+progress_path = ROOT / "resume-20261022-fast/progress-final-v1.json"
+capture_path = ROOT / "resume-20261022/pair-capture-inventory-v1.json"
+integrity_path = ROOT / "resume-20261022-fast/annotation-integrity-final-v1/result.json"
+for p in [REPO / "CLAUDE.md", REPO / "docs/p6-derived-road-evidence.md",
+          REPO / "docs/p6-road-corpus-handoff-2026-10-22.md", Path(__file__)]:
+    binding(p)
+plan = read(plan_path)
+coverage = read(coverage_path)
+progress = read(progress_path)
+inventory = read(capture_path)
+integrity = read(integrity_path)
+priority = read(ROOT / "repeat-review-priority-v1.json")
+sources = {r["orthomosaic"]: r for r in read(ROOT / "source-audit/uas-inventory.json")}
+assert coverage["plan_sha256"] == digest(plan_path)
+assert coverage["integrity_sha256"] == digest(integrity_path)
+assert progress["integrity_sha256"] == digest(integrity_path)
+assert integrity["checked"] == integrity["passed"] == 245
+checked_ids = {r["sample_id"] for r in integrity["rows"] if not r["issues"]}
+pending = {ident: row for row in progress["pending_second_reviews"] for ident in row["sample_ids"]}
+capture_by_id = {r["source_observation_id"]: r for r in inventory["rows"]}
+current = {}
+receipt_paths = {}
+all_groups = defaultdict(list)
+for folder in ["frames-cloud-v5", "normal-source-discovery/oam-frames-28-v1",
+               "oam-expansion-v1/nepal-frames-v1", "resume-20261021/mussett-frames-v2",
+               "resume-20261021/laura-frames-v1"]:
+    for p in sorted((ROOT / folder / "receipts").glob("*.json")):
+        item = read(p)
+        if item["status"] == "extracted":
+            current[item["sample_id"]] = item
+            receipt_paths[item["sample_id"]] = p
+            all_groups[item["asset_group_id"]].append(item)
+frame_by_key = {(r["asset_group_id"], r.get("source_orthomosaic"), r.get("bounded_target_id")): r for r in current.values()}
+pair_ids = {r["repeat_candidate_id"] for r in plan["pairs"]}
+assert pair_ids == {r["repeat_candidate_id"] for r in coverage["rows"]}
+cover_by_id = {r["repeat_candidate_id"]: r for r in coverage["rows"]}
+repeat_ids = {i for r in coverage["rows"] for i in r["sample_ids"]}
+drafts = {}
+for author in progress["authors"]:
+    assigned_path = ROOT / "annotation" / author["author_id"] / "assignment.json"
+    draft_path = assigned_path.parent / "suggestions.json"
+    assert digest(assigned_path) == author["assignment_sha256"]
+    assert digest(draft_path) == author["draft_sha256"]
+    assigned = {r["sample_id"]: r for r in read(assigned_path)["samples"]}
+    draft_container = read(draft_path)
+    # Only identifiers and image digests are inspected; business contents are not emitted. / 只取ID和图片摘要，不输出业务内容。
+    for meta in draft_container["rows"]:
+        ident = meta["sample_id"]
+        if ident not in repeat_ids:
+            continue
+        if same_assignment(assigned[ident], current[ident]):
+            assert meta["image_sha256"] == current[ident]["image_sha256"]
+            assert ident not in drafts
+            drafts[ident] = {"author_id": author["author_id"], "assignment": binding(assigned_path),
+                             "draft": binding(draft_path), "current_scope_compatible": True}
+assert repeat_ids & checked_ids <= set(drafts)
+assert (repeat_ids & set(pending)) == (set(drafts) - checked_ids)
+
+# Existing pair-check conclusions are terminal metadata, never a new visual review. / 旧配对核验结论只作终态元数据，不新增视觉核验。
+pair_checked = {}
+for ident in (1, 2, 3):
+    review_path = ROOT / "pair-verification" / f"pair_verifier_{ident}" / "review.json"
+    review = read(review_path)
+    assignment_path, assignment_binding = resolve(review["assignment_file"], review["assignment_sha256"])
+    assert assignment_path is not None
+    for row in review["rows"]:
+        pair_checked[row["pair_id"]] = {
+            "reviewer_id": review["reviewer_id"], "sample_ids": row["sample_ids"],
+            "same_asset": row["same_asset"], "same_condition": row["same_condition"],
+            "distinct_captures": row["distinct_captures"], "comparison_scope": row["temporal_scope"],
+            "review": binding(review_path), "assignment": assignment_binding,
+            "already_inspected_do_not_repeat_for_success": True}
+
+historical_source_path = ROOT / "cloud-final-source-evidence-v1/provenance-cloud-v1/result.json"
+historical_source = read(historical_source_path)
+historical_source_ids = {r["sample_id"] for r in historical_source["rows"] if r["source_chain_verified"]}
+cloud_inventory_path = ROOT / "resume-20261022-fast/cloud-file-inventory-v1.json"
+cloud_inventory = read(cloud_inventory_path)
+cloud_stat = {r["path"]: r for r in cloud_inventory["inventory"]["rows"]}
+
+source_ranges = {}
+observation_rows = []
+for sample_id in sorted(repeat_ids):
+    receipt = current[sample_id]
+    cap = capture_by_id[sample_id]
+    errors = []
+    binding_path, bind_meta = resolve(cap["binding_file"], cap["binding_sha256"])
+    assert binding_path is not None
+    bound = read(binding_path)
+    dependencies = {}
+    for key in ("extraction", "extraction_plan", "source_inventory", "range_manifest", "replay"):
+        p, meta = resolve(bound[key + "_file"], bound[key + "_sha256"])
+        dependencies[key] = meta
+        if p is None:
+            errors.append("missing_or_changed_" + key)
+    assert all(x["sha256_matches"] for x in dependencies.values())
+    source = sources[receipt["source_orthomosaic"]]
+    date = author_date(source)
+    assert cap["receipt_sha256"] == digest(receipt_paths[sample_id]) == bound["extraction_sha256"]
+    assert cap["parent_sha256"] == source["imagery_published_lfs_sha256"] == receipt["source_published_lfs_sha256"]
+    assert cap["author_date_group"] == date and cap["author_date_verified"] is True
+    assert source["author_statistics"]["Source"] in {"UAS", "sUAS"}
+    media = {}
+    for kind in ("image", "mask", "guide", "overview"):
+        expected = receipt[kind + "_sha256"]
+        path, meta = resolve(receipt[kind + "_file"], expected)
+        media[kind] = meta
+        if path is None:
+            errors.append("missing_or_changed_" + kind)
+        require_remote(receipt[kind + "_file"], expected, meta.get("bytes"), "original_" + kind, sample_id)
+    for kind in ("source_alignment", "source_geometry"):
+        path, meta = resolve(receipt[kind + "_file"], receipt[kind + "_sha256"])
+        dependencies[kind] = meta
+        assert path is not None
+    parent = cap["parent_sha256"]
+    ranges_path = Path(dependencies["range_manifest"]["file"])
+    ranges = read(ranges_path)
+    if parent not in source_ranges:
+        range_rows = []
+        for entry in ranges["ranges"]:
+            expected_bytes = entry["range"][1] - entry["range"][0] + 1
+            file_path, file_meta = resolve(entry["file"], entry["sha256"])
+            receipt_path, http_meta = resolve(entry["receipt_file"], entry["receipt_sha256"])
+            size_matches = file_meta.get("bytes") == expected_bytes
+            if file_path is not None:
+                assert size_matches
+            require_remote(entry["file"], entry["sha256"], expected_bytes, "source_range")
+            require_remote(entry["receipt_file"], entry["receipt_sha256"], http_meta.get("bytes"), "source_http_receipt")
+            range_rows.append({"range": entry["range"], "expected_bytes": expected_bytes,
+                               "body": file_meta, "http_receipt": http_meta,
+                               "local_range_and_http_verified": bool(file_path and receipt_path and size_matches)})
+        source_ranges[parent] = {"parent_sha256": parent, "source_orthomosaic": receipt["source_orthomosaic"],
+            "author_date_group": date, "source_table_date": source["author_statistics"]["Date (mm/dd/yyy)"],
+            "source_code_date": source["author_code_date_mm_dd_yyyy"],
+            "author_date_double_check_flag": source["author_code_date_marked_double_check"],
+            "source_flight_id": None, "source_capture_id": None, "exact_capture_utc": None,
+            "whole_parent_sha256_verified": ranges["whole_parent_sha256_verified"],
+            "range_manifest": binding(ranges_path), "ranges": range_rows,
+            "range_count": len(range_rows), "range_bytes": sum(x["expected_bytes"] for x in range_rows),
+            "local_range_and_http_verified_count": sum(x["local_range_and_http_verified"] for x in range_rows)}
+    replay_path = Path(dependencies["replay"]["file"])
+    replay = read(replay_path)
+    replay_extraction_path, replay_extraction_meta = resolve(replay["replay_extraction_file"], replay["replay_extraction_sha256"])
+    assert replay_extraction_path is not None
+    replay_extraction = read(replay_extraction_path)
+    assert replay["network_requests"] == 0 and replay["mode"] == "offline_cached_ranges"
+    assert replay["parent_sha256"] == parent and replay["extraction_sha256"] == bound["extraction_sha256"]
+    assert replay["range_manifest_sha256"] == bound["range_manifest_sha256"]
+    replay_equal = all(receipt[k] == replay_extraction[k] for k in (
+        "image_sha256", "mask_sha256", "native_rgb_sha256", "native_window_xywh", "window_transform", "world_scope"))
+    assert replay_equal and replay_extraction["offline"] is True and replay_extraction["status"] == "extracted"
+    replay_media = {}
+    for kind in ("image", "mask"):
+        path, meta = resolve(replay_extraction[kind + "_file"], replay_extraction[kind + "_sha256"])
+        replay_media[kind] = meta
+        require_remote(replay_extraction[kind + "_file"], replay_extraction[kind + "_sha256"],
+                       media[kind].get("bytes"), "independent_replay_" + kind, sample_id)
+    require_remote(replay["replay_extraction_file"], replay["replay_extraction_sha256"],
+                   replay_extraction_meta["bytes"], "independent_replay_extraction", sample_id)
+    observed_state = "reviewed" if sample_id in checked_ids else "awaiting_second_review" if sample_id in drafts else "awaiting_first_annotation"
+    observation_rows.append({"sample_id": sample_id, "geometric_group_id": receipt["asset_group_id"],
+        "fixed_scope_sha256": receipt["world_scope"]["freeze_scope_sha256"],
+        "world_scope_frozen_at_utc": receipt["world_scope"]["frozen_at_utc"],
+        "frozen_world_endpoints_lon_lat": receipt["world_scope"]["world_endpoints_lon_lat"],
+        "bounded_target_id": receipt["bounded_target_id"], "source_orthomosaic": receipt["source_orthomosaic"],
+        "source_parent_sha256": parent, "author_date_group": date, "date_verified_against_agreeing_author_metadata": True,
+        "proposed_partition": receipt["proposed_partition"], "annotation_state": observed_state,
+        "existing_first_annotation": drafts.get(sample_id), "extraction": binding(receipt_paths[sample_id]),
+        "derivation_binding": bind_meta, "dependencies": dependencies, "media": media,
+        "offline_replay_extraction": replay_extraction_meta, "offline_replay_media": replay_media,
+        "historical_replay_metadata_equal_to_original": replay_equal, "historical_replay_network_requests": 0,
+        "historical_source_audit_row_passed": sample_id in historical_source_ids,
+        "historical_source_audit_commit": "f893767a3fed845e45f3aff8589c68d60af625b9",
+        "current_local_source_ranges_complete": source_ranges[parent]["local_range_and_http_verified_count"] == source_ranges[parent]["range_count"],
+        "current_local_independent_replay_media_complete": all(x.get("sha256_matches") for x in replay_media.values()),
+        "ready_for_metadata_only_annotation_dispatch": not errors, "metadata_errors": errors,
+        "formal_asset_or_pair_admitted": False})
+observation_by_id = {r["sample_id"]: r for r in observation_rows}
+
+pair_rows = []
+for pair in plan["pairs"]:
+    pair_id = pair["repeat_candidate_id"]
+    cov = cover_by_id[pair_id]
+    samples = [frame_by_key[(pair["asset_group_id"], pair[k]["orthomosaic"], pair["bounded_target_id"])] for k in ("view_a", "view_b")]
+    ids = [r["sample_id"] for r in samples]
+    assert ids == cov["sample_ids"]
+    same_scope = samples[0]["world_scope"] == samples[1]["world_scope"]
+    assert same_scope == cov["same_frozen_world_scope"]
+    distinct_dates = observation_by_id[ids[0]]["author_date_group"] != observation_by_id[ids[1]]["author_date_group"]
+    distinct_parent = samples[0]["source_published_lfs_sha256"] != samples[1]["source_published_lfs_sha256"]
+    assert [observation_by_id[i]["author_date_group"] for i in ids] == pair["date_pair"]
+    existing_pair = pair_checked.get(pair_id)
+    reviewed_count = sum(i in checked_ids for i in ids)
+    first_count = sum(i in drafts for i in ids)
+    if not same_scope or not distinct_dates or not distinct_parent:
+        status, action = "range_or_capture_incompatible", "retain_incompatible_no_dispatch"
+    elif existing_pair and existing_pair["same_condition"] is True:
+        status, action = "existing_actual_same_state_pair_candidate", "current_source_and_remaining_admission_checks_only"
+    elif existing_pair:
+        status, action = "previous_pair_state_unknown", "retain_unknown_do_not_reinspect_for_success"
+    elif reviewed_count == 2:
+        status, action = "completed_observation_reviews_ineligible_for_same_state_pair", "retain_existing_failure_do_not_reinspect_for_success"
+    elif reviewed_count == 1:
+        status, action = "completed_one_side_review_already_ineligible", "retain_existing_failure_do_not_inspect_other_side_for_this_pair"
+    else:
+        status, action = "neutral_unfinished_pair", "complete_first_and_second_annotations_then_new_independent_pair_review"
+    pair_rows.append({"repeat_candidate_id": pair_id, "geometric_group_id": pair["asset_group_id"],
+        "bounded_target_id": pair["bounded_target_id"], "fixed_scope_sha256": pair["freeze_scope_sha256"],
+        "sample_ids": ids, "date_pair": pair["date_pair"], "source_parent_sha256": [r["source_published_lfs_sha256"] for r in samples],
+        "same_fixed_world_scope": same_scope, "distinct_agreeing_author_dates": distinct_dates,
+        "distinct_parent_objects": distinct_parent, "checked_observation_count": reviewed_count,
+        "current_first_annotation_count": first_count, "missing_first_annotation_count": 2 - first_count,
+        "pending_second_review_count": sum(i in drafts and i not in checked_ids for i in ids),
+        "existing_pair_review": existing_pair, "status": status, "next_action": action,
+        "source_current_cloud_preflight_required": True, "formal_pair_admitted": False})
+
+# Exhaust the current receipt universe; one group never becomes extra assets through crop/date multiplication. / 穷尽当前回执，不用裁切或日期乘法虚增资产。
+date_group_rows = []
+compatible_pairs = []
+for group_id, group in sorted(all_groups.items()):
+    views = []
+    for r in group:
+        source = sources.get(r.get("source_orthomosaic"))
+        views.append({"sample_id": r["sample_id"], "scope_sha256": r.get("world_scope", {}).get("freeze_scope_sha256"),
+                      "author_date_group": author_date(source) if source else None,
+                      "parent_sha256": r.get("source_published_lfs_sha256")})
+    valid_pairs = []
+    for a, b in itertools.combinations(views, 2):
+        if (a["author_date_group"] and b["author_date_group"] and a["author_date_group"] != b["author_date_group"]
+                and a["parent_sha256"] != b["parent_sha256"] and a["scope_sha256"] == b["scope_sha256"]):
+            key = sorted((a["sample_id"], b["sample_id"]))
+            valid_pairs.append(key)
+            compatible_pairs.append(key)
+    if len(views) > 1:
+        date_group_rows.append({"geometric_group_id": group_id, "observations": views,
+            "distinct_verified_date_groups": sorted({v["author_date_group"] for v in views if v["author_date_group"]}),
+            "unique_compatible_pairs": valid_pairs, "unique_pair_count": len(valid_pairs), "physical_group_verified": False})
+assert {tuple(p) for p in compatible_pairs} == {tuple(sorted(r["sample_ids"])) for r in pair_rows}
+
+unfinished = {r["geometric_group_id"]: r for r in pair_rows if r["status"] == "neutral_unfinished_pair"}
+neutral_order = [r["asset_group_id"] for r in priority["all_pairs"] if r["asset_group_id"] in unfinished]
+assert len(neutral_order) == len(unfinished) == 41
+proposals = []
+for group_id in neutral_order:
+    pair = unfinished[group_id]
+    props = []
+    for sample_id in pair["sample_ids"]:
+        r = observation_by_id[sample_id]
+        props.append({"sample_id": sample_id, "action": r["annotation_state"],
+                      "image": r["media"]["image"], "guide": r["media"]["guide"],
+                      "mask": r["media"]["mask"], "overview": r["media"]["overview"],
+                      "extraction": r["extraction"], "fixed_scope_sha256": r["fixed_scope_sha256"],
+                      "existing_first_annotation": r["existing_first_annotation"]})
+    proposals.append({"repeat_candidate_id": pair["repeat_candidate_id"], "geometric_group_id": group_id,
+                      "fixed_scope_sha256": pair["fixed_scope_sha256"], "date_pair": pair["date_pair"],
+                      "observations": props, "new_author_id": None, "new_context_registered": False})
+
+requirements = sorted(REMOTE_REQUIREMENTS.values(), key=lambda x: x["file"])
+for item in requirements:
+    old = cloud_stat.get(item["file"])
+    item["historical_cloud_stat_present"] = old is not None
+    item["historical_cloud_stat_bytes"] = old.get("bytes") if old else None
+    if item["expected_bytes"] is None and old:
+        item["expected_bytes"] = old["bytes"]
+        item["expected_bytes_origin"] = "historical_cloud_inventory_stat_only"
+    else:
+        item["expected_bytes_origin"] = "bound_manifest_or_same_digest_local_file"
+    item["historical_cloud_stat_size_matches"] = bool(old and old["bytes"] == item["expected_bytes"])
+    item["current_cloud_checked_in_this_census"] = False
+    item["sample_ids"].sort()
+    item["roles"].sort()
+
+summary = {
+    "planned_pairs": len(pair_rows), "geometric_candidate_groups": len({r["geometric_group_id"] for r in pair_rows}),
+    "verified_physical_groups_from_geometry_alone": 0,
+    "date_pair_counts": {"/".join(k): v for k, v in Counter(tuple(r["date_pair"]) for r in pair_rows).items()},
+    "pair_status_counts": dict(Counter(r["status"] for r in pair_rows)),
+    "current_repeat_observation_annotation_counts": dict(Counter(r["annotation_state"] for r in observation_rows)),
+    "all_current_derived_observations": len(current), "all_current_geometric_groups": len(all_groups),
+    "current_group_observation_multiplicity": dict(Counter(len(v) for v in all_groups.values())),
+    "groups_with_three_or_more_observations": sum(len(v) >= 3 for v in all_groups.values()),
+    "unique_compatible_distinct_date_pairs_in_all_current_receipts": len(compatible_pairs),
+    "additional_unplanned_compatible_distinct_date_pairs": 0,
+    "neutral_unfinished_pairs": len(proposals), "neutral_unfinished_observations": sum(len(p["observations"]) for p in proposals),
+    "neutral_unfinished_first_annotations_needed": sum(x["action"] == "awaiting_first_annotation" for p in proposals for x in p["observations"]),
+    "neutral_existing_first_annotations_pending_second_review": sum(x["action"] == "awaiting_second_review" for p in proposals for x in p["observations"]),
+    "current_local_source_complete_and_independent_replay_media_complete": sum(r["current_local_source_ranges_complete"] and r["current_local_independent_replay_media_complete"] for r in observation_rows),
+    "historical_source_audit_passed_observations": sum(r["historical_source_audit_row_passed"] for r in observation_rows),
+    "source_parent_objects": len(source_ranges), "source_range_count": sum(r["range_count"] for r in source_ranges.values()),
+    "source_range_bytes": sum(r["range_bytes"] for r in source_ranges.values()),
+    "current_local_source_range_and_http_verified_count": sum(r["local_range_and_http_verified_count"] for r in source_ranges.values()),
+    "current_cloud_files_checked": 0, "models_called": 0, "images_visually_inspected": 0,
+    "new_annotation_or_pair_authors_registered": 0, "formal_pair_admitted": 0,
+    "D089_required_pairs": 30, "D089_required_distinct_assets_minimum": 15,
+    "existing_actual_same_state_pair_candidates": 1, "additional_successful_pairs_needed_at_least": 29,
+    "minimum_physical_groups_needed_for_30_pairs_using_only_current_one_pair_per_group": 30,
+    "fixed_gate_or_source_policy_changed": False}
+assert summary["neutral_unfinished_first_annotations_needed"] == 79
+assert summary["neutral_existing_first_annotations_pending_second_review"] == 3
+assert summary["current_repeat_observation_annotation_counts"] == {"reviewed": 41, "awaiting_first_annotation": 101, "awaiting_second_review": 4} or Counter(summary["current_repeat_observation_annotation_counts"]) == Counter({"reviewed": 41, "awaiting_first_annotation": 101, "awaiting_second_review": 4})
+
+save("cloud-existing-byte-checklist.json", {"format": "drone.p6-repeat-existing-cloud-byte-checklist/v1",
+    "created_at_utc": datetime.now(timezone.utc).isoformat(), "mode": "read_only_preflight_proposal_no_execution",
+    "cloud_root": REMOTE, "historical_inventory": binding(cloud_inventory_path),
+    "historical_inventory_time_utc": cloud_inventory["execution"]["ended_utc"],
+    "expected_files": len(requirements), "requirements": requirements,
+    "required_checks": ["Check existence, exact expected length, and streaming SHA-256 of each listed existing cloud file.",
+        "Keep cache and independent replay media in place; do not download or duplicate source caches.",
+        "Use actual frozen native decoder on bound ranges before any formal source admission; metadata equality is insufficient."],
+    "current_cloud_contact": False, "formal_pair_admitted": 0})
+save("next-assignment-proposals.json", {"format": "drone.p6-neutral-repeat-assignment-proposals/v1",
+    "created_at_utc": datetime.now(timezone.utc).isoformat(), "registered": False,
+    "selection_rule": "Entire residual set with neither observation second-reviewed; original neutral alpha/geometry order from repeat-review-priority-v1.json. No ranking by positive business labels.",
+    "priority_binding": binding(ROOT / "repeat-review-priority-v1.json"),
+    "pair_count": len(proposals), "observation_count": 82, "first_annotations_needed": 79,
+    "existing_first_annotations_pending_second_review": 3,
+    "new_visual_authors_registered": 0, "new_author_or_reviewer_id": None,
+    "next_steps": ["Pre-register isolated first-annotation contexts for all 79 missing observations in this entire neutral set; bind original image and guide bytes and preserve frozen A/B and full width.",
+        "Assign a different isolated reviewer to each completed first draft, including the 3 existing first drafts. This eventually requires 82 second reviews.",
+        "After observation reviews finish, independently pair-review the entire 41-pair set, retaining unknown/failure results; do not geometrically auto-admit.",
+        "Run current existing-cloud byte preflight and native source audit before formal admission; then perform physical identity, asset independence, split and all D089 checks."],
+    "pairs": proposals, "formal_pair_admitted": 0})
+save("census.json", {"format": "drone.p6-repeat-queue-census/v1", "created_at_utc": datetime.now(timezone.utc).isoformat(),
+    "scope": "Existing encoded-file bytes and source/geometry/inspection-completion metadata only. No visual or business adjudication.",
+    "summary": summary, "primary_inputs": [binding(p) for p in [plan_path, coverage_path, progress_path, capture_path, integrity_path, historical_source_path]],
+    "limitations": ["Geometric groups are not independently verified physical assets.",
+        "Author dates are unordered date groups; no flight ID, exact UTC, raw-frame identity or clearance cause is inferred.",
+        "Historical cloud inventory and source audit do not prove current cloud bytes. Current source/native admission remains pending.",
+        "Original encoded JPEG/PNG files were hashed only; none was decoded or visually inspected.",
+        "Existing annotation/pair containers were queried for identifiers, digest bindings, completion and terminal status metadata only. No evaluation prompt/output was accessed.",
+        "Known failed or unknown pairs are retained and not queued again to obtain a pass."],
+    "observations": observation_rows, "pairs": pair_rows, "multiview_group_census": date_group_rows,
+    "source_parent_census": list(source_ranges.values()),
+    "all_actual_local_file_bindings": sorted(READ_BINDINGS.values(), key=lambda x: x["file"]),
+    "cloud_checklist": binding(OUT / "cloud-existing-byte-checklist.json"),
+    "next_assignment_proposals": binding(OUT / "next-assignment-proposals.json")})
+print(json.dumps(summary, ensure_ascii=False))
+print(json.dumps({name: binding(OUT / name) for name in ["census.json", "next-assignment-proposals.json", "cloud-existing-byte-checklist.json"]}, ensure_ascii=False))

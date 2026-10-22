@@ -1,0 +1,655 @@
+"""Census original bytes and metadata-only revisit leads without image decoding.
+
+仅核原图字节与元数据重访线索，不解码图像，不读取业务标注或模型输出。
+"""
+from __future__ import annotations
+
+import hashlib
+import itertools
+import json
+import math
+import re
+import struct
+import sys
+import zlib
+from collections import Counter, defaultdict
+from datetime import UTC, datetime
+from pathlib import Path
+
+from shapely.geometry import Polygon
+
+ROOT = Path("D:/drone-agent-data/p6-corpus-completion-20261018")
+DATA = ROOT.parent
+OUT = ROOT / "resume-20261022-next/raw-repeat-source-feasibility-v1"
+ORIGIN = (29.60, -95.70)
+SAFE = {
+    "image_id", "sample_id", "member", "file", "image_file", "image_sha256",
+    "image_bytes", "bytes", "width", "height", "completeness", "full_image_acquired",
+    "source_declared_bytes", "source_declared_crc32", "original_bytes", "crc32",
+    "source_revision", "source_index_sha256", "source_crc_and_size_verified",
+    "capture_time_text", "capture_timezone", "gps", "exif_model", "focal35",
+    "orientation", "xmp_pose", "status", "acquisition_receipt_file",
+}
+INPUTS = {
+    "inventory_415": DATA / "p6-business-closeout-20261015/inventory-v4.json",
+    "merged_500": ROOT / "floodnet-remaining-85/merged-candidate-inventory.json",
+    "verification_85": ROOT / "floodnet-remaining-85/new-original-verification-index.json",
+    "extension_v1": ROOT / "resume-20261021/raw-road-presence-v1/verified-image-index.json",
+    "extension_v2": ROOT / "resume-20261021/raw-road-presence-v2/verified-image-index.json",
+    "source_index": ROOT / "floodnet-remaining-85/source/torchgeo-central-index.json",
+    "completion_summary": ROOT / "floodnet-remaining-85/completion-summary.json",
+    "source_permission": ROOT / "floodnet-remaining-85/source-permission.json",
+    "source_reference": ROOT / "floodnet-remaining-85/source-reference-verification.json",
+    "capture_holds": ROOT / "resume-20261021/raw-road-presence-v1/capture-holds.json",
+    "grouping_rules": ROOT / "resume-20261021/grouping-rules-v2.json",
+    "header_survey": ROOT / "floodnet-header-survey-v1/result.json",
+    "prior_verification_tool": ROOT / "resume-20261021/verify_new_originals.py",
+    "header_method_tool": ROOT / "claude-orchestrator/tools/floodnet_header_survey_local.py",
+    "footprint_method_tool": ROOT / "claude-orchestrator/tools/floodnet_footprints.py",
+}
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def file_digest(path):
+    h = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def save(name, value):
+    with (OUT / name).open("w", encoding="utf-8") as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2, allow_nan=False)
+
+
+def safe_rows(value):
+    # Drop every unlisted key before any further processing or output. / 先丢弃白名单外的全部字段。
+    rows = value.get("rows", []) if isinstance(value, dict) else value
+    return [{k: v for k, v in row.items() if k in SAFE} for row in rows]
+
+
+def local_xy(gps):
+    lat, lon = gps
+    return ((lon - ORIGIN[1]) * 111320.0 * math.cos(math.radians(ORIGIN[0])),
+            (lat - ORIGIN[0]) * 110946.0)
+
+
+def good_gps(value):
+    return (isinstance(value, list) and len(value) == 2
+            and all(isinstance(v, (float, int)) and math.isfinite(v) for v in value)
+            and -90 <= value[0] <= 90 and -180 <= value[1] <= 180)
+
+
+def parse_clock(value):
+    try:
+        return datetime.strptime(value, "%Y:%m:%d %H:%M:%S")
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_tiff(data):
+    if len(data) < 8 or data[:2] not in (b"II", b"MM"):
+        raise ValueError("invalid EXIF TIFF header")
+    endian = "<" if data[:2] == b"II" else ">"
+
+    def unpack(fmt, offset):
+        return struct.unpack_from(endian + fmt, data, offset)
+
+    if unpack("H", 2)[0] != 42:
+        raise ValueError("unsupported EXIF TIFF")
+    sizes = {1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 7: 1, 9: 4, 10: 8}
+
+    def ifd(offset):
+        if not isinstance(offset, int) or offset <= 0 or offset + 2 > len(data):
+            return {}
+        count = unpack("H", offset)[0]
+        if count > 1000 or offset + 2 + 12 * count > len(data):
+            raise ValueError("invalid EXIF IFD extent")
+        values = {}
+        for number in range(count):
+            entry = offset + 2 + number * 12
+            tag, kind, n = unpack("HHI", entry)
+            if kind not in sizes or n > 100000:
+                continue
+            length = sizes[kind] * n
+            pos = entry + 8 if length <= 4 else unpack("I", entry + 8)[0]
+            if pos < 0 or pos + length > len(data):
+                continue
+            raw = data[pos:pos + length]
+            if kind == 2:
+                value = raw.decode("ascii", errors="replace").strip("\x00 ")
+            elif kind in (5, 10):
+                fmt = "II" if kind == 5 else "ii"
+                values_n = [unpack(fmt, pos + j * 8) for j in range(n)]
+                value = [a / b if b else None for a, b in values_n]
+                value = value[0] if n == 1 else value
+            elif kind in (1, 3, 4, 9):
+                fmt = {1: "B", 3: "H", 4: "I", 9: "i"}[kind]
+                value = list(unpack(fmt * n, pos))
+                value = value[0] if n == 1 else value
+            else:
+                continue
+            values[tag] = value
+        return values
+
+    top = ifd(unpack("I", 4)[0])
+    sub = ifd(top.get(34665))
+    gps_ifd = ifd(top.get(34853))
+    gps = None
+    if all(k in gps_ifd for k in (1, 2, 3, 4)):
+        def degrees(v):
+            return float(v[0]) + float(v[1]) / 60 + float(v[2]) / 3600
+        gps = [degrees(gps_ifd[2]) * (-1 if gps_ifd[1] == "S" else 1),
+               degrees(gps_ifd[4]) * (-1 if gps_ifd[3] == "W" else 1)]
+    return {
+        "make": top.get(271), "camera_model": top.get(272),
+        "orientation": top.get(274, 1),
+        "capture_time_text": sub.get(36867) or top.get(306),
+        "offset_time_original": sub.get(36881),
+        "gps_date_stamp": gps_ifd.get(29), "gps_time_stamp": gps_ifd.get(7),
+        "gps": gps, "gps_altitude": gps_ifd.get(6),
+        "gps_altitude_ref": gps_ifd.get(5),
+        "focal35": sub.get(41989) or top.get(41989),
+        "focal_length_mm": sub.get(37386),
+    }
+
+
+def jpeg_header(raw):
+    # Marker and TIFF parsing only; no image library, RGB, entropy decode or render. / 仅解析标记与 TIFF，不解码或渲染像素。
+    if raw[:2] != b"\xff\xd8":
+        raise ValueError("not a JPEG original")
+    out = {"primary_sos_seen": False, "terminal_eoi_present": raw[-2:] == b"\xff\xd9"}
+    pos = 2
+    xmp = {}
+    while pos < len(raw):
+        if raw[pos] != 255:
+            raise ValueError("invalid JPEG marker boundary")
+        while pos < len(raw) and raw[pos] == 255:
+            pos += 1
+        marker = raw[pos]
+        pos += 1
+        if marker == 218:
+            out["primary_sos_seen"] = True
+            break
+        if marker in (216, 217, 1) or 208 <= marker <= 215:
+            continue
+        length = struct.unpack_from(">H", raw, pos)[0]
+        payload = raw[pos + 2:pos + length]
+        if length < 2 or pos + length > len(raw):
+            raise ValueError("truncated JPEG metadata segment")
+        if marker == 225 and payload.startswith(b"Exif\x00\x00"):
+            out.update(parse_tiff(payload[6:]))
+        if marker == 225 and b"<x:xmpmeta" in payload:
+            text = payload.decode("utf-8", errors="replace")
+            for key in ("RelativeAltitude", "AbsoluteAltitude", "GimbalYawDegree",
+                        "GimbalPitchDegree", "GimbalRollDegree", "FlightYawDegree"):
+                match = re.search(r"(?:[:\s])" + key + r'="([^"]+)"', text)
+                if match:
+                    try:
+                        value = float(match.group(1))
+                        if math.isfinite(value):
+                            xmp[key] = value
+                    except ValueError:
+                        pass
+        if marker in {192, 193, 194, 195, 197, 198, 199, 201, 202, 203, 205, 206, 207}:
+            out["height_px"], out["width_px"] = struct.unpack_from(">HH", payload, 1)
+        pos += length
+    out["metadata_header_bytes"] = pos
+    out["xmp_pose"] = xmp
+    return out
+
+
+def footprint(meta):
+    pose = meta.get("xmp_pose", {})
+    required = ("RelativeAltitude", "GimbalYawDegree", "GimbalPitchDegree", "GimbalRollDegree")
+    if not good_gps(meta.get("gps")):
+        return None, "gps_unknown"
+    if not all(k in pose for k in required) or not meta.get("focal35"):
+        return None, "camera_pose_or_focal35_unknown"
+    if meta.get("orientation", 1) != 1:
+        return None, "unsupported_orientation"
+    width, height = meta.get("width_px"), meta.get("height_px")
+    if not width or not height or pose["RelativeAltitude"] <= 0:
+        return None, "invalid_dimensions_or_height"
+    focal = float(meta["focal35"]) / 43.2666 * math.hypot(width, height)
+    yaw, pitch, roll = [math.radians(pose[k]) for k in required[1:]]
+    forward = (math.sin(yaw) * math.cos(pitch), math.cos(yaw) * math.cos(pitch), math.sin(pitch))
+    right0 = (math.cos(yaw), -math.sin(yaw), 0.0)
+    down0 = (-forward[2] * right0[1], forward[2] * right0[0],
+             forward[0] * right0[1] - forward[1] * right0[0])
+    right = tuple(math.cos(roll) * a + math.sin(roll) * b for a, b in zip(right0, down0))
+    down = tuple(-math.sin(roll) * a + math.cos(roll) * b for a, b in zip(right0, down0))
+    east, north = local_xy(meta["gps"])
+    points = []
+    for u, v in ((0, 0), (1, 0), (1, 1), (0, 1)):
+        x, y = (u - 0.5) * width / focal, (v - 0.5) * height / focal
+        dx, dy, dz = (f + x * r + y * d for f, r, d in zip(forward, right, down))
+        if dz >= -1e-6:
+            return None, "full_frame_corner_does_not_intersect_ground"
+        t = pose["RelativeAltitude"] / -dz
+        if t * math.hypot(dx, dy) > 400:
+            return None, "full_frame_corner_exceeds_existing_400m_range"
+        points.append((east + t * dx, north + t * dy))
+    poly = Polygon(points)
+    if not poly.is_valid or poly.area <= 0:
+        return None, "invalid_approximate_footprint"
+    return poly, "approximate_full_frame_ground_intersection"
+
+
+class Union:
+    def __init__(self, ids):
+        self.parent = {i: i for i in ids}
+
+    def find(self, value):
+        while self.parent[value] != value:
+            self.parent[value] = self.parent[self.parent[value]]
+            value = self.parent[value]
+        return value
+
+    def link(self, a, b):
+        a, b = self.find(a), self.find(b)
+        if a != b:
+            self.parent[max(a, b)] = min(a, b)
+
+    def groups(self):
+        out = defaultdict(list)
+        for ident in self.parent:
+            out[self.find(ident)].append(ident)
+        return {k: sorted(v) for k, v in sorted(out.items())}
+
+
+def main():
+    sys.stdout.reconfigure(encoding="utf-8")
+    started = datetime.now(UTC).isoformat()
+    bindings = {}
+    loaded = {}
+    missing = []
+    for key, path in INPUTS.items():
+        if not path.is_file():
+            missing.append({"input": key, "file": str(path)})
+            continue
+        raw = path.read_bytes()
+        bindings[key] = {"file": str(path), "sha256_before": digest(raw), "bytes": len(raw)}
+        if path.suffix == ".json":
+            loaded[key] = json.loads(raw)
+    required = {"inventory_415", "merged_500", "extension_v1", "extension_v2", "source_index", "capture_holds", "grouping_rules", "header_survey"}
+    if required - loaded.keys():
+        save("blocked-missing-inputs.json", {"missing_inputs": missing})
+        raise SystemExit("required metadata input missing; no candidate inference")
+
+    contexts = {}
+    rows_by_source = {}
+    refs = defaultdict(list)
+    source_counts = {}
+    for key in ("inventory_415", "merged_500", "verification_85", "extension_v1", "extension_v2", "header_survey"):
+        rows = safe_rows(loaded[key])
+        rows_by_source[key] = rows
+        source_counts[key] = {"metadata_rows": len(rows), "declared_complete_rows": 0, "header_only_rows": 0}
+        for row in rows:
+            ident = str(row.get("image_id", ""))
+            if not re.fullmatch(r"[0-9]+", ident):
+                continue
+            if key in ("inventory_415", "merged_500", "header_survey"):
+                # Only use the source root, never source GT directory categories. / 只识别来源根目录，不读取来源真值目录类别。
+                member = str(row.get("member", ""))
+                original_path = str(row.get("image_file") or row.get("file") or "").replace("\\", "/").lower()
+                source_root_known = member.split("/", 1)[0].lower() == "floodnet"
+                if not member and "/floodnet/" in original_path:
+                    source_root_known = True
+                if not source_root_known:
+                    continue
+            current = contexts.setdefault(ident, {})
+            for field in ("gps", "capture_time_text", "exif_model", "width", "height", "focal35", "orientation", "xmp_pose"):
+                if row.get(field) is not None:
+                    current[field] = row[field]
+            complete = row.get("completeness") == "complete_original" or key == "verification_85" or (key.startswith("extension_") and row.get("source_crc_and_size_verified") is True)
+            source_counts[key]["declared_complete_rows"] += int(complete)
+            source_counts[key]["header_only_rows"] += int(row.get("completeness") == "header_only" or key == "header_survey")
+            if not complete:
+                continue
+            filename = row.get("image_file") or row.get("file")
+            if not filename:
+                missing.append({"input": key, "image_id": ident, "reason": "original_path_unknown"})
+                continue
+            path = Path(filename)
+            if not path.is_absolute():
+                path = DATA / path
+            refs[str(path.resolve())].append((key, ident, row))
+
+    index = loaded["source_index"]
+    wanted = {ident for rows in refs.values() for _, ident, _ in rows}
+    source_members = defaultdict(list)
+    for source_row in index["entries"]:
+        # Match basename only; source category strings stay opaque and are never output. / 只按文件名匹配，来源类别字符串保持不透明且不输出。
+        name = str(source_row.get("member", ""))
+        ident = Path(name).stem
+        if ident in wanted and Path(name).suffix.lower() in {".jpg", ".jpeg"}:
+            source_members[ident].append({
+                "member_sha256": digest(name.encode("utf-8")),
+                "original_bytes": source_row.get("original_bytes"),
+                "crc32": source_row.get("crc32"),
+            })
+
+    originals = []
+    failures = []
+    for path_text, references in sorted(refs.items()):
+        path = Path(path_text)
+        ident_set = sorted({ident for _, ident, _ in references})
+        if not path.is_file():
+            failures.append({"file": path_text, "image_ids": ident_set, "reason": "missing_original"})
+            continue
+        raw = path.read_bytes()
+        actual_sha, actual_crc = digest(raw), "%08x" % (zlib.crc32(raw) & 0xffffffff)
+        expected_shas = sorted({r["image_sha256"] for _, _, r in references if r.get("image_sha256")})
+        source_matches = [e for ident in ident_set for e in source_members[ident]
+                          if e["original_bytes"] == len(raw) and e["crc32"] == actual_crc]
+        reasons = []
+        if not expected_shas or any(s != actual_sha for s in expected_shas):
+            reasons.append("inventory_sha_missing_or_mismatch")
+        if not source_matches:
+            reasons.append("source_member_size_crc_unverified")
+        try:
+            meta = jpeg_header(raw)
+        except Exception as error:
+            reasons.append(type(error).__name__ + ": " + str(error))
+            meta = {}
+        if not meta.get("primary_sos_seen") or not meta.get("terminal_eoi_present"):
+            reasons.append("complete_jpeg_container_not_verified")
+        record = {"image_ids": ident_set, "file": path_text, "sha256_before": actual_sha,
+                  "bytes": len(raw), "crc32": actual_crc, "inventory_shas": expected_shas,
+                  "source_member_matches": source_matches,
+                  "source_records": [{"input": key, "image_id": ident} for key, ident, _ in references],
+                  "complete_original_verified": not reasons,
+                  "metadata": meta, "verification_issues": reasons}
+        originals.append(record)
+        if reasons:
+            failures.append({"file": path_text, "image_ids": ident_set, "reasons": reasons})
+        if len(originals) % 100 == 0:
+            print(json.dumps({"original_paths_checked": len(originals), "declared_paths": len(refs)}), flush=True)
+
+    by_sha = defaultdict(list)
+    for original in originals:
+        if original["complete_original_verified"]:
+            by_sha[original["sha256_before"]].append(original)
+    holds = loaded["capture_holds"]
+    hold_map = {ident: group["id"] for group in holds["groups"] for ident in group["source_image_ids"]}
+    development_hold = holds["development_related_hold"]
+    seed_ids = {ident for ident, hold in hold_map.items() if hold == development_hold}
+    nodes = {}
+    geometries = {}
+    for sha, records in sorted(by_sha.items()):
+        ids = sorted({ident for r in records for ident in r["image_ids"]})
+        ident = ids[0]
+        meta = records[0]["metadata"]
+        node_id = "floodnet-" + ident
+        poly, footprint_status = footprint(meta)
+        if poly is not None:
+            geometries[node_id] = poly
+        nodes[node_id] = {
+            "node_id": node_id, "image_ids": ids, "original_sha256": sha,
+            "original_files": [r["file"] for r in records], "original_bytes": records[0]["bytes"],
+            "metadata": meta, "capture_time_local_iso": parse_clock(meta.get("capture_time_text")).isoformat() if parse_clock(meta.get("capture_time_text")) else None,
+            "capture_timezone": None, "actual_flight_id": None,
+            "registered_capture_holds": sorted({hold_map.get(i, "unknown") for i in ids}),
+            "development_capture_hold": bool(set(ids) & seed_ids),
+            "footprint_status": footprint_status,
+            "approximate_footprint_xy_m": [list(p) for p in poly.exterior.coords] if poly is not None else None,
+            "approximate_footprint_area_m2": poly.area if poly is not None else None,
+            "complete_original_verified": True, "formal_asset_or_pair": False,
+        }
+        contexts[ident].update(gps=meta.get("gps"), capture_time_text=meta.get("capture_time_text"),
+                               exif_model=meta.get("camera_model"))
+
+    # Preserve the registered site single linkage across all known source GPS metadata. / 按既定地点规则纳入所有已知来源 GPS，防止换时间洗白。
+    gps_context = {ident: local_xy(r["gps"]) for ident, r in contexts.items() if good_gps(r.get("gps"))}
+    sites = Union(gps_context)
+    for a, b in itertools.combinations(gps_context, 2):
+        if math.dist(gps_context[a], gps_context[b]) <= 1000:
+            sites.link(a, b)
+    site_groups = sites.groups()
+    development_sites = {sites.find(i) for i in seed_ids if i in gps_context}
+    ranks = {}
+    clocks = defaultdict(list)
+    for ident, row in contexts.items():
+        clock = parse_clock(row.get("capture_time_text"))
+        model = str(row.get("exif_model", "unknown")).strip("\x00 ")
+        if clock:
+            clocks[(model, clock.date().isoformat())].append((clock, ident))
+    for key, entries in clocks.items():
+        for number, (_, ident) in enumerate(sorted(entries)):
+            ranks[ident] = (key, number)
+
+    near_dup = Union(nodes)
+    positive_pairs = []
+    for a, b in itertools.combinations(sorted(geometries), 2):
+        ga, gb = geometries[a], geometries[b]
+        if not ga.intersects(gb):
+            continue
+        area = ga.intersection(gb).area
+        if area <= 0:
+            continue
+        overlap = area / min(ga.area, gb.area)
+        if overlap >= 0.30:
+            near_dup.link(a, b)
+        na, nb = nodes[a], nodes[b]
+        ta, tb = parse_clock(na["metadata"].get("capture_time_text")), parse_clock(nb["metadata"].get("capture_time_text"))
+        same_date = ta is not None and tb is not None and ta.date() == tb.date()
+        seconds = abs((ta - tb).total_seconds()) if same_date else None
+        ia, ib = na["image_ids"][0], nb["image_ids"][0]
+        order_distance = abs(ranks[ia][1] - ranks[ib][1]) if ia in ranks and ib in ranks and ranks[ia][0] == ranks[ib][0] else None
+        positive_pairs.append({
+            "pair_id": a + "__" + b, "a": a, "b": b,
+            "a_sha256": na["original_sha256"], "b_sha256": nb["original_sha256"],
+            "same_declared_local_date": same_date,
+            "local_clock_interval_seconds": seconds,
+            "known_source_capture_order_distance": order_distance,
+            "nonadjacent_in_known_metadata": order_distance is not None and order_distance >= 2,
+            "same_registered_capture_hold": bool(set(na["registered_capture_holds"]) & set(nb["registered_capture_holds"]) - {"unknown"}),
+            "approximate_footprint_overlap_fraction_of_smaller": overlap,
+            "approximate_intersection_m2": area,
+            "gps_distance_m": math.dist(local_xy(na["metadata"]["gps"]), local_xy(nb["metadata"]["gps"])),
+            "formal_asset_or_pair": False,
+        })
+
+    near_groups = near_dup.groups()
+    development_near = {near_dup.find(k) for k, n in nodes.items() if n["development_capture_hold"]}
+    for node_id, node in nodes.items():
+        ids = node["image_ids"]
+        site_roots = sorted({sites.find(i) for i in ids if i in gps_context})
+        node["metadata_site_component_ids"] = ["gps-site-" + root for root in site_roots]
+        node["metadata_near_duplicate_component_id"] = "near-" + near_dup.find(node_id)
+        node["development_site_association"] = bool(set(site_roots) & development_sites)
+        node["development_near_duplicate_association"] = near_dup.find(node_id) in development_near
+        hold_reasons = []
+        if node["development_capture_hold"]:
+            hold_reasons.append("registered_development_capture_hold_3")
+        if node["development_site_association"]:
+            hold_reasons.append("registered_1km_gps_site_component_contains_development_hold")
+        if node["development_near_duplicate_association"]:
+            hold_reasons.append("registered_30percent_footprint_component_contains_development_hold")
+        if not site_roots:
+            hold_reasons.append("development_site_relation_unknown")
+        if "unknown" in node["registered_capture_holds"]:
+            hold_reasons.append("registered_capture_hold_unknown")
+        node["hold_reasons"] = hold_reasons
+        node["held_for_development_or_unknown_relation"] = bool(hold_reasons)
+        node["unheld_for_metadata_candidate_review_only"] = not hold_reasons
+
+    for pair in positive_pairs:
+        pair["held_for_development_or_unknown_relation"] = nodes[pair["a"]]["held_for_development_or_unknown_relation"] or nodes[pair["b"]]["held_for_development_or_unknown_relation"]
+        pair["priority_search_rule_matched"] = (pair["same_declared_local_date"] and
+            pair["local_clock_interval_seconds"] >= 30 and pair["nonadjacent_in_known_metadata"] and
+            pair["approximate_footprint_overlap_fraction_of_smaller"] >= 0.30)
+        pair["unheld_priority_review_lead"] = pair["priority_search_rule_matched"] and not pair["held_for_development_or_unknown_relation"]
+    priority_pairs = [p for p in positive_pairs if p["priority_search_rule_matched"]]
+    unheld_pairs = [p for p in priority_pairs if p["unheld_priority_review_lead"]]
+    for pair in unheld_pairs:
+        pair["review_priority"] = "cross_registered_capture_hold_first" if not pair["same_registered_capture_hold"] else "within_capture_hold_nonadjacent_context"
+    unheld_pairs.sort(key=lambda p: (p["same_registered_capture_hold"], -p["local_clock_interval_seconds"], p["pair_id"]))
+    cross_hold_pairs = [p for p in unheld_pairs if not p["same_registered_capture_hold"]]
+    within_hold_pairs = [p for p in unheld_pairs if p["same_registered_capture_hold"]]
+    candidate_nodes = sorted({p[k] for p in unheld_pairs for k in ("a", "b")})
+    queue_union = Union(candidate_nodes)
+    for pair in unheld_pairs:
+        queue_union.link(pair["a"], pair["b"])
+    time_filtered_components = [{"component_id": "time-filtered-component-" + key, "node_ids": group,
+                         "pair_ids": [p["pair_id"] for p in unheld_pairs if p["a"] in group and p["b"] in group],
+                         "formal_asset_or_pair": False}
+                        for key, group in queue_union.groups().items()]
+    candidate_by_near = defaultdict(list)
+    for node_id in candidate_nodes:
+        candidate_by_near[near_dup.find(node_id)].append(node_id)
+    queue_components = [{"component_id": "review-component-" + key,
+        "candidate_node_ids": group, "all_complete_node_ids_in_conservative_component": near_groups[key],
+        "pair_ids": [p["pair_id"] for p in unheld_pairs if near_dup.find(p["a"]) == key],
+        "cross_registered_capture_hold_pair_ids": [p["pair_id"] for p in cross_hold_pairs if near_dup.find(p["a"]) == key],
+        "formal_asset_or_pair": False}
+        for key, group in sorted(candidate_by_near.items())]
+
+    sensitivity = []
+    for interval in (1, 10, 30, 60, 120, 300):
+        for threshold in (0.15, 0.30, 0.50, 0.80):
+            matched = [p for p in positive_pairs if p["same_declared_local_date"]
+                       and p["local_clock_interval_seconds"] >= interval
+                       and p["nonadjacent_in_known_metadata"]
+                       and p["approximate_footprint_overlap_fraction_of_smaller"] >= threshold]
+            sensitivity.append({"minimum_local_clock_interval_seconds": interval,
+                "minimum_overlap_fraction_of_smaller": threshold,
+                "all_metadata_lead_pairs": len(matched),
+                "unheld_metadata_lead_pairs": sum(not p["held_for_development_or_unknown_relation"] for p in matched),
+                "formal_asset_or_pair_count": None})
+
+    unchanged = True
+    for record in originals:
+        record["sha256_after"] = file_digest(Path(record["file"]))
+        record["input_unchanged"] = record["sha256_before"] == record["sha256_after"]
+        unchanged &= record["input_unchanged"]
+    for key, binding in bindings.items():
+        binding["sha256_after"] = file_digest(INPUTS[key])
+        binding["input_unchanged"] = binding["sha256_before"] == binding["sha256_after"]
+        unchanged &= binding["input_unchanged"]
+
+    hold_counts = Counter()
+    for node in nodes.values():
+        for reason in node["hold_reasons"]:
+            hold_counts[reason] += 1
+    hold_stats = []
+    for group in holds["groups"]:
+        complete = [n for n in nodes.values() if group["id"] in n["registered_capture_holds"]]
+        hold_stats.append({"hold_id": group["id"], "start_local": group["start"], "end_local": group["end"],
+            "source_metadata_ids": len(group["source_image_ids"]), "complete_sha_nodes": len(complete),
+            "unheld_sha_nodes": sum(n["unheld_for_metadata_candidate_review_only"] for n in complete),
+            "development_related_capture_hold": group["id"] == development_hold})
+    summary = {
+        "format": "drone.raw-repeat-source-feasibility/v1", "started_at": started,
+        "finished_at": datetime.now(UTC).isoformat(), "script_sha256": file_digest(Path(__file__)),
+        "question": "Whether existing complete FloodNet originals outside development associations contain metadata-only revisit leads worth independent target alignment and per-image annotation",
+        "source_inventory_counts": source_counts,
+        "declared_original_paths": len(refs), "present_original_paths": len(originals),
+        "verified_complete_original_paths": sum(r["complete_original_verified"] for r in originals),
+        "verified_complete_original_bytes": sum(r["bytes"] for r in originals if r["complete_original_verified"]),
+        "unique_complete_original_sha256": len(nodes),
+        "duplicate_complete_sha_groups": sum(len(r) > 1 for r in by_sha.values()),
+        "extra_duplicate_original_paths": sum(max(0, len(r) - 1) for r in by_sha.values()),
+        "source_revision": index.get("revision"), "source_zip_bytes": index.get("zip_bytes"),
+        "whole_archive_hash_verified": False,
+        "all_input_sha256_unchanged": bool(unchanged), "verification_failures": failures,
+        "missing_inputs": missing,
+        "context_metadata_ids": len(contexts), "context_gps_ids": len(gps_context),
+        "context_gps_site_components": len(site_groups),
+        "site_components_with_development_seed": len(development_sites),
+        "development_capture_hold": development_hold,
+        "unique_originals_in_development_capture_hold": sum(n["development_capture_hold"] for n in nodes.values()),
+        "development_or_unknown_hold_reasons": dict(hold_counts),
+        "unheld_complete_original_sha_nodes": sum(n["unheld_for_metadata_candidate_review_only"] for n in nodes.values()),
+        "footprint_status_counts": dict(Counter(n["footprint_status"] for n in nodes.values())),
+        "camera_model_counts": dict(Counter(str(n["metadata"].get("camera_model", "unknown")) for n in nodes.values())),
+        "local_capture_date_counts": dict(Counter(n["capture_time_local_iso"][:10] if n["capture_time_local_iso"] else "unknown" for n in nodes.values())),
+        "gps_present_originals": sum(good_gps(n["metadata"].get("gps")) for n in nodes.values()),
+        "offset_time_original_present": sum(bool(n["metadata"].get("offset_time_original")) for n in nodes.values()),
+        "positive_approximate_footprint_overlap_pairs": len(positive_pairs),
+        "all_priority_metadata_pairs_before_holds": len(priority_pairs),
+        "unheld_priority_metadata_pair_leads": len(unheld_pairs),
+        "unheld_priority_metadata_node_leads": len(candidate_nodes),
+        "unheld_priority_review_components": len(queue_components),
+        "time_filtered_graph_components_not_independent_groups": len(time_filtered_components),
+        "unheld_cross_registered_capture_hold_pair_leads": len(cross_hold_pairs),
+        "unheld_cross_registered_capture_hold_node_leads": len({p[k] for p in cross_hold_pairs for k in ("a", "b")}),
+        "unheld_cross_registered_capture_hold_conservative_components": len({near_dup.find(p["a"]) for p in cross_hold_pairs}),
+        "unheld_within_capture_hold_nonadjacent_pair_leads": len(within_hold_pairs),
+        "unheld_different_declared_local_date_overlap30_relations": sum(not p["same_declared_local_date"] and not p["held_for_development_or_unknown_relation"] and p["approximate_footprint_overlap_fraction_of_smaller"] >= 0.30 for p in positive_pairs),
+        "unheld_full_footprint_unknown_node_ids": [k for k, n in nodes.items() if n["unheld_for_metadata_candidate_review_only"] and k not in geometries],
+        "outside_crasar_source_family": True,
+        "crasar_existing_73_pairs_reused_or_recounted": False,
+        "answer": "metadata_only_independent_alignment_queue_exists" if unheld_pairs else "no_unheld_metadata_only_independent_alignment_queue_at_primary_rule",
+        "formal_asset_count": None, "formal_pair_count": None,
+        "formal_release_eligible": False,
+        "images_decoded_or_rendered": 0, "business_labels_or_model_outputs_read": False,
+        "registered_floodnet_grouping_rules_preserved": loaded["grouping_rules"]["rules"]["floodnet_original"],
+        "capture_holds": hold_stats,
+    }
+    methodology = {
+        "primary_retrieval_rule": {"same_declared_local_date": True,
+            "minimum_local_clock_interval_seconds": 30, "nonadjacent_known_source_capture_order": True,
+            "minimum_approximate_full_frame_overlap_fraction_of_smaller": 0.30},
+        "interval_is_search_rule_not_new_D089_requirement": True,
+        "development_hold_propagation": ["registered capture-hold-3 membership",
+            "existing GPS <=1km site single linkage on all allowed metadata including header-only coordinates",
+            "existing full-camera footprint overlap >=30% of smaller connected components on complete originals"],
+        "header_only_data_role": "Development site association and source-local chronological reference only; never counted as original or candidate image",
+        "site_component_ids_are_census_bookkeeping_not_new_registered_site_ids": True,
+        "footprint_model": "DJI XMP gimbal yaw/pitch/roll, EXIF 35mm-equivalent diagonal focal, pinhole rays to flat ground at takeoff height using RelativeAltitude; all 4 frame corners must intersect ground within 400m; no corner clipping",
+        "footprint_error": "Several-metre or larger error can occur from GPS/altitude/gimbal uncertainty, flat-ground and takeoff elevation assumptions, lens distortion, equivalent-focal conversion and ignored terrain/buildings. No georectification or common target alignment is verified.",
+        "same_date_seconds": "Naive source local EXIF clock comparison only. No timezone, actual flightID or independent sortie is inferred.",
+        "nonadjacent": "At least one other capture appears between source IDs in the same known camera-model/local-date metadata order; source gaps and equal-timestamp order remain uncertain.",
+        "review_components": "Candidate nodes grouped by the complete registered >=30% camera-footprint graph, including links via adjacent or short-interval complete frames. The time-filtered graph is reported separately and does not establish independent groups.",
+        "first_review_priority": "Cross-registered-capture-hold leads precede within-hold nonadjacent context. Distinct holds are conservative clock groups, not verified separate flights.",
+        "registered_asset_rule_not_applied": "Ground-projected target outlines with 5m buffer and >=15% smaller-area intersection require target geometry; no target outlines, business annotation or asset admission were read or created.",
+        "unresolved": ["No physical road identity or full common target extent proven",
+            "No road presence, state equality/difference or business labels determined",
+            "No actual flight IDs or timezone verified", "No independent asset or compliant genuine cross-visit pair admission",
+            "Metadata site and near-duplicate components are conservative and may merge distinct real roads",
+            "No comparison to existing CRASAR target geometry performed; only distinct source-family metadata leads counted",
+            "Whole source ZIP hash was not newly verified; per-member source CRC/size and recorded original SHA were checked"],
+    }
+    save("input-bindings.json", {"script_sha256": summary["script_sha256"], "metadata_inputs": bindings,
+        "original_inputs": originals, "all_input_sha256_unchanged": bool(unchanged), "missing_inputs": missing})
+    save("census.json", summary)
+    save("nodes.json", {"format": "drone.raw-repeat-metadata-nodes/v1", "nodes": list(nodes.values())})
+    save("candidate-pairs.json", {"format": "drone.raw-repeat-metadata-pairs/v1",
+        "first_review_cross_hold_pair_leads": cross_hold_pairs,
+        "within_hold_nonadjacent_context_leads": within_hold_pairs,
+        "primary_unheld_pair_leads": unheld_pairs, "all_priority_pairs_including_held": priority_pairs,
+        "all_positive_footprint_overlap_relations": positive_pairs})
+    save("components.json", {"review_queue_components": queue_components,
+        "time_filtered_graph_components_not_independent_groups": time_filtered_components,
+        "gps_site_components": [{"component_id": "gps-site-" + k, "source_metadata_image_ids": v,
+            "development_associated": k in development_sites} for k, v in site_groups.items()],
+        "camera_near_duplicate_components": [{"component_id": "near-" + k, "node_ids": v,
+            "development_associated": k in development_near} for k, v in near_groups.items()]})
+    save("methodology.json", methodology)
+    save("sensitivity.json", {"note": "Search sensitivity only; no formal pair count or new interval requirement", "rows": sensitivity})
+    text = f"""# 原始照片多次观察元数据可行性普查\n\n结论：{'存在可交给独立 AI 对齐目标并逐张标注的元数据候选队列' if unheld_pairs else '按主检索规则，没有未开发关联的元数据候选队列'}。所有统计都不是正式资产、正式配对或合格真实跨次结论。\n\n- 实际核验 {summary['verified_complete_original_paths']} 条完整原图路径、{len(nodes)} 个完整文件 SHA，去重冗余 {summary['extra_duplicate_original_paths']} 条。500 张基础原图加后续 9+7 张均以实际文件核算；仅头部记录不计原图。\n- 完整原图字节 {summary['verified_complete_original_bytes']}；逐文件重新核对记录 SHA、来源 ZIP 成员大小与 CRC、JPEG 主图头和文件末端。输入 SHA 前后{'全部不变' if unchanged else '存在变化，结果不可沿用'}。整个来源 ZIP SHA 未重新验证。\n- 开发 hold-3 直接关联 {summary['unique_originals_in_development_capture_hold']} 个完整 SHA；GPS 地点与近重复按既定规则传播。最终未 hold 完整 SHA {summary['unheld_complete_original_sha_nodes']} 个。不能用换时刻或文件名绕过开发地点关联。\n- 完整足迹可近似投影 {len(geometries)} 个；主规则为同来源本地日期、时钟间隔至少 30 秒、已知拍摄顺序非相邻、足迹交叠至少较小者 30%。这是检索规则，不是新增 D089 间隔要求。\n- hold 前主规则线索 {len(priority_pairs)} 对；hold 后 {len(unheld_pairs)} 对、{len(candidate_nodes)} 个图节点、{len(queue_components)} 个保守连通分量。来自 FloodNet 原始 JPEG，未复用或重算 CRASAR 73 对。\n\n足迹只按 DJI 位姿、35mm 等效焦距和相对起飞点高度投到平地，可能有数米乃至更大的偏差。没有核实同一物理道路、完整相同目标范围、状态、独立资产、真实跨航次、timezone 或 flightID；没有读 RGB、业务 labels/reviews、评测提示输出或来源 GT 类别。头部调查只提供地点与时钟参考。独立 AI 仍需先对齐目标，再逐张标注；本普查不做准入。\n\n文件：`census.json` 总计；`input-bindings.json` 输入逐文件绑定；`nodes.json` 图节点；`candidate-pairs.json` 候选与含 hold 的关系；`components.json` 地点、近重复及审查队列连通分量；`methodology.json` 规则和未解决项；`sensitivity.json` 时间与交叠敏感性。\n\n复算命令（须使用一个新的输出版本；脚本以独占创建文件防止覆盖）：\n\n```powershell\n& 'D:/drone-agent-data/p6-corpus-completion-20261018/tools-venv/Scripts/python.exe' 'D:/drone-agent-data/p6-corpus-completion-20261018/resume-20261022-next/raw-repeat-source-feasibility-v1/census_metadata.py'\n```\n"""
+    text = text.replace("所有统计都不是正式资产、正式配对或合格真实跨次结论。",
+        f"优先审查跨已登记 capture-hold 的 {len(cross_hold_pairs)} 条关系；它们涉及 {summary['unheld_cross_registered_capture_hold_node_leads']} 张原图，仍在 {summary['unheld_cross_registered_capture_hold_conservative_components']} 个保守近重复分量中。其余 {len(within_hold_pairs)} 条只是在同一 hold 内的非相邻观察。所有统计都不是正式资产、正式配对或合格真实跨次结论。")
+    text = text.replace("`candidate-pairs.json` 候选与含 hold 的关系",
+        "`candidate-pairs.json` 先看 `first_review_cross_hold_pair_leads`，再看同 hold 上下文与已 hold 的关系")
+    text = text.replace("复算命令（须使用一个新的输出版本；脚本以独占创建文件防止覆盖）：",
+        "复算命令（只更新此输出目录内本脚本的固定结果文件）：")
+    text = text.replace("`sensitivity.json` 时间与交叠敏感性。",
+        "`sensitivity.json` 时间与交叠敏感性；`validation.json` 独立输出一致性核验。")
+    if cross_hold_pairs:
+        text += "\n优先审查线索（原图 ID；时间只按未校准的来源本地时钟）：\n\n| 图 A | 图 B | 本地时钟间隔 | 较小足迹交叠 |\n|---|---|---:|---:|\n"
+        for pair in cross_hold_pairs:
+            text += f"| {pair['a']} | {pair['b']} | {int(pair['local_clock_interval_seconds'])} 秒 | {pair['approximate_footprint_overlap_fraction_of_smaller']:.1%} |\n"
+    with (OUT / "README.md").open("w", encoding="utf-8") as stream:
+        stream.write(text)
+    print(json.dumps({k: summary[k] for k in ("unique_complete_original_sha256", "unheld_complete_original_sha_nodes", "all_priority_metadata_pairs_before_holds", "unheld_priority_metadata_pair_leads", "unheld_priority_metadata_node_leads", "unheld_priority_review_components", "all_input_sha256_unchanged", "answer")}, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

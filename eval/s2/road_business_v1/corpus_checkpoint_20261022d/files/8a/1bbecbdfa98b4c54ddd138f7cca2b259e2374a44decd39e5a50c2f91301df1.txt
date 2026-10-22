@@ -1,0 +1,97 @@
+"""Acquire three exact public RGB UAV objects using complete conditional GETs.
+
+以完整条件 GET 取得三个准确公开 RGB 无人机对象。
+"""
+import concurrent.futures
+import hashlib
+import json
+import urllib.request
+from datetime import UTC, datetime
+from pathlib import Path
+
+import rasterio
+
+ROOT = Path(__file__).resolve().parent / "new-oam-metadata-v1"
+OUT = ROOT / "full-objects"
+OUT.mkdir(exist_ok=True)
+IDS = ["6a6b46c24848939db162da04", "6a8fa0148f75f1daf8b408fd", "5b003a702b6a08001185f139"]
+
+
+def sha(path):
+    with path.open("rb") as handle:
+        return hashlib.file_digest(handle, "sha256").hexdigest()
+
+
+def save(path, value):
+    with path.open("x", encoding="utf-8") as handle:
+        json.dump(value, handle, indent=2)
+
+
+def fetch(ident):
+    catalog_path = ROOT / "selected" / (ident + "-catalog.json")
+    source = json.loads(catalog_path.read_text(encoding="utf-8"))["results"]
+    properties = source["properties"]
+    assert source["platform"] == "uav" and properties["license"] == "CC-BY 4.0"
+    assert properties["bands"] == 3 and properties["colorinterp"] == ["red", "green", "blue"]
+    head = json.loads((ROOT / "selected" / (ident + "-head.json")).read_text(encoding="utf-8"))
+    head_headers = {k.lower(): v for k, v in head["headers"].items()}
+    expected_size = source["file_size"]
+    assert expected_size == int(head_headers["content-length"])
+    etag = head_headers["etag"]
+    destination = OUT / (ident + ".tif")
+    receipt = {
+        "format": "drone.p6-oam-full-object-http/v1", "source_family": "oam", "catalog_object_id": ident,
+        "source_metadata_url": "https://api.openaerialmap.org/meta/" + ident, "source_metadata_sha256": sha(catalog_path),
+        "request": {"method": "GET", "url": source["uuid"], "headers": {"If-Match": etag}},
+        "expected_etag": etag, "expected_bytes": expected_size, "local_file": str(destination),
+        "started_at_utc": datetime.now(UTC).isoformat(), "publisher_sha256": None,
+        "checksum_origin": "locally_computed_full_object", "status": "failed", "images_visually_viewed": 0,
+        "pixels_decoded": False,
+    }
+    try:
+        request = urllib.request.Request(source["uuid"], headers={"If-Match": etag, "User-Agent": "drone-agent-public-source-audit/1.0"})
+        with urllib.request.urlopen(request, timeout=60) as response:
+            headers = {k.lower(): v for k, v in response.headers.items()}
+            receipt["response"] = {"status": response.status, "final_url": response.url, "headers": dict(response.headers)}
+            assert response.status == 200 and response.url == source["uuid"]
+            assert headers["etag"] == etag and int(headers["content-length"]) == expected_size
+            assert "content-range" not in headers
+            count = 0
+            digest = hashlib.sha256()
+            with destination.open("xb") as handle:
+                while chunk := response.read(1024 * 1024):
+                    count += len(chunk)
+                    assert count <= expected_size
+                    handle.write(chunk)
+                    digest.update(chunk)
+            assert count == expected_size
+        receipt.update(status="downloaded_and_verified", body_bytes=count, local_full_object_sha256=digest.hexdigest(), response_etag=etag, response_content_length=expected_size)
+        assert sha(destination) == receipt["local_full_object_sha256"]
+        with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=""):
+            with rasterio.open(destination) as dataset:
+                assert dataset.count == 3 and list(dataset.dtypes) == ["uint8"] * 3
+                assert [c.name for c in dataset.colorinterp] == ["red", "green", "blue"]
+                assert [dataset.width, dataset.height] == properties["dimensions"] and str(dataset.crs) == properties["crs"]
+                metadata = {"width": dataset.width, "height": dataset.height, "bands": dataset.count,
+                            "crs": str(dataset.crs), "transform": list(dataset.transform), "dtypes": list(dataset.dtypes),
+                            "colorinterp": [c.name for c in dataset.colorinterp], "mask_flags": [[f.name for f in fs] for fs in dataset.mask_flag_enums],
+                            "nodata": dataset.nodata, "block_shapes": [list(s) for s in dataset.block_shapes], "tags": dataset.tags(),
+                            "rasterio_version": rasterio.__version__, "gdal_version": rasterio.__gdal_version__,
+                            "pixels_visually_viewed": False, "metadata_read_at": datetime.now(UTC).isoformat()}
+        save(OUT / (ident + "-raster-metadata.json"), metadata)
+    except Exception as exc:
+        receipt["status"] = "failed"
+        receipt["error"] = repr(exc)
+    receipt["finished_at_utc"] = datetime.now(UTC).isoformat()
+    save(OUT / (ident + "-get-receipt.json"), receipt)
+    print(json.dumps({k: receipt.get(k) for k in ("catalog_object_id", "status", "body_bytes", "error")}), flush=True)
+    return receipt
+
+
+save(ROOT / "acquisition-registration.json", {"created_at": datetime.now(UTC).isoformat(), "ids": IDS,
+    "selection_basis": "individually cataloged RGB3 uint8 UAV and CC-BY 4.0, named sensor, accessible complete object <= 300MB; broader OSM road coverage discovery precedes all image inspection",
+    "images_viewed": 0, "business_labels_created": 0, "repeated_capture_eligible": False})
+with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+    receipts = list(executor.map(fetch, IDS))
+save(ROOT / "acquisition-result.json", {"created_at": datetime.now(UTC).isoformat(), "rows": receipts,
+    "complete": sum(row["status"] == "downloaded_and_verified" for row in receipts), "expected": len(IDS)})

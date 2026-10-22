@@ -1,0 +1,2282 @@
+{
+  "format": "drone.p6-ai-review-assignment/v1",
+  "reviewer_id": "bounded_verifier_38",
+  "worker_dir": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_38",
+  "created_at": "2026-10-22T08:34:28.139488+00:00",
+  "parent_history": "none",
+  "evaluation_prompt_access": "forbidden",
+  "evaluation_outputs_access": "forbidden",
+  "source_class_label_access": "forbidden",
+  "samples": [
+    {
+      "sample_id": "oam-extract-51e9cbdb41ad67",
+      "asset_group_id": "oam-road-73b5deccc0cab16b",
+      "bounded_target_id": "oam-target-e6d986f0a81d54bd",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-51e9cbdb41ad67.jpg",
+      "image_sha256": "4f5131d4563d4cf65dbebbd2f3795b1032e7da715ee9882d1784e6eeffdb9070",
+      "width": 3098,
+      "height": 1478,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-51e9cbdb41ad67.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-51e9cbdb41ad67.jpg",
+      "guide_sha256": "f67f58bb3afa73db70009e046f8cfc5829178139716645148b2aeaf4104e7932",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-51e9cbdb41ad67.png",
+      "target_endpoints_normalized": [
+        [
+          0.7747816795782649,
+          0.5280500791301505
+        ],
+        [
+          0.1901224182535076,
+          0.3609745408029009
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.7747816795782649,
+            0.5280500791301505
+          ],
+          [
+            0.764339725277101,
+            0.5124424747361503
+          ]
+        ],
+        [
+          [
+            0.764339725277101,
+            0.5124424747361503
+          ],
+          [
+            0.7457363281273953,
+            0.5023815863625889
+          ]
+        ],
+        [
+          [
+            0.7457363281273953,
+            0.5023815863625889
+          ],
+          [
+            0.48758666377918636,
+            0.4304522747584746
+          ]
+        ],
+        [
+          [
+            0.48758666377918636,
+            0.4304522747584746
+          ],
+          [
+            0.23137460923540237,
+            0.34373129738925756
+          ]
+        ],
+        [
+          [
+            0.23137460923540237,
+            0.34373129738925756
+          ],
+          [
+            0.1901224182535076,
+            0.3609745408029009
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "e6d986f0a81d54bd3ad2ecebf688a207755ea9d3926224a78b14084a322ad4c0",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.09411990000001,
+              14.614139100000003
+            ],
+            [
+              121.0941048,
+              14.614149399999999
+            ],
+            [
+              121.094078,
+              14.614155900000002
+            ],
+            [
+              121.09370649999998,
+              14.614200900000005
+            ],
+            [
+              121.09333769999999,
+              14.614255800000006
+            ],
+            [
+              121.0932785,
+              14.614243800000002
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.09411990000001,
+            14.614139100000003
+          ],
+          [
+            121.0932785,
+            14.614243800000002
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            294707.58908216667,
+            1616510.4976991522
+          ],
+          [
+            294705.9716234454,
+            1616511.651101117
+          ],
+          [
+            294703.0899572269,
+            1616512.3946007679
+          ],
+          [
+            294663.10257421935,
+            1616517.7101768954
+          ],
+          [
+            294623.4153269705,
+            1616524.118857123
+          ],
+          [
+            294617.0253625874,
+            1616522.8445814347
+          ]
+        ],
+        "length_m": 92.01889319840922,
+        "input_world_scope_sha256": "44b937f06c9b227a6874e7225524e980cf177ccd5e71009912b25ceb05fd310e",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-51e9cbdb41ad67",
+        "image_sha256": "4f5131d4563d4cf65dbebbd2f3795b1032e7da715ee9882d1784e6eeffdb9070",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The entire fixed A/B road scope is in solid black no-data. Only roofs and vegetation at the far left of the frame are visible. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:29:22+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-51e9cbdb41ad67.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-51e9cbdb41ad67.jpg"
+        ]
+      },
+      "first_row_sha256": "b0656d1c0ee4cda09a1768625d8b290c7c5e87430f67c77c06f8f7768a788f2e",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-51e9cbdb41ad67.json",
+      "current_extraction_sha256": "1611e6d96e6ea720496d177a4f5c3d35f1b60cc143f083f7fca583fa8d152f22"
+    },
+    {
+      "sample_id": "oam-extract-79ae27f729c2df",
+      "asset_group_id": "oam-road-38bb199d17904f6d",
+      "bounded_target_id": "oam-target-9fa1d514a9b372f5",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-79ae27f729c2df.jpg",
+      "image_sha256": "bcac2fb9103fab4b46ebda112bcbd8930c0b86e93186130a17164369180a44bd",
+      "width": 1140,
+      "height": 3044,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-79ae27f729c2df.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-79ae27f729c2df.jpg",
+      "guide_sha256": "aa1c24d201b3cc046e03416799441fac56008f4833d93d9185b11ddfb6fca66f",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-79ae27f729c2df.png",
+      "target_endpoints_normalized": [
+        [
+          0.46175544746301805,
+          0.1729993665842988
+        ],
+        [
+          0.5440735767039944,
+          0.8292898998012015
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.46175544746301805,
+            0.1729993665842988
+          ],
+          [
+            0.509745188214277,
+            0.5067329599660345
+          ]
+        ],
+        [
+          [
+            0.509745188214277,
+            0.5067329599660345
+          ],
+          [
+            0.5440735767039944,
+            0.8292898998012015
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "9fa1d514a9b372f5bdc8bd5bf72fe207107b728466924edc39a0a255656d3949",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.09543726242616,
+              14.608979195501897
+            ],
+            [
+              121.0954666,
+              14.608520399999996
+            ],
+            [
+              121.0954885787725,
+              14.608076917339131
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.09543726242616,
+            14.608979195501897
+          ],
+          [
+            121.0954885787725,
+            14.608076917339131
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            294844.74546050536,
+            1615938.340096406
+          ],
+          [
+            294847.4808757282,
+            1615887.5458434932
+          ],
+          [
+            294849.4375938721,
+            1615838.4526772504
+          ]
+        ],
+        "length_m": 100.00000000014225,
+        "input_world_scope_sha256": "222d0398d61ca86f12175d9ff85c752c83e615ab8ef9b68fec6390861ea8ed11",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-79ae27f729c2df",
+        "image_sha256": "bcac2fb9103fab4b46ebda112bcbd8930c0b86e93186130a17164369180a44bd",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:29:58+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-79ae27f729c2df.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-79ae27f729c2df.jpg"
+        ]
+      },
+      "first_row_sha256": "0b2df63b8dbc5657f03b932dc5be84738009502d84cf4ac7f5be78eb907b2485",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-79ae27f729c2df.json",
+      "current_extraction_sha256": "2804de30a6c6ef19d011173f73e293ec908bb815479b10c738a6e98bcea25d9c"
+    },
+    {
+      "sample_id": "oam-extract-79cc43cf29cb78",
+      "asset_group_id": "oam-road-6ca51519e94d4976",
+      "bounded_target_id": "oam-target-4a64750f4b4f9b85",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-79cc43cf29cb78.jpg",
+      "image_sha256": "953e4b6e8bdc04a402d7104fdab97ad410f670dfab9ed6308f46f564411faaf4",
+      "width": 1894,
+      "height": 1944,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-79cc43cf29cb78.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-79cc43cf29cb78.jpg",
+      "guide_sha256": "f90ad2affc800615b0a75dc7b033f6d0161dd5f706de230942122ba0fd53feb2",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-79cc43cf29cb78.png",
+      "target_endpoints_normalized": [
+        [
+          0.2116344408264901,
+          0.6419074974107123
+        ],
+        [
+          0.632147678066883,
+          0.35797083251170597
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.2116344408264901,
+            0.6419074974107123
+          ],
+          [
+            0.632147678066883,
+            0.35797083251170597
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "4a64750f4b4f9b858b12c1599f56eec22c8087927af634871ed048bf9b839dbf",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.07778479697485,
+              14.626189458089804
+            ],
+            [
+              121.07815220000002,
+              14.626441900000001
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.07778479697485,
+            14.626189458089804
+          ],
+          [
+            121.07815220000002,
+            14.626441900000001
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            292958.76718154625,
+            1617858.7771912517
+          ],
+          [
+            292998.5897851129,
+            1617886.37583508
+          ]
+        ],
+        "length_m": 48.45126310001288,
+        "input_world_scope_sha256": "50c3174f82867de810bdbb6e5434ab204e2d383012d34d55ed43c19ae128a898",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-79cc43cf29cb78",
+        "image_sha256": "953e4b6e8bdc04a402d7104fdab97ad410f670dfab9ed6308f46f564411faaf4",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:30:12+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-79cc43cf29cb78.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-79cc43cf29cb78.jpg"
+        ]
+      },
+      "first_row_sha256": "f71922059a013adf3c47ce943b8be134584e6525d17f92f361da3922b887697c",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-79cc43cf29cb78.json",
+      "current_extraction_sha256": "c35060fe19937cc6e1c61b263666abf73f6aa1a34feb90a8d1b25d20fd65c411"
+    },
+    {
+      "sample_id": "oam-extract-89a29443dd58a3",
+      "asset_group_id": "oam-road-565e99f04e5b6ebe",
+      "bounded_target_id": "oam-target-24b843ee69e880d1",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-89a29443dd58a3.jpg",
+      "image_sha256": "43f43e689b43f3ccf1fcb1632d81810b266205dfc641e6c1dbb488edea465cb0",
+      "width": 2776,
+      "height": 1495,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-89a29443dd58a3.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-89a29443dd58a3.jpg",
+      "guide_sha256": "ac5b5941b032d0cdaadab48de7fcac8ab200858bc015046d77cc016bf675b7a6",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-89a29443dd58a3.png",
+      "target_endpoints_normalized": [
+        [
+          0.2118346796623332,
+          0.39338170813527396
+        ],
+        [
+          0.7879344178642138,
+          0.606362537237314
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.2118346796623332,
+            0.39338170813527396
+          ],
+          [
+            0.7879344178642138,
+            0.606362537237314
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "24b843ee69e880d16e1de4203ed82ecd6111ad200fac61c1b67ae8b09a6a1f90",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.0946297,
+              14.614416800000003
+            ],
+            [
+              121.095373,
+              14.614279
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.0946297,
+            14.614416800000003
+          ],
+          [
+            121.095373,
+            14.614279
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            294762.7780535371,
+            1616540.7653173169
+          ],
+          [
+            294842.74069719954,
+            1616524.8450003415
+          ]
+        ],
+        "length_m": 81.53208493640078,
+        "input_world_scope_sha256": "61b9bd3d8eda1022a948328e6037c1d4e519594137e197148bb2e8ae740bdb93",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-89a29443dd58a3",
+        "image_sha256": "43f43e689b43f3ccf1fcb1632d81810b266205dfc641e6c1dbb488edea465cb0",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:30:31+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-89a29443dd58a3.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-89a29443dd58a3.jpg"
+        ]
+      },
+      "first_row_sha256": "0e45644521a280157ba815b52448eeaf18fa2d9c1a08019daa10f671aa3257d2",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-89a29443dd58a3.json",
+      "current_extraction_sha256": "4d083e13a9972f9301eb1bd5c8d2b1f3dcb012f422a52bfb706ab82375ef7174"
+    },
+    {
+      "sample_id": "oam-extract-89aa1b8931ca81",
+      "asset_group_id": "oam-road-6529e39420b0dd19",
+      "bounded_target_id": "oam-target-e50f5d248f94cb9f",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-89aa1b8931ca81.jpg",
+      "image_sha256": "88b77e84d48c36f02aaa6c5003406d8c7bcd0cac044a89c9c3acd24cb587fe6c",
+      "width": 1602,
+      "height": 3173,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-89aa1b8931ca81.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-89aa1b8931ca81.jpg",
+      "guide_sha256": "8bb9710ce205c7639ec6e54612b4c94c1d9678bdca26e8290b1c2957000b40da",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-89aa1b8931ca81.png",
+      "target_endpoints_normalized": [
+        [
+          0.37284607451802093,
+          0.8117654190944397
+        ],
+        [
+          0.6161853616764204,
+          0.19388072410926546
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.37284607451802093,
+            0.8117654190944397
+          ],
+          [
+            0.4526588142879735,
+            0.6309771232396185
+          ]
+        ],
+        [
+          [
+            0.4526588142879735,
+            0.6309771232396185
+          ],
+          [
+            0.5800855651197865,
+            0.26029563895956487
+          ]
+        ],
+        [
+          [
+            0.5800855651197865,
+            0.26029563895956487
+          ],
+          [
+            0.6161853616764204,
+            0.19388072410926546
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "e50f5d248f94cb9f35a7f73edd5e9141a9eb662000208e2dd87038f4c1eb57a5",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.07804382586961,
+              14.620977727796966
+            ],
+            [
+              121.0781009,
+              14.621237400000004
+            ],
+            [
+              121.078191,
+              14.621769599999995
+            ],
+            [
+              121.07821700660578,
+              14.621865035500177
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.07804382586961,
+            14.620977727796966
+          ],
+          [
+            121.07821700660578,
+            14.621865035500177
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            292981.79037056887,
+            1617281.8340162607
+          ],
+          [
+            292988.18337102444,
+            1617310.516079398
+          ],
+          [
+            292998.3902537661,
+            1617369.3246968791
+          ],
+          [
+            293001.28184747027,
+            1617379.8614231201
+          ]
+        ],
+        "length_m": 99.99999999995251,
+        "input_world_scope_sha256": "82f351e85e1e76712e4f859596832d2a300afcb9d9b2f51c64dc7cbc1e84746a",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-89aa1b8931ca81",
+        "image_sha256": "88b77e84d48c36f02aaa6c5003406d8c7bcd0cac044a89c9c3acd24cb587fe6c",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:30:39+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-89aa1b8931ca81.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-89aa1b8931ca81.jpg"
+        ]
+      },
+      "first_row_sha256": "409efbc4732561722d97fca7fbaa9f4a6788b0ebd891c3a3e8f39e3424ea73e5",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-89aa1b8931ca81.json",
+      "current_extraction_sha256": "aff0a279b0b0d4783f0316903de599a82bc6f281ce934f76dcdaed2698a7cbe8"
+    },
+    {
+      "sample_id": "oam-extract-934239e2f31e86",
+      "asset_group_id": "oam-road-3b9515e78346b96f",
+      "bounded_target_id": "oam-target-4e9848f8b69909dc",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-934239e2f31e86.jpg",
+      "image_sha256": "e129ea617acdbf72d27411c169a70c5249740341d31a75889d9e2dba622def32",
+      "width": 2640,
+      "height": 2204,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-934239e2f31e86.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-934239e2f31e86.jpg",
+      "guide_sha256": "3048b5e78e794d1df6987c94121b6b604fc725a9c601b510e7d51f1815368dbd",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-934239e2f31e86.png",
+      "target_endpoints_normalized": [
+        [
+          0.764070933413071,
+          0.28238596280397826
+        ],
+        [
+          0.24136759219585324,
+          0.7065803988679513
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.764070933413071,
+            0.28238596280397826
+          ],
+          [
+            0.6225270657292143,
+            0.33286836849332885
+          ]
+        ],
+        [
+          [
+            0.6225270657292143,
+            0.33286836849332885
+          ],
+          [
+            0.3497459377786568,
+            0.44159253705597185
+          ]
+        ],
+        [
+          [
+            0.3497459377786568,
+            0.44159253705597185
+          ],
+          [
+            0.20795067032890846,
+            0.5216075121687079
+          ]
+        ],
+        [
+          [
+            0.20795067032890846,
+            0.5216075121687079
+          ],
+          [
+            0.19636590420056813,
+            0.5437841864857154
+          ]
+        ],
+        [
+          [
+            0.19636590420056813,
+            0.5437841864857154
+          ],
+          [
+            0.1996503078350515,
+            0.5760518456073968
+          ]
+        ],
+        [
+          [
+            0.1996503078350515,
+            0.5760518456073968
+          ],
+          [
+            0.24136759219585324,
+            0.7065803988679513
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "4e9848f8b69909dc637791721caa8ecb93acff69547231c546c54dc1069ed441",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.09445074577415,
+              14.60384898792662
+            ],
+            [
+              121.0942778,
+              14.603797300000002
+            ],
+            [
+              121.09394460000001,
+              14.6036863
+            ],
+            [
+              121.09377159999998,
+              14.603605199999997
+            ],
+            [
+              121.0937576,
+              14.603582999999997
+            ],
+            [
+              121.09376190000002,
+              14.603550899999998
+            ],
+            [
+              121.09381412001143,
+              14.603421334232419
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.09445074577415,
+            14.60384898792662
+          ],
+          [
+            121.09381412001143,
+            14.603421334232419
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            294733.6827632105,
+            1615371.5516668991
+          ],
+          [
+            294714.9989726762,
+            1615365.988505792
+          ],
+          [
+            294678.99186378677,
+            1615354.0071024164
+          ],
+          [
+            294660.2748884834,
+            1615345.189452159
+          ],
+          [
+            294658.74569935445,
+            1615342.7455826493
+          ],
+          [
+            294659.1792406342,
+            1615339.189686614
+          ],
+          [
+            294664.6859221698,
+            1615324.8054400447
+          ]
+        ],
+        "length_m": 99.99999999998435,
+        "input_world_scope_sha256": "2ed4764301c4a594a2e162dd4688e088a6deca58681b3ba0f6a5aaea6a0df945",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-934239e2f31e86",
+        "image_sha256": "e129ea617acdbf72d27411c169a70c5249740341d31a75889d9e2dba622def32",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:30:50+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-934239e2f31e86.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-934239e2f31e86.jpg"
+        ]
+      },
+      "first_row_sha256": "ed4b01174cfdfcdeb1c780c83174c929669c6a690606abace2fe538d8312fabf",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-934239e2f31e86.json",
+      "current_extraction_sha256": "d3dc9a9908f24849208d0355ddce9bafd6be0fd59f3afba129d5dc2b9fcda7d6"
+    },
+    {
+      "sample_id": "oam-extract-95e90f7bc2c3bc",
+      "asset_group_id": "oam-road-9c7828dbe140f5a2",
+      "bounded_target_id": "oam-target-d8be713f78b16f1e",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-95e90f7bc2c3bc.jpg",
+      "image_sha256": "ead33f20d47f321a2ae0f453650da5d0a9ad46f67b3118cb716023d1d929c29d",
+      "width": 1767,
+      "height": 3160,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-95e90f7bc2c3bc.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-95e90f7bc2c3bc.jpg",
+      "guide_sha256": "bf0219716451cd571652cedd85d80251d4af2a7e3af4c9f02846e74b5cc605b7",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-95e90f7bc2c3bc.png",
+      "target_endpoints_normalized": [
+        [
+          0.3485327172722935,
+          0.8049324803903133
+        ],
+        [
+          0.6514916910136874,
+          0.19511460339815556
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.3485327172722935,
+            0.8049324803903133
+          ],
+          [
+            0.6514916910136874,
+            0.19511460339815556
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "d8be713f78b16f1e04de7ad921b067a04d09536fd75786df13c58e59d661be43",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.09024426927627,
+              14.592779254866617
+            ],
+            [
+              121.09048512888148,
+              14.593651964228794
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.09024426927627,
+            14.592779254866617
+          ],
+          [
+            121.09048512888148,
+            14.593651964228794
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            294270.11826557096,
+            1614150.4412680983
+          ],
+          [
+            294296.88469090103,
+            1614246.792492663
+          ]
+        ],
+        "length_m": 100.00000000011268,
+        "input_world_scope_sha256": "9754a8c1b7907a7c07b54958c90c532127fd7b249603419ebe5fa57af0fcde1a",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-95e90f7bc2c3bc",
+        "image_sha256": "ead33f20d47f321a2ae0f453650da5d0a9ad46f67b3118cb716023d1d929c29d",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:30:56+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-95e90f7bc2c3bc.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-95e90f7bc2c3bc.jpg"
+        ]
+      },
+      "first_row_sha256": "4f5f2443865a45ad9e5d8d511cfa95c53d9e49a9b086b3ca58f14676499437e5",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-95e90f7bc2c3bc.json",
+      "current_extraction_sha256": "e6a2fae16c997eca05d500eac57f43031e301d9a822ccd546d276d6f1d0d0640"
+    },
+    {
+      "sample_id": "oam-extract-a2ac037038c9f0",
+      "asset_group_id": "oam-road-edbf6fcdad82771b",
+      "bounded_target_id": "oam-target-43669a043d90f718",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-a2ac037038c9f0.jpg",
+      "image_sha256": "904c52d7800b3c7e3a510dd24d529b57d691cc275b7652e5eda2776275993abb",
+      "width": 1298,
+      "height": 2598,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-a2ac037038c9f0.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-a2ac037038c9f0.jpg",
+      "guide_sha256": "be7ab66356ea6babfe51977e161415a6fc200d0d886da1c325185cbfcf9a5a99",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-a2ac037038c9f0.png",
+      "target_endpoints_normalized": [
+        [
+          0.44279187973100803,
+          0.845950565730337
+        ],
+        [
+          0.6463917011584518,
+          0.2212473102375647
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.44279187973100803,
+            0.845950565730337
+          ],
+          [
+            0.58109580301529,
+            0.42159686516898703
+          ]
+        ],
+        [
+          [
+            0.58109580301529,
+            0.42159686516898703
+          ],
+          [
+            0.6463917011584518,
+            0.2212473102375647
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "43669a043d90f7188e3befb1b71d00054c3ee51d17520983070b6136139b6fbd",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.09612189455122,
+              14.591772995298935
+            ],
+            [
+              121.09620089999999,
+              14.592271799999999
+            ],
+            [
+              121.0962382,
+              14.592507300000001
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.09612189455122,
+            14.591772995298935
+          ],
+          [
+            121.0962382,
+            14.592507300000001
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            294902.56259299454,
+            1614033.7816215116
+          ],
+          [
+            294911.53851761564,
+            1614088.9051672146
+          ],
+          [
+            294915.77622140513,
+            1614114.9305744001
+          ]
+        ],
+        "length_m": 82.21771421534174,
+        "input_world_scope_sha256": "e707d385ea862b27665ee53841ea03657c0d6a4af5e8de9b0de2b55c4d72ac99",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-a2ac037038c9f0",
+        "image_sha256": "904c52d7800b3c7e3a510dd24d529b57d691cc275b7652e5eda2776275993abb",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:31:11+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-a2ac037038c9f0.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-a2ac037038c9f0.jpg"
+        ]
+      },
+      "first_row_sha256": "e1c0f9b7fdd48af14b7e1ba9253fef3a7c56bc71d19b43baed620d944876ce35",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-a2ac037038c9f0.json",
+      "current_extraction_sha256": "93614af497a8c0ac67c0771c0a2b2177935b1026a5c6efcb57269b0b54c14893"
+    },
+    {
+      "sample_id": "oam-extract-a4a7607b172d78",
+      "asset_group_id": "oam-road-32c66de4fd74faa7",
+      "bounded_target_id": "oam-target-24e68195d7c045d2",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-a4a7607b172d78.jpg",
+      "image_sha256": "2be839d2e394f275545f8c2af2d0807eab905ec4e4b4e8b5d3964b3850f44220",
+      "width": 1616,
+      "height": 3140,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-a4a7607b172d78.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-a4a7607b172d78.jpg",
+      "guide_sha256": "fcfa61c1812889205da0c08000d686b8ebe7faa1d4c07ccaa73703ce1c71e64f",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-a4a7607b172d78.png",
+      "target_endpoints_normalized": [
+        [
+          0.4322181452298537,
+          0.22242866870442962
+        ],
+        [
+          0.44321887029593093,
+          0.7756534678754723
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.4322181452298537,
+            0.22242866870442962
+          ],
+          [
+            0.5206132105938943,
+            0.2553058112858777
+          ]
+        ],
+        [
+          [
+            0.5206132105938943,
+            0.2553058112858777
+          ],
+          [
+            0.6666688419824309,
+            0.3199380195219141
+          ]
+        ],
+        [
+          [
+            0.6666688419824309,
+            0.3199380195219141
+          ],
+          [
+            0.6867144636032956,
+            0.3665451344790732
+          ]
+        ],
+        [
+          [
+            0.6867144636032956,
+            0.3665451344790732
+          ],
+          [
+            0.6747423636924135,
+            0.43000088192190333
+          ]
+        ],
+        [
+          [
+            0.6747423636924135,
+            0.43000088192190333
+          ],
+          [
+            0.5180838572467668,
+            0.729028383725483
+          ]
+        ],
+        [
+          [
+            0.5180838572467668,
+            0.729028383725483
+          ],
+          [
+            0.44321887029593093,
+            0.7756534678754723
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "24e68195d7c045d2ff5cf4166dd1e5cf3428d388675232356ab453d0d83786df",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.09141192108554,
+              14.599024501694752
+            ],
+            [
+              121.0914786,
+              14.5989784
+            ],
+            [
+              121.0915889,
+              14.5988876
+            ],
+            [
+              121.09160449999999,
+              14.598821599999999
+            ],
+            [
+              121.09159630000002,
+              14.598731500000001
+            ],
+            [
+              121.0914825,
+              14.5983063
+            ],
+            [
+              121.09142693861178,
+              14.59823969249108
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.09141192108554,
+            14.599024501694752
+          ],
+          [
+            121.09142693861178,
+            14.59823969249108
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            294401.74862613453,
+            1614840.4492990135
+          ],
+          [
+            294408.89094741596,
+            1614835.2875876282
+          ],
+          [
+            294420.69224243215,
+            1614825.1403309351
+          ],
+          [
+            294422.3119286591,
+            1614817.8230138868
+          ],
+          [
+            294421.3445829863,
+            1614807.8604615382
+          ],
+          [
+            294408.6865756655,
+            1614760.9131437552
+          ],
+          [
+            294402.63748471986,
+            1614753.5930055436
+          ]
+        ],
+        "length_m": 100.00000000004191,
+        "input_world_scope_sha256": "5199cdf7e2181a10a20b42d2a24618bd608964c75d38c6d4a752d154e96e880c",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-a4a7607b172d78",
+        "image_sha256": "2be839d2e394f275545f8c2af2d0807eab905ec4e4b4e8b5d3964b3850f44220",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:31:17+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-a4a7607b172d78.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-a4a7607b172d78.jpg"
+        ]
+      },
+      "first_row_sha256": "106d82f2b3e0dd8ecb290e85a64d850e34f87b61b6d775c37f768770295085ec",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-a4a7607b172d78.json",
+      "current_extraction_sha256": "92d5f4a419bcbac4de1b327afe964c509664500b7bdd9b55da2df7688c331d80"
+    },
+    {
+      "sample_id": "oam-extract-ab31f4c710563b",
+      "asset_group_id": "oam-road-9ae757d431be27d2",
+      "bounded_target_id": "oam-target-28118b4d35c5c8ad",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-ab31f4c710563b.jpg",
+      "image_sha256": "61345ac87ac75b948052b52699ee7014c3a5188a011f8d444ba4c03337accba0",
+      "width": 1062,
+      "height": 2003,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-ab31f4c710563b.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-ab31f4c710563b.jpg",
+      "guide_sha256": "cd83509e04b95046e512f14c7958b0443df775b3f69142eb8317d36e6174b2e6",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-ab31f4c710563b.png",
+      "target_endpoints_normalized": [
+        [
+          0.4853652475363173,
+          0.25778137129571993
+        ],
+        [
+          0.5140043798765683,
+          0.7426579285001998
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.4853652475363173,
+            0.25778137129571993
+          ],
+          [
+            0.5140043798765683,
+            0.7426579285001998
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "28118b4d35c5c8ad37ae086b0407e1d69b0c4773554252c0d0f8bb93439d9bbc",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.0937425,
+              14.6237936
+            ],
+            [
+              121.0937604,
+              14.623354899999999
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.0937425,
+            14.6237936
+          ],
+          [
+            121.0937604,
+            14.623354899999999
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            294675.89829464414,
+            1617579.1537956647
+          ],
+          [
+            294677.41903257143,
+            1617530.5934084607
+          ]
+        ],
+        "length_m": 48.5841934091432,
+        "input_world_scope_sha256": "89efcf5a62b3245afc0a6dac874436dab9fbb9b9b45235ea672ba8aa22d425d0",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-ab31f4c710563b",
+        "image_sha256": "61345ac87ac75b948052b52699ee7014c3a5188a011f8d444ba4c03337accba0",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:31:28+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-ab31f4c710563b.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-ab31f4c710563b.jpg"
+        ]
+      },
+      "first_row_sha256": "640032a93288a3ec7fee9890983eba026d02c8c56ff0b1f15df887d9bae894a7",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-ab31f4c710563b.json",
+      "current_extraction_sha256": "a202a13a28373b0353304ccb7677b569e146e07c851e2ef2f7c2417560c7ecf7"
+    },
+    {
+      "sample_id": "oam-extract-ad5b61ce7f30ef",
+      "asset_group_id": "oam-road-f7962adc2246ed2b",
+      "bounded_target_id": "oam-target-fb5cb9d0cb2bcb95",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-ad5b61ce7f30ef.jpg",
+      "image_sha256": "e2b3d1f130817cc3f50e751e0d574827136bd3648fba8d2e76b9c9eb1e1d5bf3",
+      "width": 1552,
+      "height": 3136,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-ad5b61ce7f30ef.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-ad5b61ce7f30ef.jpg",
+      "guide_sha256": "d6e31dae4c0f486e08c0c19589e3e422aa8b2baaadd1592cf0c566eb150743e2",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-ad5b61ce7f30ef.png",
+      "target_endpoints_normalized": [
+        [
+          0.37789352266982046,
+          0.8131119470095395
+        ],
+        [
+          0.62251152357533,
+          0.18695236990651193
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.37789352266982046,
+            0.8131119470095395
+          ],
+          [
+            0.4492961117006435,
+            0.6303252493475602
+          ]
+        ],
+        [
+          [
+            0.4492961117006435,
+            0.6303252493475602
+          ],
+          [
+            0.5580238857877815,
+            0.3520745069076003
+          ]
+        ],
+        [
+          [
+            0.5580238857877815,
+            0.3520745069076003
+          ],
+          [
+            0.62251152357533,
+            0.18695236990651193
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "fb5cb9d0cb2bcb9596001049716a21698828ae971a49211acc74c4e7d34ac2e8",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.09450561323118,
+              14.613762484946406
+            ],
+            [
+              121.0945548,
+              14.614021900000001
+            ],
+            [
+              121.0946297,
+              14.614416800000003
+            ],
+            [
+              121.09467412301694,
+              14.614651145015891
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.09450561323118,
+            14.613762484946406
+          ],
+          [
+            121.09467412301694,
+            14.614651145015891
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            294748.7999373592,
+            1616468.474646709
+          ],
+          [
+            294754.34077826794,
+            1616497.1356009024
+          ],
+          [
+            294762.7780535371,
+            1616540.7653173169
+          ],
+          [
+            294767.78229422943,
+            1616566.6564683986
+          ]
+        ],
+        "length_m": 100.00000000019264,
+        "input_world_scope_sha256": "1b76455b8d668e6835127c7ef823d4c36d4e8d63466b6ddbe0c44e2cfafa0d05",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-ad5b61ce7f30ef",
+        "image_sha256": "e2b3d1f130817cc3f50e751e0d574827136bd3648fba8d2e76b9c9eb1e1d5bf3",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:31:34+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-ad5b61ce7f30ef.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-ad5b61ce7f30ef.jpg"
+        ]
+      },
+      "first_row_sha256": "f808cfabe773608a421490363c8c8ae8842d003231097e616bf9a9526e924f0a",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-ad5b61ce7f30ef.json",
+      "current_extraction_sha256": "696a0b8d08be97ebbf1842ab9f1ebf2ed2aafda536fb173d7c3d8396d24efcd4"
+    },
+    {
+      "sample_id": "oam-extract-d41d90a25875fb",
+      "asset_group_id": "oam-road-6d6cd946bd8a36e0",
+      "bounded_target_id": "oam-target-c6d5b7b924c3d021",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-d41d90a25875fb.jpg",
+      "image_sha256": "f0f51cf4a86c2da56113b8941e629833b800c76c7bf8d8c2e38c42bdcae1c522",
+      "width": 3058,
+      "height": 1191,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-d41d90a25875fb.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-d41d90a25875fb.jpg",
+      "guide_sha256": "de63abdcbf263dce5f8dba310c938b4abce82c386d1244523c3d2ef3fab9da43",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-d41d90a25875fb.png",
+      "target_endpoints_normalized": [
+        [
+          0.1736131377933587,
+          0.4456966321830936
+        ],
+        [
+          0.8262748230794449,
+          0.5538246505882037
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.1736131377933587,
+            0.4456966321830936
+          ],
+          [
+            0.41629115838930253,
+            0.4849515307779126
+          ]
+        ],
+        [
+          [
+            0.41629115838930253,
+            0.4849515307779126
+          ],
+          [
+            0.4471431642282264,
+            0.48989097296716183
+          ]
+        ],
+        [
+          [
+            0.4471431642282264,
+            0.48989097296716183
+          ],
+          [
+            0.5122218480534082,
+            0.5022583848802259
+          ]
+        ],
+        [
+          [
+            0.5122218480534082,
+            0.5022583848802259
+          ],
+          [
+            0.6361213399163107,
+            0.5225839573423918
+          ]
+        ],
+        [
+          [
+            0.6361213399163107,
+            0.5225839573423918
+          ],
+          [
+            0.8262748230794449,
+            0.5538246505882037
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "c6d5b7b924c3d02128a71dcf8a2f7af1fd99e5117b493e214d738730799ca5d6",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.09335127281526,
+              14.616507607473691
+            ],
+            [
+              121.0936958,
+              14.616489299999998
+            ],
+            [
+              121.0937396,
+              14.616487
+            ],
+            [
+              121.093832,
+              14.616481099999996
+            ],
+            [
+              121.0940079,
+              14.616471599999999
+            ],
+            [
+              121.09427786095125,
+              14.616456994833483
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.09335127281526,
+            14.616507607473691
+          ],
+          [
+            121.09427786095125,
+            14.616456994833483
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            294626.9708487686,
+            1616773.2793655535
+          ],
+          [
+            294664.0763181177,
+            1616770.9417363422
+          ],
+          [
+            294668.7935898105,
+            1616770.64759256
+          ],
+          [
+            294678.74412056734,
+            1616769.9111131805
+          ],
+          [
+            294697.6883528732,
+            1616768.7007253403
+          ],
+          [
+            294726.76282044884,
+            1616766.8403420574
+          ]
+        ],
+        "length_m": 99.99999999996744,
+        "input_world_scope_sha256": "f7a69cb514e5a7d84397a8fea6a1509ca8c3c8c646017423beae478202f25ad2",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-d41d90a25875fb",
+        "image_sha256": "f0f51cf4a86c2da56113b8941e629833b800c76c7bf8d8c2e38c42bdcae1c522",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The entire fixed A/B scope is in black no-data. A short visible paved strip at the far left stops before A, and cannot substitute for the assigned fixed segment.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:31:49+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-d41d90a25875fb.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-d41d90a25875fb.jpg"
+        ]
+      },
+      "first_row_sha256": "4a2cd762e6106e39d0d1ef98b8a44db89d6fab51462a979571c212447ac8ab7f",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-d41d90a25875fb.json",
+      "current_extraction_sha256": "c648342638718872bb0428be2a6a58681b25faa42bb728d6133f926eb7b364c4"
+    },
+    {
+      "sample_id": "oam-extract-e3f681635a2bb1",
+      "asset_group_id": "oam-road-a8700b44ad3fc32f",
+      "bounded_target_id": "oam-target-f61e8b823170adf5",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-e3f681635a2bb1.jpg",
+      "image_sha256": "9611237fd00469b7815b77d12600c0ffea5bbd9afd76c4e0cb7cdb8810979588",
+      "width": 3162,
+      "height": 1743,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-e3f681635a2bb1.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-e3f681635a2bb1.jpg",
+      "guide_sha256": "359450b63b6ac4606703fd3cb4e70547a531c1ee5ba701851912fed68f3cdb36",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-e3f681635a2bb1.png",
+      "target_endpoints_normalized": [
+        [
+          0.19472906570398565,
+          0.3531112670342743
+        ],
+        [
+          0.8059183291715065,
+          0.6481399964295409
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.19472906570398565,
+            0.3531112670342743
+          ],
+          [
+            0.5380328318485866,
+            0.5256158293503252
+          ]
+        ],
+        [
+          [
+            0.5380328318485866,
+            0.5256158293503252
+          ],
+          [
+            0.7373965746451553,
+            0.6146135628095182
+          ]
+        ],
+        [
+          [
+            0.7373965746451553,
+            0.6146135628095182
+          ],
+          [
+            0.8059183291715065,
+            0.6481399964295409
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "f61e8b823170adf53d7e2bd119638c81c88a3d80a68e3c0dc0994015c5ffa150",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.0951003517559,
+              14.609592838843156
+            ],
+            [
+              121.0956052,
+              14.609461099999999
+            ],
+            [
+              121.0958983,
+              14.609393399999997
+            ],
+            [
+              121.09599905900136,
+              14.609367817724404
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.0951003517559,
+            14.609592838843156
+          ],
+          [
+            121.09599905900136,
+            14.609367817724404
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            294809.0120652878,
+            1616006.546953078
+          ],
+          [
+            294863.28839071526,
+            1615991.5131804722
+          ],
+          [
+            294894.8077984514,
+            1615983.7570280011
+          ],
+          [
+            294905.641087842,
+            1615980.8351993111
+          ]
+        ],
+        "length_m": 100.00000000003865,
+        "input_world_scope_sha256": "5009fa1e779c1b650f58eed9d275178e6255fff6292fb62c8b929f89b0c2490e",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-e3f681635a2bb1",
+        "image_sha256": "9611237fd00469b7815b77d12600c0ffea5bbd9afd76c4e0cb7cdb8810979588",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:31:55+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-e3f681635a2bb1.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-e3f681635a2bb1.jpg"
+        ]
+      },
+      "first_row_sha256": "d90bdefa23e6b9378848507f63794f191a57682b657966f0d8cce25c9761bd01",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-e3f681635a2bb1.json",
+      "current_extraction_sha256": "59773ba82965920af459639edd5ea5e8c58c4d6f1158baeb0cf2c47e882b12d0"
+    },
+    {
+      "sample_id": "oam-extract-ea5260dd51b3e7",
+      "asset_group_id": "oam-road-2bf1774eaefe0dff",
+      "bounded_target_id": "oam-target-8b46f2bc21694cad",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-ea5260dd51b3e7.jpg",
+      "image_sha256": "9c50d6fc1702f228b1838b1656931f3ce579cfbe57e716e144e02feee49450e9",
+      "width": 2631,
+      "height": 2580,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-ea5260dd51b3e7.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-ea5260dd51b3e7.jpg",
+      "guide_sha256": "fca4bbbcf2790bcee7023d4f0dbf347b4fbc1d77f9c761027701e631f98ed67b",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-ea5260dd51b3e7.png",
+      "target_endpoints_normalized": [
+        [
+          0.16451491047927339,
+          0.23418917129061712
+        ],
+        [
+          0.7355198813807637,
+          0.7303172709492519
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.16451491047927339,
+            0.23418917129061712
+          ],
+          [
+            0.17229677745325514,
+            0.2361063541974439
+          ]
+        ],
+        [
+          [
+            0.17229677745325514,
+            0.2361063541974439
+          ],
+          [
+            0.4550694421355668,
+            0.430967169923549
+          ]
+        ],
+        [
+          [
+            0.4550694421355668,
+            0.430967169923549
+          ],
+          [
+            0.6222182671868334,
+            0.5627197523536377
+          ]
+        ],
+        [
+          [
+            0.6222182671868334,
+            0.5627197523536377
+          ],
+          [
+            0.7355198813807637,
+            0.7303172709492519
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "8b46f2bc21694cad1c75e1cc45f5ab80f5ca52d83f0ec38cbc8a1800268cce71",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.0777954800487,
+              14.626668356454097
+            ],
+            [
+              121.077805,
+              14.626666200000003
+            ],
+            [
+              121.07815220000002,
+              14.626441900000001
+            ],
+            [
+              121.0783576,
+              14.626289999999996
+            ],
+            [
+              121.07849762397963,
+              14.626095773204408
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.0777954800487,
+            14.626668356454097
+          ],
+          [
+            121.07849762397963,
+            14.626095773204408
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            292960.36733647354,
+            1617911.7601969035
+          ],
+          [
+            292961.39104107395,
+            1617911.5128803086
+          ],
+          [
+            292998.5897851129,
+            1617886.37583508
+          ],
+          [
+            293020.5782130484,
+            1617869.3797519463
+          ],
+          [
+            293035.4830403956,
+            1617847.7596720476
+          ]
+        ],
+        "length_m": 100.00000000000321,
+        "input_world_scope_sha256": "0fc7d3e5d043433d42e89e8bd9282607d1d1bc15873a8959fbc725387d74e56e",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-ea5260dd51b3e7",
+        "image_sha256": "9c50d6fc1702f228b1838b1656931f3ce579cfbe57e716e144e02feee49450e9",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:32:06+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-ea5260dd51b3e7.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-ea5260dd51b3e7.jpg"
+        ]
+      },
+      "first_row_sha256": "58a914b6cf2ca82d07628181aa40321283b9b2ec8ca2d2f664ede0cdc854b8de",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-ea5260dd51b3e7.json",
+      "current_extraction_sha256": "a8c4ab69e3b36676211fe50def499d90f3a85aed378d7361be5491afd530b321"
+    },
+    {
+      "sample_id": "oam-extract-f9bd668d89d6b9",
+      "asset_group_id": "oam-road-06ab6179ec05aecd",
+      "bounded_target_id": "oam-target-76d10c85301fd5c3",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-f9bd668d89d6b9.jpg",
+      "image_sha256": "26db0cdc2e0cdbce0288fc4b7c0ced903656fa31f4b895b0edba078676f59c1e",
+      "width": 1378,
+      "height": 3206,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-f9bd668d89d6b9.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-f9bd668d89d6b9.jpg",
+      "guide_sha256": "212eebd32d00ae3bfd4e29b9457c461e00cdaf81fb977803e8492ee1e33d7a75",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-f9bd668d89d6b9.png",
+      "target_endpoints_normalized": [
+        [
+          0.48723526286631713,
+          0.2205411243988567
+        ],
+        [
+          0.3801919295816143,
+          0.8364733467662866
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.48723526286631713,
+            0.2205411243988567
+          ],
+          [
+            0.44381268990208517,
+            0.24086775974656965
+          ]
+        ],
+        [
+          [
+            0.44381268990208517,
+            0.24086775974656965
+          ],
+          [
+            0.41127791061743296,
+            0.5614844031855045
+          ]
+        ],
+        [
+          [
+            0.41127791061743296,
+            0.5614844031855045
+          ],
+          [
+            0.3801919295816143,
+            0.8364733467662866
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "76d10c85301fd5c36a9ff8aaba7eabd3ea50b03a71704c787dd00b7a4499d6ec",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.09305870797112,
+              14.593147270996878
+            ],
+            [
+              121.0930312,
+              14.593117599999996
+            ],
+            [
+              121.0930144,
+              14.592652999999997
+            ],
+            [
+              121.09299795689198,
+              14.59225450168261
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.09305870797112,
+            14.593147270996878
+          ],
+          [
+            121.09299795689198,
+            14.59225450168261
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            294573.74590961146,
+            1614188.617857759
+          ],
+          [
+            294570.7540943342,
+            1614185.3594981127
+          ],
+          [
+            294568.5124480415,
+            1614133.9646501695
+          ],
+          [
+            294566.37062394817,
+            1614089.8839225133
+          ]
+        ],
+        "length_m": 100.00000000016723,
+        "input_world_scope_sha256": "093a9edf046d280b3c4feed68b9e0632bdc69bd9d38065e3c7593c40f7ef8e67",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-f9bd668d89d6b9",
+        "image_sha256": "26db0cdc2e0cdbce0288fc4b7c0ced903656fa31f4b895b0edba078676f59c1e",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:32:12+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-f9bd668d89d6b9.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-f9bd668d89d6b9.jpg"
+        ]
+      },
+      "first_row_sha256": "a9a8d673bc7b204ce50211794fbb69b370574729710965538635a2641972ae16",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-f9bd668d89d6b9.json",
+      "current_extraction_sha256": "9121936d0ab49fa1c6a6a6338c3e784b4fc9c17220cbae9b0b48e79f0104aaa0"
+    },
+    {
+      "sample_id": "oam-extract-fc9f9891992afe",
+      "asset_group_id": "oam-road-f20db0bf5ba19450",
+      "bounded_target_id": "oam-target-86d078cdcfa1b2d8",
+      "image_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-fc9f9891992afe.jpg",
+      "image_sha256": "694193976962b5d915c215caa898085c96afc25692e2b11714bc923f3343300e",
+      "width": 2060,
+      "height": 2319,
+      "overview_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\overviews\\oam-extract-fc9f9891992afe.jpg",
+      "guide_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-fc9f9891992afe.jpg",
+      "guide_sha256": "0f33e5822c81bdff571bdee723720ee94908cafa50d9f93d3e7749463c988f05",
+      "mask_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\masks\\oam-extract-fc9f9891992afe.png",
+      "target_endpoints_normalized": [
+        [
+          0.6610130213386406,
+          0.6987360739175258
+        ],
+        [
+          0.3390787555592008,
+          0.3012921452351997
+        ]
+      ],
+      "centerline_segments_normalized": [
+        [
+          [
+            0.6610130213386406,
+            0.6987360739175258
+          ],
+          [
+            0.3390787555592008,
+            0.3012921452351997
+          ]
+        ]
+      ],
+      "fixed_world_scope": {
+        "freeze_scope_sha256": "86d078cdcfa1b2d8611a966fcea4b5cc0e84f7d7ecd0e5a954211c849cb5a358",
+        "frozen_at_utc": "2026-10-19T10:51:06.922006+00:00",
+        "frozen_before_business_annotation_and_model_output": true,
+        "source_condition_polygons_or_model_outputs_used_for_scope": false,
+        "selection_inputs": "official OAM footprint and versioned OSM highway/name/ref geometry only; one fixed scope per conservatively associated group",
+        "geojson": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              121.0793414,
+              14.5920808
+            ],
+            [
+              121.07903010000001,
+              14.592494699999998
+            ]
+          ]
+        },
+        "world_endpoints_lon_lat": [
+          [
+            121.0793414,
+            14.5920808
+          ],
+          [
+            121.07903010000001,
+            14.592494699999998
+          ]
+        ],
+        "utm_epsg": 32651,
+        "utm_polyline_m": [
+          [
+            293094.55974119785,
+            1614083.0521522292
+          ],
+          [
+            293061.40051182255,
+            1614129.13577576
+          ]
+        ],
+        "length_m": 56.773540056406254,
+        "input_world_scope_sha256": "f4aecb38dee37bc83ee9fb7959c69843a1c15aa135fc2c1055f8294711c67336",
+        "physical_asset_identity_verified": false
+      },
+      "first_author_id": "bounded_annotator_30",
+      "first_row": {
+        "sample_id": "oam-extract-fc9f9891992afe",
+        "image_sha256": "694193976962b5d915c215caa898085c96afc25692e2b11714bc923f3343300e",
+        "target_brief": "Complete main-road width between the fixed A/B endpoints; centerline used only for location.",
+        "target_polygon": null,
+        "verdict": "excluded_source",
+        "objects": [],
+        "notes": "The original frame is entirely solid black no-data, including A, B, and the entire connecting scope. No usable road target can be annotated.",
+        "uncertainties": [
+          "Road boundaries and entities cannot be assessed because the source imagery for the fixed target is unavailable."
+        ],
+        "inspected_at": "2026-10-22T08:32:29+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\images\\oam-extract-fc9f9891992afe.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\guides\\oam-extract-fc9f9891992afe.jpg"
+        ]
+      },
+      "first_row_sha256": "a1e1c3566e17a2bb0905dab7348302ce800f7b20f5c619a63d74038f8b072fad",
+      "draft_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\annotation\\bounded_annotator_30\\suggestions.json",
+      "draft_sha256": "5035ec5666b02bef56ff83d0b22413a80219760c36baa5e3c0adffc1323fa9f2",
+      "unchanged_image_and_fixed_geometry_verified_against_current_extraction": true,
+      "original_inspection_guide_preserved": true,
+      "current_extraction_compatibility": {
+        "mode": "identical_native_image_and_fixed_geometry"
+      },
+      "current_extraction_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261022-fast\\conditional-parts-native32-v1\\frames\\receipts\\oam-extract-fc9f9891992afe.json",
+      "current_extraction_sha256": "9abcbf36cb8f92141852904d03bf4e9ec94853fa21353a3908128f4a746a1020"
+    }
+  ]
+}

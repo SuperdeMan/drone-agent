@@ -1,0 +1,41 @@
+"""Inspect a failed preflight without printing raw SSH diagnostics.
+
+只读诊断预检失败，不输出原SSH诊断。
+"""
+from datetime import datetime, timezone
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+OUT = Path(__file__).resolve().parent
+ROOT = OUT.parent.parent
+REPO = ROOT.parent/"p6-road-views-20261014/repo"
+request = json.loads((OUT/"cloud-control/runtime-request.json").read_text())
+sys.path.insert(0, str(REPO/"scripts"))
+from dev_stack import Connection
+connection = Connection.from_environment()
+script = """
+import hashlib,json,pathlib,shutil
+R=REQUEST
+def sha(p):
+ with p.open('rb')as f:return hashlib.file_digest(f,'sha256').hexdigest()
+rows=[]
+for name,bound in R['existing_input_bindings'].items():
+ p=pathlib.Path(name);x={'file':name,'exists':p.is_file(),'expected_bytes':bound['bytes'],'expected_sha256':bound['sha256']}
+ if p.is_file():x.update(bytes=p.stat().st_size,sha256=sha(p),symlink=p.is_symlink(),resolved_same=p.resolve()==p)
+ x['bytes_match']=x.get('bytes')==bound['bytes'];x['sha_matches']=x.get('sha256')==bound['sha256'];rows.append(x)
+parent=pathlib.Path(R['parent_file']);work=pathlib.Path(R['work_directory'])
+ram=next(int(x.split()[1])*1024 for x in pathlib.Path('/proc/meminfo').read_text().splitlines()if x.startswith('MemAvailable:'))
+print(json.dumps({'rows':rows,'parent_exists':parent.is_file(),'parent_bytes':parent.stat().st_size if parent.is_file()else None,'parent_sha256':sha(parent)if parent.is_file()else None,'work_exists':work.exists(),'work_children':[p.name for p in work.iterdir()]if work.is_dir()else None,'memory_available_bytes':ram,'free_disk_bytes':shutil.disk_usage(pathlib.Path(R['task_root'])).free,'mutations':0}))
+"""
+sent=("import json\nREQUEST=json.loads("+repr(json.dumps(request))+")\n"+script).encode()
+child=subprocess.run(["ssh",*connection.arguments(),connection.target,"/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/tools-venv/bin/python -B -u -"],input=sent,capture_output=True,timeout=300)
+receipt={"recorded_at_utc":datetime.now(timezone.utc).isoformat(),"returncode":child.returncode,"stdout_bytes":len(child.stdout),"stdout_sha256":hashlib.sha256(child.stdout).hexdigest(),"stderr_bytes_withheld":len(child.stderr),"stderr_sha256":hashlib.sha256(child.stderr).hexdigest(),"raw_stderr_printed":False}
+with(OUT/"cloud-preflight-diagnostic-receipt.json").open("x",encoding="utf-8")as f:json.dump(receipt,f,indent=2)
+if child.returncode:
+ print(json.dumps(receipt));raise SystemExit(1)
+result=json.loads(child.stdout)
+with(OUT/"cloud-preflight-diagnostic-result.json").open("x",encoding="utf-8")as f:json.dump(result,f,indent=2)
+print(json.dumps({**{k:v for k,v in result.items()if k!='rows'},"bad_rows":[r for r in result['rows']if not r['bytes_match']or not r['sha_matches']]}))

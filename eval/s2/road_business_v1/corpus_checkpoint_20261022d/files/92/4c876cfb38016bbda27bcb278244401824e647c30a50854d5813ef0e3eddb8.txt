@@ -1,0 +1,95 @@
+"""Preserve unfinished work and reassign its entire scope prospectively.
+
+保留未完成记录，并在新观察之前按完整范围重新分工。
+"""
+import copy
+import hashlib
+import json
+from datetime import UTC, datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT = Path(__file__).resolve().parent / 'medium-continuation-v1'
+OUT.mkdir(exist_ok=False)
+now = datetime.now(UTC).isoformat()
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def save(path, doc):
+    with path.open('x', encoding='utf-8', newline='\n') as handle:
+        json.dump(doc, handle, ensure_ascii=False, indent=2)
+
+
+replacement = [(33, [39, 40]), (34, [41, 42]), (35, [43])]
+old_records, new_records = [], []
+for old_num, new_numbers in replacement:
+    old_id = f'bounded_annotator_{old_num}'
+    old_dir = ROOT / 'annotation' / old_id
+    assignment_path = old_dir / 'assignment.json'
+    assignment = json.loads(assignment_path.read_text(encoding='utf-8'))
+    assert not (old_dir / 'suggestions.json').exists()
+    assert not (old_dir / 'first-payload.json').exists()
+    progress_path = old_dir / 'first-payload-progress-v1.json'
+    progress = json.loads(progress_path.read_text(encoding='utf-8'))
+    assert progress['status'] == 'in_progress'
+    assert progress['full_assigned_targets_checked'] is False
+    captured = OUT / (old_id + '-progress-at-stop.json')
+    captured.write_bytes(progress_path.read_bytes())
+    assert sha(captured) == sha(progress_path)
+    record = {
+        'recorded_at': now, 'worker_id': old_id,
+        'assignment_sha256': sha(assignment_path),
+        'assigned_rows': len(assignment['samples']),
+        'partial_rows_declared_in_progress_file': len(progress['rows']),
+        'partial_progress_file': str(progress_path),
+        'partial_progress_sha256': sha(progress_path),
+        'preserved_progress_file': str(captured),
+        'preserved_progress_sha256': sha(captured),
+        'reason': 'User explicitly requested medium reasoning for subsequent visual tasks. The interrupted unfinished batch is replaced in its entirety, irrespective of partial business verdicts.',
+        'partial_rows_ingested': 0, 'completed_batch_claimed': False,
+        'actual_views_not_inferred_from_crop_file_counts': True,
+        'old_context_reasoning_effort': 'inherited; exact effective value not established',
+        'resumption_in_this_context_authorized': False,
+    }
+    save(old_dir / 'orchestrator-stopped.json', record)
+    old_records.append(record)
+    assert len(assignment['samples']) == 8 * len(new_numbers)
+    combined = []
+    for offset, new_num in enumerate(new_numbers):
+        new_id = f'bounded_annotator_{new_num}'
+        folder = ROOT / 'annotation' / new_id
+        folder.mkdir(exist_ok=False)
+        subset = assignment['samples'][offset * 8:(offset + 1) * 8]
+        doc = copy.deepcopy(assignment)
+        doc.update(author_id=new_id, worker_dir=str(folder), created_at=now, samples=subset)
+        doc['continuation_lineage'] = {
+            'source_assignment_file': str(assignment_path),
+            'source_assignment_sha256': sha(assignment_path),
+            'source_first_payload_or_progress_provided': False,
+            'selection_rule': 'All original assigned samples, consecutive eight-item batches in the original immutable order; no partial verdict selection.',
+            'original_sample_offset': offset * 8,
+        }
+        save(folder / 'assignment.json', doc)
+        config = {'registered_at': now, 'worker_id': new_id, 'history_fork': 'none',
+                  'reasoning_effort': 'medium', 'model_override_requested': False,
+                  'model_override': None, 'actual_launch_claimed': False,
+                  'authorization': 'User answer: use medium reasoning to accelerate subsequent visual subtasks while retaining per-image checks and independent second review.'}
+        save(folder / 'requested-task-config.json', config)
+        new_records.append({'worker_id': new_id, 'assignment_file': str(folder / 'assignment.json'),
+                            'assignment_sha256': sha(folder / 'assignment.json'), 'count': len(subset),
+                            'sample_ids': [r['sample_id'] for r in subset],
+                            'source_worker_id': old_id, 'requested_reasoning_effort': 'medium'})
+        combined.extend(subset)
+    assert combined == assignment['samples']
+save(OUT / 'plan.json', {'recorded_at': now, 'status': 'prospective_before_new_image_views',
+                        'old_partial_history': old_records, 'new_assignments': new_records,
+                        'original_samples_total': sum(x['assigned_rows'] for x in old_records),
+                        'new_samples_total': sum(x['count'] for x in new_records),
+                        'business_verdicts_used_to_select_or_exclude_samples': False,
+                        'full_original_scope_preserved': True, 'formal_release_eligible': False})
+print(json.dumps({'plan_file': str(OUT / 'plan.json'), 'plan_sha256': sha(OUT / 'plan.json'),
+                  'old_partial_rows': [x['partial_rows_declared_in_progress_file'] for x in old_records],
+                  'new_workers': [x['worker_id'] for x in new_records], 'total_samples': 40}))

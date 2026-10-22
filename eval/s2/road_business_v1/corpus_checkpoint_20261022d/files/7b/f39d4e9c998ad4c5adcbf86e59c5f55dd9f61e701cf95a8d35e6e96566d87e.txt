@@ -1,0 +1,127 @@
+"""Verify returned bytes, native targets and mask-only screening equivalence.
+
+核对取回字节、原生目标及仅掩膜筛选的一致性。
+"""
+from datetime import datetime, timezone
+import hashlib
+import json
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+OUT=Path(__file__).resolve().parent
+ROOT=OUT.parent.parent
+DATA=ROOT.parent
+JOB=OUT/"cloud-job"
+now=lambda:datetime.now(timezone.utc).isoformat()
+
+
+def sha(path):
+    with Path(path).open("rb")as f:
+        return hashlib.file_digest(f,"sha256").hexdigest()
+
+
+def bind(path):
+    p=Path(path)
+    return {"file":str(p),"bytes":p.stat().st_size,"sha256":sha(p)}
+
+
+def read(path):
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def save(name,value):
+    with(OUT/name).open("x",encoding="utf-8")as f:
+        json.dump(value,f,ensure_ascii=False,indent=2,allow_nan=False)
+        f.write("\n")
+
+
+screen=read(OUT/"mask-screen-result.json")
+original=read(OUT/"native-plan-selected32.json")
+portable=read(JOB/"source-plan.json")
+result=read(JOB/"result.json")
+controller=read(OUT/"cloud-control-v2/controller-result.json")
+assert result["status"]==controller["status"]=="passed"
+assert result["native_extracted"]==result["independent_replay_matched"]==result["checked"]==result["passed"]==32
+assert result["candidate_commit"]=="cdf5382d4b4ce54600921532ecbe2a5591775b58"
+assert len(original["items"])==len(portable["items"])==32
+assert [x["target"]for x in original["items"]]==[x["target"]for x in portable["items"]]
+assert [x["native_view"]for x in original["items"]]==[x["native_view"]for x in portable["items"]]
+old_pilot=read(ROOT/"resume-20261022-fast/conditional-parts-native32-preparation-v1/source-plan.json")["items"]
+old_windows={tuple(x["native_view"]["native_window_xywh"])for x in old_pilot}
+assert not any(tuple(x["native_view"]["native_window_xywh"])in old_windows for x in original["items"])
+assert not {x["extraction_item_id"]for x in original["items"]}&{x["extraction_item_id"]for x in old_pilot}
+cloud_bindings=read(OUT/"cloud-control-v2/cloud-result.json")["bindings"]
+for name,expected in cloud_bindings.items():
+    p=(DATA/name).resolve()
+    assert p.is_relative_to(JOB.resolve())and p.stat().st_size==expected["bytes"]and sha(p)==expected["sha256"]
+assert len(cloud_bindings)==len([p for p in JOB.rglob("*")if p.is_file()])
+scores={r["extraction_item_id"]:r for r in screen["rows"]if r["selected"]}
+sample_rows=[]
+mask_checks=[]
+for item in original["items"]:
+    ident=item["extraction_item_id"]
+    r=read(JOB/"frames/receipts"/(ident+".json"))
+    replay=read(JOB/"replay/receipts"/(ident+".json"))
+    assert r["status"]==replay["status"]=="extracted"
+    assert r["world_scope"]==replay["world_scope"]==item["target"]
+    assert r["native_window_xywh"]==replay["native_window_xywh"]==item["native_view"]["native_window_xywh"]
+    assert r["asset_group_id"]==item["asset_group_id"]
+    assert r["proposed_partition"]=="calibration_candidate"and r["repeated_capture_eligible"]is False
+    with Image.open(JOB/"frames/masks"/(ident+".png"))as image:
+        mask=np.asarray(image)
+        assert mask.dtype==np.uint8 and mask.shape==(r["height"],r["width"])
+    assert hashlib.sha256(np.ascontiguousarray(mask).tobytes()).hexdigest()==scores[ident]["native_mask_sha256"]
+    width,height=r["width"],r["height"]
+    points=list(r["target_endpoints_normalized"])
+    for a,b in r["centerline_segments_normalized"]:
+        count=max(1,int(max(abs(b[0]-a[0])*width,abs(b[1]-a[1])*height)/16))
+        points.extend([[a[0]+i/count*(b[0]-a[0]),a[1]+i/count*(b[1]-a[1])]for i in range(count+1)])
+    available=sum(0<=x<1 and 0<=y<1 and mask[int(y*height),int(x*width)]>0 for x,y in points)
+    assert int(available)==scores[ident]["mask_available_samples"]and len(points)==scores[ident]["mask_sample_count"]
+    assert float(available/len(points))==scores[ident]["mask_score"]
+    mask_checks.append({"sample_id":ident,"native_mask_digest_equal_to_prospective_screen":True,
+        "sampled_mask_score_equal":True,"available_samples":int(available),"total_samples":len(points),"score":float(available/len(points))})
+    media={}
+    for kind,folder,extension in [("image","images","jpg"),("guide","guides","jpg"),("mask","masks","png"),("overview","overviews","jpg")]:
+        p=JOB/"frames"/folder/(ident+"."+extension)
+        assert sha(p)==r[kind+"_sha256"]
+        media[kind]=bind(p)
+    sample_rows.append({"sample_id":ident,"asset_group_id":r["asset_group_id"],"bounded_target_id":r["bounded_target_id"],
+        "fixed_world_scope_sha256":r["world_scope"]["freeze_scope_sha256"],"extraction":bind(JOB/"frames/receipts"/(ident+".json")),
+        "media":media,"width":width,"height":height,"proposed_partition":"calibration_candidate",
+        "source_native_audit":bind(JOB/"provenance"/(ident+"-audit.json")),
+        "mask_score_not_a_business_label":True,"labels_created":0,"new_visual_author_registered":False})
+    del mask
+inputs=read(OUT/"prospective-mask-screen-registration.json")["input_bindings"]
+assert all(Path(x["file"]).stat().st_size==x["bytes"]and sha(x["file"])==x["sha256"]for x in inputs)
+purpose=read(ROOT/"resume-20261022-fast/santolan-purpose-reserve-v1.json")
+selected={x["asset_group_id"]for x in sample_rows}
+assert selected<=set(purpose["remaining_primary_candidate_groups"])
+assert not selected&set(purpose["registered_pilot32_primary_candidate_groups"]+purpose["expected_reference_only_groups"]+purpose["current_observation_reserved_for_future_prior_task_groups"])
+save("selected-observation-inputs.json",{"format":"drone.p6-unregistered-source-verified-observation-inputs/v1", "recorded_at_utc":now(),
+    "selected_sample_ids":[x["sample_id"]for x in sample_rows],"rows":sample_rows,"count":32,
+    "selection_registration":bind(OUT/"prospective-mask-screen-registration.json"),"selected_plan":bind(OUT/"native-plan-selected32.json"),
+    "source_native_result":bind(JOB/"result.json"),"candidate_commit":result["candidate_commit"],
+    "new_author_id":None,"registered":False,"business_labels_created":0,"physical_asset_identity_verified":False,
+    "grouping_verified":False,"formal_assets_admitted":0,"repeated_capture_eligible":False,
+    "planned_whole_site_partition":"calibration_candidate"})
+qa={"format":"drone.p6-santolan-mask-next-local-verification/v1","recorded_at_utc":now(),"status":"passed_source_and_metadata_only",
+    "returned_files_checked":len(cloud_bindings),"all_returned_bytes_equal_cloud_manifest":True,
+    "source_core_candidate_commit":result["candidate_commit"],"current_source_native_checked":32,"current_source_native_passed":32,
+    "independent_replay_matched":32,"old32_algorithm_all_item_fields_matched":32,
+    "selected_world_targets_and_native_views_unchanged":True,"original_local_input_bindings_still_unchanged":True,
+    "selected_extraction_ids_and_native_windows_disjoint_from_old_pilot32":True,
+    "original269_mask_candidates":269,"positive_mask_candidates":119,"zero_mask_held":150,"positive_unselected_held":87,
+    "selected32_mask_raw_digest_and_sampling_rechecked":32,"mask_checks":mask_checks,
+    "rgb_visually_viewed":0,"rgb_decoded_locally_for_verification":False,"mask_only_pngs_decoded_locally":32,
+    "new_http_requests":0,"parent_or_source_body_bytes_uploaded":0,"formal_assets_admitted":0,"repeated_capture_eligible":False,
+    "old_source_only_exposure_placeholder_not_changed":True,"new_source_only_inventory_uses_explicit_conservative_placeholder":True,
+    "formal_inventory_requires_actual_exposure_reconciliation":True,
+    "artifact_bindings":[bind(OUT/name)for name in ["prospective-mask-screen-registration.json","mask-screen-result.json","native-plan-selected32.json",
+        "old32-native-algorithm-equivalence.json","selected-purpose-reservation.json","cloud_runtime_v2.py","cloud_controller_v2.py","selected-observation-inputs.json"]]
+        +[bind(JOB/"result.json"),bind(OUT/"cloud-control-v2/controller-result.json")]}
+save("local-data-verification.json",qa)
+print(json.dumps({k:v for k,v in qa.items()if k not in {"mask_checks","artifact_bindings"}}))
+print(json.dumps({"source_verified_input_index":bind(OUT/"selected-observation-inputs.json"),"local_verification":bind(OUT/"local-data-verification.json")}))

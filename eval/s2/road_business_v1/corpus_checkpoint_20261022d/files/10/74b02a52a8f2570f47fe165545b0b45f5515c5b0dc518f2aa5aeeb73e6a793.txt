@@ -1,0 +1,45 @@
+"""Read actual scoped progress while withholding SSH diagnostic bytes.
+
+读取限定任务的真实进度，不输出SSH诊断字节。
+"""
+import argparse
+from datetime import datetime, timezone
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+OUT=Path(__file__).resolve().parent
+ROOT=OUT.parent.parent
+args=argparse.ArgumentParser()
+args.add_argument("label")
+label=args.parse_args().label
+assert label.replace("-", "").isalnum()
+R=json.loads((OUT/"cloud-control-v2/runtime-request.json").read_text())
+sys.path.insert(0,str(ROOT.parent/"p6-road-views-20261014/repo/scripts"))
+from dev_stack import Connection
+connection=Connection.from_environment()
+body="""
+import json,pathlib
+from datetime import datetime,timezone
+job=pathlib.Path(REQUEST['job_directory'])
+progress=job/'progress.jsonl'
+events=[json.loads(line) for line in progress.read_text().splitlines()if line.strip()]if progress.is_file()else[]
+phase={}
+for name in ['frames','replay']:
+ folder=job/name
+ receipts=list((folder/'receipts').glob('*.json'))
+ status={}
+ for p in receipts:
+  state=json.loads(p.read_text())['status'];status[state]=status.get(state,0)+1
+ phase[name]={'actual_receipts':len(receipts),'receipt_status_counts':status,'result_exists':(folder/'result.json').is_file()}
+result=json.loads((job/'result.json').read_text())if(job/'result.json').is_file()else None
+print(json.dumps({'recorded_at_utc':datetime.now(timezone.utc).isoformat(),'job_exists':job.is_dir(),'event_count':len(events),'last_events':events[-8:],'phases':phase,'final_result':{k:v for k,v in result.items()if k!='rows'}if result else None,'read_only':True}))
+"""
+sent=("import json\nREQUEST=json.loads("+repr(json.dumps(R))+")\n"+body).encode()
+child=subprocess.run(["ssh",*connection.arguments(),connection.target,"/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/tools-venv/bin/python -B -u -"],input=sent,capture_output=True,timeout=60)
+receipt={"returncode":child.returncode,"stdout_bytes":len(child.stdout),"stdout_sha256":hashlib.sha256(child.stdout).hexdigest(),"stderr_bytes_withheld":len(child.stderr),"stderr_sha256":hashlib.sha256(child.stderr).hexdigest(),"raw_stderr_printed":False}
+value={"transport":receipt,"progress":json.loads(child.stdout)if child.returncode==0 else None}
+with(OUT/("cloud-progress-"+label+".json")).open("x",encoding="utf-8")as f:json.dump(value,f,ensure_ascii=False,indent=2)
+print(json.dumps(value))

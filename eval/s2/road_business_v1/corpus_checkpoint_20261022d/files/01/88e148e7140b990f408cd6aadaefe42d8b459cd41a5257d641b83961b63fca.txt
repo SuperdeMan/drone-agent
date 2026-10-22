@@ -1,0 +1,52 @@
+"""Version metadata-only adapters while preserving business validation guards.
+
+版本化纯元数据适配器，同时保留业务验证守卫。
+"""
+import ast
+import hashlib
+import json
+import runpy
+from datetime import datetime, timezone
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+files = []
+for old_name, new_name in [('check_current_ai_records_v9.py', 'check_current_ai_records_v10.py'), ('snapshot_progress_v5.py', 'snapshot_progress_v6.py'), ('candidate_coverage_v3.py', 'candidate_coverage_v4.py')]:
+    source = ROOT / 'resume-20261022' / old_name
+    text = source.read_text(encoding='utf-8')
+    assert 'current_observations_v3' in text
+    text = text.replace('current_observations_v3', 'current_observations_v4')
+    if old_name == 'check_current_ai_records_v9.py':
+        text = text.replace('from review_selection_v5 import selection', "sys.path.insert(1,str(Path(__file__).resolve().parent.parent/'resume-20261022'))\nfrom review_selection_v5 import selection")
+    elif old_name == 'candidate_coverage_v3.py':
+        anchor = "partition = site.get('planned_partition', 'unassigned')"
+        assert text.count(anchor) == 1
+        text = text.replace(anchor, anchor + "\n    if ident in new_santolan_ids:partition = 'calibration_candidate'")
+        anchor = 'counts = defaultdict(Counter)'
+        assert text.count(anchor) == 1
+        text = text.replace(anchor, "new_santolan_ids = set(read(ROOT/'resume-20261022-next/santolan32-neutral-pool-v1.json')['selected_sample_ids'])\n" + anchor)
+    elif old_name == 'snapshot_progress_v5.py':
+        anchor = "'software_candidate':read(ROOT/'software-v6/software-final.json')['code_freeze_commit'], 'software_result':read(ROOT/'software-v6/software-final.json')['full_pytest']"
+        assert text.count(anchor) == 1
+        text = text.replace(anchor, "'software_candidate':'cdf5382d4b4ce54600921532ecbe2a5591775b58', 'software_result':read(ROOT/'resume-20261022-fast/software-cdf5382-qa-v1/result.json')['pytest']")
+    ast.parse(text)
+    target = HERE / new_name
+    with target.open('x', encoding='utf-8', newline='\n') as stream:
+        stream.write(text)
+    files.append({'source': str(source), 'source_sha256': sha(source), 'target': str(target), 'target_sha256': sha(target)})
+previous = runpy.run_path(str(ROOT / 'resume-20261022/current_observations_v3.py'))['load_observations']()
+current = runpy.run_path(str(HERE / 'current_observations_v4.py'))['load_observations']()
+assert len(current) == len(previous) + 32
+assert all(current[key] == value for key, value in previous.items())
+new = [value for key, value in current.items() if key not in previous]
+result = {'recorded_at_utc': datetime.now(timezone.utc).isoformat(), 'status': 'passed', 'files': files, 'old_observation_rows_preserved_exactly': len(previous), 'new_observation_rows': len(new), 'total_observation_rows': len(current), 'total_derived_rows': sum(r['media_origin'] == 'real_capture_derivative' for r in current.values()), 'total_derived_geometric_groups_not_assets': len({r['asset_group_id'] for r in current.values() if r['media_origin'] == 'real_capture_derivative'}), 'new_source_sha256': sha(ROOT / 'resume-20261022-fast/conditional-parts-native32-v2/result.json'), 'old_grouping_rules_modified': False, 'annotation_binding_guard_changes': False, 'image_viewed_or_truth_created_by_adapter': False, 'formal_assets_admitted': 0, 'wp_p6_01_closed': False}
+with (HERE / 'current-data-tools-verification-v1.json').open('x', encoding='utf-8', newline='\n') as stream:
+    json.dump(result, stream, indent=2)
+print(json.dumps(result))

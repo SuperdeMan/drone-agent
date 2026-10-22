@@ -1,0 +1,39 @@
+"""Append six source-verified views without promoting identity or labels.
+
+追加六个来源核验视图，不升级物理身份或业务标签。
+"""
+import runpy
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+_previous = runpy.run_path(str(Path(__file__).with_name('current_observations_v5.py')))
+match, read, sha = (_previous[key] for key in ('match', 'read', 'sha'))
+
+
+def load_observations():
+    """Keep the complete previous index and require every new media hash.
+
+保留完整旧索引，并要求所有新媒体摘要一致。
+"""
+    old = _previous['load_observations']()
+    gate_file = ROOT / 'resume-20261022-next/new-oam-native-ambil-control-v4/result.json'
+    assert sha(gate_file) == '47dd96bf5a0773e911866e2cd9b68a2c361448aeed59eade2cced141676981f5'
+    gate = read(gate_file)
+    assert gate['status'] == 'passed' and gate['checked'] == gate['passed'] == gate['independent_replay_matched'] == 6
+    assert gate['whole_parent_partition'] == 'test_candidate'
+    base = ROOT / 'resume-20261022-next/new-oam-ambil-local-v1'
+    fetch = read(base / 'fetch-result.json')
+    assert fetch['passed_media_files'] == fetch['expected_media_files'] == 24
+    additions = {}
+    for path in sorted((base / 'frames/receipts').glob('*.json')):
+        row = read(path)
+        assert row['sample_id'] not in old and row['sample_id'] not in additions
+        assert row['status'] == 'extracted' and row['catalog_object_id'] == '6a6b46c24848939db162da04'
+        assert row['proposed_partition'] == 'test_candidate' and row['business_label'] is None
+        assert row['formal_release_eligible'] is False and row['repeated_capture_eligible'] is False
+        for field, subdir, ext in [('image', 'images', 'jpg'), ('guide', 'guides', 'jpg'), ('mask', 'masks', 'png'), ('overview', 'overviews', 'jpg')]:
+            file = base / 'frames' / subdir / (row['sample_id'] + '.' + ext)
+            assert file.is_file() and sha(file) == row[field + '_sha256']
+        additions[row['sample_id']] = row
+    assert len(additions) == 6
+    return {**old, **additions}

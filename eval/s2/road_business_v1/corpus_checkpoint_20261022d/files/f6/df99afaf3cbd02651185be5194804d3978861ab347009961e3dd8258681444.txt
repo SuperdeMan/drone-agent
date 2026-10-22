@@ -1,0 +1,92 @@
+"""Count saved observation candidates by preregistered partition, not admitted assets.
+
+按预登记分区统计已保存观察候选，不将其冒充已准入资产。
+"""
+import argparse
+import json
+from collections import Counter, defaultdict
+from datetime import UTC, datetime
+from pathlib import Path
+
+from current_observations_v6 import ROOT, load_observations, read, sha
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--integrity', type=Path, required=True)
+parser.add_argument('--output', type=Path, required=True)
+args = parser.parse_args()
+check = read(args.integrity / 'result.json')
+assert check['checked'] == check['passed']
+rows = read(args.integrity / 'reviewed-candidates.json')['rows']
+observations = load_observations()
+rules = read(ROOT / 'resume-20261021/grouping-rules-v2.json')
+new_santolan_ids = set(read(ROOT/'resume-20261022-next/santolan32-neutral-pool-v1.json')['selected_sample_ids'])
+new_santolan_ids |= set(read(ROOT/'resume-20261022-next/santolan-mask-next-v1/selected-observation-inputs.json')['selected_sample_ids'])
+new_ambil_ids = set(read(ROOT/'resume-20261022-next/new-oam-ambil-neutral-pool-v1.json')['selected_sample_ids'])
+counts = defaultdict(Counter)
+types = defaultdict(Counter)
+groups = defaultdict(set)
+purposes = defaultdict(Counter)
+laura_references = set(read(ROOT/'resume-20261021/laura-geometry-v1/purpose-reserve-v1.json')['expected_reference_sample_ids'])
+reference_ids = set()
+expected_assets = set()
+current_prior_ids = set()
+for index in list((ROOT/'claude-orchestrator').glob('prior-tasks*/index.json')) + list((ROOT/'resume-20261021').glob('prior-tasks*/index.json')):
+    for task in read(index)['rows']:
+        current_prior_ids.add(task['sample_id'])
+        if isinstance(task.get('expected_reference'), str):reference_ids.add(task['expected_reference'])
+        if task.get('expected_asset_id'):expected_assets.add(task['expected_asset_id'])
+for item in rows:
+    ident = item['sample']['sample_id']
+    observed = observations[ident]
+    site = rules['crasar_site_map'].get(observed.get('source_orthomosaic'), {})
+    partition = site.get('planned_partition', 'unassigned')
+    if ident in new_santolan_ids:partition = 'calibration_candidate'
+    if ident in new_ambil_ids:partition = 'test_candidate'
+    verdict = item['label']['verdict']
+    if ident in laura_references:
+        purpose = 'preregistered_expected_reference_only'
+    elif ident in reference_ids or observed.get('asset_group_id') in expected_assets:
+        purpose = 'expected_asset_already_used_by_registered_prior_task'
+    elif ident in current_prior_ids:
+        purpose = 'current_observation_reserved_for_prior_task'
+    else:
+        purpose = 'primary_or_repeat_candidate_not_yet_admitted'
+    purposes[partition+'/'+purpose][verdict] += 1
+    counts[partition][verdict] += 1
+    if verdict == 'obstacle':
+        types[partition].update(item['label']['defect_types'])
+    if observed.get('asset_group_id') is not None:
+        groups[partition].add(observed['asset_group_id'])
+legacy_file=ROOT/'resume-20261021/legacy-development-hold-impact-v2.json'
+legacy=read(legacy_file)
+totals=Counter(item['label']['verdict'] for item in rows)
+required={'normal':120,'obstacle':120,'indeterminate':40,'wrong_target':40}
+document = {'format': 'drone.p6-observation-candidate-coverage/v2', 'recorded_at': datetime.now(UTC).isoformat(),
+    'integrity_file': str(args.integrity / 'result.json'), 'integrity_sha256': sha(args.integrity / 'result.json'),
+    'grouping_rules_sha256': sha(ROOT / 'resume-20261021/grouping-rules-v2.json'),
+    'scope': 'Saved selected second-review observations only. Proposed partitions and geometric group counts are planning metadata, not verified independent assets or formal coverage.',
+    'by_proposed_partition': {key: {'observations': dict(value), 'obstacle_type_observations': dict(types[key]),
+        'geometric_groups_not_assets': len(groups[key])} for key, value in counts.items()},
+    'by_registered_purpose': {key: dict(value) for key, value in purposes.items()},
+    'purpose_note': 'Do not count an expected-reference-only observation as a primary asset; do not count an intended asset twice through a normal/obstacle primary and a wrong-target task. Planned task roles are not truth labels.',
+    'requirements_retained': {'test_primary_assets': {'normal': 100, 'obstacle': 100, 'indeterminate': 30, 'wrong_target': 30},
+        'calibration_primary_assets': {'normal': 20, 'obstacle': 20, 'indeterminate': 10, 'wrong_target': 10},
+        'test_minimum_each_obstacle_type': 30, 'true_same_asset_same_state_pairs': 30, 'repeat_assets': 15,
+        'minimum_verified_sites': 3, 'maximum_site_share': 0.5},
+    'legacy_floodnet_415_separate': {'normal_outside_development_related_hold_upper_bound': 48,
+        'other_upper_bounds': {'obstacle': 23, 'indeterminate': 124},
+        'not_currently_admitted': True, 'requires_current_rule_review_asset_deduplication_and_partition': True},
+    'formal_independent_assets_admitted': 0, 'formal_stability_pairs_admitted': 0,
+    'formal_data_frozen': False, 'formal_live_model_calls': 0, 'wp_p6_01_closed': False}
+document['legacy_floodnet_415_separate'] = {'impact_file':str(legacy_file),'impact_sha256':sha(legacy_file),
+    'known_outside_development_hold_counts':legacy['known_outside_hold_counts'],
+    'unknown_capture_hold_counts':legacy['unknown_hold_counts'],
+    'possible_outside_development_hold_observation_upper_bounds':legacy['possible_outside_hold_upper_bounds'],
+    'not_currently_admitted':True,'requires_current_rule_review_asset_deduplication_and_partition':True}
+document['optimistic_additional_reference_observations_needed'] = {
+    'by_class':{key:max(0,count-totals.get(key,0)-legacy['possible_outside_hold_upper_bounds'].get(key,0)) for key,count in required.items()},
+    'required_primary_assets_across_both_partitions':required,
+    'assumptions':'Optimistically treat all current and legacy outside-hold observations as unique, valid and freely allocatable across partitions; ignore role conflicts, near duplicates and site limits. These are observation lower bounds, not admitted assets, achieved coverage or a time estimate. Existing unannotated candidates may supply the additional observations.'}
+with args.output.open('x', encoding='utf-8') as handle:
+    json.dump(document, handle, ensure_ascii=False, indent=2)
+print(json.dumps(document))

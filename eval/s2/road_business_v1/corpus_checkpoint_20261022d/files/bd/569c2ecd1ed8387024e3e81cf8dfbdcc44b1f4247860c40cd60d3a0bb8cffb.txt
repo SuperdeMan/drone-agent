@@ -1,0 +1,541 @@
+"""Audit exact second-review physical evidence without viewing pixels.
+
+只读审核精确二审物理证据，不查看像素；仅在本目录写入审查产物。
+"""
+
+import sys
+sys.dont_write_bytecode = True
+
+import argparse
+import ast
+import hashlib
+import json
+import math
+from collections import Counter
+from datetime import datetime, timezone
+from pathlib import Path
+
+from affine import Affine
+from rasterio.warp import transform, transform_bounds
+from shapely.geometry import Polygon, box
+
+
+ROOT = Path("D:/drone-agent-data/p6-corpus-completion-20261018").resolve()
+DATA = ROOT.parent
+REPO = Path("D:/drone-agent-data/p6-road-views-20261014/repo").resolve()
+OUT = ROOT / "resume-20261022-next/medium-physical-meta-audit-v1"
+EXPECTED = {40: 8, 41: 16, 42: 8, 43: 8}
+FIELDS = ("target_present", "fixed_scope_identifiable", "full_target_boundary_visible")
+CANDIDATE = "cdf5382d4b4ce54600921532ecbe2a5591775b58"
+CORE = {
+    "p6_business_eval.py": "d0aacfc56845ff6e8af5f02e5366a30b41fb90d9f7bea97f4c0b5e023a3e2fe2",
+    "p6_boundary_drafts.py": "f2476184e8172312853fcb07e692012b20f0bfb3bdeabf0c754443d90b19fc0b",
+    "p6_raster_replay.py": "0bd7ab81ee788bc012b3ca11f2e580fabb103a85ee184cdbffd8e179d6eada81",
+    "p6_oam_capture.py": "bd49f89a5916b6401705524990170e6224cdf485c5dc8e7016b71d42898c0c88",
+}
+BINDINGS = {}
+REMOTE_BINDINGS = {}
+CHECKS = []
+
+
+def require(condition, message):
+    """Reject unsupported metadata assertions. / 拒绝无支持的元数据断言。"""
+    if not condition:
+        raise ValueError(message)
+
+
+def read(path):
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def sha(path):
+    with Path(path).open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+def canonical(value):
+    encoded = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(encoded.encode()).hexdigest()
+
+
+def resolve(value):
+    """Map declared cloud data paths to local metadata. / 将云端数据路径映射到本地元数据。"""
+    value = str(value).replace("\\", "/")
+    for prefix in ("D:/drone-agent-data/", "/home/ubuntu/drone-agent-data/p6-corpus-completion-20261018-cloud/data/"):
+        if value.startswith(prefix):
+            value = value[len(prefix):]
+            break
+    path = Path(value) if Path(value).is_absolute() else DATA / value
+    path = path.resolve()
+    require(path.is_relative_to(ROOT) or path.is_relative_to(REPO), "input path outside authorized roots")
+    return path
+
+
+def bind(value, expected=None, size=None):
+    path = resolve(value)
+    require(path.is_file(), f"input file missing: {path}")
+    digest = sha(path)
+    require(expected is None or digest == expected, f"input SHA mismatch: {path}")
+    require(size is None or path.stat().st_size == size, f"input size mismatch: {path}")
+    prior = BINDINGS.get(str(path))
+    require(prior is None or prior["sha256"] == digest, f"input changed during audit: {path}")
+    BINDINGS[str(path)] = {"file": str(path), "sha256": digest, "bytes": path.stat().st_size}
+    return path
+
+
+def unique(rows, key="sample_id"):
+    mapped = {row[key]: row for row in rows}
+    require(len(mapped) == len(rows), f"duplicate {key}")
+    return mapped
+
+
+def footprint(receipt):
+    """Recompute complete native-image envelopes from actual affine/CRS.
+
+从实际仿射与坐标系重算完整原生图像包络，绝不使用目标裁边包络。
+"""
+    width, height = receipt["width"], receipt["height"]
+    require(type(width) is int and type(height) is int and width > 0 and height > 0, "invalid native dimensions")
+    col, row, win_width, win_height = receipt["native_window_xywh"]
+    require(all(type(v) is int for v in (col, row, win_width, win_height)), "noninteger native window")
+    require((width, height) == (win_width, win_height), "native window dimensions differ")
+    raster = receipt["raster"]
+    require(0 <= col < col + width <= raster["width"] and 0 <= row < row + height <= raster["height"], "window outside source raster")
+    source_affine = Affine(*raster["transform"][:6])
+    window_affine = Affine(*receipt["window_transform"][:6])
+    calculated = source_affine * Affine.translation(col, row)
+    require(all(abs(a - b) <= 1e-7 for a, b in zip(calculated, window_affine)), "source/window affine mismatch")
+    require(abs(window_affine.determinant) > 0, "singular native affine")
+    corners = [window_affine * point for point in ((0, 0), (width, 0), (width, height), (0, height))]
+    bounds = [min(x[0] for x in corners), min(x[1] for x in corners), max(x[0] for x in corners), max(x[1] for x in corners)]
+    geographic21 = list(transform_bounds(raster["crs"], "EPSG:4326", *bounds, densify_pts=21))
+    left, bottom, right, top = bounds
+    points = []
+    for index in range(1001):
+        fraction = index / 1000
+        points.extend(((left + (right - left) * fraction, bottom), (left + (right - left) * fraction, top),
+                       (left, bottom + (top - bottom) * fraction), (right, bottom + (top - bottom) * fraction)))
+    xs, ys = transform(raster["crs"], "EPSG:4326", [p[0] for p in points], [p[1] for p in points])
+    geographic1001 = [min(xs), min(ys), max(xs), max(ys)]
+    require(all(math.isfinite(v) for v in bounds + geographic21 + geographic1001), "nonfinite geographic envelope")
+    require(geographic1001[2] - geographic1001[0] < 1, "unexpected antimeridian or oversized native view")
+    combined = [min(geographic21[0], geographic1001[0]), min(geographic21[1], geographic1001[1]),
+                max(geographic21[2], geographic1001[2]), max(geographic21[3], geographic1001[3])]
+    envelope = [math.nextafter(v, -math.inf if index < 2 else math.inf) for index, v in enumerate(combined)]
+    return {"sample_id": receipt["sample_id"], "source_crs": raster["crs"], "native_window_xywh": receipt["native_window_xywh"],
+            "source_affine": raster["transform"], "native_window_affine": receipt["window_transform"], "native_image_corners": corners,
+            "native_image_bounds": bounds, "transform_bounds_densify21_lon_lat": geographic21,
+            "independent_1001_per_edge_bounds_lon_lat": geographic1001, "conservative_full_image_envelope_lon_lat": envelope,
+            "complete_native_derived_image_not_target_polygon_or_parent_raster": True}
+
+
+def check_derivation(sample, remote_rows):
+    """Bind local metadata or exact already-executed remote byte evidence.
+
+绑定本地元数据，或绑定已实际执行的逐文件远端字节证据；本审核不联网。
+"""
+    details = []
+    for key, value in sample["derivation"].items():
+        if not key.endswith("_file"):
+            continue
+        digest = sample["derivation"][key[:-5] + "_sha256"]
+        path = resolve(value)
+        if path.is_file():
+            bind(path, digest)
+            details.append({"declared_file": value, "sha256": digest, "mode": "local_bytes_rehashed"})
+        else:
+            mirror = ROOT / "cloud-final-source-evidence-v1" / path.relative_to(ROOT)
+            if mirror.is_file():
+                bind(mirror, digest)
+                details.append({"declared_file": value, "sha256": digest, "local_mirror_file": str(mirror),
+                                "mode": "exact_digest_preserved_local_metadata_mirror; current_cdf_execution_bound_original_cloud_path"})
+                continue
+            witness = remote_rows.get(str(path))
+            require(witness is not None and witness["passed"] is True and witness["sha256"] == digest
+                    and sample["sample_id"] in witness["sample_ids"], f"missing local/remote derivation binding: {value}")
+            REMOTE_BINDINGS[str(path)] = {"declared_file": witness["file"], "sha256": digest, "bytes": witness["bytes"],
+                                         "basis": "actual8354-byte-result; original files remain cloud-resident; no current local reread claimed"}
+            details.append({"declared_file": value, "sha256": digest, "mode": "prior_actual_cloud_byte_result_plus_current_native_source_execution"})
+    capture = sample["capture_record"]
+    inventory = read(bind(capture["inventory_file"], capture["inventory_sha256"]))
+    record = unique(inventory["rows"], "source_observation_id")[sample["sample_id"]]
+    require(record["image_sha256"] == sample["image_sha256"] and record["derivation_sha256"] == canonical(sample["derivation"]), "capture inventory binding mismatch")
+    require(record["observed"] == sample["observed"], "capture observed grouping mismatch")
+    return details
+
+
+def load_sources():
+    """Audit the two actual cdf executions, without rerunning either.
+
+审核两个真实 cdf 执行记录，不重跑解码，也不借用旧 f132 执行范围。
+"""
+    repeat_dir = ROOT / "resume-20261022-next/repeat82-native-cdf-control-v1"
+    request = read(bind(repeat_dir / "request.json"))
+    repeat = read(bind(repeat_dir / "result.json"))
+    ssh = read(bind(repeat_dir / "ssh-receipt.json"))
+    runtime = bind(repeat_dir / "runtime.py")
+    first_statement = ast.parse(runtime.read_text(encoding="utf-8")).body[0]
+    require(isinstance(first_statement, ast.Assign) and ast.literal_eval(first_statement.value) == request, "repeat runtime/request mismatch")
+    require(request["candidate_commit"] == repeat["candidate_commit"] == CANDIDATE, "repeat candidate mismatch")
+    require(request["core_sha256"] == repeat["frozen_core_before"] == repeat["frozen_core_after"] == CORE, "repeat frozen core mismatch")
+    require(repeat["status"] == "passed" and repeat["expected"] == repeat["checked"] == repeat["passed"] == len(repeat["rows"]) == 82, "repeat source run incomplete")
+    require(all(row["source_native_and_replay_verified"] is True for row in repeat["rows"]), "repeat source row failed")
+    require(set(unique(request["samples"])) == set(unique(repeat["rows"])), "repeat request/result ID mismatch")
+    raw_stdout = (json.dumps(repeat) + "\n").encode()
+    require(ssh["returncode"] == 0 and ssh["stdout_sha256"] == hashlib.sha256(raw_stdout).hexdigest()
+            and ssh["stdout_bytes"] == len(raw_stdout), "repeat actual stdout/result binding mismatch")
+    bind(request["inventory_file"], request["inventory_sha256"])
+    require(repeat["inventory_sha256"] == request["inventory_sha256"] and repeat["queue_sha256"] == request["queue_sha256"], "repeat inventory/queue mismatch")
+    bind(ROOT / "resume-20261022-next/repeat-queue-census-v1/next-assignment-proposals.json", request["queue_sha256"])
+    byte_dir = ROOT / "resume-20261022-next/repeat-cloud-byte-check-v1"
+    byte_result = read(bind(byte_dir / "result.json"))
+    byte_request = read(bind(byte_dir / "request.json"))
+    byte_ssh = read(bind(byte_dir / "ssh-receipt.json"))
+    require(byte_result["status"] == "passed" and byte_result["checked"] == byte_result["passed"] == len(byte_result["rows"]) == 8354 and byte_result["failed"] == 0, "remote8354 byte run incomplete")
+    require(byte_result["queue_sha256"] == request["queue_sha256"] == byte_request["queue_sha256"], "byte/native queue mismatch")
+    bind(ROOT / "resume-20261022-next/repeat-queue-census-v1/cloud-existing-byte-checklist.json", byte_result["checklist_sha256"])
+    require(byte_request["checklist_sha256"] == byte_result["checklist_sha256"] and byte_ssh["returncode"] == 0, "remote byte request/checklist mismatch")
+    remote = {str(resolve(row["file"])): row for row in byte_result["rows"]}
+    require(len(remote) == 8354 and all(row["passed"] is True for row in remote.values()), "remote byte row duplicate/failure")
+    byte_requirements = {str(resolve(row["file"])): row for row in byte_request["requirements"]}
+    require(set(remote) == set(byte_requirements), "remote byte request/result file mismatch")
+    require(all(row["sha256"] == byte_requirements[key]["expected_sha256"] and row["bytes"] == byte_requirements[key]["expected_bytes"] for key, row in remote.items()), "remote byte expected/actual mismatch")
+
+    base = ROOT / "resume-20261022-next/santolan-mask-next-v1"
+    oam = read(bind(base / "cloud-job/result.json"))
+    controller = read(bind(base / "cloud-control-v2/controller-result.json"))
+    returned = read(bind(base / "local-data-verification.json"))
+    immutable = read(bind(base / "cloud-job/final-immutable-source-and-core-check.json"))
+    require(oam["candidate_commit"] == controller["candidate_commit"] == CANDIDATE, "OAM candidate mismatch")
+    require(oam["frozen_core_sha256"] == controller["frozen_core_sha256"] == immutable["frozen_core_sha256"] == CORE, "OAM frozen core mismatch")
+    require(oam["status"] == controller["status"] == "passed" and oam["expected"] == oam["native_extracted"] == oam["independent_replay_matched"] == oam["checked"] == oam["passed"] == len(oam["rows"]) == 32, "OAM actual source run incomplete")
+    require(all(row["source_chain_verified"] is True for row in oam["rows"]), "OAM source row failed")
+    require(controller["result_sha256"] == sha(base / "cloud-job/result.json") and immutable["passed"] is True, "OAM controller/result mismatch")
+    require(returned["all_returned_bytes_equal_cloud_manifest"] is True and returned["returned_files_checked"] == 441, "OAM local return evidence incomplete")
+    file_manifest = read(bind(base / "cloud-job/result-file-bindings.json"))
+    require(len(file_manifest) == 440, "OAM return manifest unexpected count")
+    for file, record in file_manifest.items():
+        bind(file, record["sha256"], record["bytes"])
+    bind(base / "cloud-job/source-manifest.json", oam["source_manifest_sha256"])
+    bind(base / "cloud-job/source-plan.json", oam["source_plan_sha256"])
+    oam_samples = read(bind(base / "cloud-job/provenance/samples-provenance-only.json"))["samples"]
+    require(set(unique(oam_samples)) == set(unique(oam["rows"])), "OAM source sample/result mismatch")
+    for name, digest in CORE.items():
+        bind(REPO / "scripts" / name, digest)
+    CHECKS.extend([
+        {"check": "actual_repeat82_cdf_source_execution_and_exact_stdout_binding", "passed": True, "candidate_commit": CANDIDATE,
+         "checked": 82, "report_sha256": sha(repeat_dir / "result.json"), "started_at": repeat["started_at_utc"], "finished_at": repeat["finished_at_utc"]},
+        {"check": "actual_oam32_cdf_source_execution_and_440_returned_manifest_entries_rehashed", "passed": True, "candidate_commit": CANDIDATE,
+         "checked": 32, "report_sha256": sha(base / "cloud-job/result.json"), "started_at": oam["started_at_utc"], "finished_at": oam["finished_at_utc"]},
+    ])
+    return {"crasar": unique(request["samples"]), "oam": unique(oam_samples), "remote": remote}
+
+
+def load_part(directory, numbers, boundary):
+    """Bind a completed annotation-provenance part. / 绑定完整的标注溯源分部。"""
+    result = read(bind(directory / "result.json"))
+    corpus = read(bind(directory / "reviewed-candidates.json"))
+    protocol = read(bind(directory / "protocol-annotation-only.json"))
+    expected = sum(EXPECTED[number] for number in numbers)
+    require(result["status"] == "passed" and result["checked"] == result["passed"] == len(result["rows"]) == expected, "annotation provenance part incomplete")
+    require(not result["scope_errors"] and not result["pending_protocol_reverification"] and not result["historical_unmatched"], "annotation provenance part has unresolved issues")
+    require(all(not row["issues"] for row in result["rows"]), "annotation provenance row issues")
+    require(set(result["only_reviewers"]) == {f"bounded_verifier_{number}" for number in numbers}, "annotation part reviewer set differs")
+    require(result["source_sha256"] == CORE["p6_business_eval.py"], "annotation source core differs")
+    require(protocol["target_boundary_policy"] == boundary, "approved boundary policy changed")
+    require(corpus["formal_release_eligible"] is False and corpus["grouping_verified"] is False, "annotation part already asserts grouping/release")
+    candidates = {row["sample"]["sample_id"]: row for row in corpus["rows"]}
+    require(len(candidates) == expected and set(candidates) == set(unique(result["rows"])), "annotation candidate/result ID mismatch")
+    mirrors = {}
+    for number in numbers:
+        reviewer = f"bounded_verifier_{number}"
+        mirror = bind(directory / f"{reviewer}.json")
+        bind(ROOT / "verification" / reviewer / "reviews.json", sha(mirror))
+        mirrors[reviewer] = mirror
+    return {"directory": str(directory), "candidates": candidates, "protocol": protocol, "mirrors": mirrors}
+
+
+def audit_reviewer(number, part, sources, rules):
+    """Audit all assigned cases, including explicit negative/unknown findings.
+
+审核全部分配项，显式否定或未知的物理观察也保留逐项结论。
+"""
+    reviewer = f"bounded_verifier_{number}"
+    folder = ROOT / "verification" / reviewer
+    assignment_path = bind(folder / "assignment.json")
+    assignment = read(assignment_path)
+    assigned = unique(assignment["samples"])
+    require(len(assigned) == EXPECTED[number], "assigned count mismatch")
+    payload_path = bind(folder / "review-payload.json")
+    payload = read(payload_path)
+    captured = bind(folder / "completed-observer-payload-captured-v1.json", sha(payload_path))
+    reviews_path = bind(folder / "reviews.json")
+    reviews = read(reviews_path)
+    physical_path = bind(folder / "physical-target-findings-v1.json")
+    physical = read(physical_path)
+    context = read(bind(folder / "actual-context.json"))
+    ingestion = read(bind(folder / "completed-payload-ingestion-receipt-v1.json"))
+    for document in (payload, physical):
+        require(document["status"] == "complete" and document["reviewer_id"] == reviewer and document["assignment_sha256"] == sha(assignment_path), "payload/physical header binding mismatch")
+    require(payload["human_reviews_created"] == reviews["human_reviews_created"] == 0
+            and payload["formal_release_eligible"] is reviews["formal_release_eligible"] is False, "review human/formal eligibility differs")
+    require(payload["full_assigned_target_checked"] is True, "payload not full assigned target checked")
+    require(assignment["parent_history"] == "none" and all(assignment[key] == "forbidden" for key in ("evaluation_prompt_access", "evaluation_outputs_access", "source_class_label_access")), "review assignment isolation differs")
+    require(reviews["isolation"] == {"parent_history": "none", "evaluation_prompt_seen": False, "evaluation_outputs_seen": False, "source_labels_seen": False, "assigned_first_pass_seen": True}, "review isolation differs")
+    require(context["history_fork"] == "none" and context["task_actually_launched"] is True and context["assignment_sha256"] == sha(assignment_path)
+            and all(context[key] is False for key in ("evaluation_prompt_provided", "evaluation_outputs_provided", "source_labels_provided")), "actual context isolation/binding differs")
+    bind(context["registered_context_file"], context["registered_context_sha256"])
+    registered = read(bind(context["registered_review_file"], context["registered_review_sha256"]))
+    registration = unique(registered["assignments"], "reviewer_id")[reviewer]
+    require(registration["sha256"] == sha(assignment_path) and registration["count"] == EXPECTED[number] and registration["history_fork"] == "none", "actual reviewer registration mismatch")
+    require(ingestion["source_payload_sha256"] == ingestion["captured_payload_sha256"] == sha(captured)
+            and ingestion["output_sha256"] == sha(reviews_path) and ingestion["rows"] == EXPECTED[number]
+            and ingestion["business_fields_unchanged"] is True and ingestion["new_visual_inspection_claimed"] is False, "ingestion exact binding differs")
+    payload_rows, review_rows, physical_rows = (unique(document["rows"]) for document in (payload, reviews, physical))
+    require(set(assigned) == set(payload_rows) == set(review_rows) == set(physical_rows), "assigned/payload/review/physical exact IDs differ")
+    cases = []
+    for ident, source in assigned.items():
+        case = {"sample_id": ident, "reviewer_id": reviewer, "decision": "hold", "binding_issues": [], "hold_reasons": [],
+                "input_sha256": {"assignment": sha(assignment_path), "payload": sha(payload_path), "reviews": sha(reviews_path), "physical_findings": sha(physical_path)},
+                "payload_file": str(payload_path), "review_file": str(reviews_path), "physical_findings_file": str(physical_path),
+                "physical_evidence": physical_rows[ident], "physical_evidence_origin": "same actual second review, assigned first answers visible; not another blind review"}
+        try:
+            actual, draft_payload, finding = review_rows[ident], payload_rows[ident], physical_rows[ident]
+            candidate = part["candidates"][ident]
+            final = actual["final_row"]
+            require(source["first_author_id"] != reviewer and actual["reviewer_id"] == reviewer, "first/second author binding differs")
+            require(reviews["assignment_sha256"] == sha(assignment_path), "review assignment SHA differs")
+            for key, value in draft_payload.items():
+                require(actual[key] == value, f"stored review differs from observer payload: {key}")
+            require(actual["storage_provenance"]["observer_payload_sha256"] == sha(payload_path), "row payload storage SHA differs")
+            require(actual["original_image_checked"] is True, "original image not checked")
+            require(actual["decision"] in ("accepted", "revised") and (actual["decision"] == "revised") == bool(actual["changes"]), "review decision/change mismatch")
+            expected_final = {**source["first_row"], **actual["changes"], "inspected_at": actual["reviewed_at"], "inspection_files": actual["inspected_files"]}
+            require(final == expected_final and canonical(final) == actual["final_row_sha256"], "final row reconstruction/SHA mismatch")
+            draft = read(bind(source["draft_file"], source["draft_sha256"]))
+            original = unique(draft["rows"])[ident]
+            require(draft["author_id"] == source["first_author_id"] == actual["first_author_id"], "first-author identity differs")
+            require(original == source["first_row"] and canonical(original) == source["first_row_sha256"] == actual["first_row_sha256"], "first draft/assignment binding mismatch")
+            require(actual["image_sha256"] == finding["image_sha256"] == final["image_sha256"] == source["image_sha256"], "image binding differs")
+            bind(source["image_file"], source["image_sha256"])
+            inspected = [resolve(file) for file in actual["inspected_files"]]
+            require(resolve(source["image_file"]) in inspected, "original absent from inspection files")
+            require(set(actual["inspection_file_sha256"]) == set(actual["inspected_files"]), "inspection SHA key set differs")
+            for file in actual["inspected_files"]:
+                bind(file, actual["inspection_file_sha256"][file])
+            if "inspected_files" in finding:
+                require({resolve(file) for file in finding["inspected_files"]} == set(inspected), "physical/review inspection files differ")
+            else:
+                require(finding["evidence"] == actual["findings"], "physical finding without file list does not exactly match second-review evidence")
+            require(isinstance(finding["evidence"], list) and finding["evidence"] and all(isinstance(value, str) and value.strip() for value in finding["evidence"]), "physical evidence text missing")
+            require(all(finding[key] is None or type(finding[key]) is bool for key in FIELDS), "physical fields not bool/null")
+            receipt_path = bind(source["current_extraction_file"], source["current_extraction_sha256"])
+            receipt = read(receipt_path)
+            require(receipt["sample_id"] == ident and receipt["image_sha256"] == source["image_sha256"]
+                    and receipt["world_scope"] == source["fixed_world_scope"] and receipt["world_scope"]["freeze_scope_sha256"] == finding["freeze_scope_sha256"], "native receipt/image/fixed scope differs")
+            require(receipt["asset_group_id"] == source["asset_group_id"] and receipt["bounded_target_id"] == source["bounded_target_id"], "registered group/target ID differs")
+            require(receipt["target_endpoints_normalized"] == source["target_endpoints_normalized"]
+                    and receipt["centerline_segments_normalized"] == source["centerline_segments_normalized"], "registered normalized geometry differs")
+            require(receipt["width"] == source["width"] and receipt["height"] == source["height"], "assigned native dimensions differ")
+            for prefix in ("image", "mask", "guide", "overview"):
+                bind(receipt[prefix + "_file"], receipt[prefix + "_sha256"])
+            require(candidate["sample"]["image_sha256"] == receipt["image_sha256"] and candidate["sample"]["proposed_asset_id"] == receipt["asset_group_id"], "annotation candidate source/group differs")
+            assistance = candidate["label"]["ai_assistance"]
+            mirror_rows = unique(read(part["mirrors"][reviewer])["rows"])
+            require(assistance["review_sha256"] == sha(part["mirrors"][reviewer]) and assistance["review_row_sha256"] == canonical(mirror_rows[ident])
+                    and mirror_rows[ident] == actual, "annotation mirror review row differs")
+            require(candidate["sample"]["target"]["polygon"] == final["target_polygon"] and candidate["label"]["verdict"] == final["verdict"], "candidate final polygon/verdict differs")
+            scope = receipt["world_scope"]
+            require(scope["frozen_before_business_annotation_and_model_output"] is True
+                    and scope["source_condition_polygons_or_model_outputs_used_for_scope"] is False, "world scope was not neutrally frozen")
+            require(datetime.fromisoformat(scope["frozen_at_utc"]) < datetime.fromisoformat(original["inspected_at"]), "fixed scope not frozen before original annotation")
+            kind = "oam" if ident.startswith("oam-extract-") else "crasar"
+            native_sample = sources[kind][ident]
+            require(native_sample["image_sha256"] == receipt["image_sha256"] and native_sample["derivation"]["extraction_sha256"] == sha(receipt_path)
+                    and resolve(native_sample["derivation"]["extraction_file"]) == receipt_path, "current cdf source execution not bound to this receipt")
+            require(native_sample["width"] == receipt["width"] and native_sample["height"] == receipt["height"]
+                    and native_sample["capture_record"]["parent_sha256"] == receipt.get("parent_sha256", receipt.get("source_published_lfs_sha256")), "source native dimensions/parent identity differs")
+            case["source_derivation_bindings"] = check_derivation(native_sample, sources["remote"])
+            group = receipt["asset_group_id"]
+            observed = native_sample["observed"]
+            require(observed["asset_id"] == observed["near_duplicate_group"] == group, "existing group/near-duplicate rule differs")
+            if kind == "crasar":
+                site = rules["crasar_site_map"][receipt["source_orthomosaic"]]
+                require(observed["site_id"] == site["site_id"] and observed["capture_batch_id"] == "author-parent-" + receipt["source_published_lfs_sha256"], "CRASAR site/capture grouping differs")
+                require(receipt["proposed_partition"] == site["planned_partition"], "CRASAR registered partition differs")
+            else:
+                require(observed["site_id"] == "oam-site-" + receipt["catalog_object_id"]
+                        and observed["capture_batch_id"] == "publisher-object-" + receipt["catalog_object_id"], "OAM site/capture grouping differs")
+                require(receipt["proposed_partition"] == "calibration_candidate" and receipt["repeated_capture_eligible"] is False, "OAM preregistered partition/repeat eligibility differs")
+                site = {"site_id": observed["site_id"], "catalog_object_id": receipt["catalog_object_id"], "planned_partition": "calibration_candidate"}
+            case.update(proposed_group_id=group, proposed_observed_grouping=observed, registered_site=site,
+                        preregistered_partition=receipt["proposed_partition"], source_kind=kind, source_candidate_commit=CANDIDATE,
+                        final_row=final, final_row_sha256=actual["final_row_sha256"], extraction_file=str(receipt_path),
+                        extraction_sha256=sha(receipt_path), fixed_world_scope=scope, fixed_scope_canonical_sha256=canonical(scope),
+                        footprint=footprint(receipt), source_only_exposure_placeholder_preserved=(kind == "oam"), formal_exposure_adjudicated=False)
+            for key in FIELDS:
+                if finding[key] is not True:
+                    case["hold_reasons"].append(f"{key} is not explicitly true")
+            polygon = final["target_polygon"]
+            if polygon is None:
+                case["hold_reasons"].append("complete target_polygon remains absent")
+            else:
+                require(isinstance(polygon, list) and len(polygon) >= 3 and all(isinstance(point, list) and len(point) == 2
+                        and all(type(value) in (int, float) and math.isfinite(value) and 0 <= value <= 1 for value in point) for point in polygon), "target polygon is not finite normalized coordinates")
+                geometry = Polygon(polygon)
+                require(geometry.is_valid and geometry.area > 0, "target polygon is not a valid nonzero polygon")
+                case["target_polygon_geometrically_valid"] = True
+            if final["verdict"] == "excluded_source":
+                case["hold_reasons"].append("excluded_source is not an admissible physical road target")
+            case["mechanical_binding_supported"] = True
+        except Exception as exc:
+            case["mechanical_binding_supported"] = False
+            case["binding_issues"].append(f"{type(exc).__name__}: {exc}")
+            case["hold_reasons"].append("binding evidence not established")
+        cases.append(case)
+    return cases
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--part42-audit-directory")
+    parser.add_argument("--output-name", default="report-v1.json")
+    arguments = parser.parse_args()
+    require(Path(__file__).resolve().parent == OUT, "script must run from authorized audit output directory")
+    require(Path(arguments.output_name).name == arguments.output_name and arguments.output_name.endswith(".json"), "output filename invalid")
+    output = OUT / arguments.output_name
+    require(not output.exists(), "output already exists; preserve it and choose another output name")
+    bind(Path(__file__))
+    boundary = read(bind(ROOT / "resume-20261021-c/boundary-policy-approved-v1.json"))
+    rules = read(bind(ROOT / "resume-20261021/grouping-rules-v2.json"))
+    bind(ROOT / "resume-20261022-fast/prepare_bulk_physical_composition_v5.py")
+    bind(ROOT / "resume-20261022-fast/physical-evidence-composition-plan-v1.json")
+    old_audit = read(bind(ROOT / "resume-20261022-fast/bulk-physical-composition-audit-v1.json"))
+    old_composition = read(bind(ROOT / "resume-20261022-fast/bulk-grouping-composition-evidence-v1.json"))
+    require(old_audit["verdict"] == "supports" and old_composition["metadata_contract_audit_sha256"] == sha(ROOT / "resume-20261022-fast/bulk-physical-composition-audit-v1.json"), "existing10 composition binding differs")
+    manifest_file = bind(ROOT / "resume-20261022-fast/bulk-integrated-candidate-corpus-v1/manifest.json")
+    manifest = read(manifest_file)
+    require(len(manifest["samples"]) == 16 and len({sample["asset_id"] for sample in manifest["samples"]}) == 15
+            and len(manifest["stability_pairs"]) == 1, "existing16/15/1 baseline differs")
+    current16_dir = ROOT / "resume-20261022-fast/bulk-integrated-cdf5382-audit-v1"
+    current16 = read(bind(current16_dir / "execution-receipt.json"))
+    bind(current16_dir / "core-audit.json", current16["new_report_sha256"])
+    require(current16["candidate_commit"] == CANDIDATE and current16["process_exit_code"] == 0
+            and current16["samples"] == current16["derived_captures_verified"] == 16 and not current16["sample_issues"]
+            and current16["all_329_bound_inputs_unchanged"] is True and current16["frozen_core_sha256_before"] == current16["frozen_core_sha256_after"] == CORE
+            and current16["input_sha256"]["manifest.json"] == sha(manifest_file), "current cdf existing16 execution differs")
+    old = []
+    for sample in manifest["samples"]:
+        receipt = read(bind(sample["derivation"]["extraction_file"], sample["derivation"]["extraction_sha256"]))
+        require(receipt["image_sha256"] == sample["image_sha256"], "existing16 receipt image differs")
+        old.append({**footprint(receipt), "asset_id": sample["asset_id"], "role": sample["evaluation_role"]})
+    for leaf in ("CLAUDE.md", "AGENTS.md", "docs/p6-derived-road-evidence.md", "docs/p6-business-evaluation.md"):
+        bind(REPO / leaf)
+    sources = load_sources()
+    part_paths = {40: ROOT / "resume-20261022-next/medium-annotation-part-c-v2",
+                  41: ROOT / "resume-20261022-next/medium-annotation-part-ab-v1",
+                  43: ROOT / "resume-20261022-next/medium-annotation-part-ab-v1"}
+    if arguments.part42_audit_directory:
+        part_paths[42] = resolve(arguments.part42_audit_directory)
+    parts = {}
+    parts[40] = load_part(part_paths[40], (40,), boundary)
+    parts[41] = parts[43] = load_part(part_paths[41], (41, 43), boundary)
+    pending, cases = [], []
+    if 42 in part_paths:
+        try:
+            parts[42] = load_part(part_paths[42], (42,), boundary)
+        except Exception as exc:
+            pending.append({"reviewer_id": "bounded_verifier_42", "reason": f"completed annotation audit unavailable: {exc}"})
+    for number in EXPECTED:
+        try:
+            require(number in parts, "completed full8 annotation-provenance audit not supplied")
+            cases.extend(audit_reviewer(number, parts[number], sources, rules))
+        except Exception as exc:
+            reviewer = f"bounded_verifier_{number}"
+            pending.append({"reviewer_id": reviewer, "reason": f"{type(exc).__name__}: {exc}"})
+            assignment = read(bind(ROOT / "verification" / reviewer / "assignment.json"))
+            for sample in assignment["samples"]:
+                cases.append({"sample_id": sample["sample_id"], "reviewer_id": reviewer, "decision": "hold", "mechanical_binding_supported": False,
+                              "binding_issues": ["complete review/audit unavailable"], "hold_reasons": ["pending complete review and annotation audit"],
+                              "input_sha256": {"assignment": sha(ROOT / "verification" / reviewer / "assignment.json")}})
+    require(len(cases) == 40 and len(unique(cases)) == 40, "all40 assignments must be accounted for exactly once")
+    grouped_cases = {}
+    for case in cases:
+        if "proposed_group_id" in case:
+            grouped_cases.setdefault(case["proposed_group_id"], []).append(case)
+    grouping_conflicts = []
+    for group, members in grouped_cases.items():
+        if (len({member["fixed_scope_canonical_sha256"] for member in members}) != 1
+                or len({member["preregistered_partition"] for member in members}) != 1
+                or len({member["registered_site"]["site_id"] for member in members}) != 1):
+            grouping_conflicts.append({"proposed_group_id": group, "sample_ids": [member["sample_id"] for member in members]})
+            for member in members:
+                member["hold_reasons"].append("same registered group has inconsistent fixed scope/site/partition; identity/grouping unresolved")
+    selected, comparisons, group_primary = [], [], {row["asset_id"]: row["sample_id"] for row in old}
+    for case in sorted(cases, key=lambda item: item["sample_id"]):
+        conflicts = []
+        if not case["hold_reasons"]:
+            envelope = box(*case["footprint"]["conservative_full_image_envelope_lon_lat"])
+            for previous in old + [{**row["footprint"], "asset_id": row["proposed_group_id"]} for row in selected]:
+                intersects = envelope.intersects(box(*previous["conservative_full_image_envelope_lon_lat"]))
+                comparisons.append({"sample_id": case["sample_id"], "other_sample_id": previous["sample_id"], "complete_native_image_envelopes_intersect": intersects})
+                if intersects:
+                    conflicts.append(previous["sample_id"])
+            if case["proposed_group_id"] in group_primary:
+                case["hold_reasons"].append("same registered group already has one candidate; no additional primary or repeat identity claim")
+            if conflicts:
+                case["hold_reasons"].append("complete native image envelope intersects an existing/earlier selected image; dedicated visual identity comparison required")
+            if pending:
+                case["hold_reasons"].append("full40 batch incomplete; no partial subset is released")
+            if not case["hold_reasons"]:
+                selected.append(case)
+                group_primary[case["proposed_group_id"]] = case["sample_id"]
+                case["decision"] = "supports_exact_local_candidate_composition_only"
+        case["intersecting_sample_ids"] = conflicts
+    unchanged = []
+    for record in BINDINGS.values():
+        if sha(record["file"]) != record["sha256"]:
+            unchanged.append(record["file"])
+    require(not unchanged, "inputs changed during audit")
+    report = {
+        "format": "drone.p6-medium-physical-metadata-audit/v1", "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
+        "verdict": "pending_full_batch" if pending else "supports_exact_subset_only", "all40_accounted_exactly_once": True,
+        "expected_reviewers": EXPECTED, "cases_checked": len(cases), "full_completed_reviewers": sorted({row["reviewer_id"] for row in cases if row["mechanical_binding_supported"]}),
+        "pending": pending, "source_candidate_commit": CANDIDATE, "frozen_core_sha256": CORE,
+        "method_applicability": {"inherited_method": "explicit same-second-review physical fields and valid complete target polygon, then full-native-image envelope disjointness and independent metadata review",
+            "old48_and_old_f132_execution_assertions_reused": False, "current_scope": "exact40 assignments for40/41/42/43, all cases including holds",
+            "selection_order": "ascending stable sample_id", "no_class_or_quota_selection": True,
+            "same_group_one_candidate_only": True, "geometric_group_is_not_asset_identity": True,
+            "supplemental_physical_observers_saw_first_answers": True, "separate_blind_review_claimed": False},
+        "existing_physical_observations": old, "existing_observation_count": 16, "existing_distinct_candidate_groups": 15,
+        "existing_pair_count": 1, "existing_pair_not_revalidated_or_extended_by_this_audit": True,
+        "cases": sorted(cases, key=lambda row: row["sample_id"]), "actual_envelope_comparisons": comparisons,
+        "selected_sample_ids": [row["sample_id"] for row in selected], "supported_proposed_group_ids": [row["proposed_group_id"] for row in selected],
+        "selected_count": len(selected), "hold_count": len(cases) - len(selected),
+        "grouping_scope_site_partition_conflicts": grouping_conflicts,
+        "hold_reason_counts": dict(Counter(reason for row in cases for reason in row["hold_reasons"])),
+        "binding_issue_count": sum(len(row["binding_issues"]) for row in cases), "checks": CHECKS,
+        "input_bindings": sorted(BINDINGS.values(), key=lambda row: row["file"]), "input_file_count": len(BINDINGS),
+        "remote_source_metadata_bindings": sorted(REMOTE_BINDINGS.values(), key=lambda row: row["declared_file"]),
+        "all_local_input_bytes_unchanged_during_audit": True,
+        "source_limitations": ["This read-only audit hashed exact local inputs and recomputed affine/CRS geometry, without decoding or viewing any image.",
+            "Actual cdf native/replay checks and remote byte checks remain prior executions with their exact report/request hashes and times, not reruns by this auditor.",
+            "OAM source-only development_exposed=true placeholders are preserved; formal exposure/use isolation remains to be independently reconciled.",
+            "No overlapping image or same registered group is newly counted as another primary; intersections require dedicated visual identity comparison.",
+            "No business-reference relabeling, new repeat identity/same-state judgment, formal qualification, model-quality result or full P6 closure is granted."],
+        "pixels_viewed": False, "pixels_decoded": False, "new_visual_judgments_created": False, "network_requests": 0,
+        "services_or_models_called": 0, "main_registry_changed": False, "master_grouping_flags_changed": False,
+        "protocol_or_source_code_changed": False, "data_or_thresholds_changed": False,
+        "formal_assets_admitted": 0, "formal_pairs_admitted": 0, "formal_model_calls": 0, "wp_p6_01_closed": False,
+        "allowed_followup": "Exact selected IDs may support construction and separate core audit of a new local partial copy; no formal asset qualification or main registry mutation is authorized by this report.",
+    }
+    with output.open("x", encoding="utf-8", newline="\n") as stream:
+        json.dump(report, stream, indent=2, ensure_ascii=False, allow_nan=False)
+        stream.write("\n")
+    print(json.dumps({"file": str(output), "sha256": sha(output), "verdict": report["verdict"], "cases": len(cases),
+                      "selected_ids": report["selected_sample_ids"], "binding_issue_count": report["binding_issue_count"],
+                      "pending": pending, "input_files": len(BINDINGS)}, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

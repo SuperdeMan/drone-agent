@@ -1,0 +1,735 @@
+{
+  "format": "drone.p6-road-ai-verification/v1",
+  "reviewer_kind": "isolated_ai_reviewer",
+  "reviewer_id": "bounded_verifier_32",
+  "created_at": "2026-10-22T01:38:16.005395+00:00",
+  "assignment_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\assignment.json",
+  "assignment_sha256": "14a7368fac96b31cf6ddc87c34ef3f2b2fb475ef025df36965187c8ca805e612",
+  "isolation": {
+    "parent_history": "none",
+    "evaluation_prompt_seen": false,
+    "evaluation_outputs_seen": false,
+    "source_labels_seen": false,
+    "assigned_first_pass_seen": true
+  },
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "sample_id": "bounded-extract-12a272a90a0b49",
+      "decision": "revised",
+      "findings": [
+        "原图、guide 和全白覆盖 mask 对应同一条东西向铺装道路；固定东端 A 约为原图 (3023, 667)，西端 B 约为 (621, 624)，未改变登记的 100 m 范围。",
+        "东侧丁字路口及中段住宅车道口的邻接主路路缘可见，可按主路连续宽度区分道路与入口、草地及前场。北侧皮卡停在草地，未据此标作道路障碍。",
+        "西端 B 附近浓影中的南侧路缘不能连续确认；中段约 x1840–2010 的南侧路缘更有实际树冠叠压，原生局部裁片中不能看见被遮住的路面与草地接界。",
+        "未确认落地枝条、杂物或其他实体进入道路；树冠遮挡不等于地面植被侵入，但完整边界证据不足，首稿 normal 修订为 indeterminate。"
+      ],
+      "changes": {
+        "verdict": "indeterminate",
+        "notes": "完整检查固定 A/B 全长，未移动或缩短目标。大部分路面和东端接入口可辨，可依可见主路边缘采用连续宽度；西端 B 南缘在浓树影中不能连续确认，中段约 x1840–2010 南缘有实际树冠覆盖。不能把邻近可见路宽外推成这些遮挡处的完整边界，也不能凭树冠或影子确认地面障碍。未确认侵入实体，完整目标保留不可判；原多边形不作为这些遮挡处边界已经核实的证据。",
+        "uncertainties": [
+          "西端 B 附近南侧路缘的影区分界不能连续确认。",
+          "中段约 x1840–2010 南侧路缘被实际树冠局部遮住，完整道路边界未知。"
+        ]
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\images\\bounded-extract-12a272a90a0b49.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\guides\\bounded-extract-12a272a90a0b49.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\masks\\bounded-extract-12a272a90a0b49.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\native-01-x500-y400-x1450-y850.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\native-02-x1350-y400-x2300-y850.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\native-03-x2200-y400-x3200-y850.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\boundary-west-x550-y520-x850-y760.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\boundary-center-x1780-y560-x2050-y750.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "977e2a954072675c06bb582a07c4c964f47d42344be177ae1e2fd1676828e729",
+      "first_author_id": "bounded_annotator_23",
+      "first_row_sha256": "303a40f567fb44c636604fb1fc00a13c9bb2260a89f4e736a601e3b4f8940a28",
+      "reviewed_at": "2026-10-22T01:38:16.011909+00:00",
+      "reviewer_id": "bounded_verifier_32",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\images\\bounded-extract-12a272a90a0b49.jpg": "977e2a954072675c06bb582a07c4c964f47d42344be177ae1e2fd1676828e729",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\guides\\bounded-extract-12a272a90a0b49.jpg": "bf266eca9a0e745e136272968a00fe491f81dc6223a749899082db9a3ee15034",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\masks\\bounded-extract-12a272a90a0b49.png": "2e091fe16166104be8f0aaf23eba0319e6470e571a281f617c25cf04a2fe20a4",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\native-01-x500-y400-x1450-y850.png": "437d91ec5a44758c799fa672c6c4cd318d98b9c6b8d60a837aa68074bcfe6cd3",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\native-02-x1350-y400-x2300-y850.png": "25b255053018798debd11a12d2c0e9b7490240d882a3da0bb53bc609d6a0b98b",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\native-03-x2200-y400-x3200-y850.png": "b5c2efefec007478627470c454e76df10cd5bf55ba1b79c0d51fd2e22cb2c42e",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\boundary-west-x550-y520-x850-y760.png": "a23b6f08af8121f2516c52aca30c1c6553bec8f1265e8db03db772229bdbb2ef",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\boundary-center-x1780-y560-x2050-y750.png": "71bc52016f85df6daaa401b482c413ab815a548a8eb2f5b2854e36307c7ee8a1"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-12a272a90a0b49",
+        "image_sha256": "977e2a954072675c06bb582a07c4c964f47d42344be177ae1e2fd1676828e729",
+        "target_brief": "固定 A（东侧丁字路口）至 B（西侧固定地理横截面）的东西向完整铺装道路。",
+        "target_polygon": [
+          [
+            0.1701894,
+            0.42693191
+          ],
+          [
+            0.24704914,
+            0.42540168
+          ],
+          [
+            0.32939885,
+            0.42693191
+          ],
+          [
+            0.38429865,
+            0.4338179
+          ],
+          [
+            0.43919846,
+            0.4407039
+          ],
+          [
+            0.49409827,
+            0.44452946
+          ],
+          [
+            0.57644798,
+            0.44605968
+          ],
+          [
+            0.65879769,
+            0.45065034
+          ],
+          [
+            0.72742245,
+            0.45294568
+          ],
+          [
+            0.7713423,
+            0.45065034
+          ],
+          [
+            0.79330222,
+            0.43228768
+          ],
+          [
+            0.81251716,
+            0.41392502
+          ],
+          [
+            0.8276146,
+            0.4192808
+          ],
+          [
+            0.83145759,
+            0.57918898
+          ],
+          [
+            0.80702718,
+            0.57383321
+          ],
+          [
+            0.78506725,
+            0.54934966
+          ],
+          [
+            0.74114741,
+            0.54322877
+          ],
+          [
+            0.67252265,
+            0.53557766
+          ],
+          [
+            0.60389789,
+            0.53328233
+          ],
+          [
+            0.54899808,
+            0.52945677
+          ],
+          [
+            0.49409827,
+            0.52410099
+          ],
+          [
+            0.43919846,
+            0.52333588
+          ],
+          [
+            0.38429865,
+            0.52104055
+          ],
+          [
+            0.32939885,
+            0.51644989
+          ],
+          [
+            0.24704914,
+            0.51185922
+          ],
+          [
+            0.1707384,
+            0.51415455
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "完整检查固定 A/B 全长，未移动或缩短目标。大部分路面和东端接入口可辨，可依可见主路边缘采用连续宽度；西端 B 南缘在浓树影中不能连续确认，中段约 x1840–2010 南缘有实际树冠覆盖。不能把邻近可见路宽外推成这些遮挡处的完整边界，也不能凭树冠或影子确认地面障碍。未确认侵入实体，完整目标保留不可判；原多边形不作为这些遮挡处边界已经核实的证据。",
+        "uncertainties": [
+          "西端 B 附近南侧路缘的影区分界不能连续确认。",
+          "中段约 x1840–2010 南侧路缘被实际树冠局部遮住，完整道路边界未知。"
+        ],
+        "inspected_at": "2026-10-22T01:38:16.011909+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\images\\bounded-extract-12a272a90a0b49.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\guides\\bounded-extract-12a272a90a0b49.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\masks\\bounded-extract-12a272a90a0b49.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\native-01-x500-y400-x1450-y850.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\native-02-x1350-y400-x2300-y850.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\native-03-x2200-y400-x3200-y850.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\boundary-west-x550-y520-x850-y760.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-12a272a90a0b49\\boundary-center-x1780-y560-x2050-y750.png"
+        ]
+      },
+      "final_row_sha256": "b036f51ee8f90171d266c16198acf2445a85375923e25011660bb8737f6a9632",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\review-payload.json",
+        "observer_payload_sha256": "0e26efbef580e1a0ad8d2273ef7d97b83fed6367d5127d838d8a3d7d2c5a0b4f",
+        "payload_file_modified_at_utc": "2026-10-22T01:37:00.526240+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-22T01:38:15.274973+00:00",
+        "business_fields_changed": false,
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    },
+    {
+      "sample_id": "bounded-extract-16ce6fceb87122",
+      "decision": "revised",
+      "findings": [
+        "固定西端 A 约 (621, 658) 与东端 B 约 (3043, 649) 均落在同一条东西向道路，完整 100 m 范围由全白 mask 覆盖，未因树影或接入口改变目标。",
+        "A 横截面、东侧丁字路口和多数住宅入口邻接路缘可辨；主路连续宽度足以把北侧大面积混凝土前场排在目标之外。北侧人形目标位于草地边缘。",
+        "中段北侧实际树冠约在 x1600–1715、y560–590 覆盖到道路边缘；boundary-north 原生裁片显示叶片遮住路面与路肩接界，而不只是投影使路面变暗。",
+        "可见路面未确认落地树枝或杂物；树冠不能证明实际地面植被进入，完整北缘却不能核实，因此修订首稿 normal 为 indeterminate。"
+      ],
+      "changes": {
+        "verdict": "indeterminate",
+        "notes": "保持原固定 A/B 地理端点和 100 m 全长。A 截面、东端路口和多数主路边缘可辨，连通混凝土前场按入口两侧可见主路宽度排除。中段约 x1600–1715 的北侧树冠实际覆盖路缘，不能从当前图像确认冠下完整边界。道路主体可见或树影中仍有纹理，不足以代替冠下边界证据。未确认地面侵入实体，保留 indeterminate；原多边形在遮挡处只保留原目标建议，不宣称边界已核实。",
+        "uncertainties": [
+          "中段北侧约 x1600–1715 的路缘被实际树冠遮挡，冠下道路与路肩接界未知。"
+        ]
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\images\\bounded-extract-16ce6fceb87122.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\guides\\bounded-extract-16ce6fceb87122.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\masks\\bounded-extract-16ce6fceb87122.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\native-01-x500-y380-x1450-y880.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\native-02-x1350-y380-x2300-y880.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\native-03-x2200-y380-x3250-y880.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\boundary-north-x1550-y490-x1780-y690.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\boundary-south-x920-y570-x1230-y760.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "f43ee95ced99817ab51401e1f9101b54bc72171df292e70f166b84e588812e15",
+      "first_author_id": "bounded_annotator_23",
+      "first_row_sha256": "bddd518ce7b9ab12eb457b459597b5abccde60f0a55c54593c50f6ff2c322659",
+      "reviewed_at": "2026-10-22T01:38:16.123942+00:00",
+      "reviewer_id": "bounded_verifier_32",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\images\\bounded-extract-16ce6fceb87122.jpg": "f43ee95ced99817ab51401e1f9101b54bc72171df292e70f166b84e588812e15",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\guides\\bounded-extract-16ce6fceb87122.jpg": "9a61bd3b09b9213bd17c059bcd2b2fcf6164c9be5f3f3cd6a7f389159a49a670",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\masks\\bounded-extract-16ce6fceb87122.png": "bc530db49701bb90220895df3424cb06a8366be986b5f573eb7a9fd8ff47630e",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\native-01-x500-y380-x1450-y880.png": "6771c0f844c28090b99b86c49ef418261bf94b652dca6365c3fc88e00b34dc6c",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\native-02-x1350-y380-x2300-y880.png": "19226520a1d29154bd3b2d618f9612fa60feefc18c210d94a449d782e61bf68c",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\native-03-x2200-y380-x3250-y880.png": "0f6c0b587fa658fe63a3747e3c592a859390123d1fce377628020ff0a896c762",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\boundary-north-x1550-y490-x1780-y690.png": "5f48c48001a6e39097819cc6b75c35df8ba072fec811781b709f564bc9048e0d",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\boundary-south-x920-y570-x1230-y760.png": "1e0d6a828cc6866fd9882eb2b4cfa49bf4bb58ba0c7b3fe0e76be192748cebed"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-16ce6fceb87122",
+        "image_sha256": "f43ee95ced99817ab51401e1f9101b54bc72171df292e70f166b84e588812e15",
+        "target_brief": "固定 A（西侧固定地理横截面）至 B（东侧丁字路口）的东西向完整铺装道路。",
+        "target_polygon": [
+          [
+            0.16898717,
+            0.44600939
+          ],
+          [
+            0.24570025,
+            0.44679186
+          ],
+          [
+            0.3003003,
+            0.44913928
+          ],
+          [
+            0.38220038,
+            0.45305164
+          ],
+          [
+            0.45045045,
+            0.4514867
+          ],
+          [
+            0.50505051,
+            0.44757433
+          ],
+          [
+            0.54054054,
+            0.44757433
+          ],
+          [
+            0.6006006,
+            0.45931142
+          ],
+          [
+            0.66885067,
+            0.4600939
+          ],
+          [
+            0.72345072,
+            0.46557121
+          ],
+          [
+            0.76167076,
+            0.46948357
+          ],
+          [
+            0.78897079,
+            0.44444444
+          ],
+          [
+            0.81354081,
+            0.41862285
+          ],
+          [
+            0.83155883,
+            0.42253521
+          ],
+          [
+            0.82992083,
+            0.60250391
+          ],
+          [
+            0.80535081,
+            0.60172144
+          ],
+          [
+            0.78078078,
+            0.57746479
+          ],
+          [
+            0.75075075,
+            0.56259781
+          ],
+          [
+            0.6961507,
+            0.55320814
+          ],
+          [
+            0.62790063,
+            0.55555556
+          ],
+          [
+            0.57330057,
+            0.55086072
+          ],
+          [
+            0.50505051,
+            0.54303599
+          ],
+          [
+            0.45045045,
+            0.54147105
+          ],
+          [
+            0.3958504,
+            0.54929577
+          ],
+          [
+            0.34125034,
+            0.54381847
+          ],
+          [
+            0.27300027,
+            0.54147105
+          ],
+          [
+            0.16980617,
+            0.54068858
+          ]
+        ],
+        "verdict": "indeterminate",
+        "objects": [],
+        "notes": "保持原固定 A/B 地理端点和 100 m 全长。A 截面、东端路口和多数主路边缘可辨，连通混凝土前场按入口两侧可见主路宽度排除。中段约 x1600–1715 的北侧树冠实际覆盖路缘，不能从当前图像确认冠下完整边界。道路主体可见或树影中仍有纹理，不足以代替冠下边界证据。未确认地面侵入实体，保留 indeterminate；原多边形在遮挡处只保留原目标建议，不宣称边界已核实。",
+        "uncertainties": [
+          "中段北侧约 x1600–1715 的路缘被实际树冠遮挡，冠下道路与路肩接界未知。"
+        ],
+        "inspected_at": "2026-10-22T01:38:16.123942+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\images\\bounded-extract-16ce6fceb87122.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\guides\\bounded-extract-16ce6fceb87122.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\laura-frames-v1\\masks\\bounded-extract-16ce6fceb87122.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\native-01-x500-y380-x1450-y880.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\native-02-x1350-y380-x2300-y880.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\native-03-x2200-y380-x3250-y880.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\boundary-north-x1550-y490-x1780-y690.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-16ce6fceb87122\\boundary-south-x920-y570-x1230-y760.png"
+        ]
+      },
+      "final_row_sha256": "68b31096ce53f55f95e94d6c4ad601e011d1f7c7d328f1548d5b210030959714",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\review-payload.json",
+        "observer_payload_sha256": "0e26efbef580e1a0ad8d2273ef7d97b83fed6367d5127d838d8a3d7d2c5a0b4f",
+        "payload_file_modified_at_utc": "2026-10-22T01:37:00.526240+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-22T01:38:15.274973+00:00",
+        "business_fields_changed": false,
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    },
+    {
+      "sample_id": "bounded-extract-3e019a651a4807",
+      "decision": "accepted",
+      "findings": [
+        "原图与 guide 对应房屋之间的同一条斜向横路，A 约 (4082, 1522) 至 B 约 (815, 815) 的登记 101.864 m 范围保持不变，mask 对目标全范围有源覆盖。",
+        "四张重叠原生裁片覆盖两端和全部中段；两侧道路边带、草地和混凝土入口接界可辨，连通住宅前场及侧向出入口按相邻可见主路宽度界定。",
+        "北侧蓝白条状材料位于入口/路肩一侧，南侧成堆板件位于邻地；未确认实体伸入主路。可见浅色带、颗粒和车辙没有足够实体证据。",
+        "A、B 连接的纵路铺面及主路进入位置均可见；下侧积水在道路边带之外，未遮断完整目标边界，保留首稿 normal。"
+      ],
+      "changes": {},
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-3e019a651a4807.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-3e019a651a4807.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-3e019a651a4807.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-3e019a651a4807\\native-01-x650-y550-x1650-y1200.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-3e019a651a4807\\native-02-x1500-y750-x2500-y1350.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-3e019a651a4807\\native-03-x2350-y950-x3350-y1500.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-3e019a651a4807\\native-04-x3200-y1150-x4250-y1800.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "905b592a16aab2084f77cdc535b2f236e227b76c49b445378714628ad28f97eb",
+      "first_author_id": "bounded_annotator_3",
+      "first_row_sha256": "f30e980b61eeb2309d8a203dbb923b10a60fdd91713a067684d810c4ee8c2484",
+      "reviewed_at": "2026-10-22T01:38:16.243743+00:00",
+      "reviewer_id": "bounded_verifier_32",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-3e019a651a4807.jpg": "905b592a16aab2084f77cdc535b2f236e227b76c49b445378714628ad28f97eb",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-3e019a651a4807.jpg": "38dd8397246e338d64d456ed19b921ed9d74eadeb14c1d54d1d1185b429a3cfb",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-3e019a651a4807.png": "86d950338f183c438e7440fc5cc1f07c24868d21525d76e3c454a399e0af09cd",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-3e019a651a4807\\native-01-x650-y550-x1650-y1200.png": "ee431e1759945eaf77556b6a29cda72d32aa64135f1c4a2098c14964650518b8",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-3e019a651a4807\\native-02-x1500-y750-x2500-y1350.png": "23c1470077fff904c51d4ffc976b11c5f05c60de8df612e2645fa4f1d64640cb",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-3e019a651a4807\\native-03-x2350-y950-x3350-y1500.png": "0242dadf15176370ca75bb33bbd0c0192564b5cdda50363d1eff7ee11157aec9",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-3e019a651a4807\\native-04-x3200-y1150-x4250-y1800.png": "109f922e89c29667836f8b85df2d71c34420233b851545489edd0bd1833b0d49"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-3e019a651a4807",
+        "image_sha256": "905b592a16aab2084f77cdc535b2f236e227b76c49b445378714628ad28f97eb",
+        "target_brief": "两排独立房屋之间的斜向横路，从右侧纵路交叉口 A 至左侧带中心黄线公路的接入口 B。北侧有蓝屋顶长屋和绿色屋顶房屋，南侧有白屋顶房屋及空地。",
+        "target_polygon": [
+          [
+            0.178,
+            0.287
+          ],
+          [
+            0.225,
+            0.299
+          ],
+          [
+            0.402,
+            0.381
+          ],
+          [
+            0.606,
+            0.48
+          ],
+          [
+            0.79,
+            0.562
+          ],
+          [
+            0.842,
+            0.592
+          ],
+          [
+            0.825,
+            0.711
+          ],
+          [
+            0.772,
+            0.646
+          ],
+          [
+            0.604,
+            0.584
+          ],
+          [
+            0.401,
+            0.502
+          ],
+          [
+            0.223,
+            0.425
+          ],
+          [
+            0.154,
+            0.413
+          ]
+        ],
+        "verdict": "normal",
+        "objects": [],
+        "notes": "已查看原生图及左右两个原生裁切。完整 A–B 道路和两侧铺装边缘可连续识别；可见浅色带为表面泥沙或车辙，未见可明确辨认的侵入实体。蓝白条状物位于北侧房屋入口边缘之外，南侧成堆板件位于邻地。",
+        "uncertainties": [
+          "极小像素颗粒无法辨材，未把路面纹理当作实体。"
+        ],
+        "inspected_at": "2026-10-22T01:38:16.243743+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\images\\bounded-extract-3e019a651a4807.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\guides\\bounded-extract-3e019a651a4807.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\frames-author-aligned-v4\\masks\\bounded-extract-3e019a651a4807.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-3e019a651a4807\\native-01-x650-y550-x1650-y1200.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-3e019a651a4807\\native-02-x1500-y750-x2500-y1350.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-3e019a651a4807\\native-03-x2350-y950-x3350-y1500.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-3e019a651a4807\\native-04-x3200-y1150-x4250-y1800.png"
+        ]
+      },
+      "final_row_sha256": "3e979385378f5039d848d64c992ac7e0f87dfd861e31bd968894d742ada9cc44",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\review-payload.json",
+        "observer_payload_sha256": "0e26efbef580e1a0ad8d2273ef7d97b83fed6367d5127d838d8a3d7d2c5a0b4f",
+        "payload_file_modified_at_utc": "2026-10-22T01:37:00.526240+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-22T01:38:15.274973+00:00",
+        "business_fields_changed": false,
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    },
+    {
+      "sample_id": "bounded-extract-000186c750f214",
+      "decision": "revised",
+      "findings": [
+        "原图和 guide 对应高尔夫草地中的同一条弯曲混凝土通路，东端路口 A 约 (3609, 1055)，西端固定地理截面 B 约 (779, 1621)，保留登记 100 m 全长。",
+        "四张重叠原生裁片覆盖两端和完整弯道；B 附近及中段虽有树影，混凝土/草地两侧分界和铺面仍可辨，未以树影自动拒判。",
+        "东端接纵向通路的铺面可见，按横向主路连续宽度至固定 A 截面界定；垃圾桶、池边材料和植株位于路外，未确认进入道路的实体。",
+        "首稿简介、说明及不确定性文本为问号损坏；依据实际可见通路和边界重写这些文本，保留 normal、空 objects 和原完整目标多边形。"
+      ],
+      "changes": {
+        "target_brief": "高尔夫草地中的弯曲混凝土通路，从东侧与纵向通路交会的 A 至西侧固定地理横截面 B，沿登记中心线保留完整 100 m。",
+        "notes": "已查看原图、guide、mask 及覆盖完整 A/B 目标的四张重叠原生裁片。两侧混凝土/草地分界沿弯道可辨，B 截面及中段树影内仍能辨认铺面和两侧边缘；没有用附近树冠或影子证明地面障碍。东端交会铺面按可见主路连续宽度界定，西端 B 保持固定地理截面，无需改成自然路端。路外垃圾桶、池边材料及植株未确认伸入目标，保留 normal。",
+        "uncertainties": []
+      },
+      "inspected_files": [
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-000186c750f214.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-000186c750f214.jpg",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-000186c750f214.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-000186c750f214\\native-01-x650-y1350-x1600-y1850.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-000186c750f214\\native-02-x1500-y1000-x2350-y1700.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-000186c750f214\\native-03-x2100-y600-x3100-y1250.png",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-000186c750f214\\native-04-x3000-y650-x3850-y1300.png"
+      ],
+      "original_image_checked": true,
+      "image_sha256": "9c4b46f4cc3f4e529ea9dcf157fdc283b8ec47badf31e7f3855df5b4226a07e5",
+      "first_author_id": "bounded_annotator_17",
+      "first_row_sha256": "3e826d819cb5ee52a7000e1860c0ceec28dac0f37e56e739f3d9dcc6b2ea75bf",
+      "reviewed_at": "2026-10-22T01:38:16.346674+00:00",
+      "reviewer_id": "bounded_verifier_32",
+      "inspection_file_sha256": {
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-000186c750f214.jpg": "9c4b46f4cc3f4e529ea9dcf157fdc283b8ec47badf31e7f3855df5b4226a07e5",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-000186c750f214.jpg": "4489a57d9c7917b1f490510733da6dd6c80cb96de7cb8506942190222281d5b8",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-000186c750f214.png": "bd0e4d2ac675449a034dc400eaad46498626b19c1f1414d6c4ed8d9530b2c2a2",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-000186c750f214\\native-01-x650-y1350-x1600-y1850.png": "84987c7948c56dc21cfc8838baf98af5143b981d02ce7dde1c5efe9a7a2f530e",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-000186c750f214\\native-02-x1500-y1000-x2350-y1700.png": "7330e757d82c3954c069b04aa57e9278ab371de4d80e03f396e86243526c54bd",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-000186c750f214\\native-03-x2100-y600-x3100-y1250.png": "b61bd8c0ede4fc84726295a4af7287648fde8f51a5424f42a895cf79dbee818f",
+        "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-000186c750f214\\native-04-x3000-y650-x3850-y1300.png": "3bb9a8a6e84664edcaa49c66cce8a60c62304c5ed7abafdcd9e9ffd05bfefdf3"
+      },
+      "final_row": {
+        "sample_id": "bounded-extract-000186c750f214",
+        "image_sha256": "9c4b46f4cc3f4e529ea9dcf157fdc283b8ec47badf31e7f3855df5b4226a07e5",
+        "target_brief": "高尔夫草地中的弯曲混凝土通路，从东侧与纵向通路交会的 A 至西侧固定地理横截面 B，沿登记中心线保留完整 100 m。",
+        "target_polygon": [
+          [
+            0.17593437,
+            0.66152564
+          ],
+          [
+            0.20510483,
+            0.65318883
+          ],
+          [
+            0.25979945,
+            0.64401834
+          ],
+          [
+            0.30765725,
+            0.64068362
+          ],
+          [
+            0.33956244,
+            0.62817841
+          ],
+          [
+            0.38742024,
+            0.5919133
+          ],
+          [
+            0.43299909,
+            0.54189246
+          ],
+          [
+            0.45806746,
+            0.50229262
+          ],
+          [
+            0.49794895,
+            0.43142976
+          ],
+          [
+            0.52871468,
+            0.38891205
+          ],
+          [
+            0.5674567,
+            0.34097541
+          ],
+          [
+            0.60391978,
+            0.31346394
+          ],
+          [
+            0.63924339,
+            0.30804502
+          ],
+          [
+            0.67228806,
+            0.32096707
+          ],
+          [
+            0.72926162,
+            0.36473531
+          ],
+          [
+            0.78851413,
+            0.40558566
+          ],
+          [
+            0.825433,
+            0.42267612
+          ],
+          [
+            0.81973564,
+            0.45518966
+          ],
+          [
+            0.78623519,
+            0.43518133
+          ],
+          [
+            0.72584321,
+            0.39641517
+          ],
+          [
+            0.66886964,
+            0.35139642
+          ],
+          [
+            0.63810392,
+            0.33805752
+          ],
+          [
+            0.60847767,
+            0.34389329
+          ],
+          [
+            0.575433,
+            0.36973739
+          ],
+          [
+            0.5396536,
+            0.41892455
+          ],
+          [
+            0.50911577,
+            0.46269279
+          ],
+          [
+            0.46763902,
+            0.53980825
+          ],
+          [
+            0.39653601,
+            0.61650688
+          ],
+          [
+            0.34639927,
+            0.65735723
+          ],
+          [
+            0.30993619,
+            0.66694456
+          ],
+          [
+            0.26093892,
+            0.67194664
+          ],
+          [
+            0.20738377,
+            0.68111713
+          ],
+          [
+            0.17912489,
+            0.68987078
+          ]
+        ],
+        "verdict": "normal",
+        "objects": [],
+        "notes": "已查看原图、guide、mask 及覆盖完整 A/B 目标的四张重叠原生裁片。两侧混凝土/草地分界沿弯道可辨，B 截面及中段树影内仍能辨认铺面和两侧边缘；没有用附近树冠或影子证明地面障碍。东端交会铺面按可见主路连续宽度界定，西端 B 保持固定地理截面，无需改成自然路端。路外垃圾桶、池边材料及植株未确认伸入目标，保留 normal。",
+        "uncertainties": [],
+        "inspected_at": "2026-10-22T01:38:16.346674+00:00",
+        "inspection_files": [
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\images\\bounded-extract-000186c750f214.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\guides\\bounded-extract-000186c750f214.jpg",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\resume-20261021\\mussett-frames-v2\\masks\\bounded-extract-000186c750f214.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-000186c750f214\\native-01-x650-y1350-x1600-y1850.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-000186c750f214\\native-02-x1500-y1000-x2350-y1700.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-000186c750f214\\native-03-x2100-y600-x3100-y1250.png",
+          "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\native-crops\\bounded-extract-000186c750f214\\native-04-x3000-y650-x3850-y1300.png"
+        ]
+      },
+      "final_row_sha256": "66ea990d16a4d3f8293adbe412efc8e5277fc3039c8471b8fbf780c96929ca33",
+      "storage_provenance": {
+        "operator": "root_orchestrator_deterministic_storage_only",
+        "observer_declared_status": "complete",
+        "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\review-payload.json",
+        "observer_payload_sha256": "0e26efbef580e1a0ad8d2273ef7d97b83fed6367d5127d838d8a3d7d2c5a0b4f",
+        "payload_file_modified_at_utc": "2026-10-22T01:37:00.526240+00:00",
+        "filesystem_time_is_not_claimed_visual_inspection_time": true,
+        "stored_at_utc": "2026-10-22T01:38:15.274973+00:00",
+        "business_fields_changed": false,
+        "new_visual_inspection_claimed": false,
+        "observer_storage_cli_execution_claimed": false,
+        "timing_semantics": "reviewed_at/final.inspected_at are storage timestamps, not an additional visual inspection or human timing."
+      }
+    }
+  ],
+  "persistence_events": [
+    {
+      "operator": "root_orchestrator_deterministic_storage_only",
+      "observer_declared_status": "complete",
+      "observer_payload_file": "D:\\drone-agent-data\\p6-corpus-completion-20261018\\verification\\bounded_verifier_32\\review-payload.json",
+      "observer_payload_sha256": "0e26efbef580e1a0ad8d2273ef7d97b83fed6367d5127d838d8a3d7d2c5a0b4f",
+      "payload_file_modified_at_utc": "2026-10-22T01:37:00.526240+00:00",
+      "filesystem_time_is_not_claimed_visual_inspection_time": true,
+      "stored_at_utc": "2026-10-22T01:38:15.274973+00:00",
+      "business_fields_changed": false,
+      "new_visual_inspection_claimed": false,
+      "observer_storage_cli_execution_claimed": false
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+"""Verify the exact source-hold subset and its independent actual audit.
+
+核验精确来源hold子集及独立真实审核。
+"""
+import hashlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+OUT = Path(__file__).resolve().parent
+PARENT = OUT.parent
+
+
+def read(path):
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+def sha(path):
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+selection = read(OUT / 'source-exposure-hold-selection.json')
+hold = set(selection['exact_hold_sample_ids'])
+original_manifest, original_labels = read(PARENT / 'manifest.json'), read(PARENT / 'labels.json')
+manifest, labels = read(OUT / 'manifest.json'), read(OUT / 'labels.json')
+negative22 = read(PARENT / 'actual-audit-v1/core-audit.json')
+assert sha(PARENT / 'actual-audit-v1/core-audit.json') == selection['original22_negative_audit_sha256'] == '667a1603811f2716b710cd9c981da9df4e146905a709c6a3b2fecbdd6d57f2c4'
+assert sha(PARENT / 'manifest.json') == selection['original22_manifest_sha256'] == 'df64c574c45baac9f267504bfc8893b445be977c54ae4a447084b72991f28f60'
+assert manifest['samples'] == [row for row in original_manifest['samples'] if row['sample_id'] not in hold]
+assert labels['rows'] == [row for row in original_labels['rows'] if row['sample_id'] not in hold]
+assert manifest['stability_pairs'] == original_manifest['stability_pairs']
+assert {key: value for key, value in manifest.items() if key != 'samples'} == {key: value for key, value in original_manifest.items() if key != 'samples'}
+assert sha(OUT / 'protocol-not-frozen.json') == sha(PARENT / 'protocol-not-frozen.json')
+assert sha(OUT / 'exposure.json') == sha(PARENT / 'exposure.json')
+assert len(manifest['samples']) == len(labels['rows']) == 19
+assert len(manifest['stability_pairs']) == 1
+assert sum(row['evaluation_role'] == 'primary' for row in manifest['samples']) == 18
+assert len({row['asset_id'] for row in manifest['samples'] if row['evaluation_role'] == 'primary'}) == 18
+result = read(OUT / 'control-v1/result.json')
+execution = result['actual_execution']
+report = read(OUT / 'actual-audit-v1/core-audit.json')
+before, after = (read(OUT / 'control-v1' / leaf) for leaf in ('exact-inputs-before.json', 'exact-inputs-after.json'))
+assert before == after
+assert execution['input_ledger_before_sha256'] == sha(OUT / 'control-v1/exact-inputs-before.json')
+assert execution['input_ledger_after_sha256'] == sha(OUT / 'control-v1/exact-inputs-after.json')
+assert execution['frozen_core_before'] == execution['frozen_core_after'] == result['frozen_core_sha256']
+for row in result['returned_files']:
+    assert sha(row['file']) == row['sha256'] and Path(row['file']).stat().st_size == row['bytes']
+ids = {row['sample_id'] for row in manifest['samples']}
+sample_issues = [row for row in report['issues'] if row.get('sample_id') in ids]
+unassigned = [row for row in report['issues'] if row.get('sample_id') is not None and row.get('sample_id') not in ids]
+globals_ = [row for row in report['issues'] if row.get('sample_id') is None]
+assert len(sample_issues) == execution['sample_issue_count']
+assert globals_ == execution['global_issues']
+pair_issues = sum(len(row['issues_on_either_member']) for row in execution['pairs'])
+assert report['status'] == 'missing' and report['data_ready'] is False
+assert result['all_original22_negative_evidence_preserved'] is True
+assert negative22['issue_counts']['exposed_image_outside_development'] == 6
+summary = {
+    'format': 'drone.p6-filtered19-postrun-verification/v1',
+    'recorded_at_utc': datetime.now(timezone.utc).isoformat(),
+    'copy_invariants_verified': True,
+    'exact_source_exposure_hold_ids': sorted(hold),
+    'source_exposure_global_status_still_unadjudicated': True,
+    'selection_basis_excludes_business_labels_quotas_and_model_quality': True,
+    'original22_negative_result_preserved_as_primary_record': True,
+    'original22_audit_sha256': sha(PARENT / 'actual-audit-v1/core-audit.json'),
+    'original22_exposure_issue_count': 6,
+    'remaining_sample_dicts_identical_to_original22': True, 'remaining_label_dicts_identical_to_original22': True,
+    'protocol_threshold_and_exposure_file_bytes_identical_to_original22': True,
+    'only_old_pair_preserved_exactly': True,
+    'samples': 19, 'primary_observations': 18, 'distinct_primary_assets': 18, 'repeat_observations': 1, 'pair_count': 1,
+    'derived_captures_verified': report['derived_captures_verified'],
+    'sample_issue_count': len(sample_issues), 'pair_issue_count': pair_issues, 'unassigned_issues': unassigned,
+    'per_observation_and_pair_scope_passed': report['derived_captures_verified'] == 19 and not sample_issues and pair_issues == 0 and not unassigned,
+    'global_issue_count': len(globals_), 'global_issues': globals_, 'core_issue_counts': report['issue_counts'],
+    'bound_input_files_rehashed_before_and_after': len(before), 'all_bound_input_ledgers_identical': True,
+    'frozen_four_core_hashes_unchanged': True,
+    'actual_core_report_sha256': sha(OUT / 'actual-audit-v1/core-audit.json'),
+    'execution_receipt_sha256': sha(OUT / 'actual-audit-v1/execution-receipt.json'),
+    'control_result_sha256': sha(OUT / 'control-v1/result.json'),
+    'manifest_sha256': sha(OUT / 'manifest.json'), 'labels_sha256': sha(OUT / 'labels.json'),
+    'primary_label_counts': execution['primary_label_counts'],
+    'data_ready': False, 'formal_data_frozen': False, 'formal_assets_admitted': 0, 'formal_pairs_admitted': 0,
+    'formal_model_calls': 0, 'formal_release_eligible': False, 'wp_p6_01_closed': False,
+    'pixels_visually_viewed': False, 'new_business_judgments_created': False,
+}
+with (OUT / 'postrun-verification.json').open('x', encoding='utf-8', newline='\n') as stream:
+    json.dump(summary, stream, ensure_ascii=False, indent=2, allow_nan=False)
+    stream.write('\n')
+print(json.dumps({key: summary[key] for key in ('copy_invariants_verified', 'samples', 'primary_observations',
+    'derived_captures_verified', 'sample_issue_count', 'pair_issue_count', 'global_issue_count',
+    'per_observation_and_pair_scope_passed', 'actual_core_report_sha256')}), flush=True)

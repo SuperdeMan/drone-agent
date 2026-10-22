@@ -1,0 +1,39 @@
+"""Append only the verified Santolan32 to the unchanged current index.
+
+仅将来源已核验的 Santolan32 追加到未变的当前索引。
+"""
+import hashlib
+import json
+import runpy
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+_previous = runpy.run_path(str(ROOT / 'resume-20261022/current_observations_v3.py'))
+match, read, sha = (_previous[key] for key in ('match', 'read', 'sha'))
+
+
+def load_observations():
+    """Keep old rows exact; new rows remain geometry-only candidates. / 保留旧行原义，新行仍仅为几何候选。"""
+    result = _previous['load_observations']()
+    old = json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+    fast = ROOT / 'resume-20261022-fast'
+    proof = fast / 'conditional-parts-native32-v2/result.json'
+    assert sha(proof) == '1d5bcb2173af2654072df6ab1e8635f6ee91290eb9628c31fb17c359b1307026'
+    gate = read(proof)
+    assert gate['status'] == 'passed' and gate['checked'] == gate['passed'] == 32
+    allowed = {r['sample_id'] for r in gate['rows']}
+    folder = fast / 'conditional-parts-native32-v1/frames'
+    additions = {}
+    for path in sorted((folder / 'receipts').glob('*.json')):
+        row = read(path)
+        assert row['sample_id'] in allowed and row['sample_id'] not in result
+        assert row['status'] == 'extracted' and row['proposed_partition'] == 'calibration_candidate'
+        assert row['repeated_capture_eligible'] is False and row['asset_identity_verified'] is False
+        assert row['business_label'] is None and row['formal_release_eligible'] is False
+        for field, subdir, ext in [('image', 'images', 'jpg'), ('guide', 'guides', 'jpg'), ('mask', 'masks', 'png'), ('overview', 'overviews', 'jpg')]:
+            local = folder / subdir / (row['sample_id'] + '.' + ext)
+            assert local.is_file() and sha(local) == row[field + '_sha256']
+        additions[row['sample_id']] = row
+    assert set(additions) == allowed and len(additions) == 32
+    assert hashlib.sha256(old.encode()).hexdigest() == hashlib.sha256(json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    return {**result, **additions}
