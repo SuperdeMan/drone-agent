@@ -1,0 +1,35 @@
+{
+  "format": "drone.p6-independent-pair-review-payload/v1",
+  "reviewer_id": "pair_verifier_2",
+  "assignment_sha256": "97ada666c6e51890dc7aa8b812fcccb2ee5252c6d10a217292ab03ef62a694de",
+  "status": "complete",
+  "full_assigned_pairs_checked": true,
+  "human_reviews_created": 0,
+  "formal_release_eligible": false,
+  "rows": [
+    {
+      "pair_id": "bounded-repeat-08efb8d7377f45",
+      "same_asset": true,
+      "same_condition": null,
+      "distinct_captures": true,
+      "evidence": "I inspected both original images, both guides and masks, and unresized native crops containing the entire registered target polygon with margins, including both terminal cross-sections and both road edges. The fixed 44.48266138343642 m A/B interval was retained. The diagonal multilane road, yellow-bounded central turn lane with two opposed white arrows, distinctive black repair marks, northwest BAIT SHOP roof and adjacent larger gray roof, entrances on the northwest side, and southeast sidewalk with narrow grass strips and openings correspond in both images. These visual landmarks establish the same asset independently of its identifier; the bound world endpoints also agree. The masks are uniformly valid at 255. Across the complete target, the visible central and southeast lanes have comparable exposed pavement and scattered small dark material, and the northwest roadside tree projects over the outer lane in both views. However, branches and foliage obscure part of that lane and its edge, with extensive tree shadows in the first image; the different viewing and lighting geometry does not reveal the ground beneath the canopy. I therefore cannot verify that the actual state of the entire fixed road width is identical and leave same_condition unknown rather than treating two incomplete observations as agreement. The bound verified author date groups are 2022-10-01 for 1001-Kennedy-Green-Mobile-Homes.geo.tif and 2022-10-02 for 1002-Palm-Acers.4.geo.tif, with different parent SHA256 values ffab4194aaeddbbc214649647a53954201b12c0cd42b3127f0b10c8fc2d3da82 and 8c7eb124e355b41c74c0dd49cb18c3eae130da559a2d54731d9ddd34691e84e4. The visibly different tree/building parallax and shadow patterns support distinct derived views. distinct_captures is true only within the assigned scope of real UAV-derived captures in different verified author date groups; no exact UTC acquisition time, flight ID, raw camera-frame identity, temporal ordering, or reason for any apparent change is inferred.",
+      "uncertainties": [
+        "Branches and foliage over the northwest outer lane hide part of the fixed target surface and edge. The images do not establish the condition beneath them or distinguish elevated overhang from material on the pavement sufficiently to certify complete-state equality.",
+        "Different illumination and viewing geometry change canopy appearance and road shadows. Similar exposed pavement and scattered material cannot resolve the occluded portion of the full comparison target.",
+        "Capture provenance is limited to the supplied verified author date groups and distinct UAV-derived parent products; exact acquisition UTC, flight identifiers and raw camera frames are not provided."
+      ],
+      "inspection_files": [
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-3110863d076621.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-3110863d076621.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-3110863d076621.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/images/bounded-extract-b0de00c6cc4764.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/guides/bounded-extract-b0de00c6cc4764.jpg",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/frames-cloud-v5/masks/bounded-extract-b0de00c6cc4764.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/pair-verification/pair_verifier_2/bounded-extract-3110863d076621-full-target-native.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/pair-verification/pair_verifier_2/bounded-extract-b0de00c6cc4764-full-target-native.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/pair-verification/pair_verifier_2/bounded-extract-3110863d076621-northwest-edge-native.png",
+        "D:/drone-agent-data/p6-corpus-completion-20261018/pair-verification/pair_verifier_2/bounded-extract-b0de00c6cc4764-northwest-edge-native.png"
+      ]
+    }
+  ]
+}
