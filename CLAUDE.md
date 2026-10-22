@@ -51,18 +51,18 @@
 
 | 工作 | 入口与约束 |
 |---|---|
-| M1 / M2 | `dev_stack.py console` 只操作云端固定 M1；`dev_stack.py m2 --scenario all --seeds 7,19,41` 跑 M2，`--planner live` 才是实调。本机 `python -m drone_agent.console.mission --local` 只规划与签名、不飞。门禁 `verify_m2_release.py`；见 [M2 记录](docs/m2-readiness.md)。 |
+| M1 / M2 | `dev_stack.py console` 只操作云端M1；`dev_stack.py m2 --scenario all --seeds 7,19,41`，`--planner live` 才实调。本机 `drone_agent.console.mission --local` 只规划签名、不飞。门禁 `verify_m2_release.py`；见[M2记录](docs/m2-readiness.md)。 |
 | 常驻入口 | `console-cloud` / `desk-cloud` 默认只读计划，`--apply` 激活本项目容器 / unit / Serve，`--status` 查询；key 写入或替换后重新激活仍按全局批准边界。只用既有 Tailscale，不启用 Funnel，不改其他应用映射或 ACL。`desk_probe.py` 经实际 HTTPS 核对；见 [任务台指南](docs/tailnet-desk.md)。 |
-| M3-SITL | `dev_stack.py m3 --scenario <id|all|class:名称> --seeds 7,19,41`，裁判 `eval/judge_m3.py`，门禁 `verify_m3_release.py`。guardian 等出口与 PX4 连通且定位有结论后才开放控制（D048）；核对真值净距、两链互斥、出口看门狗、D040 预算及绑定的 v2 恢复边。只接受隔离成立且整批通过的回执；见 [M3 记录](docs/m3-readiness.md)。 |
+| M3-SITL | `dev_stack.py m3 --scenario <id|all|class:名称> --seeds 7,19,41`；裁判 `eval/judge_m3.py`，门禁 `verify_m3_release.py`。D048连通/定位闸门、真值净距、链路互斥、看门狗、D040预算和v2恢复边见[M3记录](docs/m3-readiness.md)；必须隔离成立、整批通过。 |
 | P0–P4 | 本机 `python -m drone_agent.eval.p{1,2,3,4}_world --output <目录>`，P3 另有 `--part ladder`；云端 `dev_stack.py p1|p2|p3|p4`。门禁 `verify_p{0,1,2,3,4}_release.py`；P4 的 S2 复验用 `verify_p4_s2_release.py`。`--workflows` / `--scheduling` 必须带 `--catalog`，`--business` 必须带 `--workflows`；激活先在副本演练迁移。 |
 | S2 数据与画像 | `dev_stack.py p4-data` 导入，`p4-s2 --split … --mode live|replay|scripted|retrieval` 评测。先校准、冻结画像、测试只跑一次；VisA 测试拆分已披露使用两次，此后不得再作测试（D065、D066、D076）。公开道路开发样本不算独立留出或正式真值。 |
 | P5 | 本机 `p5_world` 与 `p5_authz`，云端 `dev_stack.py p5`；门禁 `verify_p5_release.py`。升级先 `desk-members --next --apply` 暂存再 `desk-cloud --apply`；长稳用 `desk-soak`，备份与恢复演练见 [运维指南](docs/operations-guide.md)。长稳期间不手工操作三个项目、不激活新版本。 |
 | P6 补拍 | 本机 `p6_world`，云端 `dev_stack.py p6`；任务台 `desk-world --section s1 --asset asset_red --state glare --apply` 后用 `desk_probe.py workflow --start --workflow recapture_watch --clear-before-recapture asset_red`（须指定 origin）。门禁 `verify_p6_recapture.py`；相机航向只核对过仿真真值。 |
-| X1 空地协同 | S0 用 `python -m drone_agent.eval.x1_world --output <目录>`，S1 用云端 `dev_stack.py x1 --scenario <id|all> --seeds 7,19,41`；裁判 `eval/judge_x1.py` 在线/回放一致，S1 另核真值超速。飞控 `RO_SPEED_LIM` 限速、上传前核对，地面任务不重试（D032 仅用于飞行器）；S1 地面车停滞则该批不计入，同版本重跑并记录。门禁 `verify_x1_release.py` 须核当场 X1/P1–P6 S0、同候选云端检查、S1 和 M1/M2/M3/P3 S1 回归。 |
-| 模型对抗与规划 | 本机 `python -m drone_agent.eval.p6_adversarial run --corpus … --mode scripted|replay`；实调只用云端 `dev_stack.py p6-adv`。每语料 / 画像只录一次；429 无回答，按限速续跑；规划请求不得含时刻。改提示即新版本，冻结后由未见提示的独立作者写留出，预登记提示 / 语料 / 计分代码摘要和顺序；冻结提交不泄露机制。门禁 `verify_p6_adversarial.py`、`verify_planner_choice.py --decision D080|D081`。 |
+| X1 空地协同 | S0 `drone_agent.eval.x1_world`，云端S1 `dev_stack.py x1 --scenario <id|all> --seeds 7,19,41`；裁判 `eval/judge_x1.py`，门禁 `verify_x1_release.py`。地面任务不重试，飞控限速须核对；S1停滞批次不计入，同版本重跑并记录。完整同候选矩阵与回归要求见[X1验收](docs/x1-readiness.md)。 |
+| 模型对抗与规划 | 本机 `drone_agent.eval.p6_adversarial run --mode scripted|replay`，实调只用云端 `dev_stack.py p6-adv`。每语料/画像只录一次；429无回答按限速续跑，请求无时刻。改提示须新版本，冻结后独立未见提示作者写留出；事前登记提示/语料/计分摘要及顺序，冻结提交不泄露机制。门禁 `verify_p6_adversarial.py`、`verify_planner_choice.py --decision D080|D081`。 |
 | 指代 / 解释 | 改站点别名即受信配置变更，重新跑 `reference_check`（误拒为 0）；门禁 `verify_reference_check.py`。解释语料、核对规则或提示变更须新版本和新留出 / 实调；采用只由预登记规则判定。见 [解释记录](docs/explain-readiness.md)、[v2 负结果](docs/explain-check-v2-readiness.md)；门禁 `verify_explain.py`、`verify_explain_check.py`。 |
 | 资产档案 | `python -m drone_agent.eval.p6_assets --output <目录>`，独立裁判 `eval/judge_assets.py`；任务台 `desk_probe.py assets`；门禁 `verify_asset_archive.py`。档案只追加，fact / decision / belief 分栏；比较只用前两者、不下归因结论，容差在 `configs/analysis/compare_v1.yaml`。 |
-| 空域与容量 | `p3_world --part ladder|s0 --footprint box-v1|corridor-v1`；容量用 `python -m drone_agent.eval.capacity_growth template|generate|check|measure|judge`，数据在 `D:/drone-agent-data/capacity-ladder/`（保留 template 输入）。门禁 `verify_fine_reservations.py` / `verify_capacity.py --evidence <绝对路径>`。候选采用按预登记规则，不由单次时延拍板。 |
+| 空域与容量 | `p3_world --part ladder|s0 --footprint box-v1|corridor-v1`；`drone_agent.eval.capacity_growth`用法见[容量验收](docs/capacity-readiness.md)，保留`capacity-ladder/`模板。门禁 `verify_fine_reservations.py` / `verify_capacity.py --evidence <绝对路径>`；采用只按预登记规则。 |
 | 时间敏感测量 | Windows 后台节流会影响 S0 / 阶梯；`PYTHONPATH` 加载 `scripts/high_qos/sitecustomize.py`，仅作用于当前进程。容量每次测量独立进程，旁跑 `eval/host_power.py`；全程接交流电、不休眠、期间不改被导入的源码。约 2 小时的测量先确认电源与不合盖。 |
 | 页面 | 改 `console/` 后另跑 `node --test tests/console/test_mission_client.cjs tests/console/test_live_client.cjs`。浏览器核验 `scripts/desk_browser.py`；`desk_preview.py --seed` 只作 S0 预览。页面脚本不得含控制 / 注入帧名，两页设计变量保持一致（D068）。 |
 

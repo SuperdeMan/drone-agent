@@ -8,7 +8,7 @@ import hashlib
 import io
 import math
 from collections import OrderedDict
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 MAX_WINDOW_PIXELS = 60_000_000
 MAX_READ_BYTES = 256 * 1024 * 1024
@@ -22,16 +22,18 @@ RECORDED_DATA_ROOTS = ("D:/drone-agent-data/", "/home/ubuntu/drone-agent-data/p6
 def portable(name) -> str:
     """Map an absolute path recorded under a known data root to its data-root-relative form.
 
-Other paths are returned unchanged, so containment and digest checks still decide admission.
+Unmapped Windows drives are rejected on every host; containment and digest checks still decide admission.
 
-将记录在已知数据根下的绝对路径映射为相对数据根的形式；其他路径原样返回，
-是否准入仍由包含关系与摘要核对决定。
+将记录在已知数据根下的绝对路径映射为相对数据根并规范分隔符；在任何主机上都拒绝
+未映射的Windows盘符/共享路径，是否准入仍由包含关系与摘要核对决定。
 """
     text = str(name).replace("\\", "/")
     for prefix in RECORDED_DATA_ROOTS:
         if text.startswith(prefix):
             return text[len(prefix):]
-    return str(name)
+    if PureWindowsPath(text).drive:
+        raise ValueError("unregistered Windows evidence root")
+    return text
 
 
 def rooted(data_root: Path, name) -> Path:

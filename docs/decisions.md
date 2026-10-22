@@ -2125,3 +2125,5 @@ change-v3 在网格上任何阈值的召回率都不超过 0.84（τ 0.05 时精
 **交付入口**：[工程验收](p6-engineering-readiness.md)、[已采用方案](p6-engineering-closeout-proposal.md)、[范围记录](../eval/s2/road_business_v1/engineering_closeout_20261022/scope.json)。
 
 **重估触发器**：开始后续道路业务验收、改变业务用途或采用新道路画像时，重新冻结实际协议/数据和对应软件证据；工程关闭结论不能转借为模型质量成绩。
+
+**D090 Linux路径核验修正（2026-10-22）**：候选`65fc421`实际CI为2344通过/1失败：Linux将未登记`C:/drone-agent-data/`当作相对路径接受，原拒绝断言未放宽。修正公共`portable`边界，跨平台拒绝未登记Windows盘符、盘符相对路径及UNC共享，并规范相对路径分隔符；已登记D盘/云端根、包含关系、摘要校验和D089业务门槛不变。原CI失败和日志摘要保留在[工程证据目录](../eval/s2/road_business_v1/engineering_closeout_20261022/failed-65fc421.json)，完整检查按修正候选重新运行，不将失败回写成功。
