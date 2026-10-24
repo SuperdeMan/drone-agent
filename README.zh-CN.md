@@ -260,7 +260,7 @@ uv run python scripts/generate_proto.py
 | 空地协同 | [空地协同架构](docs/architecture/04-air-ground.md) · [X1 实施方案](docs/x1-implementation.md) · [X1 验收](docs/x1-readiness.md) |
 | 运行平台 | [云端开发](docs/cloud-development.md) · [飞行台](docs/tailnet-desk.md) · [运维手册](docs/operations-guide.md) · [仿真](sim/README.md) |
 | 证据、裁判与回放 | [评测体系](docs/architecture/08-evaluation.md) · [拉取与查看运行](docs/cloud-development.md#查看与人工核对结果) · [基线](eval/BASELINES.md) |
-| P6 公开材料与剩余工作 | [当前交接](docs/p6-road-corpus-handoff-2026-10-22.md) · [业务评测协议](docs/p6-business-evaluation.md) · [来源审查](docs/p6-materials-review.md) |
+| P6 公开材料与剩余工作 | [当前交接](docs/p6-road-corpus-handoff-2026-10-22.md) · [冷归档与恢复](docs/p6-data-archive-2026-10-24.md) · [业务评测协议](docs/p6-business-evaluation.md) · [来源审查](docs/p6-materials-review.md) |
 | 设计理由 | [决策记录 D001–D091](docs/decisions.md) · [调研与技术雷达](docs/research/) · [姊妹项目复用](docs/reuse-from-embodied-agent.md) |
 
 ## 许可证

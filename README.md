@@ -260,7 +260,7 @@ Read [CLAUDE.md](CLAUDE.md) before contributing ([AGENTS.md](AGENTS.md) is the c
 | Air-ground collaboration | [Air-ground architecture](docs/architecture/04-air-ground.md) · [X1 plan](docs/x1-implementation.md) · [X1 validation](docs/x1-readiness.md) |
 | Running the platform | [Cloud development](docs/cloud-development.md) · [Flight desk](docs/tailnet-desk.md) · [Operations guide](docs/operations-guide.md) · [Simulation](sim/README.md) |
 | Evidence, judges and replay | [Evaluation](docs/architecture/08-evaluation.md) · [Fetch and view a run](docs/cloud-development.md#查看与人工核对结果) · [Baselines](eval/BASELINES.md) |
-| P6 public materials and remaining work | [Current handoff](docs/p6-road-corpus-handoff-2026-10-22.md) · [Business evaluation protocol](docs/p6-business-evaluation.md) · [Sources](docs/p6-materials-review.md) |
+| P6 public materials and remaining work | [Current handoff](docs/p6-road-corpus-handoff-2026-10-22.md) · [Archive and recovery](docs/p6-data-archive-2026-10-24.md) · [Business evaluation protocol](docs/p6-business-evaluation.md) · [Sources](docs/p6-materials-review.md) |
 | Design rationale | [Decision log D001–D091](docs/decisions.md) · [Research and technology radar](docs/research/) · [Sibling-project reuse](docs/reuse-from-embodied-agent.md) |
 
 ## License

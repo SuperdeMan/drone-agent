@@ -1,5 +1,7 @@
 # P6合并与清理记录 · 2026-10-23
 
+后续素材冷归档、云端回收及恢复入口见[2026-10-24说明](p6-data-archive-2026-10-24.md)。以下保留本轮准确时点，不把历史盘点当作后续整库删除授权。
+
 PR [#2](https://github.com/SuperdeMan/drone-agent/pull/2)已以合并提交`03e695c2650674fccf71213bdc26e03871b042c6`进入main，保留原提交历史。P6仍仅按D091工程交付范围关闭，完整道路业务验收见[后续任务](road-business-validation-backlog.md)。
 
 本机与远端的`docs/p6-public-materials-20261014`、`work/p6-road-views-20261014`均已删除，删除前逐分支核对未合入main的独有提交为0。旧`D:/drone-agent-data/p6-closeout-20261014/repo`工作树及再生缓存已清理，D盘净可用增加约199.7 MiB。`D:/drone-agent-data/p6-road-views-20261014/repo`仍由材料工具引用，保留为detached main工具工作树；新开发从main创建分支。
